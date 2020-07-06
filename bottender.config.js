@@ -45,7 +45,7 @@ module.exports = {
       channelSecret: process.env.LINE_CHANNEL_SECRET,
     },
     telegram: {
-      enabled: false,
+      enabled: true,
       path: '/webhooks/telegram',
       accessToken: process.env.TELEGRAM_ACCESS_TOKEN,
     },

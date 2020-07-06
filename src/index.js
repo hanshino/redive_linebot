@@ -1,3 +1,3 @@
-module.exports = async function App(context) {
-  await context.sendText('Welcome to Bottender');
-};
+const App = require('./app') ;
+
+module.exports = App ;

@@ -9,7 +9,11 @@
     "test": "jest"
   },
   "dependencies": {
-    "bottender": "1.4.8"
+    "bottender": "1.4.8",
+    "math-random": "^1.0.4",
+    "memory-cache": "^0.2.0",
+    "minimist": "^1.2.5",
+    "node-fetch": "^2.6.0"
   },
   "devDependencies": {
     "eslint": "^7.4.0",

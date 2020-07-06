@@ -1,0 +1,1204 @@
+[
+    {
+        "name": "克羅耶",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110831.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "碧（插班生）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110731.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "鏡華(萬聖節)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_111131.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "萬聖節"
+    },
+    {
+        "name": "愛梅斯",
+        "image": "https://i.imgur.com/A1FDMDf.png",
+        "star": "3",
+        "rate": "0.000%",
+        "isPrincess": "1",
+        "tag": "未開放角色"
+    },
+    {
+        "name": "美美(萬聖節)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_111331.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "萬聖節"
+    },
+    {
+        "name": "日和",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100111.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "優衣",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100211.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "怜",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100311.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "禊",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100411.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "茉莉",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100511.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "茜里",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100611.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "宮子",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100711.png",
+        "star": "2",
+        "rate": "8.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "雪",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100811.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "杏奈",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100931.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "真步",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101031.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "璃乃",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101131.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "初音",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101231.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "七七香",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101311.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "霞",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101431.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "美里",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101511.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "鈴奈",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101611.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "香織",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101711.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "伊緒",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_101831.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "美美",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102011.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "胡桃",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102111.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "依里",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102211.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "綾音",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102311.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "鈴莓",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102511.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "鈴",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102611.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "惠理子",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102711.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "咲戀",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102831.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "望",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_102931.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "妮諾",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_103031.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "忍",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_103111.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "秋乃",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_103231.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "真陽",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_103311.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "優花梨",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_103411.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "鏡華",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_103631.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "智",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_103731.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "栞",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_103811.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "碧",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104011.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "千歌",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104211.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "真琴",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104331.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "伊莉亞",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104431.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "空花",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104511.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "珠希",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104611.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "純",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104731.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "美冬",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104811.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "靜流",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_104931.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "美咲",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105011.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "深月",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105111.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "莉瑪",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105211.png",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "莫妮卡",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105331.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "紡希",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105411.png",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "步未",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105511.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "流夏",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105631.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "吉塔",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105731.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "貪吃佩可",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105811.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "可可蘿",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_105911.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "凱留",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_106011.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "矛依未",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_106131.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "公主祭"
+    },
+    {
+        "name": "亞里莎",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_106331.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "克莉絲提娜",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107131.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "公主祭"
+    },
+    {
+        "name": "貪吃佩可（夏日）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107531.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "可可蘿（夏日）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107611.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "鈴莓（夏日）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107731.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "凱留（夏日）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107831.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "珠希（夏日）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107931.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "美冬（夏日）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108011.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "忍（萬聖節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108131.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "萬聖節"
+    },
+    {
+        "name": "宮子（萬聖節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108211.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "美咲（萬聖節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108331.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "萬聖節"
+    },
+    {
+        "name": "千歌（聖誕節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108431.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "聖誕節"
+    },
+    {
+        "name": "胡桃（聖誕節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108511.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "綾音（聖誕節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108631.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "聖誕節"
+    },
+    {
+        "name": "日和(新年)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108731.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "新年"
+    },
+    {
+        "name": "優衣(新年)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108831.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "新年"
+    },
+    {
+        "name": "怜(新年)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108911.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "惠理子（情人節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109011.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "靜流（情人節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109131.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "情人節"
+    },
+    {
+        "name": "安",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109231.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "露",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109311.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "古蕾婭",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109431.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "空花(江戶)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109531.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "大江戶"
+    },
+    {
+        "name": "妮諾(江戶)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109631.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "大江戶"
+    },
+    {
+        "name": "雷姆",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109731.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "拉姆",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109811.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "愛蜜莉亞",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109931.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "鈴奈(泳裝)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110031.png",
+        "star": "3",
+        "rate": "0.055%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "伊緒(泳裝)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110111.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "咲戀(泳裝)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110331.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "真琴(泳裝)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110431.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "香織(泳裝)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110511.png",
+        "star": "1",
+        "rate": "0.000%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "真步(泳裝)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110631.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "泳裝"
+    },
+    {
+        "name": "似似花",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107031.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "公主祭"
+    },
+    {
+        "name": "露娜",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_111431.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "卡雅",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_106531.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "0"
+    },
+    {
+        "name": "2",
+        "image": "https://i.imgur.com/29UXtho.png",
+        "star": "3",
+        "rate": "0%",
+        "isPrincess": "0",
+        "tag": "測試"
+    },
+    {
+        "name": "克莉絲提娜(聖誕節)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_111531.png",
+        "star": "3",
+        "rate": "0.045%",
+        "isPrincess": "1",
+        "tag": "聖誕節"
+    },
+    {
+        "name": "使魔((惡搞",
+        "image": "https://i.imgur.com/efQ32f1.png",
+        "star": "2",
+        "rate": "0.001%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "伊莉雅(聖誕節)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_111731.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "聖誕節"
+    },
+    {
+        "name": "拉比林斯達",
+        "image": "https://i.imgur.com/B1j6J6q.jpg",
+        "star": "3",
+        "rate": "0.001%",
+        "isPrincess": "1",
+        "tag": "未開放角色"
+    },
+    {
+        "name": "千里 真那",
+        "image": "https://i.imgur.com/QHqJ2mV.png",
+        "star": "3",
+        "rate": "0.001%",
+        "isPrincess": "1",
+        "tag": "未開放角色"
+    },
+    {
+        "name": "惡毒",
+        "image": "https://i.imgur.com/JHrOEsv.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "聖地亞哥",
+        "image": "https://i.imgur.com/1w12Dc1.jpg",
+        "star": "3",
+        "rate": "0.13%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "可畏",
+        "image": "https://i.imgur.com/htSXhon.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "濱風",
+        "image": "https://i.imgur.com/4yIXzgt.jpg",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "雪風",
+        "image": "https://i.imgur.com/YGGIfgF.jpg",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "浦風",
+        "image": "https://i.imgur.com/DUcD0Vs.jpg",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "磯風",
+        "image": "https://i.imgur.com/CAIdNWw.jpg",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "谷風",
+        "image": "https://i.imgur.com/IVLEnTR.jpg",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "神風",
+        "image": "https://i.imgur.com/rrPu84w.jpg",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "松風",
+        "image": "https://i.imgur.com/6iqpplr.jpg",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "水無月",
+        "image": "https://i.imgur.com/ftIis1q.jpg",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "三日月",
+        "image": "https://i.imgur.com/t09iLtx.jpg",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "卯月",
+        "image": "https://i.imgur.com/uQnQSYg.jpg",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "如月",
+        "image": "https://i.imgur.com/ulahT16.jpg",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "長月",
+        "image": "https://i.imgur.com/mezZtfe.jpg",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "文月",
+        "image": "https://i.imgur.com/xDvjqPf.jpg",
+        "star": "1",
+        "rate": "4.187%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "三笠",
+        "image": "https://i.imgur.com/F8L892l.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "光輝",
+        "image": "https://i.imgur.com/EaexDOj.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "企業",
+        "image": "https://i.imgur.com/rXfu1fT.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "U-47",
+        "image": "https://i.imgur.com/BVTMNW8.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "獨角獸",
+        "image": "https://i.imgur.com/UIcTYQf.jpg",
+        "star": "2",
+        "rate": "0.555%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "拉菲",
+        "image": "https://i.imgur.com/jn10Nm5.jpg",
+        "star": "2",
+        "rate": "0.666%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "紺紫之心",
+        "image": "https://i.imgur.com/sdqO8gq.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "聖黑之心",
+        "image": "https://i.imgur.com/2bPGQnN.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "翡綠之心",
+        "image": "https://i.imgur.com/8uCUxB3.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "群白之心",
+        "image": "https://i.imgur.com/4mcOywH.jpg",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "涅普顿",
+        "image": "https://i.imgur.com/viArdBs.jpg",
+        "star": "2",
+        "rate": "0.444%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "诺瓦露",
+        "image": "https://i.imgur.com/kotLGXi.jpg",
+        "star": "2",
+        "rate": "0.444%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "布蘭",
+        "image": "https://i.imgur.com/AagCj6j.jpg",
+        "star": "2",
+        "rate": "0.444%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "贝露",
+        "image": "https://i.imgur.com/Es0OVbk.jpg",
+        "star": "2",
+        "rate": "0.444%",
+        "isPrincess": "0",
+        "tag": "碧藍"
+    },
+    {
+        "name": "可可羅(新年)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_111931.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "新年"
+    },
+    {
+        "name": "魔法少女霞",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_112231.png",
+        "star": "3",
+        "rate": "0.04%",
+        "isPrincess": "1",
+        "tag": "公主祭"
+    },
+    {
+        "name": "公主佩可",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_180431.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "公主祭"
+    },
+    {
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_112431.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "拉比林斯達",
+        "image": "https://i.imgur.com/B1j6J6q.jpg",
+        "star": "3",
+        "rate": "0.135%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "千里 真那",
+        "image": "https://i.imgur.com/QHqJ2mV.png",
+        "star": "3",
+        "rate": "0.125%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "愛梅斯",
+        "image": "https://i.imgur.com/A1FDMDf.png",
+        "star": "3",
+        "rate": "0.115%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "克莉絲提娜",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107131.png",
+        "star": "3",
+        "rate": "0.635%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "克莉絲提娜(聖誕節)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_111531.png",
+        "star": "3",
+        "rate": "0.635%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "宮子（萬聖節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108211.png",
+        "star": "1",
+        "rate": "5.19%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "宮子",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_100711.png",
+        "star": "2",
+        "rate": "10.000%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "似似花",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_107031.png",
+        "star": "3",
+        "rate": "0.635%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "矛依未",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_106131.png",
+        "star": "3",
+        "rate": "0.635%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "露",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109311.png",
+        "star": "1",
+        "rate": "0.076%",
+        "isPrincess": "0"
+    },
+    {
+        "name": "怜(新年)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108911.png",
+        "star": "1",
+        "rate": "0.08%",
+        "isPrincess": "0"
+    },
+    {
+        "name": "胡桃（聖誕節）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_108511.png",
+        "star": "1",
+        "rate": "4.19%",
+        "isPrincess": "0"
+    },
+    {
+        "name": "優妮",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_111031.png",
+        "star": "3",
+        "rate": "0.04%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "澀谷凜",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_112531.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "琪愛兒",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_110931.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "リン（レンジャー）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_112731.png",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "凱留(新年)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_112031.png",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "1",
+        "tag": "新年"
+    },
+    {
+        "name": "マヒル(レンジャー)",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_112831.png",
+        "star": "3",
+        "rate": "0.096%",
+        "isPrincess": "1"
+    },
+    {
+        "name": "コッコロ（プリンセス）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_180531.png",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "1",
+        "tag": "公主祭"
+    },
+    {
+        "name": "3リノ（ワンダー）",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_112931.png",
+        "star": "3",
+        "rate": "0.076%",
+        "isPrincess": "1",
+        "tag": "公主祭"
+    },
+    {
+        "name": "愛蜜莉亞",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_109931.png",
+        "star": "3",
+        "rate": "0.500%",
+        "isPrincess": "0",
+        "tag": "特殊"
+    },
+    {
+        "name": "祈梨",
+        "image": "https://pcredivewiki.tw/static/images/unit/icon_unit_106631.png",
+        "star": "3",
+        "rate": "0.076%"
+    },
+    {
+        "name": "ユイ（プリンセス",
+        "image": "https://i.imgur.com/7N00Q9v.png",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1",
+        "tag": "公主"
+    },
+    {
+        "name": "泳裝流夏",
+        "image": "https://i.imgur.com/CEoJfAJ.jpg",
+        "star": "3",
+        "rate": "0.035%",
+        "isPrincess": "1"
+    }
+]
