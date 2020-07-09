@@ -1,7 +1,7 @@
-// const gachaPool = require(__dirname + '/../../../result.json') ;
 const GachaModel = require('../../model/princess/gacha') ;
 const random = require('math-random') ;
 const GachaTemplate = require('../../templates/princess/gacha') ;
+const memory = require('memory-cache') ;
 
 function getTotalRate(gachaPool) {
     var result = gachaPool.map(data => parseFloat(data.rate.replace('%', ''))).reduce((pre, curr) => pre + curr) ;
@@ -90,11 +90,24 @@ function shuffle(a) {
     return a;
 }
 
+function isAble(groupId) {
+    if (memory.get(`GachaCoolDown_${groupId}`) === null) {
+        memory.put(`GachaCoolDown_${groupId}`, 1, 120 * 1000) ;
+        return true ;
+    }
+
+    return false ;
+}
+
 module.exports = {
     play : async function(context, { match }) {
         try
         {
             var { tag, times } = match.groups ;
+
+            if (context.platform === 'line'
+            && context.event.source.type === 'group'
+            && isAble(context.event.source.groupId) === false) return ;
 
             const gachaPool = await GachaModel.getData() ;
             var filtPool = filterPool(gachaPool, tag) ;

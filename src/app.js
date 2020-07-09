@@ -11,7 +11,7 @@ async function App(context) {
         text(/^[#\.](角色)?裝備(需求)?(\s(?<character>[\s\S]+))?$/, character.getEquipRequire),
         text(/^[#\.](公主|角色)(\s(?<character>[\s\S]+))?$/, character.getCharacter),
         text(/^[#\.](角色)?rank(推薦)?(\s(?<character>[\s\S]+))?$/, character.getRecommend),
-        text(/^[\.#]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
+        text(/^[#\.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     ]) ;
 }
 
