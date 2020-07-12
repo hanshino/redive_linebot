@@ -105,6 +105,8 @@ function getSourceId(context) {
         return [(groupId || roomId) || userId, userId] ;
         case 'telegram':
         return [context.event.message.chat.id, context.event.message.from.id] ;
+        case 'console':
+        return ['admin', 'admin'] ;
     }
 }
 
