@@ -26,6 +26,7 @@ function OrderBased(context, { next }) {
         text(/^[#\.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
         text(/^[#\.]新增指令/, (context, props) => customerOrder.insertCustomerOrder(context, props, 1)),
         text(/^[#\.]新增關鍵字指令/, (context, props) => customerOrder.insertCustomerOrder(context, props, 2)),
+        text(/^[#\.][移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>[a-f0-9]{1,32}))?$/, customerOrder.deleteCustomerOrder),
         text('/state', showState),
         route('*', next),
     ]) ;

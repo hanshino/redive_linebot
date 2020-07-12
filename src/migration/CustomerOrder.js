@@ -10,7 +10,8 @@ module.exports = async () => {
     createStatment    += '"NO"              INTEGER NOT NULL,'
     createStatment    += '"SOURCE_ID"       TEXT NOT NULL,'
     createStatment    += '"ORDER_KEY"       TEXT NOT NULL,'
-    createStatment    += '"ORDER"           TEXT NOT NULL,'
+    createStatment    += '"CUSORDER"        TEXT NOT NULL,'
+    createStatment    += '"STATUS"          INTEGER DEFAULT 1,'
     createStatment    += '"TOUCH_TYPE"      TEXT NOT NULL,'
     createStatment    += '"MESSAGE_TYPE"    TEXT NOT NULL,'
     createStatment    += '"REPLY"           TEXT NOT NULL,'
@@ -19,7 +20,8 @@ module.exports = async () => {
     createStatment    += '"MODIFY_DTM"      TEXT,'
     createStatment    += '"MODIFY_USER"     TEXT NOT NULL,'
     createStatment    += '"SENDER_NAME"     TEXT,'
-    createStatment    += '"SENDER_ICON"     TEXT'
+    createStatment    += '"SENDER_ICON"     TEXT,'
+    createStatment    += '"TOUCH_DTM"       TEXT'
     createStatment    += ');'
 
     return sqlite.run(createStatment) ;

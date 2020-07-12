@@ -6046,6 +6046,11 @@ sprintf-js@~1.0.2:
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.0.3.tgz#04e6926f662895354f3dd015203633b857297e2c"
   integrity sha1-BOaSb2YolTVPPdAVIDYzuFcpfiw=
 
+sql-query-generator@^1.4.2:
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/sql-query-generator/-/sql-query-generator-1.4.2.tgz#ba6e21080d41157b634084961a528ac8e8e95b23"
+  integrity sha512-Kc6MzWgZ+tjLtCrYFQXFLyvWQQsHsJhcNWdWYpHLyw6bBgzR/Yu42zhHRJhz3KtBMJwxIHMwTvvhQ/wYpBd2wA==
+
 sqlite3@^5.0.0:
   version "5.0.0"
   resolved "https://registry.yarnpkg.com/sqlite3/-/sqlite3-5.0.0.tgz#1bfef2151c6bc48a3ab1a6c126088bb8dd233566"

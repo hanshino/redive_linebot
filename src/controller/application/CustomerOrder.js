@@ -4,6 +4,7 @@ const minimist = require('minimist') ;
 const md5 = require('md5') ;
 const random = require('math-random') ;
 const { assemble } = require('../../templates/common');
+const CustomerOrderTemplate = require('../../templates/application/CustomerOrder') ;
 
 function CusOrderException(message) {
     this.message = message ;
@@ -47,6 +48,40 @@ async function isRepeatOrder(orderKey, sourceId) {
 }
 
 /**
+ * 分析參數是否包含Sender
+ * @param {Object} param 
+ * @return {Object} sender
+ */
+function handleSender(param) {
+    let sender = {} ;
+
+    if (param.sender === undefined) return sender ;
+
+    let { sender : paraSender } = param ;
+
+    if (Array.isArray(paraSender) === true) {
+        paraSender.forEach(para => {
+            if (isImage(para) === true) {
+                sender.iconUrl = para ;
+            } else if (isName(para) === true) {
+                sender.name = para ;
+            }
+        }) ;
+    } else {
+        if (isImage(paraSender) === true) {
+            sender.iconUrl = paraSender ;
+        } else if (isName(paraSender) === true) {
+            sender.name = paraSender ;
+        }
+    }
+
+    return sender ;
+
+    function isImage(url){return /^https:.*?(jpg|jpeg|tiff|png)$/i.test(url) ;}
+    function isName(name){return name.length <= 20 && name.indexOf('http') === -1 ;}
+}
+
+/**
  * 新增自訂指令
  * @param {Context} context
  * @param {Object} props
@@ -60,24 +95,32 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
         var [, order, reply] = param._ ;
         var [sourceId, userId] = getSourceId(context) ;
 
+        if (order === undefined || reply === undefined) {
+            CustomerOrderTemplate[context.platform].showInsertManual(context) ;
+            return ;
+        }
+
         reply = reply.toString() ;
 
         var replyDatas = initialReply(reply) ;
+        var { name, iconUrl } = handleSender(param) ;
         var orderKey = md5(order + reply + touchType) ;
 
         if ((await isRepeatOrder(orderKey, sourceId)) === true) throw new CusOrderException('指令已存在，請勿重複新增') ;
 
         await Promise.all(replyDatas.map((data, index) => CustomerOrderModel.insertOrder({
-            no : index,
-            sourceId : sourceId,
-            orderKey : orderKey,
-            order : order,
-            touchType : touchType,
-            messageType : data.type,
-            reply : data.data,
-            createDTM : new Date().getTime(),
-            createUser : userId,
-            modifyUser : userId
+            NO : index,
+            SOURCE_ID : sourceId,
+            ORDER_KEY : orderKey,
+            CUSORDER : order,
+            TOUCH_TYPE : touchType,
+            MESSAGE_TYPE : data.type,
+            REPLY : data.data,
+            CREATE_DTM : new Date().getTime(),
+            CREATE_USER : userId,
+            MODIFY_USER : userId,
+            SENDER_NAME : name,
+            SENDER_ICON : iconUrl,
         }))) ;
 
         context.sendText(`${order} 新增成功`) ;
@@ -116,28 +159,19 @@ function getSourceId(context) {
  */
 exports.CustomerOrderDetect = async (context) => {
     var [sourceId] = getSourceId(context) ;
-    var orders = await CustomerOrderModel.queryOrder(sourceId) ;
+    var orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId) ;
 
     // 尚未建立任何指令
-    if (orders.length === 0) return false ;
+    if (orderDatas.length === 0) return false ;
 
-    var orderDatas = orders.map(genOrderData) ;
     var chosenOrderKey = chooseOrder(orderDatas) ;
 
     if (chosenOrderKey === false) return false ;
 
-    send(context, orderDatas.filter(data => data.orderKey === chosenOrderKey)) ;
+    // 紀錄最近一次觸發時間，用於日後回收無用處之指令。
+    CustomerOrderModel.touchOrder(context.event.message.text, sourceId) ;
 
-    function genOrderData(order) {
-        return {
-            no : order.NO,
-            order : order.ORDER,
-            orderKey : order.ORDER_KEY,
-            messageType : order.MESSAGE_TYPE,
-            touchType : order.TOUCH_TYPE,
-            reply : order.REPLY,
-        } ;
-    }
+    send(context, orderDatas.filter(data => data.orderKey === chosenOrderKey)) ;
 
     /**
      * 挑選指令，挑選規則如下
@@ -147,7 +181,7 @@ exports.CustomerOrderDetect = async (context) => {
     function chooseOrder() {
         let message = context.event.message.text ;
         // 優先取用全符合指令
-        let fullMatches = orderDatas.filter(data => data.touchType === '1' && data.order === message) ;
+        let fullMatches = orderDatas.filter(data => data.touchType === '1' && data.cusOrder === message) ;
 
         if (fullMatches.length !== 0) {
             let fullKeys = trimRepeat(fullMatches.map(data => data.orderKey)) ;
@@ -295,4 +329,60 @@ function getRandom(max, min) {
 
     let result = Math.round(random() * (max - min) + min) ;
     return result ;
+}
+
+/**
+ * 移除自訂指令
+ * @param {Context} context
+ * @param {Object} props
+ * @param {Number} touchType
+ */
+exports.deleteCustomerOrder = async (context, { match }) => {
+    try
+    {
+        const { order, orderKey } = match.groups ;
+
+        if (order === undefined){
+            CustomerOrderTemplate[context.platform].showDeleteManual(context) ;
+            return ;
+        }
+
+        var [sourceId, userId] = getSourceId(context) ;
+
+        var deleteOrders = await CustomerOrderModel.queryOrderToDelete(order, sourceId) ;
+
+        if (deleteOrders.length === 0) throw new CusOrderException(`未搜尋到"${order}"的指令`) ;
+        var { orderKey : key } = autoComplete(orderKey, deleteOrders) ;
+        // 剛好只有一筆符合刪除條件
+        if (deleteOrders.length === 1 || key !== undefined)
+        {
+            await CustomerOrderModel.setStatus({
+                orderKey : key || deleteOrders[0].orderKey,
+                sourceId : sourceId,
+                modifyUser : userId,
+            }, 0) ;
+
+            context.sendText(`"${order}"刪除成功！`) ;
+            return ;
+        }
+
+        // 需列出清單，請使用者指定
+        CustomerOrderTemplate[context.platform].showDeleteOption(context, deleteOrders) ;
+    }
+    catch(e)
+    {
+        if (e.name === 'CusOrderException') {
+            context.sendText(e.message) ;
+        } else throw e ;
+    }
+}
+
+/**
+ * 自動補上完整金鑰
+ * @param {String} orderKey 
+ * @param {Array} deleteOrders 
+ */
+function autoComplete(orderKey, deleteOrders) {
+    let findResult = deleteOrders.find(data => data.orderKey.indexOf(orderKey) === 0) ;
+    return findResult || {} ;
 }

@@ -24,6 +24,7 @@ module.exports = {
   initialState: {
     userDatas : {},
     groupDatas : {},
+    sentCoolDown : {},
   },
   channels: {
     messenger: {
