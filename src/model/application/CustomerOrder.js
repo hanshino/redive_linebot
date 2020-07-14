@@ -130,6 +130,15 @@ exports.touchOrder = (order, sourceId) => {
     ) ;
 }
 
+exports.orderShutdown = (sourceId) => {
+    var query = sql.update('CustomerOrder', {
+        status : 0, modify_DTM : new Date().getTime(), MODIFY_USER : 'system',
+    }).where({
+        source_id : sourceId
+    }) ;
+    return sqlite.run(query.text, query.values) ;
+}
+
 function getColumnName(columnsAlias) {
     return columnsAlias.map(col => `${col.o} as ${col.a}`).join(',') ;
 }
