@@ -1,8 +1,5 @@
-[
-    'Guild',
-    'GuildMembers',
-    'CustomerOrder',
-    'User',
-].forEach(file => {
-    exports[file] = require(`./${file}`) ;
-}) ;
+["Guild", "GuildBattle", "GuildMembers", "CustomerOrder", "IanUser", "User", "GuildWeek"].forEach(
+  file => {
+    exports[file] = require(`./${file}`);
+  }
+);

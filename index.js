@@ -1,3 +1,3 @@
-process.env.PROJECT_PATH = __dirname ;
+process.env.PROJECT_PATH = __dirname;
 
-module.exports = require('./src');
+module.exports = require("./src");

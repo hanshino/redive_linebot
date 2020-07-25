@@ -1,7 +1,7 @@
-const App = require('.');
+const App = require(".");
 
-describe('index.js', () => {
-  it('should be defined', () => {
+describe("index.js", () => {
+  it("should be defined", () => {
     expect(App).toBeDefined();
   });
 });

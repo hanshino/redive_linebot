@@ -1,77 +1,139 @@
-const { router, text, route } = require('bottender/router') ;
-const { chain } = require('bottender') ;
-const character = require('./controller/princess/character');
-const gacha = require('./controller/princess/gacha');
-const customerOrder = require('./controller/application/CustomerOrder') ;
-const setProfile = require('./middleware/profile');
-const statistics = require('./middleware/statistics');
-const lineEvent = require('./controller/lineEvent');
-const welcome = require('./templates/common/welcome');
+const { router, text, route } = require("bottender/router");
+const { chain, withProps } = require("bottender");
+const character = require("./controller/princess/character");
+const gacha = require("./controller/princess/gacha");
+const battle = require("./controller/princess/battle");
+const customerOrder = require("./controller/application/CustomerOrder");
+const setProfile = require("./middleware/profile");
+const statistics = require("./middleware/statistics");
+const lineEvent = require("./controller/lineEvent");
+const welcome = require("./templates/common/welcome");
+const memcache = require("memory-cache");
 
 function showState(context) {
-    var users = Object.keys(context.state.userDatas).map(key => context.state.userDatas[key].displayName).join('\n') ;
+  var users = Object.keys(context.state.userDatas)
+    .map(key => context.state.userDatas[key].displayName)
+    .join("\n");
 
-    context.sendText(users) ;
+  context.sendText(users);
+}
+
+function HandlePostback(context, { next }) {
+  if (!context.event.isPayload) return next;
+
+  try {
+    let payload = JSON.parse(context.event.payload);
+    let { action } = payload;
+    const { userId } = context.event.source;
+
+    let memkey = `Postback_${userId}_${action}`;
+
+    if (memcache.get(memkey) === null) {
+      // 每位使用者 限制5秒內 不能連續重複動作
+      memcache.put(memkey, 1, 5 * 1000);
+    } else return;
+
+    return router([
+      route(
+        () => action === "battleSignUp",
+        withProps(battle.BattlePostSignUp, { payload: payload })
+      ),
+      route(
+        () => action === "battleCancel",
+        withProps(battle.BattlePostCancel, { payload: payload })
+      ),
+      route("*", next),
+    ]);
+  } catch (e) {
+    console.error(e);
+    return next;
+  }
 }
 
 /**
  * 基於功能指令優先辨識
  */
 function OrderBased(context, { next }) {
-    return router([
-        text(['#使用說明'], welcome),
-        text(/^[#\.]角色資訊(\s(?<character>[\s\S]+))?$/, character.getInfo),
-        text(/^[#\.]角色技能(\s(?<character>[\s\S]+))?$/, character.getSkill),
-        text(/^[#\.](角色)?行動(模式)?(\s(?<character>[\s\S]+))?$/, character.getAction),
-        text(/^[#\.](角色)?專武(資訊)?(\s(?<character>[\s\S]+))?$/, character.getUniqueEquip),
-        text(/^[#\.](角色)?裝備(需求)?(\s(?<character>[\s\S]+))?$/, character.getEquipRequire),
-        text(/^[#\.](公主|角色)(\s(?<character>[\s\S]+))?$/, character.getCharacter),
-        text(/^[#\.](角色)?rank(推薦)?(\s(?<character>[\s\S]+))?$/, character.getRecommend),
-        text(/^[#\.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
-        text(/^[#\.]新增指令/, (context, props) => customerOrder.insertCustomerOrder(context, props, 1)),
-        text(/^[#\.]新增關鍵字指令/, (context, props) => customerOrder.insertCustomerOrder(context, props, 2)),
-        text(/^[#\.][移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>[a-f0-9]{1,32}))?$/, customerOrder.deleteCustomerOrder),
-        text('/state', showState),
-        route('*', next),
-    ]) ;
+  return router([
+    ...BattleOrder(context),
+    ...CharacterOrder(),
+    text(["#使用說明"], welcome),
+    text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
+    text(/^[#.]新增指令/, (context, props) => customerOrder.insertCustomerOrder(context, props, 1)),
+    text(/^[#.]新增關鍵字指令/, (context, props) =>
+      customerOrder.insertCustomerOrder(context, props, 2)
+    ),
+    text(
+      /^[#.][移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>[a-f0-9]{1,32}))?$/,
+      customerOrder.deleteCustomerOrder
+    ),
+    text("/state", showState),
+    route("*", next),
+  ]);
+}
+
+function BattleOrder(context) {
+  if (context.platform !== "line") return [];
+  if (context.event.source.type !== "group") return [];
+
+  return [
+    text(/^[.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
+    text(/^[.](gb|刀表)(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleList),
+    text(/^[#.]檢視下一?[周週][回次]$/, battle.NextBattleList),
+    text(/^[#.]檢視上一?[周週][回次]$/, battle.PreBattleList),
+    text(/^[#.](前往)?下一?[周週][回次]$/, battle.IncWeek),
+    text(/^[#.](回去)?上一?[周週][回次]$/, battle.DecWeek),
+    text(/^[#.][五5]王倒了$/, battle.FinishWeek),
+    text(/^[#.]設定[周週][回次](\s(?<week>\d+))?$/, battle.SetWeek),
+    text(/^[#.]當[周週][回次]報名表$/, battle.CurrentBattle),
+  ];
+}
+
+function CharacterOrder() {
+  return [
+    text(/^[#.]角色資訊(\s(?<character>[\s\S]+))?$/, character.getInfo),
+    text(/^[#.]角色技能(\s(?<character>[\s\S]+))?$/, character.getSkill),
+    text(/^[#.](角色)?行動(模式)?(\s(?<character>[\s\S]+))?$/, character.getAction),
+    text(/^[#.](角色)?專武(資訊)?(\s(?<character>[\s\S]+))?$/, character.getUniqueEquip),
+    text(/^[#.](角色)?裝備(需求)?(\s(?<character>[\s\S]+))?$/, character.getEquipRequire),
+    text(/^[#.](公主|角色)(\s(?<character>[\s\S]+))?$/, character.getCharacter),
+    text(/^[#.](角色)?rank(推薦)?(\s(?<character>[\s\S]+))?$/, character.getRecommend),
+  ];
 }
 
 async function CustomerOrderBased(context, { next }) {
-    if (context.isText === false) return next ;
+  if (context.isText === false) return next;
 
-    var detectResult = await customerOrder.CustomerOrderDetect(context) ;
+  var detectResult = await customerOrder.CustomerOrderDetect(context);
 
-    if (detectResult === false) return next ;
+  if (detectResult === false) return next;
 }
 
 function Nothing(context) {
-
-    switch(context.platform) {
-        case 'line':
-            if (context.event.source.type === 'user') {
-                context.sendText('沒有任何符合的指令') ;
-            }
-        break ;
-        case 'telegram':
-            if (context.event.message.chat.type === 'private') {
-                context.sendText('沒有任何符合的指令') ;
-            }
-        break ;
-    }
-
-    
-
+  switch (context.platform) {
+    case "line":
+      if (context.event.source.type === "user") {
+        context.sendText("沒有任何符合的指令");
+      }
+      break;
+    case "telegram":
+      if (context.event.message.chat.type === "private") {
+        context.sendText("沒有任何符合的指令");
+      }
+      break;
+  }
 }
 
-async function App(context) {
-    return chain([
-        statistics, // 數據蒐集
-        lineEvent,  // 事件處理
-        setProfile, // 設置各式用戶資料
-        OrderBased, // 指令分析
-        CustomerOrderBased, // 自訂指令分析
-        Nothing, // 無符合事件
-    ]) ;
+async function App() {
+  return chain([
+    statistics, // 數據蒐集
+    lineEvent, // 事件處理
+    setProfile, // 設置各式用戶資料
+    HandlePostback, // 處理postback事件
+    OrderBased, // 指令分析
+    CustomerOrderBased, // 自訂指令分析
+    Nothing, // 無符合事件
+  ]);
 }
 
-module.exports = App ;
+module.exports = App;
