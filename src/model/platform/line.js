@@ -189,3 +189,15 @@ exports.increaseSpeakTimes = (userId, groupId) => {
   var query = sql.update("GuildMembers", {}).where({ userId: userId, guildId: groupId });
   sqlite.run(query.text.replace(" WHERE", "SpeakTimes = SpeakTimes + 1 WHERE"), query.values);
 };
+
+/**
+ * 獲取群組說話排行
+ * @param {String} groupId 群組ID
+ */
+exports.getGroupSpeakRank = groupId => {
+  var query = sql
+    .select(this.table.GuildMembers, ["UserId", "Status", "JoinedDTM", "LeftDTM", "SpeakTimes"])
+    .where({ GuildId: groupId })
+    .orderby("SpeakTimes DESC");
+  return sqlite.all(query.text, query.values);
+};

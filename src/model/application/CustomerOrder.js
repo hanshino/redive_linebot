@@ -141,6 +141,29 @@ exports.orderShutdown = sourceId => {
   return sqlite.run(query.text, query.values);
 };
 
+/**
+ * 修改自訂指令
+ * @param {String} sourceId 來源ID
+ * @param {Object} orderData 修改項目
+ * @param {String} orderData.orderKey
+ * @param {String} orderData.order
+ * @param {String} orderData.touchType
+ * @param {String} orderData.status
+ */
+exports.updateOrder = (sourceId, orderData) => {
+  var query = sql
+    .update("CustomerOrder", {
+      status: orderData.status,
+      touch_type: orderData.touchType,
+      cusorder: orderData.order,
+    })
+    .where({
+      order_key: orderData.orderKey,
+      source_id: sourceId,
+    });
+  return sqlite.run(query.text, query.values);
+};
+
 function getColumnName(columnsAlias) {
   return columnsAlias.map(col => `${col.o} as ${col.a}`).join(",");
 }

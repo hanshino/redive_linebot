@@ -9,6 +9,7 @@ const statistics = require("./middleware/statistics");
 const lineEvent = require("./controller/lineEvent");
 const welcome = require("./templates/common/welcome");
 const memcache = require("memory-cache");
+const config = require("./middleware/config");
 
 function showState(context) {
   var users = Object.keys(context.state.userDatas)
@@ -56,9 +57,19 @@ function HandlePostback(context, { next }) {
 function OrderBased(context, { next }) {
   return router([
     ...BattleOrder(context),
-    ...CharacterOrder(),
+    ...CharacterOrder(context),
+    ...CustomerOrder(context),
     text(["#使用說明"], welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
+    text("/state", showState),
+    route("*", next),
+  ]);
+}
+
+function CustomerOrder(context) {
+  if (context.state.guildConfig.CustomerOrder === "N") return [];
+
+  return [
     text(/^[#.]新增指令/, (context, props) => customerOrder.insertCustomerOrder(context, props, 1)),
     text(/^[#.]新增關鍵字指令/, (context, props) =>
       customerOrder.insertCustomerOrder(context, props, 2)
@@ -67,14 +78,13 @@ function OrderBased(context, { next }) {
       /^[#.][移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>[a-f0-9]{1,32}))?$/,
       customerOrder.deleteCustomerOrder
     ),
-    text("/state", showState),
-    route("*", next),
-  ]);
+  ];
 }
 
 function BattleOrder(context) {
   if (context.platform !== "line") return [];
   if (context.event.source.type !== "group") return [];
+  if (context.state.guildConfig.Battle === "N") return [];
 
   return [
     text(/^[.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
@@ -89,7 +99,9 @@ function BattleOrder(context) {
   ];
 }
 
-function CharacterOrder() {
+function CharacterOrder(context) {
+  if (context.state.guildConfig.PrincessCharacter === "N") return [];
+
   return [
     text(/^[#.]角色資訊(\s(?<character>[\s\S]+))?$/, character.getInfo),
     text(/^[#.]角色技能(\s(?<character>[\s\S]+))?$/, character.getSkill),
@@ -129,6 +141,7 @@ async function App() {
     statistics, // 數據蒐集
     lineEvent, // 事件處理
     setProfile, // 設置各式用戶資料
+    config, // 設置群組設定檔
     HandlePostback, // 處理postback事件
     OrderBased, // 指令分析
     CustomerOrderBased, // 自訂指令分析

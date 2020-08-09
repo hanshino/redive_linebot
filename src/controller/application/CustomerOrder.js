@@ -6,9 +6,10 @@ const random = require("math-random");
 const { assemble } = require("../../templates/common");
 const CustomerOrderTemplate = require("../../templates/application/CustomerOrder");
 
-function CusOrderException(message) {
+function CusOrderException(message, code = 0) {
   this.message = message;
   this.name = "CusOrderException";
+  this.code = code;
 }
 
 /**
@@ -416,3 +417,43 @@ function autoComplete(orderKey, deleteOrders) {
   let findResult = deleteOrders.find(data => data.orderKey.indexOf(orderKey) === 0);
   return findResult || {};
 }
+
+exports.fetchCustomerOrders = async (req, res) => {
+  const { sourceId } = req.params;
+  var orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId);
+
+  let userIds = [];
+  orderDatas.forEach(data => {
+    userIds.push(data.createUser);
+    userIds.push(data.modifyUser);
+  });
+
+  orderDatas = orderDatas.map(data => {
+    return {
+      ...data,
+      createTS: new Date(parseInt(data.createDTM)).getTime(),
+    };
+  });
+  res.json(orderDatas);
+};
+
+exports.updateOrder = (req, res) => {
+  const { sourceId } = req.params;
+
+  try {
+    if (/^[CRU][a-f0-9]{32}$/.test(sourceId) === false)
+      throw new CusOrderException("Invalid Source ID", 1);
+    var updateResult = CustomerOrderModel.updateOrder(sourceId, req.body);
+    if (updateResult === false) throw new CusOrderException("Update Failed", 2);
+
+    res.json({});
+  } catch (e) {
+    if (e.name === "CusOrderException") {
+      res.json({
+        status: "fail",
+        errMsg: e.message,
+        code: e.code,
+      });
+    } else throw e;
+  }
+};
