@@ -21,17 +21,22 @@ app.prepare().then(() => {
   };
   server.use(bodyParser.json({ verify }));
   server.use(bodyParser.urlencoded({ extended: false, verify }));
+  server.use(express.static(path.join(`${__dirname}/public`)));
 
   // api group router
   server.use("/api", apiRouter);
 
-  server.get("/send-id", (req, res) => {
+  server.get("/send-id", require("cors")(), (req, res) => {
     res.json({ id: process.env.LINE_LIFF_ID });
   });
 
   server.get("/liff", (req, res) => {
     const filename = path.join(`${__dirname}/liff.html`);
     res.sendFile(filename);
+  });
+
+  server.get("/*", (req, res) => {
+    res.sendFile(path.join(`${__dirname}/public/index.html`));
   });
 
   // route for webhook request

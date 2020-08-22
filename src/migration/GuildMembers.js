@@ -11,7 +11,8 @@ module.exports = async () => {
   createStatment += '"Status"      INTEGER DEFAULT 1,';
   createStatment += '"JoinedDTM"   TEXT,';
   createStatment += '"LeftDTM"     TEXT,';
-  createStatment += '"SpeakTimes"  INTEGER DEFAULT 0';
+  createStatment += '"SpeakTimes"  INTEGER DEFAULT 0,';
+  createStatment += '"LastSpeakDTM" TEXT';
   createStatment += ");";
 
   return sqlite.run(createStatment);

@@ -1,0 +1,17 @@
+[
+  {
+    "title": "公主連結角色查詢",
+    "description": "可查詢公主連結Re:dive遊戲中，所有角色的資訊、技能、裝備、專武、行動。",
+    "name": "PrincessCharacter"
+  },
+  {
+    "title": "自訂指令功能",
+    "description": "可使用此功能，打造屬於群組內部的專屬指令。",
+    "name": "CustomerOrder"
+  },
+  {
+    "title": "公主連結戰隊系統",
+    "description": "用於戰隊群組，進行報名、狀態回報。",
+    "name": "Battle"
+  }
+]

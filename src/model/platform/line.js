@@ -186,8 +186,11 @@ exports.table = {
 };
 
 exports.increaseSpeakTimes = (userId, groupId) => {
-  var query = sql.update("GuildMembers", {}).where({ userId: userId, guildId: groupId });
-  sqlite.run(query.text.replace(" WHERE", "SpeakTimes = SpeakTimes + 1 WHERE"), query.values);
+  var query = sql
+    .update("GuildMembers", { LastSpeakDTM: new Date().getTime() })
+    .where({ userId: userId, guildId: groupId });
+
+  sqlite.run(query.text.replace(" WHERE", ", SpeakTimes = SpeakTimes + 1 WHERE"), query.values);
 };
 
 /**
@@ -196,7 +199,14 @@ exports.increaseSpeakTimes = (userId, groupId) => {
  */
 exports.getGroupSpeakRank = groupId => {
   var query = sql
-    .select(this.table.GuildMembers, ["UserId", "Status", "JoinedDTM", "LeftDTM", "SpeakTimes"])
+    .select(this.table.GuildMembers, [
+      "UserId",
+      "Status",
+      "JoinedDTM",
+      "LeftDTM",
+      "SpeakTimes",
+      "LastSpeakDTM",
+    ])
     .where({ GuildId: groupId })
     .orderby("SpeakTimes DESC");
   return sqlite.all(query.text, query.values);

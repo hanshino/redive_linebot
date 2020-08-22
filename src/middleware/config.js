@@ -14,7 +14,7 @@ module.exports = async (context, props) => {
 
   context.setState({
     ...context.state,
-    guildConfig: JSON.parse(guildConfig.Config),
+    guildConfig: guildConfig,
   });
 
   return props.next;

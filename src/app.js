@@ -10,6 +10,7 @@ const lineEvent = require("./controller/lineEvent");
 const welcome = require("./templates/common/welcome");
 const memcache = require("memory-cache");
 const config = require("./middleware/config");
+const groupTemplate = require("./templates/application/Group/line");
 
 function showState(context) {
   var users = Object.keys(context.state.userDatas)
@@ -59,11 +60,19 @@ function OrderBased(context, { next }) {
     ...BattleOrder(context),
     ...CharacterOrder(context),
     ...CustomerOrder(context),
+    ...GroupOrder(context),
     text(["#使用說明"], welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text("/state", showState),
     route("*", next),
   ]);
+}
+
+function GroupOrder(context) {
+  if (context.platform !== "line") return [];
+  if (context.event.source.type !== "group") return [];
+
+  return [text(/^[#.]群組(設定|狀態|管理)$/, groupTemplate.showGroupStatus)];
 }
 
 function CustomerOrder(context) {
