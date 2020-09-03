@@ -10,7 +10,6 @@
 ## 目前適用聊天軟體
 
 * [Line](https://line.me/zh-hant/)
-* [Telegram](https://telegram.org/)
 
 ## 事前準備
 
@@ -26,17 +25,15 @@
 4. `cp .env.example .env`
 5. `npm install` or `yarn install`
 6. 等待安裝...
-7. `npm run dev` or `yarn dev`
+7. `npm run start` or `yarn start`
 8. 開始對話吧！
 
-## 安裝方式 - console版本
-
-* 照**安裝方式**的1~6動作，第七步改為 `npm run dev --console` or `yarn dev --console`
 
 ## 注意事項
 
 * 進行安裝方式第四步之後，記得編輯裡面的內容，填上你機器人的相對應的資料哦～
 * 如果有自己的 web server 的話，在第7步可以改輸入 `npm start` or `yarn start`
+* 要使用戰隊功能，需先跟 Ian 戰隊系統作者申請 Accesss Token
 
 ## 指令列表
 
