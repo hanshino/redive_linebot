@@ -1,10 +1,9 @@
 const CustomerOrderModel = require("../../model/application/CustomerOrder");
-const CharacterModel = require("../../model/princess/character");
 const minimist = require("minimist");
 const md5 = require("md5");
 const random = require("math-random");
-const { assemble } = require("../../templates/common");
 const CustomerOrderTemplate = require("../../templates/application/CustomerOrder");
+const { send } = require("../../templates/application/Order");
 
 function CusOrderException(message, code = 0) {
   this.message = message;
@@ -18,19 +17,22 @@ function CusOrderException(message, code = 0) {
  * @return {Object}
  */
 function initialReply(strReply) {
-  var replyDatas = strReply.split(/\|/).map(reply => {
-    if (/^https:.*?(jpg|jpeg|tiff|png)$/i.test(reply) == true) {
-      return {
-        type: "image",
-        data: reply,
-      };
-    } else {
-      return {
-        type: "text",
-        data: reply,
-      };
-    }
-  });
+  var replyDatas = strReply
+    .split(/\|/)
+    .filter(reply => reply.trim() !== "")
+    .map(reply => {
+      if (/^https:.*?(jpg|jpeg|tiff|png)$/i.test(reply) == true) {
+        return {
+          type: "image",
+          data: reply,
+        };
+      } else {
+        return {
+          type: "text",
+          data: reply,
+        };
+      }
+    });
 
   return replyDatas;
 }
@@ -93,7 +95,9 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
   try {
     const param = minimist(context.event.message.text.split(/\s+/));
 
-    var [, order, reply] = param._;
+    var [prefix, order] = param._;
+    var regex = new RegExp(`(${prefix}|${order})`, "g");
+    var reply = context.event.message.text.replace(regex, "").trim();
     var [sourceId, userId] = getSourceId(context);
 
     if (order === undefined || reply === undefined) {
@@ -166,7 +170,7 @@ function getSourceId(context) {
  */
 exports.CustomerOrderDetect = async context => {
   var [sourceId] = getSourceId(context);
-  var orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId);
+  var orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId, 1);
 
   // 尚未建立任何指令
   if (orderDatas.length === 0) return false;
@@ -189,7 +193,7 @@ exports.CustomerOrderDetect = async context => {
    * 2. 多指令隨機挑選
    */
   function chooseOrder() {
-    let message = context.event.message.text;
+    let message = context.event.message.text.trim();
     // 優先取用全符合指令
     let fullMatches = orderDatas.filter(
       data => data.touchType === "1" && data.cusOrder === message
@@ -201,7 +205,7 @@ exports.CustomerOrderDetect = async context => {
     }
 
     let partMatches = orderDatas.filter(
-      data => data.touchType === "2" && message.indexOf(data.order) !== -1
+      data => data.touchType === "2" && message.indexOf(data.cusOrder) !== -1
     );
 
     if (partMatches.length !== 0) {
@@ -212,131 +216,6 @@ exports.CustomerOrderDetect = async context => {
     return false;
   }
 };
-
-/**
- * 發送訊息整合，整合多平台發送方式
- * @param {Context} context
- * @param {Object} replyDatas
- */
-function send(context, replyDatas) {
-  replyDatas
-    .sort((a, b) => a.no - b.no)
-    .forEach(data => {
-      switch (data.messageType) {
-        case "image":
-          _sendImage(context, data.reply);
-          return;
-        case "text":
-          context.sendText(handleText(data.reply, context));
-          return;
-      }
-    });
-}
-
-/**
- * 處理字串中特殊關鍵字
- * @param {String} text
- * @param {Context} context 用於取得使用者姓名
- */
-function handleText(text, context) {
-  _handlePrincess();
-  _handleRandomData();
-  _handleRandomNum();
-
-  let curr = new Date();
-
-  text = assemble(
-    {
-      user: getUserName(context),
-      time: getTime(curr),
-      fulltime: getFullTime(curr),
-    },
-    text
-  );
-
-  return text;
-
-  function _handlePrincess() {
-    var princessDatas = CharacterModel.getDatas();
-
-    text = text.replace(
-      /\{princess\}/gi,
-      () => princessDatas[getRandom(princessDatas.length - 1, 0)].Name
-    );
-
-    text = text.replace(/\{urprincess\}/, () => {
-      let urPrincess = princessDatas.filter(data => data.star === 3);
-      return urPrincess[getRandom(urPrincess.length - 1, 0)].Name;
-    });
-  }
-
-  function _handleRandomData() {
-    text = text.replace(/\[.*?\]/g, matched => {
-      matched = matched.replace(/[[\]]/g, "");
-      let datas = matched.split(/,/);
-      return datas[getRandom(datas.length - 1, 0)];
-    });
-  }
-
-  function _handleRandomNum() {
-    text = text.replace(/\{\s?\d{1,5}\s?,\s?\d{1,5}\s?\}/g, function (matched) {
-      let strNums = matched;
-      let nums = strNums.replace(/[{}]/g, "").split(",");
-      return getRandom(parseInt(nums[1]), parseInt(nums[0])).toString();
-    });
-  }
-}
-
-function getTime(date) {
-  return [
-    ("0" + date.getHours()).substr(-2),
-    ("0" + date.getMinutes()).substr(-2),
-    ("0" + date.getSeconds()).substr(-2),
-  ].join(":");
-}
-
-function getFullTime(date) {
-  return (
-    [
-      date.getFullYear(),
-      ("0" + (date.getMonth() + 1)).substr(-2),
-      ("0" + date.getDate()).substr(-2),
-    ].join("/") +
-    " " +
-    getTime(date)
-  );
-}
-
-function getUserName(context) {
-  switch (context.platform) {
-    case "line":
-      return context.state.userDatas[context.event.source.userId].displayName;
-    case "telegram":
-      return context.event.message.from.username;
-  }
-}
-
-/**
- * 整合各平台發送圖片方式
- * @param {Context} context
- * @param {String} url
- */
-function _sendImage(context, url) {
-  switch (context.platform) {
-    case "line":
-      context.sendImage({
-        originalContentUrl: url,
-        previewImageUrl: url,
-      });
-      break;
-    case "telegram":
-      context.sendPhoto(url);
-      break;
-    default:
-      context.sendText(url);
-      break;
-  }
-}
 
 /**
  * Distinct Array

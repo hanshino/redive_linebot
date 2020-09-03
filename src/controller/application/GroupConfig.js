@@ -19,7 +19,6 @@ exports.api = {};
 exports.api.switchConfig = async (req, res) => {
   try {
     const { groupId, name, status } = req.params;
-    console.log(status, typeof status);
     await this.switchConfig(groupId, name, status == 1 ? "Y" : "N");
     res.json({});
   } catch (e) {

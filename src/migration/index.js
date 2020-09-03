@@ -7,6 +7,9 @@
   "User",
   "GuildWeek",
   "GuildConfig",
+  "GachaPool",
+  "Admin",
+  "GlobalOrders",
 ].forEach(file => {
   exports[file] = require(`./${file}`);
 });

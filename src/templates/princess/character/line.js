@@ -477,8 +477,8 @@ function getRecommend({ characterData, recommendData }) {
     type: "box",
     layout: "horizontal",
     contents: [
-      { type: "text", text: "{title}", weight: "bold", size: "sm" },
-      { type: "text", text: "{value}", align: "end", size: "sm" },
+      { type: "text", text: "{title}", weight: "bold", size: "sm", wrap: true },
+      { type: "text", text: "{value}", align: "end", size: "sm", wrap: true },
     ],
   };
 

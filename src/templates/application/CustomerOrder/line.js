@@ -186,6 +186,7 @@ const deleteManualTPL = {
     spacing: "md",
   },
 };
+const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
 
 exports.showInsertManual = context => {
   let curr = new Date().getTime();
@@ -295,8 +296,8 @@ exports.showDeleteOption = (context, deleteOrders) => {
       type: "text",
       text: "刪除",
       action: {
-        type: "postback",
-        data: JSON.stringify({ order: "#刪除指令 " + data.cusOrder + " " + key }),
+        type: "message",
+        text: `#刪除指令 ${data.cusOrder} ${key}`,
       },
       flex: 1,
     });
@@ -305,4 +306,31 @@ exports.showDeleteOption = (context, deleteOrders) => {
   });
 
   context.sendFlex("刪除指令列表", bubbleMessage);
+};
+
+exports.showOrderManager = context => {
+  let sourceId = context.event.source[`${context.event.source.type}Id`];
+  let bubble = {
+    type: "bubble",
+    size: "nano",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: "自訂指令",
+          color: "#FFFFFF",
+          align: "center",
+          action: {
+            type: "uri",
+            uri: `${liffUri}/Source/${sourceId}/Customer/Orders`,
+          },
+        },
+      ],
+      backgroundColor: "#555555",
+    },
+  };
+
+  context.sendFlex("指令管理", bubble);
 };

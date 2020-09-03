@@ -1,3 +1,5 @@
+const { getGroupSummary } = require("../util/line");
+
 /**
  * 設置用戶、群組資料
  * @param {Context} context
@@ -8,7 +10,7 @@ module.exports = async (context, props) => {
     case "line":
       // 不處理無userId的用戶
       if (context.event.source.userId === undefined) return;
-      await setLineProfile(context);
+      await Promise.all([setLineProfile(context), setLineGroupSummary(context)]);
       break;
     default:
       break;
@@ -34,4 +36,16 @@ function setLineProfile(context) {
       userDatas: temp,
     });
   });
+}
+
+async function setLineGroupSummary(context) {
+  if (context.event.source.type !== "group") return;
+  const { groupId } = context.event.source;
+
+  if (Object.keys(context.state.groupDatas).length === 0) {
+    const summary = await getGroupSummary(groupId);
+    context.setState({
+      groupDatas: summary,
+    });
+  }
 }

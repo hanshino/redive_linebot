@@ -10,7 +10,11 @@ exports.getRankDatas = async (req, res) => {
 
     var result = await Promise.all(
       rankDatas.map(async data => {
-        let { displayName } = await LineClient.getGroupMemberProfile(groupId, data.UserId);
+        let { displayName } = await LineClient.getGroupMemberProfile(
+          groupId,
+          data.UserId
+        ).catch(() => ({ displayName: "路人甲" }));
+
         let temp = {
           userId: data.UserId,
           displayName: displayName,
@@ -30,6 +34,7 @@ exports.getRankDatas = async (req, res) => {
       })
     );
   } catch (e) {
+    console.error(e);
     result = { status: "failed", message: "something wrong" };
   }
 

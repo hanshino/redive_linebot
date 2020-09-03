@@ -21,7 +21,7 @@ function genGachaContent(rewards) {
   rewards.forEach((reward, index, selfAry) => {
     temp.push({
       type: "image",
-      url: reward.image,
+      url: reward.imageUrl,
       size: "xs",
     });
 

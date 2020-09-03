@@ -66,7 +66,7 @@ exports.showGroupStatus = context => {
           ],
           backgroundColor: "#555555",
         },
-      }
+      },
     ],
   });
 };

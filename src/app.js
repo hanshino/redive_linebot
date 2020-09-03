@@ -11,13 +11,13 @@ const welcome = require("./templates/common/welcome");
 const memcache = require("memory-cache");
 const config = require("./middleware/config");
 const groupTemplate = require("./templates/application/Group/line");
+const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
+const { showAnnounce } = require("./controller/princess/announce");
+const { showOrderManager } = require("./templates/application/CustomerOrder/line");
+const { showSchedule } = require("./controller/princess/schedule");
 
 function showState(context) {
-  var users = Object.keys(context.state.userDatas)
-    .map(key => context.state.userDatas[key].displayName)
-    .join("\n");
-
-  context.sendText(users);
+  context.sendText(JSON.stringify(context.state));
 }
 
 function HandlePostback(context, { next }) {
@@ -61,7 +61,8 @@ function OrderBased(context, { next }) {
     ...CharacterOrder(context),
     ...CustomerOrder(context),
     ...GroupOrder(context),
-    text(["#使用說明"], welcome),
+    ...PrincessInformation(context),
+    text(/^#?使用說明$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text("/state", showState),
     route("*", next),
@@ -72,19 +73,22 @@ function GroupOrder(context) {
   if (context.platform !== "line") return [];
   if (context.event.source.type !== "group") return [];
 
-  return [text(/^[#.]群組(設定|狀態|管理)$/, groupTemplate.showGroupStatus)];
+  return [text(/^[#.]?群組(設定|狀態|管理)$/, groupTemplate.showGroupStatus)];
 }
 
 function CustomerOrder(context) {
   if (context.state.guildConfig.CustomerOrder === "N") return [];
 
   return [
-    text(/^[#.]新增指令/, (context, props) => customerOrder.insertCustomerOrder(context, props, 1)),
-    text(/^[#.]新增關鍵字指令/, (context, props) =>
+    text(/^[#.]?指令列表$/, showOrderManager),
+    text(/^[#.]?新增指令/, (context, props) =>
+      customerOrder.insertCustomerOrder(context, props, 1)
+    ),
+    text(/^[#.]?新增關鍵字指令/, (context, props) =>
       customerOrder.insertCustomerOrder(context, props, 2)
     ),
     text(
-      /^[#.][移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>[a-f0-9]{1,32}))?$/,
+      /^[#.]?[移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>[a-f0-9]{1,32}))?$/,
       customerOrder.deleteCustomerOrder
     ),
   ];
@@ -122,8 +126,17 @@ function CharacterOrder(context) {
   ];
 }
 
+function PrincessInformation(context) {
+  if (context.state.guildConfig.PrincessInformation === "N") return [];
+
+  return [
+    text(/^[#.]官方公告$/, showAnnounce),
+    text(/^[#.]?(官方活動|公主活動|公主行事曆)/, showSchedule),
+  ];
+}
+
 async function CustomerOrderBased(context, { next }) {
-  if (context.isText === false) return next;
+  if (!context.event.isText) return next;
 
   var detectResult = await customerOrder.CustomerOrderDetect(context);
 
@@ -147,11 +160,12 @@ function Nothing(context) {
 
 async function App() {
   return chain([
+    setProfile, // 設置各式用戶資料
     statistics, // 數據蒐集
     lineEvent, // 事件處理
-    setProfile, // 設置各式用戶資料
     config, // 設置群組設定檔
     HandlePostback, // 處理postback事件
+    GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
     CustomerOrderBased, // 自訂指令分析
     Nothing, // 無符合事件

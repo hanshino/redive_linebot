@@ -1,13 +1,6 @@
 const sqlite = require("../../util/sqlite");
-const path = require("path");
 const sql = require("sql-query-generator");
-var db = null;
-async function openDB() {
-  if (db !== null) return;
-  return sqlite
-    .open(path.join(process.env.PROJECT_PATH, process.env.PRINCESS_SQLITE_PATH))
-    .then(database => (db = database));
-}
+const memory = require("memory-cache");
 
 exports.table = "CustomerOrder";
 exports.columnsAlias = [
@@ -22,6 +15,7 @@ exports.columnsAlias = [
   { o: "CREATE_USER", a: "createUser" },
   { o: "MODIFY_DTM", a: "modifyDTM" },
   { o: "MODIFY_USER", a: "modifyUser" },
+  { o: "STATUS", a: "status" },
 ];
 
 /**
@@ -39,26 +33,39 @@ exports.columnsAlias = [
  * @param {String} objData.MODIFY_USER
  */
 exports.insertOrder = async function (objData) {
-  await openDB();
+  resetMemoryOrder(objData.SOURCE_ID);
 
   var query = sql.insert(this.table, objData);
 
   return sqlite.run(query.text, query.values);
 };
 
-exports.queryOrderBySourceId = async function (sourceId) {
-  await openDB();
+/**
+ * 取得所有指令
+ * @param {String} sourceId
+ * @param {Number} status
+ */
+exports.queryOrderBySourceId = async function (sourceId, status = "") {
+  var memoryKey = `CustomerOrder_${sourceId}_${status}`;
+  var orders = memory.get(memoryKey);
+
+  if (orders !== null) return orders;
 
   var query = sql
     .select(this.table, getColumnName(this.columnsAlias))
-    .where({ SOURCE_ID: sourceId, STATUS: 1 });
+    .where({ SOURCE_ID: sourceId });
 
-  return sqlite.all(query.text, query.values);
+  if (status !== "") {
+    query = query.and({ STATUS: status });
+  }
+
+  orders = await sqlite.all(query.text, query.values);
+
+  memory.put(memoryKey, orders, 60 * 60 * 1000);
+  return orders;
 };
 
 exports.queryOrderByKey = async function (orderKey, sourceId) {
-  await openDB();
-
   var query = sql
     .select(this.table, getColumnName(this.columnsAlias))
     .where({ ORDER_KEY: orderKey, SOURCE_ID: sourceId, STATUS: 1 });
@@ -73,8 +80,6 @@ exports.queryOrderByKey = async function (orderKey, sourceId) {
  * @param {String} cusOrder
  */
 exports.queryOrderToDelete = async (cusOrder, sourceId) => {
-  await openDB();
-
   var query = sql.select(this.table, getColumnName(this.columnsAlias)).where({
     SOURCE_ID: sourceId,
     CUSORDER: cusOrder,
@@ -94,6 +99,7 @@ exports.queryOrderToDelete = async (cusOrder, sourceId) => {
  * @returns {Promise}
  */
 exports.setStatus = (objData, status) => {
+  resetMemoryOrder(objData.sourceId);
   var query = sql
     .update("CustomerOrder", {
       status: status,
@@ -129,6 +135,7 @@ exports.touchOrder = (order, sourceId) => {
 };
 
 exports.orderShutdown = sourceId => {
+  resetMemoryOrder(sourceId);
   var query = sql
     .update("CustomerOrder", {
       status: 0,
@@ -151,6 +158,7 @@ exports.orderShutdown = sourceId => {
  * @param {String} orderData.status
  */
 exports.updateOrder = (sourceId, orderData) => {
+  resetMemoryOrder(sourceId);
   var query = sql
     .update("CustomerOrder", {
       status: orderData.status,
@@ -166,4 +174,11 @@ exports.updateOrder = (sourceId, orderData) => {
 
 function getColumnName(columnsAlias) {
   return columnsAlias.map(col => `${col.o} as ${col.a}`).join(",");
+}
+
+function resetMemoryOrder(sourceId) {
+  var memoryKey = `CustomerOrder_${sourceId}_`;
+  memory.del(`${memoryKey}`);
+  memory.del(`${memoryKey}1`);
+  memory.del(`${memoryKey}0`);
 }

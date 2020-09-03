@@ -2,6 +2,15 @@ const GachaModel = require("../../model/princess/gacha");
 const random = require("math-random");
 const GachaTemplate = require("../../templates/princess/gacha");
 const memory = require("memory-cache");
+const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
+
+function GachaException(message, code) {
+  this.message = message;
+  this.code = code;
+  this.name = "Gacha";
+}
+
+GachaException.prototype = new Error();
 
 function getTotalRate(gachaPool) {
   var result = gachaPool
@@ -96,9 +105,14 @@ function shuffle(a) {
   return a;
 }
 
-function isAble(groupId) {
-  if (memory.get(`GachaCoolDown_${groupId}`) === null) {
-    memory.put(`GachaCoolDown_${groupId}`, 1, 120 * 1000);
+/**
+ * 針對群組單一用戶進行冷卻時間設定
+ * @param {String} userId
+ * @param {String} groupId
+ */
+function isAble(userId, groupId) {
+  if (memory.get(`GachaCoolDown_${userId}`) === null) {
+    memory.put(`GachaCoolDown_${userId}_${groupId}`, 1, 120 * 1000);
     return true;
   }
 
@@ -110,14 +124,17 @@ module.exports = {
     try {
       var { tag, times } = match.groups;
 
+      // 群組關閉轉蛋功能
+      if (context.state.guildConfig.Gacha === "N") return;
+
       if (
         context.platform === "line" &&
         context.event.source.type === "group" &&
-        isAble(context.event.source.groupId) === false
+        isAble(context.event.source.userId, context.event.source.groupId) === false
       )
         return;
 
-      const gachaPool = await GachaModel.getData();
+      const gachaPool = await GachaModel.getDatabasePool();
       var filtPool = filterPool(gachaPool, tag);
 
       times = (times || "10").length >= 3 ? 10 : parseInt(times);
@@ -140,4 +157,84 @@ module.exports = {
       console.log(e);
     }
   },
+
+  api: {
+    showGachaPool: (req, res) => {
+      GachaModel.getDatabasePool().then(pool => res.json(pool));
+    },
+
+    updateCharacter: updateCharacter,
+    insertCharacter: insertCharacter,
+    deleteCharacter: deleteCharacter,
+  },
 };
+
+function trimParamter(rowData) {
+  var objParam = {};
+
+  Object.keys(rowData).forEach(key => {
+    if (allowParameter.includes(key.toLocaleLowerCase())) {
+      objParam[key] = rowData[key];
+    }
+  });
+
+  return objParam;
+}
+
+async function updateCharacter(req, res) {
+  const { id, data } = req.body;
+  var result = {};
+
+  try {
+    if (id === undefined) throw new GachaException("Parameter id missing", 1);
+    if (data === undefined) throw new GachaException("Parameter data missing", 2);
+
+    var objParam = trimParamter(data);
+
+    await GachaModel.updateData(id, objParam);
+    res.json({});
+  } catch (e) {
+    if (!(e instanceof GachaException)) throw e;
+    res.status(400);
+    result = { message: e.message };
+  }
+
+  res.json(result);
+}
+
+async function insertCharacter(req, res) {
+  const data = req.body;
+  var result = {};
+
+  try {
+    if (data === undefined) throw new GachaException("Parameter data missing", 2);
+
+    var objParam = trimParamter(data);
+
+    if (Object.keys(objParam).length < 5) throw new GachaException("Parameter Leak", 3);
+
+    await GachaModel.insertNewData(objParam);
+  } catch (e) {
+    if (!(e instanceof GachaException)) throw e;
+    res.status(400);
+    result = { message: e.message };
+  }
+
+  res.json(result);
+}
+
+async function deleteCharacter(req, res) {
+  const { id } = req.params;
+  var result = {};
+
+  try {
+    if (id === undefined) throw new GachaException("Parameter id missing", 1);
+    await GachaModel.deleteData(id);
+  } catch (e) {
+    if (!(e instanceof GachaException)) throw e;
+    res.status(400);
+    result = { message: e.message };
+  }
+
+  res.json(result);
+}

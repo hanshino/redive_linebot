@@ -25,7 +25,14 @@ module.exports = {
     userDatas: {},
     groupDatas: {},
     sentCoolDown: {},
-    guildConfig: { Battle: "Y", PrincessCharacter: "Y", CustomerOrder: "Y" },
+    guildConfig: {
+      Battle: "Y",
+      PrincessCharacter: "Y",
+      CustomerOrder: "Y",
+      GlobalOrder: "Y",
+      Gacha: "Y",
+      PrincessInformation: "Y",
+    },
   },
   channels: {
     messenger: {

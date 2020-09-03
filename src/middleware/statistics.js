@@ -1,10 +1,14 @@
 // 此文件用於數據蒐集
 const LineModel = require("../model/platform/line");
 const { router, line, route } = require("bottender/router");
+const { io } = require("../util/connection");
+const MessageIO = io.of("/Admin/Messages");
 
 module.exports = async (context, props) => {
   // 暫時只對LINE進行數據處理
   if (context.platform !== "line") return props.next;
+
+  eventFire(context);
 
   return router([
     line.message(context => Handle(context, props, HandleMessage)),
@@ -113,4 +117,24 @@ async function GroupMembersRecord(context) {
   } else if (memberData.status === 0) {
     await LineModel.setMemberStatus(userId, groupId, 1);
   }
+}
+
+function eventFire(context) {
+  const event = context.event._rawEvent;
+
+  if (event.source.type === "group") {
+    event.source = {
+      ...event.source,
+      ...context.state.groupDatas,
+    };
+
+    event.source.groupUrl = context.state.groupDatas.pictureUrl;
+  }
+
+  event.source = {
+    ...event.source,
+    ...context.state.userDatas[event.source.userId],
+  };
+
+  MessageIO.emit("newEvent", event);
 }

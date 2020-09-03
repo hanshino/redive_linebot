@@ -9,7 +9,15 @@ exports.fetchConfig = groupId => {
     var query = sql.select("GuildConfig", "*").where({ GuildId: groupId });
     return sqlite.get(query.text, query.values).then(res => {
       if (res === undefined) {
-        res = { Battle: "Y", PrincessCharacter: "Y", CustomerOrder: "Y" };
+        res = {
+          Battle: "Y",
+          PrincessCharacter: "Y",
+          CustomerOrder: "Y",
+          GlobalOrder: "Y",
+          Gacha: "Y",
+          PrincessInformation: "Y",
+        };
+        insertConfig(groupId, res);
       } else {
         res = JSON.parse(res.Config);
       }
@@ -30,11 +38,7 @@ exports.fetchConfig = groupId => {
  */
 exports.writeConfig = async (groupId, name, status) => {
   const GroupConfig = await this.fetchConfig(groupId);
-
-  if (!Object.prototype.hasOwnProperty.call(GroupConfig, name)) return;
-
   GroupConfig[name] = status;
-
   return saveConfig(groupId, GroupConfig);
 };
 
@@ -55,6 +59,16 @@ function saveConfig(groupId, config) {
     .where({
       GuildId: groupId,
     });
+
+  return sqlite.run(query.text, query.values);
+}
+
+function insertConfig(groupId, config) {
+  var query = sql.insert("GuildConfig", {
+    GuildId: groupId,
+    Config: JSON.stringify(config),
+    modifyDTM: new Date().getTime(),
+  });
 
   return sqlite.run(query.text, query.values);
 }
