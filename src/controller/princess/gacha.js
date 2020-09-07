@@ -1,4 +1,5 @@
 const GachaModel = require("../../model/princess/gacha");
+const InventoryModel = require("../../model/application/Inventory");
 const random = require("math-random");
 const GachaTemplate = require("../../templates/princess/gacha");
 const memory = require("memory-cache");
@@ -111,7 +112,7 @@ function shuffle(a) {
  * @param {String} groupId
  */
 function isAble(userId, groupId) {
-  if (memory.get(`GachaCoolDown_${userId}`) === null) {
+  if (memory.get(`GachaCoolDown_${userId}_${groupId}`) === null) {
     memory.put(`GachaCoolDown_${userId}_${groupId}`, 1, 120 * 1000);
     return true;
   }
@@ -139,20 +140,39 @@ module.exports = {
 
       times = (times || "10").length >= 3 ? 10 : parseInt(times);
       times = 10; // 暫定恆為10
-      var rewards = shuffle(play(filtPool, times));
-
+      var rewards = [];
       var rareCount = {};
 
-      rewards.forEach(reward => {
-        rareCount[reward.star] = rareCount[reward.star] || 0;
-        rareCount[reward.star]++;
-      });
+      do {
+        rewards = shuffle(play(filtPool, times));
+        rewards.forEach(reward => {
+          rareCount[reward.star] = rareCount[reward.star] || 0;
+          rareCount[reward.star]++;
+        });
+      } while (rareCount[1] === 10);
 
-      GachaTemplate.line.showGachaResult(context, {
-        rewards: rewards,
-        rareCount: rareCount,
-        tag: tag,
-      });
+      var { userId, type } = context.event.source;
+      var DailyGachaInfo = false;
+
+      if (type === "user") {
+        var gachaSignin = await GachaModel.getSignin(userId);
+        if (gachaSignin === undefined) {
+          GachaModel.touchSingin(userId);
+          let OwnGodStone = await GachaModel.getUserGodStoneCount(userId);
+          DailyGachaInfo = await recordToInventory(userId, rewards);
+          DailyGachaInfo.OwnGodStone = OwnGodStone;
+        }
+      }
+
+      GachaTemplate.line.showGachaResult(
+        context,
+        {
+          rewards: rewards,
+          rareCount: rareCount,
+          tag: tag,
+        },
+        DailyGachaInfo
+      );
     } catch (e) {
       console.log(e);
     }
@@ -237,4 +257,55 @@ async function deleteCharacter(req, res) {
   }
 
   res.json(result);
+}
+
+async function recordToInventory(userId, rewards) {
+  var ids = rewards.map(reward => reward.id);
+  var uniqIds = [...new Set(ids)];
+
+  const ownItems = await InventoryModel.fetchUserOwnItems(userId, uniqIds);
+  var ownIds = ownItems.map(item => item.itemId);
+  var insertIds = ids.filter(id => !ownIds.includes(id));
+  insertIds = [...new Set(insertIds)];
+
+  var oldIds = [...ids];
+  insertIds.forEach(id => delete oldIds[oldIds.indexOf(id)]);
+  oldIds = oldIds.filter(() => true);
+
+  await Promise.all(insertIds.map(id => InventoryModel.insertItem(userId, id, 1)));
+
+  var godStoneArray = oldIds.map(id => {
+    let reward = rewards.find(data => data.id === id);
+    switch (reward.star) {
+      case "1":
+        return 1;
+      case "2":
+        return 10;
+      case "3":
+        return 50;
+      default:
+        return 1;
+    }
+  });
+
+  var GodStoneAmount = 0;
+
+  if (godStoneArray.length !== 0) {
+    GodStoneAmount = godStoneArray.reduce((pre, curr) => pre + curr);
+    InventoryModel.insertItem(userId, 999, GodStoneAmount);
+  }
+
+  var [collectedCount, allCount] = await Promise.all([
+    GachaModel.getUserCollectedCharacterCount(userId),
+    GachaModel.getPrincessCharacterCount(),
+  ]);
+
+  let NewCharacters = insertIds.map(id => rewards.find(reward => reward.id === id));
+
+  return {
+    NewCharacters,
+    GodStoneAmount,
+    collectedCount,
+    allCount,
+  };
 }

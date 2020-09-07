@@ -4,6 +4,7 @@ const { bottender } = require("bottender");
 const path = require("path");
 const apiRouter = require("./src/router/api");
 const { server, http } = require("./src/util/connection");
+const cors = require("cors");
 require("./src/router/socket");
 
 const app = bottender({
@@ -20,6 +21,7 @@ app.prepare().then(() => {
     req.rawBody = buf.toString();
   };
 
+  server.use(cors());
   server.use(bodyParser.json({ verify }));
   server.use(bodyParser.urlencoded({ extended: false, verify }));
   server.use(express.static(path.join(`${__dirname}/public`)));

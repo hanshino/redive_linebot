@@ -37,6 +37,168 @@ function genGachaContent(rewards) {
   return bubbleMessage;
 }
 
+/**
+ * 產生每日一抽報表
+ * @param {Object}  DailyGachaInfo
+ * @param {Array}   DailyGachaInfo.NewCharacters
+ * @param {Number}  DailyGachaInfo.GodStoneAmount
+ * @param {Number}  DailyGachaInfo.collectedCount
+ * @param {Number}  DailyGachaInfo.allCount
+ * @param {Number}  DailyGachaInfo.OwnGodStone
+ */
+function genDailyGacha({ NewCharacters, GodStoneAmount, collectedCount, allCount, OwnGodStone }) {
+  var collectRate = Math.round((collectedCount / allCount) * 10000) / 100;
+  var bubble = {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "image",
+          url: "https://i.imgur.com/GCjkKhZ.jpg",
+          size: "full",
+          gravity: "top",
+          aspectMode: "cover",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "text",
+                  text: "每日一抽",
+                  size: "xl",
+                  color: "#ffffff",
+                  weight: "bold",
+                },
+              ],
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "text",
+                  color: "#ebebeb",
+                  size: "sm",
+                  contents: [
+                    {
+                      type: "span",
+                      text: "新角色：",
+                    },
+                  ],
+                  wrap: true,
+                },
+                {
+                  type: "text",
+                  color: "#ebebeb",
+                  size: "sm",
+                  contents: [
+                    {
+                      type: "span",
+                      text: `獲得女神石：${OwnGodStone} + ${GodStoneAmount}`,
+                    },
+                  ],
+                },
+              ],
+              spacing: "lg",
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "text",
+                      text: "距離滿收藏",
+                      color: "#ebebeb",
+                      size: "xs",
+                    },
+                    {
+                      type: "text",
+                      text: `${collectedCount}/${allCount}`,
+                      color: "#ebebeb",
+                      size: "xs",
+                      align: "end",
+                    },
+                  ],
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "box",
+                      layout: "vertical",
+                      contents: [
+                        {
+                          type: "filler",
+                        },
+                      ],
+                      height: "6px",
+                      width: `${collectRate}%`,
+                      backgroundColor: "#DE5658",
+                    },
+                  ],
+                  backgroundColor: "#9FD8E36E",
+                  height: "6px",
+                },
+              ],
+              margin: "xs",
+            },
+          ],
+          position: "absolute",
+          offsetBottom: "0px",
+          offsetStart: "0px",
+          offsetEnd: "0px",
+          backgroundColor: "#F987C5DD",
+          paddingAll: "20px",
+          paddingTop: "18px",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "NEW",
+              color: "#ffffff",
+              align: "center",
+              size: "xs",
+              offsetTop: "3px",
+            },
+          ],
+          position: "absolute",
+          cornerRadius: "20px",
+          offsetTop: "18px",
+          backgroundColor: "#ff334b",
+          offsetStart: "12px",
+          height: "25px",
+          width: "70px",
+        },
+      ],
+      paddingAll: "0px",
+    },
+  };
+
+  NewCharacters.forEach(character => {
+    bubble.body.contents[1].contents[1].contents[0].contents.push({
+      type: "span",
+      text: `${character.name} `,
+    });
+  });
+
+  return bubble;
+}
+
 module.exports = {
   /**
    * 發送轉蛋結果訊息
@@ -45,8 +207,9 @@ module.exports = {
    * @param {Object} objData.rewards
    * @param {Object} objData.rareCount
    * @param {Object} objData.tag
+   * @param {Object} DailyGachaInfo
    */
-  showGachaResult: function (context, { rewards, rareCount, tag = "無" }) {
+  showGachaResult: function (context, { rewards, rareCount, tag = "無" }, DailyGachaInfo) {
     var bubbleMessage = genGachaContent(rewards);
 
     let reportBox = {
@@ -89,8 +252,25 @@ module.exports = {
       align: "center",
     });
 
-    bubbleMessage.body.contents.push(reportBox);
+    if (context.event.source.type === "group") {
+      reportBox.contents.push({
+        type: "text",
+        text: "群組聊天室，每位成員限定120秒CD",
+        size: "xxs",
+        color: "#808080",
+        align: "center",
+      });
+    }
 
-    context.sendFlex("轉蛋結果", bubbleMessage);
+    bubbleMessage.footer = reportBox;
+
+    if (DailyGachaInfo === false) {
+      context.sendFlex("轉蛋結果", bubbleMessage);
+    } else {
+      context.sendFlex("轉蛋結果", {
+        type: "carousel",
+        contents: [genDailyGacha(DailyGachaInfo), bubbleMessage],
+      });
+    }
   },
 };

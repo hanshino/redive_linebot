@@ -10,6 +10,8 @@
   "GachaPool",
   "Admin",
   "GlobalOrders",
+  "Inventory",
+  "GachaSignin",
 ].forEach(file => {
   exports[file] = require(`./${file}`);
 });
