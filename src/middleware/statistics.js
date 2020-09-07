@@ -35,6 +35,7 @@ function Handle(context, props, fn) {
 
 async function HandleMessage(context) {
   if (context.event.isText === false) return;
+  if (context.event.source.userId === undefined) return;
   UserRecord(context);
   if (context.event.source.type !== "group") return;
   await Promise.all([GroupRecord(context), GroupMembersRecord(context)]);
@@ -58,11 +59,17 @@ function HandleLeave(context) {
 }
 
 function HandleMemberJoined(context) {
-  LineModel.memberJoined(context.event.source.userId, context.event.source.groupId);
+  LineModel.memberJoined(
+    context.event._rawEvent.joined.members[0].userId,
+    context.event.source.groupId
+  );
 }
 
 function HandleMemberLeft(context) {
-  LineModel.memberLeft(context.event.source.userId, context.event.source.groupId);
+  LineModel.memberLeft(
+    context.event._rawEvent.left.members[0].userId,
+    context.event.source.groupId
+  );
 }
 
 /**

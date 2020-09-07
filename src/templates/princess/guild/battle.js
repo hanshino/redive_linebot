@@ -6,32 +6,42 @@ exports.showBattleList = (context, data) => {
       genPreviewDetail({
         ...data.records[0],
         boss: 1,
+        formId: data.formId,
         week: data.week,
         datas: data.datas.filter(data => data.boss === 1),
+        config: data.configs.find(config => config.boss == 1),
       }),
       genPreviewDetail({
         ...data.records[1],
         boss: 2,
+        formId: data.formId,
         week: data.week,
         datas: data.datas.filter(data => data.boss === 2),
+        config: data.configs.find(config => config.boss == 2),
       }),
       genPreviewDetail({
         ...data.records[2],
         boss: 3,
+        formId: data.formId,
         week: data.week,
         datas: data.datas.filter(data => data.boss === 3),
+        config: data.configs.find(config => config.boss == 3),
       }),
       genPreviewDetail({
         ...data.records[3],
         boss: 4,
+        formId: data.formId,
         week: data.week,
         datas: data.datas.filter(data => data.boss === 4),
+        config: data.configs.find(config => config.boss == 4),
       }),
       genPreviewDetail({
         ...data.records[4],
         boss: 5,
+        formId: data.formId,
         week: data.week,
         datas: data.datas.filter(data => data.boss === 5),
+        config: data.configs.find(config => config.boss == 5),
       }),
     ],
   });
@@ -43,15 +53,19 @@ exports.showBattleDetail = (context, data) => {
     genPreviewDetail({
       ...data.records,
       boss: data.boss,
+      formId: data.formId,
       week: data.week,
       datas: data.datas,
+      config: data.configs.find(config => config.boss == data.boss),
     })
   );
 };
 
 function genPreviewCover(option) {
-  const { week, formId } = option;
-  // todo replace boss icon
+  const { week, formId, configs } = option;
+  var bossImages = configs.sort((a, b) => a.boss - b.boss).map(config => config.image);
+  var defaultImg = "https://i.imgur.com/zsAFota.png";
+
   return {
     type: "bubble",
     header: {
@@ -76,26 +90,10 @@ function genPreviewCover(option) {
           type: "box",
           layout: "horizontal",
           contents: [
-            {
+            ...[0, 1, 2, 3, 4].map(index => ({
               type: "image",
-              url: "https://i.imgur.com/zsAFota.png",
-            },
-            {
-              type: "image",
-              url: "https://i.imgur.com/zsAFota.png",
-            },
-            {
-              type: "image",
-              url: "https://i.imgur.com/zsAFota.png",
-            },
-            {
-              type: "image",
-              url: "https://i.imgur.com/zsAFota.png",
-            },
-            {
-              type: "image",
-              url: "https://i.imgur.com/zsAFota.png",
-            },
+              url: bossImages[index] || defaultImg,
+            })),
           ],
           spacing: "md",
         },
@@ -119,7 +117,19 @@ function genPreviewCover(option) {
 }
 
 function genPreviewDetail(option) {
-  const { FullCount, NotFullCount, KyaryuCount, OtherCount, boss, week, datas } = option;
+  const {
+    FullCount,
+    NotFullCount,
+    KyaryuCount,
+    OtherCount,
+    boss,
+    week,
+    datas,
+    config,
+    formId,
+  } = option;
+  console.log(config);
+  var bossConfig = { name: `${boss}王`, image: "https://i.imgur.com/zsAFota.png", ...config };
 
   let recordsDetail = datas.map((data, index) => {
     return {
@@ -171,9 +181,13 @@ function genPreviewDetail(option) {
           contents: [
             {
               type: "image",
-              url: "https://i.imgur.com/zsAFota.png",
+              url: bossConfig.image,
               flex: 5,
               gravity: "bottom",
+              action: {
+                type: "uri",
+                uri: `https://guild.randosoru.me/forms/${formId}/week/${week}`,
+              },
             },
             {
               type: "box",
@@ -181,7 +195,7 @@ function genPreviewDetail(option) {
               contents: [
                 {
                   type: "text",
-                  text: `${boss}王`,
+                  text: bossConfig.name,
                   weight: "bold",
                   align: "center",
                 },

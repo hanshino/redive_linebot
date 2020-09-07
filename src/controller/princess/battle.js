@@ -14,7 +14,10 @@ exports.BattleList = async (context, props) => {
 
     const formId = await getFormId(context);
 
-    const formRecords = await BattleModel.Ian.getFormRecords(formId, week, boss);
+    const [formRecords, formConfigs] = await Promise.all([
+      BattleModel.Ian.getFormRecords(formId, week, boss),
+      BattleModel.Ian.getFormConfig(formId),
+    ]);
 
     if (boss === undefined) {
       BattleTemplate.showBattleList(context, {
@@ -22,6 +25,7 @@ exports.BattleList = async (context, props) => {
         formId: formId,
         datas: formRecords,
         records: [1, 2, 3, 4, 5].map(boss => genPreivewData(formRecords, boss)),
+        configs: formConfigs.boss,
       });
     } else {
       BattleTemplate.showBattleDetail(context, {
@@ -30,6 +34,7 @@ exports.BattleList = async (context, props) => {
         datas: formRecords,
         records: genPreivewData(formRecords, boss),
         boss: boss,
+        configs: formConfigs.boss,
       });
     }
   } catch (e) {

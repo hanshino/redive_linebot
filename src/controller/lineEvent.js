@@ -1,7 +1,11 @@
 const { router, route, line } = require("bottender/router");
 const CustomerOrderModel = require("../model/application/CustomerOrder");
+const GuildConfigModel = require("../model/application/GuildConfig");
 const welcome = require("../templates/common/welcome");
 const lineAPI = require("../util/line");
+const { assemble } = require("../templates/common");
+const { getClient } = require("bottender");
+const LineClient = getClient("line");
 
 module.exports = (context, props) => {
   return router([
@@ -15,8 +19,26 @@ module.exports = (context, props) => {
   ]);
 };
 
-function HandleMemberJoined() {
-  // nothing to do
+async function HandleMemberJoined(context) {
+  const { type, groupId } = context.event.source;
+  const { userId } = context.event._rawEvent.joined.members[0];
+  if (type !== "group") return;
+
+  const WelcomeMessage = await GuildConfigModel.getWelcomeMessage(groupId);
+  if (WelcomeMessage === "") return;
+
+  const { displayName } = await LineClient.getGroupMemberProfile(groupId, userId);
+  const { groupName } = await lineAPI.getGroupSummary(groupId);
+
+  context.sendText(
+    assemble(
+      {
+        username: displayName,
+        groupname: groupName,
+      },
+      WelcomeMessage
+    )
+  );
 }
 
 function HandleMemberLeft() {

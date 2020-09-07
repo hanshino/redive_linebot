@@ -8,7 +8,9 @@ module.exports = async () => {
   createStatment += '"ID"          INTEGER PRIMARY KEY AUTOINCREMENT,';
   createStatment += '"GuildId"     TEXT NOT NULL,';
   createStatment += '"Config"      TEXT NOT NULL,';
-  createStatment += '"modifyDTM"   TEXT NOT NULL';
+  createStatment += '"modifyDTM"   TEXT NOT NULL,';
+  createStatment += '"DiscordWebhook" TEXT,';
+  createStatment += '"WelcomeMessage" TEXT';
   createStatment += ");";
 
   return sqlite.run(createStatment);

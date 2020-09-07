@@ -24,6 +24,7 @@ exports.getGroup = async groupId => {
  * @param {String} groupId
  */
 exports.closeGroup = groupId => {
+  console.log("closeGroup", groupId);
   return setStatus(
     this.table.Guild,
     {
@@ -32,7 +33,7 @@ exports.closeGroup = groupId => {
     },
     {
       status: 1,
-      guildId: groupId,
+      GuildId: groupId,
     }
   );
 };
@@ -42,6 +43,7 @@ exports.closeGroup = groupId => {
  * @param {String} groupId
  */
 exports.openGroup = groupId => {
+  console.log("openGroup", groupId);
   return setStatus(
     this.table.Guild,
     {
@@ -141,7 +143,13 @@ exports.getGuildMember = (userId, groupId) => {
  * @param {String} userId
  * @param {String} groupId
  */
-exports.memberJoined = (userId, groupId) => {
+exports.memberJoined = async (userId, groupId) => {
+  console.log("memberJoined", userId, groupId);
+
+  var memberData = await this.getGuildMember(userId, groupId);
+
+  if (memberData !== undefined) return this.setMemberStatus(userId, groupId, 1);
+
   var query = sql.insert(this.table.GuildMembers, {
     guildId: groupId,
     userId: userId,
@@ -156,6 +164,7 @@ exports.memberJoined = (userId, groupId) => {
  * @param {String} groupId
  */
 exports.memberLeft = (userId, groupId) => {
+  console.log("memberLeft", userId, groupId);
   return this.setMemberStatus(userId, groupId, 0);
 };
 

@@ -96,8 +96,7 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
     const param = minimist(context.event.message.text.split(/\s+/));
 
     var [prefix, order] = param._;
-    var regex = new RegExp(`(${prefix}|${order})`, "g");
-    var reply = context.event.message.text.replace(regex, "").trim();
+    var reply = context.event.message.text.replace(prefix, "").replace(order, "").trim();
     var [sourceId, userId] = getSourceId(context);
 
     if (order === undefined || reply === undefined) {

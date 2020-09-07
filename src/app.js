@@ -15,6 +15,7 @@ const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
 const { showAnnounce } = require("./controller/princess/announce");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const { showSchedule } = require("./controller/princess/schedule");
+const { transfer } = require("./middleware/dcWebhook");
 
 function showState(context) {
   context.sendText(JSON.stringify(context.state));
@@ -137,6 +138,7 @@ function PrincessInformation(context) {
 
 async function CustomerOrderBased(context, { next }) {
   if (!context.event.isText) return next;
+  if (context.state.guildConfig.CustomerOrder === "N") return next;
 
   var detectResult = await customerOrder.CustomerOrderDetect(context);
 
@@ -164,6 +166,7 @@ async function App() {
     statistics, // 數據蒐集
     lineEvent, // 事件處理
     config, // 設置群組設定檔
+    transfer, // Discord Webhook轉發
     HandlePostback, // 處理postback事件
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析

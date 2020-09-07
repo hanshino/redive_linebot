@@ -9,7 +9,7 @@ module.exports = async (context, props) => {
   switch (context.platform) {
     case "line":
       // 不處理無userId的用戶
-      if (context.event.source.userId === undefined) return;
+      if (context.event.source.userId === undefined) return props.next;
       await Promise.all([setLineProfile(context), setLineGroupSummary(context)]);
       break;
     default:

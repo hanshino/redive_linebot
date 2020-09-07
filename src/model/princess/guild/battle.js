@@ -99,7 +99,16 @@ exports.Ian.setRecord = (formId, week, boss, ianUserId, option) => {
   return doPost(`/bot/forms/${formId}/week/${week}/boss/${boss}?user_id=${ianUserId}`, option);
 };
 
+/**
+ * 取得報名表設定
+ * @param {String} formId
+ */
+exports.Ian.getFormConfig = formId => {
+  return doGet(`/forms/${formId}`);
+};
+
 function doGet(path) {
+  console.log(path);
   return fetch(`${apiURL}${path}`, {
     headers: headers,
   }).then(res => res.json());
