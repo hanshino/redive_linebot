@@ -1,6 +1,7 @@
 const { battle: BattleModel, week: WeekModel } = require("../../model/princess/guild");
 const line = require("../../util/line");
 const BattleTemplate = require("../../templates/princess/guild/battle");
+const { recordSign } = require("../../util/traffic");
 
 function BattleException(message) {
   this.message = message;
@@ -9,6 +10,7 @@ function BattleException(message) {
 
 exports.BattleList = async (context, props) => {
   try {
+    recordSign("BattleList");
     const { week, boss } = props.match.groups;
     if (week === undefined) throw new BattleException("缺少參數，至少需指定周次");
 
@@ -108,6 +110,7 @@ function genPreivewData(records, boss) {
 }
 
 exports.BattleSignUp = async (context, props) => {
+  recordSign("BattleSignUp");
   const { week, boss } = props.match.groups;
   const { type } = props;
 
@@ -145,6 +148,7 @@ exports.BattlePostSignUp = (context, props) => {
 };
 
 exports.BattleCancel = async (context, props) => {
+  recordSign("BattleCancel");
   const { week, boss, recordId } = props.match.groups;
 
   try {
@@ -208,6 +212,7 @@ function getStatusText(status) {
 }
 
 exports.CurrentBattle = async context => {
+  recordSign("CurrentBattle");
   try {
     const { groupId } = context.event.source;
 
@@ -222,6 +227,7 @@ exports.CurrentBattle = async context => {
 };
 
 exports.SetWeek = async (context, props) => {
+  recordSign("SetWeek");
   try {
     const { week } = props.match.groups;
     const { groupId } = context.event.source;
@@ -248,6 +254,7 @@ exports.SetWeek = async (context, props) => {
 };
 
 exports.NextBattleList = context => {
+  recordSign("NextBattleList");
   try {
     const { groupId } = context.event.source;
 
@@ -268,6 +275,7 @@ exports.NextBattleList = context => {
 };
 
 exports.PreBattleList = context => {
+  recordSign("PreBattleList");
   try {
     if (context.platform !== "line") throw new BattleException("暫時只提供Line平台使用");
     if (context.event.source.type !== "group") throw new BattleException("只提供群組用戶使用");
@@ -315,6 +323,7 @@ exports.DecWeek = context => {
 };
 
 exports.FinishWeek = async context => {
+  recordSign("FinishWeek");
   const { groupId } = context.event.source;
   var currWeek = await getCurrWeek(groupId);
   WeekModel.setWeek(groupId, getNowMonth(), currWeek + 1);

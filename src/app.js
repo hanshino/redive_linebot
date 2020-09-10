@@ -16,6 +16,8 @@ const { showAnnounce } = require("./controller/princess/announce");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const { showSchedule } = require("./controller/princess/schedule");
 const { transfer } = require("./middleware/dcWebhook");
+const traffic = require("./util/traffic");
+const memory = require("memory-cache");
 
 function showState(context) {
   context.sendText(JSON.stringify(context.state));
@@ -66,6 +68,12 @@ function OrderBased(context, { next }) {
     text(/^#?使用說明$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text("/state", showState),
+    text("/traffic", function () {
+      traffic.getSignData().then(console.table);
+    }),
+    text("/people", function () {
+      traffic.getPeopleData().then(console.table);
+    }),
     route("*", next),
   ]);
 }
@@ -99,6 +107,7 @@ function BattleOrder(context) {
   if (context.platform !== "line") return [];
   if (context.event.source.type !== "group") return [];
   if (context.state.guildConfig.Battle === "N") return [];
+  if (memory.get("GuildBattleSystem") !== null) return [];
 
   return [
     text(/^[.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
@@ -160,7 +169,8 @@ function Nothing(context) {
   }
 }
 
-async function App() {
+async function App(context) {
+  traffic.recordPeople(context);
   return chain([
     setProfile, // 設置各式用戶資料
     statistics, // 數據蒐集

@@ -3,6 +3,7 @@ const InventoryModel = require("../../model/application/Inventory");
 const random = require("math-random");
 const GachaTemplate = require("../../templates/princess/gacha");
 const memory = require("memory-cache");
+const { recordSign } = require("../../util/traffic");
 const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
 
 function GachaException(message, code) {
@@ -122,6 +123,7 @@ function isAble(userId, groupId) {
 
 module.exports = {
   play: async function (context, { match }) {
+    recordSign("GachaPlay");
     try {
       var { tag, times } = match.groups;
 
@@ -141,9 +143,10 @@ module.exports = {
       times = (times || "10").length >= 3 ? 10 : parseInt(times);
       times = 10; // 暫定恆為10
       var rewards = [];
-      var rareCount = {};
+      var rareCount;
 
       do {
+        rareCount = {};
         rewards = shuffle(play(filtPool, times));
         rewards.forEach(reward => {
           rareCount[reward.star] = rareCount[reward.star] || 0;

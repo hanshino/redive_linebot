@@ -4,6 +4,7 @@ const fetch = require("node-fetch");
 const token = process.env.IAN_BATTLE_TOKEN;
 const headers = { "x-token": token, "user-agent": "re:dive line-bot" };
 const apiURL = "https://guild.randosoru.me/api";
+const memory = require("memory-cache");
 
 exports.saveIanUserData = (platform = 2, userId, ianUserId) => {
   var query = sql.insert("IanUser", {
@@ -111,7 +112,9 @@ function doGet(path) {
   console.log(path);
   return fetch(`${apiURL}${path}`, {
     headers: headers,
-  }).then(res => res.json());
+  })
+    .then(IsIanSeverDown)
+    .then(res => res.json());
 }
 
 function doPost(path, data) {
@@ -119,5 +122,18 @@ function doPost(path, data) {
     headers: headers,
     body: JSON.stringify(data),
     method: "post",
-  }).then(res => res.json());
+  })
+    .then(IsIanSeverDown)
+    .then(res => res.json());
+}
+
+/**
+ * 暫時全域設定Ian系統維修中
+ */
+function IsIanSeverDown(response) {
+  if (response.ok === false) {
+    memory.put("GuildBattleSystem", false, 1 * 60 * 1000);
+  }
+
+  return response;
 }

@@ -1,7 +1,9 @@
 const ScheduleModel = require("../../model/princess/schedule");
 const ScheduleTemplate = require("../../templates/princess/schedule");
+const { recordSign } = require("../../util/traffic");
 
 exports.showSchedule = async context => {
+  recordSign("showSchedule");
   const EventDatas = await ScheduleModel.getDatas();
 
   var result = {

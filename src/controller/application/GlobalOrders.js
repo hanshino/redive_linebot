@@ -1,6 +1,7 @@
 const OrderModel = require("../../model/application/GlobalOrders");
 const random = require("math-random");
 const { send } = require("../../templates/application/Order");
+const { recordSign } = require("../../util/traffic");
 const allowParameter = ["orderKey", "replyDatas", "senderIcon", "senderName", "touchType"];
 
 function GlobalOrderException(message, code) {
@@ -22,6 +23,7 @@ exports.GlobalOrderBase = async (context, { next }) => {
   var objOrder = null;
 
   if (fullMatchResult.length !== 0) {
+    recordSign("GlobalOrder");
     objOrder = fullMatchResult[getRandom(fullMatchResult.length - 1)];
     send(context, objOrder.replyDatas, { name: objOrder.senderName, iconUrl: objOrder.senderIcon });
     return;
@@ -33,6 +35,7 @@ exports.GlobalOrderBase = async (context, { next }) => {
   });
 
   if (matchResult.length !== 0) {
+    recordSign("GlobalOrder");
     objOrder = matchResult[getRandom(matchResult.length - 1)];
     send(context, objOrder.replyDatas, { name: objOrder.senderName, iconUrl: objOrder.senderIcon });
     return;

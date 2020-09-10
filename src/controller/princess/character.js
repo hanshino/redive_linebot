@@ -1,6 +1,7 @@
 const CharacterModel = require("../../model/princess/character");
 const CharacterTemplate = require("../../templates/princess/character");
 const error = require("../../util/error");
+const { recordSign } = require("../../util/traffic");
 
 function getCharacterByNick(nick) {
   var datas = CharacterModel.getDatas();
@@ -53,6 +54,7 @@ function _getCharacterInfoPara(characterData) {
 
 module.exports = {
   getInfo: function (context, { match }) {
+    recordSign("getInfo");
     const { character } = match.groups;
 
     try {
@@ -68,6 +70,7 @@ module.exports = {
   },
 
   getSkill: function (context, { match }) {
+    recordSign("getSkill");
     const { character } = match.groups;
 
     try {
@@ -83,6 +86,7 @@ module.exports = {
   },
 
   getAction: function (context, { match }) {
+    recordSign("getAction");
     const { character } = match.groups;
 
     try {
@@ -98,6 +102,7 @@ module.exports = {
   },
 
   getUniqueEquip: function (context, { match }) {
+    recordSign("getUniqueEquip");
     const { character } = match.groups;
 
     try {
@@ -117,6 +122,7 @@ module.exports = {
   },
 
   getEquipRequire: function (context, { match }) {
+    recordSign("getEquipRequire");
     const { character } = match.groups;
 
     try {
@@ -132,6 +138,7 @@ module.exports = {
   },
 
   getCharacter: function (context, { match }) {
+    recordSign("getCharacter");
     const { character } = match.groups;
 
     try {
@@ -147,6 +154,7 @@ module.exports = {
   },
 
   getRecommend: async function (context, { match }) {
+    recordSign("getRecommend");
     const { character } = match.groups;
 
     try {

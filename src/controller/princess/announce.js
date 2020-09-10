@@ -1,8 +1,10 @@
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
 const { showAnnounce } = require("../../templates/princess/announce");
+const { recordSign } = require("../../util/traffic");
 
 exports.showAnnounce = context => {
+  recordSign("showAnnounce");
   fetch("http://www.princessconnect.so-net.tw/news?page=1")
     .then(res => res.text())
     .then(body => {

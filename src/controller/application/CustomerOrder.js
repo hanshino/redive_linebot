@@ -4,6 +4,7 @@ const md5 = require("md5");
 const random = require("math-random");
 const CustomerOrderTemplate = require("../../templates/application/CustomerOrder");
 const { send } = require("../../templates/application/Order");
+const { recordSign } = require("../../util/traffic");
 
 function CusOrderException(message, code = 0) {
   this.message = message;
@@ -93,6 +94,7 @@ function handleSender(param) {
  */
 exports.insertCustomerOrder = async (context, props, touchType = 1) => {
   try {
+    recordSign("insertCustomerOrder");
     const param = minimist(context.event.message.text.split(/\s+/));
 
     var [prefix, order] = param._;
@@ -177,7 +179,7 @@ exports.CustomerOrderDetect = async context => {
   var chosenOrderKey = chooseOrder(orderDatas);
 
   if (chosenOrderKey === false) return false;
-
+  recordSign("CustomerOrderDetect");
   // 紀錄最近一次觸發時間，用於日後回收無用處之指令。
   CustomerOrderModel.touchOrder(context.event.message.text, sourceId);
 
@@ -249,8 +251,8 @@ function getRandom(max, min) {
  */
 exports.deleteCustomerOrder = async (context, { match }) => {
   try {
+    recordSign("deleteCustomerOrder");
     const { order, orderKey } = match.groups;
-
     if (order === undefined) {
       CustomerOrderTemplate[context.platform].showDeleteManual(context);
       return;
