@@ -18,7 +18,7 @@
     "md5": "^2.3.0",
     "memory-cache": "^0.2.0",
     "minimist": "^1.2.5",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.1",
     "nodemon": "^2.0.4",
     "simple-node-logger": "^18.12.24",
     "socket.io": "^2.3.0",
