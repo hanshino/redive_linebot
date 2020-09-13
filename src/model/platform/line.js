@@ -1,22 +1,19 @@
-const sqlite = require("../../util/sqlite");
-const sql = require("sql-query-generator");
+const mysql = require("../../util/mysql");
 
 /**
  * 新增一筆群組資料
- * @param {String} groupId
+ * @param {String} guildId
  */
-exports.insertGroup = groupId => {
-  var query = sql.insert(this.table.Guild, { guildId: groupId, createDTM: new Date().getTime() });
-  return sqlite.run(query.text, query.values);
+exports.insertGroup = guildId => {
+  return mysql.insert({ guildId, createDTM: new Date() }).into(this.table.Guild);
 };
 
 /**
  * 取得群組資料
- * @param {String} groupId
+ * @param {String} guildId
  */
-exports.getGroup = async groupId => {
-  var query = sql.select(this.table.Guild, "*").where({ guildId: groupId });
-  return sqlite.get(query.text, query.values);
+exports.getGroup = async guildId => {
+  return mysql.select("*").from(this.table.Guild).where({ guildId });
 };
 
 /**
@@ -29,7 +26,7 @@ exports.closeGroup = groupId => {
     this.table.Guild,
     {
       status: 0,
-      closeDTM: new Date().getTime(),
+      closeDTM: new Date(),
     },
     {
       status: 1,
@@ -63,13 +60,13 @@ exports.openGroup = groupId => {
  * @param {String} platform
  */
 exports.insertUser = (userId, platform) => {
-  var query = sql.insert(this.table.User, {
-    platform: platform,
-    platformId: userId,
-    createDTM: new Date().getTime(),
-  });
-
-  return sqlite.run(query.text, query.values);
+  return mysql
+    .insert({
+      platform: platform,
+      platformId: userId,
+      createDTM: new Date(),
+    })
+    .into(this.table.User);
 };
 
 /**
@@ -77,8 +74,7 @@ exports.insertUser = (userId, platform) => {
  * @param {String} userId
  */
 exports.getUser = userId => {
-  var query = sql.select(this.table.User, "*").where({ platformId: userId });
-  return sqlite.get(query.text, query.values);
+  return mysql.select("*").from(this.table.User).where({ platformId: userId });
 };
 
 /**
@@ -90,7 +86,7 @@ exports.closeUser = userId => {
     this.table.User,
     {
       status: 0,
-      closeDTM: new Date().getTime(),
+      closeDTM: new Date(),
     },
     {
       status: 1,
@@ -124,8 +120,7 @@ exports.openUser = userId => {
  * @param {String} whereField
  */
 function setStatus(table, updateField, whereField) {
-  var query = sql.update(table, updateField).where(whereField);
-  return sqlite.run(query.text, query.values);
+  return mysql.update(updateField).from(table).where(whereField);
 }
 
 /**
@@ -134,28 +129,31 @@ function setStatus(table, updateField, whereField) {
  * @param {String} groupId
  */
 exports.getGuildMember = (userId, groupId) => {
-  var query = sql.select(this.table.GuildMembers, "*").where({ userId: userId, guildId: groupId });
-  return sqlite.get(query.text, query.values);
+  return mysql
+    .select("*")
+    .from(this.table.GuildMembers)
+    .where({ userId: userId, guildId: groupId });
 };
 
 /**
  * 新增群組會員資料
  * @param {String} userId
- * @param {String} groupId
+ * @param {String} guildId
  */
-exports.memberJoined = async (userId, groupId) => {
-  console.log("memberJoined", userId, groupId);
+exports.memberJoined = async (userId, guildId) => {
+  console.log("memberJoined", userId, guildId);
 
-  var memberData = await this.getGuildMember(userId, groupId);
+  var [memberData] = await this.getGuildMember(userId, guildId);
 
-  if (memberData !== undefined) return this.setMemberStatus(userId, groupId, 1);
+  if (memberData !== undefined) return this.setMemberStatus(userId, guildId, 1);
 
-  var query = sql.insert(this.table.GuildMembers, {
-    guildId: groupId,
-    userId: userId,
-    JoinedDTM: new Date().getTime(),
-  });
-  return sqlite.run(query.text, query.values);
+  return mysql
+    .insert({
+      guildId,
+      userId,
+      JoinedDTM: new Date(),
+    })
+    .into(this.table.GuildMembers);
 };
 
 /**
@@ -179,7 +177,7 @@ exports.setMemberStatus = (userId, groupId, status) => {
     "GuildMembers",
     {
       status: status,
-      leftDTM: status === 1 ? null : new Date().getTime(),
+      leftDTM: status === 1 ? null : new Date(),
     },
     {
       guildId: groupId,
@@ -194,12 +192,13 @@ exports.table = {
   User: "User",
 };
 
-exports.increaseSpeakTimes = (userId, groupId) => {
-  var query = sql
-    .update("GuildMembers", { LastSpeakDTM: new Date().getTime() })
-    .where({ userId: userId, guildId: groupId });
-
-  sqlite.run(query.text.replace(" WHERE", ", SpeakTimes = SpeakTimes + 1 WHERE"), query.values);
+exports.increaseSpeakTimes = (userId, guildId) => {
+  mysql
+    .update({ LastSpeakDTM: new Date() })
+    .increment("SpeakTimes", 1)
+    .from("GuildMembers")
+    .where({ userId, guildId })
+    .then();
 };
 
 /**
@@ -207,16 +206,9 @@ exports.increaseSpeakTimes = (userId, groupId) => {
  * @param {String} groupId 群組ID
  */
 exports.getGroupSpeakRank = groupId => {
-  var query = sql
-    .select(this.table.GuildMembers, [
-      "UserId",
-      "Status",
-      "JoinedDTM",
-      "LeftDTM",
-      "SpeakTimes",
-      "LastSpeakDTM",
-    ])
+  return mysql
+    .select(["UserId", "Status", "JoinedDTM", "LeftDTM", "SpeakTimes", "LastSpeakDTM"])
+    .from(this.table.GuildMembers)
     .where({ GuildId: groupId })
-    .orderby("SpeakTimes DESC");
-  return sqlite.all(query.text, query.values);
+    .orderBy("SpeakTimes", "DESC");
 };

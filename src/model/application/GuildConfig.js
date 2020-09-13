@@ -1,14 +1,13 @@
-const sqlite = require("../../util/sqlite");
-const sql = require("sql-query-generator");
-const memory = require("memory-cache");
+const mysql = require("../../util/mysql");
+const redis = require("../../util/redis");
 
-exports.fetchConfig = groupId => {
-  var GroupConfig = memory.get(`GuildConfig_${groupId}`);
+exports.fetchConfig = async groupId => {
+  var GroupConfig = await redis.get(`GuildConfig_${groupId}`);
 
   if (GroupConfig === null) {
-    var query = sql.select("GuildConfig", "*").where({ GuildId: groupId });
-    return sqlite.get(query.text, query.values).then(res => {
-      if (res === undefined) {
+    var query = mysql.select("*").from("GuildConfig").where({ GuildId: groupId });
+    return query.then(res => {
+      if (res.length === 0) {
         res = {
           Battle: "Y",
           PrincessCharacter: "Y",
@@ -19,15 +18,15 @@ exports.fetchConfig = groupId => {
         };
         insertConfig(groupId, res);
       } else {
-        res = JSON.parse(res.Config);
+        res = res[0].Config;
       }
 
-      memory.put(`GuildConfig_${groupId}`, res, 60 * 60 * 1000);
+      redis.set(`GuildConfig_${groupId}`, res, 60 * 60);
       return res;
     });
   }
 
-  return Promise.resolve(GroupConfig);
+  return GroupConfig;
 };
 
 /**
@@ -48,24 +47,27 @@ exports.writeConfig = async (groupId, name, status) => {
  * @param {String} groupId
  * @return {Promise}
  */
-exports.getDiscordWebhook = groupId => {
+exports.getDiscordWebhook = async groupId => {
   const memoryKey = `DiscordWebhook_${groupId}`;
 
-  var webhook = memory.get(memoryKey);
+  var webhook = await redis.get(memoryKey);
   if (webhook !== null) return Promise.resolve(webhook);
 
-  var query = sql.select("GuildConfig", "DiscordWebhook").where({ GuildId: groupId });
+  var query = mysql
+    .select("DiscordWebhook")
+    .from("GuildConfig")
+    .where({ GuildId: groupId })
+    .whereNotNull("DiscordWebhook")
+    .where("DiscordWebhook", "<>", "");
 
-  return sqlite.get(query.text, query.values).then(res => {
-    if (res === undefined || res === null) {
-      webhook = "";
-    } else {
-      webhook = res.DiscordWebhook || "";
-    }
+  var [data] = await query;
+  webhook = "";
+  if (data !== undefined) {
+    webhook = data.DiscordWebhook;
+    redis.get(memoryKey, webhook, 60 * 60);
+  }
 
-    memory.put(memoryKey, webhook, 60 * 60 * 1000);
-    return webhook;
-  });
+  return webhook;
 };
 
 /**
@@ -76,15 +78,15 @@ exports.getDiscordWebhook = groupId => {
  */
 exports.setDiscordWebhook = (groupId, webhook) => {
   clearMemWebhook(groupId);
-  var query = sql
-    .update("GuildConfig", {
+  return mysql
+    .update({
       DiscordWebhook: webhook,
     })
+    .into("GuildConfig")
     .where({
       GuildId: groupId,
-    });
-
-  return sqlite.run(query.text, query.values);
+    })
+    .then(res => res);
 };
 
 /**
@@ -94,20 +96,20 @@ exports.setDiscordWebhook = (groupId, webhook) => {
  */
 exports.removeDicordWebhook = groupId => {
   clearMemWebhook(groupId);
-  var query = sql
-    .update("GuildConfig", {
+  return mysql
+    .update({
       DiscordWebhook: null,
     })
+    .into("GuildConfig")
     .where({
       GuildId: groupId,
-    });
-
-  return sqlite.run(query.text, query.values);
+    })
+    .then(res => res);
 };
 
 function clearMemWebhook(groupId) {
   const memoryKey = `DiscordWebhook_${groupId}`;
-  memory.del(memoryKey);
+  redis.del(memoryKey);
 }
 
 /**
@@ -116,15 +118,15 @@ function clearMemWebhook(groupId) {
  * @return {Promise}
  */
 exports.setWelcomeMessage = (groupId, message) => {
-  var query = sql
-    .update("GuildConfig", {
+  return mysql
+    .update({
       WelcomeMessage: message,
     })
+    .into("GuildConfig")
     .where({
       GuildId: groupId,
-    });
-
-  return sqlite.run(query.text, query.values);
+    })
+    .then(res => res);
 };
 
 /**
@@ -133,8 +135,13 @@ exports.setWelcomeMessage = (groupId, message) => {
  * @return {Promise}
  */
 exports.getWelcomeMessage = groupId => {
-  var query = sql.select("GuildConfig", "WelcomeMessage").where({ GuildId: groupId });
-  return sqlite.get(query.text, query.values).then(res => res.WelcomeMessage || "");
+  return mysql
+    .select("WelcomeMessage")
+    .from("GuildConfig")
+    .where({ GuildId: groupId })
+    .whereNotNull("WelcomeMessage")
+    .where("WelcomeMessage", "<>", "")
+    .then(res => (res.length === 0 ? "" : res[0].WelcomeMessage));
 };
 
 /**
@@ -145,26 +152,27 @@ exports.getWelcomeMessage = groupId => {
  */
 function saveConfig(groupId, config) {
   // 將快取清除，讓下次直接重新fetch
-  memory.del(`GuildConfig_${groupId}`);
+  redis.del(`GuildConfig_${groupId}`);
 
-  var query = sql
-    .update("GuildConfig", {
+  return mysql
+    .update({
       Config: JSON.stringify(config),
-      modifyDTM: new Date().getTime(),
+      modifyDTM: new Date(),
     })
+    .into("GuildConfig")
     .where({
       GuildId: groupId,
-    });
-
-  return sqlite.run(query.text, query.values);
+    })
+    .then(res => res);
 }
 
 function insertConfig(groupId, config) {
-  var query = sql.insert("GuildConfig", {
-    GuildId: groupId,
-    Config: JSON.stringify(config),
-    modifyDTM: new Date().getTime(),
-  });
-
-  return sqlite.run(query.text, query.values);
+  return mysql
+    .insert({
+      GuildId: groupId,
+      Config: JSON.stringify(config),
+      modifyDTM: new Date(),
+    })
+    .into("GuildConfig")
+    .then();
 }

@@ -1,20 +1,15 @@
-const sqlite = require("../../../util/sqlite");
-const sql = require("sql-query-generator");
-const memory = require("memory-cache");
+const mysql = require("../../../util/mysql");
 const { getClient } = require("bottender");
 const LineClient = getClient("line");
+const redis = require("../../../util/redis");
+exports.table = "GachaPool";
 
 exports.getDatabasePool = () => {
-  var query = sql.select("GachaPool", [
-    "ID as id",
-    "Name as name",
-    "headImage_Url as imageUrl",
-    "star as star",
-    "rate as rate",
-    "is_Princess as isPrincess",
-    "tag as tag",
-  ]);
-  return sqlite.all(query.text, query.values);
+  return mysql
+    .select()
+    .columns(["id", "name", "star", "rate", "tag"])
+    .columns([{ imageUrl: "headImage_Url" }, { isPrincess: "is_Princess" }])
+    .from(this.table);
 };
 
 /**
@@ -29,8 +24,7 @@ exports.getDatabasePool = () => {
  * @returns {Promise}
  */
 exports.insertNewData = objData => {
-  var query = sql.insert("GachaPool", { ...objData, modify_ts: new Date().getTime() });
-  return sqlite.run(query.text, query.values);
+  return mysql.insert({ ...objData, modify_ts: new Date() }).into("GachaPool");
 };
 
 /**
@@ -46,8 +40,11 @@ exports.insertNewData = objData => {
  * @returns {Promise}
  */
 exports.updateData = (id, objData) => {
-  var query = sql.update("GachaPool", objData).where({ ID: id });
-  return sqlite.run(query.text, query.values);
+  return mysql
+    .update({ ...objData, modify_ts: new Date() })
+    .from("GachaPool")
+    .where({ id })
+    .then(res => res);
 };
 
 /**
@@ -56,8 +53,7 @@ exports.updateData = (id, objData) => {
  * @returns {Promise}
  */
 exports.deleteData = id => {
-  var query = sql.deletes("GachaPool").where({ ID: id });
-  return sqlite.run(query.text, query.values);
+  return mysql.from("GachaPool").where({ id }).del();
 };
 
 /**
@@ -65,17 +61,21 @@ exports.deleteData = id => {
  * @param {String} userId
  * @returns {object|undefined}
  */
-exports.getSignin = userId => {
+exports.getSignin = async userId => {
   var memoryKey = `GachaSignin_${userId}`;
-  var isSignin = memory.get(memoryKey);
+  var isSignin = await redis.get(memoryKey);
 
-  if (isSignin !== null) return Promise.resolve(isSignin);
+  if (isSignin !== null) return isSignin;
 
-  var query = sql.select("GachaSignin", "No").where({ userId, signinDate: getTodayDate() });
-  return sqlite.get(query.text, query.values).then(res => {
-    memory.put(memoryKey, res, 10 * 60 * 1000);
-    return res;
-  });
+  [isSignin] = await mysql
+    .select("ID")
+    .from("GachaSignin")
+    .where({ userId, signinDate: getTodayDate() });
+
+  let ID = isSignin ? isSignin.ID : 1;
+  redis.set(memoryKey, ID, 10 * 60);
+
+  return isSignin;
 };
 
 /**
@@ -84,9 +84,8 @@ exports.getSignin = userId => {
  */
 exports.touchSingin = userId => {
   var memoryKey = `GachaSignin_${userId}`;
-  memory.put(memoryKey, 1, 10 * 60 * 1000);
-  var query = sql.insert("GachaSignin", { userId, signinDate: getTodayDate() });
-  return sqlite.run(query.text, query.values);
+  redis.set(memoryKey, 1, 10 * 60);
+  return mysql.insert({ userId, signinDate: getTodayDate() }).into("GachaSignin").then();
 };
 
 /**
@@ -94,19 +93,18 @@ exports.touchSingin = userId => {
  * @return {Promise<Array>}
  */
 exports.getPrincessCharacter = () => {
-  var query = sql.select("GachaPool", "ID").where({ Is_Princess: 1 });
-  return sqlite.all(query.text, query.values);
+  return mysql.select("ID").from(this.table).where({ Is_Princess: 1 });
 };
 
-exports.getPrincessCharacterCount = () => {
+exports.getPrincessCharacterCount = async () => {
   var memoryKey = "PrincessCharacterCount";
-  var count = memory.get(memoryKey);
-  if (count !== null) return Promise.resolve(count);
+  var count = await redis.get(memoryKey);
+  if (count !== null) return count;
 
-  return this.getPrincessCharacter().then(datas => {
-    memory.put(memoryKey, datas.length);
-    return datas.length;
-  });
+  var datas = await this.getPrincessCharacter();
+
+  redis.set(memoryKey, datas.length);
+  return datas.length;
 };
 
 /**
@@ -114,23 +112,24 @@ exports.getPrincessCharacterCount = () => {
  * @param {String} userId
  */
 exports.getUserCollectedCharacterCount = userId => {
-  var query = sql
-    .select("Inventory", "DISTINCT COUNT(*) AS count")
-    .join("GachaPool", {
-      "Inventory.itemId": "GachaPool.id",
-    })
+  return mysql
+    .select()
+    .count("*", { as: "count" })
+    .from("Inventory")
+    .join(this.table, "Inventory.itemId", "=", "GachaPool.id")
     .where({
-      userId: userId,
-    });
-  return sqlite.get(query.text, query.values).then(res => res.count);
+      userId,
+    })
+    .then(res => (res.length === 0 ? 0 : res[0].count));
 };
 
 exports.getUserGodStoneCount = userId => {
-  var query = sql
-    .select("Inventory", "SUM(itemAmount) as total")
-    .where({ itemId: "999", userId: userId });
-
-  return sqlite.get(query.text, query.values).then(res => res.total || 0);
+  return mysql
+    .select()
+    .from("Inventory")
+    .sum({ total: "itemAmount" })
+    .where({ itemId: "999", userId })
+    .then(res => (res.length === 0 ? 0 : res[0].total));
 };
 
 function getTodayDate() {
@@ -160,23 +159,25 @@ exports.getCollectedRank = async options => {
   };
 
   var memoryKey = `GachaRank_${options.type}`;
-  var rank = memory.get(memoryKey);
+  var rank = await redis.get(memoryKey);
 
   if (rank !== null) return rank;
 
   let order = options.type === 0 ? "DESC" : "ASC";
 
-  var query = sql
-    .select("Inventory", ["count(itemId) as cnt", "userId"])
-    .where({ itemId: 999 }, "!=")
-    .groupby("userId")
-    .orderby(`cnt ${order}`);
+  var query = mysql
+    .select("userId")
+    .from("Inventory")
+    .count({ cnt: "itemId" })
+    .where("itemId", "<>", 999)
+    .groupBy("userId")
+    .orderBy("cnt", order);
 
   if (options.limit !== 0) {
     query = query.limit(options.limit);
   }
 
-  rank = await sqlite.all(query.text, query.values);
+  rank = await query;
   var rankDatas = rank;
 
   if (options.showName) {
@@ -193,7 +194,7 @@ exports.getCollectedRank = async options => {
   }
 
   if (options.cache) {
-    memory.put(memoryKey, rankDatas, 1 * 60 * 60 * 1000);
+    redis.set(memoryKey, rankDatas, 1 * 60 * 60);
   }
 
   return rankDatas;

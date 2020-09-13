@@ -45,7 +45,7 @@ function initialReply(strReply) {
  * @return {Promise}    Boolean
  */
 async function isRepeatOrder(orderKey, sourceId) {
-  return (await CustomerOrderModel.queryOrderByKey(orderKey, sourceId)) !== undefined;
+  return (await CustomerOrderModel.queryOrderByKey(orderKey, sourceId)).length !== 0;
 }
 
 /**
@@ -113,26 +113,26 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
     var orderKey = md5(order + reply + touchType);
 
     if ((await isRepeatOrder(orderKey, sourceId)) === true)
-      throw new CusOrderException("指令已存在，請勿重複新增");
+      throw new CusOrderException(
+        "指令已存在，請勿重複新增，如已刪除請輸入 `#指令列表` 進行指令開啟"
+      );
 
-    await Promise.all(
-      replyDatas.map((data, index) =>
-        CustomerOrderModel.insertOrder({
-          NO: index,
-          SOURCE_ID: sourceId,
-          ORDER_KEY: orderKey,
-          CUSORDER: order,
-          TOUCH_TYPE: touchType,
-          MESSAGE_TYPE: data.type,
-          REPLY: data.data,
-          CREATE_DTM: new Date().getTime(),
-          CREATE_USER: userId,
-          MODIFY_USER: userId,
-          SENDER_NAME: name,
-          SENDER_ICON: iconUrl,
-        })
-      )
-    );
+    let params = replyDatas.map((data, index) => ({
+      NO: index,
+      sourceId,
+      orderKey,
+      CusOrder: order,
+      touchType,
+      MessageType: data.type,
+      Reply: data.data,
+      CreateDTM: new Date(),
+      CreateUser: userId,
+      ModifyUser: userId,
+      SenderName: name,
+      SenderIcon: iconUrl,
+    }));
+
+    CustomerOrderModel.insertOrder(params);
 
     context.sendText(`${order} 新增成功`);
   } catch (e) {
@@ -317,13 +317,13 @@ exports.fetchCustomerOrders = async (req, res) => {
   res.json(orderDatas);
 };
 
-exports.updateOrder = (req, res) => {
+exports.updateOrder = async (req, res) => {
   const { sourceId } = req.params;
 
   try {
     if (/^[CRU][a-f0-9]{32}$/.test(sourceId) === false)
       throw new CusOrderException("Invalid Source ID", 1);
-    var updateResult = CustomerOrderModel.updateOrder(sourceId, req.body);
+    var updateResult = await CustomerOrderModel.updateOrder(sourceId, req.body);
     if (updateResult === false) throw new CusOrderException("Update Failed", 2);
 
     res.json({});

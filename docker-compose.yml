@@ -1,0 +1,64 @@
+version: "3.8"
+services:
+  nginx:
+    image: nginx
+    container_name: nginx
+    depends_on:
+      - app1
+      - app2
+    ports:
+      - "5000:80"
+    volumes:
+      - ./config/nginx:/etc/nginx/conf.d
+  app1:
+    image: node:12
+    container_name: RediveBot1
+    working_dir: /application
+    volumes:
+      - .:/application
+    links:
+      - mysql
+      - redis
+    entrypoint: ["sh", "./run.sh"]
+    env_file: ./.env
+    environment:
+      "PORT": 5001
+      "NODE_ENV": "development"
+
+  app2:
+    image: node:12
+    container_name: RediveBot2
+    working_dir: /application
+    volumes:
+      - .:/application
+    links:
+      - mysql
+      - redis
+    entrypoint: ["sh", "./run.sh"]
+    env_file: ./.env
+    environment:
+      "PORT": 5002
+      "NODE_ENV": "development"
+
+  mysql:
+    env_file: ./.env
+    image: mysql
+    container_name: mysql
+    volumes:
+      - ./migration:/docker-entrypoint-initdb.d
+      - "${DB_STOREPATH}/db:/var/lib/mysql"
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      "MYSQL_DATABASE": "${DB_DATABASE}"
+      "MYSQL_USER": "admin"
+      "MYSQL_PASSWORD": "123456"
+      "MYSQL_ROOT_PASSWORD": "${DB_PASSWORD}"
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    command: "redis-server --requirepass ${REDIS_PASSWORD}"
+    ports:
+      - "6379:6379"

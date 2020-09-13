@@ -3,8 +3,8 @@ const express = require("express");
 const { bottender } = require("bottender");
 const path = require("path");
 const apiRouter = require("./src/router/api");
-const { server, http } = require("./src/util/connection");
 const cors = require("cors");
+const { server, http } = require("./src/util/connection");
 require("./src/router/socket");
 
 const app = bottender({
@@ -31,11 +31,6 @@ app.prepare().then(() => {
 
   server.get("/send-id", require("cors")(), (req, res) => {
     res.json({ id: process.env.LINE_LIFF_ID });
-  });
-
-  server.get("/liff", (req, res) => {
-    const filename = path.join(`${__dirname}/liff.html`);
-    res.sendFile(filename);
   });
 
   server.get("/*", (req, res) => {

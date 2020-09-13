@@ -1,82 +1,99 @@
-const sqlite = require("../../util/sqlite");
-const sql = require("sql-query-generator");
-const memory = require("memory-cache");
+const mysql = require("../../util/mysql");
+const redis = require("../../util/redis");
 
 /**
  * 取得目前所有群組數目
  */
-exports.getGuildCount = () => {
+exports.getGuildCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `GuildCount_${date}`;
-  let count = memory.get(memoryKey);
+  let count = await redis.get(memoryKey);
   if (count !== null) return count;
 
-  return sqlite.get(sql.select("Guild", "count(*) as cnt").text).then(data => {
-    memory.put(memoryKey, data.cnt, 86400 * 1000);
-    return data.cnt;
-  });
+  count = await mysql
+    .select()
+    .from("Guild")
+    .count({ cnt: "*" })
+    .then(data => data[0].cnt);
+
+  redis.set(memoryKey, count, 3600);
+  return count;
 };
 
 /**
  * 取得目前所有會員數
  */
-exports.getUserCount = () => {
+exports.getUserCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `UserCount_${date}`;
-  let count = memory.get(memoryKey);
+  let count = await redis.get(memoryKey);
   if (count !== null) return count;
 
-  return sqlite.get(sql.select("User", "count(*) as cnt").text).then(data => {
-    memory.put(memoryKey, data.cnt, 86400 * 1000);
-    return data.cnt;
-  });
+  count = await mysql
+    .select()
+    .from("User")
+    .count({ cnt: "*" })
+    .then(data => data[0].cnt);
+
+  redis.set(memoryKey, count, 3600);
+  return count;
 };
 
 /**
  * 取得目前所有自訂指令數量
  */
-exports.getCustomerOrderCount = () => {
+exports.getCustomerOrderCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `CustomerOrder_${date}`;
-  let count = memory.get(memoryKey);
+  let count = await redis.get(memoryKey);
   if (count !== null) return count;
 
-  return sqlite.get(sql.select("CustomerOrder", "count(*) as cnt").text).then(data => {
-    memory.put(memoryKey, data.cnt, 86400 * 1000);
-    return data.cnt;
-  });
+  count = await mysql
+    .select()
+    .from("CustomerOrder")
+    .count({ cnt: "*" })
+    .then(data => data[0].cnt);
+
+  redis.set(memoryKey, count, 3600);
+  return count;
 };
 
 /**
  * 取得目前所有說話次數總和
  */
-exports.getSpeakTimesCount = () => {
+exports.getSpeakTimesCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `SpeakTimes_${date}`;
-  let count = memory.get(memoryKey);
-  if (count !== null) return count;
+  let times = await redis.get(memoryKey);
+  if (times !== null) return times;
 
-  return sqlite.get(sql.select("GuildMembers", "sum(SpeakTimes) as times").text).then(data => {
-    memory.put(memoryKey, data.times, 86400 * 1000);
-    return data.times;
-  });
+  times = await mysql
+    .select()
+    .sum({ times: "SpeakTimes" })
+    .from("GuildMembers")
+    .then(data => data[0].times);
+
+  redis.set(memoryKey, times, 3600);
+  return times;
 };
 
 /**
  * 取得單一用戶群組數據
  * @param {String} userId
  */
-exports.getGuildDataByUser = userId => {
+exports.getGuildDataByUser = async userId => {
   let memoryKey = `GuildData_${userId}`;
-  let count = memory.get(memoryKey);
-  if (count !== null) return count;
+  let guildData = await redis.get(memoryKey);
+  if (guildData !== null) return guildData;
 
-  var query = sql
-    .select("GuildMembers", ["sum(SpeakTimes) as times", "count(*) as cnt"])
-    .where({ userId });
+  guildData = await mysql
+    .select()
+    .from("GuildMembers")
+    .sum({ times: "SpeakTimes" })
+    .count({ cnt: "*" })
+    .where({ userId })
+    .then(data => data[0]);
 
-  return sqlite.get(query.text, query.values).then(data => {
-    memory.put(memoryKey, data, 1 * 60 * 1000);
-    return data;
-  });
+  redis.set(memoryKey, guildData, 1 * 60);
+  return guildData;
 };

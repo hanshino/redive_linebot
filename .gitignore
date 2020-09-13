@@ -65,3 +65,7 @@ typings/
 
 # SQLite Database
 database
+
+data
+
+.vscode

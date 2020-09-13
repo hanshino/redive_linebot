@@ -8,7 +8,6 @@ const setProfile = require("./middleware/profile");
 const statistics = require("./middleware/statistics");
 const lineEvent = require("./controller/lineEvent");
 const welcome = require("./templates/common/welcome");
-const memcache = require("memory-cache");
 const config = require("./middleware/config");
 const groupTemplate = require("./templates/application/Group/line");
 const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
@@ -16,14 +15,14 @@ const { showAnnounce } = require("./controller/princess/announce");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const { showSchedule } = require("./controller/princess/schedule");
 const { transfer } = require("./middleware/dcWebhook");
+const redis = require("./util/redis");
 const traffic = require("./util/traffic");
-const memory = require("memory-cache");
 
 function showState(context) {
   context.sendText(JSON.stringify(context.state));
 }
 
-function HandlePostback(context, { next }) {
+async function HandlePostback(context, { next }) {
   if (!context.event.isPayload) return next;
 
   try {
@@ -33,9 +32,9 @@ function HandlePostback(context, { next }) {
 
     let memkey = `Postback_${userId}_${action}`;
 
-    if (memcache.get(memkey) === null) {
+    if ((await redis.get(memkey)) === null) {
       // 每位使用者 限制5秒內 不能連續重複動作
-      memcache.put(memkey, 1, 5 * 1000);
+      redis.set(memkey, 1, 5);
     } else return;
 
     return router([
@@ -58,9 +57,9 @@ function HandlePostback(context, { next }) {
 /**
  * 基於功能指令優先辨識
  */
-function OrderBased(context, { next }) {
+async function OrderBased(context, { next }) {
   return router([
-    ...BattleOrder(context),
+    ...(await BattleOrder(context)),
     ...CharacterOrder(context),
     ...CustomerOrder(context),
     ...GroupOrder(context),
@@ -103,11 +102,11 @@ function CustomerOrder(context) {
   ];
 }
 
-function BattleOrder(context) {
+async function BattleOrder(context) {
   if (context.platform !== "line") return [];
   if (context.event.source.type !== "group") return [];
   if (context.state.guildConfig.Battle === "N") return [];
-  if (memory.get("GuildBattleSystem") !== null) return [];
+  if ((await redis.get("GuildBattleSystem")) !== null) return [];
 
   return [
     text(/^[.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),

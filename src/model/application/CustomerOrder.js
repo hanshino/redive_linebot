@@ -1,43 +1,41 @@
-const sqlite = require("../../util/sqlite");
-const sql = require("sql-query-generator");
-const memory = require("memory-cache");
+const mysql = require("../../util/mysql");
+const redis = require("../../util/redis");
 
 exports.table = "CustomerOrder";
 exports.columnsAlias = [
-  { o: "NO", a: "no" },
-  { o: "SOURCE_ID", a: "sourceId" },
-  { o: "ORDER_KEY", a: "orderKey" },
-  { o: "CUSORDER", a: "cusOrder" },
-  { o: "TOUCH_TYPE", a: "touchType" },
-  { o: "MESSAGE_TYPE", a: "messageType" },
-  { o: "REPLY", a: "reply" },
-  { o: "CREATE_DTM", a: "createDTM" },
-  { o: "CREATE_USER", a: "createUser" },
-  { o: "MODIFY_DTM", a: "modifyDTM" },
-  { o: "MODIFY_USER", a: "modifyUser" },
-  { o: "STATUS", a: "status" },
+  "no",
+  "sourceId",
+  "orderKey",
+  "cusOrder",
+  "touchType",
+  "messageType",
+  "reply",
+  "createDTM",
+  "createUser",
+  "modifyDTM",
+  "modifyUser",
+  "status",
 ];
 
 /**
  * 對資料庫新增指令
- * @param {Object} objData
- * @param {Number} objData.NO
- * @param {String} objData.SOURCE_ID
- * @param {String} objData.ORDER_KEY
- * @param {String} objData.CUSORDER
- * @param {String} objData.TOUCH_TYPE
- * @param {String} objData.MESSAGE_TYPE
- * @param {String} objData.REPLY
- * @param {String} objData.CREATE_DTM
- * @param {String} objData.CREATE_USER
- * @param {String} objData.MODIFY_USER
+ * @param {Object[]} params
+ * @param {string} params[].No
+ * @param {String} params[].sourceId
+ * @param {String} params[].orderKey
+ * @param {String} params[].CusOrder
+ * @param {String} params[].touchType
+ * @param {String} params[].MessageType
+ * @param {String} params[].Reply
+ * @param {String} params[].CreateDTM
+ * @param {String} params[].CreateUser
+ * @param {String} params[].ModifyUser
+ * @param {String?} params[].SenderName
+ * @param {String?} params[].SenderIcon
  */
-exports.insertOrder = async function (objData) {
-  resetMemoryOrder(objData.SOURCE_ID);
-
-  var query = sql.insert(this.table, objData);
-
-  return sqlite.run(query.text, query.values);
+exports.insertOrder = async params => {
+  resetMemoryOrder(params[0].sourceId);
+  return mysql(this.table).insert(params);
 };
 
 /**
@@ -45,34 +43,26 @@ exports.insertOrder = async function (objData) {
  * @param {String} sourceId
  * @param {Number} status
  */
-exports.queryOrderBySourceId = async function (sourceId, status = "") {
+exports.queryOrderBySourceId = async (sourceId, status = "") => {
   var memoryKey = `CustomerOrder_${sourceId}_${status}`;
-  var orders = memory.get(memoryKey);
+  var orders = await redis.get(memoryKey);
 
   if (orders !== null) return orders;
 
-  var query = sql
-    .select(this.table, getColumnName(this.columnsAlias))
-    .where({ SOURCE_ID: sourceId });
+  var query = mysql.select(this.columnsAlias).table(this.table).where({ sourceId });
 
   if (status !== "") {
-    query = query.and({ STATUS: status });
+    query = query.where({ STATUS: status });
   }
 
-  orders = await sqlite.all(query.text, query.values);
+  orders = await query;
 
-  memory.put(memoryKey, orders, 60 * 60 * 1000);
+  redis.set(memoryKey, orders, 60 * 60);
   return orders;
 };
 
-exports.queryOrderByKey = async function (orderKey, sourceId) {
-  var query = sql
-    .select(this.table, getColumnName(this.columnsAlias))
-    .where({ ORDER_KEY: orderKey, SOURCE_ID: sourceId, STATUS: 1 });
-
-  var result = await sqlite.get(query.text, query.values);
-
-  return result;
+exports.queryOrderByKey = (orderKey, sourceId) => {
+  return mysql.select(this.columnsAlias).table(this.table).where({ orderKey, sourceId });
 };
 
 /**
@@ -80,13 +70,11 @@ exports.queryOrderByKey = async function (orderKey, sourceId) {
  * @param {String} cusOrder
  */
 exports.queryOrderToDelete = async (cusOrder, sourceId) => {
-  var query = sql.select(this.table, getColumnName(this.columnsAlias)).where({
-    SOURCE_ID: sourceId,
-    CUSORDER: cusOrder,
+  return mysql.select(this.columnsAlias).table(this.table).where({
+    sourceId,
+    cusOrder,
     STATUS: 1,
   });
-
-  return sqlite.all(query.text, query.values);
 };
 
 /**
@@ -100,19 +88,18 @@ exports.queryOrderToDelete = async (cusOrder, sourceId) => {
  */
 exports.setStatus = (objData, status) => {
   resetMemoryOrder(objData.sourceId);
-  var query = sql
-    .update("CustomerOrder", {
-      status: status,
-      modify_user: objData.modifyUser,
-      modify_DTM: new Date().getTime(),
+  return mysql(this.table)
+    .update({
+      status,
+      modifyUser: objData.modifyUser,
+      modifyDTM: new Date(),
     })
     .where({
-      source_id: objData.sourceId,
-      order_key: objData.orderKey,
+      sourceId: objData.sourceId,
+      orderKey: objData.orderKey,
       status: 1,
-    });
-
-  return sqlite.run(query.text, query.values);
+    })
+    .then(res => res);
 };
 
 /**
@@ -121,31 +108,30 @@ exports.setStatus = (objData, status) => {
  * @param {String} sourceId
  */
 exports.touchOrder = (order, sourceId) => {
-  var query = sql
-    .update("CustomerOrder", {
-      touch_dtm: new Date().getTime(),
+  return mysql(this.table)
+    .update({
+      touchDTM: new Date(),
     })
     .where({
-      source_id: sourceId,
+      sourceId: sourceId,
       cusOrder: order,
       status: 1,
-    });
-
-  return sqlite.run(query.text, query.values);
+    })
+    .then(res => res);
 };
 
 exports.orderShutdown = sourceId => {
   resetMemoryOrder(sourceId);
-  var query = sql
-    .update("CustomerOrder", {
+  return mysql(this.table)
+    .update({
       status: 0,
-      modify_DTM: new Date().getTime(),
-      MODIFY_USER: "system",
+      modifyDTM: new Date(),
+      modifyUser: "system",
     })
     .where({
-      source_id: sourceId,
-    });
-  return sqlite.run(query.text, query.values);
+      sourceId,
+    })
+    .then(res => res);
 };
 
 /**
@@ -159,26 +145,22 @@ exports.orderShutdown = sourceId => {
  */
 exports.updateOrder = (sourceId, orderData) => {
   resetMemoryOrder(sourceId);
-  var query = sql
-    .update("CustomerOrder", {
+  return mysql(this.table)
+    .update({
       status: orderData.status,
-      touch_type: orderData.touchType,
+      touchType: orderData.touchType,
       cusorder: orderData.order,
     })
     .where({
-      order_key: orderData.orderKey,
-      source_id: sourceId,
-    });
-  return sqlite.run(query.text, query.values);
+      orderKey: orderData.orderKey,
+      sourceId,
+    })
+    .then(res => res);
 };
-
-function getColumnName(columnsAlias) {
-  return columnsAlias.map(col => `${col.o} as ${col.a}`).join(",");
-}
 
 function resetMemoryOrder(sourceId) {
   var memoryKey = `CustomerOrder_${sourceId}_`;
-  memory.del(`${memoryKey}`);
-  memory.del(`${memoryKey}1`);
-  memory.del(`${memoryKey}0`);
+  redis.del(`${memoryKey}`);
+  redis.del(`${memoryKey}1`);
+  redis.del(`${memoryKey}0`);
 }

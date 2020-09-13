@@ -1,5 +1,4 @@
-const sqlite = require("../../util/sqlite");
-const sql = require("sql-query-generator");
+const mysql = require("../../util/mysql");
 
 exports.tableName = "Inventory";
 
@@ -10,13 +9,15 @@ exports.tableName = "Inventory";
  * @param {Number} itemAmount
  */
 exports.insertItem = (userId, itemId, itemAmount) => {
-  var query = sql.insert(this.tableName, {
-    userId,
-    itemId,
-    itemAmount,
-    createTS: new Date().getTime(),
-  });
-  return sqlite.run(query.text, query.values);
+  return this.insertItems([{ userId, itemId, itemAmount }]);
+};
+
+/**
+ * 一次新增多筆物品
+ * @param {Array.<{userId: string, itemId: string, itemAmount: number}>} params
+ */
+exports.insertItems = params => {
+  return mysql.into(this.tableName).insert(params);
 };
 
 /**
@@ -24,15 +25,14 @@ exports.insertItem = (userId, itemId, itemAmount) => {
  * @param {String} userId
  */
 exports.fetchUserItem = userId => {
-  var query = sql.select(this.tableName, "*").where({ userId });
-  return sqlite.all(query.text, query.values);
+  return mysql.select("*").from(this.tableName).where({ userId });
 };
 
+/**
+ * 驗證用戶是否擁有傳入的item資料
+ * @param {String} userId
+ * @param {Array} itemIds
+ */
 exports.fetchUserOwnItems = (userId, itemIds) => {
-  var query = `SELECT * FROM ${this.tableName}`;
-  query += " WHERE userId = $1 AND itemId in (";
-  query += itemIds.join(",");
-  query += ")";
-
-  return sqlite.all(query, [userId]);
+  return mysql.select("*").from(this.tableName).whereIn("itemId", itemIds).where({ userId });
 };

@@ -11,8 +11,7 @@ module.exports = {
       },
       redis: {
         port: 6379,
-        host: "127.0.0.1",
-        password: "auth",
+        host: "redis",
         db: 0,
       },
       mongo: {
@@ -58,7 +57,7 @@ module.exports = {
       channelSecret: process.env.LINE_CHANNEL_SECRET,
     },
     telegram: {
-      enabled: true,
+      enabled: false,
       path: "/webhooks/telegram",
       accessToken: process.env.TELEGRAM_ACCESS_TOKEN,
     },

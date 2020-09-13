@@ -2,9 +2,9 @@ const GachaModel = require("../../model/princess/gacha");
 const InventoryModel = require("../../model/application/Inventory");
 const random = require("math-random");
 const GachaTemplate = require("../../templates/princess/gacha");
-const memory = require("memory-cache");
 const { recordSign } = require("../../util/traffic");
 const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
+const redis = require("../../util/redis");
 
 function GachaException(message, code) {
   this.message = message;
@@ -112,12 +112,11 @@ function shuffle(a) {
  * @param {String} userId
  * @param {String} groupId
  */
-function isAble(userId, groupId) {
-  if (memory.get(`GachaCoolDown_${userId}_${groupId}`) === null) {
-    memory.put(`GachaCoolDown_${userId}_${groupId}`, 1, 120 * 1000);
+async function isAble(userId, groupId) {
+  if ((await redis.get(`GachaCoolDown_${userId}_${groupId}`)) === null) {
+    redis.set(`GachaCoolDown_${userId}_${groupId}`, 1, 120);
     return true;
   }
-
   return false;
 }
 
@@ -133,7 +132,7 @@ module.exports = {
       if (
         context.platform === "line" &&
         context.event.source.type === "group" &&
-        isAble(context.event.source.userId, context.event.source.groupId) === false
+        (await isAble(context.event.source.userId, context.event.source.groupId)) === false
       )
         return;
 
@@ -216,7 +215,6 @@ async function updateCharacter(req, res) {
     var objParam = trimParamter(data);
 
     await GachaModel.updateData(id, objParam);
-    res.json({});
   } catch (e) {
     if (!(e instanceof GachaException)) throw e;
     res.status(400);
@@ -268,6 +266,7 @@ async function recordToInventory(userId, rewards) {
   var uniqIds = [...new Set(ids)];
 
   const ownItems = await InventoryModel.fetchUserOwnItems(userId, uniqIds);
+
   var ownIds = ownItems.map(item => item.itemId);
   var insertIds = ids.filter(id => !ownIds.includes(id));
   insertIds = [...new Set(insertIds)];
@@ -276,7 +275,7 @@ async function recordToInventory(userId, rewards) {
   insertIds.forEach(id => delete oldIds[oldIds.indexOf(id)]);
   oldIds = oldIds.filter(() => true);
 
-  await Promise.all(insertIds.map(id => InventoryModel.insertItem(userId, id, 1)));
+  await InventoryModel.insertItems(insertIds.map(itemId => ({ userId, itemId, itemAmount: 1 })));
 
   var godStoneArray = oldIds.map(id => {
     let reward = rewards.find(data => data.id === id);

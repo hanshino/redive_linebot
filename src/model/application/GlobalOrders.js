@@ -1,9 +1,8 @@
-const sqlite = require("../../util/sqlite");
-const sql = require("sql-query-generator");
-const memory = require("memory-cache");
+const mysql = require("../../util/mysql");
+const redis = require("../../util/redis");
 const memKey = "GlobalOrders";
 const uuid = require("uuid-random");
-
+exports.table = "GlobalOrders";
 /**
  * 新增指令
  * @param {Object} objData
@@ -17,32 +16,21 @@ const uuid = require("uuid-random");
  * @param {String} replyData.reply
  */
 exports.insertData = objData => {
-  var query = sql.insert("GlobalOrders", {
-    no: 0,
-    message_type: "text",
-    reply: "",
-    sender_name: objData.senderName,
-    sender_icon: objData.senderIcon,
-    keyword: objData.order,
-    touch_type: objData.touchType,
-    modify_ts: new Date().getTime(),
-    key: uuid(),
+  var params = objData.replyDatas.map((data, index) => {
+    return {
+      no: index,
+      messageType: data.messageType,
+      reply: data.reply,
+      senderName: objData.senderName,
+      senderIcon: objData.senderIcon,
+      keyword: objData.order,
+      touchType: objData.touchType,
+      modifyTS: new Date(),
+      key: uuid(),
+    };
   });
 
-  var text = query.text;
-  var values = query.values;
-
-  console.log(text);
-
-  return Promise.all(
-    objData.replyDatas.map((data, index) => {
-      values[0] = index;
-      values[1] = data.messageType;
-      values[2] = data.reply;
-      console.table(values);
-      return sqlite.run(text, values);
-    })
-  ).then(() => resetOrderCache());
+  return mysql.insert(params).into(this.table);
 };
 
 /**
@@ -60,34 +48,32 @@ exports.insertData = objData => {
  * @param {String} replyData.reply
  */
 exports.updateData = objData => {
-  return Promise.all(
-    objData.replyDatas.map(data => {
-      var query = sql
-        .update("GlobalOrders", {
-          no: data.no,
-          message_type: data.messageType,
-          reply: data.reply,
-          sender_name: objData.senderName,
-          sender_icon: objData.senderIcon,
-          keyword: objData.order,
-          touch_type: objData.touchType,
-          modify_ts: new Date().getTime(),
-        })
-        .where({
-          key: objData.orderKey,
-          no: data.no,
-        });
+  var sqlQuerys = objData.replyDatas.map(data => {
+    return mysql
+      .update({
+        no: data.no,
+        message_type: data.messageType,
+        reply: data.reply,
+        sender_name: objData.senderName,
+        sender_icon: objData.senderIcon,
+        keyword: objData.order,
+        touch_type: objData.touchType,
+        modify_ts: new Date(),
+      })
+      .into(this.table)
+      .where({
+        key: objData.orderKey,
+        no: data.no,
+      });
+  });
 
-      return sqlite.run(query.text, query.values);
-    })
-  )
+  return Promise.all(sqlQuerys)
     .then(() => {
-      var query = sql
-        .deletes("GlobalOrders")
-        .where({ key: objData.key })
-        .and({ no: objData.replyDatas.length });
-
-      return sqlite.run(query.text, query.values);
+      return mysql
+        .from("GlobalOrders")
+        .where("key", objData.orderKey)
+        .andWhere("no", ">=", objData.replyDatas.length)
+        .del();
     })
     .then(() => resetOrderCache());
 };
@@ -97,30 +83,30 @@ exports.updateData = objData => {
  * @param {String} orderKey 指令金鑰
  */
 exports.deleteData = orderKey => {
-  var query = sql.deletes("GlobalOrders").where({ key: orderKey });
-  return sqlite.run(query.text, query.values);
+  return mysql.from("GlobalOrders").where({ key: orderKey }).del();
 };
 
 exports.fetchAllData = async () => {
-  var query = sql
-    .select("GlobalOrders", [
-      "no as no",
-      "key as key",
-      "keyword as 'order'",
-      "touch_type as touchType",
-      "message_type as messageType",
-      "reply as reply",
-      "modify_TS as modifyTS",
-      "sender_name as senderName",
-      "sender_icon as senderIcon",
+  var query = mysql
+    .select([
+      "no",
+      "key",
+      "keyword",
+      "touchType",
+      "messageType",
+      "reply",
+      "modifyTS",
+      "senderName",
+      "senderIcon",
     ])
-    .orderby("key");
+    .from(this.table)
+    .orderBy("key");
 
-  var orders = memory.get(memKey);
+  var orders = await redis.get(memKey);
   if (orders !== null) return orders;
 
-  orders = await sqlite.all(query.text, query.values).then(arrangeOrder);
-  memory.put(memKey, orders, 60 * 60 * 1000);
+  orders = await query.then(arrangeOrder);
+  redis.set(memKey, orders, 60 * 60);
 
   return orders;
 };
@@ -132,7 +118,7 @@ function arrangeOrder(orders) {
     let { key } = orderData;
     hashData[key] = hashData[key] || {
       orderKey: key,
-      order: orderData.order,
+      order: orderData.keyword,
       touchType: orderData.touchType,
       replyDatas: [],
       senderName: orderData.senderName,
@@ -150,5 +136,5 @@ function arrangeOrder(orders) {
 }
 
 function resetOrderCache() {
-  memory.del(memKey);
+  redis.del(memKey);
 }

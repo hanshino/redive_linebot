@@ -1,9 +1,9 @@
 const GoogleSheet = require("../../common/GoogleSheet");
-const mem = require("memory-cache");
+const redis = require("../../../util/redis");
 const CharacterDatas = require("../../../../doc/characterInfo.json");
 
 async function getRecommendDatas() {
-  var result = mem.get("CharacterRecommend");
+  var result = await redis.get("CharacterRecommend");
   if (result === null) {
     result = await GoogleSheet.querySheetData({
       key: "1OSQZmL5cJlJhsrxETxsviNZCnSpGar6stOw2kBAGxUU",
@@ -17,7 +17,7 @@ async function getRecommendDatas() {
         return data;
       });
     });
-    mem.put("CharacterRecommend", result);
+    redis.set("CharacterRecommend", result, 60 * 60);
   }
 
   return result;

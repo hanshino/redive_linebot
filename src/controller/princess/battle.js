@@ -55,7 +55,7 @@ async function getFormId(context) {
     let ianUserId = await getIanUserId(context);
     let groupSummary = await line.getGroupSummary(groupId);
     let createResult = await BattleModel.Ian.createForm(ianUserId, month, groupSummary.groupName);
-
+    console.log(createResult);
     BattleModel.setFormId(groupId, createResult.id, month);
 
     return createResult.id;
@@ -67,7 +67,7 @@ async function getFormId(context) {
 async function getIanUserId(context) {
   var { userId } = context.event.source;
   var profile = context.state.userDatas[userId];
-  var ianUserData = await BattleModel.getIanUserData(2, userId);
+  var [ianUserData] = await BattleModel.getIanUserData(2, userId);
 
   if (ianUserData === undefined) {
     // 尚未到ian戰隊系統註冊，進行自動註冊
@@ -345,7 +345,7 @@ function getNowMonth() {
 }
 
 async function getCurrWeek(groupId) {
-  var currWeekData = await WeekModel.queryWeek(groupId, getNowMonth());
+  var [currWeekData] = await WeekModel.queryWeek(groupId, getNowMonth());
 
   if (currWeekData === undefined) {
     await WeekModel.insertWeek(groupId, getNowMonth());

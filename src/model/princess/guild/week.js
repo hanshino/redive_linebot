@@ -1,27 +1,24 @@
-const sqlite = require("../../../util/sqlite");
-const sql = require("sql-query-generator");
+const mysql = require("../../../util/mysql");
 
-exports.setWeek = (groupId, month, week) => {
-  var query = sql
-    .update("GuildWeek", {
-      week: week,
-      modifyDTM: new Date().getTime(),
+exports.table = "GuildWeek";
+exports.setWeek = (guildId, month, week) => {
+  return mysql
+    .update({
+      week,
+      modifyDTM: new Date(),
     })
-    .where({ guildId: groupId, month: month });
-  return sqlite.run(query.text, query.values);
+    .from(this.table)
+    .where({ guildId, month })
+    .then(res => res);
 };
 
-exports.insertWeek = (groupId, month) => {
-  var query = sql.insert("GuildWeek", {
-    guildId: groupId,
-    month: month,
-    week: 1,
-    modifyDTM: new Date().getTime(),
-  });
-  return sqlite.run(query.text, query.values);
+exports.insertWeek = (guildId, month) => {
+  return mysql
+    .insert({ guildId, month, week: 1, modifyDTM: new Date() })
+    .into(this.table)
+    .then(res => res);
 };
 
-exports.queryWeek = (groupId, month) => {
-  var query = sql.select("GuildWeek", "*").where({ guildId: groupId, month: month });
-  return sqlite.get(query.text, query.values);
+exports.queryWeek = (guildId, month) => {
+  return mysql.select("*").from(this.table).where({ guildId, month });
 };

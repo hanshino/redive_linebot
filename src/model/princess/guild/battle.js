@@ -1,39 +1,39 @@
-const sqlite = require("../../../util/sqlite");
-const sql = require("sql-query-generator");
+const mysql = require("../../../util/mysql");
 const fetch = require("node-fetch");
 const token = process.env.IAN_BATTLE_TOKEN;
 const headers = { "x-token": token, "user-agent": "re:dive line-bot" };
 const apiURL = "https://guild.randosoru.me/api";
-const memory = require("memory-cache");
+const redis = require("../../../util/redis");
 
 exports.saveIanUserData = (platform = 2, userId, ianUserId) => {
-  var query = sql.insert("IanUser", {
-    platform: platform,
-    userId: userId,
-    ianUserId: ianUserId,
-    createDTM: new Date().getTime(),
-  });
-
-  return sqlite.run(query.text, query.values);
+  return mysql
+    .insert({
+      platform: platform,
+      userId: userId,
+      ianUserId: ianUserId,
+      createDTM: new Date().getTime(),
+    })
+    .into("IanUser");
 };
 
 exports.isRegister = (platform, userId) => {
-  var query = sql.select("IanUser", "*").where({
-    platform: platform,
-    userId: userId,
-  });
-  return sqlite.get(query.text, query.values);
+  return mysql
+    .select("*")
+    .where({
+      platform: platform,
+      userId: userId,
+    })
+    .from("IanUser");
 };
 
 exports.getIanUserData = (platform, userId) => this.isRegister(platform, userId);
 
 exports.getFormId = (guildId, month) => {
-  var query = sql.select("GuildBattle", "*").where({
-    guildId: guildId,
-    month: month,
-  });
-
-  return sqlite.get(query.text, query.values).then(res => (res !== undefined ? res.FormId : false));
+  return mysql
+    .select("*")
+    .from("GuildBattle")
+    .where({ guildId, month })
+    .then(res => (res.length === 0 ? false : res[0].FormId));
 };
 
 /**
@@ -43,12 +43,14 @@ exports.getFormId = (guildId, month) => {
  * @param {String} month
  */
 exports.setFormId = (guildId, formId, month) => {
-  var query = sql.insert("GuildBattle", {
-    guildId: guildId,
-    formId: formId,
-    month: month,
-  });
-  return sqlite.run(query.text, query.values);
+  return mysql
+    .insert({
+      guildId,
+      formId,
+      month,
+    })
+    .into("GuildBattle")
+    .then();
 };
 
 exports.Ian = {};
@@ -132,7 +134,7 @@ function doPost(path, data) {
  */
 function IsIanSeverDown(response) {
   if (response.ok === false) {
-    memory.put("GuildBattleSystem", false, 1 * 60 * 1000);
+    redis.set("GuildBattleSystem", false, 1 * 60);
   }
 
   return response;

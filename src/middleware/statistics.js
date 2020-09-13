@@ -80,7 +80,7 @@ async function GroupRecord(context) {
   const { groupId } = context.event.source;
   var groupData = await LineModel.getGroup(groupId);
 
-  groupData = groupData || false;
+  groupData = groupData.length === 0 ? false : groupData[0];
 
   if (groupData === false) {
     await LineModel.insertGroup(groupId);
@@ -99,7 +99,7 @@ async function UserRecord(context) {
 
   var userData = await LineModel.getUser(userId);
 
-  userData = userData || false;
+  userData = userData.length === 0 ? false : userData[0];
 
   if (userData === false) {
     await LineModel.insertUser(userId, platform);
@@ -117,7 +117,7 @@ async function GroupMembersRecord(context) {
 
   var memberData = await LineModel.getGuildMember(userId, groupId);
 
-  memberData = memberData || false;
+  memberData = memberData.length === 0 ? false : memberData[0];
 
   if (memberData === false) {
     await LineModel.memberJoined(userId, groupId);

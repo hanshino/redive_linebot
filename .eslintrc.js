@@ -8,7 +8,6 @@ module.exports = {
     es6: true,
   },
   rules: {
-    "linebreak-style": [2, "windows"],
     "prettier/prettier": [
       "error",
       {

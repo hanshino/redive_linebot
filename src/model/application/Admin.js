@@ -1,7 +1,5 @@
-const sqlite = require("../../util/sqlite");
-const sql = require("sql-query-generator");
+const mysql = require("../../util/mysql");
 
 exports.getList = () => {
-  var query = sql.select("Admin", "*");
-  return sqlite.all(query.text, query.values);
+  return mysql.select().from("Admin");
 };
