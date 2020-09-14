@@ -128,7 +128,7 @@ function genPreviewDetail(option) {
     config,
     formId,
   } = option;
-  console.log(config);
+
   var bossConfig = { name: `${boss}王`, image: "https://i.imgur.com/zsAFota.png", ...config };
 
   let recordsDetail = datas.map((data, index) => {

@@ -1,6 +1,8 @@
 const sqlite = require("../../../util/sqlite");
 const sql = require("sql-query-generator");
 const memory = require("memory-cache");
+const { getClient } = require("bottender");
+const LineClient = getClient("line");
 
 exports.getDatabasePool = () => {
   var query = sql.select("GachaPool", [
@@ -135,3 +137,64 @@ function getTodayDate() {
   let date = new Date();
   return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join("/");
 }
+
+/**
+ * 取得蒐集排行榜
+ * @param {Object}  options
+ * @param {?Number}  options.type 0:歐洲榜、1:非洲榜
+ * @param {?Number}  options.limit 取得資料數
+ * @param {?Boolean}  options.showName 顯示名字
+ * @param {?Boolean}  options.cache 是否快取
+ */
+exports.getCollectedRank = async options => {
+  var defaultOption = {
+    type: 0,
+    limit: 10,
+    showName: true,
+    cache: true,
+  };
+
+  options = {
+    ...defaultOption,
+    ...options,
+  };
+
+  var memoryKey = `GachaRank_${options.type}`;
+  var rank = memory.get(memoryKey);
+
+  if (rank !== null) return rank;
+
+  let order = options.type === 0 ? "DESC" : "ASC";
+
+  var query = sql
+    .select("Inventory", ["count(itemId) as cnt", "userId"])
+    .where({ itemId: 999 }, "!=")
+    .groupby("userId")
+    .orderby(`cnt ${order}`);
+
+  if (options.limit !== 0) {
+    query = query.limit(options.limit);
+  }
+
+  rank = await sqlite.all(query.text, query.values);
+  var rankDatas = rank;
+
+  if (options.showName) {
+    rankDatas = await Promise.all(
+      rank.map(data =>
+        LineClient.getUserProfile(data.userId)
+          .then(
+            profile => profile.displayName,
+            () => "路人甲"
+          )
+          .then(displayName => ({ ...data, displayName }))
+      )
+    );
+  }
+
+  if (options.cache) {
+    memory.put(memoryKey, rankDatas, 1 * 60 * 60 * 1000);
+  }
+
+  return rankDatas;
+};

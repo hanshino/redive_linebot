@@ -25,6 +25,15 @@ function all(query, params) {
   });
 }
 
+function get(query, params) {
+  return new Promise((res, rej) => {
+    db.get(query, params, function (err, rows) {
+      if (err) rej(err);
+      res(rows);
+    });
+  });
+}
+
 exports.recordSign = sign => {
   var query = sql.insert("SignRecord", { sign });
 
@@ -36,7 +45,7 @@ exports.recordSign = sign => {
 exports.recordPeople = context => {
   var query = sql.insert("PeopleFlow", {
     userId: context.event.source.userId || "U123",
-    time: getCurrDate(),
+    time: getDate(),
   });
 
   createStatus.then(() => {
@@ -49,21 +58,40 @@ exports.getSignData = () => {
   return createStatus.then(() => all(query.text, query.values));
 };
 
-exports.getPeopleData = () => {
+exports.getPeopleData = async () => {
+  let curr = new Date().getTime();
   var query = sql
     .select("PeopleFlow", ["COUNT(*) as cnt", "userId"])
-    .where({ time: getCurrDate() })
+    .where({ time: getDate() })
     .groupby("userId");
-  return createStatus.then(() => all(query.text, query.values));
+
+  await createStatus;
+
+  let queryText = query.text;
+  let queryValue = query.values;
+
+  let lastOne = getDate(new Date(curr - 60 * 1000));
+  let lastTwo = getDate(new Date(curr - 120 * 1000));
+
+  let currData = await all(queryText, queryValue);
+  let lastOneData = await all(queryText, [lastOne]);
+  let lastTwoData = await all(queryText, [lastTwo]);
+
+  return [currData, lastOneData, lastTwoData].map(data => {
+    if (data.length === 0) return { onlineCount: 0, speakTimes: 0 };
+    let onlineCount = data.length;
+    let speakTimes = data.map(d => parseInt(d.cnt)).reduce((pre, curr) => pre + curr);
+    return { onlineCount, speakTimes };
+  });
 };
 
-function getCurrDate() {
-  var timestamp = new Date();
+function getDate(time) {
+  time = time || new Date();
   return [
-    timestamp.getFullYear(),
-    timestamp.getMonth(),
-    timestamp.getDate(),
-    timestamp.getHours(),
-    timestamp.getMinutes(),
+    time.getFullYear(),
+    time.getMonth(),
+    time.getDate(),
+    time.getHours(),
+    time.getMinutes(),
   ].join("");
 }

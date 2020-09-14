@@ -15,7 +15,6 @@ exports.getGroupCount = groupId => {
 exports.getUsersProfile = async userDatas => {
   return await Promise.all(
     userDatas.map(async data => {
-      console.log(data);
       if (data.groupId !== undefined) {
         return LineClient.getGroupMemberProfile(data.groupId, data.userId);
       } else if (data.roomId !== undefined) {

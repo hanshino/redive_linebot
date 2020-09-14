@@ -8,6 +8,7 @@ const GroupConfig = require("../../doc/GroupConfig.json");
 const { verifyToken, verifyAdmin } = require("../middleware/validation");
 const gacha = require("../controller/princess/gacha");
 const { webhook } = require("../util/discord");
+const { showStatistics, showUserStatistics } = require("../controller/application/Statistics");
 
 router.get("/Group/:groupId/Speak/Rank", GroupRecordController.getRankDatas);
 router.get("/Source/:sourceId/Customer/Orders", CustomerOrderController.fetchCustomerOrders);
@@ -51,6 +52,9 @@ router.get("/Admin/GlobalOrders/Data", GlobalOrdersController.api.showGlobalOrde
 router.post("/Admin/GlobalOrders/Data", GlobalOrdersController.api.insertGlobalOrders);
 router.put("/Admin/GlobalOrders/Data", GlobalOrdersController.api.updateGlobalOrders);
 router.delete("/Admin/GlobalOrders/Data/:orderKey", GlobalOrdersController.api.deleteGlobalOrders);
+router.get("/Gacha/Rank/:type", gacha.api.showGachaRank);
+router.get("/Pudding/Statistics", showStatistics);
+router.get("/My/Statistics", verifyToken, showUserStatistics);
 
 router.all("*", (req, res) => {
   res.status(404).json({ message: "invalid api url." });

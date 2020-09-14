@@ -189,6 +189,7 @@ module.exports = {
     updateCharacter: updateCharacter,
     insertCharacter: insertCharacter,
     deleteCharacter: deleteCharacter,
+    showGachaRank: showGachaRank,
   },
 };
 
@@ -311,4 +312,20 @@ async function recordToInventory(userId, rewards) {
     collectedCount,
     allCount,
   };
+}
+
+async function showGachaRank(req, res) {
+  try {
+    var { type } = req.params;
+    var result = {};
+    var rankDatas = await GachaModel.getCollectedRank({ type: parseInt(type) });
+
+    result = rankDatas;
+  } catch (e) {
+    if (!(e instanceof GachaException)) throw e;
+    res.status(400);
+    result = { message: e.message };
+  }
+
+  res.json(result);
 }

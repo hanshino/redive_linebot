@@ -233,10 +233,119 @@ const OtherManual = {
     spacing: "md",
   },
 };
+const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
+const PuddingStatus = {
+  type: "bubble",
+  body: {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "image",
+        url: "https://i.imgur.com/SW3GwIA.png",
+        size: "full",
+        aspectMode: "cover",
+        gravity: "top",
+        aspectRatio: "7:9",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: "布丁運行狀態",
+                size: "xl",
+                color: "#ffffff",
+                weight: "bold",
+              },
+            ],
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "filler",
+              },
+              {
+                type: "box",
+                layout: "baseline",
+                contents: [
+                  {
+                    type: "filler",
+                  },
+                  {
+                    type: "text",
+                    text: "前往查看",
+                    color: "#ffffff",
+                    flex: 0,
+                    offsetTop: "-2px",
+                  },
+                  {
+                    type: "filler",
+                  },
+                ],
+                spacing: "sm",
+              },
+              {
+                type: "filler",
+              },
+            ],
+            borderWidth: "1px",
+            cornerRadius: "4px",
+            spacing: "sm",
+            borderColor: "#ffffff",
+            margin: "xxl",
+            height: "40px",
+            action: {
+              type: "uri",
+              label: "action",
+              uri: liffUri,
+            },
+          },
+        ],
+        position: "absolute",
+        offsetBottom: "0px",
+        offsetStart: "0px",
+        offsetEnd: "0px",
+        backgroundColor: "#00bcd488",
+        paddingAll: "20px",
+        paddingTop: "18px",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "News",
+            color: "#ffffff",
+            align: "center",
+            size: "xs",
+            offsetTop: "3px",
+          },
+        ],
+        position: "absolute",
+        cornerRadius: "20px",
+        offsetTop: "18px",
+        backgroundColor: "#ff334b",
+        offsetStart: "18px",
+        height: "25px",
+        width: "53px",
+      },
+    ],
+    paddingAll: "0px",
+  },
+};
 
 module.exports = context => {
   context.sendFlex("使用說明", {
     type: "carousel",
-    contents: [CharacterManual, GroupManual, OtherManual],
+    contents: [PuddingStatus, CharacterManual, GroupManual, OtherManual],
   });
 };
