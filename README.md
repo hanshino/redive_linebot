@@ -7,15 +7,47 @@
 * 開發過程協助分析每一動作的耗時，進行效能優化
 * 因為他真的超好用der
 
+## 使用技術
+
+此專案結合了 `docker-compose` 一鍵佈署的特性，使用了五台虛擬機器
+* mysql
+* redis
+* nginx
+* node.js * 2
+
+進行 `load-balance` (複載平衡)，使得使用者訊息可以得到最快速的回復。
+
 ## 目前適用聊天軟體
 
 * [Line](https://line.me/zh-hant/)
 
+## 此專案特色
+
+### 各大遊戲性功能 - 管理員用
+* 抽卡模擬
+* 資訊查詢（管理員自主設定指令）
+
+### 群組功能性 - 使用者用
+* 群組排行
+* 群組設定（自定義功能開關）
+
+### 公主連結資訊查詢 - 使用者
+* 角色資訊查詢
+* 戰隊報名管理
+* 官方活動查詢
+
+
+## 部分截圖
+
+![首頁](readmepic/home.png)
+![全群指令管理](readmepic/GlobalOrder.png)
+![轉蛋卡池](readmepic/GachaPool.png)
+
 ## 事前準備
 
 * [Git](https://git-scm.com/)
-* [Node.js](https://nodejs.org/en/)
-* Line機器人申請，記下 Access Token & Client Secret
+* [Docker](https://www.docker.com/)
+* [Line機器人申請](https://manager.line.biz/)，記下 Access Token & Client Secret
 
 ## 安裝方式
 
@@ -23,20 +55,14 @@
 2. `git clone https://github.com/hanshino/redive_linebot.git`
 3. `cd redive_linebot`
 4. `cp .env.example .env`
-5. `npm install` or `yarn install`
-6. 等待安裝...
-7. `npm run start` or `yarn start`
-8. 開始對話吧！
+5. 編輯 `.env` ，請務必填上所有資訊並存檔！
+6. `docker-compose up -d`
+7. 此時電腦的 **5000 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
+8. 網址預設為 `https://{your_domain}/webhooks/line`
+9. 將網址填進 [Line Account Manager](https://manager.line.biz/)
 
 
 ## 注意事項
 
-* 進行安裝方式第四步之後，記得編輯裡面的內容，填上你機器人的相對應的資料哦～
-* 如果有自己的 web server 的話，在第7步可以改輸入 `npm start` or `yarn start`
 * 要使用戰隊功能，需先跟 Ian 戰隊系統作者申請 Accesss Token
-
-## 指令列表
-
-    #抽
-    #角色、#公主、#角色資訊、#角色技能、#角色行動、#角色專武、#角色rank
-    #新增指令、#新增關鍵字指令
+* `Windows` 作業系統使用 `Docker` 需注意開啟 `hyper-v` 是否會影響自己遊玩手機模擬器。
