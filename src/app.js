@@ -17,6 +17,7 @@ const { showSchedule } = require("./controller/princess/schedule");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
+const { test } = require("./controller/application/Guild");
 
 function showState(context) {
   context.sendText(JSON.stringify(context.state));
@@ -73,6 +74,7 @@ async function OrderBased(context, { next }) {
     text("/people", function () {
       traffic.getPeopleData().then(console.table);
     }),
+    text("/test", test),
     route("*", next),
   ]);
 }

@@ -14,6 +14,9 @@ exports.columnsAlias = [
   "createUser",
   "modifyDTM",
   "modifyUser",
+  "senderName",
+  "senderIcon",
+  "touchDTM",
   "status",
 ];
 
@@ -97,7 +100,6 @@ exports.setStatus = (objData, status) => {
     .where({
       sourceId: objData.sourceId,
       orderKey: objData.orderKey,
-      status: 1,
     })
     .then(res => res);
 };
@@ -140,22 +142,74 @@ exports.orderShutdown = sourceId => {
  * @param {Object} orderData 修改項目
  * @param {String} orderData.orderKey
  * @param {String} orderData.order
+ * @param {Array}  orderData.replyDatas
  * @param {String} orderData.touchType
+ * @param {String} orderData.senderName
+ * @param {String} orderData.senderIcon
  * @param {String} orderData.status
+ * @param {String} modifyUser
  */
-exports.updateOrder = (sourceId, orderData) => {
-  resetMemoryOrder(sourceId);
-  return mysql(this.table)
-    .update({
-      status: orderData.status,
-      touchType: orderData.touchType,
-      cusorder: orderData.order,
+exports.updateOrder = (sourceId, orderData, modifyUser) => {
+  let { orderKey, replyDatas, touchType, senderName, senderIcon, order } = orderData;
+
+  return mysql
+    .transaction(trx => {
+      let updatePromise = Promise.all(
+        replyDatas.map((data, index) => {
+          let { messageType, reply } = data;
+          return trx
+            .select(["no", "orderKey"])
+            .from(this.table)
+            .where({ orderKey, no: index })
+            .then(res => {
+              if (res.length === 0) {
+                return trx
+                  .insert({
+                    no: index,
+                    sourceId,
+                    orderKey,
+                    cusorder: order,
+                    touchType,
+                    messageType,
+                    reply,
+                    CreateUser: modifyUser,
+                    modifyDTM: new Date(),
+                    modifyUser,
+                    senderName,
+                    senderIcon,
+                  })
+                  .into(this.table);
+              } else {
+                return trx(this.table)
+                  .update({
+                    messageType,
+                    reply,
+                    no: index,
+                    touchType,
+                    senderName,
+                    senderIcon,
+                    modifyDTM: new Date(),
+                    modifyUser,
+                  })
+                  .where({
+                    no: index,
+                    orderKey,
+                    sourceId,
+                  });
+              }
+            });
+        })
+      );
+
+      updatePromise
+        .then(() =>
+          trx(this.table).where({ sourceId, orderKey }).where("no", ">=", replyDatas.length).del()
+        )
+        .then(trx.commit)
+        .then(() => resetMemoryOrder(sourceId))
+        .catch(trx.rollback);
     })
-    .where({
-      orderKey: orderData.orderKey,
-      sourceId,
-    })
-    .then(res => res);
+    .catch(console.error);
 };
 
 function resetMemoryOrder(sourceId) {

@@ -2,6 +2,42 @@ const fetch = require("node-fetch");
 const AdminModel = require("../model/application/Admin");
 
 /**
+ * 驗證Line來源id
+ */
+exports.verifyId = (id, res, next) => {
+  if (!/^[CUR][a-f0-9]{32}$/.test(id)) {
+    res.status(400).send("");
+    return;
+  }
+
+  next();
+};
+
+/**
+ * 驗證Line群組ID
+ */
+exports.verifyLineGroupId = (groupId, res, next) => {
+  if (!/^C[a-f0-9]{32}$/.test(groupId)) {
+    res.status(400).send("");
+    return;
+  }
+
+  next();
+};
+
+/**
+ * 驗證Line使用者ID
+ */
+exports.verifyLineGroupId = (userId, res, next) => {
+  if (!/^U[a-f0-9]{32}$/.test(userId)) {
+    res.status(400).send("");
+    return;
+  }
+
+  next();
+};
+
+/**
  * 驗證line token
  * @param {String} token Liff的token
  */
@@ -20,6 +56,10 @@ exports.verifyToken = (req, res, next) => {
       Authorization: `Bearer ${token}`,
     },
   })
+    .then(resp => {
+      if (!resp.ok) return Promise.reject();
+      return resp;
+    })
     .then(result => result.json())
     .then(profile => {
       req.profile = profile;

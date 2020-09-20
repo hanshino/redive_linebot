@@ -16,6 +16,7 @@ exports.table = "GlobalOrders";
  * @param {String} replyData.reply
  */
 exports.insertData = objData => {
+  let key = uuid();
   var params = objData.replyDatas.map((data, index) => {
     return {
       no: index,
@@ -26,11 +27,11 @@ exports.insertData = objData => {
       keyword: objData.order,
       touchType: objData.touchType,
       modifyTS: new Date(),
-      key: uuid(),
+      key,
     };
   });
 
-  return mysql.insert(params).into(this.table);
+  return mysql.insert(params).into(this.table).then(resetOrderCache);
 };
 
 /**
@@ -39,8 +40,8 @@ exports.insertData = objData => {
  * @param {String} objData.orderKey
  * @param {String} objData.order
  * @param {Number} objData.touchType 1: 全符合，2:關鍵字
- * @param {String} objData.senderName
- * @param {String} objData.senderIcon
+ * @param {String?} objData.senderName
+ * @param {String?} objData.senderIcon
  * @param {Array}  objData.replyDatas
  * @param {Object} replyData
  * @param {String} replyData.no
@@ -48,34 +49,39 @@ exports.insertData = objData => {
  * @param {String} replyData.reply
  */
 exports.updateData = objData => {
-  var sqlQuerys = objData.replyDatas.map(data => {
-    return mysql
-      .update({
-        no: data.no,
-        message_type: data.messageType,
-        reply: data.reply,
-        sender_name: objData.senderName,
-        sender_icon: objData.senderIcon,
-        keyword: objData.order,
-        touch_type: objData.touchType,
-        modify_ts: new Date(),
-      })
-      .into(this.table)
-      .where({
-        key: objData.orderKey,
-        no: data.no,
-      });
-  });
+  let { orderKey, replyDatas, order, touchType } = objData;
+  return mysql
+    .transaction(trx => {
+      let updatePromise = Promise.all(
+        replyDatas.map((data, index) => {
+          let { messageType, reply, senderName, senderIcon } = data;
+          return trx(this.table)
+            .update({
+              messageType,
+              reply,
+              no: index,
+              senderName,
+              senderIcon,
+              keyword: order,
+              touchType,
+              modifyTS: new Date(),
+            })
+            .where({
+              no: index,
+              key: orderKey,
+            });
+        })
+      );
 
-  return Promise.all(sqlQuerys)
-    .then(() => {
-      return mysql
-        .from("GlobalOrders")
-        .where("key", objData.orderKey)
-        .andWhere("no", ">=", objData.replyDatas.length)
-        .del();
+      updatePromise
+        .then(() =>
+          trx(this.table).where({ key: orderKey }).where("no", ">=", replyDatas.length).del()
+        )
+        .then(trx.commit)
+        .then(resetOrderCache)
+        .catch(trx.rollback);
     })
-    .then(() => resetOrderCache());
+    .catch(console.error);
 };
 
 /**
@@ -83,7 +89,7 @@ exports.updateData = objData => {
  * @param {String} orderKey 指令金鑰
  */
 exports.deleteData = orderKey => {
-  return mysql.from("GlobalOrders").where({ key: orderKey }).del();
+  return mysql.from("GlobalOrders").where({ key: orderKey }).del().then(resetOrderCache);
 };
 
 exports.fetchAllData = async () => {

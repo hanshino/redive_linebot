@@ -20,9 +20,9 @@ exports.getRankDatas = async (req, res) => {
           displayName: displayName,
           status: data.Status,
           speakTimes: data.SpeakTimes,
-          lastSpeakTS: new Date(parseInt(data.LastSpeakDTM)).getTime(),
-          joinedTS: new Date(parseInt(data.JoinedDTM)).getTime(),
-          leftTS: data.LeftDTM === null ? null : new Date(parseInt(data.LeftDTM)).getTime(),
+          lastSpeakTS: new Date(data.LastSpeakDTM).getTime(),
+          joinedTS: new Date(data.JoinedDTM).getTime(),
+          leftTS: data.LeftDTM === null ? null : new Date(data.LeftDTM).getTime(),
         };
 
         if (displayName === null || displayName === undefined) {

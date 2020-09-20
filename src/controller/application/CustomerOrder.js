@@ -1,6 +1,6 @@
 const CustomerOrderModel = require("../../model/application/CustomerOrder");
 const minimist = require("minimist");
-const md5 = require("md5");
+const uuid = require("uuid-random");
 const random = require("math-random");
 const CustomerOrderTemplate = require("../../templates/application/CustomerOrder");
 const { send } = require("../../templates/application/Order");
@@ -36,16 +36,6 @@ function initialReply(strReply) {
     });
 
   return replyDatas;
-}
-
-/**
- * 是否為重複指令
- * @param {String} orderKey 指令辨識金鑰
- * @param {String} sourceId 來源辨識代號
- * @return {Promise}    Boolean
- */
-async function isRepeatOrder(orderKey, sourceId) {
-  return (await CustomerOrderModel.queryOrderByKey(orderKey, sourceId)).length !== 0;
 }
 
 /**
@@ -110,12 +100,7 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
 
     var replyDatas = initialReply(reply);
     var { name, iconUrl } = handleSender(param);
-    var orderKey = md5(order + reply + touchType);
-
-    if ((await isRepeatOrder(orderKey, sourceId)) === true)
-      throw new CusOrderException(
-        "指令已存在，請勿重複新增，如已刪除請輸入 `#指令列表` 進行指令開啟"
-      );
+    let orderKey = uuid();
 
     let params = replyDatas.map((data, index) => ({
       NO: index,
@@ -183,10 +168,12 @@ exports.CustomerOrderDetect = async context => {
   // 紀錄最近一次觸發時間，用於日後回收無用處之指令。
   CustomerOrderModel.touchOrder(context.event.message.text, sourceId);
 
-  send(
-    context,
-    orderDatas.filter(data => data.orderKey === chosenOrderKey)
-  );
+  let chosenOrderDatas = orderDatas.filter(data => data.orderKey === chosenOrderKey);
+
+  send(context, chosenOrderDatas, {
+    name: chosenOrderDatas[0].senderName,
+    iconUrl: chosenOrderDatas[0].senderIcon,
+  });
 
   /**
    * 挑選指令，挑選規則如下
@@ -298,7 +285,9 @@ function autoComplete(orderKey, deleteOrders) {
   return findResult || {};
 }
 
-exports.fetchCustomerOrders = async (req, res) => {
+exports.api = {};
+
+exports.api.fetchCustomerOrders = async (req, res) => {
   const { sourceId } = req.params;
   var orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId);
 
@@ -311,21 +300,89 @@ exports.fetchCustomerOrders = async (req, res) => {
   orderDatas = orderDatas.map(data => {
     return {
       ...data,
-      createTS: new Date(parseInt(data.createDTM)).getTime(),
+      createTS: new Date(data.createDTM).getTime(),
     };
   });
   res.json(orderDatas);
 };
 
-exports.updateOrder = async (req, res) => {
+exports.api.updateOrder = async (req, res) => {
   const { sourceId } = req.params;
+  const { userId } = req.profile;
 
   try {
-    if (/^[CRU][a-f0-9]{32}$/.test(sourceId) === false)
-      throw new CusOrderException("Invalid Source ID", 1);
-    var updateResult = await CustomerOrderModel.updateOrder(sourceId, req.body);
+    var updateResult = await CustomerOrderModel.updateOrder(sourceId, req.body, userId);
     if (updateResult === false) throw new CusOrderException("Update Failed", 2);
 
+    res.json({});
+  } catch (e) {
+    if (e.name === "CusOrderException") {
+      res.json({
+        status: "fail",
+        errMsg: e.message,
+        code: e.code,
+      });
+    } else throw e;
+  }
+};
+
+exports.api.insertOrder = async (req, res) => {
+  const { sourceId } = req.params;
+  const { body: orderDatas, profile } = req;
+
+  try {
+    var { order, senderName, senderIcon, touchType } = orderDatas;
+    var orderKey = uuid();
+
+    if ([order, touchType].includes("")) throw new CusOrderException("Bad Request.");
+    if ([order, touchType].includes(null)) throw new CusOrderException("Bad Request.");
+    if ([order, touchType].includes(undefined)) throw new CusOrderException("Bad Request.");
+
+    orderDatas.replyDatas.forEach(data => {
+      if ([data.reply, data.messageType].includes("")) throw new CusOrderException("Bad Request.");
+      if ([data.reply, data.messageType].includes(null))
+        throw new CusOrderException("Bad Request.");
+      if ([data.reply, data.messageType].includes(undefined))
+        throw new CusOrderException("Bad Request.");
+    });
+
+    var params = orderDatas.replyDatas.map((data, index) => ({
+      No: index,
+      sourceId,
+      orderKey,
+      CusOrder: order,
+      touchType,
+      MessageType: data.messageType,
+      Reply: data.reply,
+      CreateDTM: new Date(),
+      CreateUser: profile.userId,
+      ModifyUser: profile.userId,
+      SenderName: senderName === "" ? null : senderName,
+      SenderIcon: senderIcon === "" ? null : senderIcon,
+    }));
+
+    await CustomerOrderModel.insertOrder(params);
+    res.json({});
+  } catch (e) {
+    if (e.name === "CusOrderException") {
+      res.json({
+        status: "fail",
+        errMsg: e.message,
+        code: e.code,
+      });
+    } else throw e;
+  }
+};
+
+exports.api.setCustomerOrderStatus = async (req, res) => {
+  const { sourceId, orderKey, status } = req.params;
+  const { profile } = req;
+  try {
+    if (![1, 0].includes(parseInt(status))) throw new CusOrderException("Bad Request.");
+    await CustomerOrderModel.setStatus(
+      { orderKey, sourceId, modifyUser: profile.userId },
+      parseInt(status)
+    );
     res.json({});
   } catch (e) {
     if (e.name === "CusOrderException") {
