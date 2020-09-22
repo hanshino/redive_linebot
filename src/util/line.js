@@ -3,13 +3,28 @@ const token = process.env.LINE_ACCESS_TOKEN;
 const apiURL = "https://api.line.me/v2";
 const { getClient } = require("bottender");
 const LineClient = getClient("line");
+const redis = require("./redis");
 
 exports.getGroupSummary = groupId => {
-  return doGet(`/bot/group/${groupId}/summary`);
+  let key = `${groupId}_summary`;
+  return redis.get(key).then(cache => {
+    if (cache !== null) return cache;
+    return doGet(`/bot/group/${groupId}/summary`).then(res => {
+      redis.set(key, res, 60);
+      return res;
+    });
+  });
 };
 
 exports.getGroupCount = groupId => {
-  return doGet(`/bot/group/${groupId}/members/count`);
+  let key = `${groupId}_count`;
+  return redis.get(key).then(cache => {
+    if (cache !== null) return cache;
+    return doGet(`/bot/group/${groupId}/members/count`).then(res => {
+      redis.set(key, res, 60);
+      return res;
+    });
+  });
 };
 
 exports.getUsersProfile = async userDatas => {

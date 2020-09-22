@@ -96,6 +96,9 @@ exports.api.insertGlobalOrders = async (req, res) => {
     objData = { ...objDefault, ...objData };
     objData.replyDatas = objData.replyDatas.slice(0, 5);
 
+    if (objData.senderName === "") delete objData.senderName;
+    if (objData.senderIcon === "") delete objData.senderIcon;
+
     await OrderModel.insertData(objData);
   } catch (e) {
     if (!(e instanceof GlobalOrderException)) throw e;

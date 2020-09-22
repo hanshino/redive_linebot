@@ -4,6 +4,7 @@ const character = require("./controller/princess/character");
 const gacha = require("./controller/princess/gacha");
 const battle = require("./controller/princess/battle");
 const customerOrder = require("./controller/application/CustomerOrder");
+const guildConfig = require("./controller/application/GroupConfig");
 const setProfile = require("./middleware/profile");
 const statistics = require("./middleware/statistics");
 const lineEvent = require("./controller/lineEvent");
@@ -17,7 +18,7 @@ const { showSchedule } = require("./controller/princess/schedule");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
-const { test } = require("./controller/application/Guild");
+const { showManagePlace } = require("./templates/application/Admin");
 
 function showState(context) {
   context.sendText(JSON.stringify(context.state));
@@ -61,6 +62,7 @@ async function HandlePostback(context, { next }) {
 async function OrderBased(context, { next }) {
   return router([
     ...(await BattleOrder(context)),
+    ...AdminOrder(context),
     ...CharacterOrder(context),
     ...CustomerOrder(context),
     ...GroupOrder(context),
@@ -74,9 +76,16 @@ async function OrderBased(context, { next }) {
     text("/people", function () {
       traffic.getPeopleData().then(console.table);
     }),
-    text("/test", test),
+    text("/test", context => console.log(context.state)),
+    text(/^[.#]自訂頭像( (?<param1>\S+))?( (?<param2>\S+))?/, guildConfig.setSender),
     route("*", next),
   ]);
+}
+
+function AdminOrder(context) {
+  if (context.event.source.type !== "user") return [];
+  if (!context.state.isAdmin) return [];
+  return [text(/^[.#/](後台管理|system(call)?)/i, showManagePlace)];
 }
 
 function GroupOrder(context) {
@@ -111,8 +120,11 @@ async function BattleOrder(context) {
   if ((await redis.get("GuildBattleSystem")) !== null) return [];
 
   return [
-    text(/^[.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
-    text(/^[.](gb|刀表)(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleList),
+    text(/^[#.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
+    text(
+      /^[#.](gb|刀表)(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/,
+      battle.BattleList
+    ),
     text(/^[#.]檢視下一?[周週][回次]$/, battle.NextBattleList),
     text(/^[#.]檢視上一?[周週][回次]$/, battle.PreBattleList),
     text(/^[#.](前往)?下一?[周週][回次]$/, battle.IncWeek),

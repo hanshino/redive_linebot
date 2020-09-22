@@ -13,6 +13,7 @@ exports.BattleList = async (context, props) => {
     recordSign("BattleList");
     const { week, boss } = props.match.groups;
     if (week === undefined) throw new BattleException("缺少參數，至少需指定周次");
+    if (!isValidWeek(week)) throw new BattleException("周次輸入錯誤，請輸入介於1~199");
 
     const formId = await getFormId(context);
 
@@ -153,7 +154,7 @@ exports.BattleCancel = async (context, props) => {
 
   try {
     if (week === undefined || boss === undefined) throw new BattleException("必須指定周次以及幾王");
-
+    if (!isValidWeek(week)) throw new BattleException("周次輸入錯誤，請輸入介於1~199");
     const [formId, ianUserId] = await Promise.all([getFormId(context), getIanUserId(context)]);
 
     var formRecords = await BattleModel.Ian.getFormRecords(formId, week, boss);
@@ -352,5 +353,17 @@ async function getCurrWeek(groupId) {
     return 1;
   }
 
-  return currWeekData.week;
+  return parseInt(currWeekData.week);
+}
+
+/**
+ * 驗證周次的正確性
+ * @param {String} week
+ */
+function isValidWeek(week) {
+  if (!/^\d+$/.test(week)) return false;
+  week = parseInt(week);
+  if (week >= 200) return false;
+  if (week <= 0) return false;
+  return true;
 }

@@ -37,8 +37,8 @@ exports.getPeopleData = async () => {
 function getPeopleData(date) {
   return Promise.all([redis.get(`OnlinePeople_${date}`), redis.get(`SpeakTimes_${date}`)]).then(
     results => ({
-      onlineCount: results[0],
-      speakTimes: results[1],
+      onlineCount: results[0] || 0,
+      speakTimes: results[1] || 0,
     })
   );
 }

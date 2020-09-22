@@ -52,24 +52,49 @@ router.put(
 );
 /** Customer Orders */
 
+/**
+ * 設定群組發送人
+ */
+router.put(
+  "/Group/:groupId/Sender",
+  (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
+  verifyToken,
+  GroupConfigController.api.setSender
+);
+
+/**
+ * 群組功能開關切換
+ */
 router.put(
   "/Group/:groupId/Name/:name/:status",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
   verifyToken,
   GroupConfigController.api.switchConfig
 );
+
+/**
+ * 群組 Discord Webhook 連動設定
+ */
 router.post(
   "/Group/:groupId/Discord/Webhook",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
   verifyToken,
   GroupConfigController.api.setDiscordWebhook
 );
+
+/**
+ * 群組加入新成員歡迎語句設定
+ */
 router.post(
   "/Group/:groupId/WelcomeMessage",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
   verifyToken,
   GroupConfigController.api.setWelcomeMessage
 );
+
+/**
+ * 群組 Discord Webhook 解除設定
+ */
 router.delete(
   "/Group/:groupId/Discord/Webhook",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
@@ -120,6 +145,12 @@ router.get("/Pudding/Statistics", showStatistics);
 router.get("/My/Statistics", verifyToken, showUserStatistics);
 
 router.get("/Guild/Summarys", verifyToken, GuildController.api.getGuildSummarys);
+router.get(
+  "/Guild/:guildId/Summary",
+  (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
+  verifyToken,
+  GuildController.api.getGuildSummary
+);
 
 router.all("*", (req, res) => {
   res.status(404).json({ message: "invalid api url." });

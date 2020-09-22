@@ -126,7 +126,12 @@ function doPost(path, data) {
     method: "post",
   })
     .then(IsIanSeverDown)
-    .then(res => res.json());
+    .then(res => res.json())
+    .then(json => {
+      console.log(path);
+      console.timeEnd("doPost");
+      return json;
+    });
 }
 
 /**

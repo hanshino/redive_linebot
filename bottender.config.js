@@ -1,6 +1,6 @@
 module.exports = {
   session: {
-    driver: "memory",
+    driver: "redis",
     state: 15,
     stores: {
       memory: {
@@ -12,6 +12,7 @@ module.exports = {
       redis: {
         port: 6379,
         host: "redis",
+        password: process.env.REDIS_PASSWORD,
         db: 0,
       },
       mongo: {

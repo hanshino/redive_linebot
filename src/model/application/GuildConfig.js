@@ -1,5 +1,6 @@
 const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
+exports.table = "GuildConfig";
 
 exports.fetchConfig = async groupId => {
   var GroupConfig = await redis.get(`GuildConfig_${groupId}`);
@@ -176,3 +177,59 @@ function insertConfig(groupId, config) {
     .into("GuildConfig")
     .then();
 }
+
+/**
+ * 設定發送者姓名
+ * @param {String} groupId
+ * @param {String} senderName
+ */
+exports.setSenderName = async (guildId, senderName = null) => {
+  resetSender(guildId);
+  return await mysql(this.table).update({ senderName }).where({ guildId });
+};
+
+/**
+ * 設定發送者頭像
+ * @param {String} guildId
+ * @param {String} senderName
+ */
+exports.setSenderIcon = async (guildId, senderIcon = null) => {
+  resetSender(guildId);
+  return await mysql(this.table).update({ senderIcon }).where({ guildId });
+};
+
+/**
+ * 設定發送者
+ * @param {String} guildId
+ * @param {Object} sender
+ * @param {String} sender.name
+ * @param {String} sender.icon
+ */
+exports.setSender = async (guildId, { name = null, icon = null }) => {
+  resetSender(guildId);
+  return await mysql(this.table).update({ senderName: name, senderIcon: icon }).where({ guildId });
+};
+
+function resetSender(guildId) {
+  redis.del(`Sender_${guildId}`);
+}
+
+exports.getSender = async (guildId, option = { cache: true }) => {
+  let key = `Sender_${guildId}`;
+  let sender = await redis.get(key);
+
+  if (sender !== null && option.cache) return sender;
+
+  var rows = await mysql.select(["senderName", "senderIcon"]).from(this.table).where({ guildId });
+  if (rows.length === 0) {
+    sender = {};
+  } else {
+    sender = {
+      name: rows[0].senderName,
+      iconUrl: rows[0].senderIcon,
+    };
+  }
+
+  redis.set(key, sender, 60);
+  return sender;
+};

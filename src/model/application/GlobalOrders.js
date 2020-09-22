@@ -8,8 +8,8 @@ exports.table = "GlobalOrders";
  * @param {Object} objData
  * @param {String} objData.order
  * @param {Number} objData.touchType 1: 全符合，2:關鍵字
- * @param {String} objData.senderName
- * @param {String} objData.senderIcon
+ * @param {String?} objData.senderName
+ * @param {String?} objData.senderIcon
  * @param {Array}  objData.replyDatas
  * @param {Object} replyData
  * @param {String} replyData.messageType

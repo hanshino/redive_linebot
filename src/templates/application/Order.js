@@ -13,7 +13,11 @@ const CharacterModel = require("../../model/princess/character");
  * @param {String} sender.name
  * @param {String} sender.iconUrl
  */
-exports.send = (context, replyDatas, sender = {}) => {
+exports.send = (context, replyDatas, sender = { name: null, iconUrl: null }) => {
+  if (sender.name === null && sender.iconUrl === null) {
+    sender = context.state.sender || {};
+  }
+
   replyDatas
     .sort((a, b) => a.no - b.no)
     .forEach(data => {
@@ -105,8 +109,10 @@ function getFullTime(date) {
 
 function getUserName(context) {
   switch (context.platform) {
-    case "line":
-      return context.state.userDatas[context.event.source.userId].displayName;
+    case "line": {
+      let userData = context.state.userDatas[context.event.source.userId];
+      return userData ? userData.displayName : "路人甲";
+    }
     case "telegram":
       return context.event.message.from.username;
   }

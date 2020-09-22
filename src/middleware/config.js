@@ -1,4 +1,5 @@
 const GuildConfigModel = require("../model/application/GuildConfig");
+const AdminModel = require("../model/application/Admin");
 /**
  * 將群組設定檔寫入Session
  * @param {Context} context
@@ -6,15 +7,26 @@ const GuildConfigModel = require("../model/application/GuildConfig");
  */
 module.exports = async (context, props) => {
   if (context.platform !== "line") return props.next;
-  if (context.event.source.type !== "group") return props.next;
 
-  const guildConfig = await GuildConfigModel.fetchConfig(context.event.source.groupId);
+  const { type } = context.event.source;
 
-  if (guildConfig === undefined) return props.next;
+  if (type === "user" && context.state.isAdmin === undefined) {
+    const { userId } = context.event.source;
+    context.setState({
+      isAdmin: await AdminModel.isAdmin(userId),
+    });
+  }
+
+  if (type !== "group") return props.next;
+
+  const { groupId } = context.event.source;
 
   context.setState({
-    ...context.state,
-    guildConfig: guildConfig,
+    sender: await GuildConfigModel.getSender(groupId),
+  });
+
+  context.setState({
+    guildConfig: await GuildConfigModel.fetchConfig(groupId),
   });
 
   return props.next;

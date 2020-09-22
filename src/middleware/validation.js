@@ -28,7 +28,7 @@ exports.verifyLineGroupId = (groupId, res, next) => {
 /**
  * 驗證Line使用者ID
  */
-exports.verifyLineGroupId = (userId, res, next) => {
+exports.verifyLineUserId = (userId, res, next) => {
   if (!/^U[a-f0-9]{32}$/.test(userId)) {
     res.status(400).send("");
     return;

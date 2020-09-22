@@ -27,8 +27,10 @@ CREATE TABLE IF NOT EXISTS `GuildConfig` (
   `GuildId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `Config` json NOT NULL,
   `modifyDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `DiscordWebhook` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `DiscordWebhook` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `WelcomeMessage` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `SenderName` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `SenderIcon` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `GuildId_UNIQUE` (`GuildId`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

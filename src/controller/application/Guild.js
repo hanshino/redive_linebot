@@ -19,6 +19,22 @@ exports.api.getGuildSummarys = (req, res) => {
     });
 };
 
+exports.api.getGuildSummary = async (req, res) => {
+  const { guildId } = req.params;
+  var result = {};
+
+  try {
+    result = {
+      ...(await line.getGroupSummary(guildId)),
+      ...(await line.getGroupCount(guildId)),
+    };
+
+    res.json(result);
+  } catch (e) {
+    res.status(404).json({ message: "Not Found." });
+  }
+};
+
 /**
  * 取得用戶群組列表
  * @param {String} userId
