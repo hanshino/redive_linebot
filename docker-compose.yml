@@ -3,7 +3,7 @@ services:
   nginx:
     image: nginx
     container_name: nginx
-    depends_on:
+    links:
       - app1
       - app2
     ports:
@@ -11,34 +11,25 @@ services:
     volumes:
       - ./config/nginx:/etc/nginx/conf.d
   app1:
-    image: node:12
+    build: ./app
     container_name: RediveBot1
-    working_dir: /application
-    volumes:
-      - .:/application
     links:
       - mysql
       - redis
-    entrypoint: ["sh", "./run.sh"]
     env_file: ./.env
     environment:
       "PORT": 5001
-      "NODE_ENV": "development"
 
   app2:
-    image: node:12
+    build: ./app
     container_name: RediveBot2
     working_dir: /application
-    volumes:
-      - .:/application
     links:
       - mysql
       - redis
-    entrypoint: ["sh", "./run.sh"]
     env_file: ./.env
     environment:
       "PORT": 5002
-      "NODE_ENV": "development"
 
   mysql:
     env_file: ./.env
