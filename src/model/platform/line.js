@@ -45,7 +45,7 @@ exports.openGroup = groupId => {
     this.table.Guild,
     {
       status: 1,
-      closeDTM: "",
+      closeDTM: null,
     },
     {
       status: 0,
@@ -86,7 +86,7 @@ exports.closeUser = userId => {
     this.table.User,
     {
       status: 0,
-      closeDTM: new Date(),
+      closeDTM: null,
     },
     {
       status: 1,
@@ -104,7 +104,7 @@ exports.openUser = userId => {
     this.table.User,
     {
       status: 1,
-      closeDTM: "",
+      closeDTM: null,
     },
     {
       status: 0,
@@ -120,7 +120,7 @@ exports.openUser = userId => {
  * @param {String} whereField
  */
 function setStatus(table, updateField, whereField) {
-  return mysql.update(updateField).from(table).where(whereField);
+  return mysql.update(updateField).from(table).where(whereField).then();
 }
 
 /**

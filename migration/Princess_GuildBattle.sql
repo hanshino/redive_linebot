@@ -19,7 +19,6 @@
 -- Table structure for table `GuildBattle`
 --
 
-
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `GuildBattle` (
@@ -41,4 +40,4 @@ CREATE TABLE IF NOT EXISTS `GuildBattle` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-09-17 23:58:45
+-- Dump completed on 2020-10-02  1:06:10

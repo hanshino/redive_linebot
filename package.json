@@ -9,7 +9,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@sentry/node": "^5.22.3",
+    "@sentry/node": "^5.24.2",
     "body-parser": "^1.19.0",
     "bottender": "1.4.10",
     "cheerio": "^1.0.0-rc.3",
@@ -18,7 +18,7 @@
     "math-random": "^2.0.1",
     "md5": "^2.3.0",
     "minimist": "^1.2.5",
-    "mysql2": "^2.1.0",
+    "mysql2": "^2.2.5",
     "node-fetch": "^2.6.1",
     "nodemon": "^2.0.4",
     "redis": "^3.0.2",
@@ -29,10 +29,10 @@
   "devDependencies": {
     "cors": "^2.8.5",
     "cross-env": "^7.0.2",
-    "eslint": "^7.8.1",
+    "eslint": "^7.9.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-prettier": "^3.1.4",
     "jest": "^26.4.2",
-    "prettier": "^2.1.1"
+    "prettier": "^2.1.2"
   }
 }

@@ -52,8 +52,8 @@ services:
       - "3306:3306"
     environment:
       "MYSQL_DATABASE": "${DB_DATABASE}"
-      "MYSQL_USER": "admin"
-      "MYSQL_PASSWORD": "123456"
+      "MYSQL_USER": "${DB_USER}"
+      "MYSQL_PASSWORD": "${DB_USER_PASSWORD}"
       "MYSQL_ROOT_PASSWORD": "${DB_PASSWORD}"
 
   redis:

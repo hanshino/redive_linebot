@@ -185,6 +185,7 @@ exports.updateOrder = (sourceId, orderData, modifyUser) => {
                     messageType,
                     reply,
                     no: index,
+                    cusorder: order,
                     touchType,
                     senderName,
                     senderIcon,

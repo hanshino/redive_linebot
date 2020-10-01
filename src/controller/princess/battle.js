@@ -1,7 +1,10 @@
 const { battle: BattleModel, week: WeekModel } = require("../../model/princess/guild");
+const GuildModel = require("../../model/application/Guild");
 const line = require("../../util/line");
 const BattleTemplate = require("../../templates/princess/guild/battle");
 const { recordSign } = require("../../util/traffic");
+const BattleSender = { name: "戰隊秘書", iconUrl: "https://i.imgur.com/NuZZR7Q.jpg" };
+const redis = require("../../util/redis");
 
 function BattleException(message) {
   this.message = message;
@@ -11,8 +14,10 @@ function BattleException(message) {
 exports.BattleList = async (context, props) => {
   try {
     recordSign("BattleList");
-    const { week, boss } = props.match.groups;
-    if (week === undefined) throw new BattleException("缺少參數，至少需指定周次");
+    var { week, boss } = props.match.groups;
+    if (week === undefined) {
+      week = await getCurrWeek(context.event.source.groupId);
+    }
     if (!isValidWeek(week)) throw new BattleException("周次輸入錯誤，請輸入介於1~199");
 
     const formId = await getFormId(context);
@@ -71,12 +76,18 @@ async function getIanUserId(context) {
   var [ianUserData] = await BattleModel.getIanUserData(2, userId);
 
   if (ianUserData === undefined) {
+    console.log(`userId: ${userId}, none register.`);
     // 尚未到ian戰隊系統註冊，進行自動註冊
-
-    await BattleModel.Ian.RegisterUser(2, userId, profile.displayName, profile.pictureUrl);
-
     ianUserData = await BattleModel.Ian.isRegister(2, userId);
-    BattleModel.saveIanUserData(2, userId, ianUserData.id);
+
+    console.log(`userId: ${userId}, isRegiter Result ${JSON.stringify(ianUserData)}`);
+
+    if (ianUserData.id === undefined) {
+      await BattleModel.Ian.RegisterUser(2, userId, profile.displayName, profile.pictureUrl);
+      ianUserData = await BattleModel.Ian.isRegister(2, userId);
+    }
+
+    await BattleModel.saveIanUserData(2, userId, ianUserData.id);
 
     return ianUserData.id;
   } else return ianUserData.ianUserId;
@@ -366,4 +377,121 @@ function isValidWeek(week) {
   if (week >= 200) return false;
   if (week <= 0) return false;
   return true;
+}
+
+/**
+ * 回報戰隊出完三刀，並寫進資料庫
+ * @param {Context} context
+ */
+exports.reportFinish = context => {
+  const { groupId, userId } = context.event.source;
+  let userName = context.state.userDatas[userId].displayName || "路人甲";
+
+  BattleModel.setFinishBattle(groupId, userId).then(() =>
+    context.sendText(`恭喜${userName}今日已成為成功人士(出完三刀)！`, { sender: BattleSender })
+  );
+};
+
+/**
+ * 將當天回報紀錄刪除
+ * @param {Context} context
+ */
+exports.reportReset = async context => {
+  const { groupId, userId } = context.event.source;
+  await BattleModel.resetFinishBattle(groupId, userId);
+
+  context.sendText("吶吶，那你剛剛回報是不是騙我，嘖！\n幫你清除了啦！", { sender: BattleSender });
+};
+
+/**
+ * 顯示今日的簽到列表
+ * @param {Context} context
+ */
+exports.showSigninList = async (context, { match }) => {
+  const { groupId } = context.event.source;
+  var { date } = match.groups;
+  date = date || new Date().getDate();
+  let objDate = new Date();
+  let currMonth = objDate.getMonth();
+  objDate.setDate(parseInt(date));
+  objDate.setMonth(currMonth);
+  let FinishDatas = await BattleModel.getFinishList(groupId, objDate);
+
+  if (FinishDatas.length > 50) {
+    context.sendText("此指令不適用於非戰隊群組（人數超過50人）", { sender: BattleSender });
+    return;
+  }
+
+  if (FinishDatas.find(data => data.isSignin) === undefined) {
+    context.sendText(`${date}號查無任何出刀紀錄！`, { sender: BattleSender });
+    return;
+  }
+
+  if (FinishDatas.filter(data => data.isSignin).length === FinishDatas.length) {
+    context.sendText(`${date}號全群皆已完成出刀！`, { sender: BattleSender });
+    return;
+  }
+
+  let sentKey = `FinishList_${groupId}`;
+
+  if ((await redis.get(sentKey)) !== null) {
+    context.sendText("此指令限制30秒呼叫一次", { sender: BattleSender });
+    return;
+  }
+
+  redis.set(sentKey, 1, 30);
+
+  let result = await Promise.all(
+    FinishDatas.map(async data => ({
+      ...data,
+      ...(await line.getGroupMemberProfile(groupId, data.userId)),
+    }))
+  );
+
+  BattleTemplate.showFinishList(context, result);
+};
+
+exports.api = {};
+
+exports.api.showSigninList = async (req, res) => {
+  let { month, guildId } = req.params;
+  month = parseInt(month) || new Date().getMonth() + 1;
+
+  let [memberDatas, signinList] = await Promise.all([
+    GuildModel.fetchGuildMembers(guildId),
+    BattleModel.getMonthFinishList(guildId, month),
+  ]);
+
+  let result = arrangeMonthFinishList(memberDatas, signinList);
+
+  result = await Promise.all(
+    result.map(async data => {
+      let profile = await line.getGroupMemberProfile(data.guildId, data.userId);
+      return { ...profile, ...data };
+    })
+  );
+
+  res.json(result);
+};
+
+/**
+ * 整理出可用的簽到資料
+ * @param {Array<{guildId: String, userId: String}>} memberDatas 群組會員資料
+ * @param {Array<{createDTM: Date, userId: String}>} signinList 簽到資料
+ */
+function arrangeMonthFinishList(memberDatas, signinList) {
+  let result = memberDatas.map(member => ({
+    ...member,
+    signDates: [],
+  }));
+
+  let memberIds = memberDatas.map(data => data.userId);
+
+  signinList.forEach(list => {
+    let idx = memberIds.indexOf(list.userId);
+    list.createDTM.setHours(list.createDTM.getHours() - 5);
+    result[idx].signDates.push(list.createDTM.getDate());
+  });
+
+  return result;
 }

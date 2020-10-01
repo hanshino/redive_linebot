@@ -65,7 +65,6 @@ function handleText(text, context) {
 
     text = text.replace(/\{urprincess\}/gi, () => {
       let urPrincess = princessDatas.filter(data => data.Star === 3);
-      console.log(64);
       return urPrincess[getRandom(urPrincess.length - 1, 0)].Name;
     });
   }

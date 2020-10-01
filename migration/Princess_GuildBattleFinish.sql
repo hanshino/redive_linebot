@@ -16,22 +16,20 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `GuildMembers`
+-- Table structure for table `GuildBattleFinish`
 --
 
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `GuildMembers` (
-  `ID` int NOT NULL AUTO_INCREMENT,
-  `GuildId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `UserId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Status` int NOT NULL DEFAULT '1',
-  `JoinedDTM` datetime DEFAULT CURRENT_TIMESTAMP,
-  `LeftDTM` datetime DEFAULT NULL,
-  `SpeakTimes` int DEFAULT '0',
-  `LastSpeakDTM` datetime DEFAULT NULL,
-  PRIMARY KEY (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `GuildBattleFinish` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `GuildId` varchar(45) NOT NULL COMMENT '群組編號',
+  `UserId` varchar(45) NOT NULL COMMENT '用戶編號',
+  `CreateDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '新增日期',
+  PRIMARY KEY (`id`),
+  KEY `idxUserId` (`UserId`) /*!80000 INVISIBLE */,
+  KEY `idxGuildId` (`GuildId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='紀錄完成三刀的夥伴';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -43,4 +41,4 @@ CREATE TABLE IF NOT EXISTS `GuildMembers` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-10-02  1:06:10
+-- Dump completed on 2020-10-02  1:06:13

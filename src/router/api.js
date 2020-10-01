@@ -4,6 +4,7 @@ const GroupRecordController = require("../controller/application/GroupRecord");
 const CustomerOrderController = require("../controller/application/CustomerOrder");
 const GroupConfigController = require("../controller/application/GroupConfig");
 const GlobalOrdersController = require("../controller/application/GlobalOrders");
+const GuildBattleController = require("../controller/princess/battle");
 const GuildController = require("../controller/application/Guild");
 const GroupConfig = require("../../doc/GroupConfig.json");
 const {
@@ -101,6 +102,10 @@ router.delete(
   verifyToken,
   GroupConfigController.api.removeDiscordWebhook
 );
+
+/**
+ * 綁定群組 Discord Webhook
+ */
 router.post("/Discord/Webhook", (req, res) => {
   webhook
     .test(req.body.webhook)
@@ -110,46 +115,111 @@ router.post("/Discord/Webhook", (req, res) => {
       res.status(403).send("");
     });
 });
+
+/**
+ * 取得群組設定
+ */
 router.get("/Group/:groupId/Config", GroupConfigController.api.fetchConfig);
+
+/**
+ * 群組設定檔
+ */
 router.get("/GroupConfig", (req, res) => res.json(GroupConfig));
+
+/**
+ * 管理員轉蛋資料
+ */
 router.get("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.showGachaPool);
+
+/**
+ * 編輯管理員轉蛋資料
+ */
 router.put("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.updateCharacter);
+
+/**
+ * 新增管理員轉蛋資料
+ */
 router.post("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.insertCharacter);
+
+/**
+ * 刪除管理員轉蛋資料
+ */
 router.delete("/Admin/GachaPool/Data/:id", verifyToken, verifyAdmin, gacha.api.deleteCharacter);
+
+/**
+ * 取得管理員全群指令
+ */
 router.get(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
   GlobalOrdersController.api.showGlobalOrders
 );
+
+/**
+ * 新增管理員全群指令
+ */
 router.post(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
   GlobalOrdersController.api.insertGlobalOrders
 );
+
+/**
+ * 編輯管理員全群指令
+ */
 router.put(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
   GlobalOrdersController.api.updateGlobalOrders
 );
+
+/**
+ * 刪除管理員全群指令
+ */
 router.delete(
   "/Admin/GlobalOrders/Data/:orderKey",
   verifyToken,
   verifyAdmin,
   GlobalOrdersController.api.deleteGlobalOrders
 );
+
+/**
+ * 取得轉蛋排行
+ */
 router.get("/Gacha/Rank/:type", gacha.api.showGachaRank);
+
+/**
+ * 取得布丁使用數據
+ */
 router.get("/Pudding/Statistics", showStatistics);
+
+/**
+ * 取得個人用戶使用數據
+ */
 router.get("/My/Statistics", verifyToken, showUserStatistics);
 
+/**
+ * 取得個人群組資料
+ */
 router.get("/Guild/Summarys", verifyToken, GuildController.api.getGuildSummarys);
+
+/**
+ * 取得特定群組資訊
+ */
 router.get(
   "/Guild/:guildId/Summary",
   (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
   verifyToken,
   GuildController.api.getGuildSummary
+);
+
+router.get(
+  "/Guild/:guildId/Battle/Sign/List/Month/:month",
+  (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
+  GuildBattleController.api.showSigninList
 );
 
 router.all("*", (req, res) => {

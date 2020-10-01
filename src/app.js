@@ -61,7 +61,7 @@ async function HandlePostback(context, { next }) {
  */
 async function OrderBased(context, { next }) {
   return router([
-    ...(await BattleOrder(context)),
+    ...BattleOrder(context),
     ...AdminOrder(context),
     ...CharacterOrder(context),
     ...CustomerOrder(context),
@@ -76,7 +76,6 @@ async function OrderBased(context, { next }) {
     text("/people", function () {
       traffic.getPeopleData().then(console.table);
     }),
-    text("/test", context => console.log(context.state)),
     text(/^[.#]自訂頭像( (?<param1>\S+))?( (?<param2>\S+))?/, guildConfig.setSender),
     route("*", next),
   ]);
@@ -113,13 +112,13 @@ function CustomerOrder(context) {
   ];
 }
 
-async function BattleOrder(context) {
+function BattleOrder(context) {
   if (context.platform !== "line") return [];
   if (context.event.source.type !== "group") return [];
   if (context.state.guildConfig.Battle === "N") return [];
-  if ((await redis.get("GuildBattleSystem")) !== null) return [];
 
   return [
+    text(/^[#.]gbs(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleSignUp),
     text(/^[#.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
     text(
       /^[#.](gb|刀表)(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/,
@@ -132,6 +131,9 @@ async function BattleOrder(context) {
     text(/^[#.][五5]王倒了$/, battle.FinishWeek),
     text(/^[#.]設定[周週][回次](\s(?<week>\d+))?$/, battle.SetWeek),
     text(/^[#.]當[周週][回次]報名表$/, battle.CurrentBattle),
+    text(/^[#.](三刀出完|出完三刀|done)/, battle.reportFinish),
+    text(/^[#.](三刀重置|重置三刀)/, battle.reportReset),
+    text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
   ];
 }
 

@@ -8,7 +8,6 @@ exports.getGuildCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `GuildCount_${date}`;
   let count = await redis.get(memoryKey);
-  if (count !== null) return count;
 
   count = await mysql
     .select()
@@ -71,7 +70,7 @@ exports.getSpeakTimesCount = async () => {
     .select()
     .sum({ times: "SpeakTimes" })
     .from("GuildMembers")
-    .then(data => data[0].times);
+    .then(data => data[0].times || 0);
 
   redis.set(memoryKey, times, 3600);
   return times;
@@ -92,7 +91,10 @@ exports.getGuildDataByUser = async userId => {
     .sum({ times: "SpeakTimes" })
     .count({ cnt: "*" })
     .where({ userId })
-    .then(data => data[0]);
+    .then(data => {
+      data[0].times = data[0].times || 0;
+      return data[0];
+    });
 
   redis.set(memoryKey, guildData, 1 * 60);
   return guildData;

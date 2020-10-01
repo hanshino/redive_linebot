@@ -2,7 +2,7 @@ const mysql = require("../../../util/mysql");
 const fetch = require("node-fetch");
 const token = process.env.IAN_BATTLE_TOKEN;
 const headers = { "x-token": token, "user-agent": "re:dive line-bot" };
-const apiURL = "https://guild.randosoru.me/api";
+const apiURL = "https://a9d5b01c16e7.ngrok.io";
 const redis = require("../../../util/redis");
 
 exports.saveIanUserData = (platform = 2, userId, ianUserId) => {
@@ -11,7 +11,7 @@ exports.saveIanUserData = (platform = 2, userId, ianUserId) => {
       platform: platform,
       userId: userId,
       ianUserId: ianUserId,
-      createDTM: new Date().getTime(),
+      createDTM: new Date(),
     })
     .into("IanUser");
 };
@@ -52,6 +52,107 @@ exports.setFormId = (guildId, formId, month) => {
     .into("GuildBattle")
     .then();
 };
+
+/**
+ * 新增完成紀錄
+ * @param {String} guildId
+ * @param {String} userId
+ */
+exports.setFinishBattle = (guildId, userId) => {
+  let { start, end } = getBattleDate(new Date());
+  return mysql
+    .transaction(trx => {
+      trx
+        .select("id")
+        .from("GuildBattleFinish")
+        .where({ guildId, userId })
+        .whereBetween("CreateDTM", [start, end])
+        .then(res => {
+          if (res.length === 0) {
+            return trx("GuildBattleFinish").insert({
+              guildId,
+              userId,
+            });
+          }
+          return Promise.resolve(1);
+        })
+        .then(trx.commit)
+        .catch(trx.rollback);
+    })
+    .catch(console.error);
+};
+
+exports.resetFinishBattle = (guildId, userId) => {
+  let { start, end } = getBattleDate(new Date());
+  return mysql
+    .from("GuildBattleFinish")
+    .where({ guildId, userId })
+    .whereBetween("CreateDTM", [start, end])
+    .delete();
+};
+
+/**
+ * 取得今日完成三刀列表
+ * @param {String} guildId
+ * @param {Date} objDate 指定的日期
+ */
+exports.getFinishList = async (guildId, objDate) => {
+  let { start, end } = getBattleDate(objDate);
+  let memberIds = [],
+    signinIds = [];
+
+  let rows = await mysql.select("userId").from("GuildMembers").where({ guildId, status: 1 });
+
+  memberIds = rows.map(row => row.userId);
+
+  let GBFrows = await mysql
+    .select(["userId", "createDTM"])
+    .from("GuildBattleFinish")
+    .where({ guildId })
+    .whereBetween("createDTM", [start, end]);
+
+  signinIds = GBFrows.map(row => row.userId);
+
+  return memberIds.map(id => ({
+    userId: id,
+    isSignin: signinIds.includes(id),
+    ...GBFrows.find(row => row.userId === id),
+  }));
+};
+
+/**
+ * 取得該月份簽到表
+ * @param {String} guildId
+ * @param {Number} month
+ */
+exports.getMonthFinishList = (guildId, month) => {
+  return mysql
+    .select(["userId", "createDTM"])
+    .from("GuildBattleFinish")
+    .where({ guildId })
+    .whereRaw("month(createDTM) = ?", [month]);
+};
+
+/**
+ * 取得戰隊用日期
+ * @param {Date} objDate 可指定哪一天
+ */
+function getBattleDate(objDate) {
+  let year = objDate.getFullYear();
+  let month = objDate.getMonth() + 1;
+  let date = objDate.getDate();
+
+  let hour = objDate.getHours();
+
+  if (hour < 5) {
+    date--;
+  }
+
+  return {
+    start: [year, month, date].join("-") + " " + ["05", "00", "00"].join(":"),
+    end: [year, month, date + 1].join("-") + " " + ["04", "59", "59"].join(":"),
+  };
+}
 
 exports.Ian = {};
 
@@ -120,6 +221,7 @@ function doGet(path) {
 }
 
 function doPost(path, data) {
+  console.log(`Fetch from ${path} data is ${JSON.stringify(data)}`);
   return fetch(`${apiURL}${path}`, {
     headers: headers,
     body: JSON.stringify(data),
@@ -128,8 +230,7 @@ function doPost(path, data) {
     .then(IsIanSeverDown)
     .then(res => res.json())
     .then(json => {
-      console.log(path);
-      console.timeEnd("doPost");
+      console.log(`result: ${JSON.stringify(json)}`);
       return json;
     });
 }

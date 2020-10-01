@@ -47,6 +47,17 @@ exports.getUsersProfile = async userDatas => {
     .catch(console.error);
 };
 
+exports.getGroupMemberProfile = async (groupId, userId) => {
+  let key = `GroupMemberProfile_${groupId}_${userId}`;
+  let profile = await redis.get(key);
+
+  if (profile !== null) return profile;
+  profile = await LineClient.getGroupMemberProfile(groupId, userId);
+  redis.set(key, profile, 60 * 60);
+
+  return profile;
+};
+
 function doGet(path) {
   return fetch(`${apiURL}${path}`, {
     headers: {

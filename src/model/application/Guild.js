@@ -17,3 +17,7 @@ exports.fetchGuildInfoByUser = userId => {
     .from("GuildMembers")
     .where({ userId, status: 1 });
 };
+
+exports.fetchGuildMembers = guildId => {
+  return mysql.select(["guildId", "userId"]).from("GuildMembers").where({ guildId, status: 1 });
+};

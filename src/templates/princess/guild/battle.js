@@ -1,3 +1,63 @@
+const NoteMessage = {
+  type: "bubble",
+  body: {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "text",
+        text: "注意事項！",
+        weight: "bold",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "當日出完刀的玩家",
+          },
+          {
+            type: "text",
+            text: "使用 #三刀出完 指令",
+          },
+          {
+            type: "text",
+            text: "進行狀態回報",
+          },
+          {
+            type: "text",
+            text: "回報後無法修改",
+          },
+          {
+            type: "text",
+            text: "如真的需重置，請輸入 #三刀重置",
+          },
+        ],
+        paddingAll: "5px",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "需要求救的玩家",
+          },
+          {
+            type: "text",
+            text: "使用 #出完沒 日期(選填) 指令",
+          },
+          {
+            type: "text",
+            text: "可列出回報清單",
+          },
+        ],
+        paddingAll: "5px",
+      },
+    ],
+  },
+};
 exports.showBattleList = (context, data) => {
   context.sendFlex(`第${data.week}周次 - 戰隊清單`, {
     type: "carousel",
@@ -43,22 +103,26 @@ exports.showBattleList = (context, data) => {
         datas: data.datas.filter(data => data.boss === 5),
         config: data.configs.find(config => config.boss == 5),
       }),
+      NoteMessage,
     ],
   });
 };
 
 exports.showBattleDetail = (context, data) => {
-  context.sendFlex(
-    `第${data.week}周次${data.boss}王`,
-    genPreviewDetail({
-      ...data.records,
-      boss: data.boss,
-      formId: data.formId,
-      week: data.week,
-      datas: data.datas,
-      config: data.configs.find(config => config.boss == data.boss),
-    })
-  );
+  context.sendFlex(`第${data.week}周次${data.boss}王`, {
+    type: "carousel",
+    contents: [
+      genPreviewDetail({
+        ...data.records,
+        boss: data.boss,
+        formId: data.formId,
+        week: data.week,
+        datas: data.datas,
+        config: data.configs.find(config => config.boss == data.boss),
+      }),
+      NoteMessage,
+    ],
+  });
 };
 
 function genPreviewCover(option) {
@@ -155,6 +219,7 @@ function genPreviewDetail(option) {
           type: "text",
           text: "取消",
           flex: 3,
+          color: "#880000",
           action: {
             type: "postback",
             data: JSON.stringify({
@@ -195,9 +260,10 @@ function genPreviewDetail(option) {
               contents: [
                 {
                   type: "text",
-                  text: bossConfig.name,
+                  text: `${week}周 - ${bossConfig.name}`,
                   weight: "bold",
                   align: "center",
+                  wrap: true,
                 },
                 {
                   type: "text",
@@ -435,4 +501,201 @@ function getStatusText(status) {
     default:
       return "其他";
   }
+}
+
+/**
+ * 顯示完成出刀列表
+ * @param {Context} context
+ * @param {Object[]} FinishMemberList
+ * @param {String} FinishMemberList[].displayName
+ * @param {String} FinishMemberList[].createDTM
+ * @param {Boolean} FinishMemberList[].isSignin
+ */
+exports.showFinishList = (context, FinishMemberList) => {
+  let date = new Date();
+  const Today = [
+    date.getFullYear(),
+    ("0" + (date.getMonth() + 1)).substr(-2),
+    ("0" + date.getDate()).substr(-2),
+  ].join(".");
+  let isSignList = FinishMemberList.filter(list => list.isSignin);
+  let notSignList = FinishMemberList.filter(list => !list.isSignin);
+  context.sendFlex("出刀簽到表", {
+    type: "carousel",
+    contents: [
+      {
+        type: "bubble",
+        header: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "🏆成功人士",
+              weight: "bold",
+              color: "#9B1C31",
+            },
+          ],
+          backgroundColor: "#80C5DE",
+        },
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "text",
+                  text: "姓名",
+                  weight: "bold",
+                  flex: 7,
+                },
+                {
+                  type: "text",
+                  text: "時間",
+                  weight: "bold",
+                  flex: 5,
+                },
+              ],
+            },
+            ...isSignList.map(genMemberRow),
+          ],
+        },
+        footer: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "separator",
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "text",
+                  text: `總計${isSignList.length}位`,
+                  size: "xs",
+                  align: "start",
+                  flex: 3,
+                },
+                {
+                  type: "text",
+                  text: `${Today} Generated by 布丁機器人`,
+                  align: "end",
+                  color: "#808080",
+                  size: "xs",
+                  margin: "sm",
+                  flex: 9,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        type: "bubble",
+        header: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "🎮出刀機器",
+              weight: "bold",
+              color: "#FEFEFE",
+            },
+          ],
+          backgroundColor: "#9B1C31",
+        },
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "text",
+                  text: "姓名",
+                  weight: "bold",
+                  flex: 7,
+                },
+                {
+                  type: "text",
+                  text: "時間",
+                  weight: "bold",
+                  flex: 5,
+                },
+              ],
+            },
+            ...notSignList.map(genMemberRow),
+          ],
+        },
+        footer: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "separator",
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "text",
+                  text: `總計${notSignList.length}位`,
+                  size: "xs",
+                  align: "start",
+                  flex: 3,
+                },
+                {
+                  type: "text",
+                  text: `${Today} Generated by 布丁機器人`,
+                  align: "end",
+                  color: "#808080",
+                  size: "xs",
+                  margin: "sm",
+                  flex: 9,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  });
+};
+
+function genMemberRow(memberData) {
+  let date,
+    strDate = "-";
+  if (memberData.createDTM) {
+    date = new Date(memberData.createDTM);
+    strDate =
+      [("0" + (date.getMonth() + 1)).substr(-2), date.getDate()].join("/") +
+      " " +
+      [("0" + date.getHours()).substr(-2), ("0" + date.getMinutes()).substr(-2)].join(":");
+  }
+
+  return {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: memberData.displayName || "路人甲",
+        flex: 7,
+      },
+      {
+        type: "text",
+        text: strDate,
+        flex: 5,
+      },
+    ],
+  };
 }

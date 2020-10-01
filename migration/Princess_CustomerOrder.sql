@@ -19,14 +19,13 @@
 -- Table structure for table `CustomerOrder`
 --
 
-
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `CustomerOrder` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `No` int NOT NULL,
   `SourceId` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `OrderKey` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `OrderKey` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `CusOrder` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `Status` int DEFAULT '1',
   `TouchType` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -41,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `CustomerOrder` (
   `TouchDTM` datetime DEFAULT NULL,
   PRIMARY KEY (`ID`),
   KEY `IDX_CustOrderSource` (`SourceId`) /*!80000 INVISIBLE */
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -53,4 +52,4 @@ CREATE TABLE IF NOT EXISTS `CustomerOrder` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-09-17 23:58:44
+-- Dump completed on 2020-10-02  1:06:09
