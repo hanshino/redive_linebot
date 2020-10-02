@@ -1,4 +1,4 @@
-const { getGroupSummary } = require("../util/line");
+const { getGroupSummary, getGroupCount } = require("../util/line");
 
 /**
  * 設置用戶、群組資料
@@ -43,9 +43,12 @@ async function setLineGroupSummary(context) {
   const { groupId } = context.event.source;
 
   if (Object.keys(context.state.groupDatas).length === 0) {
-    const summary = await getGroupSummary(groupId);
+    const [summary, groupCount] = await Promise.all([
+      getGroupSummary(groupId),
+      getGroupCount(groupId),
+    ]);
     context.setState({
-      groupDatas: summary,
+      groupDatas: { ...summary, ...groupCount },
     });
   }
 }
