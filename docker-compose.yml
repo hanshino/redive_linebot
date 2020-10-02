@@ -1,35 +1,24 @@
 version: "3.8"
 services:
-  nginx:
-    image: nginx
+  nginx-proxy:
     container_name: nginx
-    links:
-      - app1
-      - app2
+    image: jwilder/nginx-proxy:alpine
     ports:
       - "5000:80"
     volumes:
-      - ./config/nginx:/etc/nginx/conf.d
-  app1:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    environment:
+      - DEFAULT_HOST=redivebot.local
+  app:
     build: ./app
-    container_name: RediveBot1
     links:
       - mysql
       - redis
     env_file: ./.env
+    ports:
+      - "5000"
     environment:
-      "PORT": 5001
-
-  app2:
-    build: ./app
-    container_name: RediveBot2
-    working_dir: /application
-    links:
-      - mysql
-      - redis
-    env_file: ./.env
-    environment:
-      "PORT": 5002
+      - VIRTUAL_HOST=redivebot.local
 
   mysql:
     env_file: ./.env
