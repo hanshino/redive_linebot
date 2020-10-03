@@ -51,21 +51,18 @@ exports.writeConfig = async (groupId, name, status) => {
 exports.getDiscordWebhook = async groupId => {
   const memoryKey = `DiscordWebhook_${groupId}`;
 
-  var webhook = await redis.get(memoryKey);
-  if (webhook !== null) return Promise.resolve(webhook);
+  let webhook = await redis.get(memoryKey);
+  if (webhook !== null) return webhook;
 
-  var query = mysql
+  let query = mysql
     .select("DiscordWebhook")
     .from("GuildConfig")
-    .where({ GuildId: groupId })
-    .whereNotNull("DiscordWebhook")
-    .where("DiscordWebhook", "<>", "");
+    .where({ GuildId: groupId });
 
-  var [data] = await query;
-  webhook = "";
+  let [data] = await query;
   if (data !== undefined) {
-    webhook = data.DiscordWebhook;
-    redis.get(memoryKey, webhook, 60 * 60);
+    webhook = data.DiscordWebhook || "";
+    redis.set(memoryKey, webhook, 60 * 60);
   }
 
   return webhook;

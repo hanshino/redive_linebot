@@ -1,6 +1,7 @@
 module.exports = {
   session: {
     driver: "redis",
+    expiresIn: 60,
     state: 15,
     stores: {
       memory: {
