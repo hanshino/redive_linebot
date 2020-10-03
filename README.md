@@ -61,8 +61,17 @@
 8. 網址預設為 `https://{your_domain}/webhooks/line`
 9. 將網址填進 [Line Account Manager](https://manager.line.biz/)
 
+## 進階用法
+開啟多機器進行 `load-balance` (複載平衡)
+
+```cmd
+docker-compose up -d --scale app=3
+```
+
+以上的數字 `app=3` 可自由調整，輸入多少就會開啟多少機器
+*注意：開太多可是很佔容量的*
 
 ## 注意事項
 
-* 要使用戰隊功能，需先跟 Ian 戰隊系統作者申請 Accesss Token
+* 要使用戰隊功能，需先跟 [Ian 戰隊系統作者](https://discord.gg/cwFc4qh)申請 Accesss Token
 * `Windows` 作業系統使用 `Docker` 需注意開啟 `hyper-v` 是否會影響自己遊玩手機模擬器。

@@ -15,8 +15,11 @@ exports.GlobalOrderBase = async (context, { next }) => {
   const message = context.event.message.text;
   const GlobalOrders = await OrderModel.fetchAllData();
 
-  var fullMatchResult = GlobalOrders.filter(order => {
-    if (order.touchType === "1") return new RegExp(`^${order.order}$`, "i").test(message);
+  var fullMatchResult = GlobalOrders.filter(orderData => {
+    let { order, touchType } = orderData;
+    order = order.toUpperCase();
+    let msg = message.toUpperCase();
+    if (touchType === "1") return order === msg;
     return false;
   });
 

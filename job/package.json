@@ -1,0 +1,22 @@
+{
+  "name": "job",
+  "version": "1.0.0",
+  "description": "進行 redive-linebot 排程任務",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "hanshino@pchome.tw",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.20.0",
+    "cron": "^1.8.2",
+    "knex": "^0.21.6",
+    "mysql2": "^2.2.5"
+  },
+  "devDependencies": {
+    "dotenv": "^8.2.0"
+  }
+}
