@@ -193,7 +193,8 @@ function genPreviewDetail(option) {
     formId,
   } = option;
 
-  var bossConfig = { name: `${boss}王`, image: "https://i.imgur.com/zsAFota.png", ...config };
+  let bossConfig = { name: `${boss}王`, image: "", ...config };
+  bossConfig.image = bossConfig.image || "https://i.imgur.com/zsAFota.png";
 
   let recordsDetail = datas.map((data, index) => {
     return {

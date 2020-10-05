@@ -15,6 +15,7 @@ const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
 const { showAnnounce } = require("./controller/princess/announce");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const { showSchedule } = require("./controller/princess/schedule");
+const FriendCardController = require("./controller/princess/FriendCard");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -155,6 +156,7 @@ function PrincessInformation(context) {
   if (context.state.guildConfig.PrincessInformation === "N") return [];
 
   return [
+    text(/^[#.](好友小卡|加我好友)$/, FriendCardController.showCard),
     text(/^[#.]官方公告$/, showAnnounce),
     text(/^[#.]?(官方活動|公主活動|公主行事曆)/, showSchedule),
   ];

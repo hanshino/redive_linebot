@@ -29,7 +29,7 @@ app.prepare().then(() => {
   // api group router
   server.use("/api", apiRouter);
 
-  server.get("/send-id", require("cors")(), (req, res) => {
+  server.get("/send-id", (req, res) => {
     res.json({ id: process.env.LINE_LIFF_ID });
   });
 

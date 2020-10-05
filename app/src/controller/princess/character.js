@@ -52,6 +52,11 @@ function _getCharacterInfoPara(characterData) {
   };
 }
 
+function getCharacterImages() {
+  let datas = CharacterModel.getDatas();
+  return datas.map(data => ({ name: data.Name, image: data.Image }));
+}
+
 module.exports = {
   getInfo: function (context, { match }) {
     recordSign("getInfo");
@@ -182,5 +187,9 @@ module.exports = {
       console.log(e);
       error.sendError(context, e);
     }
+  },
+
+  api: {
+    getCharacterImages: (req, res) => res.json(getCharacterImages()),
   },
 };

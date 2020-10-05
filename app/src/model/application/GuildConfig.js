@@ -54,10 +54,7 @@ exports.getDiscordWebhook = async groupId => {
   let webhook = await redis.get(memoryKey);
   if (webhook !== null) return webhook;
 
-  let query = mysql
-    .select("DiscordWebhook")
-    .from("GuildConfig")
-    .where({ GuildId: groupId });
+  let query = mysql.select("DiscordWebhook").from("GuildConfig").where({ GuildId: groupId });
 
   let [data] = await query;
   if (data !== undefined) {

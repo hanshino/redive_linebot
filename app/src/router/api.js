@@ -6,6 +6,8 @@ const GroupConfigController = require("../controller/application/GroupConfig");
 const GlobalOrdersController = require("../controller/application/GlobalOrders");
 const GuildBattleController = require("../controller/princess/battle");
 const GuildController = require("../controller/application/Guild");
+const FriendCardController = require("../controller/princess/FriendCard");
+const PrincessCharacterController = require("../controller/princess/character");
 const GroupConfig = require("../../doc/GroupConfig.json");
 const {
   verifyToken,
@@ -216,11 +218,22 @@ router.get(
   GuildController.api.getGuildSummary
 );
 
+/**
+ * 取得群組三刀簽到表
+ */
 router.get(
   "/Guild/:guildId/Battle/Sign/List/Month/:month",
   (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
   GuildBattleController.api.showSigninList
 );
+
+router.post("/Princess/Friend/Card", verifyToken, FriendCardController.api.binding);
+
+router.get("/Princess/Friend/Card", verifyToken, FriendCardController.api.getData);
+
+router.get("/Princess/Character/Images", PrincessCharacterController.api.getCharacterImages);
+
+router.delete("/Princess/Friend/Card", verifyToken, FriendCardController.api.clearBinding);
 
 router.all("*", (req, res) => {
   res.status(404).json({ message: "invalid api url." });

@@ -5,20 +5,20 @@ const { URLSearchParams } = require("url");
  * 使用 Line Notify 發送訊息
  * @param {Object} option
  * @param {String} option.message 發送訊息內容，參照 Line Message object
- * @param {String} option.token Line Notify AccessToken
- * @param {Boolean} option.alert 是否關閉通知
+ * @param {?String} option.token Line Notify AccessToken
+ * @param {Boolean|false} option.alert 是否通知
  */
 exports.push = option => {
   let { message, token, alert } = option;
   token = token || process.env.LINE_NOTIFY_TOKEN;
-  alert = alert || false;
+  alert = alert || true;
   message = message || "請輸入發送訊息";
 
   if (!token) return false;
 
   const params = new URLSearchParams();
-  params.append("message", message);
-  params.append("notificationDisabled", alert);
+  params.append("message", `\n${message}`);
+  params.append("notificationDisabled", !alert);
 
   return axios({
     method: "post",
