@@ -11,7 +11,7 @@ module.exports = {
         dirname: ".sessions",
       },
       redis: {
-        port: 6379,
+        port: process.env.REDIS_PORT,
         host: "redis",
         password: process.env.REDIS_PASSWORD,
         db: 0,

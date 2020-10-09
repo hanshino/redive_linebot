@@ -16,20 +16,20 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `User`
+-- Table structure for table `PrincessUID`
 --
 
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `User` (
-  `No` int NOT NULL AUTO_INCREMENT,
-  `platform` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `platformId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` int NOT NULL DEFAULT '1',
-  `createDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `closeDTM` datetime DEFAULT NULL,
-  PRIMARY KEY (`No`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS `PrincessUID` (
+  `userId` varchar(45) NOT NULL COMMENT 'Line使用者ID',
+  `uid` varchar(10) NOT NULL COMMENT '公主連結ID',
+  `server` int NOT NULL COMMENT '遊戲伺服器，1:美食殿堂、2:真步真步王國、3:破曉之星、4:小小甜心',
+  `background` mediumtext,
+  `createDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '新增時間',
+  PRIMARY KEY (`uid`,`server`),
+  UNIQUE KEY `userId_UNIQUE` (`userId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='提供使用者綁定公主連結UID';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -41,4 +41,4 @@ CREATE TABLE IF NOT EXISTS `User` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-10-09 23:19:26
+-- Dump completed on 2020-10-09 23:19:22

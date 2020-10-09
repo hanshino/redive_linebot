@@ -2,7 +2,7 @@ const mysql = require("../../../util/mysql");
 const fetch = require("node-fetch");
 const token = process.env.IAN_BATTLE_TOKEN;
 const headers = { "x-token": token, "user-agent": "re:dive line-bot" };
-const apiURL = "https://a9d5b01c16e7.ngrok.io";
+const apiURL = "https://guild.randosoru.me/api";
 const redis = require("../../../util/redis");
 
 exports.saveIanUserData = (platform = 2, userId, ianUserId) => {

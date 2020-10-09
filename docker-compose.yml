@@ -1,24 +1,52 @@
-version: "3.8"
+version: "3.3"
 services:
   nginx-proxy:
-    container_name: nginx
-    image: jwilder/nginx-proxy:alpine
+    restart: always
+    container_name: nginx-proxy
+    image: jwilder/nginx-proxy
     ports:
-      - "5000:80"
+      - "80:80"
+      - "443:443"
     volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - "vhost:/etc/nginx/vhost.d"
+      - "html:/usr/share/nginx/html"
+      - "certs:/etc/nginx/certs:ro"
+      - "/var/run/docker.sock:/tmp/docker.sock:ro"
+      - "dhparam:/etc/nginx/dhparam"
     environment:
-      - DEFAULT_HOST=redivebot.local
+      - DEFAULT_HOST=${APP_DOMAIN}
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+
+  nginx-proxy-letsencrypt:
+    restart: always
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: nginx-letsencrypt
+    depends_on:
+      - nginx-proxy
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "vhost:/etc/nginx/vhost.d"
+      - "html:/usr/share/nginx/html"
+      - "certs:/etc/nginx/certs:rw"
+    environment:
+      - "NGINX_PROXY_CONTAINER=nginx_proxy"
+
   app:
     build: ./app
     links:
       - mysql
       - redis
     env_file: ./.env
+    restart: always
     ports:
       - "5000"
     environment:
-      - VIRTUAL_HOST=redivebot.local
+      - "VIRTUAL_HOST=${APP_DOMAIN}"
+      - "VIRTUAL_NETWORK=nginx-proxy"
+      - "VIRTUAL_PORT=5000"
+      - "LETSENCRYPT_HOST=${APP_DOMAIN}"
+      - "LETSENCRYPT_EMAIL=${ADMIN_EMAIL}"
 
   mysql:
     env_file: ./.env
@@ -29,7 +57,7 @@ services:
       - "${DB_STOREPATH}/db:/var/lib/mysql"
     restart: always
     ports:
-      - "3306:3306"
+      - "${DB_PORT}:3306"
     environment:
       "MYSQL_DATABASE": "${DB_DATABASE}"
       "MYSQL_USER": "${DB_USER}"
@@ -40,8 +68,9 @@ services:
     image: redis:alpine
     container_name: redis
     command: "redis-server --requirepass ${REDIS_PASSWORD}"
+    restart: always
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
 
   crontab:
     build: ./job
@@ -50,3 +79,9 @@ services:
       - mysql
       - redis
     env_file: ./.env
+
+volumes:
+  certs:
+  vhost:
+  html:
+  dhparam:
