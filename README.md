@@ -7,15 +7,41 @@
 * 開發過程協助分析每一動作的耗時，進行效能優化
 * 因為他真的超好用der
 
-## 使用技術
+## 目錄
 
-此專案結合了 `docker-compose` 一鍵佈署的特性，使用了五台虛擬機器
-* mysql
-* redis
-* nginx
-* node.js * 2
+- [使用須知](#使用須知)
+- [機器配置](#機器配置)
+- [適用軟體](#目前適用聊天軟體)
+- [專案特色](#此專案特色)
+  - 管理員
+    - 各大遊戲性功能
+  - 使用者
+    - 群組功能性
+    - 公主連結資訊查詢
+- [部分截圖](#部分截圖)
+- [事前準備](#事前準備)
+- [安裝方式](#安裝方式)
+- [進階用法](#進階用法)
+- [注意事項](#注意事項)
 
-進行 `load-balance` (複載平衡)，使得使用者訊息可以得到最快速的回復。
+## 使用須知
+
+本專案已配置好所有程式所需之環境，只需跟著[安裝方式](#安裝方式)，進行操作即可，如熟悉環境配置的朋友，可直接至[此專案](https://github.com/hanshino/redive_linebot_app)，僅包含機器人核心程式。
+
+## 機器配置
+
+此專案結合了 `docker-compose` 一鍵佈署的特性，使用了六台虛擬機器
+
+|機器|image|說明|
+|-|-|-|
+|mysql|[mysql](https://hub.docker.com/_/mysql)|資料庫
+|redis|[redis](https://hub.docker.com/_/redis)|記憶體快取資料庫
+|nginx-proxy|[nginx-proxy](https://hub.docker.com/r/jwilder/nginx-proxy)|`nginx`代理
+|nginx-proxy-letsencrypt|[letsencrypt-nginx-proxy-companion](https://hub.docker.com/r/jrcs/letsencrypt-nginx-proxy-companion/)|定時更新SSL簽證
+|app|[app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)|`node.js:12-alpine` 包含主程式
+|crontab|[crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)|`node.js:12-alpine` 定時排程執行
+
+可使用`docker-compose`指令水平擴展主程式，端看於個人硬體強度來做提升。
 
 ## 目前適用聊天軟體
 
@@ -57,7 +83,7 @@
 4. `cp .env.example .env`
 5. 編輯 `.env` ，請務必填上所有資訊並存檔！
 6. `docker-compose up -d`
-7. 此時電腦的 **5000 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
+7. 此時電腦的 **80 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
 8. 網址預設為 `https://{your_domain}/webhooks/line`
 9. 將網址填進 [Line Account Manager](https://manager.line.biz/)
 
@@ -69,7 +95,6 @@ docker-compose up -d --scale app=3
 ```
 
 以上的數字 `app=3` 可自由調整，輸入多少就會開啟多少機器
-*注意：開太多可是很佔容量的*
 
 ## 注意事項
 
