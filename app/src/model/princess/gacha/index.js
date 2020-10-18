@@ -128,8 +128,8 @@ exports.getUserGodStoneCount = userId => {
     .select()
     .from("Inventory")
     .sum({ total: "itemAmount" })
-    .where({ itemId: "999", userId })
-    .then(res => (res.length === 0 ? 0 : res[0].total));
+    .where({ itemId: 999, userId })
+    .then(res => (res.length === 0 ? 0 : res[0].total || 0));
 };
 
 function getTodayDate() {

@@ -14,7 +14,7 @@ exports.insertItem = (userId, itemId, itemAmount) => {
 
 /**
  * 一次新增多筆物品
- * @param {Array.<{userId: string, itemId: string, itemAmount: number}>} params
+ * @param {Array.<{userId: string, itemId: number, itemAmount: number}>} params
  */
 exports.insertItems = params => {
   return mysql.into(this.tableName).insert(params);

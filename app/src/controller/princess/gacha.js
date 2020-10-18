@@ -295,7 +295,7 @@ async function recordToInventory(userId, rewards) {
 
   if (godStoneArray.length !== 0) {
     GodStoneAmount = godStoneArray.reduce((pre, curr) => pre + curr);
-    InventoryModel.insertItem(userId, 999, GodStoneAmount);
+    await InventoryModel.insertItem(userId, 999, GodStoneAmount);
   }
 
   var [collectedCount, allCount] = await Promise.all([

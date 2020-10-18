@@ -85,13 +85,25 @@ const GroupManual = {
       {
         type: "box",
         layout: "vertical",
-        contents: [{ type: "text", text: "群組功能", align: "center", size: "lg" }],
+        contents: [
+          {
+            type: "text",
+            text: "群組功能",
+            align: "center",
+            size: "lg",
+          },
+        ],
       },
       {
         type: "box",
         layout: "vertical",
         contents: [
-          { type: "text", text: "功能解說", size: "sm", weight: "bold" },
+          {
+            type: "text",
+            text: "功能解說",
+            size: "sm",
+            weight: "bold",
+          },
           {
             type: "text",
             text: "在群組當中紀錄每次說話時間，透過伺服器的數據整理分析後，顯示各群組的活躍狀況。",
@@ -107,7 +119,12 @@ const GroupManual = {
         type: "box",
         layout: "vertical",
         contents: [
-          { type: "text", text: "注意事項", size: "sm", weight: "bold" },
+          {
+            type: "text",
+            text: "注意事項",
+            size: "sm",
+            weight: "bold",
+          },
           {
             type: "text",
             text: "只在群組當中進行紀錄，每個月1號進行資料重置。\n偶爾伺服器維護將導致數據誤差。",
@@ -124,11 +141,16 @@ const GroupManual = {
         type: "box",
         layout: "vertical",
         contents: [
-          { type: "text", text: "指令", size: "sm", weight: "bold" },
+          {
+            type: "text",
+            text: "指令",
+            size: "sm",
+            weight: "bold",
+          },
           {
             type: "text",
             text:
-              "#群組狀態\n內包含群組設定功能，群組設定內可將訊息同步至Discord的超強功能，還可以將布丁大部分的功能進行開關，打造客製化的布丁機器人！",
+              "#群組管理\n內包含群組設定功能，群組設定內可將訊息同步至Discord的超強功能，還可以將布丁大部分的功能進行開關，打造客製化的布丁機器人！",
             size: "xxs",
             wrap: true,
             color: "#808080",
@@ -138,20 +160,34 @@ const GroupManual = {
         spacing: "sm",
         margin: "sm",
       },
-      { type: "text", text: "👑戰隊報名系統", align: "center", weight: "bold", margin: "sm" },
+      {
+        type: "text",
+        text: "👑戰隊報名系統",
+        align: "center",
+        weight: "bold",
+        margin: "sm",
+      },
       {
         type: "box",
         layout: "vertical",
         contents: [
-          { type: "text", size: "sm", text: "#當週回報名表" },
-          { type: "text", size: "sm", text: "#前往下一周回、#回去上一週回" },
-          { type: "text", size: "sm", text: "#檢視下一周回、#檢視上一週回" },
+          {
+            type: "text",
+            size: "sm",
+            text: "使用說明手冊",
+            align: "center",
+          },
         ],
         borderColor: "#808080",
         borderWidth: "light",
-        cornerRadius: "xs",
-        paddingAll: "sm",
+        cornerRadius: "md",
+        paddingAll: "md",
         margin: "sm",
+        action: {
+          type: "uri",
+          label: "action",
+          uri: "https://hackmd.io/@hanshino/SkZqVVkww",
+        },
       },
     ],
   },
