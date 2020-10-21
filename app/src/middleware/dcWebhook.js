@@ -59,9 +59,7 @@ function initialEvent(context) {
   var currUser = state.userDatas[userId];
   if (currUser !== undefined) {
     username = currUser.displayName + " - From Line";
-    avatar = /^https:\/\/profile.line-scdn.net\/.*$/.test(currUser.pictureUrl)
-      ? currUser.pictureUrl
-      : "https://i.imgur.com/C9szJ1u.png";
+    avatar = currUser.pictureUrl ? currUser.pictureUrl : "https://i.imgur.com/C9szJ1u.png";
   }
 
   return {

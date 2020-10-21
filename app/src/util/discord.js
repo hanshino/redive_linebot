@@ -21,7 +21,6 @@ exports.webhook.send = webhookSend;
  * @param {String=} objData.avatar_url
  */
 function webhookSend(webhook, objData) {
-  if (!/discordapp\.com\/api\/webhooks\/([^\/]+)\/([^\/]+)/.test(webhook)) return Promise.reject();
   const params = new URLSearchParams();
   Object.keys(objData).forEach(key => params.append(key, objData[key]));
 
