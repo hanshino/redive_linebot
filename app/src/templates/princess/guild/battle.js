@@ -58,6 +58,7 @@ const NoteMessage = {
     ],
   },
 };
+const liffUri = `https://liff.line.me/1654464491-42ME7MYm`;
 exports.showBattleList = (context, data) => {
   context.sendFlex(`第${data.week}周次 - 戰隊清單`, {
     type: "carousel",
@@ -109,7 +110,7 @@ exports.showBattleList = (context, data) => {
 };
 
 exports.showBattleDetail = (context, data) => {
-  context.sendFlex(`第${data.week}周次${data.boss}王`, {
+  let message = {
     type: "carousel",
     contents: [
       genPreviewDetail({
@@ -122,7 +123,8 @@ exports.showBattleDetail = (context, data) => {
       }),
       NoteMessage,
     ],
-  });
+  };
+  context.sendFlex(`第${data.week}周次${data.boss}王`, message);
 };
 
 function genPreviewCover(option) {
@@ -138,7 +140,7 @@ function genPreviewCover(option) {
       contents: [
         {
           type: "text",
-          text: `此份報名表為\n第${week}周目`,
+          text: `第${week}周目`,
           wrap: true,
           weight: "bold",
           align: "center",
@@ -165,17 +167,50 @@ function genPreviewCover(option) {
     },
     footer: {
       type: "box",
-      layout: "vertical",
+      layout: "horizontal",
       contents: [
         {
-          type: "button",
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "🌏 網站版",
+              align: "center",
+              weight: "bold",
+              color: "#FFFFFF",
+            },
+          ],
           action: {
             type: "uri",
-            label: "Ian戰隊報名系統",
-            uri: `https://guild.randosoru.me/forms/${formId}/week/${week}`,
+            uri: `${liffUri}/forms/${formId}/week/${week}`,
           },
+          paddingAll: "5px",
+          backgroundColor: "#2196f3",
+          cornerRadius: "md",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "🔧 設定頁",
+              align: "center",
+              weight: "bold",
+              color: "#FFFFFF",
+            },
+          ],
+          action: {
+            type: "uri",
+            uri: `${liffUri}/forms/${formId}/modify`,
+          },
+          paddingAll: "5px",
+          backgroundColor: "#2196f3",
+          cornerRadius: "md",
         },
       ],
+      spacing: "md",
     },
   };
 }
@@ -195,6 +230,15 @@ function genPreviewDetail(option) {
 
   let bossConfig = { name: `${boss}王`, image: "", ...config };
   bossConfig.image = bossConfig.image || "https://i.imgur.com/zsAFota.png";
+  let stage = 0;
+  if (week >= 35) {
+    stage = 3;
+  } else if (week >= 11) {
+    stage = 2;
+  } else if (week >= 4) {
+    stage = 1;
+  }
+  let hp = bossConfig.hp[stage];
 
   let recordsDetail = datas.map((data, index) => {
     return {
@@ -346,6 +390,33 @@ function genPreviewDetail(option) {
           ],
           margin: "sm",
           paddingAll: "2px",
+        },
+        {
+          type: "box",
+          paddingAll: "5px",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              size: "sm",
+              contents: [],
+              text: "100%",
+              align: "end",
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [],
+              backgroundColor: "#FF0000AA",
+              height: "5px",
+            },
+            {
+              type: "text",
+              text: `${hp}`,
+              size: "sm",
+              align: "end",
+            },
+          ],
         },
         {
           type: "separator",
