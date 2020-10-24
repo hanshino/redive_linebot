@@ -119,7 +119,7 @@ function BattleOrder(context) {
   if (context.state.guildConfig.Battle === "N") return [];
 
   return [
-    text(/^[#.]gbs(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleSignUp),
+    text(/^[#.]gbs/, battle.BattleSignUp),
     text(/^[#.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
     text(
       /^[#.](gb|刀表)(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/,

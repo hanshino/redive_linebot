@@ -58,7 +58,8 @@ const NoteMessage = {
     ],
   },
 };
-const liffUri = `https://liff.line.me/1654464491-42ME7MYm`;
+const liffGuildUri = `https://liff.line.me/1654464491-42ME7MYm`;
+const liffPuddingUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
 exports.showBattleList = (context, data) => {
   context.sendFlex(`第${data.week}周次 - 戰隊清單`, {
     type: "carousel",
@@ -183,7 +184,7 @@ function genPreviewCover(option) {
           ],
           action: {
             type: "uri",
-            uri: `${liffUri}/forms/${formId}/week/${week}`,
+            uri: `${liffGuildUri}/forms/${formId}/week/${week}`,
           },
           paddingAll: "5px",
           backgroundColor: "#2196f3",
@@ -203,7 +204,7 @@ function genPreviewCover(option) {
           ],
           action: {
             type: "uri",
-            uri: `${liffUri}/forms/${formId}/modify`,
+            uri: `${liffGuildUri}/forms/${formId}/modify`,
           },
           paddingAll: "5px",
           backgroundColor: "#2196f3",
@@ -497,6 +498,24 @@ function genPreviewDetail(option) {
                     },
                   ],
                   backgroundColor: "#cc66ff",
+                  height: "26px",
+                  paddingAll: "2px",
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      text: "其他",
+                      align: "center",
+                      action: {
+                        type: "uri",
+                        uri: `${liffPuddingUri}/Panel/Group/Battle?week=${week}&boss=${boss}`,
+                      },
+                    },
+                  ],
+                  backgroundColor: "#808080",
                   height: "26px",
                   paddingAll: "2px",
                 },

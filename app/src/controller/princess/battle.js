@@ -1,4 +1,5 @@
 const { battle: BattleModel, week: WeekModel } = require("../../model/princess/guild");
+const minimist = require("minimist");
 const GuildModel = require("../../model/application/Guild");
 const line = require("../../util/line");
 const BattleTemplate = require("../../templates/princess/guild/battle");
@@ -121,18 +122,62 @@ function genPreivewData(records, boss) {
   return temp;
 }
 
+/**
+ * @typedef {Object} Result
+ * @property {String} result.comment
+ * @property {Number} result.damage
+ * @property {Number} result.type
+ * 進行訊息參數分析
+ * @param {String} message 訊息內容
+ * @return {Result}
+ */
+function paramInitial(message) {
+  const param = minimist(message.split(/\s+/));
+  const result = {};
+
+  Object.keys(param).forEach(key => {
+    switch (key) {
+      case "comment":
+      case "c":
+        result.comment = param[key];
+        break;
+      case "damage":
+      case "d":
+        result.damage = param[key];
+        break;
+      case "type":
+      case "t":
+        result.type = param[key];
+        break;
+    }
+  });
+
+  result.week = param._[1];
+  result.boss = param._[2];
+
+  return result;
+}
+
 exports.BattleSignUp = async (context, props) => {
   recordSign("BattleSignUp");
-  const { week, boss } = props.match.groups;
-  const { type } = props;
+
+  let params = {};
+  if (context.event.isText) {
+    params = paramInitial(context.event.message.text);
+  }
+  params = { ...params, ...props };
+  let { week, boss, damage, comment, type } = params;
 
   try {
     if (week === undefined || boss === undefined) throw new BattleException("必須指定周次以及幾王");
+    if (!isValidWeek(week)) throw new BattleException("周次必須介於1~199");
 
     const [formId, ianUserId] = await Promise.all([getFormId(context), getIanUserId(context)]);
 
     var setResult = await BattleModel.Ian.setRecord(formId, week, boss, ianUserId, {
       status: type || 1,
+      damage,
+      comment,
     });
 
     if (setResult.detail === undefined) {
@@ -140,7 +185,10 @@ exports.BattleSignUp = async (context, props) => {
         name: context.state.userDatas[context.event.source.userId].displayName,
         iconUrl: context.state.userDatas[context.event.source.userId].pictureUrl,
       };
-      context.sendText(`我報名了${week}周${boss}王，${getStatusText(type || 1)}`, { sender });
+      let feedback = `我報名了 *${week}周${boss}王* ，${getStatusText(type || 1)}`;
+      feedback += damage ? `\n傷害：${damage}` : "";
+      feedback += comment ? `\n備註：${comment}` : "";
+      context.sendText(feedback, { sender });
     } else throw setResult.detail;
   } catch (e) {
     if (e.name === "GuildBattle") {
@@ -151,12 +199,7 @@ exports.BattleSignUp = async (context, props) => {
 
 exports.BattlePostSignUp = (context, props) => {
   const { payload } = props;
-  this.BattleSignUp(context, {
-    match: {
-      groups: { ...payload },
-    },
-    type: payload.type,
-  });
+  this.BattleSignUp(context, { ...payload });
 };
 
 exports.BattleCancel = async (context, props) => {
