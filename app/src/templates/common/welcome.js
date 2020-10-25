@@ -341,7 +341,7 @@ const PuddingStatus = {
             action: {
               type: "uri",
               label: "action",
-              uri: liffUri,
+              uri: `${liffUri}?reactRedirectUri=/`,
             },
           },
         ],
