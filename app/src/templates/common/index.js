@@ -19,4 +19,29 @@ module.exports = {
 
     return strResult;
   },
+
+  /**
+   * 取得Liff網址
+   * @param {String} type ian, compact, full, tall
+   */
+  getLiffUri: function (type) {
+    let host = "https://liff.line.me/";
+    let id = process.env.LINE_LIFF_ID;
+    switch (type.toLowerCase()) {
+      case "ian":
+        id = process.env.LINE_LIFF_IAN_ID;
+        break;
+      case "compact":
+        id = process.env.LINE_LIFF_COMPACT_ID;
+        break;
+      case "full":
+        id = process.env.LINE_LIFF_FULL_ID;
+        break;
+      case "tall":
+        id = process.env.LINE_LIFF_TALL_ID;
+        break;
+    }
+
+    return `${host}${id}`;
+  },
 };

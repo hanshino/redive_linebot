@@ -324,7 +324,7 @@ exports.showOrderManager = context => {
           align: "center",
           action: {
             type: "uri",
-            uri: `${liffUri}/Source/${sourceId}/Customer/Orders`,
+            uri: `${liffUri}?=reactRedirectUri/Source/${sourceId}/Customer/Orders`,
           },
         },
       ],

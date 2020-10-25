@@ -1,3 +1,5 @@
+const { getLiffUri } = require("../../common");
+
 const NoteMessage = {
   type: "bubble",
   body: {
@@ -58,8 +60,7 @@ const NoteMessage = {
     ],
   },
 };
-const liffGuildUri = `https://liff.line.me/1654464491-42ME7MYm`;
-const liffPuddingUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
+
 exports.showBattleList = (context, data) => {
   context.sendFlex(`第${data.week}周次 - 戰隊清單`, {
     type: "carousel",
@@ -184,7 +185,7 @@ function genPreviewCover(option) {
           ],
           action: {
             type: "uri",
-            uri: `${liffGuildUri}/forms/${formId}/week/${week}`,
+            uri: `${getLiffUri("ian")}/forms/${formId}/week/${week}`,
           },
           paddingAll: "5px",
           backgroundColor: "#2196f3",
@@ -204,7 +205,7 @@ function genPreviewCover(option) {
           ],
           action: {
             type: "uri",
-            uri: `${liffGuildUri}/forms/${formId}/modify`,
+            uri: `${getLiffUri("Ian")}/forms/${formId}/modify`,
           },
           paddingAll: "5px",
           backgroundColor: "#2196f3",
@@ -297,7 +298,7 @@ function genPreviewDetail(option) {
               gravity: "bottom",
               action: {
                 type: "uri",
-                uri: `https://guild.randosoru.me/forms/${formId}/week/${week}`,
+                uri: `${getLiffUri("Ian")}/forms/${formId}/week/${week}`,
               },
             },
             {
@@ -511,7 +512,9 @@ function genPreviewDetail(option) {
                       align: "center",
                       action: {
                         type: "uri",
-                        uri: `${liffPuddingUri}/Panel/Group/Battle?week=${week}&boss=${boss}`,
+                        uri: `${getLiffUri(
+                          "Compact"
+                        )}?reactRedirectUri=/Panel/Group/Battle?week=${week}&boss=${boss}`,
                       },
                     },
                   ],

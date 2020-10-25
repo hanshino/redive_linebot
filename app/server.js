@@ -30,7 +30,24 @@ app.prepare().then(() => {
   server.use("/api", apiRouter);
 
   server.get("/send-id", (req, res) => {
-    res.json({ id: process.env.LINE_LIFF_ID });
+    const { size } = req.query;
+    let liffId = "";
+
+    switch (size.toLowerCase()) {
+      case "compact":
+        liffId = process.env.LINE_LIFF_COMPACT_ID;
+        break;
+      case "tall":
+        liffId = process.env.LINE_LIFF_TALL_ID;
+        break;
+      case "full":
+        liffId = process.env.LINE_LIFF_FULL_ID;
+        break;
+    }
+
+    liffId = liffId || process.env.LINE_LIFF_ID;
+
+    res.json({ id: liffId });
   });
 
   server.get("/*", (req, res) => {

@@ -33,13 +33,17 @@ exports.showManagePlace = context => {
                       action: {
                         type: "uri",
                         label: "指令管理",
-                        uri: `${liffUri}/Admin/GlobalOrder`,
+                        uri: `${liffUri}?reactRedirectUri=/Admin/GlobalOrder`,
                       },
                       style: "secondary",
                     },
                     {
                       type: "button",
-                      action: { type: "uri", label: "卡池管理", uri: `${liffUri}/Admin/GachaPool` },
+                      action: {
+                        type: "uri",
+                        label: "卡池管理",
+                        uri: `${liffUri}?reactRedirectUri=/Admin/GachaPool`,
+                      },
                       style: "secondary",
                     },
                   ],

@@ -1,4 +1,4 @@
-const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
+const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_COMPACT_ID}`;
 /**
  * 顯示好友小卡
  * @param {Context} context
@@ -105,7 +105,7 @@ exports.showCard = (context, params) => {
           width: "50px",
           action: {
             type: "uri",
-            uri: `${liffUri}/Princess/Profile`,
+            uri: `${liffUri}?reactRedirectUri=/Princess/Profile`,
           },
         },
       ],
@@ -133,7 +133,7 @@ exports.showBindingPage = context => {
       backgroundColor: "#E94196",
       action: {
         type: "uri",
-        uri: `${liffUri}/Princess/Profile`,
+        uri: `${liffUri}?reactRedirectUri=/Princess/Profile`,
       },
     },
   });

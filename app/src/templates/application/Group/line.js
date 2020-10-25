@@ -138,7 +138,7 @@ exports.showGroupStatus = context => {
                   paddingAll: "10px",
                   action: {
                     type: "uri",
-                    uri: `${liffUri}/Group/${groupId}/Record`,
+                    uri: `${liffUri}?reactRedirectUri=/Group/${groupId}/Record`,
                   },
                 },
               ],
@@ -165,7 +165,7 @@ exports.showGroupStatus = context => {
                   paddingAll: "10px",
                   action: {
                     type: "uri",
-                    uri: `${liffUri}/Group/${groupId}/Battle`,
+                    uri: `${liffUri}?reactRedirectUri=/Group/${groupId}/Battle`,
                   },
                 },
                 {
@@ -185,7 +185,7 @@ exports.showGroupStatus = context => {
                   paddingAll: "10px",
                   action: {
                     type: "uri",
-                    uri: `${liffUri}/Source/${groupId}/Customer/Orders`,
+                    uri: `${liffUri}?reactRedirectUri=/Source/${groupId}/Customer/Orders`,
                   },
                 },
               ],
@@ -212,7 +212,7 @@ exports.showGroupStatus = context => {
                   paddingAll: "10px",
                   action: {
                     type: "uri",
-                    uri: `${liffUri}/Group/${groupId}/Config`,
+                    uri: `${liffUri}?reactRedirectUri=/Group/${groupId}/Config`,
                   },
                 },
               ],
