@@ -6,6 +6,7 @@
     "dev": "nodemon server.js",
     "lint": "eslint . ",
     "start": "node server.js",
+    "debug": "DEBUG=bottender:action node server.js",
     "test": "jest"
   },
   "dependencies": {
