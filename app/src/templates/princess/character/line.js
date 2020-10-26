@@ -779,7 +779,7 @@ function _getSkillRow(objData) {
     Name: objData.name,
     Image: objData.image,
     Type: objData.type,
-    Color: typeColor[objData.type],
+    Color: typeColor[objData.type] || "#c45b39",
   };
 
   return JSON.parse(common.assemble(mapData, strTemplate));
