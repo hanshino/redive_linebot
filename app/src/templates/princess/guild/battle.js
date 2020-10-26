@@ -514,7 +514,7 @@ function genPreviewDetail(option) {
                         type: "uri",
                         uri: `${getLiffUri(
                           "Compact"
-                        )}?reactRedirectUri=/Panel/Group/Battle?week=${week}&boss=${boss}`,
+                        )}?reactRedirectUri=/Panel/Group/Battle/${week}/${boss}`,
                       },
                     },
                   ],
