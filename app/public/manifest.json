@@ -1,5 +1,5 @@
 {
-  "short_name": "Preact Linebot",
+  "short_name": "Pudding Linebot",
   "name": "布丁Linebot網頁",
   "icons": [
     {
@@ -42,5 +42,5 @@
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "background_color": "#00bcd4"
 }
