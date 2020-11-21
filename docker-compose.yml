@@ -1,37 +1,5 @@
 version: "3.5"
 services:
-  nginx-proxy:
-    restart: always
-    container_name: nginx-proxy
-    image: jwilder/nginx-proxy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - "vhost:/etc/nginx/vhost.d"
-      - "html:/usr/share/nginx/html"
-      - "certs:/etc/nginx/certs:ro"
-      - "/var/run/docker.sock:/tmp/docker.sock:ro"
-      - "dhparam:/etc/nginx/dhparam"
-    environment:
-      - DEFAULT_HOST=${APP_DOMAIN}
-    labels:
-      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
-
-  nginx-proxy-letsencrypt:
-    restart: always
-    image: jrcs/letsencrypt-nginx-proxy-companion
-    container_name: nginx-letsencrypt
-    depends_on:
-      - nginx-proxy
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "vhost:/etc/nginx/vhost.d"
-      - "html:/usr/share/nginx/html"
-      - "certs:/etc/nginx/certs:rw"
-    environment:
-      - "NGINX_PROXY_CONTAINER=nginx_proxy"
-
   app:
     build: ./app
     links:
@@ -41,6 +9,9 @@ services:
     restart: always
     ports:
       - "5000"
+    depends_on:
+      - mysql
+      - redis
     environment:
       - "VIRTUAL_HOST=${APP_DOMAIN}"
       - "VIRTUAL_NETWORK=nginx-proxy"
@@ -57,7 +28,7 @@ services:
       - "${DB_STOREPATH}/db:/var/lib/mysql"
     restart: always
     ports:
-      - "${DB_PORT}:3306"
+      - "${DB_PORT}"
     environment:
       "MYSQL_DATABASE": "${DB_DATABASE}"
       "MYSQL_USER": "${DB_USER}"
@@ -70,7 +41,7 @@ services:
     command: "redis-server --requirepass ${REDIS_PASSWORD}"
     restart: always
     ports:
-      - "${REDIS_PORT}:6379"
+      - "${REDIS_PORT}"
 
   crontab:
     build: ./job
@@ -80,8 +51,7 @@ services:
       - redis
     env_file: ./.env
 
-volumes:
-  certs:
-  vhost:
-  html:
-  dhparam:
+networks:
+  default:
+    external:
+      name: nginx_network

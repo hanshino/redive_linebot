@@ -12,7 +12,7 @@ exports.removeDeleted = async () => {
     .where("ModifyDTM", "<", expireDates)
     .delete();
 
-    await notify.push({
+  await notify.push({
     message: `已刪除自訂指令清除了：${affectedRows} 筆`,
     alert: true,
   });
@@ -35,4 +35,4 @@ exports.markUseless = async () => {
     message: `已將 ${affectedRows} 個不常用指令標記刪除`,
     alert: true,
   });
-}
+};
