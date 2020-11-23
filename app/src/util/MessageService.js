@@ -1,9 +1,12 @@
+const host = process.env.AMQP_HOST;
+const username = process.env.RABBITMQ_DEFAULT_USER || "guest";
+const password = process.env.RABBITMQ_DEFAULT_PASS || "guest";
 const amqp = require("amqplib");
 
 exports.connection = null;
 exports.channel = {};
 exports.exchange = null;
-exports.connectionUri = `amqp://${process.env.AMQP_HOST}`;
+exports.connectionUri = `amqp://${username}:${password}@${host}`;
 
 /**
  * AMQP關閉連線

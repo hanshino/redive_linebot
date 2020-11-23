@@ -55,6 +55,9 @@ services:
     image: rabbitmq:3.8.9-management-alpine
     container_name: amqp
     restart: always
+    env_file: ./.env
+    ports:
+      - "21224:15672"
 
 networks:
   default:
