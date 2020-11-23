@@ -3,9 +3,17 @@ const script = require("./script/index");
 
 let dailyJob = new CronJob("0 0 0 * * *", daily);
 let nonStopJob = new CronJob("0 0 * * * *", script.heartbeat);
+let eventRunning = false;
+let eventJob = new CronJob("* * * * * *", async () => {
+  if (eventRunning) return;
+  eventRunning = true;
+  await script.Event.eventDequeue();
+  eventRunning = false;
+});
 
 dailyJob.start();
 nonStopJob.start();
+eventJob.start();
 
 async function daily() {
   await Promise.all([

@@ -1,3 +1,4 @@
+const { CustomLogger } = require("../../util/Logger");
 const mysql = require("../../util/mysql");
 
 /**
@@ -21,7 +22,7 @@ exports.getGroup = async guildId => {
  * @param {String} groupId
  */
 exports.closeGroup = groupId => {
-  console.log("closeGroup", groupId);
+  CustomLogger.info("closeGroup", groupId);
   return setStatus(
     this.table.Guild,
     {
@@ -40,7 +41,7 @@ exports.closeGroup = groupId => {
  * @param {String} groupId
  */
 exports.openGroup = groupId => {
-  console.log("openGroup", groupId);
+  CustomLogger.info("openGroup", groupId);
   return setStatus(
     this.table.Guild,
     {
@@ -141,7 +142,7 @@ exports.getGuildMember = (userId, groupId) => {
  * @param {String} guildId
  */
 exports.memberJoined = async (userId, guildId) => {
-  console.log("memberJoined", userId, guildId);
+  CustomLogger.info("memberJoined", userId, guildId);
 
   var [memberData] = await this.getGuildMember(userId, guildId);
 
@@ -162,7 +163,7 @@ exports.memberJoined = async (userId, guildId) => {
  * @param {String} groupId
  */
 exports.memberLeft = (userId, groupId) => {
-  console.log("memberLeft", userId, groupId);
+  CustomLogger.info("memberLeft", userId, groupId);
   return this.setMemberStatus(userId, groupId, 0);
 };
 
