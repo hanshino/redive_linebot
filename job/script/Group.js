@@ -1,5 +1,6 @@
 const mysql = require("../lib/mysql");
 const notify = require("../lib/notify");
+const RecordModel = require("../model/record");
 /**
  * 關閉的群組，進行以下清除
  * - 群組資料
@@ -39,23 +40,48 @@ exports.clearClosed = async () => {
 
     delGuild
       .then(affectedRows => recordResultThenNext(`刪除了 ${affectedRows} 個群組`, delGuildMembers))
-      .then(affectedRows => recordResultThenNext(`刪除了 ${affectedRows} 個群組會員資料`, delGuildConfig))
-      .then(affectedRows => recordResultThenNext(`刪除了 ${affectedRows} 個群組設定`, delGuildBattle))
-      .then(affectedRows => recordResultThenNext(`刪除了 ${affectedRows} 個群組戰隊表`, delGuildWeek))
-      .then(affectedRows => recordResultThenNext(`刪除了 ${affectedRows} 個群組戰隊周次資料`, delGuildBattleFinish))
-      .then(affectedRows => recordResultThenNext(`刪除了 ${affectedRows} 個群組戰隊簽到資料`, delCustomerOrder))
-      .then(affectedRows => recordResultThenNext(`刪除了 ${affectedRows} 個群組自訂指令`, Promise.resolve))
+      .then(affectedRows =>
+        recordResultThenNext(`刪除了 ${affectedRows} 個群組會員資料`, delGuildConfig)
+      )
+      .then(affectedRows =>
+        recordResultThenNext(`刪除了 ${affectedRows} 個群組設定`, delGuildBattle)
+      )
+      .then(affectedRows =>
+        recordResultThenNext(`刪除了 ${affectedRows} 個群組戰隊表`, delGuildWeek)
+      )
+      .then(affectedRows =>
+        recordResultThenNext(`刪除了 ${affectedRows} 個群組戰隊周次資料`, delGuildBattleFinish)
+      )
+      .then(affectedRows =>
+        recordResultThenNext(`刪除了 ${affectedRows} 個群組戰隊簽到資料`, delCustomerOrder)
+      )
+      .then(affectedRows =>
+        recordResultThenNext(`刪除了 ${affectedRows} 個群組自訂指令`, Promise.resolve)
+      )
       .then(trx.commit)
       .catch(trx.rollback);
-  })
+  });
 
   await notify.push({
     message: records.join("\n"),
     alert: true,
-  })
+  });
 
   function recordResultThenNext(msg, next) {
     records.push(msg);
     return next;
   }
-}
+};
+
+exports.resetRecords = async () => {
+  try {
+    let result = await RecordModel.recordTotalTimes();
+    if (result !== 1) throw "TotalEventTimes 紀錄失敗，發信通知";
+
+    await RecordModel.clearRecords();
+
+    notify.push({ message: "每月次數已重置" });
+  } catch (e) {
+    notify.push({ message: e, alert: true });
+  }
+};

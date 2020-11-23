@@ -5,7 +5,7 @@ log4js.configure({
     std: { type: "stdout", level: "all", layout: { type: "basic" } },
     file: {
       type: "dateFile",
-      filename: `${__dirname}/../../error_log.log`,
+      filename: `${__dirname}/../../log/error_log.log`,
       keepFileExt: true,
       encoding: "utf-8",
       compress: true,
