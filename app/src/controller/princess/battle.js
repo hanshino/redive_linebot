@@ -488,7 +488,10 @@ exports.showSigninList = async (context, { match }) => {
   let result = await Promise.all(
     FinishDatas.map(async data => ({
       ...data,
-      ...(await line.getGroupMemberProfile(groupId, data.userId)),
+      ...(await line.getGroupMemberProfile(groupId, data.userId).catch(() => ({
+        displayName: "路人甲",
+        userId: date.userId,
+      }))),
     }))
   );
 
