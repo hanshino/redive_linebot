@@ -76,6 +76,7 @@ function handleLeave(event) {
 async function handleMemberJoined(event) {
   let { groupId, userId } = event.source;
   userId = userId || event.joined.members[0].userId;
+  if (!userId || !groupId) return;
   let userData = await EventModel.getUserData(userId);
 
   let guildData = userData.groupList.find(list => list.guildId === groupId);
@@ -90,12 +91,14 @@ async function handleMemberJoined(event) {
 async function handleMemberLeft(event) {
   let { groupId } = event.source;
   let { userId } = event.left.members[0];
+  if (!userId || !groupId) return;
   await EventModel.setMemberStatus(userId, groupId);
 }
 
 async function handleMessage(event) {
   if (event.source.type !== "group") return;
   let { userId, groupId } = event.source;
+  if (!userId || !groupId) return;
 
   UserRecord(userId);
   await Promise.all([GroupRecord(groupId), handleMemberJoined(event)]);

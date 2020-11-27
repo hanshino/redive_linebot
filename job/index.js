@@ -22,5 +22,6 @@ async function daily() {
     script.CustomerOrder.removeDeleted(),
     script.CustomerOrder.markUseless(),
     script.Group.clearClosed(),
+    script.Group.clearLeftMembers(),
   ]);
 }

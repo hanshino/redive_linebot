@@ -73,6 +73,17 @@ exports.clearClosed = async () => {
   }
 };
 
+exports.clearLeftMembers = async () => {
+  let expireDates = new Date();
+  expireDates.setDate(expireDates.getDate() - 7);
+  let affectedRows = await mysql("GuildMembers")
+    .where("LeftDTM", "<", expireDates)
+    .where("status", "=", 0)
+    .delete();
+
+  notify.push({ message: `清除了 ${affectedRows} 退出成員資料` });
+};
+
 exports.resetRecords = async () => {
   try {
     let result = await RecordModel.recordTotalTimes();
