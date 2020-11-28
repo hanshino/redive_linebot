@@ -1,3 +1,4 @@
+const { DefaultLogger } = require("../lib/Logger");
 const MessageService = require("../lib/MessageService");
 const EventModel = require("../model/event");
 const logger = require("../lib/Logger").CustomLogger;
@@ -99,6 +100,10 @@ async function handleMessage(event) {
   if (event.source.type !== "group") return;
   let { userId, groupId } = event.source;
   if (!userId || !groupId) return;
+
+  if (event.message.type === "text") {
+    DefaultLogger.info(groupId, userId, event.message.text);
+  }
 
   UserRecord(userId);
   await Promise.all([GroupRecord(groupId), handleMemberJoined(event)]);
