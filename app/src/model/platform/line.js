@@ -208,8 +208,21 @@ exports.increaseSpeakTimes = (userId, guildId) => {
  */
 exports.getGroupSpeakRank = groupId => {
   return mysql
-    .select(["UserId", "Status", "JoinedDTM", "LeftDTM", "SpeakTimes", "LastSpeakDTM"])
     .from(this.table.GuildMembers)
+    .join("MessageRecord", "MessageRecord.id", "=", `${this.table.GuildMembers}.id`)
+    .select([
+      "userId",
+      "status",
+      { joinedTS: "joinedDTM" },
+      { leftTS: "LeftDTM" },
+      "speakTimes",
+      { lastSpeakTS: "LastSpeakDTM" },
+      { textCnt: "MessageRecord.MR_TEXT" },
+      { imageCnt: "MessageRecord.MR_IMAGE" },
+      { stickerCnt: "MessageRecord.MR_STICKER" },
+      { videoCnt: "MessageRecord.MR_VIDEO" },
+      { unsendCnt: "MessageRecord.MR_UNSEND" },
+    ])
     .where({ GuildId: groupId })
     .orderBy("SpeakTimes", "DESC");
 };

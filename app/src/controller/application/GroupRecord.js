@@ -9,20 +9,19 @@ exports.getRankDatas = async (req, res) => {
     var rankDatas = await LineModel.getGroupSpeakRank(groupId);
 
     var result = await Promise.all(
-      rankDatas.map(async data => {
+      rankDatas.map(async (data, index) => {
         let { displayName } = await LineClient.getGroupMemberProfile(
           groupId,
-          data.UserId
+          data.userId
         ).catch(() => ({ displayName: "路人甲" }));
 
         let temp = {
-          userId: data.UserId,
-          displayName: displayName,
-          status: data.Status,
-          speakTimes: data.SpeakTimes,
-          lastSpeakTS: new Date(data.LastSpeakDTM).getTime(),
-          joinedTS: new Date(data.JoinedDTM).getTime(),
-          leftTS: data.LeftDTM === null ? null : new Date(data.LeftDTM).getTime(),
+          ...data,
+          rank: index + 1,
+          displayName,
+          lastSpeakTS: new Date(data.lastSpeakTS).getTime(),
+          joinedTS: new Date(data.lastSpeakTS).getTime(),
+          leftTS: data.leftTS === null ? null : new Date(data.leftTS).getTime(),
         };
 
         if (displayName === null || displayName === undefined) {

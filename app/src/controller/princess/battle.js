@@ -513,7 +513,9 @@ exports.api.showSigninList = async (req, res) => {
 
   result = await Promise.all(
     result.map(async data => {
-      let profile = await line.getGroupMemberProfile(data.guildId, data.userId);
+      let profile = await line
+        .getGroupMemberProfile(data.guildId, data.userId)
+        .catch(() => ({ displayName: "路人甲", userId: data.userId }));
       return { ...profile, ...data };
     })
   );
