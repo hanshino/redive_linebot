@@ -1,11 +1,6 @@
 const GuildModel = require("../../model/application/Guild");
 const line = require("../../util/line");
 
-exports.test = context => {
-  const { userId } = context.event.source;
-  getGuildListByUser(userId).then(console.log);
-};
-
 exports.api = {};
 
 exports.api.getGuildSummarys = (req, res) => {

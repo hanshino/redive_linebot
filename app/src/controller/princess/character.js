@@ -2,6 +2,7 @@ const CharacterModel = require("../../model/princess/character");
 const CharacterTemplate = require("../../templates/princess/character");
 const error = require("../../util/error");
 const { recordSign } = require("../../util/traffic");
+const { CustomLogger } = require("../../util/Logger");
 
 function getCharacterByNick(nick) {
   var datas = CharacterModel.getDatas();
@@ -69,7 +70,7 @@ module.exports = {
 
       CharacterTemplate[context.platform].showInfo(context, character, data);
     } catch (e) {
-      console.log(e);
+      CustomLogger.info(e);
       error.sendError(context, e);
     }
   },
@@ -85,7 +86,7 @@ module.exports = {
 
       CharacterTemplate[context.platform].showSkill(context, character, data);
     } catch (e) {
-      console.log(e);
+      CustomLogger.info(e);
       error.sendError(context, e);
     }
   },
@@ -101,7 +102,7 @@ module.exports = {
 
       CharacterTemplate[context.platform].showAction(context, character, data);
     } catch (e) {
-      console.log(e);
+      CustomLogger.info(e);
       error.sendError(context, e);
     }
   },
@@ -121,7 +122,7 @@ module.exports = {
 
       CharacterTemplate[context.platform].showUniqEquip(context, character, Unique);
     } catch (e) {
-      console.log(e);
+      CustomLogger.info(e);
       error.sendError(context, e);
     }
   },
@@ -137,7 +138,7 @@ module.exports = {
 
       CharacterTemplate[context.platform].showEquipRequire(context, character, data);
     } catch (e) {
-      console.log(e);
+      CustomLogger.info(e);
       error.sendError(context, e);
     }
   },
@@ -153,7 +154,7 @@ module.exports = {
 
       CharacterTemplate[context.platform].showCharacter(context, character, data);
     } catch (e) {
-      console.log(e);
+      CustomLogger.info(e);
       error.sendError(context, e);
     }
   },
@@ -184,7 +185,7 @@ module.exports = {
         recommendData: recommendResult,
       });
     } catch (e) {
-      console.log(e);
+      CustomLogger.info(e);
       error.sendError(context, e);
     }
   },

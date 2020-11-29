@@ -6,6 +6,7 @@ const BattleTemplate = require("../../templates/princess/guild/battle");
 const { recordSign } = require("../../util/traffic");
 const BattleSender = { name: "戰隊秘書", iconUrl: "https://i.imgur.com/NuZZR7Q.jpg" };
 const redis = require("../../util/redis");
+const { CustomLogger } = require("../../util/Logger");
 
 function BattleException(message) {
   this.message = message;
@@ -62,7 +63,7 @@ async function getFormId(context) {
     let ianUserId = await getIanUserId(context);
     let groupSummary = await line.getGroupSummary(groupId);
     let createResult = await BattleModel.Ian.createForm(ianUserId, month, groupSummary.groupName);
-    console.log(createResult);
+    CustomLogger.info(createResult);
     BattleModel.setFormId(groupId, createResult.id, month);
 
     return createResult.id;
@@ -77,11 +78,11 @@ async function getIanUserId(context) {
   var [ianUserData] = await BattleModel.getIanUserData(2, userId);
 
   if (ianUserData === undefined) {
-    console.log(`userId: ${userId}, none register.`);
+    CustomLogger.info(`userId: ${userId}, none register.`);
     // 尚未到ian戰隊系統註冊，進行自動註冊
     ianUserData = await BattleModel.Ian.isRegister(2, userId);
 
-    console.log(`userId: ${userId}, isRegiter Result ${JSON.stringify(ianUserData)}`);
+    CustomLogger.info(`userId: ${userId}, isRegiter Result ${JSON.stringify(ianUserData)}`);
 
     if (ianUserData.id === undefined) {
       await BattleModel.Ian.RegisterUser(2, userId, profile.displayName, profile.pictureUrl);
@@ -487,7 +488,10 @@ exports.showSigninList = async (context, { match }) => {
   let result = await Promise.all(
     FinishDatas.map(async data => ({
       ...data,
-      ...(await line.getGroupMemberProfile(groupId, data.userId)),
+      ...(await line.getGroupMemberProfile(groupId, data.userId).catch(() => ({
+        displayName: "路人甲",
+        userId: date.userId,
+      }))),
     }))
   );
 
@@ -509,7 +513,9 @@ exports.api.showSigninList = async (req, res) => {
 
   result = await Promise.all(
     result.map(async data => {
-      let profile = await line.getGroupMemberProfile(data.guildId, data.userId);
+      let profile = await line
+        .getGroupMemberProfile(data.guildId, data.userId)
+        .catch(() => ({ displayName: "路人甲", userId: data.userId }));
       return { ...profile, ...data };
     })
   );

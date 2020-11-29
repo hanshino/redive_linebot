@@ -4,6 +4,7 @@ const token = process.env.IAN_BATTLE_TOKEN;
 const headers = { "x-token": token, "user-agent": "re:dive line-bot" };
 const apiURL = "https://guild.randosoru.me/api";
 const redis = require("../../../util/redis");
+const { CustomLogger } = require("../../../util/Logger");
 
 exports.saveIanUserData = (platform = 2, userId, ianUserId) => {
   return mysql
@@ -212,7 +213,7 @@ exports.Ian.getFormConfig = formId => {
 };
 
 function doGet(path) {
-  console.log(path);
+  CustomLogger.info(path);
   return fetch(`${apiURL}${path}`, {
     headers: headers,
   })
@@ -221,7 +222,7 @@ function doGet(path) {
 }
 
 function doPost(path, data) {
-  console.log(`Fetch from ${path} data is ${JSON.stringify(data)}`);
+  CustomLogger.info(`Fetch from ${path} data is ${JSON.stringify(data)}`);
   return fetch(`${apiURL}${path}`, {
     headers: headers,
     body: JSON.stringify(data),
@@ -230,7 +231,7 @@ function doPost(path, data) {
     .then(IsIanSeverDown)
     .then(res => res.json())
     .then(json => {
-      console.log(`result: ${JSON.stringify(json)}`);
+      CustomLogger.info(`result: ${JSON.stringify(json)}`);
       return json;
     });
 }

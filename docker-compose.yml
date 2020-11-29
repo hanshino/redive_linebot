@@ -5,6 +5,7 @@ services:
     links:
       - mysql
       - redis
+      - amqp
     env_file: ./.env
     restart: always
     ports:
@@ -12,6 +13,7 @@ services:
     depends_on:
       - mysql
       - redis
+      - amqp
     environment:
       - "VIRTUAL_HOST=${APP_DOMAIN}"
       - "VIRTUAL_NETWORK=nginx-proxy"
@@ -49,7 +51,20 @@ services:
     links:
       - mysql
       - redis
+      - amqp
+    depends_on:
+      - mysql
+      - redis
+      - amqp
     env_file: ./.env
+
+  amqp:
+    image: rabbitmq:3.8.9-management-alpine
+    container_name: amqp
+    restart: always
+    env_file: ./.env
+    ports:
+      - "21224:15672"
 
 networks:
   default:

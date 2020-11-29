@@ -28,5 +28,10 @@ function webhookSend(webhook, objData) {
     method: "POST",
     body: params,
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-  }).then(res => res.ok);
+  })
+    .then(res => res.ok)
+    .catch(err => {
+      console.error(err);
+      return false;
+    });
 }
