@@ -1,4 +1,4 @@
-const host = process.env.AMQP_HOST;
+const host = process.env.AMQP_HOST || "demo-rabbit";
 const username = process.env.RABBITMQ_DEFAULT_USER || "guest";
 const password = process.env.RABBITMQ_DEFAULT_PASS || "guest";
 const amqp = require("amqplib");

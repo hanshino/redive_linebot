@@ -1,7 +1,8 @@
-const { DefaultLogger } = require("../lib/Logger");
+const { DefaultLogger, CustomLogger } = require("../lib/Logger");
 const MessageService = require("../lib/MessageService");
 const EventModel = require("../model/event");
 const logger = require("../lib/Logger").CustomLogger;
+const redis = require("../lib/redis");
 
 exports.eventDequeue = eventDequeue;
 
@@ -53,6 +54,7 @@ async function eventHandle(event) {
 
   try {
     await route.action(event);
+    await SaveReplyToken(event);
   } catch (e) {
     console.error(e);
   }
@@ -152,4 +154,14 @@ async function GroupRecord(groupId) {
   } else if (groupData.Status === 0) {
     await EventModel.openGroup(groupId);
   }
+}
+
+async function SaveReplyToken(event) {
+  let { type } = event.source;
+  let sourceId = event.source[`${type}Id`];
+
+  CustomLogger.info(sourceId, event.replyToken);
+  if (!/^[CUD][0-9a-f]{32}$/.test(sourceId)) return;
+
+  return redis.set(`ReplyToken_${sourceId}`, event.replyToken, 20);
 }

@@ -2,6 +2,7 @@ const notify = require("../lib/notify");
 exports.CustomerOrder = require("./CustomerOrder");
 exports.Group = require("./Group");
 exports.Event = require("./Event");
+exports.Notify = require("./Notify");
 
 exports.heartbeat = () => {
   let now = new Date();
