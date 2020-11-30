@@ -108,8 +108,6 @@ PERFORMANCE OF THIS SOFTWARE.
 
 /*! has-cors */
 
-/*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
-
 /*! ms */
 
 /*! no static exports found */

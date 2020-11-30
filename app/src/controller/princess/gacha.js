@@ -158,7 +158,7 @@ module.exports = {
 
       if (tag !== "") {
         var gachaSignin = await GachaModel.getSignin(userId);
-        if (gachaSignin === undefined) {
+        if (gachaSignin === undefined && userId) {
           GachaModel.touchSingin(userId);
           let OwnGodStone = await GachaModel.getUserGodStoneCount(userId);
           DailyGachaInfo = await recordToInventory(userId, rewards);
