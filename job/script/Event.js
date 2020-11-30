@@ -159,9 +159,10 @@ async function GroupRecord(groupId) {
 async function SaveReplyToken(event) {
   let { type } = event.source;
   let sourceId = event.source[`${type}Id`];
+  let token = event.replyToken;
 
-  CustomLogger.info(sourceId, event.replyToken);
   if (!/^[CUD][0-9a-f]{32}$/.test(sourceId)) return;
+  if (!token) return;
 
-  return redis.set(`ReplyToken_${sourceId}`, event.replyToken, 20);
+  return redis.set(`ReplyToken_${sourceId}`, token, 20);
 }

@@ -24,12 +24,14 @@ exports.clearRecords = async () => {
       MR_MODIFYDTM: new Date(),
     })
     .transacting(trx);
+
+  await trx.commit();
 };
 
 exports.recordTotalTimes = async () => {
   let date = new Date();
   let str = [date.getFullYear(), `0${date.getMonth() + 1}`.substr(-2)].join("");
-  let affectedRows = await mysql
+  let [affectedRows] = await mysql
     .from(
       mysql.raw("?? (??, ??, ??, ??, ??, ??)", [
         "TotalEventTimes",
@@ -51,5 +53,5 @@ exports.recordTotalTimes = async () => {
         .sum({ unsendCnt: "MR_UNSEND" });
     });
 
-  return affectedRows === 1;
+  return affectedRows === 0;
 };

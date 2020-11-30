@@ -87,12 +87,13 @@ exports.clearLeftMembers = async () => {
 exports.resetRecords = async () => {
   try {
     let result = await RecordModel.recordTotalTimes();
-    if (result !== 1) throw "TotalEventTimes 紀錄失敗，發信通知";
+    if (result !== true) throw "TotalEventTimes 紀錄失敗，發信通知";
 
     await RecordModel.clearRecords();
 
     notify.push({ message: "每月次數已重置" });
   } catch (e) {
+    console.log(e);
     notify.push({ message: e, alert: true });
   }
 };
