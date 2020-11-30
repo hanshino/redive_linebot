@@ -153,10 +153,10 @@ module.exports = {
         });
       } while (rareCount[1] === 10);
 
-      var { userId, type } = context.event.source;
+      var { userId } = context.event.source;
       var DailyGachaInfo = false;
 
-      if (type === "user") {
+      if (tag !== "") {
         var gachaSignin = await GachaModel.getSignin(userId);
         if (gachaSignin === undefined) {
           GachaModel.touchSingin(userId);

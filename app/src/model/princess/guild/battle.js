@@ -139,19 +139,22 @@ exports.getMonthFinishList = (guildId, month) => {
  * @param {Date} objDate 可指定哪一天
  */
 function getBattleDate(objDate) {
-  let year = objDate.getFullYear();
-  let month = objDate.getMonth() + 1;
-  let date = objDate.getDate();
+  let start = new Date(objDate);
+  let end = new Date(objDate);
 
+  let year = objDate.getFullYear();
   let hour = objDate.getHours();
 
   if (hour < 5) {
-    date--;
+    start.setDate(start.getDate() - 1);
+  } else {
+    end.setDate(end.getDate() + 1);
   }
 
   return {
-    start: [year, month, date].join("-") + " " + ["05", "00", "00"].join(":"),
-    end: [year, month, date + 1].join("-") + " " + ["04", "59", "59"].join(":"),
+    start:
+      [year, start.getMonth() + 1, start.getDate()].join("-") + " " + ["05", "00", "00"].join(":"),
+    end: [year, end.getMonth() + 1, end.getDate()].join("-") + " " + ["04", "59", "59"].join(":"),
   };
 }
 
