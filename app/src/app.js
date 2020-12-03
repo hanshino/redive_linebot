@@ -20,6 +20,7 @@ const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
 const { showManagePlace } = require("./templates/application/Admin");
+const { sendPreWorkMessage } = require("./templates/princess/other");
 
 function showState(context) {
   context.sendText(JSON.stringify(context.state));
@@ -159,6 +160,7 @@ function PrincessInformation(context) {
     text(/^[#.](好友小卡|加我好友)$/, FriendCardController.showCard),
     text(/^[#.]官方公告$/, showAnnounce),
     text(/^[#.]?(官方活動|公主活動|公主行事曆)/, showSchedule),
+    text(/^#(前作|前作劇情|公連歌曲|前作個人劇情)/, sendPreWorkMessage),
   ];
 }
 

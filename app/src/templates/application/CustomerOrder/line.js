@@ -1,3 +1,5 @@
+const { getLiffUri } = require("../../common");
+
 const delTPL = {
   type: "bubble",
   body: {
@@ -186,7 +188,7 @@ const deleteManualTPL = {
     spacing: "md",
   },
 };
-const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
+const liffUri = getLiffUri("full");
 
 exports.showInsertManual = context => {
   let curr = new Date().getTime();
@@ -324,7 +326,7 @@ exports.showOrderManager = context => {
           align: "center",
           action: {
             type: "uri",
-            uri: `${liffUri}?=reactRedirectUri/Source/${sourceId}/Customer/Orders`,
+            uri: `${liffUri}?reactRedirectUri=/Source/${sourceId}/Customer/Orders`,
           },
         },
       ],

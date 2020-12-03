@@ -37,7 +37,7 @@ const message = {
               {
                 type: "text",
                 text:
-                  "積極尋找合作夥伴，想經營機器人卻不善寫程式??\n歡迎洽談合作，提供方便的後台進行指令管理、各遊戲模擬抽獎",
+                  "積極尋找合作夥伴，想經營機器人卻不善寫程式??\n歡迎洽談合作，免費提供方便的後台進行指令管理、各遊戲模擬抽獎",
                 wrap: true,
               },
               {
@@ -110,6 +110,19 @@ const message = {
                 type: "text",
                 text: "全面分析群組的訊息類型，快來探討誰才是群組的各領域王者吧！",
                 wrap: true,
+              },
+              {
+                type: "text",
+                text: "另外還附有各式群組設定",
+              },
+              {
+                type: "text",
+                text: "✅群組頭像設置\n✅群組歡迎詞設置\n✅Discord訊息同步",
+                wrap: true,
+              },
+              {
+                type: "text",
+                text: "快輸入 #群組管理 來玩玩看吧",
               },
             ],
             paddingAll: "lg",
@@ -207,7 +220,6 @@ exports.sendAD = async () => {
         .post("bot/message/reply", {
           replyToken: token,
           messages: [
-            { type: "text", text: "抱歉打擾了！剛有收過的朋友很抱歉！連結出了點問題再發一次！" },
             { type: "flex", altText: "布丁快訊", contents: msg, sender: { name: "布丁開發" } },
           ],
         })
