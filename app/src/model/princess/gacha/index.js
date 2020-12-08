@@ -185,7 +185,7 @@ exports.getCollectedRank = async options => {
       rank.map(data =>
         LineClient.getUserProfile(data.userId)
           .then(
-            profile => profile.displayName,
+            profile => (profile ? profile.displayName : "路人甲"),
             () => "路人甲"
           )
           .then(displayName => ({ ...data, displayName }))
