@@ -49,12 +49,12 @@ exports.insertData = objData => {
  * @param {String} replyData.reply
  */
 exports.updateData = objData => {
-  let { orderKey, replyDatas, order, touchType } = objData;
+  let { orderKey, replyDatas, order, touchType, senderName, senderIcon } = objData;
   return mysql
     .transaction(trx => {
       let updatePromise = Promise.all(
         replyDatas.map((data, index) => {
-          let { messageType, reply, senderName, senderIcon } = data;
+          let { messageType, reply } = data;
           return trx(this.table)
             .update({
               messageType,
