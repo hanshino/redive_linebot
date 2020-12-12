@@ -97,6 +97,35 @@ exports.keys = regex => {
   });
 };
 
+/**
+ * 利用LPUSH特性，達到enQ效果
+ * @param {string} key
+ * @param {string} strData
+ * @param {number} intTTL
+ */
+exports.enqueue = (key, strData, intTTL = 86400) => {
+  return new Promise((res, rej) => {
+    redisClient.LPUSH(key, strData, err => {
+      if (err) rej(err);
+      this.expire(key, intTTL)
+        .then(() => res())
+        .catch(err => rej(err));
+    });
+  });
+};
+
+/**
+ * 利用RPOP特性，將enQ的資料進行deQ
+ * @param {string} key
+ */
+exports.dequeue = key => {
+  return new Promise((res, rej) => {
+    redisClient.RPOP(key, function (err, reply) {
+      handlePromise(res, rej, err, reply);
+    });
+  });
+};
+
 function handlePromise(res, rej, err, result) {
   if (err) rej(err);
   res(result);

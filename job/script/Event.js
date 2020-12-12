@@ -1,5 +1,4 @@
 const { DefaultLogger, CustomLogger } = require("../lib/Logger");
-const MessageService = require("../lib/MessageService");
 const EventModel = require("../model/event");
 const logger = require("../lib/Logger").CustomLogger;
 const redis = require("../lib/redis");
@@ -7,12 +6,10 @@ const redis = require("../lib/redis");
 exports.eventDequeue = eventDequeue;
 
 async function eventDequeue() {
-  await MessageService.connect();
-  let eventQueue = await MessageService.getQueue("ChatBotEvent", 86400000);
   let processCount = 0;
 
   while (processCount < 1000) {
-    let data = await eventQueue.dequeue();
+    let data = await redis.dequeue("ChatBotEvent");
     if (!data) break;
     await eventHandle(JSON.parse(data));
     processCount++;

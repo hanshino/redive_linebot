@@ -1,5 +1,5 @@
 const { io } = require("../util/connection");
-const MessageService = require("../util/MessageService");
+const redis = require("../util/redis");
 const MessageIO = io.of("/Admin/Messages");
 
 /**
@@ -15,9 +15,7 @@ const statistics = async (context, props) => {
 module.exports = statistics;
 
 async function eventEnqueue(context) {
-  await MessageService.connect();
-  let eventQueue = await MessageService.getQueue("ChatBotEvent", 86400000);
-  eventQueue.enqueue(JSON.stringify(context.event.rawEvent));
+  return await redis.enqueue("ChatBotEvent", JSON.stringify(context.event.rawEvent), 86400);
 }
 
 function eventFire(context) {

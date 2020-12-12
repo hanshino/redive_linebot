@@ -108,7 +108,7 @@ function CustomerOrder(context) {
       customerOrder.insertCustomerOrder(context, props, 2)
     ),
     text(
-      /^[#.]?[移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>[a-f0-9]{1,32}))?$/,
+      /^[#.]?[移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>\S+))?$/,
       customerOrder.deleteCustomerOrder
     ),
   ];

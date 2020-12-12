@@ -2,10 +2,6 @@ version: "3.5"
 services:
   app:
     build: ./app
-    links:
-      - mysql
-      - redis
-      - amqp
     env_file: ./.env
     restart: always
     ports:
@@ -13,7 +9,6 @@ services:
     depends_on:
       - mysql
       - redis
-      - amqp
     networks:
       - nginx_network
       - bot_network
@@ -31,7 +26,7 @@ services:
       - ./migration:/docker-entrypoint-initdb.d
       - "${DB_STOREPATH}/db:/var/lib/mysql"
     restart: always
-    ports:
+    expose:
       - "${DB_PORT}"
     networks:
       - bot_network
@@ -47,7 +42,7 @@ services:
     restart: always
     networks:
       - bot_network
-    ports:
+    expose:
       - "${REDIS_PORT}"
 
   crontab:
@@ -57,21 +52,10 @@ services:
     depends_on:
       - mysql
       - redis
-      - amqp
     env_file: ./.env
-
-  amqp:
-    image: rabbitmq:3.8.9-management-alpine
-    restart: always
-    env_file: ./.env
-    networks:
-      - bot_network
-    ports:
-      - "21224:15672"
 
 networks:
   nginx_network:
     external: true
     name: nginx_network
   bot_network:
-    name: bot_app_network

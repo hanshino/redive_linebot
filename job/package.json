@@ -11,7 +11,6 @@
   "author": "hanshino@pchome.tw",
   "license": "ISC",
   "dependencies": {
-    "amqplib": "^0.6.0",
     "axios": "^0.21.0",
     "cron": "^1.8.2",
     "knex": "^0.21.12",
