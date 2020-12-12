@@ -16,24 +16,20 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `GuildConfig`
+-- Table structure for table `MiniGame_Character`
 --
 
-DROP TABLE IF EXISTS `GuildConfig`;
+DROP TABLE IF EXISTS `MiniGame_Character`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `GuildConfig` (
-  `ID` int NOT NULL AUTO_INCREMENT,
-  `GuildId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Config` json NOT NULL,
-  `modifyDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `DiscordWebhook` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `WelcomeMessage` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `SenderName` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `SenderIcon` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  PRIMARY KEY (`ID`),
-  UNIQUE KEY `GuildId_UNIQUE` (`GuildId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `MiniGame_Character` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `userId` varchar(45) NOT NULL COMMENT '聊天軟體用戶辨識碼',
+  `nickname` varchar(40) NOT NULL COMMENT '角色綽號',
+  `level` int NOT NULL DEFAULT '1' COMMENT '角色等級',
+  `createDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='小遊戲角色資料表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -45,4 +41,4 @@ CREATE TABLE `GuildConfig` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-12-12 23:33:45
+-- Dump completed on 2020-12-12 23:33:47

@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.17, for Win64 (x86_64)
 --
--- Host: 192.168.1.161    Database: Princess
+-- Host: 192.168.1.160    Database: Princess
 -- ------------------------------------------------------
 -- Server version	8.0.21
 
@@ -19,9 +19,10 @@
 -- Table structure for table `PrincessUID`
 --
 
+DROP TABLE IF EXISTS `PrincessUID`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `PrincessUID` (
+CREATE TABLE `PrincessUID` (
   `userId` varchar(45) NOT NULL COMMENT 'Line使用者ID',
   `uid` varchar(10) NOT NULL COMMENT '公主連結ID',
   `server` int NOT NULL COMMENT '遊戲伺服器，1:美食殿堂、2:真步真步王國、3:破曉之星、4:小小甜心',
@@ -41,4 +42,4 @@ CREATE TABLE IF NOT EXISTS `PrincessUID` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-10-09 23:19:22
+-- Dump completed on 2020-12-12 23:33:41

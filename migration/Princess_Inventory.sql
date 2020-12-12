@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.17, for Win64 (x86_64)
 --
--- Host: 192.168.1.161    Database: Princess
+-- Host: 192.168.1.160    Database: Princess
 -- ------------------------------------------------------
 -- Server version	8.0.21
 
@@ -19,12 +19,13 @@
 -- Table structure for table `Inventory`
 --
 
+DROP TABLE IF EXISTS `Inventory`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `Inventory` (
+CREATE TABLE `Inventory` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `userId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `itemId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `itemId` int NOT NULL,
   `itemAmount` int NOT NULL DEFAULT '1',
   `createDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`ID`)
@@ -40,4 +41,4 @@ CREATE TABLE IF NOT EXISTS `Inventory` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-10-09 23:19:27
+-- Dump completed on 2020-12-12 23:33:44

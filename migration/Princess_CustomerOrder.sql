@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.17, for Win64 (x86_64)
 --
--- Host: 192.168.1.161    Database: Princess
+-- Host: 192.168.1.160    Database: Princess
 -- ------------------------------------------------------
 -- Server version	8.0.21
 
@@ -19,9 +19,10 @@
 -- Table structure for table `CustomerOrder`
 --
 
+DROP TABLE IF EXISTS `CustomerOrder`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `CustomerOrder` (
+CREATE TABLE `CustomerOrder` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `No` int NOT NULL,
   `SourceId` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -52,4 +53,4 @@ CREATE TABLE IF NOT EXISTS `CustomerOrder` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-10-09 23:19:23
+-- Dump completed on 2020-12-12 23:33:41

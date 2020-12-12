@@ -16,24 +16,22 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `GuildConfig`
+-- Table structure for table `MessageRecord`
 --
 
-DROP TABLE IF EXISTS `GuildConfig`;
+DROP TABLE IF EXISTS `MessageRecord`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `GuildConfig` (
-  `ID` int NOT NULL AUTO_INCREMENT,
-  `GuildId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Config` json NOT NULL,
-  `modifyDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `DiscordWebhook` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `WelcomeMessage` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `SenderName` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `SenderIcon` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  PRIMARY KEY (`ID`),
-  UNIQUE KEY `GuildId_UNIQUE` (`GuildId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `MessageRecord` (
+  `ID` int NOT NULL,
+  `MR_TEXT` int DEFAULT '0' COMMENT '文字訊息次數',
+  `MR_IMAGE` int DEFAULT '0' COMMENT '圖片訊息次數',
+  `MR_STICKER` int DEFAULT '0' COMMENT '貼圖次數記錄',
+  `MR_VIDEO` int DEFAULT '0' COMMENT '影片訊息次數',
+  `MR_UNSEND` int DEFAULT '0' COMMENT '訊息收回次數',
+  `MR_MODIFYDTM` datetime DEFAULT NULL,
+  PRIMARY KEY (`ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='訊息數據紀錄';
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -45,4 +43,4 @@ CREATE TABLE `GuildConfig` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-12-12 23:33:45
+-- Dump completed on 2020-12-12 23:33:40
