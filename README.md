@@ -9,24 +9,24 @@
 
 ## 目錄
 
-- [使用須知](#使用須知)
-- [機器配置](#機器配置)
-- [適用軟體](#目前適用聊天軟體)
-- [專案特色](#此專案特色)
-  - 管理員
-    - 各大遊戲性功能
-  - 使用者
-    - 群組功能性
-    - 公主連結資訊查詢
-- [部分截圖](#部分截圖)
-- [事前準備](#事前準備)
-- [安裝方式](#安裝方式)
-- [進階用法](#進階用法)
-- [注意事項](#注意事項)
+- [公主連結聊天機器人](#公主連結聊天機器人)
+  - [目錄](#目錄)
+  - [使用須知](#使用須知)
+  - [機器配置](#機器配置)
+  - [目前適用聊天軟體](#目前適用聊天軟體)
+  - [此專案特色](#此專案特色)
+    - [各大遊戲性功能 - 管理員用](#各大遊戲性功能---管理員用)
+    - [群組功能性 - 使用者用](#群組功能性---使用者用)
+    - [公主連結資訊查詢 - 使用者](#公主連結資訊查詢---使用者)
+  - [部分截圖](#部分截圖)
+  - [事前準備](#事前準備)
+  - [安裝方式](#安裝方式)
+  - [進階用法](#進階用法)
+  - [注意事項](#注意事項)
 
 ## 使用須知
 
-本專案已配置好所有程式所需之環境，只需跟著[安裝方式](#安裝方式)，進行操作即可，如熟悉環境配置的朋友，可直接至[此專案](https://github.com/hanshino/redive_linebot_app)，僅包含機器人核心程式。
+本專案已配置好所有程式所需之環境，只需跟著[安裝方式](#安裝方式)，進行操作即可。
 
 ## 機器配置
 
@@ -36,8 +36,6 @@
 |-|-|-|
 |mysql|[mysql](https://hub.docker.com/_/mysql)|資料庫
 |redis|[redis](https://hub.docker.com/_/redis)|記憶體快取資料庫
-|nginx-proxy|[nginx-proxy](https://hub.docker.com/r/jwilder/nginx-proxy)|`nginx`代理
-|nginx-proxy-letsencrypt|[letsencrypt-nginx-proxy-companion](https://hub.docker.com/r/jrcs/letsencrypt-nginx-proxy-companion/)|定時更新SSL簽證
 |app|[app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)|`node.js:12-alpine` 包含主程式
 |crontab|[crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)|`node.js:12-alpine` 定時排程執行
 
