@@ -40,6 +40,7 @@
 |nginx-proxy-letsencrypt|[letsencrypt-nginx-proxy-companion](https://hub.docker.com/r/jrcs/letsencrypt-nginx-proxy-companion/)|定時更新SSL簽證
 |app|[app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)|`node.js:12-alpine` 包含主程式
 |crontab|[crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)|`node.js:12-alpine` 定時排程執行
+|phpmyadmin|[phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)|`phpmyadmin` 資料庫管理|
 
 可使用`docker-compose`指令水平擴展主程式，端看於個人硬體強度來做提升。
 
