@@ -156,9 +156,9 @@ module.exports = {
       var { userId } = context.event.source;
       var DailyGachaInfo = false;
 
-      if (tag !== "") {
+      if (rewards.findIndex(reward => reward.isPrincess == 0) === -1 && userId) {
         var gachaSignin = await GachaModel.getSignin(userId);
-        if (gachaSignin === undefined && userId) {
+        if (gachaSignin === undefined) {
           GachaModel.touchSingin(userId);
           let OwnGodStone = await GachaModel.getUserGodStoneCount(userId);
           DailyGachaInfo = await recordToInventory(userId, rewards);
