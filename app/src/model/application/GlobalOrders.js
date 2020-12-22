@@ -55,28 +55,54 @@ exports.updateData = objData => {
       let updatePromise = Promise.all(
         replyDatas.map((data, index) => {
           let { messageType, reply } = data;
-          return trx(this.table)
-            .update({
-              messageType,
-              reply,
-              no: index,
-              senderName,
-              senderIcon,
-              keyword: order,
-              touchType,
-              modifyTS: new Date(),
-            })
-            .where({
-              no: index,
-              key: orderKey,
+          console.log(data);
+          return trx
+            .select("*")
+            .from(this.table)
+            .where({ no: index, key: orderKey })
+            .then(res => {
+              if (res.length === 0) {
+                return trx(this.table).insert({
+                  no: index,
+                  messageType,
+                  reply,
+                  senderName,
+                  senderIcon,
+                  keyword: order,
+                  touchType,
+                  modifyTS: new Date(),
+                  key: orderKey,
+                });
+              } else {
+                return trx(this.table)
+                  .update({
+                    messageType,
+                    reply,
+                    no: index,
+                    senderName,
+                    senderIcon,
+                    keyword: order,
+                    touchType,
+                    modifyTS: new Date(),
+                  })
+                  .where({
+                    no: index,
+                    key: orderKey,
+                  });
+              }
             });
         })
       );
 
       updatePromise
-        .then(() =>
-          trx(this.table).where({ key: orderKey }).where("no", ">=", replyDatas.length).del()
-        )
+        .then(() => {
+          let q = trx(this.table)
+            .where({ key: orderKey })
+            .where("no", ">=", replyDatas.length)
+            .del();
+          console.log(q.toSQL().toNative());
+          return q;
+        })
         .then(trx.commit)
         .then(resetOrderCache)
         .catch(trx.rollback);

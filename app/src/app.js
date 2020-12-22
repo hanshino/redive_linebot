@@ -62,6 +62,7 @@ async function HandlePostback(context, { next }) {
  * 基於功能指令優先辨識
  */
 async function OrderBased(context, { next }) {
+  return router([text("/state", showState), ...AdminOrder(context)]);
   return router([
     ...BattleOrder(context),
     ...AdminOrder(context),
@@ -194,12 +195,12 @@ async function App(context) {
     setProfile, // 設置各式用戶資料
     statistics, // 數據蒐集
     lineEvent, // 事件處理
-    config, // 設置群組設定檔
-    transfer, // Discord Webhook轉發
-    HandlePostback, // 處理postback事件
+    // config, // 設置群組設定檔
+    // transfer, // Discord Webhook轉發
+    // HandlePostback, // 處理postback事件
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
-    CustomerOrderBased, // 自訂指令分析
+    // CustomerOrderBased, // 自訂指令分析
     Nothing, // 無符合事件
   ]);
 }

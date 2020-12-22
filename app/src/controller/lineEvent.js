@@ -46,8 +46,8 @@ function HandleMemberLeft() {
 }
 
 function HandleFollow(context) {
-  context.sendText(`感謝加我好友，先為您提供以下功能`);
-  welcome(context);
+  // context.sendText(`感謝加我好友，先為您提供以下功能`);
+  // welcome(context);
 }
 
 async function HandleJoin(context) {
@@ -56,18 +56,9 @@ async function HandleJoin(context) {
     return;
   }
 
-  context.sendText("感謝邀請我至群組，群組初始化開始...");
-
-  const [summary, countData] = await Promise.all([
-    lineAPI.getGroupSummary(context.event.source.groupId),
-    lineAPI.getGroupCount(context.event.source.groupId),
-  ]);
-
   context.sendText(
-    `已設置好群組資訊：\n群組名稱：${summary.groupName}\n群組人數：${countData.count}`
+    "感謝將在下加入群組，在下會全力以赴地輔佐各位\n主人可以問在下:\n\n角色名稱(暱稱)+專武/技能/裝備\n競技幣 公主競技幣\n戰隊幣 地城幣 大師幣\n女神石兌換 活動兌換 支線劇情\n困難掉落 活動排程\n專武開放 專武需求\n實用連結 聖跡調查\n卡池 站位 RANK UB\n狀態圖示 解放演出(美術圖+CV)\n回報\n"
   );
-
-  context.sendText("如需觀看使用說明，請輸入：#使用說明");
 }
 
 function HandleUnfollow(context) {
