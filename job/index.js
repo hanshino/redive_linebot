@@ -1,5 +1,5 @@
 const CronJob = require("cron").CronJob;
-const script = require("./script/index");
+const script = require("./bin");
 
 let monthJob = new CronJob("0 0 0 1 * *", script.Group.resetRecords);
 let dailyJob = new CronJob("0 0 0 * * *", daily);
@@ -11,11 +11,19 @@ let eventJob = new CronJob("* * * * * *", async () => {
   await script.Event.eventDequeue();
   eventRunning = false;
 });
+let updateRunning = false;
+let updateRecordJob = new CronJob("*/5 * * * * *", async () => {
+  if (updateRunning) return;
+  updateRunning = true;
+  await script.Event.updateRecord();
+  updateRunning = false;
+});
 
 dailyJob.start();
 nonStopJob.start();
 eventJob.start();
 monthJob.start();
+updateRecordJob.start();
 
 async function daily() {
   await Promise.all([

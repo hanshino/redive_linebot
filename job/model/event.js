@@ -26,7 +26,7 @@ async function getUserData(userId) {
   if (userData !== null) return userData;
 
   userData = await _getUserData(userId);
-  redis.set(redisKey, userData, 10 * 60 * 1000);
+  redis.set(redisKey, userData, 10 * 60);
   return userData;
 }
 
