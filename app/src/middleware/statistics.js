@@ -8,6 +8,7 @@ const MessageIO = io.of("/Admin/Messages");
  * @param {Object} props
  */
 const statistics = async (context, props) => {
+  eventFire(context);
   await eventEnqueue(context);
   return props.next;
 };

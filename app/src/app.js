@@ -16,6 +16,7 @@ const { showAnnounce } = require("./controller/princess/announce");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const { showSchedule } = require("./controller/princess/schedule");
 const FriendCardController = require("./controller/princess/FriendCard");
+const ChatLevelController = require("./controller/application/ChatLevelController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -79,6 +80,7 @@ async function OrderBased(context, { next }) {
       traffic.getPeopleData().then(console.table);
     }),
     text(/^[.#]自訂頭像( (?<param1>\S+))?( (?<param2>\S+))?/, guildConfig.setSender),
+    text("#我的狀態", ChatLevelController.showStatus),
     route("*", next),
   ]);
 }
@@ -86,7 +88,10 @@ async function OrderBased(context, { next }) {
 function AdminOrder(context) {
   if (context.event.source.type !== "user") return [];
   if (!context.state.isAdmin) return [];
-  return [text(/^[.#/](後台管理|system(call)?)/i, showManagePlace)];
+  return [
+    text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
+    text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
+  ];
 }
 
 function GroupOrder(context) {
