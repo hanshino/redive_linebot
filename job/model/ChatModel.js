@@ -6,6 +6,7 @@ const USER_DATA_TABLE = "chat_user_data";
 const LEVEL_TITLE_REDIS_KEY = "CHAT_LEVEL_TITLE";
 const RANGE_TITLE_REDIS_KEY = "CHAT_RANGE_TITLE";
 const CHAT_RECORD_REDIS_KEY = "CHAT_EXP_RECORD";
+const GLOBAL_RATE_REDIS_KEY = "CHAT_GLOBAL_RATE";
 
 /**
  * 取得等級稱號
@@ -153,6 +154,14 @@ exports.writeRecords = async recordDatas => {
 
   await Promise.all(querys.map(query => query.transacting(trx).catch(console.error)));
   await trx.commit();
+};
+
+/**
+ * 取得伺服器倍率
+ */
+exports.getGlobalRate = () => {
+  let defaultRate = 10;
+  return redis.get(GLOBAL_RATE_REDIS_KEY).then(val => val || defaultRate);
 };
 
 function genUpdateExp(id, experience) {

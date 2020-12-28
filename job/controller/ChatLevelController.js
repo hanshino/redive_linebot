@@ -44,7 +44,8 @@ exports.handleEvent = async botEvent => {
 
   rate = getExpRate(currTS, lastTouchTS);
   additionRate = count ? getGroupExpAdditionRate(count) : 1;
-  let expUnit = getExpUnit(rate, additionRate);
+  let globalRate = await ChatModel.getGlobalRate();
+  let expUnit = getExpUnit(rate, additionRate, globalRate);
 
   DefaultLogger.info(
     "個人頻率倍率",
@@ -53,6 +54,8 @@ exports.handleEvent = async botEvent => {
     additionRate,
     "經驗單位",
     expUnit,
+    "伺服器倍率",
+    globalRate,
     "群組人數",
     count,
     "Line名稱",
@@ -104,7 +107,8 @@ function getGroupExpAdditionRate(memberCount = 0) {
  * 取得經驗單位
  * @param {Number} rate 個人倍率
  * @param {Nubmer} additionRate 群組加成
+ * @param {Number} globalRate 伺服器倍率
  */
-function getExpUnit(rate, additionRate) {
-  return Math.round((additionRate * rate) / 100);
+function getExpUnit(rate, additionRate, globalRate) {
+  return Math.round((additionRate * rate * globalRate) / 100);
 }
