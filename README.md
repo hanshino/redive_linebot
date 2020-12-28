@@ -82,7 +82,7 @@
 4. `cp .env.example .env`
 5. 編輯 `.env` ，請務必填上所有資訊並存檔！
 6. `docker-compose up -d`
-7. 此時電腦的 **80 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
+7. 此時電腦的 **5000 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
 8. 網址預設為 `https://{your_domain}/webhooks/line`
 9. 將網址填進 [Line Account Manager](https://manager.line.biz/)
 
