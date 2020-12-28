@@ -31,7 +31,7 @@ exports.getUserData = async userId => {
 
   let userData = rows[0] || { userId, id: 0, exp: 0, level: 0 };
 
-  if (userData.exp === 0) return userData;
+  if (userData.exp === 0) return { ...userData, rank: "嬰兒", range: "等待投胎" };
 
   let level = await this.getLevel(userData.exp);
   if (!level) return userData;

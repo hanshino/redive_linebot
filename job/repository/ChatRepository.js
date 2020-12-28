@@ -32,7 +32,8 @@ exports.initialUsers = async userIds => {
   );
   let existIds = userDatas.map(data => data.userId);
   let insertIds = userIds.filter(userId => !existIds.includes(userId)); // 篩選出沒在資料庫的用戶ID
-  await ChatModel.insertNewUserByUserId(insertIds);
+
+  await ChatModel.insertUsers(insertIds);
 };
 
 /**

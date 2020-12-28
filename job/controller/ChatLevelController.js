@@ -75,7 +75,6 @@ exports.handleEvent = async botEvent => {
  * @param {Number} last
  */
 function getExpRate(now, last) {
-  console.log(now - last);
   switch (true) {
     case !last:
       return 100;

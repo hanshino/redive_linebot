@@ -16,7 +16,7 @@ exports.showStatus = async context => {
 
     let { rank, range, level } = await ChatLevelModel.getUserData(userId);
 
-    let messages = [`LINE名稱: ${displayName}`, `稱號： ${range} 的 ${rank}`, `等級: ${level}`];
+    let messages = [`LINE名稱: ${displayName}`, `稱號: ${range} 的 ${rank}`, `等級: ${level}`];
     context.sendText(messages.join("\n"));
   } catch (e) {
     DefaultLogger.error(e);

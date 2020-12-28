@@ -45,9 +45,9 @@ exports.getRangeTitle = async () => {
  */
 exports.insertNewUserByUserId = async userId => {
   resetUserCache([userId]);
-  return await this.genInsertUser(userId)
-    .then(() => true)
-    .catch(() => false);
+
+  let query = this.genInsertUser(userId);
+  return await query.then(() => true).catch(() => false);
 };
 
 /**
@@ -150,7 +150,6 @@ exports.writeRecords = async recordDatas => {
   );
 
   let querys = recordDatas.map(data => genUpdateExp(data.id, data.experience));
-  querys.forEach(query => console.log(query.toSQL().toNative()));
 
   await Promise.all(querys.map(query => query.transacting(trx).catch(console.error)));
   await trx.commit();
