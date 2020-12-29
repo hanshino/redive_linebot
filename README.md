@@ -32,13 +32,13 @@
 
 此專案結合了 `docker-compose` 一鍵佈署的特性，使用了六台虛擬機器
 
-|機器|image|說明|
-|-|-|-|
-|mysql|[mysql](https://hub.docker.com/_/mysql)|資料庫
-|redis|[redis](https://hub.docker.com/_/redis)|記憶體快取資料庫
-|app|[app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)|`node.js:12-alpine` 包含主程式
-|crontab|[crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)|`node.js:12-alpine` 定時排程執行
-|phpmyadmin|[phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)|`phpmyadmin` 資料庫管理|
+| 機器       | image                                                                            | 說明                             |
+| ---------- | -------------------------------------------------------------------------------- | -------------------------------- |
+| mysql      | [mysql](https://hub.docker.com/_/mysql)                                          | 資料庫                           |
+| redis      | [redis](https://hub.docker.com/_/redis)                                          | 記憶體快取資料庫                 |
+| app        | [app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)     | `node.js:12-alpine` 包含主程式   |
+| crontab    | [crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile) | `node.js:12-alpine` 定時排程執行 |
+| phpmyadmin | [phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)                    | `phpmyadmin` 資料庫管理          |
 
 可使用`docker-compose`指令水平擴展主程式，端看於個人硬體強度來做提升。
 
@@ -85,6 +85,8 @@
 7. 此時電腦的 **5000 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
 8. 網址預設為 `https://{your_domain}/webhooks/line`
 9. 將網址填進 [Line Account Manager](https://manager.line.biz/)
+
+*協作開發者可將6.的步驟改為 `docker-compose -f docker-compose-dev.yml up -d`*
 
 ## 進階用法
 開啟多機器進行 `load-balance` (複載平衡)
