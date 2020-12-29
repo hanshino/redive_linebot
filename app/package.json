@@ -3,7 +3,7 @@
   "version": "1.0.1",
   "private": true,
   "scripts": {
-    "dev": "nodemon server.js",
+    "dev": "nodemon -L server.js",
     "lint": "eslint . ",
     "start": "node server.js",
     "debug": "DEBUG=bottender:action node server.js",
