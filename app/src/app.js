@@ -81,6 +81,7 @@ async function OrderBased(context, { next }) {
     }),
     text(/^[.#]自訂頭像( (?<param1>\S+))?( (?<param2>\S+))?/, guildConfig.setSender),
     text("#我的狀態", ChatLevelController.showStatus),
+    text("#等級排行", ChatLevelController.showRank),
     route("*", next),
   ]);
 }

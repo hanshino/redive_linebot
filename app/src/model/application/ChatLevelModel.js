@@ -31,7 +31,7 @@ exports.getUserData = async userId => {
 
   let userData = rows[0] || { userId, id: 0, exp: 0, level: 0 };
 
-  if (userData.exp === 0) return { ...userData, rank: "嬰兒", range: "等待投胎" };
+  if (userData.exp === 0) return { ...userData, rank: "嬰兒", range: "等待投胎", level: 0 };
 
   let level = await this.getLevel(userData.exp);
   if (!level) return userData;
@@ -99,5 +99,33 @@ exports.getRangeTitle = async () => {
   data = await mysql.select("*").from(RANGE_TITLE_TABLE);
 
   redis.set(RANGE_TITLE_REDIS_KEY, data, 86400);
+  return data;
+};
+
+/**
+ * 取得排行榜
+ * @param {Number} page
+ */
+exports.getRankList = async page => {
+  return await mysql
+    .select("id", "experience")
+    .from(USER_DATA_TABLE)
+    .limit(100)
+    .orderBy("experience", "desc")
+    .offset((page - 1) * 10);
+};
+
+/**
+ * 取得所有資料，會快取10秒
+ * @returns {Promise<Array<{id: Number, experience: Number}>>}
+ */
+exports.getAllList = async () => {
+  let key = "CHAT_ALL_LIST";
+  let data = await redis.get(key);
+  if (data !== null) return data;
+
+  data = await mysql.select("id", "experience").from(USER_DATA_TABLE);
+  await redis.set(key, data, 10);
+
   return data;
 };
