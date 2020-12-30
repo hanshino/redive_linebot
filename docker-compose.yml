@@ -10,6 +10,7 @@ services:
       - mysql
       - redis
     networks:
+      - nginx_network
       - bot_network
     logging:
       driver: "json-file"
@@ -87,4 +88,7 @@ services:
       - bot_network
 
 networks:
+  nginx_network:
+    external: true
+    name: nginx_network
   bot_network:
