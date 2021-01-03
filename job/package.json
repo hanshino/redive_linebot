@@ -13,6 +13,7 @@
   "dependencies": {
     "@line/bot-sdk": "^7.2.0",
     "axios": "^0.21.0",
+    "cheerio": "^1.0.0-rc.5",
     "cron": "^1.8.2",
     "knex": "^0.21.12",
     "log4js": "^6.3.0",
