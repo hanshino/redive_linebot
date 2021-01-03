@@ -1,0 +1,13 @@
+[
+  { "key": "PrincessNews", "title": "公主連結消息", "description": "可以接收公主連結最新公告。" },
+  {
+    "key": "BotNews",
+    "title": "最新消息",
+    "description": "可以接收機器人功能最新消息更新，包括功能的修正、新增、刪除。"
+  },
+  {
+    "key": "ChatInfo",
+    "title": "等級系統消息",
+    "description": "可以接收等級系統的消息，例如：獲得了XX經驗、恭喜晉升為 36等 金級的龍族殺手。"
+  }
+]
