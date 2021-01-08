@@ -1,90 +1,98 @@
 const Axios = require("axios");
-const { contains } = require("cheerio");
 const axios = Axios.default
 var cheerio = require('cheerio');
 const mysql = require("../lib/mysql");
+const princessHost = "http://www.princessconnect.so-net.tw";
 
 module.exports = {
-
-    //抓取當前頁面最新消息網址
-    get_url: function (body) {
-        let i = 0;
-        let result = [];
-        const $ = cheerio.load(body);
-        //console.log($('.news_con a[href^="/news"]').attr("href"));
-        $('.news_con a[href^="/news"]')
-            .each(function () {
-                result[i] = 'http://www.princessconnect.so-net.tw' + $(this).attr("href");
-                i++;
-            });
-        return result;
-    },
-
-    get_contain: async function (url, cmp_title) {
-        return axios.get(url)
-            .then((res) => res.data)
-            .then(body => {
-                var contain = {};
-                let result = false;
-                const $ = cheerio.load(body);
-
-                contain.url = url;
-                contain.sort = $('article h2 span').text().trim();
-                contain.date = $('.news_con h2').text().trim().replace(contain.sort, "");
-                contain.title = $('article h3').text().trim();
-                contain.p = $('article section').text().trim();
-                //INSERT INTO `Bulletin`(`sort`, `date`, `title`, `p`, `id`) VALUES ([value-1],[value-2],[value-3],[value-4],[value-5])
-                result = cmp_title.includes(contain.title);
-                console.log(result);
-
-                if (result) {
-                    console.log("重複");
-                    return Promise.reject();
-                }
-                else {
-                    console.log("無重複");
-                    return contain;
-                }
-            })
-            .then(function (contain) {
-                let query = mysql.insert(contain).into("Bulletin");
-                console.log(query.toSQL().toNative());
-                return query;
-            })
-            .then(console.log)
-            .catch(console.log)
-    },
-
-    //抓資料庫title比對重複資料
-    database_title: async function () {
-        let query = await mysql.select("title").from("Bulletin");
-        result = query.map(function (data) {
-            return data.title;
-        })
-        return result;
-    },
-
-    all_url: function () {
-        return axios.get("http://www.princessconnect.so-net.tw/news")
-            .then((res) => res.data)
-            .then(body => {
-                //console.log(body);
-                let url = this.get_url(body);
-                //console.log(url);
-                return url;
-            });
-    },
-
-
     main: async function () {
-        let url = await this.all_url();  //取最新消息網址
-        //console.log(url);
-        let cmp_title = await this.database_title();
-        //console.log(Array.isArray(cmp_title));
+        let url = await getAllUrls();  //取最新消息網址
+        let cmp_title = await getTitlesFromDB();
 
         for (i = 0; i < url.length; i++) {
-            //console.log(url[i]);
-            await this.get_contain(url[i], cmp_title);
+            let contain = await getPrincessContain(url[i]);
+            if (cmp_title.includes(contain.title)) continue; // 重複略過
+
+            await insertBulletin(contain);
+            await delay();
         }
     }
+}
+
+/**
+ * 取目前公告所有url
+ * @returns {Array<String>}
+ */
+function getAllUrls() {
+    return getBody(`${princessHost}/news`)
+    .then((res) => res.data)
+    .then(body => {
+        let urls = [];
+        const $ = cheerio.load(body);
+
+        $('.news_con a[href^="/news"]')
+            .each(function () {
+                urls.push(princessHost + $(this).attr("href"));
+            });
+
+        return urls;
+    });
+}
+
+/**
+ * 抓資料庫title比對重複資料
+ */
+async function getTitlesFromDB() {
+    let query = await mysql.select("title").from("Bulletin");
+    result = query.map(data => data.title);
+    return result;
+}
+
+/**
+ * 取公主連結公告內容
+ * @param {String} url 
+ */
+function getPrincessContain(url) {
+    return getBody(url)
+    .then((res) => res.data)
+    .then(body => {
+        var contain = {};
+        const $ = cheerio.load(body);
+
+        contain.url = url;
+        contain.sort = $('article h2 span').text().trim();
+        contain.date = $('.news_con h2').text().trim().replace(contain.sort, "");
+        contain.title = $('article h3').text().trim();
+        contain.p = $('article section').text().trim();
+
+        return contain;
+    });
+}
+
+/**
+ * 取得網址原始碼，統一加入header 避免被ban
+ * @param {String} url 
+ */
+function getBody(url) {
+    return axios.get(url, {
+        headers: {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36"}
+    });
+}
+
+/**
+ * 將資料新增至資料庫
+ * @param {Object} contain
+ * @param {String} contain.title
+ * @param {String} contain.sort
+ * @param {String} contain.p
+ */
+function insertBulletin(contain) {
+    return mysql.insert(contain).into("BulletIn");
+}
+
+/**
+ * 避免被ban 加入delay機制
+ */
+function delay() {
+    return new Promise(res => setTimeout(res, 300));
 }
