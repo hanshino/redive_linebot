@@ -18,6 +18,7 @@ const {
 const gacha = require("../controller/princess/gacha");
 const { webhook } = require("../util/discord");
 const { showStatistics, showUserStatistics } = require("../controller/application/Statistics");
+const NotifyController = require("../controller/application/NotifyController");
 
 router.get("/Group/:groupId/Speak/Rank", GroupRecordController.getRankDatas);
 
@@ -235,7 +236,15 @@ router.get("/Princess/Character/Images", PrincessCharacterController.api.getChar
 
 router.delete("/Princess/Friend/Card", verifyToken, FriendCardController.api.clearBinding);
 
-router.all("*", (req, res) => {
+router.get("/Bot/Notify/Data", verifyToken, NotifyController.api.getUserData);
+
+router.delete("/Bot/Notify/Binding", verifyToken, NotifyController.api.revokeBinding);
+
+router.post("/Bot/Notify/Test", verifyToken, NotifyController.api.messageTest);
+
+router.put("/Bot/Notify/:key/:status", verifyToken, NotifyController.api.setSubStatus);
+
+router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });
 });
 

@@ -14,6 +14,7 @@ services:
       - redis
     networks:
       - bot_network
+      - nginx_network
     logging:
       driver: "json-file"
       options:
@@ -95,6 +96,9 @@ services:
 
 networks:
   bot_network:
+  nginx_network:
+    external: true
+    name: nginx_network
 
 volumes:
   exclude_job:
