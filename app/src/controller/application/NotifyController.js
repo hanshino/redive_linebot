@@ -103,6 +103,7 @@ exports.api.setSubStatus = async (req, res) => {
 
     let diff = getDiffSubType({ key, status: parseInt(status), origin: data.subType });
     await setSubStatus({ ...data, diff });
+    await sendModifyStatusNotify({ ...data, key, status });
 
     res.send("{}");
   } catch (e) {
@@ -120,6 +121,22 @@ exports.api.setSubStatus = async (req, res) => {
 function setSubStatus({ id, diff }) {
   let objData = { id, sub_type: diff };
   return NotifyModel.setSubStatus(objData);
+}
+
+/**
+ * 發送異動消息通知
+ * @param {Object} objData
+ * @param {String} objData.key
+ * @param {Number} objData.status
+ * @param {String} objData.token
+ * @returns {Promise}
+ */
+function sendModifyStatusNotify({ key, status, token }) {
+  let subType = SubscribeType.find(data => data.key === key);
+  let messages = [subType.title];
+  messages.push(parseInt(status) === 1 ? "已開啟" : "已關閉");
+
+  return LineNotify.pushMessage({ message: messages.join(""), token });
 }
 
 /**
