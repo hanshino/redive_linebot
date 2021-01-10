@@ -19,11 +19,18 @@ let updateRecordJob = new CronJob("*/5 * * * * *", async () => {
   updateRunning = false;
 });
 
+let spiderRunning = false;
+let spiderJob = new CronJob("0 1,6,11,16,21,26,31,36,41,46,51,56 * * * *", async () => {
+  if (spiderRunning) return;
+  await script.Spider.main();
+});
+
 dailyJob.start();
 nonStopJob.start();
 eventJob.start();
 monthJob.start();
 updateRecordJob.start();
+spiderJob.start();
 
 async function daily() {
   await Promise.all([

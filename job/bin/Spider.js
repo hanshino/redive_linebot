@@ -1,6 +1,7 @@
 const Axios = require("axios");
 const axios = Axios.default;
 var cheerio = require("cheerio");
+const { CustomLogger } = require("../lib/Logger");
 const mysql = require("../lib/mysql");
 const princessHost = "http://www.princessconnect.so-net.tw";
 
@@ -11,17 +12,23 @@ module.exports = {
 
     for (i = 0; i < url.length; i++) {
       let contain = await getPrincessContain(url[i]);
-      if (cmp_title.includes(contain.title)) continue; // 重複略過
+      await delay();
+
+      if (cmp_title.includes(contain.title)) {
+        CustomLogger.info(`>>${contain.title}<< 已存在於資料庫，跳過此筆`);
+        continue; // 重複略過
+      } else {
+        CustomLogger.info(`>>${contain.title}<< 新增一筆`);
+      }
 
       await insertBulletin(contain);
-      await delay();
     }
   },
 };
 
 /**
  * 取目前公告所有url
- * @returns {Array<String>}
+ * @returns {Promise<Array<String>>}
  */
 function getAllUrls() {
   return getBody(`${princessHost}/news`)
@@ -42,7 +49,7 @@ function getAllUrls() {
  * 抓資料庫title比對重複資料
  */
 async function getTitlesFromDB() {
-  let query = await mysql.select("title").from("Bulletin");
+  let query = await mysql.select("title").from("BulletIn");
   result = query.map(data => data.title);
   return result;
 }
@@ -71,6 +78,7 @@ function getPrincessContain(url) {
 /**
  * 取得網址原始碼，統一加入header 避免被ban
  * @param {String} url
+ * @param {Promise}
  */
 function getBody(url) {
   return axios.get(url, {
@@ -96,5 +104,6 @@ function insertBulletin(contain) {
  * 避免被ban 加入delay機制
  */
 function delay() {
-  return new Promise(res => setTimeout(res, 300));
+  let delayMS = 1000 + Math.round((Math.random() * 100000) % 1000);
+  return new Promise(res => setTimeout(res, delayMS));
 }
