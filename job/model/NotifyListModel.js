@@ -1,0 +1,67 @@
+const mysql = require("../lib/mysql");
+const redis = require("../lib/redis");
+const NOTIFY_LIST_TABLE = "notify_list";
+const SUB_TYPE_TABLE = "subscribe_type";
+const SUB_TYPE_REDIS_KEY = "SUBSCRIBE_TYPES";
+const NOTIFY_USER_REDIS_KEY = "NOTIFY_USER_QUEUE";
+
+/**
+ * 取得通知列表
+ * @returns {Promise<Array<{token: String, subType: Number}>>}
+ */
+exports.getList = async () => {
+  return mysql
+    .select(["token", { subType: "sub_type" }])
+    .from(NOTIFY_LIST_TABLE)
+    .where({ type: 1, status: 1 });
+};
+
+/**
+ * 取得訂閱類型清單
+ */
+exports.getSubTypes = async () => {
+  let data = await redis.get(SUB_TYPE_REDIS_KEY);
+  if (data) return data;
+
+  data = await mysql
+    .select([{ key: "type" }, "title", "description"])
+    .from(SUB_TYPE_TABLE)
+    .orderBy("id");
+
+  await redis.set(SUB_TYPE_REDIS_KEY, data, 86400);
+  return data;
+};
+
+/**
+ * 新增至待發送區
+ * @param {Object} param
+ * @param {String} param.token
+ * @param {String} param.message
+ * @param {?String} param.type
+ * - -1: 預設
+ * - 1: 公主連結消息
+ * - 2: 最新消息
+ * - 3: 等級系統消息
+ */
+exports.insertNotifyList = ({ token, message, type }) => {
+  return redis.enqueue(NOTIFY_USER_REDIS_KEY, JSON.stringify({ token, message, type }), 10 * 60);
+};
+
+/**
+ * 消化待發送區
+ * @returns {Promise<{token: String, message: String, type: Number}>}
+ */
+exports.consumeNotifyList = () => {
+  return redis.dequeue(NOTIFY_USER_REDIS_KEY).then(data => (data ? JSON.parse(data) : null));
+};
+
+exports.getLatestNews = () => {
+  return mysql
+    .select("*")
+    .from(function () {
+      this.select("*").from("BulletIn").orderBy("date", "desc").limit(1).as("D");
+    })
+    .whereNotIn("id", function () {
+      this.select("id").from("sent_bulletin");
+    });
+};

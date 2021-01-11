@@ -1,191 +1,12 @@
 const { default: axios } = require("axios");
 axios.defaults.headers.common = { Authorization: `Bearer ${process.env.LINE_ACCESS_TOKEN}` };
 axios.defaults.baseURL = "https://api.line.me/v2";
-const message = {
-  type: "carousel",
-  contents: [
-    {
-      type: "bubble",
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              {
-                type: "text",
-                text: "🍮布丁系統全面升級",
-                size: "lg",
-                weight: "bold",
-              },
-              {
-                type: "text",
-                text: "更快的處理速度\n更方便的管理介面",
-                wrap: true,
-                style: "italic",
-              },
-              {
-                type: "image",
-                url:
-                  "https://github.com/hanshino/redive_linebot/raw/master/readmepic/GachaPool.png",
-                size: "full",
-                aspectMode: "fit",
-                aspectRatio: "20:9",
-              },
-              {
-                type: "text",
-                text:
-                  "積極尋找合作夥伴，想經營機器人卻不善寫程式??\n歡迎洽談合作，免費提供方便的後台進行指令管理、各遊戲模擬抽獎",
-                wrap: true,
-              },
-              {
-                type: "box",
-                layout: "horizontal",
-                contents: [
-                  {
-                    type: "button",
-                    action: {
-                      type: "uri",
-                      label: "全新首頁",
-                      uri: "https://liff.line.me/1654464491-YNenGe96",
-                    },
-                  },
-                  {
-                    type: "button",
-                    action: {
-                      type: "uri",
-                      label: "開源計畫",
-                      uri: "https://github.com/hanshino/redive_linebot",
-                    },
-                  },
-                ],
-              },
-              {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                  {
-                    type: "button",
-                    action: {
-                      type: "uri",
-                      label: "Discord頻道",
-                      uri: "https://discord.gg/Fy82rTb",
-                    },
-                  },
-                ],
-              },
-            ],
-            paddingAll: "lg",
-          },
-        ],
-      },
-    },
-    {
-      type: "bubble",
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              {
-                type: "text",
-                text: "群組數據改版",
-                weight: "bold",
-                size: "lg",
-              },
-              {
-                type: "image",
-                url:
-                  "https://cdn.discordapp.com/attachments/682123271529037824/782990218814423090/unknown.png",
-                size: "full",
-                aspectRatio: "20:10",
-                aspectMode: "cover",
-              },
-              {
-                type: "text",
-                text: "全面分析群組的訊息類型，快來探討誰才是群組的各領域王者吧！",
-                wrap: true,
-              },
-              {
-                type: "text",
-                text: "另外還附有各式群組設定",
-              },
-              {
-                type: "text",
-                text: "✅群組頭像設置\n✅群組歡迎詞設置\n✅Discord訊息同步",
-                wrap: true,
-              },
-              {
-                type: "text",
-                text: "快輸入 #群組管理 來玩玩看吧",
-              },
-            ],
-            paddingAll: "lg",
-            spacing: "sm",
-          },
-          {
-            type: "button",
-            action: {
-              type: "uri",
-              label: "群組數據",
-              uri: "https://liff.line.me/1654464491-YNenGe96",
-            },
-            style: "primary",
-          },
-        ],
-      },
-    },
-    {
-      type: "bubble",
-      body: {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              {
-                type: "text",
-                text: "公主連結玩家",
-                size: "lg",
-                weight: "bold",
-              },
-              {
-                type: "image",
-                url:
-                  "https://cdn.discordapp.com/attachments/682123271529037824/782992862694080573/unknown.png",
-                size: "full",
-                aspectRatio: "20:9",
-              },
-              {
-                type: "text",
-                text:
-                  "針對公連玩家的改版！\n不想使用麻煩的戰隊系統嗎??\n本系統只要兩個指令！\n#三刀出完、#出完沒",
-                wrap: true,
-              },
-              {
-                type: "text",
-                text:
-                  "\n❌不需要嚴格控管傷害輸出的你們\n❌不需要嚴格控管出刀順序的你們\n⭕只追求早點出完早點睡覺的你們\n⭕只追求每日不管手動歐透的你們\n⭕只追求每日真的只要三刀的你們",
-                wrap: true,
-                size: "sm",
-              },
-            ],
-            paddingAll: "lg",
-          },
-        ],
-      },
-    },
-  ],
-};
+const message = { type: "text", text: "test" };
 const { CustomLogger } = require("../lib/Logger");
 const redis = require("../lib/redis");
+const NotifyListModel = require("../model/NotifyListModel");
+const notify = require("../lib/notify");
+
 var count = 0;
 
 exports.sendAD = async () => {
@@ -251,10 +72,30 @@ exports.send = async () => {
 };
 
 exports.test = async () => {
-  await redis.keys("sent_*").then(keys => {
-    console.log(keys);
-    keys.forEach(key => redis.del(key));
-  });
+  let [list, subTypes] = await Promise.all([
+    NotifyListModel.getList(),
+    NotifyListModel.getSubTypes(),
+  ]);
+
+  let SubscribeType = await NotifyListModel.getSubTypes();
+  let PrincessNewsTokenList = list
+    .filter(data => {
+      let { subType } = data;
+      let subSwitch = transSubData(SubscribeType, subType);
+      let princessSwitch = subSwitch.find(subData => subData.key === "PrincessNews");
+      return princessSwitch.status === 1;
+    })
+    .map(data => data.token);
+
+  await procPrincessNews(PrincessNewsTokenList);
+};
+
+exports.run = async () => {
+  while (true) {
+    let data = await NotifyListModel.consumeNotifyList();
+    if (data === null) break;
+    await notify.push(data);
+  }
 };
 
 function delay(second) {
@@ -263,4 +104,43 @@ function delay(second) {
       res();
     }, second * 1000);
   });
+}
+
+/**
+ * 處理新消息發送
+ * @param {Array} tokenList
+ */
+async function procPrincessNews(tokenList) {
+  let [newsData] = await NotifyListModel.getLatestNews();
+  if (!newsData) return;
+
+  await Promise.all(
+    tokenList.map(token => {
+      return Promise.all([
+        NotifyListModel.insertNotifyList({ token, message: newsData.title, type: 1 }),
+        NotifyListModel.insertNotifyList({
+          token,
+          message: `詳細資訊請參考:${newsData.url}`,
+          type: 1,
+        }),
+      ]);
+    })
+  );
+}
+
+/**
+ * 訂閱類型轉譯成資料
+ * @param {Array} SubscribeType
+ * @param {Number} intSubType
+ * @returns {Promise<Array<key: String, title: String, description: String, status: Number>>}
+ */
+function transSubData(SubscribeType, intSubType) {
+  const SubSwitch = getSubSwitch(SubscribeType);
+  let switchAry = SubSwitch.join("") + intSubType.toString(2);
+  switchAry = switchAry.substr(SubSwitch.length * -1).split("");
+  return SubscribeType.map((data, index) => ({ ...data, status: parseInt(switchAry[index]) }));
+}
+
+function getSubSwitch(SubscribeType) {
+  return Array.from({ length: SubscribeType.length }).map(() => "0");
 }

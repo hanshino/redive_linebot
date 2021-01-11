@@ -60,13 +60,21 @@ exports.api.binding = async (req, res) => {
     }
 
     await NotifyModel.bindingLineNotify(id, token);
-    await LineNotify.pushMessage({ message: "綁定成功！現在為訊息推送測試！", token });
+    await LineNotify.pushMessage({
+      message: "綁定成功！現在為訊息推送測試！",
+      token,
+    }).catch(() => {
+      resultMessage =
+        "綁定成功！但測試訊息發送失敗！如綁定群組，請記得邀請Line Notify官方帳號進入群組！";
+    });
   } catch (e) {
     CustomLogger.error("[Binding Page]", e, "userId =>", userId, "code =>", code);
     resultMessage = "發生錯誤！請通知作者！";
   }
 
-  res.send(`<h3>${resultMessage}</h3>`);
+  res.send(
+    `<h3>${resultMessage}</h3><h4>3秒後即將導頁</h4><script>setTimeout(function() {location.href="/Bot/Notify";}, 3000)</script>`
+  );
 };
 
 exports.api.getUserData = async (req, res) => {
