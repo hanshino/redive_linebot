@@ -71,26 +71,25 @@ exports.send = async () => {
   }
 };
 
-exports.test = async () => {
-  let [list, subTypes] = await Promise.all([
+/**
+ * 處理需要發送的資料，送進隊列
+ * - 公主連結最新消息
+ * - 機器人推播訊息
+ * - 等級系統訊息
+ */
+exports.provideNotifyList = async () => {
+  let [list, SubscribeType] = await Promise.all([
     NotifyListModel.getList(),
     NotifyListModel.getSubTypes(),
   ]);
 
-  let SubscribeType = await NotifyListModel.getSubTypes();
-  let PrincessNewsTokenList = list
-    .filter(data => {
-      let { subType } = data;
-      let subSwitch = transSubData(SubscribeType, subType);
-      let princessSwitch = subSwitch.find(subData => subData.key === "PrincessNews");
-      return princessSwitch.status === 1;
-    })
-    .map(data => data.token);
-
-  await procPrincessNews(PrincessNewsTokenList);
+  await procPrincessNews(getPrincessTokenList(list, SubscribeType));
 };
 
-exports.run = async () => {
+/**
+ * 進行發送隊列消化，直到無東西
+ */
+exports.consumeNotifyList = async () => {
   while (true) {
     let data = await NotifyListModel.consumeNotifyList();
     if (data === null) break;
@@ -106,26 +105,48 @@ function delay(second) {
   });
 }
 
+function getPrincessTokenList(list, SubscribeType) {
+  return list
+  .filter(data => {
+    let { subType } = data;
+    let subSwitch = transSubData(SubscribeType, subType);
+    let princessSwitch = subSwitch.find(subData => subData.key === "PrincessNews");
+    return princessSwitch.status === 1;
+  })
+  .map(data => data.token);
+}
+
 /**
  * 處理新消息發送
  * @param {Array} tokenList
  */
 async function procPrincessNews(tokenList) {
-  let [newsData] = await NotifyListModel.getLatestNews();
-  if (!newsData) return;
+  let newsData = await NotifyListModel.getLatestNews();
+  if (newsData.length === 0) return;
 
   await Promise.all(
     tokenList.map(token => {
-      return Promise.all([
-        NotifyListModel.insertNotifyList({ token, message: newsData.title, type: 1 }),
-        NotifyListModel.insertNotifyList({
-          token,
-          message: `詳細資訊請參考:${newsData.url}`,
-          type: 1,
-        }),
-      ]);
+      newsData.map(data => {
+        return Promise.all([
+          NotifyListModel.insertNotifyList({
+            token,
+            message: [data.sort, data.title].join("\n"),
+            type: 1,
+          }),
+          NotifyListModel.insertNotifyList({
+            token,
+            message: `\n詳細資訊請參考:${data.url}`,
+            type: 1,
+          }),
+        ]);
+      });
     })
   );
+
+  let maxId = Math.max(...newsData.map(data => data.id));
+  await NotifyListModel.recordSentId(maxId);
+
+  CustomLogger.info("紀錄最新已發送過之公告, id = ", maxId);
 }
 
 /**

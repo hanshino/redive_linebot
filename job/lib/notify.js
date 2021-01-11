@@ -17,7 +17,7 @@ exports.push = option => {
   if (!token) return false;
 
   const params = new URLSearchParams();
-  params.append("message", `\n${message}`);
+  params.append("message", `${message}`);
   params.append("notificationDisabled", !alert);
 
   return axios({

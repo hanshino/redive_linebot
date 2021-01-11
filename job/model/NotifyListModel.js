@@ -4,6 +4,8 @@ const NOTIFY_LIST_TABLE = "notify_list";
 const SUB_TYPE_TABLE = "subscribe_type";
 const SUB_TYPE_REDIS_KEY = "SUBSCRIBE_TYPES";
 const NOTIFY_USER_REDIS_KEY = "NOTIFY_USER_QUEUE";
+const SENT_TABLE = "sent_bulletin";
+const BULLETIN_TABLE = "BulletIn";
 
 /**
  * 取得通知列表
@@ -55,13 +57,21 @@ exports.consumeNotifyList = () => {
   return redis.dequeue(NOTIFY_USER_REDIS_KEY).then(data => (data ? JSON.parse(data) : null));
 };
 
-exports.getLatestNews = () => {
-  return mysql
-    .select("*")
-    .from(function () {
-      this.select("*").from("BulletIn").orderBy("date", "desc").limit(1).as("D");
-    })
-    .whereNotIn("id", function () {
-      this.select("id").from("sent_bulletin");
-    });
+/**
+ * 取得需要發送的訊息
+ * @returns {Promise<Array<{id: Number, title: String, sort: String, p: String}>>}
+ */
+exports.getLatestNews = async () => {
+  let rows = await mysql.select("id").from(SENT_TABLE).orderBy("id", "desc").limit(1);
+  let { id: latestId } = rows[0] || { id: 0 };
+
+  return await mysql.select("*").from(BULLETIN_TABLE).where("id", ">", latestId);
+};
+
+/**
+ * 紀錄發送過的ID
+ * @param {Number} id 之後會以此id為基準，比此大的才會發送
+ */
+exports.recordSentId = id => {
+  return mysql.insert({ id }).into(SENT_TABLE);
 };
