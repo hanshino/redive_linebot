@@ -3,10 +3,12 @@ const redis = require("../lib/redis");
 const LEVEL_TITLE_TABLE = "chat_level_title";
 const RANGE_TITLE_TABLE = "chat_range_title";
 const USER_DATA_TABLE = "chat_user_data";
+const EXP_UNIT_TABLE = "chat_exp_unit";
 const LEVEL_TITLE_REDIS_KEY = "CHAT_LEVEL_TITLE";
 const RANGE_TITLE_REDIS_KEY = "CHAT_RANGE_TITLE";
 const CHAT_RECORD_REDIS_KEY = "CHAT_EXP_RECORD";
 const GLOBAL_RATE_REDIS_KEY = "CHAT_GLOBAL_RATE";
+const EXP_UNIT_REDIS_KEY = "CHAT_EXP_UNIT";
 
 /**
  * 取得等級稱號
@@ -36,6 +38,20 @@ exports.getRangeTitle = async () => {
   data = await mysql.select("*").from(RANGE_TITLE_TABLE);
 
   redis.set(RANGE_TITLE_REDIS_KEY, data, 86400);
+  return data;
+};
+
+/**
+ * 取得經驗累積表
+ * @returns {Promise<Array<{unit_level: Number, total_exp: Number}>}
+ */
+exports.getExpUnit = async () => {
+  let data = await redis.get(EXP_UNIT_REDIS_KEY);
+  if (data !== null) return data;
+
+  data = await mysql.select("*").from(EXP_UNIT_TABLE);
+
+  redis.set(EXP_UNIT_REDIS_KEY, data, 86400);
   return data;
 };
 
@@ -170,3 +186,16 @@ function genUpdateExp(id, experience) {
     .from(USER_DATA_TABLE)
     .where({ id });
 }
+
+/**
+ * 獲取使用者數據，可獲取多筆
+ * @param {Array<String>} userIds [U123...,U456...]
+ * @returns {Promise<Array<{id: Number, exp: Number, userId: String}>>}
+ */
+exports.getUserDatas = async userIds => {
+  return mysql
+    .select([{ id: "cud.id", exp: "cud.experience", userId: "User.platformId" }])
+    .from("chat_user_data as cud")
+    .join("User", "User.No", "cud.id")
+    .whereIn("User.platformId", userIds);
+};
