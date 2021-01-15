@@ -2,7 +2,7 @@ const { DefaultLogger, CustomLogger } = require("../lib/Logger");
 const ChatModel = require("../model/ChatModel");
 const GroupModel = require("../model/GroupModel");
 const ChatRepo = require("../repository/ChatRepository");
-
+const Notify= require("../model/NotifyListModel");
 /**
  * 將紀錄進行合併寫入
  */
@@ -23,6 +23,7 @@ exports.updateRecords = async () => {
 
   await ChatRepo.initialUsers(userIds);
   await ChatModel.writeRecords(userIds.map(userId => ({ userId, experience: hashRecord[userId] })));
+  await levelUpNotify( userIds.map(userId => ({ userId, experience: hashRecord[userId] })));
 };
 
 /**
@@ -111,4 +112,89 @@ function getGroupExpAdditionRate(memberCount = 0) {
  */
 function getExpUnit(rate, additionRate, globalRate) {
   return Math.round((additionRate * rate * globalRate) / 100);
+}
+
+
+/**
+ * 判斷升等
+ */
+
+async function levelUpNotify(record) {
+
+  let user = {};
+
+  let userIds = record.map(data => data.userId);
+  let userDatas = await ChatModel.getUserDatas(userIds).catch(console.error);
+
+  let exp_unit = await ChatModel.getExpUnit();
+  let total_exp = exp_unit.map(function(data){
+    return data.total_exp;
+  })
+
+  for(i=0; i<record.length; i++){
+    user = await user_exp(record[i],userDatas);
+    user.levelup = await exp_filter(user,total_exp,exp_unit);
+    if( user.levelup != false){
+      console.log(user.levelup);
+     await Notify.insertNotifyList({token: "W2Eg4UCvsgWSBXkxnzzXj3GEJykubHoCjcgErILnghc", message: "Level Up to"+user.levelup});
+    }
+    else{
+      console.log("沒有升等");
+      await Notify.insertNotifyList({token: "W2Eg4UCvsgWSBXkxnzzXj3GEJykubHoCjcgErILnghc", message: "沒升等"});
+    }
+  }
+}
+
+/**
+ * 取出每一位使用者的資料
+ * @returns {Object<{after: int, now: int, getexp: int}>}
+ */
+
+function user_exp(id,userDatas){
+  
+
+  let user_exp = {};
+  user_exp.id = id.userId;
+  user_exp.after = userDatas.find(function(data){
+    return data.userId === id.userId;
+  }).exp
+
+  user_exp.now = user_exp.after - id.experience;
+  user_exp.getexp = id.experience;
+
+  //console.log(user_exp);
+  
+  return user_exp;
+}
+
+/**
+ * 比較total_exp看有沒有升等，有的話回傳升到哪等，沒有回傳false
+ * @returns {Int<unit_level>}
+ */
+
+function exp_filter(user,total_exp,exp_unit){
+
+  //取下限
+  let lower_bound = total_exp.find(function(data){
+    return data > user.now  ;
+  })
+
+  //取上限
+  let upper_bound = total_exp.find(function(data){
+    return data > user.after ;
+  })
+  //console.log(lower_bound);
+  //console.log(upper_bound);
+
+  //判斷該不該升等
+  if(lower_bound != upper_bound){
+    let unit_level = exp_unit.find(function(data){
+      return lower_bound == data.total_exp;
+    }).unit_level
+    //console.log(unit_level);
+    return unit_level;
+  }
+  else{
+    return false;
+  }
 }
