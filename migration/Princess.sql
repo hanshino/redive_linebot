@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： mysql
--- 產生時間： 2021 年 01 月 11 日 06:09
+-- 產生時間： 2021 年 01 月 16 日 17:22
 -- 伺服器版本： 8.0.21
 -- PHP 版本： 7.4.11
 
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `Admin` (
   `userId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `privilege` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS `BulletIn` (
   `date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `url` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='公主公告儲存';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='公主公告儲存';
 
 -- --------------------------------------------------------
 
@@ -257,7 +257,7 @@ CREATE TABLE IF NOT EXISTS `chat_level_title` (
   `title` varchar(255) NOT NULL,
   `title_range` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='聊天等級稱號';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='聊天等級稱號';
 
 --
 -- 資料表新增資料前，先清除舊資料 `chat_level_title`
@@ -278,7 +278,11 @@ INSERT INTO `chat_level_title` (`id`, `title`, `title_range`) VALUES
 (7, '神族殺手', 10),
 (8, '異世界少年', 6),
 (9, '見習勇者', 6),
-(10, '初上陣的勇者', 6);
+(10, '實習勇者', 6),
+(11, '遊俠', 3),
+(12, '吟遊詩人', 3),
+(13, '神官', 3),
+(14, '騎士', 3);
 
 -- --------------------------------------------------------
 
@@ -290,7 +294,7 @@ CREATE TABLE IF NOT EXISTS `chat_range_title` (
   `id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='級距頭銜前贅';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='級距頭銜前贅';
 
 --
 -- 資料表新增資料前，先清除舊資料 `chat_range_title`
@@ -416,7 +420,7 @@ CREATE TABLE IF NOT EXISTS `GlobalOrders` (
   `SenderName` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `SenderIcon` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=218 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -431,7 +435,7 @@ CREATE TABLE IF NOT EXISTS `Guild` (
   `CreateDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `CloseDTM` datetime DEFAULT NULL,
   PRIMARY KEY (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -480,7 +484,7 @@ CREATE TABLE IF NOT EXISTS `GuildConfig` (
   `SenderIcon` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `GuildId_UNIQUE` (`GuildId`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -499,7 +503,7 @@ CREATE TABLE IF NOT EXISTS `GuildMembers` (
   `LastSpeakDTM` datetime DEFAULT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `GM_Unique` (`GuildId`,`UserId`)
-) ENGINE=InnoDB AUTO_INCREMENT=3642 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -620,7 +624,16 @@ CREATE TABLE IF NOT EXISTS `subscribe_type` (
   `title` varchar(255) NOT NULL,
   `description` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- 傾印資料表的資料 `subscribe_type`
+--
+
+INSERT INTO `subscribe_type` (`id`, `type`, `title`, `description`) VALUES
+(1, 'PrincessNews', '公主連結消息', '可以接收公主連結最新公告。'),
+(2, 'BotNews', '最新消息', '可以接收機器人功能最新消息更新，包括功能的修正、新增、刪除。'),
+(3, 'ChatInfo', '等級系統消息', '可以接收等級系統的消息，例如：獲得了XX經驗、恭喜晉升為 36等 金級的龍族殺手。');
 
 -- --------------------------------------------------------
 
@@ -653,7 +666,7 @@ CREATE TABLE IF NOT EXISTS `User` (
   `closeDTM` datetime DEFAULT NULL,
   PRIMARY KEY (`No`),
   UNIQUE KEY `platformId` (`platformId`,`platform`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3371 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

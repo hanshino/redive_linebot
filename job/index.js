@@ -11,7 +11,7 @@ let eventJob = new CronJob("* * * * * *", async () => {
   eventRunning = false;
 });
 let updateRunning = false;
-let updateRecordJob = new CronJob("*/5 * * * * *", async () => {
+let updateRecordJob = new CronJob("0 */5 * * * *", async () => {
   if (updateRunning) return;
   updateRunning = true;
   await script.Event.updateRecord();

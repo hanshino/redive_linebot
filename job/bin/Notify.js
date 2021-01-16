@@ -94,6 +94,8 @@ exports.consumeNotifyList = async () => {
   while (true) {
     let data = await NotifyListModel.consumeNotifyList();
     if (data === null) break;
+    data.alert = data.type === 3 ? false : true;
+
     await notify.push(data);
   }
 };

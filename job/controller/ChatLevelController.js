@@ -125,24 +125,17 @@ async function handleNotify(hashRecord) {
     NotifyListModel.getList(),
     NotifyListModel.getSubTypes(),
   ]);
-  let levelUpRecords = []; // for 等級上升通知用
-  list.forEach(data => {
-    let subTypes = NotifyRepo.transSubData(SubTypes, data.subType);
-    let ChatStatus = subTypes.find(data => data.key === "ChatInfo");
-    if (ChatStatus.status !== 1) return;
-    if (!hashRecord[data.userId]) return;
+  let levelUpRecords = list
+    .filter(data => {
+      let subTypes = NotifyRepo.transSubData(SubTypes, data.subType);
+      let ChatStatus = subTypes.find(data => data.key === "ChatInfo");
+      if (ChatStatus.status !== 1) return false;
+      if (!hashRecord[data.userId]) return false;
+      return true;
+    })
+    .map(data => ({ ...data, experience: hashRecord[data.userId] }));
 
-    let { token, userId } = data;
-
-    levelUpRecords.push({ token, userId, experience: hashRecord[userId] });
-
-    NotifyListModel.insertNotifyList({
-      token,
-      message: `系統消息\n獲得了${hashRecord[data.userId]}經驗值`,
-    });
-
-    levelUpNotify(levelUpRecords);
-  });
+  levelUpNotify(levelUpRecords);
 }
 
 /**
@@ -159,14 +152,25 @@ async function levelUpNotify(records) {
   ]);
 
   for (let i = 0; i < records.length; i++) {
-    user = await user_exp(records[i], userDatas);
-    user.levelup = await exp_filter(user, exp_unit);
-    if (user.levelup === false) continue;
+    user = await processUserExp(records[i], userDatas);
+    let levelInfo = await expFilter(user, exp_unit);
+
     let { token } = records[i];
-    await NotifyListModel.insertNotifyList({
-      token,
-      message: "\nRank:" + user.levelup.rank + "\nTitle:" + user.levelup.range,
-    });
+    let { rank, range, level, levelUp, getexp, total_exp, after } = levelInfo;
+
+    if (levelUp) {
+      await NotifyListModel.insertNotifyList({
+        token,
+        message: `\n恭喜提升至 ${level} 等\n新稱號：${range} 的 ${rank}`,
+        type: 3,
+      });
+    } else {
+      await NotifyListModel.insertNotifyList({
+        token,
+        message: `\n獲得 ${getexp} 經驗\n距離下次升等還有：${total_exp - after}`,
+        type: 3,
+      });
+    }
   }
 }
 
@@ -174,7 +178,7 @@ async function levelUpNotify(records) {
  * 取出每一位使用者的資料
  * @returns {Object<{after: int, now: int, getexp: int}>}
  */
-function user_exp(record, userDatas) {
+function processUserExp(record, userDatas) {
   let { userId: id, experience: getexp } = record;
   let { exp: after } = userDatas.find(data => data.userId === record.userId);
   let now = after - getexp;
@@ -186,22 +190,22 @@ function user_exp(record, userDatas) {
  * 比較total_exp看有沒有升等
  * @returns {Object<{rank: String, title: String, level: Number}>}
  */
-function exp_filter(user, exp_unit) {
+function expFilter(user, exp_unit) {
   //取下限
-  let lower_bound = exp_unit.find(function (data) {
+  let lowerBound = exp_unit.find(function (data) {
     return data.total_exp > user.now;
   });
   //取上限
-  let upper_bound = exp_unit.find(function (data) {
+  let upperBound = exp_unit.find(function (data) {
     return data.total_exp > user.after;
   });
 
-  //判斷該不該升等
-  if (lower_bound.total_exp === upper_bound.total_exp) return false;
-
-  let { unit_level } = lower_bound;
+  let { unit_level } = lowerBound;
   return ChatRepo.getLevelTitle(unit_level).then(res => ({
     ...res,
+    ...user,
+    ...upperBound,
     level: unit_level,
+    levelUp: lowerBound.total_exp === upperBound.total_exp ? false : true,
   }));
 }
