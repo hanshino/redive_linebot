@@ -9,13 +9,15 @@ const BULLETIN_TABLE = "BulletIn";
 
 /**
  * 取得通知列表
- * @returns {Promise<Array<{token: String, subType: Number}>>}
+ * @returns {Promise<Array<{token: String, subType: Number, userId: String}>>}
  */
 exports.getList = async () => {
   return mysql
-    .select(["token", { subType: "sub_type" }])
-    .from(NOTIFY_LIST_TABLE)
-    .where({ type: 1, status: 1 });
+    .select(["token", { subType: "sub_type" }, { userId: "platformId" }])
+    .from(`${NOTIFY_LIST_TABLE} as nl`)
+    .join("User", "User.No", "nl.id")
+    .where({ type: 1 })
+    .where("nl.status", 1);
 };
 
 /**

@@ -6,6 +6,7 @@ const { CustomLogger } = require("../lib/Logger");
 const redis = require("../lib/redis");
 const NotifyListModel = require("../model/NotifyListModel");
 const notify = require("../lib/notify");
+const NotifyRepo = require("../repository/NotifyRepository");
 
 var count = 0;
 
@@ -109,7 +110,7 @@ function getPrincessTokenList(list, SubscribeType) {
   return list
   .filter(data => {
     let { subType } = data;
-    let subSwitch = transSubData(SubscribeType, subType);
+    let subSwitch = NotifyRepo.transSubData(SubscribeType, subType);
     let princessSwitch = subSwitch.find(subData => subData.key === "PrincessNews");
     return princessSwitch.status === 1;
   })
@@ -147,21 +148,4 @@ async function procPrincessNews(tokenList) {
   await NotifyListModel.recordSentId(maxId);
 
   CustomLogger.info("紀錄最新已發送過之公告, id = ", maxId);
-}
-
-/**
- * 訂閱類型轉譯成資料
- * @param {Array} SubscribeType
- * @param {Number} intSubType
- * @returns {Promise<Array<key: String, title: String, description: String, status: Number>>}
- */
-function transSubData(SubscribeType, intSubType) {
-  const SubSwitch = getSubSwitch(SubscribeType);
-  let switchAry = SubSwitch.join("") + intSubType.toString(2);
-  switchAry = switchAry.substr(SubSwitch.length * -1).split("");
-  return SubscribeType.map((data, index) => ({ ...data, status: parseInt(switchAry[index]) }));
-}
-
-function getSubSwitch(SubscribeType) {
-  return Array.from({ length: SubscribeType.length }).map(() => "0");
 }

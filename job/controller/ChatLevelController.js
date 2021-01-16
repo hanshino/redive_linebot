@@ -1,17 +1,27 @@
 const { DefaultLogger, CustomLogger } = require("../lib/Logger");
 const ChatModel = require("../model/ChatModel");
 const GroupModel = require("../model/GroupModel");
+const NotifyListModel = require("../model/NotifyListModel");
 const ChatRepo = require("../repository/ChatRepository");
+const NotifyRepo = require("../repository/NotifyRepository");
 
 /**
  * 將紀錄進行合併寫入
  */
 exports.updateRecords = async () => {
-  let records = await ChatRepo.getAllExpRecords();
+  // let records = await ChatRepo.getAllExpRecords();
+  let records = [
+    { userId: "Uc28b2e002c86886fffdb6cabea060c6e", expUnit: 10 },
+    { userId: "Uc28b2e002c86886fffdb6cabea060c6e", expUnit: 5 },
+    { userId: "Uc28b2e002c86886fffdb6cabea060c6e", expUnit: 10 },
+    { userId: "Uc28b2e002c86886fffdb6cabea060c6e", expUnit: 10 },
+    { userId: "Uc28b2e002c86886fffdb6cabea060c6e", expUnit: 10 },
+  ];
   let hashRecord = {};
 
   if (records.length === 0) {
     CustomLogger.info("mergeRecord", "無紀錄需要處理");
+    return;
   }
 
   records.forEach(record => {
@@ -20,9 +30,10 @@ exports.updateRecords = async () => {
   });
 
   let userIds = Object.keys(hashRecord);
+  let expDatas = userIds.map(userId => ({ userId, experience: hashRecord[userId] }));
 
   await ChatRepo.initialUsers(userIds);
-  await ChatModel.writeRecords(userIds.map(userId => ({ userId, experience: hashRecord[userId] })));
+  await Promise.all([ChatModel.writeRecords(expDatas), handleNotify(hashRecord)]);
 };
 
 /**
@@ -78,20 +89,19 @@ exports.handleEvent = async botEvent => {
  * @param {Number} last
  */
 function getExpRate(now, last) {
-  switch (true) {
-    case !last:
-      return 100;
-    case now - last < 1000:
-      return 0;
-    case now - last < 2000:
-      return 10;
-    case now - last < 4000:
-      return 50;
-    case now - last < 6000:
-      return 80;
-    default:
-      return 100;
-  }
+  let defaultRate = 100;
+  let configs = [
+    { diff: 1000, rate: 0 },
+    { diff: 2000, rate: 10 },
+    { diff: 4000, rate: 50 },
+    { diff: 6000, rate: 80 },
+  ];
+  if (!last) return defaultRate;
+  let diff = now - last;
+
+  let target = configs.find(config => diff < config.diff);
+
+  return target ? target.rate : defaultRate;
 }
 
 /**
@@ -111,4 +121,29 @@ function getGroupExpAdditionRate(memberCount = 0) {
  */
 function getExpUnit(rate, additionRate, globalRate) {
   return Math.round((additionRate * rate * globalRate) / 100);
+}
+
+/**
+ * 處理通知
+ * @param {Object} hashRecord
+ */
+async function handleNotify(hashRecord) {
+  let [list, SubTypes] = await Promise.all([
+    NotifyListModel.getList(),
+    NotifyListModel.getSubTypes(),
+  ]);
+  console.log(hashRecord);
+  list.forEach(data => {
+    let subTypes = NotifyRepo.transSubData(SubTypes, data.subType);
+    let ChatStatus = subTypes.find(data => data.key === "ChatInfo");
+    if (ChatStatus.status !== 1) return;
+    if (!hashRecord[data.userId]) return;
+
+    let { token } = data;
+    console.log(token);
+    NotifyListModel.insertNotifyList({
+      token,
+      message: `系統消息\n獲得了${hashRecord[data.userId]}經驗值`,
+    });
+  });
 }
