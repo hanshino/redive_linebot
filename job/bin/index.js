@@ -3,6 +3,7 @@ exports.CustomerOrder = require("./CustomerOrder");
 exports.Group = require("./Group");
 exports.Event = require("./Event");
 exports.Notify = require("./Notify");
+exports.Spider = require("./Spider");
 
 exports.heartbeat = () => {
   let now = new Date();

@@ -6,6 +6,15 @@ const RANGE_TITLE_TABLE = "chat_range_title";
 const USER_DATA_TABLE = "chat_user_data";
 const LEVEL_TITLE_REDIS_KEY = "CHAT_LEVEL_TITLE";
 const RANGE_TITLE_REDIS_KEY = "CHAT_RANGE_TITLE";
+const GLOBAL_RATE_REDIS_KEY = "CHAT_GLOBAL_RATE";
+
+/**
+ * 直接調整伺服器經驗倍率
+ * @param {Number} rate
+ */
+exports.setExperienceRate = rate => {
+  return redis.set(GLOBAL_RATE_REDIS_KEY, rate);
+};
 
 exports.setExperience = async (userId, experience) => {
   let { id } = await this.getUserData(userId);

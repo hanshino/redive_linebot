@@ -43,6 +43,21 @@ exports.setEXP = (context, { match }) => {
   });
 };
 
+/**
+ * 管理員密技，直接設定經驗值倍率
+ * @param {Context} context
+ * @param {Object} param1
+ * @param {Object} param1.match
+ */
+exports.setEXPRate = (context, { match }) => {
+  let { expRate } = match.groups;
+  console.log(expRate, "修改經驗倍率");
+  ChatLevelModel.setExperienceRate(expRate).then(result => {
+    let msg = result ? "修改成功" : "修改失敗";
+    context.sendText(msg, { sender: { name: "管理員指令" } });
+  });
+};
+
 exports.showRank = async context => {
   let { lastSendRank } = context.state;
   let now = new Date().getTime();

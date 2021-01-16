@@ -22,6 +22,7 @@ const redis = require("./util/redis");
 const traffic = require("./util/traffic");
 const { showManagePlace } = require("./templates/application/Admin");
 const { sendPreWorkMessage } = require("./templates/princess/other");
+const { pushMessage } = require("./util/LineNotify");
 
 function showState(context) {
   context.sendText(JSON.stringify(context.state));
@@ -82,6 +83,7 @@ async function OrderBased(context, { next }) {
     text(/^[.#]自訂頭像( (?<param1>\S+))?( (?<param2>\S+))?/, guildConfig.setSender),
     text("#我的狀態", ChatLevelController.showStatus),
     text("#等級排行", ChatLevelController.showRank),
+    text(".test", () => pushMessage({ message: "test", token: process.env.LINE_NOTIFY_TOKEN })),
     route("*", next),
   ]);
 }
@@ -92,6 +94,7 @@ function AdminOrder(context) {
   return [
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
+    text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
   ];
 }
 
