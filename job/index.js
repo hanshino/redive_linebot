@@ -36,9 +36,9 @@ dailyJob.start();
 eventJob.start();
 monthJob.start();
 updateRecordJob.start();
-//spiderJob.start();
-//provideNotifyJob.start();
-//consumeNotifyJob.start();
+spiderJob.start();
+provideNotifyJob.start();
+consumeNotifyJob.start();
 
 async function daily() {
   await Promise.all([
