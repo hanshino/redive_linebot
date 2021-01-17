@@ -26,7 +26,8 @@ exports.updateRecords = async () => {
   let expDatas = userIds.map(userId => ({ userId, experience: hashRecord[userId] }));
 
   await ChatRepo.initialUsers(userIds);
-  await Promise.all([ChatModel.writeRecords(expDatas), handleNotify(hashRecord)]);
+  await ChatModel.writeRecords(expDatas);
+  await handleNotify(hashRecord);
 };
 
 /**
@@ -135,7 +136,7 @@ async function handleNotify(hashRecord) {
     })
     .map(data => ({ ...data, experience: hashRecord[data.userId] }));
 
-  levelUpNotify(levelUpRecords);
+  await levelUpNotify(levelUpRecords);
 }
 
 /**
@@ -143,8 +144,6 @@ async function handleNotify(hashRecord) {
  * @param {Array<{userId: String, experience: Number, token: String}>}
  */
 async function levelUpNotify(records) {
-  let user = {};
-
   let userIds = records.map(data => data.userId);
   let [userDatas, exp_unit] = await Promise.all([
     ChatModel.getUserDatas(userIds),
@@ -152,7 +151,7 @@ async function levelUpNotify(records) {
   ]);
 
   for (let i = 0; i < records.length; i++) {
-    user = await processUserExp(records[i], userDatas);
+    let user = await processUserExp(records[i], userDatas);
     let levelInfo = await expFilter(user, exp_unit);
 
     let { token } = records[i];
