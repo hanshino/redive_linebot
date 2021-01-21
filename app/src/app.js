@@ -102,7 +102,10 @@ function GroupOrder(context) {
   if (context.platform !== "line") return [];
   if (context.event.source.type !== "group") return [];
 
-  return [text(/^[#.]?群組(設定|狀態|管理)$/, groupTemplate.showGroupStatus)];
+  return [
+    text(/^[#.]?群組(設定|狀態|管理)$/, groupTemplate.showGroupStatus),
+    text(/^[#./]group$/, groupTemplate.showGroupConfig),
+  ];
 }
 
 function CustomerOrder(context) {

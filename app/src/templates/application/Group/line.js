@@ -249,3 +249,24 @@ exports.showGroupStatus = context => {
     },
   });
 };
+
+exports.showGroupConfig = context => {
+  let { groupId, groupName, count } = context.state.groupDatas;
+  let { guildConfig } = context.state;
+  let messages = [
+    `ID:${groupId}`,
+    `群組名字:${groupName}`,
+    `群組人數:${count}`,
+    `轉蛋功能:${getIcon(guildConfig.Gacha)}`,
+    `戰隊功能:${getIcon(guildConfig.Battle)}`,
+    `公主指令:${getIcon(guildConfig.GlobalOrder)}`,
+    `自訂指令:${getIcon(guildConfig.CustomerOrder)}`,
+    `公主查詢:${getIcon(guildConfig.PrincessCharacter)}`,
+    `公主資訊:${getIcon(guildConfig.PrincessInformation)}`,
+  ];
+  context.sendText(messages.join("\n"));
+
+  function getIcon(isOpen) {
+    return isOpen === "Y" ? "✔" : "❌";
+  }
+};
