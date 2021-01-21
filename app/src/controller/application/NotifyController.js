@@ -42,7 +42,7 @@ exports.api.messageTest = (req, res) => {
  */
 exports.api.binding = async (req, res) => {
   const { code, state: userId } = req.query;
-  let resultMessage = "綁定成功！可關閉此頁面～";
+  let resultMessage = "綁定成功～！";
 
   try {
     if (!userId || /^U[a-f0-9]{32}/.test(userId) === false) throw "userId is invalid.";
@@ -73,7 +73,7 @@ exports.api.binding = async (req, res) => {
   }
 
   res.send(
-    `<h3>${resultMessage}</h3><h4>3秒後即將導頁</h4><script>setTimeout(function() {location.href="/Bot/Notify";}, 3000)</script>`
+    `<h3>${resultMessage}</h3><h4>1秒後即將導頁</h4><script>setTimeout(function() {location.href="/Bot/Notify";}, 1500)</script>`
   );
 };
 
