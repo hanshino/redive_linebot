@@ -70,7 +70,14 @@ exports.getSpeakTimesCount = async () => {
     .select()
     .sum({ times: "SpeakTimes" })
     .from("GuildMembers")
-    .then(data => data[0].times || 0);
+    .then(data => parseInt(data[0].times) || 0);
+
+  let historyTimes = await mysql
+    .sum({ times: "TET_TEXT" })
+    .from("TotalEventTimes")
+    .then(data => parseInt(data[0].times) || 0);
+
+  times += historyTimes;
 
   redis.set(memoryKey, times, 3600);
   return times;
