@@ -15,9 +15,14 @@ exports.showStatus = async context => {
       throw "userId or displayName is empty";
     }
 
-    let { rank, range, level } = await ChatLevelModel.getUserData(userId);
+    let { rank, range, level, ranking } = await ChatLevelModel.getUserData(userId);
 
-    let messages = [`LINE名稱: ${displayName}`, `稱號: ${range} 的 ${rank}`, `等級: ${level}`];
+    let messages = [
+      `LINE名稱: ${displayName}`,
+      `稱號: ${range} 的 ${rank}`,
+      `等級: ${level}`,
+      `排行: ${ranking}`,
+    ];
     context.sendText(messages.join("\n"));
 
     if (!level) {

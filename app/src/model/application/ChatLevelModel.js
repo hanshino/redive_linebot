@@ -33,12 +33,14 @@ exports.setExperience = async (userId, experience) => {
 
 exports.getUserData = async userId => {
   let rows = await mysql
-    .select([{ id: "cud.id", exp: "cud.experience", userId: "User.platformId" }])
+    .select([
+      { id: "cud.id", exp: "cud.experience", userId: "User.platformId", ranking: "cud.rank" },
+    ])
     .from(`${USER_DATA_TABLE} as cud`)
     .join("User", "User.No", "cud.id")
     .where("User.platformId", userId);
 
-  let userData = rows[0] || { userId, id: 0, exp: 0, level: 0 };
+  let userData = rows[0] || { userId, id: 0, exp: 0, level: 0, ranking: "?" };
 
   if (userData.exp === 0) return { ...userData, rank: "嬰兒", range: "等待投胎", level: 0 };
 

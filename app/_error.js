@@ -12,7 +12,7 @@ module.exports = async function HandleError(context, props) {
   console.error(props.error);
   // or you can choose not to reply any error messages
   await context.sendText(
-    "There are some unexpected errors happened. Please try again later, sorry for the inconvenience."
+    "人家現在忙不過來.. 麻煩再過一段時間再度嘗試！"
   );
 
   if (process.env.NODE_ENV === "production") {
