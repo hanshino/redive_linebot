@@ -7,7 +7,7 @@
  */
 exports.showTopRank = (context, { rankData, sendType }) => {
   let message = sendType === "text" ? genTextTopRank(rankData) : genTextTopRank(rankData);
-  
+
   if (sendType === "text") {
     context.sendText(message);
   }

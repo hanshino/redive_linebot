@@ -1,7 +1,9 @@
 let args = require("minimist")(process.argv.slice(2));
 
 if (args["f"] || args["m"]) {
-  main(args["m"], args["f"]).then(() => process.exit(1)).catch(console.error);
+  main(args["m"], args["f"])
+    .then(() => process.exit(1))
+    .catch(console.error);
 }
 
 async function main(mod, func) {
@@ -12,8 +14,7 @@ async function main(mod, func) {
     await script[func]();
     console.timeEnd("script");
     return;
-  }
-  else if (!Object.prototype.hasOwnProperty.call(script, mod)) {
+  } else if (!Object.prototype.hasOwnProperty.call(script, mod)) {
     console.error("Module Not Found.");
     return;
   }

@@ -32,6 +32,10 @@ let provideNotifyJob = new CronJob("5 * * * * *", async () => {
   await script.Notify.provideNotifyList();
 });
 
+let rankingJob = new CronJob("12 */10 * * * *", async () => {
+  await script.ChatLevel.refreshRanking();
+});
+
 dailyJob.start();
 eventJob.start();
 monthJob.start();
@@ -39,6 +43,7 @@ updateRecordJob.start();
 spiderJob.start();
 provideNotifyJob.start();
 consumeNotifyJob.start();
+rankingJob.start();
 
 async function daily() {
   await Promise.all([

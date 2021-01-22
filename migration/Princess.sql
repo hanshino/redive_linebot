@@ -327,7 +327,7 @@ CREATE TABLE IF NOT EXISTS `chat_user_data` (
   `id` int NOT NULL,
   `experience` int NOT NULL DEFAULT '1',
   `modify_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  `rank` int NOT NULL DEFAULT '99999'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='聊天制度用戶經驗';
 
 -- --------------------------------------------------------

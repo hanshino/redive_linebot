@@ -110,13 +110,13 @@ function delay(second) {
 
 function getPrincessTokenList(list, SubscribeType) {
   return list
-  .filter(data => {
-    let { subType } = data;
-    let subSwitch = NotifyRepo.transSubData(SubscribeType, subType);
-    let princessSwitch = subSwitch.find(subData => subData.key === "PrincessNews");
-    return princessSwitch.status === 1;
-  })
-  .map(data => data.token);
+    .filter(data => {
+      let { subType } = data;
+      let subSwitch = NotifyRepo.transSubData(SubscribeType, subType);
+      let princessSwitch = subSwitch.find(subData => subData.key === "PrincessNews");
+      return princessSwitch.status === 1;
+    })
+    .map(data => data.token);
 }
 
 /**

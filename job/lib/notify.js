@@ -23,10 +23,9 @@ exports.push = option => {
     method: "post",
     url: "https://notify-api.line.me/api/notify",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    data: params
-  })
-    .then(res => res.ok);
+    data: params,
+  }).then(res => res.ok);
 };

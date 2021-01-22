@@ -199,3 +199,15 @@ exports.getUserDatas = async userIds => {
     .join("User", "User.No", "cud.id")
     .whereIn("User.platformId", userIds);
 };
+
+exports.refreshRanking = async () => {
+  let setX = mysql.raw("SET @x = 0;");
+  let update = mysql(USER_DATA_TABLE)
+    .update({ rank: mysql.raw("@x:=@x+1") })
+    .orderBy("experience", "desc");
+
+  return mysql.transaction(async trx => {
+    await setX.transacting(trx);
+    await update.transacting(trx);
+  });
+};
