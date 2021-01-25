@@ -21,12 +21,13 @@ exports.send = (context, replyDatas, sender = { name: null, iconUrl: null }) => 
   replyDatas
     .sort((a, b) => a.no - b.no)
     .forEach(data => {
+      let content = handleText(data.reply, context);
       switch (data.messageType) {
         case "image":
-          _sendImage(context, data.reply, sender);
+          _sendImage(context, content, sender);
           return;
         case "text":
-          context.sendText(handleText(data.reply, context), { sender });
+          context.sendText(content, { sender });
           return;
       }
     });
