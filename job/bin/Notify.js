@@ -1,6 +1,9 @@
-const { default: axios } = require("axios");
+const { default: Axios } = require("axios");
+const axios = Axios.create({
+  baseURL: "https://api.line.me/v2",
+});
 axios.defaults.headers.common = { Authorization: `Bearer ${process.env.LINE_ACCESS_TOKEN}` };
-axios.defaults.baseURL = "https://api.line.me/v2";
+
 const message = { type: "text", text: "test" };
 const { CustomLogger } = require("../lib/Logger");
 const redis = require("../lib/redis");
