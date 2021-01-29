@@ -92,7 +92,7 @@ async function handleMemberLeft(event) {
   let { groupId } = event.source;
   let { userId } = event.left.members[0];
   if (!userId || !groupId) return;
-  await EventModel.setMemberStatus(userId, groupId);
+  await EventModel.setMemberStatus(userId, groupId, 0);
 }
 
 async function handleMessage(event) {

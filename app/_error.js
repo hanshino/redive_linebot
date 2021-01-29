@@ -11,9 +11,7 @@ module.exports = async function HandleError(context, props) {
 
   console.error(props.error);
   // or you can choose not to reply any error messages
-  await context.sendText(
-    "人家現在忙不過來.. 麻煩再過一段時間再度嘗試！"
-  );
+  await context.sendText("人家現在忙不過來.. 麻煩再過一段時間再度嘗試！");
 
   if (process.env.NODE_ENV === "production") {
     Sentry.captureException(props.error);

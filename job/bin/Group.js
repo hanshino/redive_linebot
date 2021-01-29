@@ -1,6 +1,11 @@
 const mysql = require("../lib/mysql");
 const notify = require("../lib/notify");
 const RecordModel = require("../model/record");
+const GroupModel = require("../model/GroupModel");
+const redis = require("../lib/redis");
+const { CustomLogger } = require("../lib/Logger");
+const { delay, random } = require("../lib/common");
+
 /**
  * 關閉的群組，進行以下清除
  * - 群組資料
@@ -96,4 +101,39 @@ exports.resetRecords = async () => {
     console.log(e);
     notify.push({ message: e, alert: true });
   }
+};
+
+/**
+ * 盤點會員資料，七天盤一次
+ */
+exports.provideCleanUpMembers = async () => {
+  let memberDatas = await GroupModel.getActiveMembers();
+  CustomLogger.info(`七天固定盤點會員資料，此次處理筆數 ${memberDatas.length}`);
+  let status = memberDatas.map(data => redis.enqueue("CleanUpMembers", JSON.stringify(data)));
+  await Promise.all(status);
+};
+
+exports.consumeCleanUpMembers = async () => {
+  let count = 0;
+  let markIds = [];
+
+  while (true) {
+    let memberData = await redis.dequeue("CleanUpMembers");
+    if (memberData === null) break;
+    count++;
+
+    memberData = JSON.parse(memberData);
+
+    let profile = await GroupModel.getGroupMemberProfile(memberData.groupId, memberData.userId);
+
+    if (!profile) markIds.push(memberData.id);
+
+    if (count > 1000) break;
+    await delay(random(1, 3));
+  }
+
+  CustomLogger.info(`關閉 ${markIds.length} 個 群組會員資料`);
+  CustomLogger.info(JSON.stringify(markIds));
+
+  await GroupModel.shutdownMembers(markIds);
 };
