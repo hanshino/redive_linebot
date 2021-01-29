@@ -15,17 +15,15 @@ exports.push = option => {
 
   if (!token) return false;
 
-  const params = new URLSearchParams();
-  params.append("message", `${message}`);
-  params.append("notificationDisabled", !alert);
-
   return axios({
     method: "post",
-    url: "https://notify-api.line.me/api/notify",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/x-www-form-urlencoded",
+    url: "https://hanshino-bot.herokuapp.com/Randosoru/Notify",
+    data: {
+      token,
+      data: {
+        message,
+        notificationDisabled: !alert,
+      },
     },
-    data: params,
   }).then(res => res.ok);
 };
