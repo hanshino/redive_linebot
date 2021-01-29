@@ -102,7 +102,7 @@ exports.showSchedule = (context, EventDatas) => {
     "公主活動",
     {
       type: "carousel",
-      contents: [objEventMsg.HoldingEvent, objEventMsg.FutureEvent, objEventMsg.ExpireEvent],
+      contents: Object.keys(objEventMsg).map(key => objEventMsg[key]),
     },
     { sender }
   );
