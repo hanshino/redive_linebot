@@ -126,14 +126,16 @@ exports.consumeCleanUpMembers = async () => {
 
     let profile = await GroupModel.getGroupMemberProfile(memberData.groupId, memberData.userId);
 
-    if (!profile) markIds.push(memberData.id);
+    if (!profile) {
+      CustomLogger.info(memberData.id, "準備標記刪除");
+      markIds.push(memberData.id);
+    }
 
     if (count > 1000) break;
-    await delay(random(1, 3));
+    await delay(random(1, 10) * 0.1);
   }
 
   CustomLogger.info(`關閉 ${markIds.length} 個 群組會員資料`);
-  CustomLogger.info(JSON.stringify(markIds));
 
   await GroupModel.shutdownMembers(markIds);
 };
