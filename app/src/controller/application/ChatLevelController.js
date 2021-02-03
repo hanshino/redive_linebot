@@ -40,16 +40,19 @@ exports.showFriendStatus = async context => {
     displayName: text.substr(d.index + 1, d.length - 1),
   }));
   let userDatas = await ChatLevelModel.getUserDatas(users.map(user => user.userId));
-  let messages = userDatas.map(
-    (data, index) =>
-      `${index + 1} ${users.find(user => user.userId === data.userId).displayName} ${
-        data.range
-      } 的 ${data.rank} ${data.ranking}`
+  let messages = userDatas.map((data, index) =>
+    [
+      index + 1,
+      users.find(user => user.userId === data.userId).displayName,
+      `${data.level}等`,
+      `${data.ranking}名`,
+    ].join("\t")
   );
 
   if (messages.length === 0) {
     context.sendText("查詢失敗！");
   } else {
+    messages = [">>>查詢結果<<<", ...messages];
     context.sendText(messages.join("\n"));
   }
 };
