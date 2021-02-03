@@ -33,6 +33,27 @@ exports.showStatus = async context => {
   }
 };
 
+exports.showFriendStatus = async context => {
+  let text = context.event.message.text;
+  let users = context.event.message.mention.mentionees.map(d => ({
+    ...d,
+    displayName: text.substr(d.index + 1, d.length - 1),
+  }));
+  let userDatas = await ChatLevelModel.getUserDatas(users.map(user => user.userId));
+  let messages = userDatas.map(
+    (data, index) =>
+      `${index + 1} ${users.find(user => user.userId === data.userId).displayName} ${
+        data.range
+      } 的 ${data.rank} ${data.ranking}`
+  );
+
+  if (messages.length === 0) {
+    context.sendText("查詢失敗！");
+  } else {
+    context.sendText(messages.join("\n"));
+  }
+};
+
 /**
  * 管理員密技，直接設定經驗值
  * @param {Context} context

@@ -31,6 +31,33 @@ exports.setExperience = async (userId, experience) => {
     });
 };
 
+/**
+ * 一次獲取多筆資料
+ * @param {Array} userIds
+ */
+exports.getUserDatas = async userIds => {
+  let rows = await mysql
+    .select([
+      { id: "cud.id", exp: "cud.experience", userId: "User.platformId", ranking: "cud.rank" },
+    ])
+    .from(`${USER_DATA_TABLE} as cud`)
+    .join("User", "User.No", "cud.id")
+    .whereIn("User.platformId", userIds)
+    .orderBy("cud.rank");
+
+  let userDatas = await Promise.all(
+    rows.map(async row => {
+      if (row.exp === 0) return { ...row, rank: "嬰兒", range: "等待投胎", level: 0 };
+      let level = await this.getLevel(row.exp);
+      if (!level) return row;
+      let titleData = await this.getTitleData(level);
+      return { ...titleData, ...row, level };
+    })
+  );
+
+  return userDatas;
+};
+
 exports.getUserData = async userId => {
   let rows = await mysql
     .select([
