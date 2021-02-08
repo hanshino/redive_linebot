@@ -1,4 +1,4 @@
-const { router, text, route } = require("bottender/router");
+const { router, text, route, line } = require("bottender/router");
 const { chain, withProps } = require("bottender");
 const character = require("./controller/princess/character");
 const gacha = require("./controller/princess/gacha");
@@ -17,6 +17,7 @@ const { showOrderManager } = require("./templates/application/CustomerOrder/line
 const { showSchedule } = require("./controller/princess/schedule");
 const FriendCardController = require("./controller/princess/FriendCard");
 const ChatLevelController = require("./controller/application/ChatLevelController");
+const BattleReportController = require("./controller/princess/BattleReportController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -148,6 +149,8 @@ function BattleOrder(context) {
     text(/^[#.](三刀出完|出完三刀|done)/, battle.reportFinish),
     text(/^[#.](三刀重置|重置三刀)/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
+    text(/^[#.](回報傷害|傷害回報)$/, BattleReportController.setAllowPicture),
+    route(BattleReportController.isAllow, BattleReportController.analyze),
   ];
 }
 
