@@ -1,6 +1,19 @@
 const GoogleSheet = require("../../common/GoogleSheet");
 const redis = require("../../../util/redis");
-const CharacterDatas = require("../../../../doc/characterInfo.json");
+const CharacterDatas = require("../../../../doc/characterInfo.json").map(data => {
+  let imageUrl = data.HeadImage;
+  let matchData = imageUrl.match(/icon_unit_(?<unit_id>\d{6})/);
+
+  let { unit_id: unitId } = matchData.groups;
+  if (!unitId) return data;
+
+  let idAry = unitId.split("");
+  idAry[4] = "0";
+  return {
+    ...data,
+    unitId: idAry.join(""),
+  };
+});
 
 async function getRecommendDatas() {
   var result = await redis.get("CharacterRecommend");

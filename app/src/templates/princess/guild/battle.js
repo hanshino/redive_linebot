@@ -1,4 +1,4 @@
-const { getLiffUri } = require("../../common");
+const { getLiffUri, assemble } = require("../../common");
 
 const NoteMessage = {
   type: "bubble",
@@ -127,6 +127,122 @@ exports.showBattleDetail = (context, data) => {
     ],
   };
   context.sendFlex(`第${data.week}周次${data.boss}王`, message);
+};
+
+exports.showReportList = (context, records) => {
+  let templates = {
+    type: "bubble",
+    size: "nano",
+    body: {
+      type: "box",
+      layout: "horizontal",
+      contents: [
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "{week} 周",
+              align: "center",
+            },
+            {
+              type: "text",
+              text: "{boss} 王",
+              align: "center",
+            },
+          ],
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "spacer",
+            },
+            {
+              type: "text",
+              text: "{type}",
+              gravity: "center",
+              color: "{color}",
+              size: "xl",
+            },
+          ],
+        },
+      ],
+      action: {
+        type: "message",
+        text: "#傷害回報 {id} {week} {boss}",
+      },
+    },
+  };
+
+  let bubbles = records.map(record => {
+    console.log(record);
+    return JSON.parse(assemble(record, JSON.stringify(templates)));
+  });
+
+  let flexMessage;
+  if (bubbles.length === 1) {
+    flexMessage = bubbles[0];
+  } else {
+    flexMessage = {
+      type: "carousel",
+      contents: bubbles,
+    };
+  }
+  
+console.log(JSON.stringify(flexMessage));
+  context.sendFlex("回報傷害清單", flexMessage);
+};
+
+exports.genReportInformation = viewData => {
+  let teamBox = viewData.team.reverse().map(char => {
+    let id = char["unit_id"] + char["rarity"] * 10;
+    let url = `https://pcredivewiki.tw/static/images/unit/icon_unit_${id}.png`;
+    return { type: "image", url };
+  });
+  let tempalte = {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: teamBox,
+          spacing: "sm",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              contents: [
+                {
+                  type: "span",
+                  text: "總傷害：",
+                },
+                {
+                  type: "span",
+                  text: "{damage}",
+                },
+              ],
+              color: "#FFFFFF",
+            },
+          ],
+          margin: "md",
+          paddingAll: "sm",
+        },
+      ],
+      spacing: "sm",
+      backgroundColor: "#AA3388AB",
+    },
+  };
+
+  return JSON.parse(assemble({ damage: viewData.totalDamage }, JSON.stringify(tempalte)));
 };
 
 function genPreviewCover(option) {

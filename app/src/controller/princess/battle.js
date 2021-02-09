@@ -262,6 +262,8 @@ function getStatusText(status) {
       return "補償";
     case 3:
       return "凱留";
+    case 21:
+      return "完成";
     default:
       return "其他";
   }

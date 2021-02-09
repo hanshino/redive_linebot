@@ -72,6 +72,7 @@ async function OrderBased(context, { next }) {
     ...CustomerOrder(context),
     ...GroupOrder(context),
     ...PrincessInformation(context),
+    ...PersonOrder(context),
     text(/^#?使用說明$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text("/state", showState),
@@ -87,6 +88,16 @@ async function OrderBased(context, { next }) {
     text(".test", () => pushMessage({ message: "test", token: process.env.LINE_NOTIFY_TOKEN })),
     route("*", next),
   ]);
+}
+
+function PersonOrder(context) {
+  if (context.event.source.type !== "user") return [];
+  return [
+    text(/^[#.]我要回報(\s(?<formId>\S+))?/, BattleReportController.reportDamage),
+    text(/^[#.](傷害回報|回報傷害)\s(?<recordId>\d+)\s(?<week>\d+)\s(?<boss>[1-5])$/, BattleReportController.setAllowReport),
+    route(BattleReportController.isAllowPersonalReport, BattleReportController.personalReport),
+    route(BattleReportController.isAllow, BattleReportController.analyze),
+  ];
 }
 
 function AdminOrder(context) {
@@ -149,8 +160,6 @@ function BattleOrder(context) {
     text(/^[#.](三刀出完|出完三刀|done)/, battle.reportFinish),
     text(/^[#.](三刀重置|重置三刀)/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
-    text(/^[#.](回報傷害|傷害回報)$/, BattleReportController.setAllowPicture),
-    route(BattleReportController.isAllow, BattleReportController.analyze),
   ];
 }
 
