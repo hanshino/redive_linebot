@@ -59,6 +59,8 @@ exports.setFormId = (guildId, formId, month) => {
  * @param {String} userId
  */
 exports.getUserGuildFroms = userId => {
+  let now = new Date();
+  let month = [now.getFullYear(), `0${now.getMonth() + 1}`.substr(-2)].join("");
   let weekQuery = mysql
     .max("week")
     .as("week")
@@ -68,7 +70,8 @@ exports.getUserGuildFroms = userId => {
     .select([{ groupId: "GB.GuildId" }, { formId: "GB.FormId" }, weekQuery])
     .join("GuildBattle as GB", "GM.GuildId", "GB.GuildId")
     .from("GuildMembers as GM")
-    .where("UserId", userId);
+    .where("UserId", userId)
+    .where("GB.Month", month);
 };
 
 /**
