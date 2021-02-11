@@ -56,12 +56,16 @@ exports.setFormId = (guildId, formId, month) => {
 
 /**
  * 獲取用戶的群組報名表
- * @param {String} userId 
+ * @param {String} userId
  */
 exports.getUserGuildFroms = userId => {
-  // SELECT GB.GuildId, GB.FormId FROM `GuildMembers` GM JOIN `GuildBattle` GB ON GM.GuildId = GB.GuildId WHERE `UserId` = 'Uc28b2e002c86886fffdb6cabea060c6e'
+  let weekQuery = mysql
+    .max("week")
+    .as("week")
+    .from("GuildWeek")
+    .where(mysql.raw("guildId = GM.GuildId"));
   return mysql
-    .select([{ groupId: "GB.GuildId" }, { formId: "GB.FormId" }])
+    .select([{ groupId: "GB.GuildId" }, { formId: "GB.FormId" }, weekQuery])
     .join("GuildBattle as GB", "GM.GuildId", "GB.GuildId")
     .from("GuildMembers as GM")
     .where("UserId", userId);

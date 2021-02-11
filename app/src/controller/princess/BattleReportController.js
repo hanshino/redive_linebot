@@ -7,6 +7,11 @@ const LineUtil = require("../../util/line");
 const BattleTemplate = require("../../templates/princess/guild/battle");
 const Notify = require("../../util/LineNotify");
 
+exports.resetGuild = context => {
+  context.setState({ formId: null });
+  this.reportDamage(context, { match: { groups: {} } });
+};
+
 /**
  * 我要回報的觸發，將為使用者準備要回報的紀錄
  * @param {Context} context
@@ -21,8 +26,9 @@ exports.reportDamage = async (context, params) => {
 
   // 優先取用參數報名表，次取state內報名表
   if (paramFormId) {
+    formId = paramFormId;
     // 指定參數強制寫入state
-    context.setState({ formId: paramFormId });
+    context.setState({ formId });
   } else if (stateFormId) {
     formId = stateFormId;
   } else {
@@ -30,12 +36,14 @@ exports.reportDamage = async (context, params) => {
     forms = await Promise.all(
       forms.map(async form => {
         let summary = await LineUtil.getGroupSummary(form.groupId);
-        return { ...form, ...summary };
+        let count = await LineUtil.getGroupCount(form.groupId);
+        let week = form.week || 1;
+        return { ...form, ...summary, ...count, week };
       })
     );
 
     if (forms.length > 1 && !formId) {
-      context.sendText("有多個報名表");
+      BattleTemplate.showGuildList(context, forms);
       return;
     } else {
       // 只有一個報名表，直接塞進state下次使用
@@ -49,6 +57,11 @@ exports.reportDamage = async (context, params) => {
   let ianUserData = await BattleModel.getIanUserData("2", userId);
   let { ianUserId } = ianUserData[0];
   let records = await BattleModel.Ian.getUserFormRecords(formId, ianUserId);
+
+  if (records.length === 0) {
+    context.sendText("尚未在戰隊群組內部報名過！因此找無任何紀錄！");
+    return;
+  }
 
   context.setState({ ianUserId });
 
@@ -123,7 +136,7 @@ exports.personalReport = async context => {
  * @param {Context} context
  */
 exports.isAllowPersonalReport = context => {
-  return Object.keys(context.state.report).length === 3 && context.event.isImage;
+  return Object.keys(context.state.report || {}).length === 3 && context.event.isImage;
 };
 
 function getImageBase(messageId) {
@@ -164,7 +177,7 @@ function getStatusColor(status) {
       color = "#ffe066";
       break;
     default:
-      color = "#FFFFFF";
+      color = "#000000";
   }
   return color;
 }

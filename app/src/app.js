@@ -93,10 +93,10 @@ async function OrderBased(context, { next }) {
 function PersonOrder(context) {
   if (context.event.source.type !== "user") return [];
   return [
-    text(/^[#.]我要回報(\s(?<formId>\S+))?/, BattleReportController.reportDamage),
+    text(/^[#.](重選報名表|formreset)$/, BattleReportController.resetGuild),
+    text(/^[#.](我要回報|formreport)(\s(?<formId>\S+))?/, BattleReportController.reportDamage),
     text(/^[#.](傷害回報|回報傷害)\s(?<recordId>\d+)\s(?<week>\d+)\s(?<boss>[1-5])$/, BattleReportController.setAllowReport),
     route(BattleReportController.isAllowPersonalReport, BattleReportController.personalReport),
-    route(BattleReportController.isAllow, BattleReportController.analyze),
   ];
 }
 
@@ -115,7 +115,7 @@ function GroupOrder(context) {
   if (context.event.source.type !== "group") return [];
 
   return [
-    text(/^[#.]?群組(設定|狀態|管理)$/, groupTemplate.showGroupStatus),
+    text(/^[#.]?(群組(設定|狀態|管理)|groupconfig)$/, groupTemplate.showGroupStatus),
     text(/^[#./]group$/, groupTemplate.showGroupConfig),
   ];
 }
@@ -124,7 +124,7 @@ function CustomerOrder(context) {
   if (context.state.guildConfig.CustomerOrder === "N") return [];
 
   return [
-    text(/^[#.]?指令列表$/, showOrderManager),
+    text(/^[#.]?(指令列表|orderlist)$/, showOrderManager),
     text(/^[#.]?新增指令/, (context, props) =>
       customerOrder.insertCustomerOrder(context, props, 1)
     ),
@@ -150,15 +150,15 @@ function BattleOrder(context) {
       /^[#.](gb|刀表)(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/,
       battle.BattleList
     ),
-    text(/^[#.]檢視下一?[周週][回次]$/, battle.NextBattleList),
-    text(/^[#.]檢視上一?[周週][回次]$/, battle.PreBattleList),
-    text(/^[#.](前往)?下一?[周週][回次]$/, battle.IncWeek),
-    text(/^[#.](回去)?上一?[周週][回次]$/, battle.DecWeek),
-    text(/^[#.][五5]王倒了$/, battle.FinishWeek),
-    text(/^[#.]設定[周週][回次](\s(?<week>\d+))?$/, battle.SetWeek),
-    text(/^[#.]當[周週][回次]報名表$/, battle.CurrentBattle),
+    text(/^[#.](檢視下一?[周週][回次]|shownextweek)$/, battle.NextBattleList),
+    text(/^[#.](檢視上一?[周週][回次]|showlastweek)$/, battle.PreBattleList),
+    text(/^[#.](前往)(?下一?[周週][回次]|nextweek)$/, battle.IncWeek),
+    text(/^[#.](回去)(?上一?[周週][回次]|lastweek)$/, battle.DecWeek),
+    text(/^[#.]([五5]王倒了|finishweek)$/, battle.FinishWeek),
+    text(/^[#.](設定[周週][回次]|setweek)(\s(?<week>\d+))?$/, battle.SetWeek),
+    text(/^[#.](當[周週][回次]報名表|nowweek)$/, battle.CurrentBattle),
     text(/^[#.](三刀出完|出完三刀|done)/, battle.reportFinish),
-    text(/^[#.](三刀重置|重置三刀)/, battle.reportReset),
+    text(/^[#.](三刀重置|重置三刀|reset)/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
   ];
 }

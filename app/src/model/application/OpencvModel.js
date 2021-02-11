@@ -1,7 +1,7 @@
 const Axios = require("axios").default;
 
 const axios = Axios.create({
-  baseURL: "http://172.20.10.11:3000",
+  baseURL: `http://${process.env.OPENCV_HOST}:3000`,
   timeout: 10000,
 });
 

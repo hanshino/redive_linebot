@@ -96,6 +96,16 @@ services:
       MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
     networks:
       - bot_network
+    
+  python:
+    build: ./opencv
+    networks: 
+      - bot_network
+    restart: always
+    expose: 
+      - 3000
+    environment: 
+      PYTHON_MODE: DEBUG
 
 networks:
   bot_network:

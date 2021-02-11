@@ -191,9 +191,53 @@ exports.showReportList = (context, records) => {
       contents: bubbles,
     };
   }
-  
-console.log(JSON.stringify(flexMessage));
+
   context.sendFlex("回報傷害清單", flexMessage);
+};
+
+/**
+ * 多群組選擇用
+ * @param {Context} context 
+ * @param {Array<{name: String, count: Number, week: Number}>} groups 
+ */
+exports.showGuildList = (context, groups) => {
+  let bubbles = groups.map(group =>
+    JSON.parse(assemble(
+      group,
+      JSON.stringify({
+        type: "bubble",
+        size: "nano",
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "{groupName}",
+              size: "lg",
+              weight: "bold",
+            },
+            {
+              type: "text",
+              text: "人數：{count} 人",
+            },
+            {
+              type: "text",
+              text: "周目：{week} 周",
+            },
+          ],
+          action: {
+            type: "message",
+            text: "#我要回報 {formId}"
+          }
+        },
+      })
+    ))
+  );
+
+  let flexMessage = { type: "carousel", contents: bubbles };
+
+  context.sendFlex("選擇要回報的群組", flexMessage);
 };
 
 exports.genReportInformation = viewData => {
