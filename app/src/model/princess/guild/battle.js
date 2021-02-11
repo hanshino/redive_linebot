@@ -55,6 +55,23 @@ exports.setFormId = (guildId, formId, month) => {
 };
 
 /**
+ * 獲取用戶的群組報名表
+ * @param {String} userId
+ */
+exports.getUserGuildFroms = userId => {
+  let weekQuery = mysql
+    .max("week")
+    .as("week")
+    .from("GuildWeek")
+    .where(mysql.raw("guildId = GM.GuildId"));
+  return mysql
+    .select([{ groupId: "GB.GuildId" }, { formId: "GB.FormId" }, weekQuery])
+    .join("GuildBattle as GB", "GM.GuildId", "GB.GuildId")
+    .from("GuildMembers as GM")
+    .where("UserId", userId);
+};
+
+/**
  * 新增完成紀錄
  * @param {String} guildId
  * @param {String} userId
@@ -193,15 +210,28 @@ exports.Ian.getFormRecords = (formId, week, boss) => {
 };
 
 /**
+ * 取得該用戶報名紀錄
+ * @param {String} formId
+ * @param {String} userId
+ * @param {Number} limit
+ */
+exports.Ian.getUserFormRecords = (formId, userId, limit = 5) => {
+  // https://guild.randosoru.me/api/users/aqLdqN/records?limit=5&form_id=ff0d74e7770b4c43830934a629851be1
+  return doGet(`/users/${userId}/records?limit=${limit}&form_id=${formId}`);
+};
+
+/**
  *
  * @param {String} formId
  * @param {Number} week
  * @param {Number} boss
  * @param {String} ianUserId
  * @param {Object} option
- * @param {Object} option.status 狀態：1 正式，2 補償，3 凱留，11 戰鬥中，12 等待中，13 等待tag，21 完成(正式)，22 完成(補償)，23 暴死，24 求救
- * @param {Object} option.damage 傷害
- * @param {Object} option.comment 備註
+ * @param {Number} option.status 狀態：1 正式，2 補償，3 凱留，11 戰鬥中，12 等待中，13 等待tag，21 完成(正式)，22 完成(補償)，23 暴死，24 求救
+ * @param {Number} option.damage 傷害
+ * @param {String} option.comment 備註
+ * @param {Number} option.id 紀錄ID
+ * @param {Array<{id: String, star: Number, rank: String}>} option.team 使用隊伍
  */
 exports.Ian.setRecord = (formId, week, boss, ianUserId, option) => {
   return doPost(`/bot/forms/${formId}/week/${week}/boss/${boss}?user_id=${ianUserId}`, option);
