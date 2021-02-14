@@ -159,37 +159,6 @@ module.exports = {
     }
   },
 
-  getRecommend: async function (context, { match }) {
-    recordSign("getRecommend");
-    const { character } = match.groups;
-
-    try {
-      if (character === undefined) throw `📖使用方式：${match[0]} 布丁`;
-
-      var data = getCharacterData(character);
-      var recommendData = await CharacterModel.getRecommendDatas();
-      let aryName = [];
-
-      if (Object.prototype.hasOwnProperty.call(data, "Nick")) {
-        aryName = data.Nick.split(",");
-      }
-
-      aryName.push(data.Name);
-
-      var recommendResult = recommendData.find(data => aryName.indexOf(data["角色"]) !== -1);
-
-      if (recommendResult === undefined) throw `查無${character}的推薦資料`;
-
-      CharacterTemplate[context.platform].showRecommend(context, character, {
-        characterData: data,
-        recommendData: recommendResult,
-      });
-    } catch (e) {
-      CustomLogger.info(e);
-      error.sendError(context, e);
-    }
-  },
-
   api: {
     getCharacterImages: (req, res) => res.json(getCharacterImages()),
   },

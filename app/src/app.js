@@ -174,7 +174,9 @@ function CharacterOrder(context) {
     text(/^[#.](角色)?專武(資訊)?(\s(?<character>[\s\S]+))?$/, character.getUniqueEquip),
     text(/^[#.](角色)?裝備(需求)?(\s(?<character>[\s\S]+))?$/, character.getEquipRequire),
     text(/^[#.](公主|角色)(\s(?<character>[\s\S]+))?$/, character.getCharacter),
-    text(/^[#.](角色)?rank(推薦)?(\s(?<character>[\s\S]+))?$/, character.getRecommend),
+    text(/^[#.](角色)?rank(推薦)?(\s(?<character>[\s\S]+))?$/, context =>
+      context.sendText("此功能暫時廢棄，重建中！")
+    ),
   ];
 }
 

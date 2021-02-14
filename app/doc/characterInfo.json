@@ -679,7 +679,8 @@
           "value": " 20.0 (209) "
         }
       ]
-    }
+    },
+    "unitId": "100101"
   },
   {
     "Name": "優衣",
@@ -1358,7 +1359,8 @@
     "Stand": 800,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_100211.png",
-    "Nick": "粉毛補,UE,對不起"
+    "Nick": "粉毛補,UE,對不起",
+    "unitId": "100201"
   },
   {
     "Name": "怜",
@@ -2027,7 +2029,8 @@
     "Stand": 250,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_100311.png",
-    "Nick": "劍聖"
+    "Nick": "劍聖",
+    "unitId": "100301"
   },
   {
     "Name": "禊",
@@ -2691,7 +2694,8 @@
     "Stand": 205,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_100411.png",
-    "Nick": "炸彈女,褉,禊"
+    "Nick": "炸彈女,褉,禊",
+    "unitId": "100401"
   },
   {
     "Name": "胡桃",
@@ -3359,7 +3363,8 @@
     "Stand": 240,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102111.png",
-    "Nick": "鈴噹"
+    "Nick": "鈴噹",
+    "unitId": "102101"
   },
   {
     "Name": "依里",
@@ -4020,7 +4025,8 @@
     "Stand": 575,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102211.png",
-    "Nick": "雙子姊"
+    "Nick": "雙子姊",
+    "unitId": "102201"
   },
   {
     "Name": "鈴莓",
@@ -4681,7 +4687,8 @@
     "Stand": 720,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102511.png",
-    "Nick": "女僕"
+    "Nick": "女僕",
+    "unitId": "102501"
   },
   {
     "Name": "優花梨",
@@ -5354,7 +5361,8 @@
     "Stand": 405,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_103411.png",
-    "Nick": "酒鬼,聖騎"
+    "Nick": "酒鬼,聖騎",
+    "unitId": "103401"
   },
   {
     "Name": "碧",
@@ -6018,7 +6026,8 @@
     "Stand": 785,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104011.png",
-    "Nick": "香菜,邊緣弓"
+    "Nick": "香菜,邊緣弓",
+    "unitId": "104001"
   },
   {
     "Name": "美咲",
@@ -6674,7 +6683,8 @@
     "Stand": 760,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105011.png",
-    "Nick": "眼球"
+    "Nick": "眼球",
+    "unitId": "105001"
   },
   {
     "Name": "莉瑪",
@@ -7350,7 +7360,8 @@
     "Stand": 105,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105211.png",
-    "Nick": "草尼馬"
+    "Nick": "草尼馬",
+    "unitId": "105201"
   },
   {
     "Name": "步未",
@@ -8014,7 +8025,8 @@
     "Stand": 510,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105511.png",
-    "Nick": "路人"
+    "Nick": "路人",
+    "unitId": "105501"
   },
   {
     "Name": "貪吃佩可",
@@ -8690,7 +8702,8 @@
     "Stand": 155,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105811.png",
-    "Nick": "飯糰公主,吃貨公主,飯糰,佩可"
+    "Nick": "飯糰公主,吃貨公主,飯糰,佩可",
+    "unitId": "105801"
   },
   {
     "Name": "可可蘿",
@@ -9371,7 +9384,8 @@
     "Stand": 500,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105911.png",
-    "Nick": "可口蘿,白毛"
+    "Nick": "可口蘿,白毛",
+    "unitId": "105901"
   },
   {
     "Name": "凱留",
@@ -10038,7 +10052,8 @@
     "Stand": 750,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_106011.png",
-    "Nick": "黑貓,不良,背骨貓"
+    "Nick": "黑貓,不良,背骨貓",
+    "unitId": "106001"
   },
   {
     "Name": "可可蘿（夏日）",
@@ -10706,7 +10721,8 @@
     "Stand": 535,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_107611.png",
-    "Nick": "泳裝可可蘿,泳可,可可蘿-夏日"
+    "Nick": "泳裝可可蘿,泳可,可可蘿-夏日",
+    "unitId": "107601"
   },
   {
     "Name": "美冬（夏日）",
@@ -11365,7 +11381,8 @@
     "Stand": 495,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108011.png",
-    "Nick": "泳裝美冬,美冬-夏日"
+    "Nick": "泳裝美冬,美冬-夏日",
+    "unitId": "108001"
   },
   {
     "Name": "宮子（萬聖節）",
@@ -12042,7 +12059,8 @@
     "Stand": 590,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108211.png",
-    "Nick": "萬聖節布丁,萬聖節宮子,萬聖布丁,萬聖宮子,宮子-萬聖節"
+    "Nick": "萬聖節布丁,萬聖節宮子,萬聖布丁,萬聖宮子,宮子-萬聖節",
+    "unitId": "108201"
   },
   {
     "Name": "胡桃（聖誕節）",
@@ -12703,7 +12721,8 @@
     "Stand": 295,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108511.png",
-    "Nick": "胡桃-聖誕節,聖誕胡桃,聖誕鈴鐺"
+    "Nick": "胡桃-聖誕節,聖誕胡桃,聖誕鈴鐺",
+    "unitId": "108501"
   },
   {
     "Name": "怜（新年）",
@@ -13368,7 +13387,8 @@
     "Stand": 153,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108911.png",
-    "Nick": "新年伶,怜-新年"
+    "Nick": "新年伶,怜-新年",
+    "unitId": "108901"
   },
   {
     "Name": "惠理子（情人節）",
@@ -14031,7 +14051,8 @@
     "Stand": 187,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109011.png",
-    "Nick": "情人病嬌,惠理子-情人節"
+    "Nick": "情人病嬌,惠理子-情人節",
+    "unitId": "109001"
   },
   {
     "Name": "露",
@@ -14686,7 +14707,8 @@
     "Stand": 640,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109311.png",
-    "Nick": ""
+    "Nick": "",
+    "unitId": "109301"
   },
   {
     "Name": "拉姆",
@@ -15351,7 +15373,8 @@
     "Stand": 545,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109811.png",
-    "Nick": "Ram"
+    "Nick": "Ram",
+    "unitId": "109801"
   },
   {
     "Name": "伊緒（夏日）",
@@ -16019,7 +16042,8 @@
     "Stand": 715,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110111.png",
-    "Nick": "泳裝老師,泳裝伊緒,伊緒-夏日"
+    "Nick": "泳裝老師,泳裝伊緒,伊緒-夏日",
+    "unitId": "110101"
   },
   {
     "Name": "香織（夏日）",
@@ -16680,7 +16704,8 @@
     "Stand": 425,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110511.png",
-    "Nick": "泳狗,泳裝香織,泳裝狗拳,泳裝狗,香織-夏日"
+    "Nick": "泳狗,泳裝香織,泳裝狗拳,泳裝狗,香織-夏日",
+    "unitId": "110501"
   },
   {
     "Name": "茉莉",
@@ -17343,7 +17368,8 @@
     "Stand": 185,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_100511.png",
-    "Nick": ""
+    "Nick": "",
+    "unitId": "100501"
   },
   {
     "Name": "茜里",
@@ -18015,7 +18041,8 @@
     "Stand": 570,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_100611.png",
-    "Nick": "雙子妹"
+    "Nick": "雙子妹",
+    "unitId": "100601"
   },
   {
     "Name": "宮子",
@@ -18682,7 +18709,8 @@
     "Stand": 125,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_100711.png",
-    "Nick": "布丁"
+    "Nick": "布丁",
+    "unitId": "100701"
   },
   {
     "Name": "雪",
@@ -19348,7 +19376,8 @@
     "Stand": 805,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_100811.png",
-    "Nick": "鏡子"
+    "Nick": "鏡子",
+    "unitId": "100801"
   },
   {
     "Name": "七七香",
@@ -20003,7 +20032,8 @@
     "Stand": 740,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101311.png",
-    "Nick": "77"
+    "Nick": "77",
+    "unitId": "101301"
   },
   {
     "Name": "美里",
@@ -20667,7 +20697,8 @@
     "Stand": 735,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101511.png",
-    "Nick": "美里,聖母,修女"
+    "Nick": "美里,聖母,修女",
+    "unitId": "101501"
   },
   {
     "Name": "鈴奈",
@@ -21333,7 +21364,8 @@
     "Stand": 705,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101611.png",
-    "Nick": "爆弓,辣妹弓"
+    "Nick": "爆弓,辣妹弓",
+    "unitId": "101601"
   },
   {
     "Name": "香織",
@@ -21989,7 +22021,8 @@
     "Stand": 145,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101711.png",
-    "Nick": "黑肉,琉球犬,狗拳"
+    "Nick": "黑肉,琉球犬,狗拳",
+    "unitId": "101701"
   },
   {
     "Name": "美美",
@@ -22648,7 +22681,8 @@
     "Stand": 360,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102011.png",
-    "Nick": "兔兔,蜜蜜"
+    "Nick": "兔兔,蜜蜜",
+    "unitId": "102001"
   },
   {
     "Name": "綾音",
@@ -23327,7 +23361,8 @@
     "Stand": 210,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102311.png",
-    "Nick": "熊妹"
+    "Nick": "熊妹",
+    "unitId": "102301"
   },
   {
     "Name": "鈴",
@@ -23999,7 +24034,8 @@
     "Stand": 550,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102611.png",
-    "Nick": "松鼠"
+    "Nick": "松鼠",
+    "unitId": "102601"
   },
   {
     "Name": "惠理子",
@@ -24662,7 +24698,8 @@
     "Stand": 230,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102711.png",
-    "Nick": "病嬌"
+    "Nick": "病嬌",
+    "unitId": "102701"
   },
   {
     "Name": "忍",
@@ -25323,7 +25360,8 @@
     "Stand": 365,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_103111.png",
-    "Nick": "父控,骷髏女,鬼父"
+    "Nick": "父控,骷髏女,鬼父",
+    "unitId": "103101"
   },
   {
     "Name": "真陽",
@@ -26001,7 +26039,8 @@
     "Stand": 395,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_103311.png",
-    "Nick": "乳牛"
+    "Nick": "乳牛",
+    "unitId": "103301"
   },
   {
     "Name": "栞",
@@ -26665,7 +26704,8 @@
     "Stand": 710,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_103811.png",
-    "Nick": "病弱,病弓"
+    "Nick": "病弱,病弓",
+    "unitId": "103801"
   },
   {
     "Name": "千歌",
@@ -27331,7 +27371,8 @@
     "Stand": 790,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104211.png",
-    "Nick": "綠毛補,歌仙"
+    "Nick": "綠毛補,歌仙",
+    "unitId": "104201"
   },
   {
     "Name": "空花",
@@ -27995,7 +28036,8 @@
     "Stand": 130,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104511.png",
-    "Nick": "抖M"
+    "Nick": "抖M",
+    "unitId": "104501"
   },
   {
     "Name": "珠希",
@@ -28668,7 +28710,8 @@
     "Stand": 215,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104611.png",
-    "Nick": "貓娘,貓劍,盜賊貓,貓賊"
+    "Nick": "貓娘,貓劍,盜賊貓,貓賊",
+    "unitId": "104601"
   },
   {
     "Name": "美冬",
@@ -29344,7 +29387,8 @@
     "Stand": 420,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104811.png",
-    "Nick": "傭兵"
+    "Nick": "傭兵",
+    "unitId": "104801"
   },
   {
     "Name": "深月",
@@ -30008,7 +30052,8 @@
     "Stand": 565,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105111.png",
-    "Nick": "抖S,BBA,眼罩,獨眼"
+    "Nick": "抖S,BBA,眼罩,獨眼",
+    "unitId": "105101"
   },
   {
     "Name": "紡希",
@@ -30680,7 +30725,8 @@
     "Stand": 195,
     "Star": 2,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105411.png",
-    "Nick": "紡織"
+    "Nick": "紡織",
+    "unitId": "105401"
   },
   {
     "Name": "杏奈",
@@ -31338,7 +31384,8 @@
     "Stand": 440,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_100931.png",
-    "Nick": "中二"
+    "Nick": "中二",
+    "unitId": "100901"
   },
   {
     "Name": "真步",
@@ -32020,7 +32067,8 @@
     "Stand": 795,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101031.png",
-    "Nick": "咕嚕靈波"
+    "Nick": "咕嚕靈波",
+    "unitId": "101001"
   },
   {
     "Name": "璃乃",
@@ -32686,7 +32734,8 @@
     "Stand": 700,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101131.png",
-    "Nick": "妹弓"
+    "Nick": "妹弓",
+    "unitId": "101101"
   },
   {
     "Name": "初音",
@@ -33359,7 +33408,8 @@
     "Stand": 755,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101231.png",
-    "Nick": "星星法"
+    "Nick": "星星法",
+    "unitId": "101201"
   },
   {
     "Name": "霞",
@@ -34023,7 +34073,8 @@
     "Stand": 730,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101431.png",
-    "Nick": "偵探"
+    "Nick": "偵探",
+    "unitId": "101401"
   },
   {
     "Name": "伊緒",
@@ -34699,7 +34750,8 @@
     "Stand": 715,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_101831.png",
-    "Nick": "魅魔,老師"
+    "Nick": "魅魔,老師",
+    "unitId": "101801"
   },
   {
     "Name": "咲戀",
@@ -35369,7 +35421,8 @@
     "Stand": 430,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102831.png",
-    "Nick": "看板娘,充電寶,媽媽"
+    "Nick": "看板娘,充電寶,媽媽",
+    "unitId": "102801"
   },
   {
     "Name": "望",
@@ -36040,7 +36093,8 @@
     "Stand": 160,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_102931.png",
-    "Nick": "偶像,小望"
+    "Nick": "偶像,小望",
+    "unitId": "102901"
   },
   {
     "Name": "妮諾",
@@ -36709,7 +36763,8 @@
     "Stand": 415,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_103031.png",
-    "Nick": "忍者,扇子"
+    "Nick": "忍者,扇子",
+    "unitId": "103001"
   },
   {
     "Name": "秋乃",
@@ -37389,7 +37444,8 @@
     "Stand": 180,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_103231.png",
-    "Nick": "大小姐,哈哈哈"
+    "Nick": "大小姐,哈哈哈",
+    "unitId": "103201"
   },
   {
     "Name": "鏡華",
@@ -38048,7 +38104,8 @@
     "Stand": 810,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_103631.png",
-    "Nick": "小倉唯,8歲"
+    "Nick": "小倉唯,8歲",
+    "unitId": "103601"
   },
   {
     "Name": "智",
@@ -38713,7 +38770,8 @@
     "Stand": 220,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_103731.png",
-    "Nick": ""
+    "Nick": "",
+    "unitId": "103701"
   },
   {
     "Name": "真琴",
@@ -39369,7 +39427,8 @@
     "Stand": 165,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104331.png",
-    "Nick": "月月,狼女"
+    "Nick": "月月,狼女",
+    "unitId": "104301"
   },
   {
     "Name": "伊莉亞",
@@ -40038,7 +40097,8 @@
     "Stand": 425,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104431.png",
-    "Nick": "吸血鬼,EZR"
+    "Nick": "吸血鬼,EZR",
+    "unitId": "104401"
   },
   {
     "Name": "純",
@@ -40699,7 +40759,8 @@
     "Stand": 135,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104731.png",
-    "Nick": "盾女,黑騎,團長"
+    "Nick": "盾女,黑騎,團長",
+    "unitId": "104701"
   },
   {
     "Name": "靜流",
@@ -41378,7 +41439,8 @@
     "Stand": 285,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_104931.png",
-    "Nick": "弟控,姊姊,姐姐"
+    "Nick": "弟控,姊姊,姐姐",
+    "unitId": "104901"
   },
   {
     "Name": "莫妮卡",
@@ -42045,7 +42107,8 @@
     "Stand": 410,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105331.png",
-    "Nick": "毛二力,軍女"
+    "Nick": "毛二力,軍女",
+    "unitId": "105301"
   },
   {
     "Name": "流夏",
@@ -42710,7 +42773,8 @@
     "Stand": 158,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105631.png",
-    "Nick": "大姐頭"
+    "Nick": "大姐頭",
+    "unitId": "105601"
   },
   {
     "Name": "吉塔",
@@ -43370,7 +43434,8 @@
     "Stand": 245,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_105731.png",
-    "Nick": "姬塔,Miss塔,團長"
+    "Nick": "姬塔,Miss塔,團長",
+    "unitId": "105701"
   },
   {
     "Name": "矛依未",
@@ -44064,7 +44129,8 @@
     "Stand": 162,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_106131.png",
-    "Nick": "姆咪"
+    "Nick": "姆咪",
+    "unitId": "106101"
   },
   {
     "Name": "亞里莎",
@@ -44727,7 +44793,8 @@
     "Stand": 625,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_106331.png",
-    "Nick": "亞莉莎,妖精,瞎子,miss莎,Miss莎"
+    "Nick": "亞莉莎,妖精,瞎子,miss莎,Miss莎",
+    "unitId": "106301"
   },
   {
     "Name": "似似花",
@@ -45368,7 +45435,8 @@
     "Stand": 660,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_107031.png",
-    "Nick": "448,44花"
+    "Nick": "448,44花",
+    "unitId": "107001"
   },
   {
     "Name": "克莉絲提娜",
@@ -46034,7 +46102,8 @@
     "Stand": 290,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_107131.png",
-    "Nick": "女帝,克總"
+    "Nick": "女帝,克總",
+    "unitId": "107101"
   },
   {
     "Name": "貪吃佩可（夏日）",
@@ -46701,7 +46770,8 @@
     "Stand": 235,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_107531.png",
-    "Nick": "泳裝佩可,貪吃佩可-夏日"
+    "Nick": "泳裝佩可,貪吃佩可-夏日",
+    "unitId": "107501"
   },
   {
     "Name": "鈴莓（夏日）",
@@ -47370,7 +47440,8 @@
     "Stand": 775,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_107731.png",
-    "Nick": "泳裝鈴莓,泳裝女僕,鈴莓-夏日"
+    "Nick": "泳裝鈴莓,泳裝女僕,鈴莓-夏日",
+    "unitId": "107701"
   },
   {
     "Name": "凱留（夏日）",
@@ -48032,7 +48103,8 @@
     "Stand": 780,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_107831.png",
-    "Nick": "泳裝凱留,泳裝黑貓,凱留-夏日,泳黑"
+    "Nick": "泳裝凱留,泳裝黑貓,凱留-夏日,泳黑",
+    "unitId": "107801"
   },
   {
     "Name": "珠希（夏日）",
@@ -48702,7 +48774,8 @@
     "Stand": 225,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_107931.png",
-    "Nick": "泳裝珠希,泳裝貓劍,泳裝貓賊,冰棒,珠希-夏日"
+    "Nick": "泳裝珠希,泳裝貓劍,泳裝貓賊,冰棒,珠希-夏日",
+    "unitId": "107901"
   },
   {
     "Name": "忍（萬聖節）",
@@ -49366,7 +49439,8 @@
     "Stand": 440,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108131.png",
-    "Nick": "萬聖節忍,萬聖忍,忍-萬聖節"
+    "Nick": "萬聖節忍,萬聖忍,忍-萬聖節",
+    "unitId": "108101"
   },
   {
     "Name": "美咲（萬聖節）",
@@ -50037,7 +50111,8 @@
     "Stand": 815,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108331.png",
-    "Nick": "萬聖節眼球,萬聖節美咲,萬聖美咲,美咲-萬聖節"
+    "Nick": "萬聖節眼球,萬聖節美咲,萬聖美咲,美咲-萬聖節",
+    "unitId": "108301"
   },
   {
     "Name": "千歌（聖誕節）",
@@ -50705,7 +50780,8 @@
     "Stand": 770,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108431.png",
-    "Nick": "聖誕節千歌,聖誕千歌,千歌-聖誕節"
+    "Nick": "聖誕節千歌,聖誕千歌,千歌-聖誕節",
+    "unitId": "108401"
   },
   {
     "Name": "綾音（聖誕節）",
@@ -51367,7 +51443,8 @@
     "Stand": 190,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108631.png",
-    "Nick": "聖誕熊,聖誕綾音,綾音-聖誕節"
+    "Nick": "聖誕熊,聖誕綾音,綾音-聖誕節",
+    "unitId": "108601"
   },
   {
     "Name": "日和（新年）",
@@ -52036,7 +52113,8 @@
     "Stand": 170,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108731.png",
-    "Nick": "新年日和,日和-新年"
+    "Nick": "新年日和,日和-新年",
+    "unitId": "108701"
   },
   {
     "Name": "優衣（新年）",
@@ -52707,7 +52785,8 @@
     "Stand": 745,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_108831.png",
-    "Nick": "新年UE,新年優衣,新優,優衣-新年"
+    "Nick": "新年UE,新年優衣,新優,優衣-新年",
+    "unitId": "108801"
   },
   {
     "Name": "靜流（情人節）",
@@ -53377,7 +53456,8 @@
     "Stand": 385,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109131.png",
-    "Nick": "情人節姊姊,情人節姐姐,情人節靜流,情人姊,情人姐,情姐,情姊,靜流-情人節"
+    "Nick": "情人節姊姊,情人節姐姐,情人節靜流,情人姊,情人姐,情姐,情姊,靜流-情人節",
+    "unitId": "109101"
   },
   {
     "Name": "安",
@@ -54040,7 +54120,8 @@
     "Stand": 630,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109231.png",
-    "Nick": "癡女,公主"
+    "Nick": "癡女,公主",
+    "unitId": "109201"
   },
   {
     "Name": "古蕾婭",
@@ -54701,7 +54782,8 @@
     "Stand": 525,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109431.png",
-    "Nick": "尾巴龍,龍女"
+    "Nick": "尾巴龍,龍女",
+    "unitId": "109401"
   },
   {
     "Name": "空花（大江戶）",
@@ -55364,7 +55446,8 @@
     "Stand": 140,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109531.png",
-    "Nick": "江戶空花,江空,空花-大江戶"
+    "Nick": "江戶空花,江空,空花-大江戶",
+    "unitId": "109501"
   },
   {
     "Name": "妮諾（大江戶）",
@@ -56021,7 +56104,8 @@
     "Stand": 175,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109631.png",
-    "Nick": "江戶妮諾,江戶扇子,妮諾-大江戶"
+    "Nick": "江戶妮諾,江戶扇子,妮諾-大江戶",
+    "unitId": "109601"
   },
   {
     "Name": "雷姆",
@@ -56688,7 +56772,8 @@
     "Stand": 540,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109731.png",
-    "Nick": "Rem"
+    "Nick": "Rem",
+    "unitId": "109701"
   },
   {
     "Name": "愛蜜莉雅",
@@ -57357,7 +57442,8 @@
     "Stand": 725,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_109931.png",
-    "Nick": "EMT"
+    "Nick": "EMT",
+    "unitId": "109901"
   },
   {
     "Name": "鈴奈（夏日）",
@@ -58018,7 +58104,8 @@
     "Stand": 705,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110031.png",
-    "Nick": "泳爆,泳裝爆弓,泳裝鈴奈"
+    "Nick": "泳爆,泳裝爆弓,泳裝鈴奈",
+    "unitId": "110001"
   },
   {
     "Name": "咲戀（夏日）",
@@ -58682,7 +58769,8 @@
     "Stand": 585,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110331.png",
-    "Nick": "泳裝媽媽,泳媽,泳裝媽,泳裝咲戀,泳咲,泳咲戀,咲戀-夏日"
+    "Nick": "泳裝媽媽,泳媽,泳裝媽,泳裝咲戀,泳咲,泳咲戀,咲戀-夏日",
+    "unitId": "110301"
   },
   {
     "Name": "真琴（夏日）",
@@ -59348,7 +59436,8 @@
     "Stand": 180,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110431.png",
-    "Nick": "泳裝月月,泳月,泳裝真琴,泳裝月,真琴-夏日"
+    "Nick": "泳裝月月,泳月,泳裝真琴,泳裝月,真琴-夏日",
+    "unitId": "110401"
   },
   {
     "Name": "真步（夏日）",
@@ -60016,7 +60105,8 @@
     "Stand": 792,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110631.png",
-    "Nick": "泳裝真步,真步-夏日,泳真"
+    "Nick": "泳裝真步,真步-夏日,泳真",
+    "unitId": "110601"
   },
   {
     "Name": "碧（插班生）",
@@ -60677,7 +60767,8 @@
     "Stand": 680,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110731.png",
-    "Nick": "插班碧,插班生,轉學生碧,插班生碧,轉學生,碧-插班生"
+    "Nick": "插班碧,插班生,轉學生碧,插班生碧,轉學生,碧-插班生",
+    "unitId": "110701"
   },
   {
     "Name": "克蘿依",
@@ -61339,7 +61430,8 @@
     "Stand": 185,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110831.png",
-    "Nick": "克羅埃,克蘿唉,克羅唉,克蘿埃,克羅依,克蘿依,克羅伊,克蘿伊,克羅衣,克蘿衣"
+    "Nick": "克羅埃,克蘿唉,克羅唉,克蘿埃,克羅依,克蘿依,克羅伊,克蘿伊,克羅衣,克蘿衣",
+    "unitId": "110801"
   },
   {
     "Name": "禊（萬聖節）",
@@ -62007,7 +62099,8 @@
     "Stand": 212,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111211.png",
-    "Nick": "萬聖炸彈女,萬聖禊,萬聖節炸彈女,萬聖節禊,萬聖節炸彈魔,萬聖褉,禊-萬聖節"
+    "Nick": "萬聖炸彈女,萬聖禊,萬聖節炸彈女,萬聖節禊,萬聖節炸彈魔,萬聖褉,禊-萬聖節",
+    "unitId": "111201"
   },
   {
     "Name": "鏡華（萬聖節）",
@@ -62664,7 +62757,8 @@
     "Stand": 820,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111131.png",
-    "Nick": "萬聖鏡華,萬聖8歲,萬華,萬8,萬聖節鏡華,萬聖節8歲,鏡華-萬聖節"
+    "Nick": "萬聖鏡華,萬聖8歲,萬華,萬8,萬聖節鏡華,萬聖節8歲,鏡華-萬聖節",
+    "unitId": "111101"
   },
   {
     "Name": "美美（萬聖節）",
@@ -63324,7 +63418,8 @@
     "Stand": 365,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111331.png",
-    "Nick": "萬聖節美美,萬聖美,萬聖美美,美美-萬聖節"
+    "Nick": "萬聖節美美,萬聖美,萬聖美美,美美-萬聖節",
+    "unitId": "111301"
   },
   {
     "Name": "嘉夜",
@@ -63991,7 +64086,8 @@
     ],
     "Stand": 168,
     "Star": 3,
-    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_106531.png"
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_106531.png",
+    "unitId": "106501"
   },
   {
     "Name": "露娜",
@@ -64681,7 +64777,8 @@
     ],
     "Stand": 765,
     "Star": 3,
-    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111431.png"
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111431.png",
+    "unitId": "111401"
   },
   {
     "Name": "望（聖誕節）",
@@ -65351,7 +65448,8 @@
     "Stand": 418,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111611.png",
-    "Nick": "聖誕偶像,聖誕小望,聖誕望,望-聖誕節"
+    "Nick": "聖誕偶像,聖誕小望,聖誕望,望-聖誕節",
+    "unitId": "111601"
   },
   {
     "Name": "優妮",
@@ -65990,7 +66088,8 @@
     ],
     "Stand": 807,
     "Star": 3,
-    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111031.png"
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111031.png",
+    "unitId": "111001"
   },
   {
     "Name": "克莉絲提娜（聖誕節）",
@@ -66663,7 +66762,8 @@
     "Stand": 265,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111531.png",
-    "Nick": "聖誕克總,聖誕節克總,克莉絲提娜-聖誕節"
+    "Nick": "聖誕克總,聖誕節克總,克莉絲提娜-聖誕節",
+    "unitId": "111501"
   },
   {
     "Name": "伊莉亞（聖誕節）",
@@ -67339,7 +67439,8 @@
     "Stand": 255,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111731.png",
-    "Nick": "聖誕伊莉亞,聖誕ezr,聖誕吸血鬼,伊莉亞-聖誕節"
+    "Nick": "聖誕伊莉亞,聖誕ezr,聖誕吸血鬼,伊莉亞-聖誕節",
+    "unitId": "111701"
   },
   {
     "Name": "琪愛兒",
@@ -67979,7 +68080,8 @@
     "Stand": 222,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_110931.png",
-    "Nick": "切嚕"
+    "Nick": "切嚕",
+    "unitId": "110901"
   },
   {
     "Name": "鈴莓（新年）",
@@ -68644,7 +68746,8 @@
     "Stand": 722,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112111.png",
-    "Nick": "新年女僕,新年鈴莓,鈴莓-新年"
+    "Nick": "新年女僕,新年鈴莓,鈴莓-新年",
+    "unitId": "112101"
   },
   {
     "Name": "可可蘿（新年）",
@@ -69317,7 +69420,8 @@
     "Stand": 159,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111931.png",
-    "Nick": "春媽,新年可可,新年可,新年可可蘿,新年可蘿,新年可羅,新年可可羅,新可,新媽,可可蘿-新年"
+    "Nick": "春媽,新年可可,新年可,新年可可蘿,新年可蘿,新年可羅,新年可可羅,新可,新媽,可可蘿-新年",
+    "unitId": "111901"
   },
   {
     "Name": "凱留（新年）",
@@ -69980,7 +70084,8 @@
     "Stand": 690,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112031.png",
-    "Nick": "新年凱留,新年黑貓,新黑,凱留-新年"
+    "Nick": "新年凱留,新年黑貓,新黑,凱留-新年",
+    "unitId": "112001"
   },
   {
     "Name": "栞（魔法少女）",
@@ -70613,7 +70718,8 @@
     "Stand": 712,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112311.png",
-    "Nick": "魔法病弓,魔法少女病弓,魔法栞,魔法少女栞"
+    "Nick": "魔法病弓,魔法少女病弓,魔法栞,魔法少女栞",
+    "unitId": "112301"
   },
   {
     "Name": "霞（魔法少女）",
@@ -71246,7 +71352,8 @@
     "Stand": 730,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112231.png",
-    "Nick": "魔法少女霞,魔法霞"
+    "Nick": "魔法少女霞,魔法霞",
+    "unitId": "112201"
   },
   {
     "Name": "祈梨",
@@ -71880,7 +71987,8 @@
     ],
     "Stand": 197,
     "Star": 3,
-    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_106631.png"
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_106631.png",
+    "unitId": "106601"
   },
   {
     "Name": "貪吃佩可（公主）",
@@ -72525,7 +72633,8 @@
     "Stand": 155,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_180431.png",
-    "Nick": "公主佩可,公主飯糰,鋼彈佩可"
+    "Nick": "公主佩可,公主飯糰,鋼彈佩可",
+    "unitId": "180401"
   },
   {
     "Name": "鈴（遊俠）",
@@ -73162,7 +73271,8 @@
     "Stand": 422,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112731.png",
-    "Nick": "遊俠鈴"
+    "Nick": "遊俠鈴",
+    "unitId": "112701"
   },
   {
     "Name": "真陽（遊俠）",
@@ -73800,7 +73910,8 @@
     ],
     "Stand": 390,
     "Star": 3,
-    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112831.png"
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112831.png",
+    "unitId": "112801"
   },
   {
     "Name": "步未（奇幻）",
@@ -74438,7 +74549,8 @@
     "Stand": 508,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113011.png",
-    "Nick": "奇幻路人,路人奇幻,步未-奇幻"
+    "Nick": "奇幻路人,路人奇幻,步未-奇幻",
+    "unitId": "113001"
   },
   {
     "Name": "拉比林斯達",
@@ -75116,7 +75228,8 @@
     "Stand": 560,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_106831.png",
-    "Nick": "王晶,晶"
+    "Nick": "王晶,晶",
+    "unitId": "106801"
   },
   {
     "Name": "璃乃（奇幻）",
@@ -75754,7 +75867,8 @@
     ],
     "Stand": 730,
     "Star": 3,
-    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112931.png"
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112931.png",
+    "unitId": "112901"
   },
   {
     "Name": "可可蘿（公主）",
@@ -76402,7 +76516,8 @@
     "Stand": 555,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_180531.png",
-    "Nick": "公主可可羅,公可,公可羅,公主媽媽,公主媽,公主可羅,公主可可蘿,公可蘿,可可蘿-公主"
+    "Nick": "公主可可羅,公可,公可羅,公主媽媽,公主媽,公主可羅,公主可可蘿,公可蘿,可可蘿-公主",
+    "unitId": "180501"
   },
   {
     "Name": "未央（NGs）",
@@ -77037,7 +77152,8 @@
     "Stand": 695,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112611.png",
-    "Nick": "未央"
+    "Nick": "未央",
+    "unitId": "112601"
   },
   {
     "Name": "卯月（NGs）",
@@ -77671,7 +77787,8 @@
     "Stand": 370,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112431.png",
-    "Nick": "卯月"
+    "Nick": "卯月",
+    "unitId": "112401"
   },
   {
     "Name": "凜（NGs）",
@@ -78306,7 +78423,8 @@
     "Stand": 153,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_112531.png",
-    "Nick": "凜"
+    "Nick": "凜",
+    "unitId": "112501"
   },
   {
     "Name": "杏奈（夏日）",
@@ -78943,7 +79061,8 @@
     "Stand": 256,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113211.png",
-    "Nick": "泳裝中二,泳裝杏奈,杏奈-夏日"
+    "Nick": "泳裝中二,泳裝杏奈,杏奈-夏日",
+    "unitId": "113201"
   },
   {
     "Name": "流夏（夏日）",
@@ -79582,7 +79701,8 @@
     "Stand": 192,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113131.png",
-    "Nick": "泳裝流夏,流夏-夏日"
+    "Nick": "泳裝流夏,流夏-夏日",
+    "unitId": "113101"
   },
   {
     "Name": "七七香（夏日）",
@@ -80220,7 +80340,8 @@
     "Stand": 468,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113331.png",
-    "Nick": "泳裝七七香,七七香-夏日"
+    "Nick": "泳裝七七香,七七香-夏日",
+    "unitId": "113301"
   },
   {
     "Name": "モニカ（マジカル）",
@@ -80861,7 +80982,8 @@
     "Stand": 528,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_114231.png",
-    "Nick": "毛二力,軍女,魔法少女莫妮卡,魔法莫妮卡,魔法毛二力"
+    "Nick": "毛二力,軍女,魔法少女莫妮卡,魔法莫妮卡,魔法毛二力",
+    "unitId": "114201"
   },
   {
     "Name": "優衣（公主）",
@@ -81504,7 +81626,8 @@
     "Stand": 767,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_180231.png",
-    "Nick": "公主UE,公主優衣,優衣-公主"
+    "Nick": "公主UE,公主優衣,優衣-公主",
+    "unitId": "180201"
   },
   {
     "Name": "トモ（マジカル）",
@@ -82144,7 +82267,8 @@
     "Stand": 402,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_114331.png",
-    "Nick": "阿克婭,智障女神,阿克,魔法少女智,魔法智,阿庫婭"
+    "Nick": "阿克婭,智障女神,阿克,魔法少女智,魔法智,阿庫婭",
+    "unitId": "114301"
   },
   {
     "Name": "环奈",
@@ -82568,7 +82692,8 @@
     ],
     "Stand": 433,
     "Star": 3,
-    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_170131.png"
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_170131.png",
+    "unitId": "170101"
   },
   {
     "Name": "ユカリ（クリスマス）",
@@ -83201,7 +83326,8 @@
     "Stand": 408,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_114611.png",
-    "Nick": "聖誕酒鬼,聖誕聖騎"
+    "Nick": "聖誕酒鬼,聖誕聖騎",
+    "unitId": "114601"
   },
   {
     "Name": "アキノ（クリスマス）",
@@ -83840,7 +83966,8 @@
     "Stand": 189,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_114431.png",
-    "Nick": "聖誕大小姐,聖誕哈哈哈,聖誕秋乃"
+    "Nick": "聖誕大小姐,聖誕哈哈哈,聖誕秋乃",
+    "unitId": "114401"
   },
   {
     "Name": "美里（夏日）",
@@ -84481,7 +84608,8 @@
     "Stand": 697,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113511.png",
-    "Nick": "泳裝美里,泳裝聖母,泳裝修女,水母"
+    "Nick": "泳裝美里,泳裝聖母,泳裝修女,水母",
+    "unitId": "113501"
   },
   {
     "Name": "初音（夏日）",
@@ -85121,7 +85249,8 @@
     "Stand": 567,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113431.png",
-    "Nick": "泳裝初音,夏日初音,初音-夏日"
+    "Nick": "泳裝初音,夏日初音,初音-夏日",
+    "unitId": "113401"
   },
   {
     "Name": "サレン（クリスマス）",
@@ -85767,7 +85896,8 @@
     "Stand": 150,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_114531.png",
-    "Nick": "聖誕媽媽,聖媽,聖誕媽,聖誕咲戀,咲戀-聖誕"
+    "Nick": "聖誕媽媽,聖媽,聖誕媽,聖誕咲戀,咲戀-聖誕",
+    "unitId": "114501"
   },
   {
     "Name": "ムイミ（ニューイヤー）",
@@ -86403,7 +86533,8 @@
     "Stand": 138,
     "Star": 1,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_114711.png",
-    "Nick": "新年姆咪,新年矛衣未"
+    "Nick": "新年姆咪,新年矛衣未",
+    "unitId": "114701"
   },
   {
     "Name": "貪吃佩可（新年）",
@@ -87048,7 +87179,8 @@
     "Stand": 248,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_111831.png",
-    "Nick": "新年佩可,新可"
+    "Nick": "新年佩可,新可",
+    "unitId": "111801"
   },
   {
     "Name": "純（夏日）",
@@ -87689,7 +87821,8 @@
     "Stand": 182,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113631.png",
-    "Nick": "泳裝黑騎,夏日黑騎,泳裝純,純-夏日"
+    "Nick": "泳裝黑騎,夏日黑騎,泳裝純,純-夏日",
+    "unitId": "113601"
   },
   {
     "Name": "茜里（天使）",
@@ -88328,7 +88461,8 @@
     "Stand": 530,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113731.png",
-    "Nick": "天使茜里,茜里-天使"
+    "Nick": "天使茜里,茜里-天使",
+    "unitId": "113701"
   },
   {
     "Name": "依里（天使）",
@@ -88971,7 +89105,8 @@
     "Stand": 531,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113831.png",
-    "Nick": "天使依里,依里-天使"
+    "Nick": "天使依里,依里-天使",
+    "unitId": "113801"
   },
   {
     "Name": "ヒヨリ（プリンセス）",
@@ -89615,7 +89750,8 @@
     "Stand": 199,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_180131.png",
-    "Nick": "公主日和,公主貓拳"
+    "Nick": "公主日和,公主貓拳",
+    "unitId": "180101"
   },
   {
     "Name": "环奈（振袖）",
@@ -90029,7 +90165,8 @@
     ],
     "Stand": 527,
     "Star": 3,
-    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_170231.png"
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_170231.png",
+    "unitId": "170201"
   },
   {
     "Name": "ネネカ（ニューイヤー）",
@@ -90679,7 +90816,8 @@
     "Stand": 562,
     "Star": 3,
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_115031.png",
-    "Nick": "新年448,新年44花,新年似似花"
+    "Nick": "新年448,新年44花,新年似似花",
+    "unitId": "115001"
   },
   {
     "Name": "茉莉（萬聖節）",
@@ -91318,7 +91456,8 @@
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_114111.png",
     "Star": 1,
     "Stand": 186,
-    "Nick": "萬聖茉莉"
+    "Nick": "萬聖茉莉",
+    "unitId": "114101"
   },
   {
     "Name": "ユイ（儀装束）",
@@ -91955,7 +92094,8 @@
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_115611.png",
     "Star": 1,
     "Stand": 578,
-    "Nick": "正裝優衣"
+    "Nick": "正裝優衣",
+    "unitId": "115601"
   },
   {
     "Name": "紡希（萬聖節）",
@@ -92595,7 +92735,8 @@
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_113931.png",
     "Star": 3,
     "Stand": 152,
-    "Nick": "萬聖紡希"
+    "Nick": "萬聖紡希",
+    "unitId": "113901"
   },
   {
     "Name": "怜（萬聖節）",
@@ -93233,7 +93374,8 @@
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_114031.png",
     "Star": 3,
     "Stand": 375,
-    "Nick": "萬聖節劍聖,萬聖伶"
+    "Nick": "萬聖節劍聖,萬聖伶",
+    "unitId": "114001"
   },
   {
     "Name": "コッコロ（儀装束）",
@@ -93873,6 +94015,7 @@
     "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_115531.png",
     "Star": 3,
     "Stand": 533,
-    "Nick": "正裝可可蘿,正裝可可"
+    "Nick": "正裝可可蘿,正裝可可",
+    "unitId": "115501"
   }
 ]
