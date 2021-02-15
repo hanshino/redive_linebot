@@ -11,35 +11,13 @@ def base64_to_image(strData):
 def get_assets_image(image_name):
     return cv2.imread(os.path.join(os.path.dirname(__file__), "../../assets", image_name), cv2.IMREAD_GRAYSCALE)
 
-# 檢測圖片為
-
-
-def decide_search_or_3v3(img):
-
-    img = cv2.resize(img, (900, 300), interpolation=cv2.INTER_CUBIC)
-    state_all = ['3v3.jpg',
-                 '3v3_japan.jpg', 'search.jpg']
-
-    min = 1e10
-    index = None
-
-    for i in range(len(state_all)):
-        template = get_assets_image(state_all[i])
-        res = cv2.matchTemplate(template, img, cv2.TM_SQDIFF)
-        min_val, _, _, _ = cv2.minMaxLoc(res)
-        # print('min_val = ', min_val)
-        if(min_val < min):
-            index = i
-            min = min_val
-
-    state = ['3v3', '3v3', 'search']
-    return state[index]
-
 
 def upload_processing(img):
+    width, height = img.shape[:2]
+    img = img[0:width, 10:height]
     # 上傳紀錄競技場對戰紀錄的照片要二段處理
     for i in range(2):
-        blur = cv2.GaussianBlur(img, (3, 3), 0)
+        blur = cv2.GaussianBlur(img, (1, 1), 0)
         edge = cv2.Canny(blur, 20, 160)
         contours, _ = cv2.findContours(
             edge, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -56,7 +34,16 @@ def upload_processing(img):
     x = img.shape[1]
     x_middle = round(x / 9 * 4)
     y = img.shape[0]
-    return {"attack": img[0:y, 0:x_middle], "defense": img[0:y, x_middle:x]}
+    upload_section = {"left": img[0:y, 0:x_middle],
+                      "right": img[0:y, x_middle:x]}
+    result_section = {}
+
+    for side, section in upload_section.items():
+        sH, sW = section.shape[:2]
+        result_section[side +
+                       "Result"] = section[0:round(sH/3), 0:round(sW/14*3)]
+
+    return {**upload_section, **result_section}
 
 # 輸入已預處理的照片
 # Input: preprocessed Image

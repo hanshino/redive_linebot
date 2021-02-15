@@ -18,3 +18,17 @@ exports.analyzeGuildBattle = imageBase => {
     .then(res => res.data)
     .catch(err => false);
 };
+
+/**
+ * 將圖片傳至pytho進行分析
+ * @param {String} imageBase 
+ */
+exports.analyzeArenaBattle = imageBase => {
+  return axios
+    .post("/api/v1/Arena/Battle/Result", {
+      image: imageBase,
+      type: "base64",
+    })
+    .then(res => res.data)
+    .catch(err => false);
+};
