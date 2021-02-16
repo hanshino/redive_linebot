@@ -6,6 +6,7 @@ import cv2
 def process(img_data):
     char_result = {"left": {"result": -1, "team": []},
                    "right": {"result": -1, "team": []}}
+    result_length = {"left": 0, "right": 0}
     report = proc.preprocessing(img_data)  # 中央視窗裁剪
     teams = proc.upload_processing(report)  # 傷害報告類型圖片處理
     if len(teams) == 0:
@@ -24,8 +25,16 @@ def process(img_data):
                 print("找不到這角色")
             else:
                 char_result[side]["team"].append(result)
+                result_length[side] = getResult(teams[side + "Result"])
                 char_result[side]["result"] = 1 if getResult(
                     teams[side + "Result"]) == "win" else 0
+
+    if (result_length["right"] > result_length["left"]):
+        char_result["right"]["result"] = 0
+        char_result["left"]["result"] = 1
+    else:
+        char_result["right"]["result"] = 1
+        char_result["left"]["result"] = 0
 
     return char_result
 
@@ -52,4 +61,4 @@ def getResult(resultImage):
     # cv2.drawContours(resultImage, contours, -1, (0, 255, 0), 3)
     # cv2.imshow("resultImage", resultImage)
     # cv2.waitKey(0)
-    return "win" if width < 140 else "lose"
+    return width

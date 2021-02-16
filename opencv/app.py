@@ -23,7 +23,7 @@ def GBIanalyze():
 @app.route('/api/v1/Arena/Battle/Result', methods=["POST"])
 def ABRanalyze():
     body = request.get_json()
-    result = search.process(proc.base64_to_image(body["image"]))
+    result = upload.process(proc.base64_to_image(body["image"]))
     if result == None:
         return "{}", 404
     return jsonify(result)
@@ -32,9 +32,10 @@ def ABRanalyze():
 @app.route('/api/v1/Arena/Battle/Search', methods=["POST"])
 def ABRsearch():
     body = request.get_json()
-    result = upload.process(proc.base64_to_image(body["image"]))
+    result = search.process(proc.base64_to_image(body["image"]))
     if result == None:
-        return "{}", 404
+        return jsonify({"message": "empty"}), 404
     return jsonify(result)
+
 
 app.run(host="0.0.0.0", port=3000, debug=True)
