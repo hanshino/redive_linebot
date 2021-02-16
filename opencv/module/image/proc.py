@@ -45,11 +45,10 @@ def upload_processing(img):
 
     return {**upload_section, **result_section}
 
-# 輸入已預處理的照片
-# Input: preprocessed Image
-
 
 def report_processing(img):
+    # 輸入已預處理的照片
+    # Input: preprocessed Image
     blur = cv2.GaussianBlur(img, (13, 13), 0)
     edge = cv2.Canny(blur, 20, 160)
     contours, _ = cv2.findContours(
@@ -64,12 +63,10 @@ def report_processing(img):
     return img[y+2:y+height-2, x+2:x+width-2]
 
 
-# 簡單去背,只保留主要畫面
-# Input: Original Image
-# Output: Record Image
-
-
 def preprocessing(img):
+    # 簡單去背,只保留主要畫面
+    # Input: Original Image
+    # Output: Record Image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # BGR to Gray
     _, binary = cv2.threshold(
         gray, 150, 255, cv2.THRESH_TOZERO)  # Gray to Binary
@@ -91,128 +88,9 @@ def preprocessing(img):
     return result
 
 
-def is_arena_img(img):
-    return True if img.shape[0] < img.shape[1] else False
-
-# Battle Result
-# Input: Record Image
-# Output: Our Win or Lose
-
-
-def battle_result(img, mode):
-
-    result = None
-    win_template = None
-    lose_template = None
-
-    if mode == 'upload':
-        win_template = get_assets_image("win.jpg")
-    elif mode == 'friend_upload':
-        win_template = get_assets_image("friend_win.jpg")
-    elif mode == '3v3':
-        win_template = get_assets_image("3v3_win.jpg")
-
-    win_res = cv2.matchTemplate(win_template, img, cv2.TM_SQDIFF)
-    win_min_val, _, win_min_loc, _ = cv2.minMaxLoc(win_res)
-
-    if mode == 'upload':
-        lose_template = get_assets_image("lose.jpg")
-    elif mode == 'friend_upload':
-        lose_template = get_assets_image("friend_lose.jpg")
-    elif mode == '3v3':
-        lose_template = get_assets_image("3v3_lose.jpg")
-
-    lose_res = cv2.matchTemplate(lose_template, img, cv2.TM_SQDIFF)
-    _, _, lose_min_loc, _ = cv2.minMaxLoc(lose_res)
-
-    if win_min_val > 2e6:
-        return (0, 0), lose_min_loc, result
-
-    if win_min_loc[0] < int(img.shape[1]/3):
-        result = True
-    else:
-        result = False
-
-    return win_min_loc, lose_min_loc, result
-
-
-# Image Preprocessing
-# Input: Record Image
-# Output: Battle Results
-def upload_battle_processing(img, region, mode):
-
-    # result = None
-    win_min_loc, lose_min_loc, result = battle_result(img, mode)
-
-    win_des = 1
-    if region == 'china':
-        lose_des = 8
-        y = 140
-    else:
-        lose_des = 7
-        y = 150
-
-    # Width and Height of Cropped region
-    w = 60
-    h = 40
-    border = 5
-
-    # Our team Character
-    if mode == 'friend_upload':
-        y = 110
-    if result == True:
-        x = win_min_loc[0] + win_des
-    else:
-        x = lose_min_loc[0] + lose_des
-
-    team = []
-    for i in range(5):
-        crop_img = img[y:y+h, x+border:x+w-border]
-        team.append(crop_img)
-        if mode == 'friend_upload':
-            y = y + h + 30
-        else:
-            x = x + w + 7
-
-    # Enemy team Character
-    if mode == 'friend_upload':
-        y = 110
-    if result == True:
-        x = lose_min_loc[0] + lose_des
-    else:
-        x = win_min_loc[0] + win_des
-
-    enemy = []
-    for i in range(5):
-        crop_img = img[y:y + h, x + border:x + w - border]
-        enemy.append(crop_img)
-        if mode == 'friend_upload':
-            y = y + h + 30
-        else:
-            x = x + w + 7
-
-    return team, enemy, result
-
-
-# Image Preprocessing
-# Input: Record Image
-# Output: Battle Results
-def search_battle_processing(img):
-
-    x = 552
-    y = 27
-    # Width and Height of Cropped region
-    w = 60
-    h = 37
-
-    # Enemy team Character
-    enemy = []
-    for i in range(5):
-        crop_img = img[y:y+h, x:x+w]
-        crop_img = cv2.resize(crop_img, (60, 60),
-                              interpolation=cv2.INTER_CUBIC)
-        crop_img = crop_img[15:50, 10:50]
-        enemy.append(crop_img)
-        x = x+w+7
-
-    return enemy
+def search_processing(img):
+    # 固定裁剪 1/3 高度 並且保留右半邊
+    height, width = img.shape[:2]
+    resize_h = round(height / 3)
+    resize_w = round(width / 2)
+    return img[0:resize_h, resize_w:width]

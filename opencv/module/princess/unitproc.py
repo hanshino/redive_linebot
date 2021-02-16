@@ -56,7 +56,7 @@ class unit:
         self.fixedUnit = fix_unit_image(unitHeadImage)
         self.fixedSize = self.fixedUnit.shape[:2]
         self.compressRate = compressRate
-        self.threshold = 5000000
+        self.threshold = 5200000
 
         pass
 
@@ -81,7 +81,8 @@ class unit:
         #     1), (top_left[0], top_left[1]+20), cv2.FONT_HERSHEY_SIMPLEX, 1.1, (0, 0, 0), 3)
 
         # cv2.imshow("detect", cv2.resize(self.resizeFullImage, (round(
-        #     self.resizeFullImage.shape[1]*0.4), round(self.resizeFullImage.shape[0]*0.4)), cv2.INTER_NEAREST))
+        #     self.resizeFullImage.shape[1]*0.2), round(self.resizeFullImage.shape[0]*0.2)), cv2.INTER_NEAREST))
+        # cv2.waitKey(0)
 
     def getResult(self) -> dict:
         if self.target[0] == 0 or self.target[1] == 0:
@@ -95,6 +96,12 @@ class unit:
         xIdx, yIdx = math.floor(
             self.target[0] / fullUnitX), math.floor(self.target[1] / fullUnitY)
 
-        # print(self.resizeFullSize)
+        # print("================")
+        # print("resize", self.resizeFullSize)
+        # print("fullUnitX",fullUnitX, fullUnitY)
+        # print("target",self.target[0], self.target[1])
+        # print("xLength",xLength, yLength)
+        # print("xIdx",xIdx, yIdx)
+        # print("================")
 
         return fullImageInfo[yIdx][xIdx]
