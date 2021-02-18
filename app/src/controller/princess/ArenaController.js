@@ -41,6 +41,7 @@ const quickReplyAskWhich = {
 exports.router = context => {
   const { type } = context.event.source;
   if (type === "user") return personalRouter();
+  else return [];
 };
 
 function personalRouter(context) {
