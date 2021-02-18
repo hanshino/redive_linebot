@@ -25,6 +25,16 @@ exports.find = unitId => {
   return idx === -1 ? null : CharacterDatas[idx];
 };
 
+/**
+ * 取得頭像連結
+ * @param {Number} unitId
+ * @param {Number} star 1,3,6
+ */
+exports.getHeadImage = (unitId, star) => {
+  let id = unitId + star * 10;
+  return `https://pcredivewiki.tw/static/images/unit/icon_unit_${id}.png`;
+};
+
 function genChatacterIds() {
-  characterIds = CharacterDatas.map(data => data.unitId);
+  characterIds = CharacterDatas.map(data => parseInt(data.unitId));
 }

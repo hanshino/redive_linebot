@@ -78,6 +78,7 @@ async function OrderBased(context, { next }) {
     text(/^#?使用說明$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text("/state", showState),
+    text("/resetstate", context => context.resetState()),
     text("/traffic", function () {
       traffic.getSignData().then(console.table);
     }),
