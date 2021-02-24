@@ -197,42 +197,44 @@ exports.showReportList = (context, records) => {
 
 /**
  * 多群組選擇用
- * @param {Context} context 
- * @param {Array<{name: String, count: Number, week: Number}>} groups 
+ * @param {Context} context
+ * @param {Array<{name: String, count: Number, week: Number}>} groups
  */
 exports.showGuildList = (context, groups) => {
   let bubbles = groups.map(group =>
-    JSON.parse(assemble(
-      group,
-      JSON.stringify({
-        type: "bubble",
-        size: "nano",
-        body: {
-          type: "box",
-          layout: "vertical",
-          contents: [
-            {
-              type: "text",
-              text: "{groupName}",
-              size: "lg",
-              weight: "bold",
+    JSON.parse(
+      assemble(
+        group,
+        JSON.stringify({
+          type: "bubble",
+          size: "nano",
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: "{groupName}",
+                size: "lg",
+                weight: "bold",
+              },
+              {
+                type: "text",
+                text: "人數：{count} 人",
+              },
+              {
+                type: "text",
+                text: "周目：{week} 周",
+              },
+            ],
+            action: {
+              type: "message",
+              text: "#我要回報 {formId}",
             },
-            {
-              type: "text",
-              text: "人數：{count} 人",
-            },
-            {
-              type: "text",
-              text: "周目：{week} 周",
-            },
-          ],
-          action: {
-            type: "message",
-            text: "#我要回報 {formId}"
-          }
-        },
-      })
-    ))
+          },
+        })
+      )
+    )
   );
 
   let flexMessage = { type: "carousel", contents: bubbles };
@@ -414,6 +416,7 @@ function genPreviewCover(option) {
 }
 
 function genPreviewDetail(option) {
+  console.log(option);
   const {
     FullCount,
     NotFullCount,
@@ -476,6 +479,15 @@ function genPreviewDetail(option) {
       ],
     };
   });
+
+  let recordDamages = datas
+    .filter(data => data.damage)
+    .map(data => data.damage)
+    .reduce((pre, curr) => pre + curr);
+
+  // 超標修正
+  recordDamages = recordDamages > hp ? hp : recordDamages;
+  let causeRate = Math.round((recordDamages / hp) * 100);
 
   return {
     type: "bubble",
@@ -598,19 +610,28 @@ function genPreviewDetail(option) {
               type: "text",
               size: "sm",
               contents: [],
-              text: "100%",
+              text: `${100 - causeRate}%`,
               align: "end",
             },
             {
               type: "box",
               layout: "vertical",
-              contents: [],
-              backgroundColor: "#FF0000AA",
+              contents: [
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [],
+                  width: `${100 - causeRate}%`,
+                  height: "5px",
+                  backgroundColor: "#FF0000AA",
+                },
+              ],
+              backgroundColor: "#808080",
               height: "5px",
             },
             {
               type: "text",
-              text: `${hp}`,
+              text: `${hp - recordDamages}`,
               size: "sm",
               align: "end",
             },
