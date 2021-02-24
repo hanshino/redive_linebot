@@ -13,8 +13,8 @@ def get_assets_image(image_name):
 
 
 def upload_processing(img):
-    width, height = img.shape[:2]
-    img = img[0:width, 10:height]
+    height, width = img.shape[:2]
+    img = img[50:height, 0:width]
     # 上傳紀錄競技場對戰紀錄的照片要二段處理
     for i in range(2):
         blur = cv2.GaussianBlur(img, (1, 1), 0)
