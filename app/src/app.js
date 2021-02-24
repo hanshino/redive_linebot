@@ -18,6 +18,7 @@ const { showSchedule } = require("./controller/princess/schedule");
 const FriendCardController = require("./controller/princess/FriendCard");
 const ChatLevelController = require("./controller/application/ChatLevelController");
 const BattleReportController = require("./controller/princess/BattleReportController");
+const ArenaContoroller = require("./controller/princess/ArenaController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -73,6 +74,7 @@ async function OrderBased(context, { next }) {
     ...GroupOrder(context),
     ...PrincessInformation(context),
     ...PersonOrder(context),
+    ...ArenaContoroller.router(context),
     text(/^#?使用說明$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text("/state", showState),
@@ -96,7 +98,10 @@ function PersonOrder(context) {
   return [
     text(/^[#.](重選報名表|formreset)$/, BattleReportController.resetGuild),
     text(/^[#.](我要回報|formreport)(\s(?<formId>\S+))?/, BattleReportController.reportDamage),
-    text(/^[#.](傷害回報|回報傷害)\s(?<recordId>\d+)\s(?<week>\d+)\s(?<boss>[1-5])$/, BattleReportController.setAllowReport),
+    text(
+      /^[#.](傷害回報|回報傷害)\s(?<recordId>\d+)\s(?<week>\d+)\s(?<boss>[1-5])$/,
+      BattleReportController.setAllowReport
+    ),
     route(BattleReportController.isAllowPersonalReport, BattleReportController.personalReport),
   ];
 }

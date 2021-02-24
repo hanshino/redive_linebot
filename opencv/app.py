@@ -25,8 +25,11 @@ def GBIanalyze():
 def ABRanalyze():
     body = request.get_json()
     result = upload.process(proc.base64_to_image(body["image"]))
-    if result == None:
-        return "{}", 404
+    if result == 1:
+        return jsonify({"message": "1"})
+    elif result == 2:
+        return jsonify({"message": "2"})
+
     return jsonify(result)
 
 debug = True if os.getenv("PYTHON_MODE") == "DEBUG" else False

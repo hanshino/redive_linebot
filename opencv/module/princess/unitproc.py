@@ -22,7 +22,7 @@ def process(img) -> list:
 
         slope = width / height
 
-        if height >= 40 and width >= 40 and round(abs(slope*10 - 10)) < 1:
+        if height >= 50 and width >= 50 and round(abs(slope*10 - 10)) < 1:
             unit_head = img[y:y+height, x:x+width]
             probably_list.append({"unit_head": unit_head, "position": (x, y)})
 
@@ -56,7 +56,7 @@ class unit:
         self.fixedUnit = fix_unit_image(unitHeadImage)
         self.fixedSize = self.fixedUnit.shape[:2]
         self.compressRate = compressRate
-        self.threshold = 4000000
+        self.threshold = 5000000
 
         pass
 
