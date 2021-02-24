@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： mysql
--- 產生時間： 2021 年 01 月 16 日 17:22
--- 伺服器版本： 8.0.21
--- PHP 版本： 7.4.11
+-- 產生時間： 2021 年 02 月 18 日 16:31
+-- 伺服器版本： 8.0.23
+-- PHP 版本： 7.4.15
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -33,6 +33,49 @@ CREATE TABLE IF NOT EXISTS `Admin` (
   `privilege` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `arena_like_records`
+--
+
+CREATE TABLE IF NOT EXISTS `arena_like_records` (
+  `merge_hash` varchar(255) NOT NULL,
+  `attack_hash` varchar(255) NOT NULL,
+  `defense_hash` varchar(255) NOT NULL,
+  `userId` varchar(255) NOT NULL,
+  `type` varchar(1) NOT NULL COMMENT '1:like,2:unlike',
+  `update_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '異動時間',
+  `is_upload_image` varchar(1) NOT NULL DEFAULT '0' COMMENT '1:有上傳佐證、0:無上傳純按鈕',
+  PRIMARY KEY (`attack_hash`,`defense_hash`,`userId`),
+  KEY `IDX_MERGE_HASH` (`merge_hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `arena_records`
+--
+
+CREATE TABLE IF NOT EXISTS `arena_records` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `left_hash` varchar(255) NOT NULL,
+  `right_hash` varchar(255) NOT NULL,
+  `left_team` json NOT NULL COMMENT '左圖隊伍（自己）',
+  `right_team` json NOT NULL COMMENT '右圖隊伍（對方）',
+  `left_result` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '左圖勝負，1:勝利、0:失敗',
+  `right_result` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '右圖勝負，1:勝利、0:失敗',
+  `left_type` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '左圖類型，1:進攻、2:防守',
+  `right_type` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '右圖類型，1:進攻、2:防守',
+  `author_id` varchar(255) NOT NULL COMMENT '紀錄作者id',
+  `source_id` varchar(255) NOT NULL COMMENT '紀錄來源id，作為是否分享的依據',
+  `is_share` varchar(1) NOT NULL COMMENT '1:分享、0:自用',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `left_hash` (`left_hash`),
+  KEY `right_hash` (`right_hash`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='紀錄競技場勝負';
 
 -- --------------------------------------------------------
 
@@ -355,7 +398,7 @@ CREATE TABLE IF NOT EXISTS `CustomerOrder` (
   `TouchDTM` datetime DEFAULT NULL,
   PRIMARY KEY (`ID`),
   KEY `IDX_CustOrderSource` (`SourceId`)
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -465,7 +508,7 @@ CREATE TABLE IF NOT EXISTS `GuildBattleFinish` (
   `CreateDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '新增日期',
   PRIMARY KEY (`id`),
   KEY `idxUserId` (`UserId`)
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- --------------------------------------------------------
 
@@ -484,7 +527,7 @@ CREATE TABLE IF NOT EXISTS `GuildConfig` (
   `SenderIcon` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `GuildId_UNIQUE` (`GuildId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
