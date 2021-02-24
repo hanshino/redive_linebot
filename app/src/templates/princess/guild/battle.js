@@ -416,7 +416,6 @@ function genPreviewCover(option) {
 }
 
 function genPreviewDetail(option) {
-  console.log(option);
   const {
     FullCount,
     NotFullCount,
@@ -480,14 +479,11 @@ function genPreviewDetail(option) {
     };
   });
 
-  let recordDamages = datas
-    .filter(data => data.damage)
-    .map(data => data.damage)
-    .reduce((pre, curr) => pre + curr);
-
+  let recordDamages = datas.filter(data => data.damage).map(data => data.damage);
+  let recordDamage = recordDamages.length === 0 ? 0 : recordDamages.reduce((pre, curr) => pre + curr);
   // 超標修正
-  recordDamages = recordDamages > hp ? hp : recordDamages;
-  let causeRate = Math.round((recordDamages / hp) * 100);
+  recordDamage = recordDamage > hp ? hp : recordDamage;
+  let causeRate = Math.round((recordDamage / hp) * 100);
 
   return {
     type: "bubble",
@@ -631,7 +627,7 @@ function genPreviewDetail(option) {
             },
             {
               type: "text",
-              text: `${hp - recordDamages}`,
+              text: `${hp - recordDamage}`,
               size: "sm",
               align: "end",
             },
