@@ -17,8 +17,7 @@ def upload_processing(img):
     img = img[50:height, 0:width]
     # 上傳紀錄競技場對戰紀錄的照片要二段處理
     for i in range(2):
-        blur = cv2.GaussianBlur(img, (1, 1), 0)
-        edge = cv2.Canny(blur, 20, 160)
+        edge = cv2.Canny(img, 20, 160)
         contours, _ = cv2.findContours(
             edge, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 

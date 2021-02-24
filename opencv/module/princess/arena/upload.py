@@ -25,9 +25,9 @@ def process(img_data):
                 print("找不到這角色")
             else:
                 char_result[side]["team"].append(result)
-                result_length[side] = getResult(teams[side + "Result"])
-                char_result[side]["result"] = 1 if getResult(
-                    teams[side + "Result"]) == "win" else 0
+
+        result_length[side] = getResult(teams[side + "Result"])
+
 
     if (result_length["right"] > result_length["left"]):
         char_result["right"]["result"] = 0
