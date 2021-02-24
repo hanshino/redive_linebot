@@ -34,6 +34,7 @@ module.exports = {
       Gacha: "Y",
       PrincessInformation: "Y",
     },
+    arena: {},
   },
   channels: {
     messenger: {
