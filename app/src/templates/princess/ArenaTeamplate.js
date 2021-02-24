@@ -1,5 +1,5 @@
 exports.showUploadInfo = (context, info) => {
-  let isSuccess = { 0: "勝利", 1: "失敗" };
+  let isSuccess = { 1: "勝利", 0: "失敗" };
   let messages = [];
   messages.push(
     `左方：${info.left.team.map(char => char.name).join(" ")} *${isSuccess[info.left.result]}*`
