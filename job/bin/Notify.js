@@ -94,15 +94,13 @@ exports.provideNotifyList = async () => {
  * 進行發送隊列消化，直到無東西
  */
 exports.consumeNotifyList = async () => {
-  let notifyStatus = [];
   while (true) {
     let data = await NotifyListModel.consumeNotifyList();
     if (data === null) break;
     data.alert = data.type === 3 ? false : true;
 
-    notifyStatus.push(notify.push(data));
+    await notify.push(data);
   }
-  await Promise.all(notifyStatus);
 };
 
 function delay(second) {
