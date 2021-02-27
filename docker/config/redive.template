@@ -11,7 +11,7 @@ server {
     proxy_set_header Host $host;
   }
 
-  location /webhooks/ {
+  location /webhooks {
     proxy_pass http://bot:5000/webhooks;
   }
 

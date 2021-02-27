@@ -27,7 +27,7 @@ services:
     networks:
       - bot_network
 
-  app:
+  bot:
     build: ./app
     env_file: ./.env
     restart: always
