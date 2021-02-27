@@ -10,6 +10,9 @@ services:
     networks:
       - bot_network
       - nginx_network
+    depends_on:
+      - bot
+      - frontend_dev
     environment:
       - "VIRTUAL_HOST=${APP_DOMAIN}"
       - "VIRTUAL_NETWORK=nginx-proxy"
@@ -18,7 +21,7 @@ services:
       - "LETSENCRYPT_EMAIL=${ADMIN_EMAIL}"
     command: /bin/bash -c "envsubst '$$APP_DOMAIN' < /etc/nginx/conf.d/templates/redive.dev.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
 
-  frontend:
+  frontend_dev:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev

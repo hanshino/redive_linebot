@@ -10,6 +10,9 @@ services:
     networks:
       - bot_network
       - nginx_network
+    depends_on:
+      - frontend
+      - bot
     environment:
       - "VIRTUAL_HOST=${APP_DOMAIN}"
       - "VIRTUAL_NETWORK=nginx-proxy"
