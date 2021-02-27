@@ -32,31 +32,6 @@ app.prepare().then(() => {
 
   server.get("/Bot/Notify/Callback", binding);
 
-  server.get("/send-id", (req, res) => {
-    const { size } = req.query;
-    let liffId = "";
-
-    switch (size.toLowerCase()) {
-      case "compact":
-        liffId = process.env.LINE_LIFF_COMPACT_ID;
-        break;
-      case "tall":
-        liffId = process.env.LINE_LIFF_TALL_ID;
-        break;
-      case "full":
-        liffId = process.env.LINE_LIFF_FULL_ID;
-        break;
-    }
-
-    liffId = liffId || process.env.LINE_LIFF_ID;
-
-    res.json({ id: liffId });
-  });
-
-  server.get("/*", (req, res) => {
-    res.sendFile(path.join(`${__dirname}/public/index.html`));
-  });
-
   // route for webhook request
   server.all("*", (req, res) => {
     return handle(req, res);

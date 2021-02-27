@@ -19,6 +19,28 @@ const gacha = require("../controller/princess/gacha");
 const { webhook } = require("../util/discord");
 const { showStatistics, showUserStatistics } = require("../controller/application/Statistics");
 const NotifyController = require("../controller/application/NotifyController");
+const { pushMessage } = require("../util/LineNotify");
+
+router.get("/send-id", (req, res) => {
+  const { size } = req.query || "full";
+  let liffId = "";
+
+  switch (size.toLowerCase()) {
+    case "compact":
+      liffId = process.env.LINE_LIFF_COMPACT_ID;
+      break;
+    case "tall":
+      liffId = process.env.LINE_LIFF_TALL_ID;
+      break;
+    case "full":
+      liffId = process.env.LINE_LIFF_FULL_ID;
+      break;
+  }
+
+  liffId = liffId || process.env.LINE_LIFF_ID;
+
+  res.json({ id: liffId });
+});
 
 router.get("/Group/:groupId/Speak/Rank", GroupRecordController.getRankDatas);
 
@@ -245,6 +267,9 @@ router.post("/Bot/Notify/Test", verifyToken, NotifyController.api.messageTest);
 router.put("/Bot/Notify/:key/:status", verifyToken, NotifyController.api.setSubStatus);
 
 router.all("*", (_, res) => {
+  pushMessage({ message: "test", token: "W2CLCY8Sf06ifiONH63ccPIqV9ulvYsZ4xUc4Nzu9GR" });
+  console.log(269);
+  console.log(_.path);
   res.status(404).json({ message: "invalid api url." });
 });
 
