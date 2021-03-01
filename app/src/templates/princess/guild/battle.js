@@ -279,11 +279,22 @@ function genPreviewCover(option) {
               layout: "vertical",
               contents: [
                 {
-                  type: "text",
-                  text: "🌏 網站版",
-                  align: "center",
-                  weight: "bold",
-                  color: "#FFFFFF",
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "filler",
+                    },
+                    {
+                      type: "text",
+                      text: "🌏 網站版",
+                      align: "center",
+                      weight: "bold",
+                    },
+                    {
+                      type: "filler",
+                    },
+                  ],
                 },
               ],
               action: {
@@ -291,19 +302,31 @@ function genPreviewCover(option) {
                 uri: `${getLiffUri("ian")}/forms/${formId}/week/${week}`,
               },
               paddingAll: "5px",
-              backgroundColor: "#2196f3",
               cornerRadius: "md",
+              borderWidth: "2px",
+              borderColor: "#880066",
             },
             {
               type: "box",
               layout: "vertical",
               contents: [
                 {
-                  type: "text",
-                  text: "🔧 設定頁",
-                  align: "center",
-                  weight: "bold",
-                  color: "#FFFFFF",
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "filler",
+                    },
+                    {
+                      type: "text",
+                      text: "🔧 設定頁",
+                      align: "center",
+                      weight: "bold",
+                    },
+                    {
+                      type: "filler",
+                    },
+                  ],
                 },
               ],
               action: {
@@ -311,8 +334,9 @@ function genPreviewCover(option) {
                 uri: `${getLiffUri("Ian")}/forms/${formId}/modify`,
               },
               paddingAll: "5px",
-              backgroundColor: "#2196f3",
               cornerRadius: "md",
+              borderColor: "#880066",
+              borderWidth: "2px",
             },
           ],
           spacing: "sm",
@@ -327,11 +351,22 @@ function genPreviewCover(option) {
               layout: "vertical",
               contents: [
                 {
-                  type: "text",
-                  text: "📋 總覽頁",
-                  align: "center",
-                  weight: "bold",
-                  color: "#FFFFFF",
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "filler",
+                    },
+                    {
+                      type: "text",
+                      text: "📋 總覽頁",
+                      align: "center",
+                      weight: "bold",
+                    },
+                    {
+                      type: "filler",
+                    },
+                  ],
                 },
               ],
               action: {
@@ -339,19 +374,31 @@ function genPreviewCover(option) {
                 uri: `${getLiffUri("Ian")}/forms/${formId}/overview`,
               },
               paddingAll: "5px",
-              backgroundColor: "#2196f3",
               cornerRadius: "md",
+              borderColor: "#880066",
+              borderWidth: "2px",
             },
             {
               type: "box",
               layout: "vertical",
               contents: [
                 {
-                  type: "text",
-                  text: "⌨ 指令表",
-                  align: "center",
-                  weight: "bold",
-                  color: "#FFFFFF",
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "filler",
+                    },
+                    {
+                      type: "text",
+                      text: "⌨ 指令表",
+                      align: "center",
+                      weight: "bold",
+                    },
+                    {
+                      type: "filler",
+                    },
+                  ],
                 },
               ],
               action: {
@@ -359,8 +406,9 @@ function genPreviewCover(option) {
                 uri: `${getLiffUri("compact")}?reactRedirectUri=/Panel/Group/Battle/Control`,
               },
               paddingAll: "5px",
-              backgroundColor: "#2196f3",
               cornerRadius: "md",
+              borderColor: "#880066",
+              borderWidth: "2px",
             },
           ],
           spacing: "sm",
