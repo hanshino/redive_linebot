@@ -13,6 +13,8 @@
   - [目錄](#目錄)
   - [使用須知](#使用須知)
   - [機器配置](#機器配置)
+    - [Production](#production)
+    - [Developement](#developement)
   - [目前適用聊天軟體](#目前適用聊天軟體)
   - [此專案特色](#此專案特色)
     - [各大遊戲性功能 - 管理員用](#各大遊戲性功能---管理員用)
@@ -21,7 +23,10 @@
   - [部分截圖](#部分截圖)
   - [事前準備](#事前準備)
   - [安裝方式](#安裝方式)
-  - [進階用法](#進階用法)
+    - [前置作業](#前置作業)
+    - [正式用](#正式用)
+    - [開發用](#開發用)
+    - [Line後臺設定](#line後臺設定)
   - [注意事項](#注意事項)
 
 ## 使用須知
@@ -30,17 +35,39 @@
 
 ## 機器配置
 
-此專案結合了 `docker-compose` 一鍵佈署的特性，使用了六台虛擬機器
+此專案結合了 `docker-compose` 一鍵佈署的特性，以下為使用到的服務
 
-| 機器       | image                                                                            | 說明                             |
-| ---------- | -------------------------------------------------------------------------------- | -------------------------------- |
-| mysql      | [mysql](https://hub.docker.com/_/mysql)                                          | 資料庫                           |
-| redis      | [redis](https://hub.docker.com/_/redis)                                          | 記憶體快取資料庫                 |
-| app        | [app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)     | `node.js:12-alpine` 包含主程式   |
-| crontab    | [crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile) | `node.js:12-alpine` 定時排程執行 |
-| phpmyadmin | [phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)                    | `phpmyadmin` 資料庫管理          |
+### Production
+
+| container  | image                                                                                  | expose | 說明                             |
+| ---------- | -------------------------------------------------------------------------------------- | ------ | -------------------------------- |
+| nginx      | [nginx](https://hub.docker.com/_/nginx)                                                | 80     | `webserver`                      |
+| frontend   | [frontend](https://github.com/hanshino/redive_linebot/blob/master/frontend/Dockerfile) | 80     | `react-frontend`                 |
+| bot        | [app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)           | 5000   | `node.js:12-alpine` 包含主程式   |
+| mysql      | [mysql](https://hub.docker.com/_/mysql)                                                | 3306   | 資料庫                           |
+| redis      | [redis](https://hub.docker.com/_/redis)                                                | 6379   | 記憶體快取資料庫                 |
+| crontab    | [crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)       |        | `node.js:12-alpine` 定時排程執行 |
+| phpmyadmin | [phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)                          | 80     | `phpmyadmin` 資料庫管理          |
+| opencv     | [opencv](https://github.com/hanshino/redive_linebot/blob/master/opencv/Dockerfile)     | 3000   | `opencv` 影像處理                |
 
 可使用`docker-compose`指令水平擴展主程式，端看於個人硬體強度來做提升。
+
+### Developement
+
+開發用，將可編輯的程式掛載至容器，編輯則馬上生效
+- `frontend` 採用 `react-scripts` 的 開發環境建置
+- `bot` 以及 `crontab` 採用 `nodemon`
+
+| container  | image                                                                                  | expose | 說明                             |
+| ---------- | -------------------------------------------------------------------------------------- | ------ | -------------------------------- |
+| nginx      | [nginx](https://hub.docker.com/_/nginx)                                                | 80     | `webserver`                      |
+| frontend   | [frontend](https://github.com/hanshino/redive_linebot/blob/master/frontend/Dockerfile) | 3000   | `react-frontend`                 |
+| bot        | [app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)           | 5000   | `node.js:12-alpine` 包含主程式   |
+| mysql      | [mysql](https://hub.docker.com/_/mysql)                                                | 3306   | 資料庫                           |
+| redis      | [redis](https://hub.docker.com/_/redis)                                                | 6379   | 記憶體快取資料庫                 |
+| crontab    | [crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)       |        | `node.js:12-alpine` 定時排程執行 |
+| phpmyadmin | [phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)                          | 8080   | `phpmyadmin` 資料庫管理          |
+| opencv     | [opencv](https://github.com/hanshino/redive_linebot/blob/master/opencv/Dockerfile)     | 3000   | `opencv` 影像處理                |
 
 ## 目前適用聊天軟體
 
@@ -77,28 +104,32 @@
 
 ## 安裝方式
 
+### 前置作業
+
 1. 打開你的CLI跟著我一起輸入(終端機、命令提示字元、命令介面)
 2. `git clone https://github.com/hanshino/redive_linebot.git`
 3. `cd redive_linebot`
 4. `cp .env.example .env`
 5. 編輯 `.env` ，請務必填上所有資訊並存檔！
-6. `docker-compose up -d`
-7. 此時電腦的 **5000 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
-8. 網址預設為 `https://{your_domain}/webhooks/line`
-9. 將網址填進 [Line Account Manager](https://manager.line.biz/)
+6. `docker network create nginx_network`
 
-*協作開發者可將6.的步驟改為 `docker-compose -f docker-compose-dev.yml up -d`*
+### 正式用
 
-## 進階用法
-開啟多機器進行 `load-balance` (複載平衡)
+1. `docker-compose up -d`
+2. 此時電腦的 **80 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
 
-```cmd
-docker-compose up -d --scale app=3
-```
+### 開發用
 
-以上的數字 `app=3` 可自由調整，輸入多少就會開啟多少機器
+1. `docker-compose -f docker-compose-dev.yml up -d`
+2. 此時電腦的 **80 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
+
+### Line後臺設定
+
+1.  網址預設為 `https://{your_domain}/webhooks/line`
+2. 將網址填進 [Line Account Manager](https://manager.line.biz/)
 
 ## 注意事項
 
 * 要使用戰隊功能，需先跟 [Ian 戰隊系統作者](https://discord.gg/cwFc4qh)申請 Accesss Token
 * `Windows` 作業系統使用 `Docker` 需注意開啟 `hyper-v` 是否會影響自己遊玩手機模擬器。
+* 初次啟動時需耗時一段時間進行環境建置，此屬正常情況！
