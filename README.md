@@ -60,7 +60,7 @@
 
 | container  | image                                                                                  | expose | 說明                             |
 | ---------- | -------------------------------------------------------------------------------------- | ------ | -------------------------------- |
-| nginx      | [nginx](https://hub.docker.com/_/nginx)                                                | 80     | `webserver`                      |
+| nginx      | [nginx](https://hub.docker.com/_/nginx)                                                | 5000   | `webserver`                      |
 | frontend   | [frontend](https://github.com/hanshino/redive_linebot/blob/master/frontend/Dockerfile) | 3000   | `react-frontend`                 |
 | bot        | [app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)           | 5000   | `node.js:12-alpine` 包含主程式   |
 | mysql      | [mysql](https://hub.docker.com/_/mysql)                                                | 3306   | 資料庫                           |
@@ -121,7 +121,7 @@
 ### 開發用
 
 1. `docker-compose -f docker-compose-dev.yml up -d`
-2. 此時電腦的 **80 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
+2. 此時電腦的 **5000 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
 
 ### Line後臺設定
 
