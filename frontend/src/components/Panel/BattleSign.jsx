@@ -42,7 +42,7 @@ const SendMessage = props => {
     .then(liff.closeWindow);
 };
 
-const BattleSignPanel = () => {
+const BattleSign = () => {
   let { week, boss } = useParams();
   const classes = useStyles();
   const [state, setState] = useState({
@@ -52,7 +52,7 @@ const BattleSignPanel = () => {
     damage: "",
     comment: "",
   });
-  const { liff } = window;
+
   useEffect(() => {
     window.document.title = "自訂報名內容";
   }, []);
@@ -70,16 +70,6 @@ const BattleSignPanel = () => {
   const handleType = event => {
     setState({ ...state, type: event.target.value });
   };
-
-  if (!liff.isInClient()) {
-    return (
-      <Grid conatiner className={classes.gridBox}>
-        <Grid item xs={12}>
-          <Alert severity="error">此功能只能在智慧型裝置上使用！</Alert>
-        </Grid>
-      </Grid>
-    );
-  }
 
   return (
     <React.Fragment>
@@ -147,4 +137,4 @@ const BattleSignPanel = () => {
   );
 };
 
-export default BattleSignPanel;
+export default BattleSign;

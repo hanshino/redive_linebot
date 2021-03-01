@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useReducer } from "react";
+import React, { useEffect, useState, useReducer, useMemo } from "react";
 import Button from "@material-ui/core/Button";
 import { makeStyles } from "@material-ui/core/styles";
 import Accordion from "@material-ui/core/Accordion";
@@ -8,7 +8,7 @@ import Typography from "@material-ui/core/Typography";
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import Divider from "@material-ui/core/Divider";
 import AccordionActions from "@material-ui/core/AccordionActions";
-import { useSendMessage } from "../hooks/liff";
+import { useSendMessage } from "../../hooks/liff";
 import Snackbar from "@material-ui/core/Snackbar";
 import MuiAlert from "@material-ui/lab/Alert";
 import Backdrop from "@material-ui/core/Backdrop";
@@ -21,6 +21,7 @@ import DialogContentText from "@material-ui/core/DialogContentText";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import PropTypes from "prop-types";
 import TextField from "@material-ui/core/TextField";
+import { CopyToClipboard } from "react-copy-to-clipboard";
 
 function Alert(props) {
   return <MuiAlert elevation={6} variant="filled" {...props} />;
@@ -39,16 +40,12 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-const BattleControlPanel = () => {
+const BattleControl = () => {
   const classes = useStyles();
-  const { liff } = window;
+
   useEffect(() => {
     window.document.title = "戰隊控制面板";
   }, []);
-
-  if (!liff.isInClient()) {
-    return <MuiAlert severity="error">此功能只能在智慧型裝置上使用！</MuiAlert>
-  }
 
   return (
     <React.Fragment>
@@ -116,7 +113,7 @@ const AccordionButtons = () => {
 
   useEffect(() => {
     if (isError) {
-      showAlert({ open: true, message: "發送失敗，請確認是否使用Line開啟！" });
+      showAlert({ open: true, message: "發送失敗，不過幫你複製起來囉！請直接到LINE貼上～" });
     }
   }, [isError]);
 
@@ -130,6 +127,27 @@ const AccordionButtons = () => {
       setSendable(true);
     }, 5000);
   }, [isSending]);
+
+  const AccordionView = useMemo(
+    () =>
+      Accordions.map(data => (
+        <Accordion key={data.title}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="h6">{data.title}</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Typography variant="subtitle1" color="textSecondary">
+              {data.description}
+            </Typography>
+          </AccordionDetails>
+          <Divider />
+          <AccordionActions>
+            {genAccordionButtons({ showDialog, send, sendable, buttons: data.buttons })}
+          </AccordionActions>
+        </Accordion>
+      )),
+    [sendable]
+  );
 
   const alertClose = () => {
     showAlert({ open: false, message: "" });
@@ -149,22 +167,7 @@ const AccordionButtons = () => {
           </Alert>
         </Snackbar>
       )}
-      {Accordions.map(data => (
-        <Accordion key={data.title}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">{data.title}</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <Typography variant="subtitle1" color="textSecondary">
-              {data.description}
-            </Typography>
-          </AccordionDetails>
-          <Divider />
-          <AccordionActions>
-            {genAccordionButtons({ showDialog, send, sendable, buttons: data.buttons })}
-          </AccordionActions>
-        </Accordion>
-      ))}
+      {AccordionView}
       <InputDialog
         open={dialog.open}
         sendable={sendable}
@@ -182,9 +185,11 @@ function genAccordionButtons(props) {
       ? () => showDialog({ open: true, param: { ...button, send } })
       : () => send(button.text);
     return (
-      <Button disabled={!sendable} key={button.title} variant="outlined" {...{ onClick }}>
-        {button.title}
-      </Button>
+      <CopyToClipboard key={button.title} text={button.text}>
+        <Button disabled={!sendable} variant="outlined" {...{ onClick }}>
+          {button.title}
+        </Button>
+      </CopyToClipboard>
     );
   });
 }
@@ -272,14 +277,16 @@ const InputDialog = props => {
         <Button onClick={handleClose} color="primary">
           取消
         </Button>
-        <Button
-          onClick={() => send(sendState.text)}
-          color="primary"
-          autoFocus
-          disabled={!sendState.pass || !sendable}
-        >
-          發送
-        </Button>
+        <CopyToClipboard text={sendState.text}>
+          <Button
+            onClick={() => send(sendState.text)}
+            color="primary"
+            autoFocus
+            disabled={!sendState.pass || !sendable}
+          >
+            發送
+          </Button>
+        </CopyToClipboard>
       </DialogActions>
     </Dialog>
   );
@@ -296,4 +303,4 @@ InputDialog.propTypes = {
   text: PropTypes.string,
 };
 
-export default BattleControlPanel;
+export default BattleControl;

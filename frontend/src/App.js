@@ -22,8 +22,9 @@ import Backdrop from "@material-ui/core/Backdrop";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import { makeStyles } from "@material-ui/core/styles";
 import axios from "axios";
-import BattleSignPanel from "./components/BattleSignPanel";
-import BattleControlPanel from "./components/BattleControlPanel";
+import BattleSignPanel from "./components/Panel/BattleSign";
+import BattleControlPanel from "./components/Panel/BattleControl";
+import ManualPanel from "./components/Panel/Manual";
 import PropTypes from "prop-types";
 import Notify from "./components/Bot/Notify";
 import Binding from "./components/Bot/Binding";
@@ -133,11 +134,20 @@ function MainLayout() {
         <Route path="/Group" component={GroupLayout} />
         <Route path="/Admin" component={AdminLayout} />
         <Route path="/Source/:sourceId/Customer/Orders" component={CustomerOrder} />
-        <Route path="/Panel/Group/Battle/Control" component={BattleControlPanel} />
-        <Route path="/Panel/Group/Battle/:week?/:boss?" component={BattleSignPanel} />
+        <Route path="/Panel" component={PanelLayout} />
         <Route path="/" component={Home} />
       </Switch>
     </NavBar>
+  );
+}
+
+function PanelLayout() {
+  return (
+    <Switch>
+      <Route path="/Panel/Manual" component={ManualPanel} />
+      <Route path="/Panel/Group/Battle/Control" component={BattleControlPanel} />
+      <Route path="/Panel/Group/Battle/:week?/:boss?" component={BattleSignPanel} />
+    </Switch>
   );
 }
 

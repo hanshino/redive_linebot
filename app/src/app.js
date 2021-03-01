@@ -75,7 +75,7 @@ async function OrderBased(context, { next }) {
     ...PrincessInformation(context),
     ...PersonOrder(context),
     ...ArenaContoroller.router(context),
-    text(/^#?使用說明$/, welcome),
+    text(/^[#.](使用說明|help)$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text("/state", showState),
     text("/resetstate", context => context.resetState()),
