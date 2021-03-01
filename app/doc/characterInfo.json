@@ -7531,7 +7531,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1001.png",
         "description": "對前方範圍內的全體敵人造成中幅度的物理傷害，並特大幅度提升自身的物理防禦力。",
         "effect": [
-          "對範圍內的敵人造成 9563 【13.5 + 13.5*技能等級 + 1.08 *atk】的物理傷害。  範圍：【400】。",
+          "對範圍內的敵人造成 9661 【13.5 + 13.5*技能等級 + 1.08 *atk】的物理傷害。  範圍：【400】。",
           "提升自身437 【2.4 + 2.4*技能等級】的物理防禦力。  持續：【18.0】 秒。"
         ]
       },
@@ -7541,7 +7541,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1001.png",
         "description": "對前方範圍內全體敵人造成大幅度的物理傷害和小幅度的擊飛，並且特大幅度提升自己的物理防禦力，同時對全體夥伴展開物理無效的屏障。",
         "effect": [
-          "對範圍內的敵人造成 19127 【27.0 + 27.0*技能等級 + 2.16 *atk】的物理傷害。  範圍：【400】。",
+          "對範圍內的敵人造成 19321 【27.0 + 27.0*技能等級 + 2.16 *atk】的物理傷害。  範圍：【400】。",
           "提升自身582 【3.2 + 3.2*技能等級】的物理防禦力。  持續：【18.0】 秒。",
           "展開 2730 【15.0 + 15.0*技能等級 】傷害量的物理無效護盾。"
         ]
@@ -7552,7 +7552,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2001.png",
         "description": "戰鬥開始過後，向最前方的敵人突進，對該名敵人造成中幅度的物理傷害，並中幅度提升自身的物理防禦力。",
         "effect": [
-          "對敵方單體造成 14168 【20.0 + 20.0*技能等級 + 1.6 *atk】的物理傷害。",
+          "對敵方單體造成 14312 【20.0 + 20.0*技能等級 + 1.6 *atk】的物理傷害。",
           "持續：【1.0 + 0.0*技能等級】 秒。",
           "提升自身146 【0.8 + 0.8*技能等級】的物理防禦力。  持續：【16.0】 秒。"
         ]
@@ -7563,7 +7563,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2001.png",
         "description": "戰鬥開始過後，向最前方的敵人突進，對該名敵人造成中幅度的物理傷害，並中幅度提升自身的物理防禦力。之後對我方全體展開物理無效的護盾。",
         "effect": [
-          "對敵方單體造成 14168 【20.0 + 20.0*技能等級 + 1.6 *atk】的物理傷害。",
+          "對敵方單體造成 14312 【20.0 + 20.0*技能等級 + 1.6 *atk】的物理傷害。",
           "持續：【1.0 + 0.0*技能等級】 秒。",
           "提升自身182 【1.0 + 1.0*技能等級】的物理防禦力。  持續：【16.0】 秒。",
           "展開 6552 【36.0 + 36.0*技能等級 】傷害量的物理無效護盾。"
@@ -7575,7 +7575,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2001.png",
         "description": "對面前的 1 名敵人造成小幅度的物理傷害，並且使其暈眩。",
         "effect": [
-          "對敵方單體造成 7084 【10.0 + 10.0*技能等級 + 0.8 *atk】的物理傷害。",
+          "對敵方單體造成 7156 【10.0 + 10.0*技能等級 + 0.8 *atk】的物理傷害。",
           "使敵方單體一段時間內無法行動。 加速 0.0 倍。 持續：【1.5】 秒。"
         ]
       },
@@ -10312,7 +10312,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1002.png",
         "description": "對全體敵人造成中幅度的魔法傷害。",
         "effect": [
-          "對敵方全體造成 17050 【12.0 + 12.0*技能等級 + 1.08 *atk】的魔法傷害。  範圍：【3000】。"
+          "對敵方全體造成 17120 【12.0 + 12.0*技能等級 + 1.08 *atk】的魔法傷害。  範圍：【3000】。"
         ]
       },
       {
@@ -10321,7 +10321,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1002.png",
         "description": "對全體敵人造成大幅度的魔法傷害，並且造成恐慌狀態。",
         "effect": [
-          "對敵方全體造成 34100 【24.0 + 24.0*技能等級 + 2.16 *atk】的魔法傷害。",
+          "對敵方全體造成 34241 【24.0 + 24.0*技能等級 + 2.16 *atk】的魔法傷害。",
           "使全體敵人陷入恐慌狀態。  範圍：【3000】。"
         ]
       },
@@ -10331,7 +10331,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2002.png",
         "description": "對面前的 1 名敵人造成中幅度的魔法傷害。",
         "effect": [
-          "對敵方單體造成 25664 【20.0 + 20.0*技能等級 + 1.6 *atk】的魔法傷害。"
+          "對敵方單體造成 25768 【20.0 + 20.0*技能等級 + 1.6 *atk】的魔法傷害。"
         ]
       },
       {
@@ -10340,8 +10340,8 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2002.png",
         "description": "對眼前1名敵人造成中幅度魔法傷害，並對其前方範圍內所有敵人造成小幅度魔法傷害，小幅度下降其魔法防禦力。",
         "effect": [
-          "對敵方單體造成 25664 【20.0 + 20.0*技能等級 + 1.6 *atk】的魔法傷害。",
-          "對範圍內的所有敵人造成 5774 【4.5 + 4.5*技能等級 + 0.36 *atk】魔法傷害。  範圍：【200】。",
+          "對敵方單體造成 25768 【20.0 + 20.0*技能等級 + 1.6 *atk】的魔法傷害。",
+          "對範圍內的所有敵人造成 5798 【4.5 + 4.5*技能等級 + 0.36 *atk】魔法傷害。  範圍：【200】。",
           "使範圍內所有敵人的魔法防禦力下降26 【0.1425 + 0.1425*技能等級】。  持續：【12.0】 秒。  範圍：【200】。"
         ]
       },
@@ -35107,7 +35107,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2007.png",
         "description": "對前方範圍內的全體敵人造成小幅度的魔法傷害，並且施加束縛。",
         "effect": [
-          "對範圍內的敵人造成 3026 【3.4 + 3.4*技能等級 + 0.27 *atk】的魔法傷害。  範圍：【800】。",
+          "對範圍內的敵人造成 3051 【3.4 + 3.4*技能等級 + 0.27 *atk】的魔法傷害。  範圍：【800】。",
           "使範圍內的敵人一段時間內無法行動。 加速 0.0 倍。 持續：【2.5】 秒。  範圍：【800】。"
         ]
       },
@@ -35117,7 +35117,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2007.png",
         "description": "對前方範圍內的全體敵人造成小幅度的魔法傷害，並且施加束縛。依照範圍內敵人的數量，提升束縛的時間。",
         "effect": [
-          "對範圍內的敵人造成 8058 【9.0 + 9.0*技能等級 + 0.72 *atk】的魔法傷害。  範圍：【800】。",
+          "對範圍內的敵人造成 8123 【9.0 + 9.0*技能等級 + 0.72 *atk】的魔法傷害。  範圍：【800】。",
           "技能說明補正：目標 * 0.2。",
           "使範圍內的敵人一段時間內無法行動。 加速 0.0 倍。 持續：【2.5】 秒。  範圍：【800】。"
         ]
@@ -35128,7 +35128,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2024.png",
         "description": "對面前的１名敵人造成小幅度的魔法傷害，並且使其混亂。",
         "effect": [
-          "對敵方單體造成 6806 【8.0 + 8.0*技能等級 + 0.6 *atk】的魔法傷害。",
+          "對敵方單體造成 6860 【8.0 + 8.0*技能等級 + 0.6 *atk】的魔法傷害。",
           "令一名敵人混亂。  持續：【7.5】 秒。"
         ]
       },
@@ -49571,7 +49571,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1002.png",
         "description": "對面前的 1 名敵人造成特大幅度的魔法傷害。",
         "effect": [
-          "對敵方單體造成 81000 【60.0 + 60.0*技能等級 + 5.0 *atk】的魔法傷害。"
+          "對敵方單體造成 81325 【60.0 + 60.0*技能等級 + 5.0 *atk】的魔法傷害。"
         ]
       },
       {
@@ -49580,7 +49580,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2002.png",
         "description": "對面前的 1 名敵人造成中幅度的魔法傷害。",
         "effect": [
-          "對敵方單體造成 26066 【20.0 + 20.0*技能等級 + 1.6 *atk】的魔法傷害。"
+          "對敵方單體造成 26170 【20.0 + 20.0*技能等級 + 1.6 *atk】的魔法傷害。"
         ]
       },
       {
@@ -49589,7 +49589,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2002.png",
         "description": "對面前的１名敵人造成大幅度的魔法傷害，並小幅度降低其魔法防禦力。",
         "effect": [
-          "對敵方單體造成 39098 【30.0 + 30.0*技能等級 + 2.4 *atk】的魔法傷害。",
+          "對敵方單體造成 39254 【30.0 + 30.0*技能等級 + 2.4 *atk】的魔法傷害。",
           "降低敵方單體109 【0.6 + 0.6*技能等級】的魔法防禦力。  持續：【12.0】 秒。"
         ]
       },
@@ -49599,7 +49599,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2004.png",
         "description": "對面前的１隻敵方角色造成小幅度的魔法傷害，並使其魔法防禦力中幅度下降。",
         "effect": [
-          "對敵方單體造成 9866 【8.0 + 8.0*技能等級 + 0.6 *atk】的魔法傷害。",
+          "對敵方單體造成 9905 【8.0 + 8.0*技能等級 + 0.6 *atk】的魔法傷害。",
           "降低敵方單體146 【0.8 + 0.8*技能等級】的魔法防禦力。  持續：【12.0】 秒。  範圍：【800】。"
         ]
       },
@@ -72243,7 +72243,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1002.png",
         "description": "對面前的1名敵人造成特大幅度的魔法傷害，同時中幅度提升魔法攻擊力。依照此技能所造成的傷害量，攻擊力的提升量將會隨之增加。",
         "effect": [
-          "對敵方單體造成 78005 【60.0 + 60.0*技能等級 + 4.8 *atk】的魔法傷害。",
+          "對敵方單體造成 78317 【60.0 + 60.0*技能等級 + 4.8 *atk】的魔法傷害。",
           "技能說明補正：攻擊 * 0.1125。",
           "提升自身1820 【10.0 + 10.0*技能等級】的魔法攻擊力。  持續：【18.0】 秒。"
         ]
@@ -72254,7 +72254,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2002.png",
         "description": "對面前的 1 名敵人造成中幅度的魔法傷害。",
         "effect": [
-          "對敵方單體造成 26002 【20.0 + 20.0*技能等級 + 1.6 *atk】的魔法傷害。"
+          "對敵方單體造成 26106 【20.0 + 20.0*技能等級 + 1.6 *atk】的魔法傷害。"
         ]
       },
       {
@@ -72263,7 +72263,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2002.png",
         "description": "目の前の敵１キャラを中心とした範囲内の敵すべてに魔法大ダメージを与える。",
         "effect": [
-          "範囲内の敵に 34264 【27.0 + 27.0*技能等級 + 2.1 *atk】の魔法ダメージ。  範圍：【200】。"
+          "範囲内の敵に 34400 【27.0 + 27.0*技能等級 + 2.1 *atk】の魔法ダメージ。  範圍：【200】。"
         ]
       },
       {
@@ -73607,7 +73607,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1002.png",
         "description": "對全體敵人造成中幅度的魔法傷害，同時小幅度降低TP。",
         "effect": [
-          "對敵方全體造成 11848 【12.0 + 12.0*技能等級 + 1.08 *atk】的魔法傷害。",
+          "對敵方全體造成 11945 【12.0 + 12.0*技能等級 + 1.08 *atk】的魔法傷害。",
           "使全體敵人失去 141 【50.0 + 0.5*技能等級 】的 TP。"
         ]
       },
@@ -73639,7 +73639,7 @@
         "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2007.png",
         "description": "以距離最遠的1名敵人為中心，對範圍內所有敵人造成小幅度的魔法傷害，同時進行束縛。",
         "effect": [
-          "對範圍內的敵人造成 3035 【3.4 + 3.4*技能等級 + 0.27 *atk】的魔法傷害。  範圍：【280】。",
+          "對範圍內的敵人造成 3059 【3.4 + 3.4*技能等級 + 0.27 *atk】的魔法傷害。  範圍：【280】。",
           "使範圍內的敵人一段時間內無法行動。 加速 0.0 倍。 持續：【2.5】 秒。  範圍：【280】。"
         ]
       },
@@ -97932,5 +97932,2018 @@
     "Stand": 199,
     "unitId": "180101",
     "Nick": "公主日和,公主貓拳,日和-公主"
+  },
+  {
+    "Name": "リマ（シンデレラ）",
+    "Image": "https://pcredivewiki.tw/static/images/unit_big/unit_big_115831.jpg",
+    "Info": {
+      "名字": "リマ（シンデレラ）",
+      "卡池": "尚未更新",
+      "公會": "牧場（エリザベスパーク）",
+      "生日": "3月14日",
+      "年齡": "18",
+      "身高": "150",
+      "體重": "100",
+      "血型": "A",
+      "種族": "獣人族",
+      "喜好": "毛繕い、お喋り",
+      "聲優": "徳井青空"
+    },
+    "Equip": [
+      {
+        "Rank": 1,
+        "Equips": [
+          {
+            "Name": "鐵劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101011.png"
+          },
+          {
+            "Name": "鐵劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101011.png"
+          },
+          {
+            "Name": "皮革工作服",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101281.png"
+          },
+          {
+            "Name": "木盾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101401.png"
+          },
+          {
+            "Name": "鐵劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101011.png"
+          },
+          {
+            "Name": "幹勁手鍊",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101551.png"
+          }
+        ]
+      },
+      {
+        "Rank": 2,
+        "Equips": [
+          {
+            "Name": "湛藍之血",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102013.png"
+          },
+          {
+            "Name": "齒輪劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102011.png"
+          },
+          {
+            "Name": "智慧之服",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102281.png"
+          },
+          {
+            "Name": "野戰小刀",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102071.png"
+          },
+          {
+            "Name": "幹勁手鍊",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101551.png"
+          },
+          {
+            "Name": "幹勁手鍊",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101551.png"
+          }
+        ]
+      },
+      {
+        "Rank": 3,
+        "Equips": [
+          {
+            "Name": "閃耀之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103011.png"
+          },
+          {
+            "Name": "湛藍之血",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102013.png"
+          },
+          {
+            "Name": "輕板甲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102282.png"
+          },
+          {
+            "Name": "塔盾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102401.png"
+          },
+          {
+            "Name": "齒輪劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102011.png"
+          },
+          {
+            "Name": "勇氣寶珠",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102551.png"
+          }
+        ]
+      },
+      {
+        "Rank": 4,
+        "Equips": [
+          {
+            "Name": "龍紋劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103012.png"
+          },
+          {
+            "Name": "閃耀之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103011.png"
+          },
+          {
+            "Name": "時尚盔甲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103281.png"
+          },
+          {
+            "Name": "忍者鞋",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103431.png"
+          },
+          {
+            "Name": "尖刺手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102552.png"
+          },
+          {
+            "Name": "尖刺手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102552.png"
+          }
+        ]
+      },
+      {
+        "Rank": 5,
+        "Equips": [
+          {
+            "Name": "羽刃之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103013.png"
+          },
+          {
+            "Name": "龍紋劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103012.png"
+          },
+          {
+            "Name": "戰陣鎧衣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103282.png"
+          },
+          {
+            "Name": "石榴石之盾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103401.png"
+          },
+          {
+            "Name": "鉑金小刀",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103071.png"
+          },
+          {
+            "Name": "蛋白石耳環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103551.png"
+          }
+        ]
+      },
+      {
+        "Rank": 6,
+        "Equips": [
+          {
+            "Name": "天使之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104011.png"
+          },
+          {
+            "Name": "羽刃之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103013.png"
+          },
+          {
+            "Name": "重金屬盔甲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103283.png"
+          },
+          {
+            "Name": "石榴石之盾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103401.png"
+          },
+          {
+            "Name": "獅鷲之羽飾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103552.png"
+          },
+          {
+            "Name": "獅鷲之羽飾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103552.png"
+          }
+        ]
+      },
+      {
+        "Rank": 7,
+        "Equips": [
+          {
+            "Name": "太陽劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104012.png"
+          },
+          {
+            "Name": "天使之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104011.png"
+          },
+          {
+            "Name": "隱身鎧衣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104281.png"
+          },
+          {
+            "Name": "羽刃之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103013.png"
+          },
+          {
+            "Name": "緋紅鑽石",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103553.png"
+          },
+          {
+            "Name": "獅鷲之羽飾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103552.png"
+          }
+        ]
+      },
+      {
+        "Rank": 8,
+        "Equips": [
+          {
+            "Name": "冰之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104013.png"
+          },
+          {
+            "Name": "太陽劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104012.png"
+          },
+          {
+            "Name": "祕銀脛甲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104282.png"
+          },
+          {
+            "Name": "天使之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104011.png"
+          },
+          {
+            "Name": "元素之心",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104551.png"
+          },
+          {
+            "Name": "緋紅鑽石",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103553.png"
+          }
+        ]
+      },
+      {
+        "Rank": 9,
+        "Equips": [
+          {
+            "Name": "渾沌之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104014.png"
+          },
+          {
+            "Name": "冰之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104013.png"
+          },
+          {
+            "Name": "守護者之盾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104402.png"
+          },
+          {
+            "Name": "太陽劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104012.png"
+          },
+          {
+            "Name": "太陽的護身符",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104552.png"
+          },
+          {
+            "Name": "元素之心",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104551.png"
+          }
+        ]
+      },
+      {
+        "Rank": 10,
+        "Equips": [
+          {
+            "Name": "雷霆神鋒",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105011.png"
+          },
+          {
+            "Name": "渾沌之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104014.png"
+          },
+          {
+            "Name": "緋紅鎧甲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104284.png"
+          },
+          {
+            "Name": "冰之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104013.png"
+          },
+          {
+            "Name": "焰帝的戒指",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104553.png"
+          },
+          {
+            "Name": "太陽的護身符",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104552.png"
+          }
+        ]
+      },
+      {
+        "Rank": 11,
+        "Equips": [
+          {
+            "Name": "天開之聖劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105012.png"
+          },
+          {
+            "Name": "雷霆神鋒",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105011.png"
+          },
+          {
+            "Name": "魅影鎧甲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105281.png"
+          },
+          {
+            "Name": "渾沌之劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104014.png"
+          },
+          {
+            "Name": "千歲耳環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105551.png"
+          },
+          {
+            "Name": "焰帝的戒指",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104553.png"
+          }
+        ]
+      },
+      {
+        "Rank": 12,
+        "Equips": [
+          {
+            "Name": "罪過之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105013.png"
+          },
+          {
+            "Name": "天開之聖劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105012.png"
+          },
+          {
+            "Name": "九天之鎧",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105282.png"
+          },
+          {
+            "Name": "雷霆神鋒",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105011.png"
+          },
+          {
+            "Name": "盛怒龍之鍊墜",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105552.png"
+          },
+          {
+            "Name": "千歲耳環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105551.png"
+          }
+        ]
+      },
+      {
+        "Rank": 13,
+        "Equips": [
+          {
+            "Name": "神湊劍水之統治者",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105014.png"
+          },
+          {
+            "Name": "罪過之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105013.png"
+          },
+          {
+            "Name": "狂怒皇后鎧衣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105283.png"
+          },
+          {
+            "Name": "天開之聖劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105012.png"
+          },
+          {
+            "Name": "鬥神的荒腕",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105553.png"
+          },
+          {
+            "Name": "盛怒龍之鍊墜",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105552.png"
+          }
+        ]
+      },
+      {
+        "Rank": 14,
+        "Equips": [
+          {
+            "Name": "霸王光龍劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105015.png"
+          },
+          {
+            "Name": "神湊劍水之統治者",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105014.png"
+          },
+          {
+            "Name": "閃華舞鎧",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105284.png"
+          },
+          {
+            "Name": "罪過之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105013.png"
+          },
+          {
+            "Name": "花簪焰火牡丹",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105554.png"
+          },
+          {
+            "Name": "鬥神的荒腕",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105553.png"
+          }
+        ]
+      },
+      {
+        "Rank": 15,
+        "Equips": [
+          {
+            "Name": "星核劍艾爾茲修奈德",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105016.png"
+          },
+          {
+            "Name": "霸王光龍劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105015.png"
+          },
+          {
+            "Name": "麗裝靈魂玫瑰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105285.png"
+          },
+          {
+            "Name": "神湊劍水之統治者",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105014.png"
+          },
+          {
+            "Name": "緋龍之爪火戒",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105555.png"
+          },
+          {
+            "Name": "花簪焰火牡丹",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105554.png"
+          }
+        ]
+      },
+      {
+        "Rank": 16,
+        "Equips": [
+          {
+            "Name": "神兔之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105017.png"
+          },
+          {
+            "Name": "星核劍艾爾茲修奈德",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105016.png"
+          },
+          {
+            "Name": "極南天之烈蒼鎧",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105286.png"
+          },
+          {
+            "Name": "霸王光龍劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105015.png"
+          },
+          {
+            "Name": "紅寶石玫瑰項圈",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105556.png"
+          },
+          {
+            "Name": "緋龍之爪火戒",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105555.png"
+          }
+        ]
+      },
+      {
+        "Rank": 17,
+        "Equips": [
+          {
+            "Name": "輝光劍雅德瑪斯",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106011.png"
+          },
+          {
+            "Name": "神兔之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105017.png"
+          },
+          {
+            "Name": "聖光百合板鎧",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105287.png"
+          },
+          {
+            "Name": "星核劍艾爾茲修奈德",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105016.png"
+          },
+          {
+            "Name": "紅鳥之號角胸針",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105557.png"
+          },
+          {
+            "Name": "紅寶石玫瑰項圈",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105556.png"
+          }
+        ]
+      },
+      {
+        "Rank": 18,
+        "Equips": [
+          {
+            "Name": "チョコスティックブレード",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106012.png"
+          },
+          {
+            "Name": "輝光劍雅德瑪斯",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106011.png"
+          },
+          {
+            "Name": "白金煌鱗鎧",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106281.png"
+          },
+          {
+            "Name": "神兔之大劍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105017.png"
+          },
+          {
+            "Name": "神紅戒紅寶石玫瑰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106551.png"
+          },
+          {
+            "Name": "紅鳥之號角胸針",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105557.png"
+          }
+        ]
+      },
+      {
+        "Rank": 19,
+        "Equips": [
+          {
+            "Name": "炎天赤日の剣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106013.png"
+          },
+          {
+            "Name": "チョコスティックブレード",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106012.png"
+          },
+          {
+            "Name": "チョコレートメイル",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106282.png"
+          },
+          {
+            "Name": "輝光劍雅德瑪斯",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106011.png"
+          },
+          {
+            "Name": "ポップコーンネックレス",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106552.png"
+          },
+          {
+            "Name": "神紅戒紅寶石玫瑰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106551.png"
+          }
+        ]
+      },
+      {
+        "Rank": 20,
+        "Equips": [
+          {
+            "Name": "炎天赤日の剣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106013.png"
+          },
+          {
+            "Name": "チョコスティックブレード",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106012.png"
+          },
+          {
+            "Name": "ポップコーンネックレス",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106552.png"
+          }
+        ]
+      }
+    ],
+    "Unique": {},
+    "Action": {
+      "Start": [
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_sp03.png"
+      ],
+      "Loop": [
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_sp03.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_sp01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_sp02.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png"
+      ]
+    },
+    "Skill": [
+      {
+        "type": "必殺技",
+        "name": "メタモルプリンセス",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1003.png",
+        "description": "自分を人の姿に変化させ、さらに物理攻撃力を大アップさせる。",
+        "effect": [
+          "自分の物理攻撃力を5460 【30.0 + 30.0*技能等級】アップ。  持續：【24.0】 秒。"
+        ]
+      },
+      {
+        "type": "技能1",
+        "name": "もふもふスマッシュ",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2001.png",
+        "description": "目の前の敵１キャラに物理大ダメージを与える。",
+        "effect": [
+          "敵単体に 57366 【45.0 + 45.0*技能等級 + 3.6 *atk】の物理ダメージ。"
+        ]
+      },
+      {
+        "type": "技能2",
+        "name": "もふもふタックル",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2001.png",
+        "description": "目の前の敵１キャラに物理中ダメージを与え、さらに自分のＴＰを中回復させる。",
+        "effect": [
+          "敵単体に 15844 【12.0 + 12.0*技能等級 + 1.0 *atk】の物理ダメージ。",
+          "自分のＴＰを 211 【75.0 + 0.75*技能等級 】回復。"
+        ]
+      },
+      {
+        "type": "特殊技能1",
+        "name": "ビューティーアンドビースト",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2003.png",
+        "description": "自分の物理攻撃力を中アップさせ、さらにＴＰを中回復させる。",
+        "effect": [
+          "自分の物理攻撃力を1820 【10.0 + 10.0*技能等級】アップ。  持續：【180.0】 秒。",
+          "自分のＴＰを 211 【75.0 + 0.75*技能等級 】回復。"
+        ]
+      },
+      {
+        "type": "特殊技能2",
+        "name": "ダンスウィズミー",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2003.png",
+        "description": "味方全体の物理攻撃力を大アップさせる。自分の物理攻撃力が高い程、攻撃力の上昇量がアップする。",
+        "effect": [
+          "技能說明補正：技能說明 * 0.1。",
+          "味方全体の物理攻撃力を3458 【19.0 + 19.0*技能等級】アップ。  持續：【12.0】 秒。"
+        ]
+      },
+      {
+        "type": "特殊技能3",
+        "name": "メタモルフォーゼ",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2003.png",
+        "description": "自分を変身させる。",
+        "effect": []
+      },
+      {
+        "type": "EX技能",
+        "name": "夢への階段",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_3001.png",
+        "description": "バトル開始時に自分の物理攻撃力を中アップさせる。",
+        "effect": [
+          "自分の物理攻撃力を2730 【15.0 + 15.0*技能等級】アップ。"
+        ]
+      },
+      {
+        "type": "EX技能+",
+        "name": "夢への階段+",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_3001.png",
+        "description": "バトル開始時に自分の物理攻撃力を大アップさせる。",
+        "effect": [
+          "自分の物理攻撃力を2955 【240.0 + 15.0*技能等級】アップ。"
+        ]
+      }
+    ],
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_115811.png",
+    "Star": 1,
+    "Stand": 173,
+    "unitId": "115801",
+    "Nick": "童話利瑪"
+  },
+  {
+    "Name": "カスミ（サマー）",
+    "Image": "https://pcredivewiki.tw/static/images/unit_big/unit_big_115731.jpg",
+    "Info": {
+      "名字": "カスミ（サマー）",
+      "卡池": "常駐池",
+      "公會": "自警団（カォン）",
+      "生日": "11月3日",
+      "年齡": "15",
+      "身高": "152",
+      "體重": "41",
+      "血型": "AB",
+      "種族": "獣人族",
+      "喜好": "読書、推理",
+      "聲優": "水瀬いのり"
+    },
+    "Equip": [
+      {
+        "Rank": 1,
+        "Equips": [
+          {
+            "Name": "檀香之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101251.png"
+          },
+          {
+            "Name": "檀香之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101251.png"
+          },
+          {
+            "Name": "旅行長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101371.png"
+          },
+          {
+            "Name": "時尚貝雷帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101521.png"
+          },
+          {
+            "Name": "氣魄手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101611.png"
+          },
+          {
+            "Name": "氣魄手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 2,
+        "Equips": [
+          {
+            "Name": "獨角獸的慈愛",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102252.png"
+          },
+          {
+            "Name": "醫生掰掰法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102251.png"
+          },
+          {
+            "Name": "春日長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102371.png"
+          },
+          {
+            "Name": "女巫靴",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102461.png"
+          },
+          {
+            "Name": "氣魄手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101611.png"
+          },
+          {
+            "Name": "氣魄手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 3,
+        "Equips": [
+          {
+            "Name": "天球的守護",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103251.png"
+          },
+          {
+            "Name": "獨角獸的慈愛",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102252.png"
+          },
+          {
+            "Name": "北國長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102372.png"
+          },
+          {
+            "Name": "雛龍之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102222.png"
+          },
+          {
+            "Name": "魔法眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102611.png"
+          },
+          {
+            "Name": "魔法眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 4,
+        "Equips": [
+          {
+            "Name": "花蕾之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103252.png"
+          },
+          {
+            "Name": "女巫髮箍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103521.png"
+          },
+          {
+            "Name": "天球的守護",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103251.png"
+          },
+          {
+            "Name": "綠松石耳環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103611.png"
+          },
+          {
+            "Name": "魔法單眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102613.png"
+          },
+          {
+            "Name": "魔法單眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 5,
+        "Equips": [
+          {
+            "Name": "惡魔之角",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103222.png"
+          },
+          {
+            "Name": "花蕾之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103252.png"
+          },
+          {
+            "Name": "邱比特長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103371.png"
+          },
+          {
+            "Name": "女巫帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103522.png"
+          },
+          {
+            "Name": "綠松石耳環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103611.png"
+          },
+          {
+            "Name": "綠松石耳環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 6,
+        "Equips": [
+          {
+            "Name": "月光之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104251.png"
+          },
+          {
+            "Name": "惡魔之角",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103222.png"
+          },
+          {
+            "Name": "哲學家長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103372.png"
+          },
+          {
+            "Name": "花蕾之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103252.png"
+          },
+          {
+            "Name": "魔法使眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103613.png"
+          },
+          {
+            "Name": "魔法使眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 7,
+        "Equips": [
+          {
+            "Name": "生命之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104252.png"
+          },
+          {
+            "Name": "月光之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104251.png"
+          },
+          {
+            "Name": "大魔導師長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104371.png"
+          },
+          {
+            "Name": "月桂樹的悲悽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103614.png"
+          },
+          {
+            "Name": "月桂樹的悲悽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103614.png"
+          },
+          {
+            "Name": "魔法使眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 8,
+        "Equips": [
+          {
+            "Name": "不死鳥之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104253.png"
+          },
+          {
+            "Name": "生命之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104252.png"
+          },
+          {
+            "Name": "法王兜帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104522.png"
+          },
+          {
+            "Name": "月光之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104251.png"
+          },
+          {
+            "Name": "新月的嘆息",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104611.png"
+          },
+          {
+            "Name": "月桂樹的悲悽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103614.png"
+          }
+        ]
+      },
+      {
+        "Rank": 9,
+        "Equips": [
+          {
+            "Name": "大天使之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104254.png"
+          },
+          {
+            "Name": "不死鳥之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104253.png"
+          },
+          {
+            "Name": "死靈術士之靴",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104462.png"
+          },
+          {
+            "Name": "生命之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104252.png"
+          },
+          {
+            "Name": "龍之淚",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104612.png"
+          },
+          {
+            "Name": "新月的嘆息",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 10,
+        "Equips": [
+          {
+            "Name": "焰靈法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105251.png"
+          },
+          {
+            "Name": "大天使之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104254.png"
+          },
+          {
+            "Name": "寶瓶之靴",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104463.png"
+          },
+          {
+            "Name": "不死鳥之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104253.png"
+          },
+          {
+            "Name": "大賢者的寶珠",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104613.png"
+          },
+          {
+            "Name": "龍之淚",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104612.png"
+          }
+        ]
+      },
+      {
+        "Rank": 11,
+        "Equips": [
+          {
+            "Name": "神花之聖杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105252.png"
+          },
+          {
+            "Name": "焰靈法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105251.png"
+          },
+          {
+            "Name": "忘哭之冠",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105521.png"
+          },
+          {
+            "Name": "大天使之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104254.png"
+          },
+          {
+            "Name": "海神耳飾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105611.png"
+          },
+          {
+            "Name": "大賢者的寶珠",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 12,
+        "Equips": [
+          {
+            "Name": "亞特蘭提斯杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105253.png"
+          },
+          {
+            "Name": "神花之聖杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105252.png"
+          },
+          {
+            "Name": "女帝之袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105372.png"
+          },
+          {
+            "Name": "焰靈法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105251.png"
+          },
+          {
+            "Name": "聖獸之祈念",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105612.png"
+          },
+          {
+            "Name": "海神耳飾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 13,
+        "Equips": [
+          {
+            "Name": "天杖星光天球",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105254.png"
+          },
+          {
+            "Name": "亞特蘭提斯杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105253.png"
+          },
+          {
+            "Name": "魔導王長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105373.png"
+          },
+          {
+            "Name": "神花之聖杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105252.png"
+          },
+          {
+            "Name": "睿智手鐲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105613.png"
+          },
+          {
+            "Name": "聖獸之祈念",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105612.png"
+          }
+        ]
+      },
+      {
+        "Rank": 14,
+        "Equips": [
+          {
+            "Name": "世界樹枝之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105255.png"
+          },
+          {
+            "Name": "天杖星光天球",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105254.png"
+          },
+          {
+            "Name": "幸運面紗",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105523.png"
+          },
+          {
+            "Name": "亞特蘭提斯杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105253.png"
+          },
+          {
+            "Name": "細冰姬的蝴蝶結",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105614.png"
+          },
+          {
+            "Name": "睿智手鐲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 15,
+        "Equips": [
+          {
+            "Name": "炎鳥杖火束閃焰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105256.png"
+          },
+          {
+            "Name": "世界樹枝之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105255.png"
+          },
+          {
+            "Name": "熾白銀之鏡靴",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105463.png"
+          },
+          {
+            "Name": "天杖星光天球",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105254.png"
+          },
+          {
+            "Name": "深結晶變異水晶",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105615.png"
+          },
+          {
+            "Name": "細冰姬的蝴蝶結",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105614.png"
+          }
+        ]
+      },
+      {
+        "Rank": 16,
+        "Equips": [
+          {
+            "Name": "白蛇之水聖杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105257.png"
+          },
+          {
+            "Name": "炎鳥杖火束閃焰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105256.png"
+          },
+          {
+            "Name": "極翼天之賢聖帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105524.png"
+          },
+          {
+            "Name": "世界樹枝之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105255.png"
+          },
+          {
+            "Name": "混沌無序項圈",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105616.png"
+          },
+          {
+            "Name": "深結晶變異水晶",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105615.png"
+          }
+        ]
+      },
+      {
+        "Rank": 17,
+        "Equips": [
+          {
+            "Name": "白珍珠的光天杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106251.png"
+          },
+          {
+            "Name": "白蛇之水聖杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105257.png"
+          },
+          {
+            "Name": "緋天之鬱金香洋裝",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105377.png"
+          },
+          {
+            "Name": "炎鳥杖火束閃焰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105256.png"
+          },
+          {
+            "Name": "蒼夜之夜曲胸針",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105617.png"
+          },
+          {
+            "Name": "混沌無序項圈",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105616.png"
+          }
+        ]
+      },
+      {
+        "Rank": 18,
+        "Equips": [
+          {
+            "Name": "トリプルアイスロッド",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106252.png"
+          },
+          {
+            "Name": "白珍珠的光天杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106251.png"
+          },
+          {
+            "Name": "黑瑪瑙祈裝衣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106371.png"
+          },
+          {
+            "Name": "白蛇之水聖杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105257.png"
+          },
+          {
+            "Name": "白聖石鑽石之星",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106611.png"
+          },
+          {
+            "Name": "蒼夜之夜曲胸針",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105617.png"
+          }
+        ]
+      },
+      {
+        "Rank": 19,
+        "Equips": [
+          {
+            "Name": "氷雪華晶の杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106253.png"
+          },
+          {
+            "Name": "トリプルアイスロッド",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106252.png"
+          },
+          {
+            "Name": "シーツタルトベレー",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106521.png"
+          },
+          {
+            "Name": "白珍珠的光天杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106251.png"
+          },
+          {
+            "Name": "ドーナツチョーカー",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106612.png"
+          },
+          {
+            "Name": "白聖石鑽石之星",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 20,
+        "Equips": [
+          {
+            "Name": "氷雪華晶の杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106253.png"
+          },
+          {
+            "Name": "トリプルアイスロッド",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106252.png"
+          },
+          {
+            "Name": "ドーナツチョーカー",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106612.png"
+          }
+        ]
+      }
+    ],
+    "Unique": {},
+    "Action": {
+      "Start": [
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png"
+      ],
+      "Loop": [
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png"
+      ]
+    },
+    "Skill": [
+      {
+        "type": "必殺技",
+        "name": "サマー・ディテクティブ",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1004.png",
+        "description": "物理攻撃力、魔法攻撃力いずれかで、最も攻撃力が高い敵１キャラに魔法大ダメージを与え、魔法防御力を中ダウンさせる。さらに物理クリティカルと魔法クリティカルを特大ダウンさせる。",
+        "effect": [
+          "敵単体に 52297 【45.0 + 45.0*技能等級 + 3.6 *atk】の魔法ダメージ。",
+          "敵単体の魔法防御力を164 【0.9 + 0.9*技能等級】ダウン。  持續：【18.0】 秒。",
+          "敵単体の物理クリティカルを225 【225.0 + 0.0*技能等級】ダウン。  持續：【18.0】 秒。",
+          "敵単体の魔法クリティカルを225 【225.0 + 0.0*技能等級】ダウン。  持續：【18.0】 秒。"
+        ]
+      },
+      {
+        "type": "技能1",
+        "name": "アクアキャプチャー",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2004.png",
+        "description": "物理攻撃力、魔法攻撃力いずれかで、最も攻撃力が高い敵１キャラの魔法防御力を中ダウンさせ、さらにクリティカルを受けた際のダメージを小アップさせる。",
+        "effect": [
+          "敵単体の魔法防御力を127 【0.7 + 0.7*技能等級】ダウン。  持續：【12.0】 秒。",
+          "クリティカルを受けた際のダメージを12％アップ。  持續：【12.0】 秒。"
+        ]
+      },
+      {
+        "type": "技能2",
+        "name": "ショアインテリジェンス",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2003.png",
+        "description": "自分以外の味方全体の魔法攻撃力と魔法クリティカルを大アップさせる。自分の魔法攻撃力に応じて、魔法攻撃力の上昇量がアップする。",
+        "effect": [
+          "技能說明補正：魔攻 * 0.035。",
+          "対象の味方の魔法攻撃力を2184 【12.0 + 12.0*技能等級】アップ。  持續：【12.0】 秒。",
+          "対象の味方の魔法クリティカルを100 【100.0 + 0.0*技能等級】アップ。  持續：【12.0】 秒。"
+        ]
+      },
+      {
+        "type": "EX技能",
+        "name": "ミスティックサマー",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_3003.png",
+        "description": "バトル開始時に自分の魔法攻撃力を中アップさせる。",
+        "effect": [
+          "自分の魔法攻撃力を2730 【15.0 + 15.0*技能等級】アップ。"
+        ]
+      },
+      {
+        "type": "EX技能+",
+        "name": "ミスティックサマー+",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_3003.png",
+        "description": "バトル開始時に自分の魔法攻撃力を大アップさせる。",
+        "effect": [
+          "自分の魔法攻撃力を2955 【240.0 + 15.0*技能等級】アップ。"
+        ]
+      }
+    ],
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_115731.png",
+    "Star": 3,
+    "Stand": 738,
+    "unitId": "115701",
+    "Nick": "泳裝霞,水行俠"
+  },
+  {
+    "Name": "キャル（プリンセス）",
+    "Image": "https://pcredivewiki.tw/static/images/unit_big/unit_big_180631.jpg",
+    "Info": {
+      "名字": "キャル（プリンセス）",
+      "卡池": "公主祭典",
+      "公會": "美食殿",
+      "生日": "9月2日",
+      "年齡": "14",
+      "身高": "152",
+      "體重": "39",
+      "血型": "A",
+      "種族": "獣人族",
+      "喜好": "猫と遊ぶ",
+      "聲優": "立花理香"
+    },
+    "Equip": [
+      {
+        "Rank": 1,
+        "Equips": [
+          {
+            "Name": "檀香之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101251.png"
+          },
+          {
+            "Name": "檀香之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101251.png"
+          },
+          {
+            "Name": "旅行長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101371.png"
+          },
+          {
+            "Name": "時尚貝雷帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101521.png"
+          },
+          {
+            "Name": "氣魄手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101611.png"
+          },
+          {
+            "Name": "氣魄手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 2,
+        "Equips": [
+          {
+            "Name": "雛龍之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102222.png"
+          },
+          {
+            "Name": "綠意之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102221.png"
+          },
+          {
+            "Name": "春日長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102371.png"
+          },
+          {
+            "Name": "女巫靴",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102461.png"
+          },
+          {
+            "Name": "氣魄手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101611.png"
+          },
+          {
+            "Name": "氣魄手環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_101611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 3,
+        "Equips": [
+          {
+            "Name": "芒刺血杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103221.png"
+          },
+          {
+            "Name": "雛龍之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102222.png"
+          },
+          {
+            "Name": "北國長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102372.png"
+          },
+          {
+            "Name": "修女兜帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102521.png"
+          },
+          {
+            "Name": "魔法眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102611.png"
+          },
+          {
+            "Name": "魔法眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 4,
+        "Equips": [
+          {
+            "Name": "花蕾之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103252.png"
+          },
+          {
+            "Name": "芒刺血杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103221.png"
+          },
+          {
+            "Name": "女巫髮箍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103521.png"
+          },
+          {
+            "Name": "女巫髮箍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103521.png"
+          },
+          {
+            "Name": "魔法單眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102613.png"
+          },
+          {
+            "Name": "魔法單眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_102613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 5,
+        "Equips": [
+          {
+            "Name": "惡魔之角",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103222.png"
+          },
+          {
+            "Name": "花蕾之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103252.png"
+          },
+          {
+            "Name": "邱比特長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103371.png"
+          },
+          {
+            "Name": "女巫帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103522.png"
+          },
+          {
+            "Name": "綠松石耳環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103611.png"
+          },
+          {
+            "Name": "綠松石耳環",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 6,
+        "Equips": [
+          {
+            "Name": "狂怒之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104221.png"
+          },
+          {
+            "Name": "惡魔之角",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103222.png"
+          },
+          {
+            "Name": "哲學家長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103372.png"
+          },
+          {
+            "Name": "女巫帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103522.png"
+          },
+          {
+            "Name": "邱比特長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103371.png"
+          },
+          {
+            "Name": "魔法使眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 7,
+        "Equips": [
+          {
+            "Name": "生命之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104252.png"
+          },
+          {
+            "Name": "狂怒之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104221.png"
+          },
+          {
+            "Name": "大魔導師長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104371.png"
+          },
+          {
+            "Name": "月桂樹的悲悽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103614.png"
+          },
+          {
+            "Name": "惡魔之角",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103222.png"
+          },
+          {
+            "Name": "魔法使眼鏡",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 8,
+        "Equips": [
+          {
+            "Name": "司法之神的錫杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104223.png"
+          },
+          {
+            "Name": "生命之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104252.png"
+          },
+          {
+            "Name": "法王兜帽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104522.png"
+          },
+          {
+            "Name": "狂怒之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104221.png"
+          },
+          {
+            "Name": "新月的嘆息",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104611.png"
+          },
+          {
+            "Name": "月桂樹的悲悽",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_103614.png"
+          }
+        ]
+      },
+      {
+        "Rank": 9,
+        "Equips": [
+          {
+            "Name": "大天使之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104254.png"
+          },
+          {
+            "Name": "司法之神的錫杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104223.png"
+          },
+          {
+            "Name": "死靈術士之靴",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104462.png"
+          },
+          {
+            "Name": "生命之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104252.png"
+          },
+          {
+            "Name": "龍之淚",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104612.png"
+          },
+          {
+            "Name": "新月的嘆息",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 10,
+        "Equips": [
+          {
+            "Name": "異域法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105221.png"
+          },
+          {
+            "Name": "大天使之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104254.png"
+          },
+          {
+            "Name": "寶瓶之靴",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104463.png"
+          },
+          {
+            "Name": "司法之神的錫杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104223.png"
+          },
+          {
+            "Name": "大賢者的寶珠",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104613.png"
+          },
+          {
+            "Name": "龍之淚",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104612.png"
+          }
+        ]
+      },
+      {
+        "Rank": 11,
+        "Equips": [
+          {
+            "Name": "創世法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105222.png"
+          },
+          {
+            "Name": "異域法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105221.png"
+          },
+          {
+            "Name": "忘哭之冠",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105521.png"
+          },
+          {
+            "Name": "大天使之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104254.png"
+          },
+          {
+            "Name": "海神耳飾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105611.png"
+          },
+          {
+            "Name": "大賢者的寶珠",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_104613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 12,
+        "Equips": [
+          {
+            "Name": "克勞諾斯雷杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105223.png"
+          },
+          {
+            "Name": "創世法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105222.png"
+          },
+          {
+            "Name": "女帝之袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105372.png"
+          },
+          {
+            "Name": "異域法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105221.png"
+          },
+          {
+            "Name": "聖獸之祈念",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105612.png"
+          },
+          {
+            "Name": "海神耳飾",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 13,
+        "Equips": [
+          {
+            "Name": "黑蛇龍之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105224.png"
+          },
+          {
+            "Name": "克勞諾斯雷杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105223.png"
+          },
+          {
+            "Name": "魔導王長袍",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105373.png"
+          },
+          {
+            "Name": "創世法杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105222.png"
+          },
+          {
+            "Name": "睿智手鐲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105613.png"
+          },
+          {
+            "Name": "聖獸之祈念",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105612.png"
+          }
+        ]
+      },
+      {
+        "Rank": 14,
+        "Equips": [
+          {
+            "Name": "世界樹枝之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105255.png"
+          },
+          {
+            "Name": "黑蛇龍之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105224.png"
+          },
+          {
+            "Name": "幸運面紗",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105523.png"
+          },
+          {
+            "Name": "克勞諾斯雷杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105223.png"
+          },
+          {
+            "Name": "細冰姬的蝴蝶結",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105614.png"
+          },
+          {
+            "Name": "睿智手鐲",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105613.png"
+          }
+        ]
+      },
+      {
+        "Rank": 15,
+        "Equips": [
+          {
+            "Name": "炎鳥杖火束閃焰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105256.png"
+          },
+          {
+            "Name": "世界樹枝之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105255.png"
+          },
+          {
+            "Name": "星詠的聖靈衣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105375.png"
+          },
+          {
+            "Name": "黑蛇龍之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105224.png"
+          },
+          {
+            "Name": "深結晶變異水晶",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105615.png"
+          },
+          {
+            "Name": "細冰姬的蝴蝶結",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105614.png"
+          }
+        ]
+      },
+      {
+        "Rank": 16,
+        "Equips": [
+          {
+            "Name": "黑蛇之魔炎杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105227.png"
+          },
+          {
+            "Name": "炎鳥杖火束閃焰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105256.png"
+          },
+          {
+            "Name": "極西天之聖導衣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105376.png"
+          },
+          {
+            "Name": "世界樹枝之杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105255.png"
+          },
+          {
+            "Name": "混沌無序項圈",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105616.png"
+          },
+          {
+            "Name": "深結晶變異水晶",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105615.png"
+          }
+        ]
+      },
+      {
+        "Rank": 17,
+        "Equips": [
+          {
+            "Name": "黑珍珠的闇獄杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106221.png"
+          },
+          {
+            "Name": "黑蛇之魔炎杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105227.png"
+          },
+          {
+            "Name": "緋天之鬱金香洋裝",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105377.png"
+          },
+          {
+            "Name": "炎鳥杖火束閃焰",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105256.png"
+          },
+          {
+            "Name": "蒼夜之夜曲胸針",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105617.png"
+          },
+          {
+            "Name": "混沌無序項圈",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105616.png"
+          }
+        ]
+      },
+      {
+        "Rank": 18,
+        "Equips": [
+          {
+            "Name": "ロリポップステッキ",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106222.png"
+          },
+          {
+            "Name": "黑珍珠的闇獄杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106221.png"
+          },
+          {
+            "Name": "黑瑪瑙祈裝衣",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106371.png"
+          },
+          {
+            "Name": "黑蛇之魔炎杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105227.png"
+          },
+          {
+            "Name": "白聖石鑽石之星",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106611.png"
+          },
+          {
+            "Name": "蒼夜之夜曲胸針",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_105617.png"
+          }
+        ]
+      },
+      {
+        "Rank": 19,
+        "Equips": [
+          {
+            "Name": "月闇の弧月杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106223.png"
+          },
+          {
+            "Name": "ロリポップステッキ",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106222.png"
+          },
+          {
+            "Name": "マジックパンケーキローブ",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106372.png"
+          },
+          {
+            "Name": "黑珍珠的闇獄杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106221.png"
+          },
+          {
+            "Name": "ドーナツチョーカー",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106612.png"
+          },
+          {
+            "Name": "白聖石鑽石之星",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106611.png"
+          }
+        ]
+      },
+      {
+        "Rank": 20,
+        "Equips": [
+          {
+            "Name": "月闇の弧月杖",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106223.png"
+          },
+          {
+            "Name": "ロリポップステッキ",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106222.png"
+          },
+          {
+            "Name": "ドーナツチョーカー",
+            "Image": "https://pcredivewiki.tw/static/images/equipment/icon_equipment_106612.png"
+          }
+        ]
+      }
+    ],
+    "Unique": {},
+    "Action": {
+      "Start": [
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png"
+      ],
+      "Loop": [
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap01.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_attack.png",
+        "https://pcredivewiki.tw/static/images/skill/icon_skill_ap02.png"
+      ]
+    },
+    "Skill": [
+      {
+        "type": "必殺技",
+        "name": "アビスエンドバースト",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_1002.png",
+        "description": "目の前の敵１キャラに魔法極大ダメージを与える。",
+        "effect": [
+          "敵単体に 240566 【180.0 + 180.0*技能等級 + 14.4 *atk】の魔法ダメージ。"
+        ]
+      },
+      {
+        "type": "技能1",
+        "name": "カラミティサンダー",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2002.png",
+        "description": "目の前の敵１キャラに魔法小ダメージを与え、さらに魔法防御力を中ダウンさせる。",
+        "effect": [
+          "敵単体に 13365 【10.0 + 10.0*技能等級 + 0.8 *atk】の魔法ダメージ。",
+          "敵単体の魔法防御力を137 【0.75 + 0.75*技能等級】ダウン。  持續：【12.0】 秒。"
+        ]
+      },
+      {
+        "type": "技能2",
+        "name": "アビスコールエイド",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_2002.png",
+        "description": "目の前の敵１キャラに魔法中ダメージを与え、さらに最もＨＰが低い味方１キャラのＨＰを小回復させる。このスキルで与えたダメージ量に応じて、ＨＰの回復量が増加する。",
+        "effect": [
+          "敵単体に 20047 【15.0 + 15.0*技能等級 + 1.2 *atk】の魔法ダメージ。",
+          "技能說明補正：攻擊 * 0.02。",
+          "味方単体のＨＰを 1011 【0.8 + 0.8*技能等級 + 0.06*atk】回復。"
+        ]
+      },
+      {
+        "type": "EX技能",
+        "name": "ダークフルムーン",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_3003.png",
+        "description": "バトル開始時に自分の魔法攻撃力を中アップさせる。",
+        "effect": [
+          "自分の魔法攻撃力を2730 【15.0 + 15.0*技能等級】アップ。"
+        ]
+      },
+      {
+        "type": "EX技能+",
+        "name": "ダークフルムーン+",
+        "image": "https://pcredivewiki.tw/static/images/skill/icon_skill_3003.png",
+        "description": "バトル開始時に自分の魔法攻撃力を大アップさせる。",
+        "effect": [
+          "自分の魔法攻撃力を2955 【240.0 + 15.0*技能等級】アップ。"
+        ]
+      }
+    ],
+    "HeadImage": "https://pcredivewiki.tw/static/images/unit/icon_unit_180631.png",
+    "Star": 3,
+    "Stand": 747,
+    "unitId": "180601",
+    "Nick": "公主凱留,公主黑貓"
   }
 ]
