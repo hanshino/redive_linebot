@@ -1,66 +1,5 @@
 const { getLiffUri, assemble } = require("../../common");
 
-const NoteMessage = {
-  type: "bubble",
-  body: {
-    type: "box",
-    layout: "vertical",
-    contents: [
-      {
-        type: "text",
-        text: "注意事項！",
-        weight: "bold",
-      },
-      {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: "當日出完刀的玩家",
-          },
-          {
-            type: "text",
-            text: "使用 #三刀出完 指令",
-          },
-          {
-            type: "text",
-            text: "進行狀態回報",
-          },
-          {
-            type: "text",
-            text: "回報後無法修改",
-          },
-          {
-            type: "text",
-            text: "如真的需重置，請輸入 #三刀重置",
-          },
-        ],
-        paddingAll: "5px",
-      },
-      {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: "需要求救的玩家",
-          },
-          {
-            type: "text",
-            text: "使用 #出完沒 日期(選填) 指令",
-          },
-          {
-            type: "text",
-            text: "可列出回報清單",
-          },
-        ],
-        paddingAll: "5px",
-      },
-    ],
-  },
-};
-
 exports.showBattleList = (context, data) => {
   context.sendFlex(`第${data.week}周次 - 戰隊清單`, {
     type: "carousel",
@@ -106,7 +45,6 @@ exports.showBattleList = (context, data) => {
         datas: data.datas.filter(data => data.boss === 5),
         config: data.configs.find(config => config.boss == 5),
       }),
-      NoteMessage,
     ],
   });
 };
@@ -123,7 +61,6 @@ exports.showBattleDetail = (context, data) => {
         datas: data.datas,
         config: data.configs.find(config => config.boss == data.boss),
       }),
-      NoteMessage,
     ],
   };
   context.sendFlex(`第${data.week}周次${data.boss}王`, message);
@@ -405,6 +342,26 @@ function genPreviewCover(option) {
               backgroundColor: "#2196f3",
               cornerRadius: "md",
             },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "text",
+                  text: "⌨ 指令表",
+                  align: "center",
+                  weight: "bold",
+                  color: "#FFFFFF",
+                },
+              ],
+              action: {
+                type: "uri",
+                uri: `${getLiffUri("compact")}?reactRedirectUri=/Panel/Group/Battle/Control`,
+              },
+              paddingAll: "5px",
+              backgroundColor: "#2196f3",
+              cornerRadius: "md",
+            },
           ],
           spacing: "sm",
           paddingAll: "3px",
@@ -480,7 +437,8 @@ function genPreviewDetail(option) {
   });
 
   let recordDamages = datas.filter(data => data.damage).map(data => data.damage);
-  let recordDamage = recordDamages.length === 0 ? 0 : recordDamages.reduce((pre, curr) => pre + curr);
+  let recordDamage =
+    recordDamages.length === 0 ? 0 : recordDamages.reduce((pre, curr) => pre + curr);
   // 超標修正
   recordDamage = recordDamage > hp ? hp : recordDamage;
   let causeRate = Math.round((recordDamage / hp) * 100);
