@@ -1,0 +1,173 @@
+import React, { useEffect, useState } from "react";
+import "./App.css";
+import NavBar from "./components/NavBar";
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  useParams,
+  useLocation,
+  Redirect,
+} from "react-router-dom";
+import GroupRecord from "./components/GroupRecord";
+import CustomerOrder from "./components/CustomerOrder";
+import GroupConfig from "./components/GroupConfig";
+import GachaPool from "./components/Admin/GachaPool";
+import Message from "./components/Admin/Message";
+import Order from "./components/Admin/Order";
+import Home from "./components/Home";
+import PrincessCard from "./components/PrincessCard";
+import GroupBattle from "./components/GroupBattle";
+import Backdrop from "@material-ui/core/Backdrop";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import { makeStyles } from "@material-ui/core/styles";
+import axios from "axios";
+import BattleSignPanel from "./components/BattleSignPanel";
+import BattleControlPanel from "./components/BattleControlPanel";
+import PropTypes from "prop-types";
+import Notify from "./components/Bot/Notify";
+import Binding from "./components/Bot/Binding";
+
+const useStyles = makeStyles(theme => ({
+  backdrop: {
+    zIndex: theme.zIndex.drawer + 1,
+    color: "#fff",
+  },
+}));
+
+const useQuery = () => {
+  return new URLSearchParams(useLocation().search);
+};
+
+function App() {
+  axios.defaults.timeout = 5000;
+
+  return (
+    <React.Fragment>
+      <Router>
+        <Switch>
+          <Route path="/liff/:size" component={LiffSizeLayout} />
+          <Route path="*" component={MainLayout} />
+        </Switch>
+      </Router>
+    </React.Fragment>
+  );
+}
+
+const RedirectDetect = props => {
+  let query = useQuery();
+  let redirectUri =
+    window.localStorage.getItem("reactRedirectUri") ||
+    query.get("reactRedirectUri") ||
+    props.redirectUri;
+
+  if (redirectUri) {
+    window.localStorage.removeItem("reactRedirectUri");
+    return <Redirect to={redirectUri} />;
+  }
+
+  return <></>;
+};
+
+RedirectDetect.propTypes = {
+  redirectUri: PropTypes.string,
+};
+
+function LiffSizeLayout() {
+  const classes = useStyles();
+  const [loading, setLoading] = useState(true);
+  const { size } = useParams();
+  const { liff } = window;
+
+  useEffect(() => {
+    window.localStorage.setItem("liff_size", size);
+    axios
+      .get(`/api/send-id?size=${size}`)
+      .then(res => res.data)
+      .then(data => liff.init({ liffId: data.id }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading)
+    return (
+      <Backdrop className={classes.backdrop} open={true}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+    );
+
+  return <RedirectDetect redirectUri="/" />;
+}
+
+function MainLayout() {
+  const classes = useStyles();
+  const { liff } = window;
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let size = window.localStorage.getItem("liff_size") || "full";
+    axios
+      .get(`/api/send-id?size=${size}`)
+      .then(res => res.data)
+      .then(data => liff.init({ liffId: data.id }))
+      .then(() => {
+        if (liff.isLoggedIn()) {
+          axios.defaults.headers.common["Authorization"] = `Bearer ${liff.getAccessToken()}`;
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading)
+    return (
+      <Backdrop className={classes.backdrop} open={true}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+    );
+
+  return (
+    <NavBar>
+      <RedirectDetect />
+      <Switch>
+        <Route path="/Princess/Profile" component={PrincessCard} />
+        <Route path="/Bot" component={BotLayout} />
+        <Route path="/Group" component={GroupLayout} />
+        <Route path="/Admin" component={AdminLayout} />
+        <Route path="/Source/:sourceId/Customer/Orders" component={CustomerOrder} />
+        <Route path="/Panel/Group/Battle/Control" component={BattleControlPanel} />
+        <Route path="/Panel/Group/Battle/:week?/:boss?" component={BattleSignPanel} />
+        <Route path="/" component={Home} />
+      </Switch>
+    </NavBar>
+  );
+}
+
+function BotLayout() {
+  return (
+    <Switch>
+      <Route path="/Bot/Notify/Binding" component={Binding} />
+      <Route path="/Bot/Notify" component={Notify} />
+    </Switch>
+  );
+}
+
+function GroupLayout() {
+  return (
+    <Switch>
+      <Route path="/Group/:groupId/Record" component={GroupRecord} />
+      <Route path="/Group/:groupId/Config" component={GroupConfig} />
+      <Route path="/Group/:groupId/Battle" component={GroupBattle} />
+    </Switch>
+  );
+}
+
+function AdminLayout() {
+  return (
+    <Switch>
+      <Route path="/Admin/GachaPool" component={GachaPool} />
+      <Route path="/Admin/GlobalOrder" component={Order} />
+      <Route path="/Admin/Messages" component={Message} />
+    </Switch>
+  );
+}
+
+export default App;
