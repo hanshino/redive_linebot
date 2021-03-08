@@ -26,6 +26,7 @@
     - [前置作業](#前置作業)
     - [正式用](#正式用)
     - [開發用](#開發用)
+    - [額外教學 (ngrok)](#額外教學-ngrok)
     - [Line後臺設定](#line後臺設定)
   - [注意事項](#注意事項)
 
@@ -115,7 +116,7 @@
 
 ### 正式用
 
-1. `docker-compose up -d`
+1. `docker-compose -f docker-compose-prod.yml up -d`
 2. 此時電腦的 **80 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
 
 ### 開發用
@@ -123,9 +124,15 @@
 1. `docker-compose -f docker-compose-dev.yml up -d`
 2. 此時電腦的 **5000 port** 將會開啟服務，如無固定ip可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
 
+### 額外教學 (ngrok)
+
+1. 下載[ngrok](https://ngrok.com/)
+2. 請在有`ngrok`的目錄下輸入 `ngrok http 80 --region ap` or `ngrok http 5000 --region ap`
+3. 請將網址 ex: https://xxxxxxxxxx.ap.ngrok.io/webhooks/line 複製，繼續後續動作
+
 ### Line後臺設定
 
-1.  網址預設為 `https://{your_domain}/webhooks/line`
+1. 網址預設為 `https://{your_domain}/webhooks/line`
 2. 將網址填進 [Line Account Manager](https://manager.line.biz/)
 
 ## 注意事項
