@@ -8,13 +8,14 @@ const princessHost = "http://www.princessconnect.so-net.tw";
 module.exports = {
   main: async function () {
     let url = await getAllUrls(); //取最新消息網址
-    let cmp_title = await getTitlesFromDB();
+    let dbUrls = await getUrlsFromDB();
 
     for (i = 0; i < url.length; i++) {
-      let contain = await getPrincessContain(url[i]);
+      let u = url[i];
+      let contain = await getPrincessContain(u);
       await delay();
 
-      if (cmp_title.includes(contain.title)) {
+      if (dbUrls.includes(u)) {
         CustomLogger.info(`>>${contain.title}<< 已存在於資料庫，跳過此筆`);
         continue; // 重複略過
       } else {
@@ -48,9 +49,10 @@ function getAllUrls() {
 /**
  * 抓資料庫title比對重複資料
  */
-async function getTitlesFromDB() {
-  let query = await mysql.select("title").from("BulletIn");
-  result = query.map(data => data.title);
+async function getUrlsFromDB() {
+  4915;
+  let query = await mysql.select("url").from("BulletIn");
+  result = query.map(data => data.url);
   return result;
 }
 
