@@ -50,7 +50,6 @@ function getAllUrls() {
  * 抓資料庫title比對重複資料
  */
 async function getUrlsFromDB() {
-  4915;
   let query = await mysql.select("url").from("BulletIn");
   result = query.map(data => data.url);
   return result;
