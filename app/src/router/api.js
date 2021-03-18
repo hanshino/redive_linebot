@@ -20,6 +20,7 @@ const { webhook } = require("../util/discord");
 const { showStatistics, showUserStatistics } = require("../controller/application/Statistics");
 const NotifyController = require("../controller/application/NotifyController");
 const { pushMessage } = require("../util/LineNotify");
+const { binding } = require("../controller/application/NotifyController").api;
 
 router.get("/send-id", (req, res) => {
   const { size } = req.query || "full";
@@ -41,6 +42,8 @@ router.get("/send-id", (req, res) => {
 
   res.json({ id: liffId });
 });
+
+router.get("/Bot/Notify/Callback", binding);
 
 router.get("/Group/:groupId/Speak/Rank", GroupRecordController.getRankDatas);
 

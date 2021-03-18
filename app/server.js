@@ -5,7 +5,6 @@ const path = require("path");
 const apiRouter = require("./src/router/api");
 const cors = require("cors");
 const { server, http } = require("./src/util/connection");
-const { binding } = require("./src/controller/application/NotifyController").api;
 require("./src/router/socket");
 
 const app = bottender({
@@ -29,8 +28,6 @@ app.prepare().then(() => {
 
   // api group router
   server.use("/api", apiRouter);
-
-  server.get("/Bot/Notify/Callback", binding);
 
   // route for webhook request
   server.all("*", (req, res) => {

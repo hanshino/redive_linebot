@@ -31,7 +31,7 @@ const RedirectToBinding = () => {
   let params = new URLSearchParams();
   params.set("response_type", "code");
   params.set("client_id", "CQZhxtEo0NeSgGRQ2LNeEp");
-  params.set("redirect_uri", `${window.location.origin}/Bot/Notify/Callback`);
+  params.set("redirect_uri", `${window.location.origin}/api/Bot/Notify/Callback`);
   params.set("scope", "notify");
   params.set("state", userId);
 

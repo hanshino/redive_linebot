@@ -13,7 +13,7 @@ exports.queryToken = async code => {
   const queryBody = {
     grant_type: "authorization_code",
     code,
-    redirect_uri: `https://${process.env.APP_DOMAIN}/Bot/Notify/Callback`,
+    redirect_uri: `https://${process.env.APP_DOMAIN}/api/Bot/Notify/Callback`,
     client_id: process.env.LINE_NOTIFY_CLIENT_ID,
     client_secret: process.env.LINE_NOTIFY_CLIENT_SECRET,
   };
