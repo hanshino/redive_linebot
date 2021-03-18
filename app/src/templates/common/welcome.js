@@ -133,6 +133,50 @@ const PuddingStatus = {
               uri: `${getLiffUri("compact")}?reactRedirectUri=/Panel/Manual`,
             },
           },
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "filler",
+              },
+              {
+                type: "box",
+                layout: "baseline",
+                contents: [
+                  {
+                    type: "filler",
+                  },
+                  {
+                    type: "text",
+                    text: "訂閱新訊息",
+                    color: "#ffffff",
+                    flex: 0,
+                    offsetTop: "-2px",
+                    weight: "bold",
+                  },
+                  {
+                    type: "filler",
+                  },
+                ],
+                spacing: "sm",
+              },
+              {
+                type: "filler",
+              },
+            ],
+            borderWidth: "3px",
+            cornerRadius: "4px",
+            spacing: "sm",
+            borderColor: "#ffffff",
+            margin: "xxl",
+            height: "40px",
+            action: {
+              type: "uri",
+              label: "action",
+              uri: `${getLiffUri("compact")}?reactRedirectUri=/Bot/Notify`,
+            },
+          },
         ],
         position: "absolute",
         offsetBottom: "0px",

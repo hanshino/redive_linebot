@@ -99,7 +99,7 @@ const TabDatas = [
     description: "自創等級系統，經過精密計算後，在群組聊天時都能獲得經驗並賦予最幹話之人稱號",
     buttons: [
       { title: "狀態查詢", description: "查詢目前自己的等級、排名、稱號", text: "/me" },
-      { title: "查朋友狀態", description: "此功能需在群組內，進行tag才可查詢", text: "#狀態" },
+      { title: "查朋友狀態", description: "此功能需在群組內，進行tag才可查詢", text: "#狀態 @tag朋友1 @tag朋友2" },
       { title: "等級排行", description: "查詢前5排名的玩家", text: "#等級排行" },
     ],
   },

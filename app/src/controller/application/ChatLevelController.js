@@ -34,8 +34,11 @@ exports.showStatus = async context => {
 };
 
 exports.showFriendStatus = async context => {
-  let text = context.event.message.text;
-  let users = context.event.message.mention.mentionees.map(d => ({
+  const { mention, text } = context.event.message;
+  if (!mention) {
+    return context.sendText("請tag想要查詢的夥伴們！");
+  }
+  let users = mention.mentionees.map(d => ({
     ...d,
     displayName: text.substr(d.index + 1, d.length - 1),
   }));
