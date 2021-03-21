@@ -270,9 +270,6 @@ router.post("/Bot/Notify/Test", verifyToken, NotifyController.api.messageTest);
 router.put("/Bot/Notify/:key/:status", verifyToken, NotifyController.api.setSubStatus);
 
 router.all("*", (_, res) => {
-  pushMessage({ message: "test", token: "W2CLCY8Sf06ifiONH63ccPIqV9ulvYsZ4xUc4Nzu9GR" });
-  console.log(269);
-  console.log(_.path);
   res.status(404).json({ message: "invalid api url." });
 });
 
