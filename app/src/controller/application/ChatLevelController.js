@@ -20,9 +20,13 @@ exports.showStatus = async context => {
 
     let expDatas = await ChatLevelModel.getExpUnitData();
 
-    let { exp: nextLevelExp } = expDatas.find(data => data.level === level + 1);
-    nextLevelExp = nextLevelExp === 0 ? 1 : nextLevelExp;
-    let expRate = Math.round((exp / nextLevelExp) * 100);
+    let targets = expDatas.filter(data => data.level === level + 1 || data.level === level);
+    let expRate = 0;
+
+    if (targets.length === 2) {
+      let [nowExpData, nextExpData] = targets;
+      expRate = Math.round(((exp - nowExpData.exp) / (nextExpData.exp - nowExpData.exp)) * 100);
+    }
 
     ChatLevelTemplate.showStatus(context, {
       displayName,

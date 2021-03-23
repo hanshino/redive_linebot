@@ -52,6 +52,8 @@ exports.showStatus = (context, param) => {
                     },
                     {
                       type: "text",
+                      size: "xxs",
+                      gravity: "bottom",
                       contents: [
                         {
                           type: "span",
@@ -66,8 +68,10 @@ exports.showStatus = (context, param) => {
                           text: `# ${ranking}`,
                         },
                       ],
+                      align: "end",
                     },
                   ],
+                  paddingEnd: "3px",
                 },
                 {
                   type: "separator",
