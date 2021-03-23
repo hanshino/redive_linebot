@@ -4,6 +4,7 @@ const redis = require("../../util/redis");
 const LEVEL_TITLE_TABLE = "chat_level_title";
 const RANGE_TITLE_TABLE = "chat_range_title";
 const USER_DATA_TABLE = "chat_user_data";
+const EXP_UNIT_TABLE = "chat_exp_unit";
 const LEVEL_TITLE_REDIS_KEY = "CHAT_LEVEL_TITLE";
 const RANGE_TITLE_REDIS_KEY = "CHAT_RANGE_TITLE";
 const GLOBAL_RATE_REDIS_KEY = "CHAT_GLOBAL_RATE";
@@ -86,7 +87,7 @@ exports.getUserData = async userId => {
 exports.getLevel = async exp => {
   let rows = await mysql
     .select({ level: "unit_level" })
-    .from("chat_exp_unit")
+    .from(EXP_UNIT_TABLE)
     .where("total_exp", "<=", exp)
     .limit(1)
     .orderBy("unit_level", "desc");
@@ -164,6 +165,21 @@ exports.getAllList = async () => {
 
   data = await mysql.select("id", "experience").from(USER_DATA_TABLE);
   await redis.set(key, data, 10);
+
+  return data;
+};
+
+/**
+ * 取得經驗單位資料
+ * @returns {Promise<Array<{level: Number, exp: Number}>>}
+ */
+exports.getExpUnitData = async () => {
+  let key = "EXP_UNIT_DATA";
+  let data = await redis.get(key);
+  if (data !== null) return data;
+
+  data = await mysql.select({ level: "unit_level", exp: "total_exp" }).from(EXP_UNIT_TABLE);
+  await redis.set(key, data, 86400);
 
   return data;
 };

@@ -1,3 +1,137 @@
+exports.showStatus = (context, param) => {
+  let { displayName, range, rank, level, ranking, expRate, pictureUrl, exp } = param;
+
+  context.sendFlex(`${displayName}的狀態`, {
+    type: "bubble",
+    header: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          align: "center",
+          weight: "bold",
+          text: `${range} 的 ${rank}`,
+        },
+      ],
+      paddingBottom: "0px",
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "image",
+                  url: pictureUrl,
+                  size: "full",
+                },
+              ],
+              cornerRadius: "100px",
+              width: "30%",
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "text",
+                      text: displayName,
+                      weight: "bold",
+                    },
+                    {
+                      type: "text",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "Rank",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `# ${ranking}`,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: "separator",
+                },
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "text",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "Level",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${level}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      contents: [],
+                      size: "xxs",
+                      gravity: "bottom",
+                      color: "#808080",
+                      text: `${exp}`,
+                      align: "end",
+                    },
+                  ],
+                  paddingStart: "3px",
+                  paddingEnd: "3px",
+                },
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "box",
+                      layout: "vertical",
+                      contents: [],
+                      backgroundColor: "#80FF80",
+                      width: `${expRate}%`,
+                      height: "15px",
+                      cornerRadius: "sm",
+                    },
+                  ],
+                },
+              ],
+              paddingStart: "10px",
+              spacing: "sm",
+            },
+          ],
+        },
+      ],
+    },
+  });
+};
+
 /**
  * 發送排行榜訊息
  * @param {Context} context

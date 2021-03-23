@@ -8,22 +8,32 @@ const { DefaultLogger } = require("../../util/Logger");
  */
 exports.showStatus = async context => {
   try {
-    let { userId, displayName } = context.event.source;
+    let { userId, displayName, pictureUrl } = context.event.source;
+    pictureUrl = pictureUrl || "https://i.imgur.com/NMl4z2u.png";
 
     if (!userId || !displayName) {
       context.sendText("獲取失敗，無法辨識用戶");
       throw "userId or displayName is empty";
     }
 
-    let { rank, range, level, ranking } = await ChatLevelModel.getUserData(userId);
+    let { rank, range, level, ranking, exp } = await ChatLevelModel.getUserData(userId);
 
-    let messages = [
-      `LINE名稱: ${displayName}`,
-      `稱號: ${range} 的 ${rank}`,
-      `等級: ${level}`,
-      `排行: ${ranking}`,
-    ];
-    context.sendText(messages.join("\n"));
+    let expDatas = await ChatLevelModel.getExpUnitData();
+
+    let { exp: nextLevelExp } = expDatas.find(data => data.level === level + 1);
+    nextLevelExp = nextLevelExp === 0 ? 1 : nextLevelExp;
+    let expRate = Math.round((exp / nextLevelExp) * 100);
+
+    ChatLevelTemplate.showStatus(context, {
+      displayName,
+      range,
+      rank,
+      level,
+      ranking,
+      pictureUrl,
+      expRate,
+      exp,
+    });
 
     if (!level) {
       context.sendText("尚未有任何數據，經驗開始累積後即可投胎！");
