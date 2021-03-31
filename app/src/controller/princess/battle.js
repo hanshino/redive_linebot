@@ -1,6 +1,7 @@
 const { battle: BattleModel, week: WeekModel } = require("../../model/princess/guild");
 const minimist = require("minimist");
 const GuildModel = require("../../model/application/Guild");
+const GuildBattleConfigRepo = require("../../repositories/princess/guild/ConfigRepository");
 const line = require("../../util/line");
 const BattleTemplate = require("../../templates/princess/guild/battle");
 const { recordSign } = require("../../util/traffic");
@@ -181,22 +182,52 @@ exports.BattleSignUp = async (context, props) => {
       comment,
     });
 
-    if (setResult.detail === undefined) {
-      let sender = {
-        name: context.state.userDatas[context.event.source.userId].displayName,
-        iconUrl: context.state.userDatas[context.event.source.userId].pictureUrl,
-      };
-      let feedback = `我報名了 *${week}周${boss}王* ，${getStatusText(type || 1)}`;
-      feedback += damage ? `\n傷害：${damage}` : "";
-      feedback += comment ? `\n備註：${comment}` : "";
-      context.sendText(feedback, { sender });
-    } else throw setResult.detail;
+    if (setResult.detail) throw setResult.detail;
+
+    sendFeedBack(context, {
+      week,
+      boss,
+      status: type || 1,
+      damage: damage || 0,
+      comment: comment || "無",
+      statusText: getStatusText(type || 1),
+    });
   } catch (e) {
     if (e.name === "GuildBattle") {
       context.sendText(e.message);
     } else throw e; // keep throw
   }
 };
+
+exports.SignMessageTest = async context => {
+  sendFeedBack(context, {
+    week: 999,
+    boss: 5,
+    status: 3,
+    damage: 21000000,
+    comment: "超大一刀殺",
+    statusText: getStatusText(3),
+  });
+};
+
+async function sendFeedBack(context, data) {
+  let { groupId, userId } = context.event.source;
+  let { displayName, pictureUrl } = context.state.userDatas[userId];
+  let sender = {
+    name: displayName,
+    iconUrl: pictureUrl,
+  };
+
+  let { guildBattleConfig } = context.state;
+  if (!guildBattleConfig) {
+    guildBattleConfig = await GuildBattleConfigRepo.getConfig(groupId);
+    context.setState({ guildBattleConfig });
+  }
+
+  let { signMessage } = guildBattleConfig;
+
+  BattleTemplate.sendSignFeedback(context, signMessage, { displayName, ...data }, sender);
+}
 
 exports.BattlePostSignUp = (context, props) => {
   const { payload } = props;

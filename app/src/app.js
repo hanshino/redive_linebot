@@ -164,9 +164,10 @@ function BattleOrder(context) {
     text(/^[#.]([五5]王倒了|finishweek)$/, battle.FinishWeek),
     text(/^[#.](設定[周週][回次]|setweek)(\s(?<week>\d+))?$/, battle.SetWeek),
     text(/^[#.](當[周週][回次]報名表|nowweek)$/, battle.CurrentBattle),
-    text(/^[#.](三刀出完|出完三刀|done)/, battle.reportFinish),
-    text(/^[#.](三刀重置|重置三刀|reset)/, battle.reportReset),
+    text(/^[#.](三刀出完|出完三刀|done)$/, battle.reportFinish),
+    text(/^[#.](三刀重置|重置三刀|reset)$/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
+    text(/^[#.](signtest)$/, battle.SignMessageTest),
   ];
 }
 

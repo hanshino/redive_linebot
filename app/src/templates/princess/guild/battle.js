@@ -1,5 +1,9 @@
 const { getLiffUri, assemble } = require("../../common");
 
+exports.sendSignFeedback = (context, template, data, sender) => {
+  context.sendText(assemble(data, template), { sender });
+};
+
 exports.showBattleList = (context, data) => {
   context.sendFlex(`第${data.week}周次 - 戰隊清單`, {
     type: "carousel",
