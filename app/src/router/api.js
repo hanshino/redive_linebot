@@ -253,6 +253,23 @@ router.get(
   GuildBattleController.api.showSigninList
 );
 
+/**
+ * 群組戰隊設定資訊
+ */
+router.get(
+  "/Guild/:guildId/Battle/Config",
+  (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
+  verifyToken,
+  GuildBattleController.api.getGuildBattleConfig
+);
+
+router.put(
+  "/Guild/:guildId/Battle/Config",
+  (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
+  verifyToken,
+  GuildBattleController.api.updateGuildBattleConfig
+);
+
 router.post("/Princess/Friend/Card", verifyToken, FriendCardController.api.binding);
 
 router.get("/Princess/Friend/Card", verifyToken, FriendCardController.api.getData);

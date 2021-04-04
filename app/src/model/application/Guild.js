@@ -1,4 +1,5 @@
 const mysql = require("../../util/mysql");
+const redis = require("../../util/redis");
 
 /**
  * 取得用戶所在的群組
@@ -20,4 +21,13 @@ exports.fetchGuildInfoByUser = userId => {
 
 exports.fetchGuildMembers = guildId => {
   return mysql.select(["guildId", "userId"]).from("GuildMembers").where({ guildId, status: 1 });
+};
+
+/**
+ * 強制性的將`bottender`設置的`session`清除
+ * @param {String} guildId
+ * @returns {Promise}
+ */
+exports.clearLineSession = guildId => {
+  return redis.del(`line:${guildId}`);
 };

@@ -99,6 +99,11 @@ const Accordions = [
       { title: "稽查未打完的", text: ".gblist" },
     ],
   },
+  {
+    title: "其他",
+    description: "集合了其餘雜項功能！",
+    buttons: [{ title: "報名成功測試", text: ".signtest" }],
+  },
 ];
 
 const AccordionButtons = () => {

@@ -1,10 +1,14 @@
 const { getLiffUri, assemble } = require("../../common");
 
+exports.sendSignFeedback = (context, template, data, sender) => {
+  context.sendText(assemble(data, template), { sender });
+};
+
 exports.showBattleList = (context, data) => {
   context.sendFlex(`第${data.week}周次 - 戰隊清單`, {
     type: "carousel",
     contents: [
-      genPreviewCover(data),
+      genPreviewCover({ ...data, groupId: context.event.source.groupId }),
       genPreviewDetail({
         ...data.records[0],
         boss: 1,
@@ -229,7 +233,7 @@ exports.genReportInformation = viewData => {
 };
 
 function genPreviewCover(option) {
-  const { week, formId, configs } = option;
+  const { week, formId, configs, groupId } = option;
   var bossImages = configs.sort((a, b) => a.boss - b.boss).map(config => config.image);
   var defaultImg = "https://i.imgur.com/zsAFota.png";
 
@@ -404,6 +408,46 @@ function genPreviewCover(option) {
               action: {
                 type: "uri",
                 uri: `${getLiffUri("compact")}?reactRedirectUri=/Panel/Group/Battle/Control`,
+              },
+              paddingAll: "5px",
+              cornerRadius: "md",
+              borderColor: "#880066",
+              borderWidth: "2px",
+            },
+          ],
+          spacing: "sm",
+          paddingAll: "3px",
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "filler",
+                    },
+                    {
+                      type: "text",
+                      text: "⚙ 管理頁",
+                      align: "center",
+                      weight: "bold",
+                    },
+                    {
+                      type: "filler",
+                    },
+                  ],
+                },
+              ],
+              action: {
+                type: "uri",
+                uri: `${getLiffUri("full")}?reactRedirectUri=/Group/${groupId}/Battle/Config`,
               },
               paddingAll: "5px",
               cornerRadius: "md",

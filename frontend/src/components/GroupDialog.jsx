@@ -95,8 +95,11 @@ const GroupCard = props => {
         <Button size="small" component={Link} to={`/Source/${id}/Customer/Orders`} onClick={close}>
           {"自訂指令"}
         </Button>
-        <Button size="small" component={Link} to={`/Group/${id}/Battle`} onClick={close}>
-          {"群組戰隊"}
+        <Button size="small" component={Link} to={`/Group/${id}/Battle/SignTable`} onClick={close}>
+          {"戰隊簽到"}
+        </Button>
+        <Button size="small" component={Link} to={`/Group/${id}/Battle/Config`} onClick={close}>
+          {"戰隊設定"}
         </Button>
         <Button size="small" component={Link} to={`/Group/${id}/Config`} onClick={close}>
           {"設定"}

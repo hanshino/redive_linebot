@@ -42,6 +42,7 @@ exports.clearClosed = async () => {
     let delGuildWeek = trx.from("GuildWeek").whereIn("GuildId", delGuilds).delete();
     let delGuildBattleFinish = trx.from("GuildBattleFinish").whereIn("GuildId", delGuilds).delete();
     let delCustomerOrder = trx.from("CustomerOrder").whereIn("SourceId", delGuilds).delete();
+    let delGuildBattleConfig = trx.from("GuildBattleConfig").whereIn("GuildId", delGuilds).delete();
 
     delGuild
       .then(affectedRows => recordResultThenNext(`刪除了 ${affectedRows} 個群組`, delGuildMembers))
@@ -61,7 +62,10 @@ exports.clearClosed = async () => {
         recordResultThenNext(`刪除了 ${affectedRows} 個群組戰隊簽到資料`, delCustomerOrder)
       )
       .then(affectedRows =>
-        recordResultThenNext(`刪除了 ${affectedRows} 個群組自訂指令`, Promise.resolve)
+        recordResultThenNext(`刪除了 ${affectedRows} 個群組自訂指令`, delGuildBattleConfig)
+      )
+      .then(affectedRows =>
+        recordResultThenNext(`刪除了 ${affectedRows} 個群組戰對設定`, Promise.resolve)
       )
       .then(trx.commit)
       .catch(trx.rollback);

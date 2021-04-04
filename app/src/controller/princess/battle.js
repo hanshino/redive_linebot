@@ -1,16 +1,26 @@
 const { battle: BattleModel, week: WeekModel } = require("../../model/princess/guild");
 const minimist = require("minimist");
 const GuildModel = require("../../model/application/Guild");
+const GuildBattleConfigRepo = require("../../repositories/princess/guild/ConfigRepository");
 const line = require("../../util/line");
 const BattleTemplate = require("../../templates/princess/guild/battle");
 const { recordSign } = require("../../util/traffic");
 const BattleSender = { name: "戰隊秘書", iconUrl: "https://i.imgur.com/NuZZR7Q.jpg" };
 const redis = require("../../util/redis");
 const { CustomLogger } = require("../../util/Logger");
+const { Context } = require("bottender");
+const Stages = [
+  { stage: 1, min: 1, max: 3, version: ["JP", "TW"] },
+  { stage: 2, min: 4, max: 10, version: ["JP", "TW"] },
+  { stage: 3, min: 11, max: 34, version: ["JP", "TW"] },
+  { stage: 4, min: 35, max: 44, version: ["JP", "TW"] },
+  { stage: 5, min: 45, max: 999, version: ["JP"] },
+];
 
-function BattleException(message) {
+function BattleException(message, code) {
   this.message = message;
   this.name = "GuildBattle";
+  this.code = code;
 }
 
 exports.BattleList = async (context, props) => {
@@ -181,22 +191,60 @@ exports.BattleSignUp = async (context, props) => {
       comment,
     });
 
-    if (setResult.detail === undefined) {
-      let sender = {
-        name: context.state.userDatas[context.event.source.userId].displayName,
-        iconUrl: context.state.userDatas[context.event.source.userId].pictureUrl,
-      };
-      let feedback = `我報名了 *${week}周${boss}王* ，${getStatusText(type || 1)}`;
-      feedback += damage ? `\n傷害：${damage}` : "";
-      feedback += comment ? `\n備註：${comment}` : "";
-      context.sendText(feedback, { sender });
-    } else throw setResult.detail;
+    if (setResult.detail) throw setResult.detail;
+
+    sendFeedBack(context, {
+      week,
+      boss,
+      status: type || 1,
+      damage: damage || 0,
+      comment: comment || "無",
+      statusText: getStatusText(type || 1),
+      stageTW: getStageByWeek(parseInt(week), "TW"),
+      stageJP: getStageByWeek(parseInt(week), "JP"),
+    });
   } catch (e) {
     if (e.name === "GuildBattle") {
       context.sendText(e.message);
     } else throw e; // keep throw
   }
 };
+
+/**
+ * 發送**報名成功**測試訊息
+ * @param {Context} context
+ */
+exports.SignMessageTest = async context => {
+  await sendFeedBack(context, {
+    week: 999,
+    boss: 5,
+    status: 3,
+    stageTW: 4,
+    stageJP: 5,
+    damage: 21000000,
+    comment: "超大一刀殺",
+    statusText: getStatusText(3),
+  });
+};
+
+async function sendFeedBack(context, data) {
+  let { groupId, userId } = context.event.source;
+  let { displayName, pictureUrl } = context.state.userDatas[userId];
+  let sender = {
+    name: displayName,
+    iconUrl: pictureUrl,
+  };
+
+  let { guildBattleConfig } = context.state;
+  if (!guildBattleConfig) {
+    guildBattleConfig = await GuildBattleConfigRepo.getConfig(groupId);
+    context.setState({ guildBattleConfig });
+  }
+
+  let { signMessage } = guildBattleConfig;
+
+  BattleTemplate.sendSignFeedback(context, signMessage, { displayName, ...data }, sender);
+}
 
 exports.BattlePostSignUp = (context, props) => {
   const { payload } = props;
@@ -545,4 +593,59 @@ function arrangeMonthFinishList(memberDatas, signinList) {
   });
 
   return result;
+}
+
+/**
+ * 取得戰隊系統設定資訊
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.api.getGuildBattleConfig = async (req, res) => {
+  let { guildId: groupId } = req.params;
+  let { signMessage } = await GuildBattleConfigRepo.getConfig(groupId);
+
+  res.json({ signMessage });
+};
+
+/**
+ * 修改戰隊系統設定檔
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.api.updateGuildBattleConfig = async (req, res) => {
+  let code = 200;
+  let result = {};
+
+  try {
+    let { guildId: groupId } = req.params;
+    let { signMessage, notifyToken } = req.body;
+
+    if (!signMessage && !notifyToken) throw new BattleException("Bad Request", 400);
+
+    let affected = await GuildBattleConfigRepo.writeConfig(groupId, {
+      signMessage,
+      notifyToken,
+    });
+
+    if (affected !== 1) throw new BattleException("Update Failed", 403);
+  } catch (e) {
+    if (!e instanceof BattleException) throw e;
+    result = e;
+    code = e.code;
+  }
+
+  res.status(code).json(result);
+};
+
+/**
+ * 根據周次取得階段
+ * @param {Number}  week
+ * @param {String}  version
+ * @returns {Number} Stage
+ */
+function getStageByWeek(week, version = "TW") {
+  let stages = Stages.filter(stage => stage.version.indexOf(version) !== -1);
+  let { stage } = stages.find(stage => stage.min < week && stage.max > week);
+
+  return stage;
 }
