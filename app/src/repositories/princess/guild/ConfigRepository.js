@@ -1,8 +1,9 @@
 const ConfigModel = require("../../../model/princess/guild/config");
+const GuildModel = require("../../../model/application/Guild");
 
 /**
  * 取設定檔，無資料就新增
- * @param {String} groupId 
+ * @param {String} groupId
  */
 exports.getConfig = async groupId => {
   let [configData] = await ConfigModel.queryConfig(groupId);
@@ -17,4 +18,9 @@ exports.getConfig = async groupId => {
   }
 
   return configData;
+};
+
+exports.writeConfig = async (groupId, data) => {
+  await GuildModel.clearLineSession(groupId);
+  return ConfigModel.updateConfig(groupId, { ...data, modify_date: new Date() });
 };
