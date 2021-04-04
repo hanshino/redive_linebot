@@ -7,18 +7,21 @@ const sendMsgReducer = (state, action) => {
         ...state,
         isSending: true,
         isError: false,
+        isSuccess: false,
       };
     case "SEND_SUCCESS":
       return {
         ...state,
         isSending: false,
         isError: false,
+        isSuccess: true,
       };
     case "SEND_FAIL":
       return {
         ...state,
         isSending: false,
         isError: true,
+        isSuccess: false,
       };
     default:
       throw new Error("None action type catch.");

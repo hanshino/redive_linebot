@@ -54,19 +54,15 @@ exports.showBattleList = (context, data) => {
 };
 
 exports.showBattleDetail = (context, data) => {
-  let message = {
-    type: "carousel",
-    contents: [
-      genPreviewDetail({
-        ...data.records,
-        boss: data.boss,
-        formId: data.formId,
-        week: data.week,
-        datas: data.datas,
-        config: data.configs.find(config => config.boss == data.boss),
-      }),
-    ],
-  };
+  let message = genPreviewDetail({
+    ...data.records,
+    boss: data.boss,
+    formId: data.formId,
+    week: data.week,
+    datas: data.datas,
+    config: data.configs.find(config => config.boss == data.boss),
+  });
+
   context.sendFlex(`第${data.week}周次${data.boss}王`, message);
 };
 
@@ -119,7 +115,6 @@ exports.showReportList = (context, records) => {
   };
 
   let bubbles = records.map(record => {
-    console.log(record);
     return JSON.parse(assemble(record, JSON.stringify(templates)));
   });
 
@@ -716,8 +711,7 @@ function genPreviewDetail(option) {
                     },
                   ],
                   backgroundColor: "#99ff33",
-                  height: "26px",
-                  paddingAll: "2px",
+                  paddingAll: "5px",
                 },
                 {
                   type: "box",
@@ -739,8 +733,7 @@ function genPreviewDetail(option) {
                     },
                   ],
                   backgroundColor: "#66ccff",
-                  height: "26px",
-                  paddingAll: "2px",
+                  paddingAll: "5px",
                 },
                 {
                   type: "box",
@@ -762,8 +755,8 @@ function genPreviewDetail(option) {
                     },
                   ],
                   backgroundColor: "#cc66ff",
-                  height: "26px",
-                  paddingAll: "2px",
+
+                  paddingAll: "5px",
                 },
                 {
                   type: "box",
@@ -777,22 +770,74 @@ function genPreviewDetail(option) {
                         type: "uri",
                         uri: `${getLiffUri(
                           "Compact"
-                        )}?reactRedirectUri=/Panel/Group/Battle/${week}/${boss}`,
+                        )}?reactRedirectUri=/Panel/Group/Battle/${week}/${boss}?damage=${hp}`,
                       },
                     },
                   ],
                   backgroundColor: "#808080",
-                  height: "26px",
-                  paddingAll: "2px",
+                  paddingAll: "5px",
                 },
               ],
-              borderWidth: "2px",
-              borderColor: "#000000",
-              cornerRadius: "5px",
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      text: "物一刀",
+                      align: "center",
+                      action: {
+                        type: "postback",
+                        data: JSON.stringify({
+                          action: "battleSignUp",
+                          week: week,
+                          boss: boss,
+                          type: 1,
+                          damage: `${hp}`,
+                          comment: "物刀一刀收",
+                        }),
+                      },
+                    },
+                  ],
+                  backgroundColor: "#ffcc66",
+                  paddingAll: "5px",
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      text: "法一刀",
+                      align: "center",
+                      action: {
+                        type: "postback",
+                        data: JSON.stringify({
+                          action: "battleSignUp",
+                          week: week,
+                          boss: boss,
+                          type: 1,
+                          damage: `${hp}`,
+                          comment: "法刀一刀收",
+                        }),
+                      },
+                    },
+                  ],
+                  backgroundColor: "#3399ff",
+                  paddingAll: "5px",
+                },
+              ],
             },
           ],
           margin: "md",
-          paddingAll: "3px",
+          borderWidth: "2px",
+          borderColor: "#000000",
+          cornerRadius: "5px",
         },
         {
           type: "separator",

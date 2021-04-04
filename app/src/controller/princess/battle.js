@@ -193,7 +193,7 @@ exports.BattleSignUp = async (context, props) => {
 
     if (setResult.detail) throw setResult.detail;
 
-    sendFeedBack(context, {
+    await sendFeedBack(context, {
       week,
       boss,
       status: type || 1,
