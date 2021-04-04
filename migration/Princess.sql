@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： mysql
--- 產生時間： 2021 年 02 月 18 日 16:31
+-- 產生時間： 2021 年 04 月 04 日 16:24
 -- 伺服器版本： 8.0.23
 -- PHP 版本： 7.4.15
 
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `arena_records` (
   PRIMARY KEY (`id`),
   KEY `left_hash` (`left_hash`),
   KEY `right_hash` (`right_hash`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='紀錄競技場勝負';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='紀錄競技場勝負';
 
 -- --------------------------------------------------------
 
@@ -370,7 +370,8 @@ CREATE TABLE IF NOT EXISTS `chat_user_data` (
   `id` int NOT NULL,
   `experience` int NOT NULL DEFAULT '1',
   `modify_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `rank` int NOT NULL DEFAULT '99999'
+  `rank` int NOT NULL DEFAULT '99999',
+  UNIQUE KEY `id` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='聊天制度用戶經驗';
 
 -- --------------------------------------------------------
@@ -434,19 +435,6 @@ CREATE TABLE IF NOT EXISTS `GachaSignin` (
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `GlobalConfigs`
---
-
-CREATE TABLE IF NOT EXISTS `GlobalConfigs` (
-  `ID` int NOT NULL AUTO_INCREMENT,
-  `type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `content` text NOT NULL,
-  PRIMARY KEY (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `GlobalOrders`
 --
 
@@ -498,6 +486,20 @@ CREATE TABLE IF NOT EXISTS `GuildBattle` (
 -- --------------------------------------------------------
 
 --
+-- 資料表結構 `GuildBattleConfig`
+--
+
+CREATE TABLE IF NOT EXISTS `GuildBattleConfig` (
+  `GuildId` varchar(45) NOT NULL,
+  `NotifyToken` varchar(255) NOT NULL,
+  `SignMessage` varchar(255) NOT NULL,
+  `modify_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`GuildId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='紀錄戰隊系統設定';
+
+-- --------------------------------------------------------
+
+--
 -- 資料表結構 `GuildBattleFinish`
 --
 
@@ -527,7 +529,7 @@ CREATE TABLE IF NOT EXISTS `GuildConfig` (
   `SenderIcon` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `GuildId_UNIQUE` (`GuildId`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
