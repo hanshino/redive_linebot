@@ -19,8 +19,8 @@ const gacha = require("../controller/princess/gacha");
 const { webhook } = require("../util/discord");
 const { showStatistics, showUserStatistics } = require("../controller/application/Statistics");
 const NotifyController = require("../controller/application/NotifyController");
-const { pushMessage } = require("../util/LineNotify");
 const { binding } = require("../controller/application/NotifyController").api;
+const ChatLevelController = require("../controller/application/ChatLevelController");
 
 router.get("/send-id", (req, res) => {
   const { size } = req.query || "full";
@@ -285,6 +285,8 @@ router.delete("/Bot/Notify/Binding", verifyToken, NotifyController.api.revokeBin
 router.post("/Bot/Notify/Test", verifyToken, NotifyController.api.messageTest);
 
 router.put("/Bot/Notify/:key/:status", verifyToken, NotifyController.api.setSubStatus);
+
+router.get("/Chat/Level/Rank", ChatLevelController.api.queryRank);
 
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });

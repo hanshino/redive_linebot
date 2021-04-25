@@ -10,3 +10,11 @@ exports.getId = async platformId => {
 
   return rows.length !== 0 ? rows[0].id : null;
 };
+
+/**
+ * 取得平台ID
+ * @param {Array<Number>} ids
+ */
+exports.getPlatformIds = ids => {
+  return mysql.select({ userId: "platformId", id: "No" }).whereIn("No", ids).from(USER_TABLE);
+};

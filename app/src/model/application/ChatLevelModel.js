@@ -147,7 +147,7 @@ exports.getRangeTitle = async () => {
  */
 exports.getRankList = async page => {
   return await mysql
-    .select("id", "experience")
+    .select("id", "experience", "rank")
     .from(USER_DATA_TABLE)
     .limit(100)
     .orderBy("experience", "desc")

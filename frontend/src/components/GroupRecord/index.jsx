@@ -108,7 +108,7 @@ const GroupRecord = () => {
           <Typography variant="h6" component="p">
             群組數據 - {data.groupName}
           </Typography>
-          <Typography variant="subtitle" color="textSecondary" component="p">
+          <Typography variant="subtitle2" color="textSecondary" component="p">
             提供群組進行數據管理
           </Typography>
         </Grid>
@@ -256,7 +256,7 @@ const MyStatistic = props => {
 };
 
 MyStatistic.propTypes = {
-  statistic: PropTypes.array.isRequired,
+  statistic: PropTypes.object.isRequired,
 };
 
 const MessageStatistic = props => {
