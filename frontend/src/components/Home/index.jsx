@@ -3,6 +3,7 @@ import Grid from "@material-ui/core/Grid";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import Statistics from "./Statistics";
 import Features from "./Features";
+import Announcement from "./Announcement";
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -22,6 +23,7 @@ const Home = () => {
 
   return (
     <Grid container className={classes.root}>
+      <Announcement />
       <Statistics />
       <Features />
       <Grid item xs={12}>

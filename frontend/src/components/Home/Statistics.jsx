@@ -12,6 +12,7 @@ import Paper from "@material-ui/core/Paper";
 import DashboardIcon from "@material-ui/icons/Dashboard";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import Grid from "@material-ui/core/Grid";
+import Skeleton from "@material-ui/lab/Skeleton";
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -26,11 +27,14 @@ const useStyles = makeStyles(theme => ({
   card: {
     minWidth: 160,
   },
+  loading: {
+    width: "100%",
+  },
 }));
 
 const Statistics = () => {
   const classes = useStyles();
-  const { data } = useStatistics();
+  const { data, loading } = useStatistics();
   return (
     <Grid
       className={classes.statistics}
@@ -42,18 +46,22 @@ const Statistics = () => {
     >
       <Grid container item alignItems="center" spacing={1}>
         <Grid item>
-          <Typography variant="h5">儀表板</Typography>
+          <DashboardIcon color="primary" fontSize="small" />
         </Grid>
         <Grid item>
-          <DashboardIcon color="primary" fontSize="small" />
+          <Typography variant="h5">儀表板</Typography>
         </Grid>
       </Grid>
       <Grid container item justify="space-around" spacing={1}>
-        {data.map(d => (
-          <Grid item key={d.title}>
-            <GridCard {...d} />
-          </Grid>
-        ))}
+        {loading ? (
+          <Skeleton className={classes.loading} animation="wave" />
+        ) : (
+          data.map(d => (
+            <Grid item key={d.title}>
+              <GridCard {...d} />
+            </Grid>
+          ))
+        )}
       </Grid>
       <Grid container item direction="row-reverse">
         <Typography variant="subtitle1" color="textSecondary">
