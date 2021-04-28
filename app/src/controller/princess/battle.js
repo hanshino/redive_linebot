@@ -644,8 +644,14 @@ exports.api.updateGuildBattleConfig = async (req, res) => {
  * @returns {Number} Stage
  */
 function getStageByWeek(week, version = "TW") {
-  let stages = Stages.filter(stage => stage.version.indexOf(version) !== -1);
+  let stages = getVersionWeek(version);
   let { stage } = stages.find(stage => stage.min <= week && stage.max >= week);
 
   return stage;
+}
+
+function getVersionWeek(version = "TW") {
+  let stages = Stages.filter(stage => stage.version.indexOf(version) !== -1);
+  stages[stages.length - 1].max = 999;
+  return stages;
 }
