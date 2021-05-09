@@ -37,8 +37,6 @@ const ExpLabel = props => {
 };
 
 const BarProps = props => {
-  const { maxBarWidth } = props;
-  console.log(maxBarWidth);
   return <BarSeries.Point {...props} maxBarWidth={20} />;
 };
 
