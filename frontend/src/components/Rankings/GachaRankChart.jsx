@@ -21,7 +21,7 @@ const useStyle = makeStyles(() => ({
 }));
 
 const GachaRankChart = () => {
-  const [{ data, loading }] = useAxios("/api/Gacha/Rank/1");
+  const [{ data, loading }] = useAxios("/api/Gacha/Rank/0");
   const classes = useStyle();
 
   return (
