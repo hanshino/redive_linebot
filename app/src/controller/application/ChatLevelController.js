@@ -153,9 +153,11 @@ exports.api.queryRank = async (req, res) => {
 
   let result = await Promise.all(
     data.map(async d => {
-      let { displayName } = await LineClient.getUserProfile(hashPlatformIds[d.id]).catch(() => ({
-        displayName: "未知",
-      }));
+      let { displayName } = await LineClient.getUserProfile(hashPlatformIds[d.id])
+        .then(user => ({ displayName: user.displayName || "未知" }))
+        .catch(() => ({
+          displayName: "未知",
+        }));
       let { rank, experience } = d;
       let level = await ChatLevelModel.getLevel(experience);
       return {
