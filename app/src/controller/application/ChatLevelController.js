@@ -1,6 +1,9 @@
 const ChatLevelModel = require("../../model/application/ChatLevelModel");
 const ChatLevelTemplate = require("../../templates/application/ChatLevel");
 const { DefaultLogger } = require("../../util/Logger");
+const UserModel = require("../../model/application/UserModel");
+const { getClient } = require("bottender");
+const LineClient = getClient("line");
 
 /**
  * 顯示個人狀態
@@ -134,3 +137,35 @@ function appendLevelTitle(data) {
       return data;
     });
 }
+
+exports.api = {};
+
+exports.api.queryRank = async (req, res) => {
+  let data = await ChatLevelModel.getRankList(1);
+  let ids = data.map(d => d.id);
+
+  let platformIds = await UserModel.getPlatformIds(ids);
+  let hashPlatformIds = {};
+
+  platformIds.forEach(v => {
+    hashPlatformIds[v.id] = v.userId;
+  });
+
+  let result = await Promise.all(
+    data.map(async d => {
+      let { displayName } = await LineClient.getUserProfile(hashPlatformIds[d.id]).catch(() => ({
+        displayName: "未知",
+      }));
+      let { rank, experience } = d;
+      let level = await ChatLevelModel.getLevel(experience);
+      return {
+        rank,
+        level,
+        experience,
+        displayName,
+      };
+    })
+  );
+
+  res.json(result);
+};

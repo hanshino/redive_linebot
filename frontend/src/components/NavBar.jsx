@@ -27,6 +27,7 @@ import ExpandMore from "@material-ui/icons/ExpandMore";
 import GroupDialog from "./GroupDialog";
 import { Link } from "react-router-dom";
 import { NotificationsActive } from "@material-ui/icons";
+import EqualizerIcon from "@material-ui/icons/Equalizer";
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -98,6 +99,12 @@ const NavBar = props => {
             <HomeIcon />
           </ListItemIcon>
           <ListItemText primary={"首頁"} />
+        </ListItem>
+        <ListItem button component={Link} to="/Rankings" onClick={closeDrawer}>
+          <ListItemIcon>
+            <EqualizerIcon />
+          </ListItemIcon>
+          <ListItemText primary={"排行榜"} />
         </ListItem>
         <ListItem button component={Link} to="/Princess/Profile" onClick={closeDrawer}>
           <ListItemIcon>
@@ -259,14 +266,16 @@ NavBar.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
+const { liff, location } = window;
+
 function doLogin() {
-  window.localStorage.setItem("reactRedirectUri", window.location.pathname);
-  window.liff.login();
+  let { endpointUrl } = liff.getContext();
+  liff.login({ redirectUri: `${endpointUrl}?reactRedirectUri=${location.pathname}` });
 }
 
 function doLogout() {
-  window.liff.logout();
-  window.location.reload();
+  liff.logout();
+  location.reload();
 }
 
 export default NavBar;

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： mysql
--- 產生時間： 2021 年 04 月 04 日 16:24
+-- 產生時間： 2021 年 04 月 26 日 18:09
 -- 伺服器版本： 8.0.23
 -- PHP 版本： 7.4.15
 
@@ -672,6 +672,11 @@ CREATE TABLE IF NOT EXISTS `subscribe_type` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
+-- 資料表新增資料前，先清除舊資料 `subscribe_type`
+--
+
+TRUNCATE TABLE `subscribe_type`;
+--
 -- 傾印資料表的資料 `subscribe_type`
 --
 
@@ -712,6 +717,21 @@ CREATE TABLE IF NOT EXISTS `User` (
   PRIMARY KEY (`No`),
   UNIQUE KEY `platformId` (`platformId`,`platform`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- 資料表結構 `web_announcement`
+--
+
+CREATE TABLE IF NOT EXISTS `web_announcement` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL,
+  `content` text NOT NULL,
+  `level` varchar(20) NOT NULL,
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

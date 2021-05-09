@@ -28,6 +28,7 @@ import ManualPanel from "./components/Panel/Manual";
 import PropTypes from "prop-types";
 import Notify from "./components/Bot/Notify";
 import Binding from "./components/Bot/Binding";
+import Rankings from "./components/Rankings";
 
 const useStyles = makeStyles(theme => ({
   backdrop: {
@@ -57,13 +58,9 @@ function App() {
 
 const RedirectDetect = props => {
   let query = useQuery();
-  let redirectUri =
-    window.localStorage.getItem("reactRedirectUri") ||
-    query.get("reactRedirectUri") ||
-    props.redirectUri;
+  let redirectUri = query.get("reactRedirectUri") || props.redirectUri;
 
   if (redirectUri) {
-    window.localStorage.removeItem("reactRedirectUri");
     return <Redirect to={redirectUri} />;
   }
 
@@ -135,6 +132,7 @@ function MainLayout() {
         <Route path="/Admin" component={AdminLayout} />
         <Route path="/Source/:sourceId/Customer/Orders" component={CustomerOrder} />
         <Route path="/Panel" component={PanelLayout} />
+        <Route path="/Rankings" component={Rankings} />
         <Route path="/" component={Home} />
       </Switch>
     </NavBar>
