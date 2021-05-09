@@ -40,7 +40,7 @@ const EuropeRank = props => {
   const { rankData } = props;
 
   return (
-    <Chart data={rankData} rotated className={classes.PaperChart}>
+    <Chart data={rankData.reverse()} rotated className={classes.PaperChart}>
       <ArgumentAxis />
       <ValueAxis max={7} showLine showTicks />
 
