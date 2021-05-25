@@ -10,11 +10,11 @@ const redis = require("../../util/redis");
 const { CustomLogger } = require("../../util/Logger");
 const { Context } = require("bottender");
 const Stages = [
-  { stage: 1, min: 1, max: 3, version: ["JP", "TW"] },
-  { stage: 2, min: 4, max: 10, version: ["JP", "TW"] },
-  { stage: 3, min: 11, max: 34, version: ["JP", "TW"] },
-  { stage: 4, min: 35, max: 44, version: ["JP", "TW"] },
-  { stage: 5, min: 45, max: 999, version: ["JP"] },
+  { stage: 1, min: 1, max: 3 },
+  { stage: 2, min: 4, max: 10 },
+  { stage: 3, min: 11, max: 34 },
+  { stage: 4, min: 35, max: 44 },
+  { stage: 5, min: 45, max: 999 },
 ];
 
 function BattleException(message, code) {
@@ -200,8 +200,7 @@ exports.BattleSignUp = async (context, props) => {
       damage: damage || 0,
       comment: comment || "無",
       statusText: getStatusText(type || 1),
-      stageTW: getStageByWeek(parseInt(week), "TW"),
-      stageJP: getStageByWeek(parseInt(week), "JP"),
+      stage: getStageByWeek(parseInt(week)),
     });
   } catch (e) {
     if (e.name === "GuildBattle") {
@@ -219,8 +218,7 @@ exports.SignMessageTest = async context => {
     week: 999,
     boss: 5,
     status: 3,
-    stageTW: 4,
-    stageJP: 5,
+    stage: 5,
     damage: 21000000,
     comment: "超大一刀殺",
     statusText: getStatusText(3),
@@ -643,15 +641,8 @@ exports.api.updateGuildBattleConfig = async (req, res) => {
  * @param {String}  version
  * @returns {Number} Stage
  */
-function getStageByWeek(week, version = "TW") {
-  let stages = getVersionWeek(version);
-  let { stage } = stages.find(stage => stage.min <= week && stage.max >= week);
+function getStageByWeek(week) {
+  let { stage } = Stages.find(stage => stage.min <= week && stage.max >= week);
 
   return stage;
-}
-
-function getVersionWeek(version = "TW") {
-  let stages = Stages.filter(stage => stage.version.indexOf(version) !== -1);
-  stages[stages.length - 1].max = 999;
-  return stages;
 }

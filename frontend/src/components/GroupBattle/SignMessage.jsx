@@ -49,8 +49,7 @@ const useStyles = makeStyles(theme => ({
 
 const ButtonDatas = [
   { label: "報名者", keyword: "displayName" },
-  { label: "階段(台)", keyword: "stageTW" },
-  { label: "階段(日)", keyword: "stageJP" },
+  { label: "階段", keyword: "stage" },
   { label: "幾王", keyword: "boss" },
   { label: "周次", keyword: "week" },
   { label: "備註", keyword: "comment" },
@@ -212,8 +211,7 @@ const useSignMessage = groupId => {
     statusText: "補償",
     damage: 12345678,
     comment: "補償盡量打了",
-    stageTW: 4,
-    stageJP: 5,
+    stage: 5,
   };
 
   useEffect(() => {
