@@ -475,13 +475,22 @@ function genPreviewDetail(option) {
   let bossConfig = { name: `${boss}王`, image: "", ...config };
   bossConfig.image = bossConfig.image || "https://i.imgur.com/zsAFota.png";
   let stage = 0;
-  if (week >= 35) {
-    stage = 3;
-  } else if (week >= 11) {
-    stage = 2;
-  } else if (week >= 4) {
-    stage = 1;
+
+  switch (true) {
+    case week >= 45:
+      stage = 4;
+      break;
+    case week >= 35:
+      stage = 3;
+      break;
+    case week >= 11:
+      stage = 2;
+      break;
+    case week >= 4:
+      stage = 1;
+      break;
   }
+
   let hp = bossConfig.hp[stage];
 
   let recordsDetail = datas.map((data, index) => {

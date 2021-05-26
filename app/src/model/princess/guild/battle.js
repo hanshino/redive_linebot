@@ -2,7 +2,7 @@ const mysql = require("../../../util/mysql");
 const fetch = require("node-fetch");
 const token = process.env.IAN_BATTLE_TOKEN;
 const headers = { "x-token": token, "user-agent": "re:dive line-bot" };
-const apiURL = "https://guild.randosoru.me/api";
+const apiURL = process.env.IAN_BATTLE_API_URL;
 const redis = require("../../../util/redis");
 const { CustomLogger } = require("../../../util/Logger");
 
