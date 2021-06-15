@@ -9,19 +9,36 @@ const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_COMPACT_ID}`;
  * @param {String} params.nickname
  */
 exports.showCard = (context, params) => {
-  let { uid, server, background, nickname } = params;
+  let { uid, server, background, clan_name = "-" } = params;
+  const {
+    user_name,
+    user_comment = "-",
+    team_level = "-",
+    arena_rank = "-",
+    grand_arena_rank = "-",
+    unit_num = "-",
+    total_power = "-",
+    tower_cleared_floor_num = "-",
+    tower_cleared_ex_quest_count = "-",
+  } = params.user_info;
   context.sendFlex("好友小卡", {
     type: "bubble",
+    size: "giga",
     body: {
       type: "box",
       layout: "vertical",
       contents: [
         {
-          type: "image",
-          url: background,
-          size: "full",
-          aspectMode: "cover",
-          aspectRatio: "16:9",
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "image",
+              url: background,
+              size: "full",
+              aspectMode: "cover",
+            },
+          ],
         },
         {
           type: "box",
@@ -32,40 +49,224 @@ exports.showCard = (context, params) => {
               layout: "vertical",
               contents: [
                 {
-                  type: "text",
-                  text: server,
-                  weight: "bold",
-                  align: "center",
-                  color: "#F62681",
-                  size: "lg",
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      text: `${user_name}`,
+                      color: "#00FFAC",
+                      weight: "bold",
+                    },
+                    {
+                      type: "text",
+                      text: `${user_comment}`,
+                      size: "xxs",
+                      adjustMode: "shrink-to-fit",
+                      color: "#FFAC97",
+                    },
+                  ],
                 },
                 {
-                  type: "text",
-                  text: nickname,
-                  align: "center",
-                  weight: "bold",
-                  wrap: true,
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "主角等級",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${team_level}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "解放角色數量",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${unit_num}`,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "戰鬥競技場",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${arena_rank}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "公主競技場",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${grand_arena_rank}`,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "露娜之塔",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${tower_cleared_floor_num}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "EX冒險",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${tower_cleared_ex_quest_count}`,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "所屬戰隊",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${clan_name}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "全角色戰力",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${total_power}`,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      text: [uid.substr(0, 3), uid.substr(3, 3), uid.substr(6)].join(" "),
+                      weight: "bold",
+                      color: "#FF80CA",
+                    },
+                  ],
+                  position: "absolute",
+                  offsetEnd: "xs",
+                  offsetBottom: "xs",
                 },
               ],
-              paddingAll: "5px",
-              spacing: "md",
-            },
-            {
-              type: "button",
-              action: {
-                type: "uri",
-                label: "進遊戲",
-                uri: "https://api-pc.so-net.tw/friend_invitation/index",
-              },
+              paddingAll: "xxl",
+              spacing: "sm",
             },
           ],
-          backgroundColor: "#EBECF0CC",
+          backgroundColor: "#808080AC",
           position: "absolute",
-          offsetEnd: "5%",
-          cornerRadius: "10px",
-          height: "90%",
-          offsetTop: "5%",
-          paddingAll: "10px",
+          offsetBottom: "0px",
+          width: "100%",
         },
         {
           type: "box",
@@ -73,40 +274,17 @@ exports.showCard = (context, params) => {
           contents: [
             {
               type: "text",
-              text: [uid.substr(0, 3), uid.substr(3, 3), uid.substr(6)].join(" "),
-              weight: "bold",
-              size: "sm",
+              text: `${server}`,
+              color: "#ABCDEF",
+              size: "xs",
             },
           ],
-          paddingAll: "3px",
-          cornerRadius: "8px",
           position: "absolute",
-          backgroundColor: "#FFC0CBCC",
+          cornerRadius: "lg",
+          backgroundColor: "#3142A8CD",
+          paddingAll: "5px",
           offsetTop: "3%",
           offsetStart: "3%",
-        },
-        {
-          type: "box",
-          layout: "vertical",
-          contents: [
-            {
-              type: "text",
-              text: "設定頁",
-              size: "sm",
-              align: "center",
-              color: "#FFFFFF",
-            },
-          ],
-          position: "absolute",
-          offsetBottom: "5px",
-          offsetStart: "5px",
-          backgroundColor: "#808080CC",
-          cornerRadius: "8px",
-          width: "50px",
-          action: {
-            type: "uri",
-            uri: `${liffUri}?reactRedirectUri=/Princess/Profile`,
-          },
         },
       ],
       paddingAll: "0px",

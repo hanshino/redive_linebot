@@ -3,7 +3,15 @@ const FriendCardTemplate = require("../../templates/princess/FriendCard");
 
 exports.showCard = async context => {
   let { userId } = context.event.source;
-  let bindData = await uidModel.getData(userId);
+  let bindData = {};
+
+  try {
+    bindData = await uidModel.getIanProfileData(userId);
+  } catch (err) {
+    context.sendText("資料獲取失敗..請稍後再試");
+    return;
+  }
+
   let serverName = ["美食殿堂", "真步真步王國", "破曉之星", "小小甜心"];
 
   if (Object.keys(bindData).length === 0) {
