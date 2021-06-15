@@ -38,6 +38,13 @@ exports.api.getData = async (req, res) => {
 exports.api.binding = async (req, res) => {
   let { uid, server, background } = req.body;
   let { userId } = req.profile;
+
+  let nickname = await uidModel.getPrincessNickName(uid, server);
+  if (!nickname) {
+    res.status(400).json({ message: "綁定失敗，請確認uid與伺服器是否正確！" });
+    return;
+  }
+
   let result = await uidModel.binding({ uid, userId, server, background }).catch(() => false);
 
   if (result === false) {

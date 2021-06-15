@@ -102,6 +102,8 @@ async function getPrincessNickName(uid, server) {
   return nickname;
 }
 
+exports.getPrincessNickName = getPrincessNickName;
+
 exports.getIanProfileData = async userId => {
   const uidData = await this.getBindingData(userId);
   if (!uidData) return {};
