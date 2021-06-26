@@ -218,7 +218,7 @@ exports.showCard = (context, params) => {
                         },
                         {
                           type: "span",
-                          text: `${clan_name}`,
+                          text: `${clan_name || "無所屬"}`,
                         },
                       ],
                     },
