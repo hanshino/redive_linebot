@@ -8,6 +8,7 @@ LABEL maintainer="hanshino@github"
 WORKDIR /application
 
 COPY package*.json ./
+COPY yarn.lock ./
 
 RUN yarn install
 
