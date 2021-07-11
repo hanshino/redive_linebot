@@ -275,7 +275,9 @@ async function recordToInventory(userId, rewards) {
   insertIds.forEach(id => delete oldIds[oldIds.indexOf(id)]);
   oldIds = oldIds.filter(() => true);
 
-  await InventoryModel.insertItems(insertIds.map(itemId => ({ userId, itemId, itemAmount: 1 })));
+  if (insertIds.length !== 0) {
+    await InventoryModel.insertItems(insertIds.map(itemId => ({ userId, itemId, itemAmount: 1 })));
+  }
 
   var godStoneArray = oldIds.map(id => {
     let reward = rewards.find(data => data.id === id);

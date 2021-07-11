@@ -1,5 +1,5 @@
 const mysql = require("../../../util/mysql");
-const fetch = require("node-fetch");
+const axios = require("axios").default;
 const token = process.env.IAN_BATTLE_TOKEN;
 const headers = { "x-token": token, "user-agent": "re:dive line-bot" };
 const apiURL = process.env.IAN_BATTLE_API_URL;
@@ -250,35 +250,22 @@ exports.Ian.getFormConfig = formId => {
 
 function doGet(path) {
   CustomLogger.info(path);
-  return fetch(`${apiURL}${path}`, {
-    headers: headers,
-  })
-    .then(IsIanSeverDown)
-    .then(res => res.json());
+  return axios
+    .get(`${apiURL}${path}`, {
+      headers: headers,
+    })
+    .then(res => res.data);
 }
 
 function doPost(path, data) {
   CustomLogger.info(`Fetch from ${path} data is ${JSON.stringify(data)}`);
-  return fetch(`${apiURL}${path}`, {
-    headers: headers,
-    body: JSON.stringify(data),
-    method: "post",
-  })
-    .then(IsIanSeverDown)
-    .then(res => res.json())
+  return axios
+    .post(`${apiURL}${path}`, data, {
+      headers: headers,
+    })
+    .then(res => res.data)
     .then(json => {
       CustomLogger.info(`result: ${JSON.stringify(json)}`);
       return json;
     });
-}
-
-/**
- * 暫時全域設定Ian系統維修中
- */
-function IsIanSeverDown(response) {
-  if (response.ok === false) {
-    redis.set("GuildBattleSystem", false, 1 * 60);
-  }
-
-  return response;
 }

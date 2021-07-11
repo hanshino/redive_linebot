@@ -1,11 +1,14 @@
 const ConfigModel = require("../../../model/princess/guild/config");
 const GuildModel = require("../../../model/application/Guild");
+const redis = require("../../../util/redis");
 
 /**
  * 取設定檔，無資料就新增
  * @param {String} groupId
  */
 exports.getConfig = async groupId => {
+  let data = await redis.get(`BattleConfig_${groupId}`);
+  if (data) return data;
   let [configData] = await ConfigModel.queryConfig(groupId);
 
   if (!configData) {
@@ -16,6 +19,8 @@ exports.getConfig = async groupId => {
 
     ConfigModel.insertConfig(groupId, configData);
   }
+
+  await redis.set(`BattleConfig_${groupId}`, configData, 15 * 60);
 
   return configData;
 };

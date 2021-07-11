@@ -1,7 +1,7 @@
 const { getLiffUri, assemble } = require("../../common");
 
 exports.sendSignFeedback = (context, template, data, sender) => {
-  context.sendText(assemble(data, template), { sender });
+  return context.sendText(assemble(data, template), { sender });
 };
 
 exports.showBattleList = (context, data) => {
@@ -460,17 +460,8 @@ function genPreviewCover(option) {
 }
 
 function genPreviewDetail(option) {
-  const {
-    FullCount,
-    NotFullCount,
-    KyaryuCount,
-    OtherCount,
-    boss,
-    week,
-    datas,
-    config,
-    formId,
-  } = option;
+  const { FullCount, NotFullCount, KyaryuCount, OtherCount, boss, week, datas, config, formId } =
+    option;
 
   let bossConfig = { name: `${boss}王`, image: "", ...config };
   bossConfig.image = bossConfig.image || "https://i.imgur.com/zsAFota.png";

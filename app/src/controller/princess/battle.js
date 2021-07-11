@@ -33,6 +33,7 @@ exports.BattleList = async (context, props) => {
     if (!isValidWeek(week)) throw new BattleException("周次輸入錯誤，請輸入介於1~199");
 
     const formId = await getFormId(context);
+    if (!formId) throw new BattleException("建立報名表失敗，請跟作者反應此狀況！");
 
     const [formRecords, formConfigs] = await Promise.all([
       BattleModel.Ian.getFormRecords(formId, week, boss),
@@ -74,6 +75,9 @@ async function getFormId(context) {
     let groupSummary = await line.getGroupSummary(groupId);
     let createResult = await BattleModel.Ian.createForm(ianUserId, month, groupSummary.groupName);
     CustomLogger.info(createResult);
+
+    if (!createResult.id) return null;
+
     BattleModel.setFormId(groupId, createResult.id, month);
 
     return createResult.id;
@@ -193,7 +197,7 @@ exports.BattleSignUp = async (context, props) => {
 
     if (setResult.detail) throw setResult.detail;
 
-    await sendFeedBack(context, {
+    sendFeedBack(context, {
       week,
       boss,
       status: type || 1,
@@ -233,15 +237,14 @@ async function sendFeedBack(context, data) {
     iconUrl: pictureUrl,
   };
 
-  let { guildBattleConfig } = context.state;
-  if (!guildBattleConfig) {
-    guildBattleConfig = await GuildBattleConfigRepo.getConfig(groupId);
-    context.setState({ guildBattleConfig });
+  let { battleConfig } = context.state;
+  if (!battleConfig) {
+    battleConfig = await GuildBattleConfigRepo.getConfig(groupId);
   }
 
-  let { signMessage } = guildBattleConfig;
+  let { signMessage } = battleConfig;
 
-  BattleTemplate.sendSignFeedback(context, signMessage, { displayName, ...data }, sender);
+  await BattleTemplate.sendSignFeedback(context, signMessage, { displayName, ...data }, sender);
 }
 
 exports.BattlePostSignUp = (context, props) => {
