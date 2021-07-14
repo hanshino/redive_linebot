@@ -20,6 +20,8 @@ exports.showCard = (context, params) => {
     total_power = "-",
     tower_cleared_floor_num = "-",
     tower_cleared_ex_quest_count = "-",
+    arena_group = "-",
+    grand_arena_group = "-",
   } = params.user_info;
   context.sendFlex("好友小卡", {
     type: "bubble",
@@ -150,6 +152,50 @@ exports.showCard = (context, params) => {
                         {
                           type: "span",
                           text: `${grand_arena_rank}`,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: "box",
+                  layout: "horizontal",
+                  contents: [
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "戰鬥競技場分組",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${arena_group}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      color: "#FFFFFF",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "公主競技場分組",
+                          weight: "bold",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: `${grand_arena_group}`,
                         },
                       ],
                     },
