@@ -110,8 +110,6 @@ exports.getIanProfileData = async userId => {
 
   const { uid, server } = uidData;
 
-  let result = await getPrincessNickName(uid, server).catch(err => console.error(err));
-
   let result = await axios.get(profileAPI, {
     headers: {
       "x-token": process.env.IAN_PROFILE_TOKEN,
