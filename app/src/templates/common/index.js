@@ -27,20 +27,23 @@ module.exports = {
   getLiffUri: function (type) {
     let host = "https://liff.line.me/";
     let id = process.env.LINE_LIFF_ID;
+    let typeId;
     switch (type.toLowerCase()) {
       case "ian":
-        id = process.env.LINE_LIFF_IAN_ID;
+        typeId = process.env.LINE_LIFF_IAN_ID;
         break;
       case "compact":
-        id = process.env.LINE_LIFF_COMPACT_ID;
+        typeId = process.env.LINE_LIFF_COMPACT_ID;
         break;
       case "full":
-        id = process.env.LINE_LIFF_FULL_ID;
+        typeId = process.env.LINE_LIFF_FULL_ID;
         break;
       case "tall":
-        id = process.env.LINE_LIFF_TALL_ID;
+        typeId = process.env.LINE_LIFF_TALL_ID;
         break;
     }
+
+    id = typeId || id;
 
     return `${host}${id}`;
   },

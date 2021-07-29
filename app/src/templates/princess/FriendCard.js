@@ -1,4 +1,4 @@
-const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_COMPACT_ID}`;
+const common = require('../common/index');
 /**
  * 顯示好友小卡
  * @param {Context} context
@@ -357,7 +357,7 @@ exports.showBindingPage = context => {
       backgroundColor: "#E94196",
       action: {
         type: "uri",
-        uri: `${liffUri}?reactRedirectUri=/Princess/Profile`,
+        uri: `${common.getLiffUri('compact')}?reactRedirectUri=/Princess/Profile`,
       },
     },
   });
