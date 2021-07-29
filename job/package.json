@@ -4,6 +4,8 @@
   "description": "進行 redive-linebot 排程任務",
   "main": "index.js",
   "scripts": {
+    "predev": "yarn install",
+    "dev": "nodemon -L index.js",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -22,6 +24,7 @@
     "redis": "^3.1.2"
   },
   "devDependencies": {
-    "dotenv": "^10.0.0"
+    "dotenv": "^10.0.0",
+    "nodemon": "^2.0.12"
   }
 }
