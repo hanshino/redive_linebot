@@ -1,3 +1,4 @@
+const { Knex } = require("knex");
 const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
 
@@ -31,3 +32,8 @@ exports.fetchGuildMembers = guildId => {
 exports.clearLineSession = guildId => {
   return redis.del(`line:${guildId}`);
 };
+
+/**
+ * @returns {Knex}
+ */
+exports.query = () => mysql("Guild");
