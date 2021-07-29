@@ -34,7 +34,7 @@ exports.leaderBinding = async (context, props) => {
     ts: latestRecordTs,
   });
 
-  if (!clanData) {
+  if (!clanData || clanData.length === 0) {
     return context.sendText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名\n2. 綁定者非隊長");
   }
 
