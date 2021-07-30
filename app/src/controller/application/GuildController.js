@@ -2,6 +2,7 @@ const { Context } = require("bottender");
 const uidModel = require("../../model/princess/uid");
 const ianService = require("../../service/ianService");
 const guildService = require("../../service/guildService");
+const i18n = require("../../util/i18n");
 
 /**
  * 隊長綁定，綁定後可得知戰隊情報
@@ -84,6 +85,7 @@ exports.showClanInfo = async context => {
   let nearby = await getNearByData(server, rank);
 
   let response = [
+    `*${i18n.__("server." + server)}*`,
     `戰隊名稱：${clan_name}`,
     `隊長名稱：${leader_name}`,
     `目前分數：${damage}`,
