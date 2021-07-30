@@ -7,6 +7,9 @@ const cors = require("cors");
 const { server, http } = require("./src/util/connection");
 require("./src/router/socket");
 
+// set root path
+process.env.ROOT_PATH = __dirname;
+
 const app = bottender({
   dev: process.env.NODE_ENV !== "production",
 });
