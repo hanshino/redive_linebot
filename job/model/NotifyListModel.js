@@ -84,8 +84,9 @@ exports.recordSentId = id => {
  * 設置被動通知
  * @param {String} sourceId 來源ID
  * @param {Object} message 訊息物件
+ * @param {String} senderName 發送者姓名
  */
-exports.setPassiveNotify = (sourceId, message) => {
+exports.setPassiveNotify = (sourceId, message, senderName, senderIcon) => {
   let key = `${this.PASSIVE_PREFIX}${sourceId}`;
-  return redis.set(key, message, 86400);
+  return redis.set(key, { message, senderName, senderIcon }, 86400);
 };

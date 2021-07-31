@@ -156,7 +156,7 @@ async function procPrincessNews(tokenList) {
 }
 
 exports.queueNotify = async params => {
-  let { list: notify, message } = params;
+  let { list: notify, message, senderName, senderIcon } = params;
   let list = notify.split(",");
   let invalid = list.find(id => !verifyNotifyList(id));
   if (invalid) {
@@ -165,7 +165,11 @@ exports.queueNotify = async params => {
   }
 
   let objMessage = parseMessage(message);
-  await Promise.all(list.map(sourceId => NotifyListModel.setPassiveNotify(sourceId, objMessage)));
+  await Promise.all(
+    list.map(sourceId =>
+      NotifyListModel.setPassiveNotify(sourceId, objMessage, senderName, senderIcon)
+    )
+  );
 };
 
 function verifyNotifyList(id) {
@@ -190,10 +194,17 @@ exports.consumePassiveNotify = async () => {
       let token = await redis.get(tokenKey);
       if (!token) return;
 
-      let message = await redis.get(key);
+      let { message, senderName, senderIcon } = await redis.get(key);
       let response = Array.isArray(message) ? message : [message];
       response = fixFlexMessage(response);
-      CustomLogger.info(JSON.stringify(response));
+
+      if (senderName || senderIcon) {
+        response = response.map(res => ({
+          ...res,
+          sender: { name: senderName, iconUrl: senderIcon },
+        }));
+      }
+
       let result = await axios
         .post("bot/message/reply", {
           replyToken: token,
