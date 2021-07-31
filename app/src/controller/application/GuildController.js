@@ -196,11 +196,17 @@ function caclulateState(score) {
  * @param {Number} rank
  */
 async function getNearByData(server, rank) {
+  let nearby = await Promise.all([getRankData(server, rank - 1), getRankData(server, rank + 1)]);
+  return nearby;
+}
+
+/**
+ * 取得排名資料
+ * @param {Number} server
+ * @param {Number} rank
+ */
+async function getRankData(server, rank) {
   let page = Math.floor(rank / 20);
   let rankData = await ianService.getClanBattleRank({ server, page, ts: getLatestRecordTs() });
-
-  if (!rankData) return null;
-  let nearby = rankData.filter(data => [rank - 1, rank + 1].includes(data.rank));
-
-  return nearby;
+  return rankData.find(data => data.rank === rank);
 }
