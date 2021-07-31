@@ -1,6 +1,7 @@
 const CronJob = require("cron").CronJob;
 const script = require("./bin");
 
+let halfMinutesJob = new CronJob("*/20 * * * * *", script.Notify.consumePassiveNotify);
 let weekJob = new CronJob("0 0 3 * * 3", week);
 let monthJob = new CronJob("0 0 0 1 * *", script.Group.resetRecords);
 let dailyJob = new CronJob("0 0 0 * * *", daily);
@@ -8,7 +9,11 @@ let eventRunning = false;
 let eventJob = new CronJob("* * * * * *", async () => {
   if (eventRunning) return;
   eventRunning = true;
-  await script.Event.eventDequeue();
+  try {
+    await script.Event.eventDequeue();
+  } catch (err) {
+    console.error(err);
+  }
   eventRunning = false;
 });
 let updateRunning = false;
@@ -53,6 +58,7 @@ updateRecordJob.start();
 provideNotifyJob.start();
 consumeNotifyJob.start();
 rankingJob.start();
+halfMinutesJob.start();
 
 if (process.env.NODE_ENV !== "development") {
   spiderJob.start();

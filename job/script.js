@@ -11,7 +11,7 @@ async function main(mod, func) {
   const script = require("./bin/index");
 
   if (!mod && func && Object.prototype.hasOwnProperty.call(script, func)) {
-    await script[func]();
+    await script[func](args);
     console.timeEnd("script");
     return;
   } else if (!Object.prototype.hasOwnProperty.call(script, mod)) {
@@ -24,7 +24,7 @@ async function main(mod, func) {
     return;
   }
 
-  await script[mod][func]();
+  await script[mod][func](args);
 
   console.timeEnd("script");
 }

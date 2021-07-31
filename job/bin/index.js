@@ -22,7 +22,7 @@ exports.heartbeat = () => {
       now.getSeconds().toString().padStart(2, "0"),
     ].join(":");
 
-  notify.push({
+  return notify.push({
     message: `${strNow} 心跳ping-pong`,
     alert: false,
   });
