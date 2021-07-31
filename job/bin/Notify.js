@@ -154,3 +154,75 @@ async function procPrincessNews(tokenList) {
 
   CustomLogger.info("紀錄最新已發送過之公告, id = ", maxId);
 }
+
+exports.queueNotify = async params => {
+  let { list: notify, message } = params;
+  let list = notify.split(",");
+  let invalid = list.find(id => !verifyNotifyList(id));
+  if (invalid) {
+    console.error("list has invalid id", invalid);
+    return;
+  }
+
+  let objMessage = parseMessage(message);
+  await Promise.all(list.map(sourceId => NotifyListModel.setPassiveNotify(sourceId, objMessage)));
+};
+
+function verifyNotifyList(id) {
+  return /^[CUR][0-9a-f]{32}$/.test(id);
+}
+
+function parseMessage(message) {
+  try {
+    return JSON.parse(message);
+  } catch (e) {
+    return { type: "text", text: message };
+  }
+}
+
+exports.consumePassiveNotify = async () => {
+  let keys = await redis.keys(`${NotifyListModel.PASSIVE_PREFIX}*`);
+
+  await Promise.all(
+    keys.map(async key => {
+      let sourceId = key.replace(NotifyListModel.PASSIVE_PREFIX, "");
+      let tokenKey = `${NotifyListModel.REPLY_TOKEN_PREFIX}${sourceId}`;
+      let token = await redis.get(tokenKey);
+      if (!token) return;
+
+      let message = await redis.get(key);
+      let response = Array.isArray(message) ? message : [message];
+      response = fixFlexMessage(response);
+      CustomLogger.info(JSON.stringify(response));
+      let result = await axios
+        .post("bot/message/reply", {
+          replyToken: token,
+          messages: response,
+        })
+        .then(req => req.status === 200)
+        .catch(err => {
+          redis.del(tokenKey);
+          return false;
+        });
+
+      if (result) {
+        redis.del(key);
+        redis.del(tokenKey);
+        CustomLogger.info(`${sourceId} 發送完畢，清除資料`);
+      } else {
+        CustomLogger.info(`${sourceId} 發送失敗, 下次再發送`);
+      }
+    })
+  );
+};
+
+function fixFlexMessage(responses) {
+  return responses.map(res => {
+    if (["bubble", "carousel"].includes(res.type)) {
+      return { type: "flex", altText: "快訊消息", contents: res };
+    } else if (res.type === "flex") {
+      return res.altText ? res : { altText: "快訊消息", ...res };
+    }
+    return res;
+  });
+}

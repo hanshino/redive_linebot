@@ -6,6 +6,8 @@ const SUB_TYPE_REDIS_KEY = "SUBSCRIBE_TYPES";
 const NOTIFY_USER_REDIS_KEY = "NOTIFY_USER_QUEUE";
 const SENT_TABLE = "sent_bulletin";
 const BULLETIN_TABLE = "BulletIn";
+exports.PASSIVE_PREFIX = "PassiveNotify_";
+exports.REPLY_TOKEN_PREFIX = "ReplyToken_";
 
 /**
  * 取得通知列表
@@ -76,4 +78,14 @@ exports.getLatestNews = async () => {
  */
 exports.recordSentId = id => {
   return mysql.insert({ id }).into(SENT_TABLE);
+};
+
+/**
+ * 設置被動通知
+ * @param {String} sourceId 來源ID
+ * @param {Object} message 訊息物件
+ */
+exports.setPassiveNotify = (sourceId, message) => {
+  let key = `${this.PASSIVE_PREFIX}${sourceId}`;
+  return redis.set(key, message, 86400);
 };
