@@ -1,8 +1,11 @@
-name: remote ssh command
-on: [push]
+name: deploy to server
+on:
+  push:
+    branches:
+      - master
 jobs:
   build:
-    name: Build
+    name: Build and Deploy
     runs-on: ubuntu-latest
     steps:
       - name: executing remote ssh commands using password
@@ -13,5 +16,7 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           script: |
-            whoami
-            ls -al
+            cd application/redive_linebot
+            git pull origin master
+            docker-compose build
+            docker-compose up -d
