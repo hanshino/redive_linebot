@@ -19,3 +19,9 @@ jobs:
             cd application/redive_linebot
             git pull origin master
             bash scripts/run-task.sh traefik-run
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "{{ EVENT_PAYLOAD.repository.full_name }} 已完成部署"
