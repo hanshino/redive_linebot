@@ -3,7 +3,7 @@ const redis = require("../../util/redis");
 const fetch = require("node-fetch");
 const axios = require("axios").default;
 const nicknameAPI = "https://www.pay.so-net.tw/exchange/checkUser";
-const profileAPI = `${process.env.IAN_API_URL}/pcredive/profile`;
+const profileAPI = `${process.env.IAN_API_URL}/profile`;
 
 exports.table = "PrincessUID";
 
