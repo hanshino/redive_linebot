@@ -2,7 +2,9 @@ const { Context } = require("bottender");
 const uidModel = require("../../model/princess/uid");
 const ianService = require("../../service/ianService");
 const guildService = require("../../service/guildService");
-const i18n = require("../../util/i18n");
+const _ = require("lodash");
+const battleTemplate = require("../../templates/princess/guild/battle");
+const characterModel = require("../../model/princess/character");
 
 /**
  * 隊長綁定，綁定後可得知戰隊情報
@@ -73,45 +75,52 @@ exports.showClanInfo = async context => {
   let clanData = await ianService.getClanBattleRank({
     server,
     leader_uid: uid,
-    ts: getLatestRecordTs(),
+    month: getCurrentMonth(),
   });
 
   if (!clanData) {
     return context.sendText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名");
   }
 
-  let { clan_name, leader_name, damage, rank, ts } = clanData[0];
-  let { boss, week, stage } = caclulateState(damage);
-  let nearby = await getNearByData(server, rank);
+  let { clanName, leaderName, records, leaderFavoriteUnit: unitId } = clanData;
+  let latestRecord = _.last(records);
+  let { rank, ts, score } = latestRecord;
+  let status = caclulateState(score);
+  let nearby = await getNearByData(server, rank, ts);
 
-  let response = [
-    `*${i18n.__("server." + server)}*`,
-    `戰隊名稱：${clan_name}`,
-    `隊長名稱：${leader_name}`,
-    `目前分數：${damage}`,
-    `目前排名：${rank}`,
-    `戰隊狀況：${stage}階 ${week}周 ${boss}王`,
-    `紀錄時間：${new Date(ts * 1000).toLocaleString()}`,
-  ];
+  let nearbyBox = battleTemplate.genNearbyBox(
+    nearby.map(data => ({
+      rank: data.records.rank,
+      clanName: data.clanName,
+      status: caclulateState(data.records.score),
+      diff: data.records.score - score,
+    }))
+  );
 
-  let forward = nearby.find(data => data.rank === rank - 1);
-  let back = nearby.find(data => data.rank === rank + 1);
-  let nearResponse = [
-    `距離前一名還有 *${forward.damage - damage}* 分，對方為 *${forward.clan_name}*`,
-    `距離後一名還有 *${damage - back.damage}* 分，對方為 *${back.clan_name}*`,
-  ];
+  let bubble = battleTemplate.genGuildStatusBubble(
+    {
+      server,
+      leaderUnit: characterModel.transHeadImageSrc(unitId),
+      clanName,
+      leaderName,
+      rank,
+      score,
+      status,
+      ts,
+    },
+    nearbyBox
+  );
 
-  context.sendText(response.join("\n"));
-  context.sendText(nearResponse.join("\n"));
+  context.sendFlex("戰隊狀況", bubble);
 };
 
-function getLatestRecordTs() {
+function getCurrentMonth() {
   let now = new Date();
-  let min = now.getMinutes();
-  now.setMinutes(Math.floor(min / 20) * 20);
-  now.setSeconds(0);
+  // let month = now.getMonth() + 1;
+  let month = ("0" + now.getMonth()).slice(-2);
+  let year = now.getFullYear();
 
-  return Math.floor(now.getTime() / 1000);
+  return [year, month].join("");
 }
 
 /**
@@ -195,18 +204,30 @@ function caclulateState(score) {
  * @param {Number} server
  * @param {Number} rank
  */
-async function getNearByData(server, rank) {
-  let nearby = await Promise.all([getRankData(server, rank - 1), getRankData(server, rank + 1)]);
-  return nearby;
-}
+async function getNearByData(server, rank, ts) {
+  let nearRank = [rank - 1, rank, rank + 1];
+  let hasTop = nearRank.includes(0);
+  let hasBottom = nearRank.includes(201);
 
-/**
- * 取得排名資料
- * @param {Number} server
- * @param {Number} rank
- */
-async function getRankData(server, rank) {
-  let page = Math.floor(rank / 20);
-  let rankData = await ianService.getClanBattleRank({ server, page, ts: getLatestRecordTs() });
-  return rankData.find(data => data.rank === rank);
+  // 頂到天或地都要修正附近排名
+  if (hasTop) {
+    nearRank = nearRank.map(r => r + 1);
+  } else if (hasBottom) {
+    nearRank = nearRank.map(r => r - 1);
+  }
+
+  let pages = _.uniq(nearRank.map(r => Math.floor(r / 20)));
+
+  let data = await Promise.all(
+    pages.map(page => ianService.getClanBattleServerRank({ server, page, ts_start: ts }))
+  );
+
+  let nearby = [];
+  data.forEach(d => {
+    // 將多分頁的紀錄，抓取出附近的排名塞進`nearby`
+    let result = d.filter(v => nearRank.includes(v.records.rank));
+    nearby = _.concat(nearby, result);
+  });
+
+  return nearby;
 }
