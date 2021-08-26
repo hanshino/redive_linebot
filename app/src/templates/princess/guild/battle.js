@@ -1,4 +1,6 @@
 const { getLiffUri, assemble } = require("../../common");
+const i18n = require("../../../util/i18n");
+const datefromat = require("dateformat");
 
 exports.sendSignFeedback = (context, template, data, sender) => {
   return context.sendText(assemble(data, template), { sender });
@@ -1097,6 +1099,281 @@ function genMemberRow(memberData) {
         type: "text",
         text: strDate,
         flex: 5,
+      },
+    ],
+  };
+}
+
+/**
+ * 產出戰隊狀態的泡泡
+ * @param {Object} data 資料
+ * @param {Number} data.server
+ * @param {String} data.leaderUnit
+ * @param {String} data.clanName
+ * @param {String} data.leaderName
+ * @param {Number} data.rank
+ * @param {Number} data.score
+ * @param {Object} data.status
+ * @param {Number} data.status.boss
+ * @param {Number} data.status.week
+ * @param {Number} data.status.stage
+ * @param {Number} data.ts
+ * @param {Object} nearbyBox 由`genNearbyBox`產生的資料
+ */
+exports.genGuildStatusBubble = (data, nearbyBox) => {
+  let { leaderUnit, clanName, leaderName, rank, score, status, ts, server } = data;
+  let scoreText = new Intl.NumberFormat("en").format(score);
+  let date = datefromat(new Date(ts * 1000), "yyyy-mm-dd HH:MM");
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "image",
+                  url: leaderUnit,
+                  size: "sm",
+                  flex: 1,
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      text: i18n.__("server." + server),
+                    },
+                    {
+                      type: "text",
+                      text: clanName,
+                      adjustMode: "shrink-to-fit",
+                      weight: "bold",
+                    },
+                    {
+                      type: "text",
+                      contents: [
+                        {
+                          type: "span",
+                          text: "隊長",
+                        },
+                        {
+                          type: "span",
+                          text: " ",
+                        },
+                        {
+                          type: "span",
+                          text: leaderName,
+                        },
+                      ],
+                      size: "sm",
+                    },
+                  ],
+                  flex: 3,
+                  paddingStart: "md",
+                },
+              ],
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "text",
+                  contents: [
+                    {
+                      type: "span",
+                      text: "目前排名",
+                    },
+                    {
+                      type: "span",
+                      text: " ",
+                    },
+                    {
+                      type: "span",
+                      text: `${rank}`,
+                    },
+                  ],
+                  size: "sm",
+                },
+                {
+                  type: "text",
+                  contents: [
+                    {
+                      type: "span",
+                      text: "目前分數",
+                    },
+                    {
+                      type: "span",
+                      text: " ",
+                    },
+                    {
+                      type: "span",
+                      text: scoreText,
+                    },
+                  ],
+                  size: "sm",
+                },
+                {
+                  type: "text",
+                  contents: [
+                    {
+                      type: "span",
+                      text: "目前狀態",
+                    },
+                    {
+                      type: "span",
+                      text: " ",
+                    },
+                    {
+                      type: "span",
+                      text: i18n.__("battle.status", status),
+                    },
+                  ],
+                  size: "sm",
+                },
+                {
+                  type: "text",
+                  contents: [
+                    {
+                      type: "span",
+                      text: "紀錄時間",
+                    },
+                    {
+                      type: "span",
+                      text: " ",
+                    },
+                    {
+                      type: "span",
+                      text: date,
+                    },
+                  ],
+                  size: "sm",
+                },
+              ],
+              spacing: "xs",
+              paddingAll: "xs",
+            },
+          ],
+          // borderWidth: "light",
+          // borderColor: "#808080",
+          // cornerRadius: "sm",
+          paddingAll: "md",
+        },
+        {
+          type: "separator",
+          color: "#808080",
+        },
+        nearbyBox,
+      ],
+    },
+  };
+};
+
+/**
+ * 產出附近排名資料Box
+ * @param {Array<{rank: Number, clanName: String, status: Object, diff: Number}>} data 資料
+ */
+exports.genNearbyBox = data => {
+  let rows = data.map(genNearbyRow);
+  return {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "text",
+            text: "#",
+            flex: 1,
+            weight: "bold",
+            align: "center",
+          },
+          {
+            type: "text",
+            text: "戰隊",
+            flex: 4,
+            weight: "bold",
+          },
+          {
+            type: "text",
+            text: "狀態",
+            flex: 3,
+            weight: "bold",
+          },
+        ],
+      },
+      ...rows,
+    ],
+    // borderWidth: "light",
+    // borderColor: "#006412",
+    paddingAll: "md",
+    // cornerRadius: "sm",
+    margin: "sm",
+  };
+};
+
+function genNearbyRow({ rank, clanName, status, diff }) {
+  let color = "#808080";
+  let diffText = "－";
+  if (diff > 0) {
+    diffText = `+${new Intl.NumberFormat("en").format(diff)}`;
+    color = "#00CA12";
+  } else if (diff < 0) {
+    diffText = `${new Intl.NumberFormat("en").format(diff)}`;
+    color = "#CA1200";
+  }
+  return {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: `${rank}`,
+        flex: 1,
+        size: "xs",
+        align: "center",
+      },
+      {
+        type: "text",
+        text: `${clanName}`,
+        flex: 4,
+        size: "xs",
+      },
+      {
+        type: "text",
+        flex: 3,
+        size: "xs",
+        contents: [
+          {
+            type: "span",
+            text: i18n.__("battle.status", status),
+          },
+          {
+            type: "span",
+            text: "\n(",
+          },
+          {
+            type: "span",
+            text: `${diffText}`,
+            color,
+          },
+          {
+            type: "span",
+            text: ")",
+          },
+        ],
+        wrap: true,
       },
     ],
   };
