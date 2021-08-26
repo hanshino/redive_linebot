@@ -5,6 +5,7 @@ const guildService = require("../../service/guildService");
 const _ = require("lodash");
 const battleTemplate = require("../../templates/princess/guild/battle");
 const characterModel = require("../../model/princess/character");
+const datefromat = require("dateformat");
 
 /**
  * 隊長綁定，綁定後可得知戰隊情報
@@ -29,27 +30,27 @@ exports.leaderBinding = async (context, props) => {
   }
 
   let { server, uid } = bindData;
-  let latestRecordTs = getLatestRecordTs();
-
   const clanData = await ianService.getClanBattleRank({
     server,
     leader_uid: uid,
-    ts: latestRecordTs,
+    month: getCurrentMonth(),
   });
 
   if (!clanData || clanData.length === 0) {
     return context.sendText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名\n2. 綁定者非隊長");
   }
 
-  let { clan_name, leader_viewer_id, leader_name, damage } = clanData[0];
+  let { clanName, leaderName, records } = clanData;
+  let latestRecord = _.last(records);
+  let { score } = latestRecord;
   let result = await guildService.updateByGuildId(groupId, {
-    name: clan_name,
-    uid: leader_viewer_id,
+    name: clanName,
+    uid,
   });
 
   if (result) {
     context.sendText(
-      [`綁定成功，戰隊名稱：${clan_name}`, `目前分數：${damage}`, `隊長名稱：${leader_name}`].join(
+      [`綁定成功，戰隊名稱：${clanName}`, `目前分數：${score}`, `隊長名稱：${leaderName}`].join(
         "\n"
       )
     );
@@ -79,7 +80,7 @@ exports.showClanInfo = async context => {
   });
 
   if (!clanData) {
-    return context.sendText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名");
+    return context.sendText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名\n2. 尚未開始戰隊戰");
   }
 
   let { clanName, leaderName, records, leaderFavoriteUnit: unitId } = clanData;
@@ -116,11 +117,7 @@ exports.showClanInfo = async context => {
 
 function getCurrentMonth() {
   let now = new Date();
-  // let month = now.getMonth() + 1;
-  let month = ("0" + now.getMonth()).slice(-2);
-  let year = now.getFullYear();
-
-  return [year, month].join("");
+  return datefromat(now, "yyyymm");
 }
 
 /**

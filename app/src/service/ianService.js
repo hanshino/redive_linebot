@@ -1,4 +1,5 @@
 const axios = require("axios").default;
+const { DefaultLogger } = require("../util/Logger");
 
 /**
  * 抓取特定戰隊的目前資訊
@@ -9,6 +10,11 @@ const axios = require("axios").default;
  * @return {Promise<Array|null>}
  */
 exports.getClanBattleRank = params => {
+  DefaultLogger.info(
+    `fetch => ${process.env.IAN_API_URL}/clan/ranking/${
+      params.server
+    }/search, params => ${JSON.stringify(params)}`
+  );
   return axios
     .get(`${process.env.IAN_API_URL}/clan/ranking/${params.server}/search`, {
       params,
@@ -29,6 +35,11 @@ exports.getClanBattleRank = params => {
  * @returns {Promise<Array|null>}
  */
 exports.getClanBattleServerRank = params => {
+  DefaultLogger.info(
+    `fetch => ${process.env.IAN_API_URL}/clan/ranking/${params.server}, params => ${JSON.stringify(
+      params
+    )}`
+  );
   return axios
     .get(`${process.env.IAN_API_URL}/clan/ranking/${params.server}`, {
       params,
