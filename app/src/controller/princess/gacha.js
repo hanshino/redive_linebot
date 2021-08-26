@@ -5,6 +5,7 @@ const GachaTemplate = require("../../templates/princess/gacha");
 const { recordSign } = require("../../util/traffic");
 const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
 const redis = require("../../util/redis");
+const { DefaultLogger } = require("../../util/Logger");
 
 function GachaException(message, code) {
   this.message = message;
@@ -120,11 +121,26 @@ async function isAble(userId, groupId) {
   return false;
 }
 
+/**
+ * 將轉蛋池3*機率調升
+ * @param {Array} pool
+ */
+function makePickup(pool, rate = 50) {
+  return pool.map(data => {
+    if (data.star !== "3") return data;
+    return {
+      ...data,
+      rate: `${(parseFloat(data.rate) * (100 + rate)) / 100}%`,
+    };
+  });
+}
+
 module.exports = {
-  play: async function (context, { match }) {
+  play: async function (context, { match, pickup }) {
     recordSign("GachaPlay");
     try {
       var { tag, times } = match.groups;
+      let { userId } = context.event.source;
 
       // 群組關閉轉蛋功能
       if (context.state.guildConfig.Gacha === "N") return;
@@ -138,6 +154,29 @@ module.exports = {
 
       const gachaPool = await GachaModel.getDatabasePool();
       var filtPool = filterPool(gachaPool, tag);
+      // 公主池
+      let isPrincessPool = filtPool.findIndex(pool => pool.isPrincess === 0) === -1;
+      // 每日轉蛋過了沒
+      let hasDaily = await GachaModel.getSignin(userId);
+      // 複合判斷
+      let canDailyGacha = userId && !hasDaily && isPrincessPool;
+      let OwnGodStone = 0;
+      let costGodStone = 0;
+
+      if (canDailyGacha) {
+        OwnGodStone = await GachaModel.getUserGodStoneCount(userId);
+        // 戳個紀錄
+        GachaModel.touchSingin(userId);
+      }
+
+      if (canDailyGacha && pickup && OwnGodStone >= 1500) {
+        // 如果使用消耗抽，扣除女神石並且機率提升，前提是女神石要有1500顆
+        filtPool = makePickup(filtPool, 50);
+        costGodStone = 1500;
+        DefaultLogger.info(`${userId} 使用了消耗抽，扣除1500顆女神石，並且機率提升！`);
+        await InventoryModel.deleteItem(userId, 999);
+        await InventoryModel.insertItem(userId, 999, OwnGodStone - 1500);
+      }
 
       times = (times || "10").length >= 3 ? 10 : parseInt(times);
       times = 10; // 暫定恆為10
@@ -151,19 +190,17 @@ module.exports = {
           rareCount[reward.star] = rareCount[reward.star] || 0;
           rareCount[reward.star]++;
         });
+        // 保底機制，全銀就重抽
       } while (rareCount[1] === 10);
 
-      var { userId } = context.event.source;
-      var DailyGachaInfo = false;
-
-      if (rewards.findIndex(reward => reward.isPrincess == 0) === -1 && userId) {
-        var gachaSignin = await GachaModel.getSignin(userId);
-        if (gachaSignin === undefined) {
-          GachaModel.touchSingin(userId);
-          let OwnGodStone = await GachaModel.getUserGodStoneCount(userId);
-          DailyGachaInfo = await recordToInventory(userId, rewards);
-          DailyGachaInfo.OwnGodStone = OwnGodStone;
-        }
+      let DailyGachaInfo = false;
+      if (canDailyGacha) {
+        DailyGachaInfo = await recordToInventory(userId, rewards);
+        DailyGachaInfo = {
+          ...DailyGachaInfo,
+          OwnGodStone,
+          costGodStone,
+        };
       }
 
       GachaTemplate.line.showGachaResult(
