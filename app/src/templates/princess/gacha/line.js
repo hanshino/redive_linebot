@@ -44,9 +44,17 @@ function genGachaContent(rewards) {
  * @param {Number}  DailyGachaInfo.GodStoneAmount
  * @param {Number}  DailyGachaInfo.collectedCount
  * @param {Number}  DailyGachaInfo.allCount
- * @param {Number}  DailyGachaInfo.OwnGodStone
+ * @param {Number}  DailyGachaInfo.OwnGodStone  擁有女神石
+ * @param {Number}  DailyGachaInfo.costGodStone 消耗女神石
  */
-function genDailyGacha({ NewCharacters, GodStoneAmount, collectedCount, allCount, OwnGodStone }) {
+function genDailyGacha({
+  NewCharacters,
+  GodStoneAmount,
+  collectedCount,
+  allCount,
+  OwnGodStone,
+  costGodStone,
+}) {
   var collectRate = Math.round((collectedCount / allCount) * 10000) / 100;
   var bubble = {
     type: "bubble",
@@ -101,7 +109,9 @@ function genDailyGacha({ NewCharacters, GodStoneAmount, collectedCount, allCount
                   contents: [
                     {
                       type: "span",
-                      text: `獲得女神石：${OwnGodStone} + ${GodStoneAmount}`,
+                      text: `獲得女神石：${OwnGodStone} + ${GodStoneAmount} ${
+                        costGodStone ? `- ${costGodStone}` : ""
+                      }`,
                     },
                   ],
                 },

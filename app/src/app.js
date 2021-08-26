@@ -78,6 +78,9 @@ async function OrderBased(context, { next }) {
     ...ArenaContoroller.router(context),
     text(/^[#.](使用說明|help)$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
+    text(/^[#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
+      gacha.play(context, { ...props, pickup: true })
+    ),
     text("/state", showState),
     text("/resetstate", context => context.resetState()),
     text("/traffic", function () {

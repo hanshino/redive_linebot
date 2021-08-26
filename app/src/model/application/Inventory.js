@@ -2,14 +2,20 @@ const mysql = require("../../util/mysql");
 
 exports.tableName = "Inventory";
 
+exports.query = () => mysql(this.tableName);
+
 /**
  * 新增一筆物品紀錄
  * @param {String} userId
- * @param {String} itemId
+ * @param {Number} itemId
  * @param {Number} itemAmount
  */
 exports.insertItem = (userId, itemId, itemAmount) => {
   return this.insertItems([{ userId, itemId, itemAmount }]);
+};
+
+exports.deleteItem = (userId, itemId) => {
+  return mysql(this.tableName).where("userId", userId).where("itemId", itemId).del();
 };
 
 /**
