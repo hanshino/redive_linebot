@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS `arena_like_records` (
   `is_upload_image` varchar(1) NOT NULL DEFAULT '0' COMMENT '1:有上傳佐證、0:無上傳純按鈕',
   PRIMARY KEY (`attack_hash`,`defense_hash`,`userId`),
   KEY `IDX_MERGE_HASH` (`merge_hash`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -64,10 +64,10 @@ CREATE TABLE IF NOT EXISTS `arena_records` (
   `right_hash` varchar(255) NOT NULL,
   `left_team` json NOT NULL COMMENT '左圖隊伍（自己）',
   `right_team` json NOT NULL COMMENT '右圖隊伍（對方）',
-  `left_result` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '左圖勝負，1:勝利、0:失敗',
-  `right_result` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '右圖勝負，1:勝利、0:失敗',
-  `left_type` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '左圖類型，1:進攻、2:防守',
-  `right_type` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '右圖類型，1:進攻、2:防守',
+  `left_result` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '左圖勝負，1:勝利、0:失敗',
+  `right_result` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '右圖勝負，1:勝利、0:失敗',
+  `left_type` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '左圖類型，1:進攻、2:防守',
+  `right_type` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '右圖類型，1:進攻、2:防守',
   `author_id` varchar(255) NOT NULL COMMENT '紀錄作者id',
   `source_id` varchar(255) NOT NULL COMMENT '紀錄來源id，作為是否分享的依據',
   `is_share` varchar(1) NOT NULL COMMENT '1:分享、0:自用',
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `arena_records` (
   PRIMARY KEY (`id`),
   KEY `left_hash` (`left_hash`),
   KEY `right_hash` (`right_hash`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='紀錄競技場勝負';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='紀錄競技場勝負';
 
 -- --------------------------------------------------------
 
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS `BulletIn` (
   `date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `url` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='公主公告儲存';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='公主公告儲存';
 
 -- --------------------------------------------------------
 
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS `chat_exp_unit` (
   `unit_level` int NOT NULL,
   `total_exp` int NOT NULL,
   PRIMARY KEY (`unit_level`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='聊天經驗單位';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天經驗單位';
 
 --
 -- 資料表新增資料前，先清除舊資料 `chat_exp_unit`
@@ -300,7 +300,7 @@ CREATE TABLE IF NOT EXISTS `chat_level_title` (
   `title` varchar(255) NOT NULL,
   `title_range` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='聊天等級稱號';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天等級稱號';
 
 --
 -- 資料表新增資料前，先清除舊資料 `chat_level_title`
@@ -337,7 +337,7 @@ CREATE TABLE IF NOT EXISTS `chat_range_title` (
   `id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='級距頭銜前贅';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='級距頭銜前贅';
 
 --
 -- 資料表新增資料前，先清除舊資料 `chat_range_title`
@@ -372,7 +372,7 @@ CREATE TABLE IF NOT EXISTS `chat_user_data` (
   `modify_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `rank` int NOT NULL DEFAULT '99999',
   UNIQUE KEY `id` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='聊天制度用戶經驗';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天制度用戶經驗';
 
 -- --------------------------------------------------------
 
@@ -399,7 +399,7 @@ CREATE TABLE IF NOT EXISTS `CustomerOrder` (
   `TouchDTM` datetime DEFAULT NULL,
   PRIMARY KEY (`ID`),
   KEY `IDX_CustOrderSource` (`SourceId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -495,7 +495,7 @@ CREATE TABLE IF NOT EXISTS `GuildBattleConfig` (
   `SignMessage` varchar(255) NOT NULL,
   `modify_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`GuildId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='紀錄戰隊系統設定';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='紀錄戰隊系統設定';
 
 -- --------------------------------------------------------
 
@@ -510,7 +510,7 @@ CREATE TABLE IF NOT EXISTS `GuildBattleFinish` (
   `CreateDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '新增日期',
   PRIMARY KEY (`id`),
   KEY `idxUserId` (`UserId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -611,7 +611,7 @@ CREATE TABLE IF NOT EXISTS `MessageRecord` (
   `MR_UNSEND` int DEFAULT '0' COMMENT '訊息收回次數',
   `MR_MODIFYDTM` datetime DEFAULT NULL,
   PRIMARY KEY (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='訊息數據紀錄';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='訊息數據紀錄';
 
 -- --------------------------------------------------------
 
@@ -621,13 +621,13 @@ CREATE TABLE IF NOT EXISTS `MessageRecord` (
 
 CREATE TABLE IF NOT EXISTS `notify_list` (
   `id` int NOT NULL COMMENT '跟User編號一樣',
-  `type` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '類型，1:Line Notify、2:Discord Webhook',
-  `token` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '根據type儲存不同token',
+  `type` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '類型，1:Line Notify、2:Discord Webhook',
+  `token` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '根據type儲存不同token',
   `sub_type` int NOT NULL DEFAULT '0',
-  `status` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '1' COMMENT '1:開啟、0:關閉',
+  `status` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '1' COMMENT '1:開啟、0:關閉',
   `modify_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改時間',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='訂閱系統token紀錄';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='訂閱系統token紀錄';
 
 -- --------------------------------------------------------
 
@@ -643,7 +643,7 @@ CREATE TABLE IF NOT EXISTS `PrincessUID` (
   `createDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '新增時間',
   PRIMARY KEY (`uid`,`server`),
   UNIQUE KEY `userId_UNIQUE` (`userId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='提供使用者綁定公主連結UID';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='提供使用者綁定公主連結UID';
 
 -- --------------------------------------------------------
 
@@ -655,7 +655,7 @@ CREATE TABLE IF NOT EXISTS `sent_bulletin` (
   `id` int NOT NULL,
   `create_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='紀錄已發送的公告';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='紀錄已發送的公告';
 
 -- --------------------------------------------------------
 
@@ -669,7 +669,7 @@ CREATE TABLE IF NOT EXISTS `subscribe_type` (
   `title` varchar(255) NOT NULL,
   `description` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- 資料表新增資料前，先清除舊資料 `subscribe_type`
@@ -699,7 +699,7 @@ CREATE TABLE IF NOT EXISTS `TotalEventTimes` (
   `TET_VIDEO` int NOT NULL COMMENT '影片訊息次數',
   `TET_UNSEND` int NOT NULL COMMENT '收回次數',
   PRIMARY KEY (`TET_DATE`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='每月份事件總數紀錄';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='每月份事件總數紀錄';
 
 -- --------------------------------------------------------
 
@@ -731,7 +731,7 @@ CREATE TABLE IF NOT EXISTS `web_announcement` (
   `level` varchar(20) NOT NULL,
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

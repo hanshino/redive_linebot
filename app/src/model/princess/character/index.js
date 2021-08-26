@@ -35,6 +35,14 @@ exports.getHeadImage = (unitId, star) => {
   return `https://pcredivewiki.tw/static/images/unit/icon_unit_${id}.png`;
 };
 
+/**
+ * 直接產生頭像連結
+ * @param {Number} id
+ */
+exports.transHeadImageSrc = id => {
+  return `https://pcredivewiki.tw/static/images/unit/icon_unit_${id}.png`;
+};
+
 function genChatacterIds() {
   characterIds = CharacterDatas.map(data => parseInt(data.unitId));
 }
