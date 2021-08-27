@@ -6,6 +6,7 @@ const { recordSign } = require("../../util/traffic");
 const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
 const redis = require("../../util/redis");
 const { DefaultLogger } = require("../../util/Logger");
+const { Context } = require("bottender");
 
 function GachaException(message, code) {
   this.message = message;
@@ -136,6 +137,11 @@ function makePickup(pool, rate = 50) {
 }
 
 module.exports = {
+  /**
+   * @param {Context} context
+   * @param {import("bottender/dist/types").Props} param
+   * @returns
+   */
   play: async function (context, { match, pickup }) {
     recordSign("GachaPlay");
     try {
@@ -201,6 +207,11 @@ module.exports = {
           OwnGodStone,
           costGodStone,
         };
+      }
+
+      // 沒扣女神石，卻使用消耗抽，提示用戶沒有扣也沒加倍
+      if (costGodStone === 0 && pickup) {
+        context.sendText("女神石不足！此次轉蛋機率不調升～");
       }
 
       GachaTemplate.line.showGachaResult(
