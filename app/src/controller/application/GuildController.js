@@ -83,7 +83,7 @@ exports.showClanInfo = async context => {
     return context.sendText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名\n2. 尚未開始戰隊戰");
   }
 
-  let { clanName, leaderName, records, leaderFavoriteUnit: unitId } = clanData;
+  let { clanName, leaderName, records, leaderFavoriteUnit: unitId, leaderHash } = clanData;
   let latestRecord = _.last(records);
   let { rank, ts, score } = latestRecord;
   let status = caclulateState(score);
@@ -112,7 +112,12 @@ exports.showClanInfo = async context => {
     nearbyBox
   );
 
-  context.sendFlex("戰隊狀況", bubble);
+  let pannelBubble = battleTemplate.genGuildStatusPanel(server, leaderHash);
+
+  context.sendFlex("戰隊狀況", {
+    type: "carousel",
+    contents: [bubble, pannelBubble],
+  });
 };
 
 function getCurrentMonth() {

@@ -1298,18 +1298,21 @@ exports.genNearbyBox = data => {
             flex: 1,
             weight: "bold",
             align: "center",
+            size: "sm",
           },
           {
             type: "text",
             text: "戰隊",
             flex: 4,
             weight: "bold",
+            size: "sm",
           },
           {
             type: "text",
             text: "狀態",
             flex: 3,
             weight: "bold",
+            size: "sm",
           },
         ],
       },
@@ -1378,3 +1381,39 @@ function genNearbyRow({ rank, clanName, status, diff }) {
     ],
   };
 }
+
+/**
+ * 產出戰隊狀態選單按鈕
+ * @param {Number} server
+ * @param {String} leaderHash
+ */
+exports.genGuildStatusPanel = (server, leaderHash) => {
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "button",
+          action: {
+            type: "uri",
+            label: "戰隊詳細",
+            uri: `https://randosoru.me/clanRanking/#/clan/${server}/${leaderHash}`,
+          },
+          style: "secondary",
+        },
+        {
+          type: "button",
+          action: {
+            type: "uri",
+            label: "全服排行",
+            uri: `https://randosoru.me/clanRanking/#/?server=${server}`,
+          },
+          style: "secondary",
+        },
+      ],
+      spacing: "sm",
+    },
+  };
+};
