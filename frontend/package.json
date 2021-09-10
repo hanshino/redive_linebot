@@ -1,6 +1,6 @@
 {
   "name": "bottender_view",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "dependencies": {
     "@devexpress/dx-react-chart": "^2.7.6",

@@ -1,6 +1,6 @@
 {
   "name": "job",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "進行 redive-linebot 排程任務",
   "main": "index.js",
   "scripts": {
