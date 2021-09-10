@@ -1,6 +1,6 @@
 {
   "name": "job",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "進行 redive-linebot 排程任務",
   "main": "index.js",
   "scripts": {
@@ -13,14 +13,14 @@
   "author": "hanshino@pchome.tw",
   "license": "ISC",
   "dependencies": {
-    "@line/bot-sdk": "^7.3.0",
-    "axios": "^0.21.2",
+    "@line/bot-sdk": "^7.4.0",
+    "axios": "^0.21.4",
     "cheerio": "^1.0.0-rc.10",
     "cron": "^1.8.2",
-    "knex": "^0.95.6",
+    "knex": "^0.95.11",
     "log4js": "^6.3.0",
     "minimist": "^1.2.5",
-    "mysql2": "^2.2.5",
+    "mysql2": "^2.3.0",
     "redis": "^3.1.2"
   },
   "devDependencies": {
