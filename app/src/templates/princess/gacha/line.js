@@ -209,6 +209,117 @@ function genDailyGacha({
   return bubble;
 }
 
+/**
+ * 產出轉蛋資訊
+ * @param {Object} param
+ * @param {Number} param.current 目前搜集角色數量
+ * @param {Number} param.total  總共有多少角色
+ * @param {Number} param.godStone 女神石數量
+ */
+function genGachaStatus({ current = 0, total, godStone = 0 }) {
+  return {
+    type: "bubble",
+    header: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: "每日一抽進度",
+          weight: "bold",
+          align: "center",
+        },
+      ],
+      paddingBottom: "0px",
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "蒐集角色",
+              flex: 2,
+              size: "sm",
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [],
+                  height: "10px",
+                  backgroundColor: "#FFABCD",
+                  width: `${Math.round((current / total) * 100)}%`,
+                },
+              ],
+              backgroundColor: "#80808080",
+              flex: 4,
+              height: "10px",
+              cornerRadius: "md",
+            },
+            {
+              type: "text",
+              contents: [
+                {
+                  type: "span",
+                  text: `${current}`,
+                },
+                {
+                  type: "span",
+                  text: "/",
+                },
+                {
+                  type: "span",
+                  text: `${total}`,
+                },
+              ],
+              size: "xs",
+              flex: 2,
+              align: "end",
+            },
+          ],
+          paddingTop: "md",
+          paddingBottom: "md",
+          spacing: "sm",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              contents: [
+                {
+                  type: "span",
+                  text: "女神石",
+                },
+                {
+                  type: "span",
+                  text: " ",
+                },
+                {
+                  type: "span",
+                  text: `${godStone}`,
+                },
+              ],
+              size: "sm",
+            },
+          ],
+          paddingTop: "md",
+          paddingBottom: "md",
+        },
+      ],
+    },
+  };
+}
+
 module.exports = {
   /**
    * 發送轉蛋結果訊息
@@ -283,4 +394,6 @@ module.exports = {
       });
     }
   },
+
+  genGachaStatus,
 };
