@@ -4,9 +4,14 @@ const { DefaultLogger } = require("../../util/Logger");
 const UserModel = require("../../model/application/UserModel");
 const { getClient } = require("bottender");
 const LineClient = getClient("line");
+const GachaModel = require("../../model/princess/gacha");
+const GachaTemplate = require("../../templates/princess/gacha").line;
+const NotifyController = require("./NotifyController");
+const uidModel = require("../../model/princess/uid");
+const ProfileTemplate = require("../../templates/application/Profile");
 
 /**
- * 顯示個人狀態
+ * 顯示個人狀態，現複合了其他布丁系統的資訊
  * @param {Context} context
  */
 exports.showStatus = async context => {
@@ -31,7 +36,22 @@ exports.showStatus = async context => {
       expRate = Math.round(((exp - nowExpData.exp) / (nextExpData.exp - nowExpData.exp)) * 100);
     }
 
-    ChatLevelTemplate.showStatus(context, {
+    let [current, total, godStone, subInfo, bindInfo] = await Promise.all([
+      GachaModel.getUserCollectedCharacterCount(userId),
+      GachaModel.getPrincessCharacterCount(),
+      GachaModel.getUserGodStoneCount(userId),
+      NotifyController.getData(userId),
+      uidModel.getData(userId),
+    ]);
+
+    if (subInfo) {
+      subInfo = NotifyController.getSubData(subInfo.subType);
+    } else {
+      subInfo = NotifyController.getSubData(0);
+    }
+
+    const bubbles = [];
+    const chatlevelBubble = ChatLevelTemplate.showStatus({
       displayName,
       range,
       rank,
@@ -41,6 +61,11 @@ exports.showStatus = async context => {
       expRate,
       exp,
     });
+    const gachaBubble = GachaTemplate.genGachaStatus({ current, total, godStone });
+    const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo, subInfo });
+    bubbles.push(chatlevelBubble, gachaBubble, otherBubble);
+
+    context.sendFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
 
     if (!level) {
       context.sendText("尚未有任何數據，經驗開始累積後即可投胎！");

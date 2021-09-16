@@ -1,7 +1,7 @@
-exports.showStatus = (context, param) => {
+exports.showStatus = param => {
   let { displayName, range, rank, level, ranking, expRate, pictureUrl, exp } = param;
 
-  context.sendFlex(`${displayName}的狀態`, {
+  return {
     type: "bubble",
     header: {
       type: "box",
@@ -133,7 +133,7 @@ exports.showStatus = (context, param) => {
         },
       ],
     },
-  });
+  };
 };
 
 /**
