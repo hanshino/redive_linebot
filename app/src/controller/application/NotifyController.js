@@ -214,3 +214,6 @@ function getSubType(switchArray) {
 function getSubSwitch() {
   return Array.from({ length: SubscribeType.length }).map(() => "0");
 }
+
+exports.getSubData = getSubData;
+exports.getData = getData;
