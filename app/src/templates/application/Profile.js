@@ -55,10 +55,7 @@ exports.genOtherInformations = ({ bindInfo, subInfo }) => {
               type: "box",
               layout: "horizontal",
               contents: [
-                ...subInfo.map(info => {
-                  console.log(info);
-                  return genSubComponent(info.status === 1, info.title);
-                }),
+                ...subInfo.map(info => genSubComponent(info.status === 1, info.title)),
               ],
             },
           ],
