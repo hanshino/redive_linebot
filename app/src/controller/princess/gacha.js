@@ -161,7 +161,7 @@ module.exports = {
       const gachaPool = await GachaModel.getDatabasePool();
       var filtPool = filterPool(gachaPool, tag);
       // 公主池
-      let isPrincessPool = filtPool.findIndex(pool => pool.isPrincess === 0) === -1;
+      let isPrincessPool = filtPool.findIndex(pool => pool.isPrincess == 0) === -1;
       // 每日轉蛋過了沒
       let hasDaily = await GachaModel.getSignin(userId);
       // 複合判斷
