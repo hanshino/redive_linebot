@@ -18,7 +18,7 @@ jobs:
           script: |
             cd application/redive_linebot
             git pull origin master
-            bash scripts/run-task.sh traefik-run
+            bash scripts/run-tasks.sh traefik-run
       - name: Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
