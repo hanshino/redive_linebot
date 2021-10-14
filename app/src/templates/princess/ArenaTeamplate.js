@@ -8,14 +8,14 @@ exports.showUploadInfo = (context, info) => {
     `右方：${info.right.team.map(char => char.name).join(" ")} *${isSuccess[info.right.result]}*`
   );
 
-  context.sendText(messages.join("\n"));
+  context.replyText(messages.join("\n"));
 };
 /**
  * 詢問是否繼續操作
  * @param {Context} context
  */
 exports.askContinue = context => {
-  context.sendFlex("操作面板", {
+  context.replyFlex("操作面板", {
     type: "bubble",
     body: {
       type: "box",
@@ -23,8 +23,7 @@ exports.askContinue = context => {
       contents: [
         {
           type: "image",
-          url:
-            "https://cdn.discordapp.com/attachments/798811827772981268/811631089813684264/106400601.png",
+          url: "https://cdn.discordapp.com/attachments/798811827772981268/811631089813684264/106400601.png",
           size: "full",
           offsetTop: "0px",
           aspectMode: "cover",
@@ -135,8 +134,8 @@ exports.askContinue = context => {
 };
 
 exports.showSearchNoneData = (context, searchTeam) => {
-  context.sendFlex("查無結果", genSearchCover(searchTeam));
-  context.sendText("很抱歉，查無此陣容的解法！");
+  context.replyFlex("查無結果", genSearchCover(searchTeam));
+  context.replyText("很抱歉，查無此陣容的解法！");
 };
 
 /**
@@ -243,7 +242,7 @@ exports.showSearchResult = (context, searchTeam, resultTeams) => {
     contents: [genSearchCover(searchTeam), ...bubbles],
   };
 
-  context.sendFlex("競技場查詢結果", flexMessage);
+  context.replyFlex("競技場查詢結果", flexMessage);
 };
 
 /**
@@ -259,8 +258,7 @@ function genSearchCover(searchTeam) {
       contents: [
         {
           type: "image",
-          url:
-            "https://cdn.discordapp.com/attachments/798811827772981268/811630964974682142/106400401.png",
+          url: "https://cdn.discordapp.com/attachments/798811827772981268/811630964974682142/106400401.png",
           gravity: "top",
           aspectMode: "cover",
           size: "full",

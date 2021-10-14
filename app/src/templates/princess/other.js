@@ -14,5 +14,5 @@ const PreWorkMessage = {
 };
 
 exports.sendPreWorkMessage = context => {
-  context.sendFlex("前作劇情", PreWorkMessage);
+  context.replyFlex("前作劇情", PreWorkMessage);
 };

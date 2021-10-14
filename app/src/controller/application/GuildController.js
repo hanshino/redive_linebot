@@ -17,16 +17,16 @@ exports.leaderBinding = async (context, props) => {
   const { clanBinding } = context.state;
 
   if (new Date().getTime() - clanBinding < 60 * 10 * 1000) {
-    return context.sendText("[戰隊隊長綁定] 每次綁定需等待10分鐘才能換綁");
+    return context.replyText("[戰隊隊長綁定] 每次綁定需等待10分鐘才能換綁");
   }
 
   if (!userId) {
-    return context.sendText("無法獲取您的LINE ID");
+    return context.replyText("無法獲取您的LINE ID");
   }
 
   let bindData = await uidModel.getBindingData(userId);
   if (!bindData) {
-    return context.sendText("尚未綁定遊戲ID，請先輸入 `#好友小卡` 進行ID綁定");
+    return context.replyText("尚未綁定遊戲ID，請先輸入 `#好友小卡` 進行ID綁定");
   }
 
   let { server, uid } = bindData;
@@ -37,7 +37,7 @@ exports.leaderBinding = async (context, props) => {
   });
 
   if (!clanData || clanData.length === 0) {
-    return context.sendText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名\n2. 綁定者非隊長");
+    return context.replyText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名\n2. 綁定者非隊長");
   }
 
   let { clanName, leaderName, records } = clanData;
@@ -49,7 +49,7 @@ exports.leaderBinding = async (context, props) => {
   });
 
   if (result) {
-    context.sendText(
+    context.replyText(
       [`綁定成功，戰隊名稱：${clanName}`, `目前分數：${score}`, `隊長名稱：${leaderName}`].join(
         "\n"
       )
@@ -69,7 +69,7 @@ exports.showClanInfo = async context => {
   let guild = await guildService.findByGuildId(groupId, ["princess"]);
 
   if (!guild) {
-    return context.sendText("群組數據獲取失敗");
+    return context.replyText("群組數據獲取失敗");
   }
   let { server, uid } = guild;
 
@@ -80,7 +80,7 @@ exports.showClanInfo = async context => {
   });
 
   if (!clanData) {
-    return context.sendText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名\n2. 尚未開始戰隊戰");
+    return context.replyText("查無戰隊資訊，以下為可能原因\n1. 未進入前200名\n2. 尚未開始戰隊戰");
   }
 
   let { clanName, leaderName, records, leaderFavoriteUnit: unitId, leaderHash } = clanData;
@@ -114,7 +114,7 @@ exports.showClanInfo = async context => {
 
   let pannelBubble = battleTemplate.genGuildStatusPanel(server, leaderHash);
 
-  context.sendFlex("戰隊狀況", {
+  context.replyFlex("戰隊狀況", {
     type: "carousel",
     contents: [bubble, pannelBubble],
   });

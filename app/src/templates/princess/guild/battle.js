@@ -3,11 +3,11 @@ const i18n = require("../../../util/i18n");
 const datefromat = require("dateformat");
 
 exports.sendSignFeedback = (context, template, data, sender) => {
-  return context.sendText(assemble(data, template), { sender });
+  return context.replyText(assemble(data, template), { sender });
 };
 
 exports.showBattleList = (context, data) => {
-  context.sendFlex(`第${data.week}周次 - 戰隊清單`, {
+  context.replyFlex(`第${data.week}周次 - 戰隊清單`, {
     type: "carousel",
     contents: [
       genPreviewCover({ ...data, groupId: context.event.source.groupId }),
@@ -65,7 +65,7 @@ exports.showBattleDetail = (context, data) => {
     config: data.configs.find(config => config.boss == data.boss),
   });
 
-  context.sendFlex(`第${data.week}周次${data.boss}王`, message);
+  context.replyFlex(`第${data.week}周次${data.boss}王`, message);
 };
 
 exports.showReportList = (context, records) => {
@@ -130,7 +130,7 @@ exports.showReportList = (context, records) => {
     };
   }
 
-  context.sendFlex("回報傷害清單", flexMessage);
+  context.replyFlex("回報傷害清單", flexMessage);
 };
 
 /**
@@ -177,7 +177,7 @@ exports.showGuildList = (context, groups) => {
 
   let flexMessage = { type: "carousel", contents: bubbles };
 
-  context.sendFlex("選擇要回報的群組", flexMessage);
+  context.replyFlex("選擇要回報的群組", flexMessage);
 };
 
 exports.genReportInformation = viewData => {
@@ -924,7 +924,7 @@ exports.showFinishList = (context, FinishMemberList) => {
   ].join(".");
   let isSignList = FinishMemberList.filter(list => list.isSignin);
   let notSignList = FinishMemberList.filter(list => !list.isSignin);
-  context.sendFlex("出刀簽到表", {
+  context.replyFlex("出刀簽到表", {
     type: "carousel",
     contents: [
       {

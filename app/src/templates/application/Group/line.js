@@ -4,7 +4,7 @@ exports.showGroupStatus = context => {
   const { groupId } = context.event.source;
   const { groupName, count, pictureUrl } = context.state.groupDatas;
 
-  context.sendFlex("群組管理", {
+  context.replyFlex("群組管理", {
     type: "bubble",
     body: {
       type: "box",
@@ -264,7 +264,7 @@ exports.showGroupConfig = context => {
     `公主查詢:${getIcon(guildConfig.PrincessCharacter)}`,
     `公主資訊:${getIcon(guildConfig.PrincessInformation)}`,
   ];
-  context.sendText(messages.join("\n"));
+  context.replyText(messages.join("\n"));
 
   function getIcon(isOpen) {
     return isOpen === "Y" ? "✔" : "❌";

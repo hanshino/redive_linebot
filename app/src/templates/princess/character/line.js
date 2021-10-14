@@ -806,7 +806,7 @@ module.exports = {
    * @param {Object} objData 角色包
    */
   showInfo: function (context, name, objData) {
-    context.sendFlex(`${name}的資訊`, getCharacterInfo(objData.Info));
+    context.replyFlex(`${name}的資訊`, getCharacterInfo(objData.Info));
   },
 
   showSkill: function (context, name, objData) {
@@ -828,18 +828,18 @@ module.exports = {
       );
     });
 
-    context.sendFlex(`${name}的技能一覽`, {
+    context.replyFlex(`${name}的技能一覽`, {
       type: "carousel",
       contents: bubbleMessages,
     });
   },
 
   showAction: function (context, name, objData) {
-    context.sendFlex(`${name}的行動模式`, getAction(objData));
+    context.replyFlex(`${name}的行動模式`, getAction(objData));
   },
 
   showUniqEquip: function (context, name, unique) {
-    context.sendFlex(`${name}的專武資訊`, getUniqueEquip(unique));
+    context.replyFlex(`${name}的專武資訊`, getUniqueEquip(unique));
   },
 
   /**
@@ -870,7 +870,7 @@ module.exports = {
       });
     }
 
-    context.sendFlex(`${name}的裝備需求清單`, contents);
+    context.replyFlex(`${name}的裝備需求清單`, contents);
   },
 
   showCharacter: function (context, name, objData) {
@@ -900,10 +900,10 @@ module.exports = {
       );
     });
 
-    context.sendFlex(`${name}的角色資訊`, contents);
+    context.replyFlex(`${name}的角色資訊`, contents);
   },
 
   showRecommend: function (context, name, objData) {
-    context.sendFlex(`${name}的推薦Rank`, getRecommend(objData));
+    context.replyFlex(`${name}的推薦Rank`, getRecommend(objData));
   },
 };

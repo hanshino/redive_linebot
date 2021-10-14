@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+const axios = require("axios").default;
 const { URLSearchParams } = require("url");
 
 exports.webhook = {};
@@ -24,12 +24,13 @@ function webhookSend(webhook, objData) {
   const params = new URLSearchParams();
   Object.keys(objData).forEach(key => params.append(key, objData[key]));
 
-  return fetch(webhook, {
-    method: "POST",
-    body: params,
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-  })
-    .then(res => res.ok)
+  return axios
+    .post(webhook, params, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    })
+    .then(res => res.status === 200)
     .catch(err => {
       console.error(err);
       return false;

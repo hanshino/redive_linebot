@@ -57,14 +57,14 @@ function personalRouter(context) {
 
 function setPersonalAllowUpload(context) {
   context.setState({ arena: { arenaUpload: true } });
-  context.sendText("請上傳競技場戰鬥紀錄，全部上傳完畢後請輸入\n#競技場上傳完畢", {
+  context.replyText("請上傳競技場戰鬥紀錄，全部上傳完畢後請輸入\n#競技場上傳完畢", {
     quickReply: quickReplyUpload,
   });
 }
 
 function setArenaSearch(context) {
   context.setState({ arena: { arenaSearch: true } });
-  context.sendText("請上傳要查詢的隊伍", {
+  context.replyText("請上傳要查詢的隊伍", {
     quickReply: quickReplyUpload,
   });
 }
@@ -73,7 +73,7 @@ function resetArenaState(context) {
   let arenaState = context.state.arena || {};
   if (Object.keys(arenaState).length !== 0) {
     context.setState({ arena: {} });
-    context.sendText("感謝使用競技場功能~~");
+    context.replyText("感謝使用競技場功能~~");
   }
 }
 
@@ -116,7 +116,7 @@ function receivePersonalImage(context) {
     arena: { ...arenaState, storeId },
   });
 
-  context.sendText(
+  context.replyText(
     "請問此圖左邊隊伍為\n1:進攻方 or 2:防守方\n輸入數字回答，手機用戶可直接點選快速回覆鈕",
     { quickReply: quickReplyAskWhich }
   );
@@ -137,7 +137,7 @@ async function personalUpload(context) {
     context.setState({
       arena: { ...arenaState },
     });
-    return context.sendText("超過60秒沒回應，請重新進行操作");
+    return context.replyText("超過60秒沒回應，請重新進行操作");
   }
 
   let imageBase = await getImageBase(imageId);
@@ -151,7 +151,7 @@ async function personalUpload(context) {
     ArenaTemplate.showUploadInfo(context, resp);
     ArenaTemplate.askContinue(context);
   } else {
-    context.sendText("你已經上傳過此紀錄");
+    context.replyText("你已經上傳過此紀錄");
   }
 }
 
@@ -160,7 +160,7 @@ async function arenaSearch(context) {
   let resp = await OpencvModel.getArenaSearchTeam(imageBase);
 
   if (resp === false) {
-    return context.sendText("分析失敗，已將圖片轉發給作者");
+    return context.replyText("分析失敗，已將圖片轉發給作者");
   }
 
   let searchTeam = RecordRepo.genTeamImages(resp.map(data => ({ unitId: data.unit_id, ...data })));

@@ -20,7 +20,7 @@ exports.showStatus = async context => {
     pictureUrl = pictureUrl || "https://i.imgur.com/NMl4z2u.png";
 
     if (!userId || !displayName) {
-      context.sendText("獲取失敗，無法辨識用戶");
+      context.replyText("獲取失敗，無法辨識用戶");
       throw "userId or displayName is empty";
     }
 
@@ -65,10 +65,10 @@ exports.showStatus = async context => {
     const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo, subInfo });
     bubbles.push(chatlevelBubble, gachaBubble, otherBubble);
 
-    context.sendFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
+    context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
 
     if (!level) {
-      context.sendText("尚未有任何數據，經驗開始累積後即可投胎！");
+      context.replyText("尚未有任何數據，經驗開始累積後即可投胎！");
     }
   } catch (e) {
     DefaultLogger.error(e);
@@ -78,7 +78,7 @@ exports.showStatus = async context => {
 exports.showFriendStatus = async context => {
   const { mention, text } = context.event.message;
   if (!mention) {
-    return context.sendText("請tag想要查詢的夥伴們！");
+    return context.replyText("請tag想要查詢的夥伴們！");
   }
   let users = mention.mentionees.map(d => ({
     ...d,
@@ -95,10 +95,10 @@ exports.showFriendStatus = async context => {
   );
 
   if (messages.length === 0) {
-    context.sendText("查詢失敗！");
+    context.replyText("查詢失敗！");
   } else {
     messages = [">>>查詢結果<<<", ...messages];
-    context.sendText(messages.join("\n"));
+    context.replyText(messages.join("\n"));
   }
 };
 
@@ -113,7 +113,7 @@ exports.setEXP = (context, { match }) => {
   console.log(userId, exp, "修改經驗");
   ChatLevelModel.setExperience(userId, exp).then(result => {
     let msg = result ? "修改成功" : "修改失敗";
-    context.sendText(msg, { sender: { name: "管理員指令" } });
+    context.replyText(msg, { sender: { name: "管理員指令" } });
   });
 };
 
@@ -128,7 +128,7 @@ exports.setEXPRate = (context, { match }) => {
   console.log(expRate, "修改經驗倍率");
   ChatLevelModel.setExperienceRate(expRate).then(result => {
     let msg = result ? "修改成功" : "修改失敗";
-    context.sendText(msg, { sender: { name: "管理員指令" } });
+    context.replyText(msg, { sender: { name: "管理員指令" } });
   });
 };
 

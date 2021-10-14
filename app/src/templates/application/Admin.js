@@ -1,7 +1,7 @@
 const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
 
 exports.showManagePlace = context => {
-  context.sendFlex("管理員頁面", {
+  context.replyFlex("管理員頁面", {
     type: "bubble",
     body: {
       type: "box",

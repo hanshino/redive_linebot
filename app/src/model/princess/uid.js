@@ -1,6 +1,5 @@
 const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
-const fetch = require("node-fetch");
 const axios = require("axios").default;
 const nicknameAPI = "https://www.pay.so-net.tw/exchange/checkUser";
 const profileAPI = `${process.env.IAN_API_URL}/profile`;
@@ -82,18 +81,11 @@ async function getPrincessNickName(uid, server) {
     serverChannelId: server,
     gameCode: "SON009",
   }).toString();
-  let response = await fetch(url, {
-    method: "get",
-    headers: {
-      "Content-Type": "application/json",
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36",
-    },
-  });
+  let response = await axios.get(url);
 
-  let result = await response.json();
+  let result = await response.data;
 
-  if (!response.ok) return false;
+  if (response.status !== 200) return false;
   if (result.status !== "ok") return false;
 
   nickname = result.userName;

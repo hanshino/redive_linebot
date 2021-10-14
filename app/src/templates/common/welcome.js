@@ -213,5 +213,5 @@ const PuddingStatus = {
 };
 
 module.exports = context => {
-  context.sendFlex("使用說明", PuddingStatus);
+  context.replyFlex("使用說明", PuddingStatus);
 };

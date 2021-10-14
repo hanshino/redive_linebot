@@ -49,7 +49,7 @@ exports.setSender = async (
     if (iconUrl !== undefined) sender.iconUrl = iconUrl;
 
     if (context.event.source.type !== "group") {
-      context.sendText("設定成功！\n注意：非群組用戶，自訂頭像非永久性！", { sender });
+      context.replyText("設定成功！\n注意：非群組用戶，自訂頭像非永久性！", { sender });
       return;
     }
 
@@ -61,10 +61,10 @@ exports.setSender = async (
       await GroupConfigModel.setSender(context.event.source.groupId, { name, icon: iconUrl });
     }
 
-    context.sendText("設定成功！", { sender });
+    context.replyText("設定成功！", { sender });
   } catch (e) {
     if (e.name !== "GroupConfig") throw e;
-    context.sendText(e.message);
+    context.replyText(e.message);
   }
 };
 

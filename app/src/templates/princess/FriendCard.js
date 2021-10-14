@@ -1,4 +1,4 @@
-const common = require('../common/index');
+const common = require("../common/index");
 /**
  * 顯示好友小卡
  * @param {Context} context
@@ -23,7 +23,7 @@ exports.showCard = (context, params) => {
     arena_group = "-",
     grand_arena_group = "-",
   } = params.user_info;
-  context.sendFlex("好友小卡", {
+  context.replyFlex("好友小卡", {
     type: "bubble",
     size: "giga",
     body: {
@@ -339,7 +339,7 @@ exports.showCard = (context, params) => {
 };
 
 exports.showBindingPage = context => {
-  context.sendFlex("綁定訊息", {
+  context.replyFlex("綁定訊息", {
     type: "bubble",
     size: "nano",
     body: {
@@ -357,7 +357,7 @@ exports.showBindingPage = context => {
       backgroundColor: "#E94196",
       action: {
         type: "uri",
-        uri: `${common.getLiffUri('compact')}?reactRedirectUri=/Princess/Profile`,
+        uri: `${common.getLiffUri("compact")}?reactRedirectUri=/Princess/Profile`,
       },
     },
   });

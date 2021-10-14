@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+const { default: axios } = require("axios");
 const redis = require("../../util/redis");
 const memoryKey = "RandosoruEvents";
 
@@ -9,10 +9,8 @@ exports.getDatas = async () => {
   var datas = await redis.get(memoryKey);
   if (datas !== null) return datas;
 
-  return fetch("https://pcredivewiki.tw/static/data/event.json")
-    .then(res => res.json())
-    .then(events => {
-      redis.set(memoryKey, events, 60 * 60);
-      return events;
-    });
+  return axios.get("https://www.randosoru.com/api/events").then(res => {
+    redis.set(memoryKey, res.data);
+    return res.data;
+  });
 };

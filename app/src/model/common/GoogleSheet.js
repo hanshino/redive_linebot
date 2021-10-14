@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+const { default: axios } = require("axios");
 const SheetUrl = "https://docs.google.com/spreadsheets/u/0/d/{key}/gviz/tq?";
 
 module.exports = {
@@ -7,49 +7,45 @@ module.exports = {
    * @param {Object} objData 必備參數：gid,type,query,key
    */
   querySheetData: function (objData) {
-    var params = {
+    let params = {
       gid: objData.gid,
       tqx: "out:" + objData.type,
       tq: encodeURIComponent(objData.query),
     };
 
-    var queryString = Object.keys(params)
+    let queryString = Object.keys(params)
       .map(key => {
         return key + "=" + params[key];
       })
       .join("&");
 
-    var url = SheetUrl.replace("{key}", objData.key) + queryString;
+    let url = SheetUrl.replace("{key}", objData.key) + queryString;
 
     return queryData(url);
   },
 };
 
-function queryData(url) {
-  return fetch(url)
-    .then(res => res.text())
-    .then(resp => {
-      let jsonResult = resp.match(/\{.*\}/)[0];
-
-      try {
-        return queryParse(JSON.parse(jsonResult));
-      } catch (e) {
-        console.log(e);
-        console.log(jsonResult);
-        console.log("Google表單回傳物件無法解析");
-        return false;
-      }
-    });
+async function queryData(url) {
+  try {
+    const res = await axios.get(url);
+    const data = res.data;
+    let jsonString = data.match(/\{.*\}/)[0];
+    return queryParse(JSON.parse(jsonString));
+  } catch (err) {
+    console.log(err);
+    console.log("Google表單回傳物件無法解析");
+    return false;
+  }
 }
 
 function queryParse(data) {
-  var rows = data.table.rows;
+  let rows = data.table.rows;
 
-  var title = data.table.cols.map(col => {
+  let title = data.table.cols.map(col => {
     return col.label !== "" ? col.label.trim() : col.id;
   });
 
-  var result = [];
+  let result = [];
 
   rows.forEach(function (row) {
     let temp = {};

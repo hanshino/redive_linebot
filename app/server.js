@@ -1,11 +1,15 @@
-const bodyParser = require("body-parser");
 const express = require("express");
+const rateLimit = require("express-rate-limit");
 const { bottender } = require("bottender");
-const path = require("path");
 const apiRouter = require("./src/router/api");
 const cors = require("cors");
 const { server, http } = require("./src/util/connection");
 require("./src/router/socket");
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+});
 
 const app = bottender({
   dev: process.env.NODE_ENV !== "production",
@@ -22,12 +26,11 @@ app.prepare().then(() => {
   };
 
   server.use(cors());
-  server.use(bodyParser.json({ verify }));
-  server.use(bodyParser.urlencoded({ extended: false, verify }));
-  server.use(express.static(path.join(`${__dirname}/public`)));
+  server.use(express.json({ verify }));
+  server.use(express.urlencoded({ extended: false, verify }));
 
   // api group router
-  server.use("/api", apiRouter);
+  server.use("/api", limiter, apiRouter);
 
   // route for webhook request
   server.all("*", (req, res) => {

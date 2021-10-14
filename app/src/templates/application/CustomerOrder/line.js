@@ -202,13 +202,13 @@ exports.showInsertManual = context => {
       },
     });
 
-    context.sendFlex("新增指令說明", insertManualTPL);
+    context.replyFlex("新增指令說明", insertManualTPL);
     return;
   }
 
   // 1分鐘只能發一次新增指令說明
   if (curr - sentCoolDown.CusInsert > 60 * 1000) {
-    context.sendFlex("新增指令說明", insertManualTPL);
+    context.replyFlex("新增指令說明", insertManualTPL);
     context.setState({
       sentCoolDown: {
         ...sentCoolDown,
@@ -216,7 +216,7 @@ exports.showInsertManual = context => {
       },
     });
   } else if (context.event.source.type !== "user") {
-    context.sendText("剛剛才發送此訊息，我才不想洗版..");
+    context.replyText("剛剛才發送此訊息，我才不想洗版..");
   }
 };
 
@@ -232,13 +232,13 @@ exports.showDeleteManual = context => {
       },
     });
 
-    context.sendFlex("刪除指令說明", deleteManualTPL);
+    context.replyFlex("刪除指令說明", deleteManualTPL);
     return;
   }
 
   // 1分鐘只能發一次說明
   if (curr - sentCoolDown.CusDelete > 60 * 1000) {
-    context.sendFlex("刪除指令說明", deleteManualTPL);
+    context.replyFlex("刪除指令說明", deleteManualTPL);
     context.setState({
       sentCoolDown: {
         ...sentCoolDown,
@@ -246,7 +246,7 @@ exports.showDeleteManual = context => {
       },
     });
   } else if (context.event.source.type !== "user") {
-    context.sendText("剛剛才發送此訊息，我才不想洗版..");
+    context.replyText("剛剛才發送此訊息，我才不想洗版..");
   }
 };
 
@@ -307,7 +307,7 @@ exports.showDeleteOption = (context, deleteOrders) => {
     bubbleMessage.body.contents.push(box);
   });
 
-  context.sendFlex("刪除指令列表", bubbleMessage);
+  context.replyFlex("刪除指令列表", bubbleMessage);
 };
 
 exports.showOrderManager = context => {
@@ -334,5 +334,5 @@ exports.showOrderManager = context => {
     },
   };
 
-  context.sendFlex("指令管理", bubble);
+  context.replyFlex("指令管理", bubble);
 };
