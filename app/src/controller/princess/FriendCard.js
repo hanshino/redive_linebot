@@ -8,7 +8,7 @@ exports.showCard = async context => {
   try {
     bindData = await uidModel.getIanProfileData(userId);
   } catch (err) {
-    context.sendText("資料獲取失敗..請稍後再試");
+    context.replyText("資料獲取失敗..請稍後再試");
     return;
   }
 

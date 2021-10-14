@@ -60,7 +60,7 @@ exports.BattleList = async (context, props) => {
     }
   } catch (e) {
     if (e.name === "GuildBattle") {
-      context.sendText(e.message);
+      context.replyText(e.message);
     } else throw e; // keep throw
   }
 };
@@ -208,7 +208,7 @@ exports.BattleSignUp = async (context, props) => {
     });
   } catch (e) {
     if (e.name === "GuildBattle") {
-      context.sendText(e.message);
+      context.replyText(e.message);
     } else throw e; // keep throw
   }
 };
@@ -284,11 +284,11 @@ exports.BattleCancel = async (context, props) => {
         name: context.state.userDatas[context.event.source.userId].displayName,
         iconUrl: context.state.userDatas[context.event.source.userId].pictureUrl,
       };
-      context.sendText(`我取消了${week}周${boss}王`, { sender });
+      context.replyText(`我取消了${week}周${boss}王`, { sender });
     } else throw setResult.detail;
   } catch (e) {
     if (e.name === "GuildBattle") {
-      context.sendText(e.message);
+      context.replyText(e.message);
     } else throw e; // keep throw
   }
 };
@@ -328,7 +328,7 @@ exports.CurrentBattle = async context => {
     this.BattleList(context, { match: { groups: { week: currWeek } } });
   } catch (e) {
     if (e.name === "GuildBattle") {
-      context.sendText(e.message);
+      context.replyText(e.message);
     } else throw e; // keep throw
   }
 };
@@ -347,7 +347,7 @@ exports.SetWeek = async (context, props) => {
 
     await WeekModel.setWeek(groupId, getNowMonth(), parseInt(week));
 
-    context.sendText(`已將周次設定為${week}`, {
+    context.replyText(`已將周次設定為${week}`, {
       sender: {
         name: "戰隊秘書",
         iconUrl: "https://i.imgur.com/NuZZR7Q.jpg",
@@ -355,7 +355,7 @@ exports.SetWeek = async (context, props) => {
     });
   } catch (e) {
     if (e.name === "GuildBattle") {
-      context.sendText(e.message);
+      context.replyText(e.message);
     } else throw e; // keep throw
   }
 };
@@ -376,7 +376,7 @@ exports.NextBattleList = context => {
     );
   } catch (e) {
     if (e.name === "GuildBattle") {
-      context.sendText(e.message);
+      context.replyText(e.message);
     } else throw e; // keep throw
   }
 };
@@ -400,7 +400,7 @@ exports.PreBattleList = context => {
     );
   } catch (e) {
     if (e.name === "GuildBattle") {
-      context.sendText(e.message);
+      context.replyText(e.message);
     } else throw e; // keep throw
   }
 };
@@ -483,7 +483,7 @@ exports.reportFinish = context => {
   let userName = context.state.userDatas[userId].displayName || "路人甲";
 
   BattleModel.setFinishBattle(groupId, userId).then(() =>
-    context.sendText(`恭喜${userName}今日已成為成功人士(出完三刀)！`, { sender: BattleSender })
+    context.replyText(`恭喜${userName}今日已成為成功人士(出完三刀)！`, { sender: BattleSender })
   );
 };
 
@@ -495,7 +495,7 @@ exports.reportReset = async context => {
   const { groupId, userId } = context.event.source;
   await BattleModel.resetFinishBattle(groupId, userId);
 
-  context.sendText("吶吶，那你剛剛回報是不是騙我，嘖！\n幫你清除了啦！", { sender: BattleSender });
+  context.replyText("吶吶，那你剛剛回報是不是騙我，嘖！\n幫你清除了啦！", { sender: BattleSender });
 };
 
 /**
@@ -513,24 +513,24 @@ exports.showSigninList = async (context, { match }) => {
   let FinishDatas = await BattleModel.getFinishList(groupId, objDate);
 
   if (FinishDatas.length > 50) {
-    context.sendText("此指令不適用於非戰隊群組（人數超過50人）", { sender: BattleSender });
+    context.replyText("此指令不適用於非戰隊群組（人數超過50人）", { sender: BattleSender });
     return;
   }
 
   if (FinishDatas.find(data => data.isSignin) === undefined) {
-    context.sendText(`${date}號查無任何出刀紀錄！`, { sender: BattleSender });
+    context.replyText(`${date}號查無任何出刀紀錄！`, { sender: BattleSender });
     return;
   }
 
   if (FinishDatas.filter(data => data.isSignin).length === FinishDatas.length) {
-    context.sendText(`${date}號全群皆已完成出刀！`, { sender: BattleSender });
+    context.replyText(`${date}號全群皆已完成出刀！`, { sender: BattleSender });
     return;
   }
 
   let sentKey = `FinishList_${groupId}`;
 
   if ((await redis.get(sentKey)) !== null) {
-    context.sendText("此指令限制30秒呼叫一次", { sender: BattleSender });
+    context.replyText("此指令限制30秒呼叫一次", { sender: BattleSender });
     return;
   }
 

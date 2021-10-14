@@ -1,4 +1,3 @@
-const bodyParser = require("body-parser");
 const express = require("express");
 const { bottender } = require("bottender");
 const path = require("path");
@@ -22,8 +21,8 @@ app.prepare().then(() => {
   };
 
   server.use(cors());
-  server.use(bodyParser.json({ verify }));
-  server.use(bodyParser.urlencoded({ extended: false, verify }));
+  server.use(express.json({ verify }));
+  server.use(express.urlencoded({ extended: false, verify }));
   server.use(express.static(path.join(`${__dirname}/public`)));
 
   // api group router

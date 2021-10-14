@@ -386,9 +386,9 @@ module.exports = {
     bubbleMessage.footer = reportBox;
 
     if (DailyGachaInfo === false) {
-      context.sendFlex("轉蛋結果", bubbleMessage);
+      context.replyFlex("轉蛋結果", bubbleMessage);
     } else {
-      context.sendFlex("轉蛋結果", {
+      context.replyFlex("轉蛋結果", {
         type: "carousel",
         contents: [genDailyGacha(DailyGachaInfo), bubbleMessage],
       });

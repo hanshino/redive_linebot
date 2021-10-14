@@ -52,5 +52,5 @@ exports.showAnnounce = (context, announceDatas) => {
     iconUrl: "https://i.imgur.com/BOzOY40.jpg",
   };
 
-  context.sendFlex("最新官方公告", carousel, { sender });
+  context.replyFlex("最新官方公告", carousel, { sender });
 };

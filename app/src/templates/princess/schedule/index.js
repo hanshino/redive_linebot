@@ -98,7 +98,7 @@ exports.showSchedule = (context, EventDatas) => {
     iconUrl: "https://i.imgur.com/BOzOY40.jpg",
   };
 
-  context.sendFlex(
+  context.replyFlex(
     "公主活動",
     {
       type: "carousel",

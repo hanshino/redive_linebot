@@ -28,7 +28,7 @@ const { sendPreWorkMessage } = require("./templates/princess/other");
 const { pushMessage } = require("./util/LineNotify");
 
 function showState(context) {
-  context.sendText(JSON.stringify(context.state));
+  context.replyText(JSON.stringify(context.state));
 }
 
 async function HandlePostback(context, { next }) {
@@ -188,7 +188,7 @@ function CharacterOrder(context) {
     text(/^[#.](角色)?裝備(需求)?(\s(?<character>[\s\S]+))?$/, character.getEquipRequire),
     text(/^[#.](公主|角色)(\s(?<character>[\s\S]+))?$/, character.getCharacter),
     text(/^[#.](角色)?rank(推薦)?(\s(?<character>[\s\S]+))?$/, context =>
-      context.sendText("此功能暫時廢棄，重建中！")
+      context.replyText("此功能暫時廢棄，重建中！")
     ),
   ];
 }
@@ -217,12 +217,12 @@ function Nothing(context) {
   switch (context.platform) {
     case "line":
       if (context.event.source.type === "user") {
-        context.sendText("沒有任何符合的指令");
+        context.replyText("沒有任何符合的指令");
       }
       break;
     case "telegram":
       if (context.event.message.chat.type === "private") {
-        context.sendText("沒有任何符合的指令");
+        context.replyText("沒有任何符合的指令");
       }
       break;
   }

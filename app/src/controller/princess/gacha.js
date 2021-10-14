@@ -211,7 +211,7 @@ module.exports = {
 
       // 沒扣女神石，卻使用消耗抽，提示用戶沒有扣也沒加倍
       if (canDailyGacha && costGodStone === 0 && pickup) {
-        context.sendText("女神石不足！此次轉蛋機率不調升～");
+        context.replyText("女神石不足！此次轉蛋機率不調升～");
       }
 
       GachaTemplate.line.showGachaResult(

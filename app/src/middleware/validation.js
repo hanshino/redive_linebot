@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+const { default: axios } = require("axios");
 const AdminModel = require("../model/application/Admin");
 
 /**
@@ -50,17 +50,16 @@ exports.verifyToken = (req, res, next) => {
 
   const token = auth.split(" ")[1] || "";
 
-  fetch("https://api.line.me/v2/profile", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
-    .then(resp => {
-      if (!resp.ok) return Promise.reject();
-      return resp;
+  axios
+    .get("https://api.line.me/v2/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     })
-    .then(result => result.json())
+    .then(resp => {
+      if (resp.status !== 200) return Promise.reject();
+      return resp.data;
+    })
     .then(profile => {
       req.profile = profile;
       next();
@@ -91,16 +90,19 @@ exports.socketSetProfile = async (socket, next) => {
     return;
   }
 
-  const profile = await fetch("https://api.line.me/v2/profile", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
-    .then(result => result.json())
+  const profile = await axios
+    .get("https://api.line.me/v2/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    .then(resp => {
+      if (resp.status !== 200) return Promise.reject();
+      return resp.data;
+    })
     .catch(() => {
       next(new Error("Authentication error"));
-      return false;
+      return;
     });
 
   if (profile === false) return;

@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+const { default: axios } = require("axios");
 const token = process.env.LINE_ACCESS_TOKEN;
 const apiURL = "https://api.line.me/v2";
 const { getClient } = require("bottender");
@@ -59,9 +59,11 @@ exports.getGroupMemberProfile = async (groupId, userId) => {
 };
 
 function doGet(path) {
-  return fetch(`${apiURL}${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }).then(res => res.json());
+  return axios
+    .get(`${apiURL}${path}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    .then(res => res.data);
 }
