@@ -43,10 +43,7 @@ const ChatLevelChart = () => {
 
   let rankingDatas = useMemo(() => {
     if (!data) return [];
-    return data
-      .slice(0, 51)
-      .reverse()
-      .map((d, i) => ({ id: i, ...d }));
+    return data.slice(0, 51).map((d, i) => ({ id: i, ...d }));
   }, [data]);
 
   return (

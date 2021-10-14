@@ -81,7 +81,7 @@ async function getPrincessNickName(uid, server) {
     serverChannelId: server,
     gameCode: "SON009",
   }).toString();
-  let response = await axios.get(url);
+  let response = await axios.get(url.toString());
 
   let result = await response.data;
 
