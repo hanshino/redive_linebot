@@ -126,7 +126,7 @@ async function isAble(userId, groupId) {
  * 將轉蛋池3*機率調升
  * @param {Array} pool
  */
-function makePickup(pool, rate = 50) {
+function makePickup(pool, rate = 100) {
   return pool.map(data => {
     if (data.star !== "3") return data;
     return {
