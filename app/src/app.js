@@ -1,4 +1,4 @@
-const { router, text, route, line } = require("bottender/router");
+const { router, text, route } = require("bottender/router");
 const { chain, withProps } = require("bottender");
 const character = require("./controller/princess/character");
 const gacha = require("./controller/princess/gacha");
@@ -20,6 +20,7 @@ const ChatLevelController = require("./controller/application/ChatLevelControlle
 const BattleReportController = require("./controller/princess/BattleReportController");
 const ArenaContoroller = require("./controller/princess/ArenaController");
 const GuildController = require("./controller/application/GuildController");
+const WorldBossController = require("./controller/application/WorldBossController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -118,6 +119,7 @@ function AdminOrder(context) {
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
+    ...WorldBossController.router,
   ];
 }
 
