@@ -7,5 +7,20 @@
   },
   "battle": {
     "status": "{{ stage }}階 {{ week }}周 {{ boss }}王"
+  },
+  "template": {
+    "attack": "攻擊",
+    "defense": "防禦",
+    "hp": "生命",
+    "speed": "速度",
+    "level": "等級",
+    "exp": "經驗",
+    "gold": "女神石",
+    "event_start_at": "開始時間",
+    "event_end_at": "結束時間",
+    "record": "紀錄"
+  },
+  "message": {
+    "user_attack_on_world_boss": "成功對 {{ name }} 造成 {{ damage }} 傷害！"
   }
 }

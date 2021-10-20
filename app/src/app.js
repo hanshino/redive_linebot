@@ -56,6 +56,10 @@ async function HandlePostback(context, { next }) {
         () => action === "battleCancel",
         withProps(battle.BattlePostCancel, { payload: payload })
       ),
+      route(
+        () => action === "worldBossAttack",
+        withProps(WorldBossController.attackOnBoss, { payload: payload })
+      ),
       route("*", next),
     ]);
   } catch (e) {
@@ -77,12 +81,14 @@ async function OrderBased(context, { next }) {
     ...PrincessInformation(context),
     ...PersonOrder(context),
     ...ArenaContoroller.router(context),
+    ...WorldBossController.router,
     text(/^[#.](使用說明|help)$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
       gacha.play(context, { ...props, pickup: true })
     ),
     text("/state", showState),
+    text("/source", context => context.replyText(JSON.stringify(context.event.source))),
     text("/resetstate", context => context.resetState()),
     text("/traffic", function () {
       traffic.getSignData().then(console.table);
@@ -119,7 +125,6 @@ function AdminOrder(context) {
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
-    ...WorldBossController.router,
   ];
 }
 
