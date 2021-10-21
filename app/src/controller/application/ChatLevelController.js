@@ -36,7 +36,7 @@ exports.showStatus = async context => {
       expRate = Math.round(((exp - nowExpData.exp) / (nextExpData.exp - nowExpData.exp)) * 100);
     }
 
-    let [current, total, godStone, subInfo, bindInfo] = await Promise.all([
+    let [current = 0, total = 0, godStone = 0, subInfo, bindInfo] = await Promise.all([
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
       GachaModel.getUserGodStoneCount(userId),

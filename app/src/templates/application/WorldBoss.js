@@ -1,7 +1,7 @@
 const dateformat = require("dateformat");
 const i18n = require("../../util/i18n");
 
-exports.generateBoss = ({ id, image, fullHp, currentHp }) => {
+exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted }) => {
   // caclute percentage of hp and round it to 0 decimal places
   const percentage = Math.round((currentHp / fullHp) * 100);
 
@@ -20,9 +20,9 @@ exports.generateBoss = ({ id, image, fullHp, currentHp }) => {
               url: image,
               size: "full",
               aspectMode: "cover",
-              aspectRatio: "16:9",
             },
           ],
+          cornerRadius: "md",
         },
         {
           type: "box",
@@ -82,32 +82,21 @@ exports.generateBoss = ({ id, image, fullHp, currentHp }) => {
                       type: "text",
                       text: i18n.__("template.attack"),
                       align: "center",
+                      color: hasCompleted ? "#FFFFFF" : "#808080",
                     },
                   ],
                   paddingAll: "lg",
                   cornerRadius: "lg",
-                  backgroundColor: "#12FF3466",
-                  action: {
-                    type: "postback",
-                    data: JSON.stringify({
-                      action: "worldBossAttack",
-                      worldBossEventId: id,
-                    }),
-                  },
-                },
-                {
-                  type: "box",
-                  layout: "vertical",
-                  contents: [
-                    {
-                      type: "text",
-                      text: i18n.__("template.record"),
-                      align: "center",
+                  backgroundColor: hasCompleted ? "#808080AC" : "#12FF3466",
+                  ...(!hasCompleted && {
+                    action: {
+                      type: "postback",
+                      data: JSON.stringify({
+                        action: "worldBossAttack",
+                        worldBossEventId: id,
+                      }),
                     },
-                  ],
-                  paddingAll: "lg",
-                  cornerRadius: "lg",
-                  backgroundColor: "#12FF3466",
+                  }),
                 },
               ],
               spacing: "md",
@@ -130,11 +119,25 @@ exports.generateBoss = ({ id, image, fullHp, currentHp }) => {
  * @param {Date} param0.start_at Start time of the world boss
  * @param {Date} param0.end_at End time of the world boss
  */
-exports.generateBossInformation = ({ name, description, announcement, start_time, end_time }) => {
+exports.generateBossInformation = ({
+  name,
+  description,
+  announcement,
+  start_time,
+  end_time,
+  hasCompleted,
+  level,
+  hp,
+  attack,
+  defense,
+  speed,
+  gold,
+  exp,
+}) => {
   start_time = dateformat(start_time, "yyyy-mm-dd");
   end_time = dateformat(end_time, "yyyy-mm-dd");
 
-  return {
+  let bubble = {
     type: "bubble",
     body: {
       type: "box",
@@ -153,6 +156,8 @@ exports.generateBossInformation = ({ name, description, announcement, start_time
             },
           ],
           weight: "bold",
+          size: "sm",
+          wrap: true,
           color: "#FF3465AA",
         },
         {
@@ -190,7 +195,7 @@ exports.generateBossInformation = ({ name, description, announcement, start_time
                         },
                         {
                           type: "span",
-                          text: "200",
+                          text: `${level}`,
                         },
                       ],
                     },
@@ -203,7 +208,7 @@ exports.generateBossInformation = ({ name, description, announcement, start_time
                         },
                         {
                           type: "span",
-                          text: "2000000",
+                          text: `${hp}`,
                         },
                       ],
                     },
@@ -216,7 +221,7 @@ exports.generateBossInformation = ({ name, description, announcement, start_time
                         },
                         {
                           type: "span",
-                          text: "200",
+                          text: `${attack}`,
                         },
                       ],
                     },
@@ -229,7 +234,46 @@ exports.generateBossInformation = ({ name, description, announcement, start_time
                         },
                         {
                           type: "span",
-                          text: "200",
+                          text: `${defense}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      contents: [
+                        {
+                          type: "span",
+                          text: `${i18n.__("template.speed")}: `,
+                        },
+                        {
+                          type: "span",
+                          text: `${speed}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      contents: [
+                        {
+                          type: "span",
+                          text: `${i18n.__("template.exp")}: `,
+                        },
+                        {
+                          type: "span",
+                          text: `${exp}`,
+                        },
+                      ],
+                    },
+                    {
+                      type: "text",
+                      contents: [
+                        {
+                          type: "span",
+                          text: `${i18n.__("template.gold")}: `,
+                        },
+                        {
+                          type: "span",
+                          text: `${gold}`,
                         },
                       ],
                     },
@@ -276,4 +320,29 @@ exports.generateBossInformation = ({ name, description, announcement, start_time
       spacing: "md",
     },
   };
+
+  if (hasCompleted) {
+    bubble.body.contents = [getMissionCompleteBox(), ...bubble.body.contents];
+  }
+
+  return bubble;
 };
+
+function getMissionCompleteBox() {
+  return {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "image",
+        url: "https://cdn.discordapp.com/attachments/725756780214222909/900580496017358858/square09stamplred-vector-id1167967380.png",
+        size: "full",
+        aspectMode: "fit",
+      },
+    ],
+    position: "absolute",
+    offsetTop: "0px",
+    offsetStart: "0px",
+    width: "300px",
+  };
+}

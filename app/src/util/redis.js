@@ -59,14 +59,14 @@ exports.incr = key => {
  * 搶旗
  * @param {String} key
  */
-exports.setnx = (key, value) => {
+exports.setnx = (key, value, expire = 600) => {
   return new Promise((res, rej) => {
     redisClient.SETNX(key, value, function (err, reply) {
       if (err) rej(err);
       if (reply === 0) {
         res(false);
       } else {
-        redisClient.expire(key, 10 * 60);
+        redisClient.expire(key, expire);
         res(true);
       }
     });

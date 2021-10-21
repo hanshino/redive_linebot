@@ -5,12 +5,25 @@ const TABLE = "world_boss_event";
 
 exports.table = TABLE;
 
+/**
+ *
+ * @param {Object} options
+ * @param {Array} options.withs
+ * @param {Array} options.filters
+ * @returns
+ */
 exports.all = async (options = {}) => {
-  const { withs = [] } = options;
+  const { withs = [], filters = [] } = options;
   let query = mysql(this.table).select("*");
 
-  if (withs.indexOf("worldBoss") > -1) {
+  if (withs.includes("worldBoss")) {
     query = worldBoss(query);
+  }
+
+  // 如果有指定 options.filter 則添加過濾條件
+  if (filters.length > 0) {
+    // 批次添加過濾條件
+    filters.forEach(filter => (query = query.where(...filter)));
   }
 
   return await query;

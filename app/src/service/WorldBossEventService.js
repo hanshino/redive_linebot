@@ -27,3 +27,12 @@ exports.getBossInformation = async eventId => {
 
   return null;
 };
+
+exports.getCurrentEvent = async () => {
+  return await this.all({
+    filters: [
+      ["start_time", "<", new Date()],
+      ["end_time", ">", new Date()],
+    ],
+  });
+};
