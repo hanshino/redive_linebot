@@ -118,7 +118,7 @@ async function isAble(userId, groupId) {
   // 使用 setnx 限制群組單一用戶轉蛋次數
   let key = `GachaCoolDown_${userId}_${groupId}`;
   let result = await redis.setnx(key, 1, 120);
-  return result === 1;
+  return result;
 }
 
 /**
