@@ -217,6 +217,8 @@ function genDailyGacha({
  * @param {Number} param.godStone 女神石數量
  */
 function genGachaStatus({ current = 0, total, godStone = 0 }) {
+  let collectPercent = total === 0 ? 0 : Math.round((current / total) * 100);
+
   return {
     type: "bubble",
     header: {
@@ -256,7 +258,7 @@ function genGachaStatus({ current = 0, total, godStone = 0 }) {
                   contents: [],
                   height: "10px",
                   backgroundColor: "#FFABCD",
-                  width: `${Math.round((current / total) * 100)}%`,
+                  width: `${collectPercent}%`,
                 },
               ],
               backgroundColor: "#80808080",
