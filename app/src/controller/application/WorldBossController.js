@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-unused-vars
-const { Context } = require("bottender");
+const { Context, getClient } = require("bottender");
 const { text } = require("bottender/router");
 const adminModel = require("../../model/application/Admin");
 const ChatLevelModel = require("../../model/application/ChatLevelModel");
@@ -10,13 +10,46 @@ const worldBossTemplate = require("../../templates/application/WorldBoss");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
+const LineClient = getClient("line");
 
 exports.router = [
   text("/bosslist", bosslist),
   text("/worldboss", bossEvent),
   text("/allevent", all),
+  text("/worldrank", worldRank),
   text(/^\/(sa|systemattack)(\s(?<percentage>\d{1,2}))?$/, adminAttack),
 ];
+
+/**
+ * @param {Context} context
+ * @param {import("bottender").Props} props
+ */
+async function worldRank(context, props) {
+  // 取得正在進行中的世界事件
+  const events = await worldBossEventService.getCurrentEvent();
+
+  // 多起世界事件正在舉行中
+  if (events.length > 1) {
+    context.replyText(i18n.__("message.world_boss_event_multiple_ongoing"));
+    return;
+  } else if (events.length === 0) {
+    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
+    return;
+  }
+
+  let topTenData = await worldBossEventLogService.getTopTen(events[0].id);
+  topTenData = await Promise.all(
+    topTenData.map(async data => {
+      let profile = await LineClient.getUserProfile(data.userId);
+      return {
+        ...data,
+        ...profile,
+      };
+    })
+  );
+
+  context.replyText(JSON.stringify(topTenData));
+}
 
 /**
  * @param {Context} context
@@ -38,6 +71,9 @@ async function adminAttack(context, props) {
   // 多起世界事件正在舉行中
   if (events.length > 1) {
     context.replyText(i18n.__("message.world_boss_event_multiple_ongoing"));
+    return;
+  } else if (events.length === 0) {
+    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
     return;
   }
 
@@ -98,15 +134,41 @@ async function bossEvent(context) {
   if (events.length > 1) {
     context.replyText(i18n.__("message.world_boss_event_multiple_ongoing"));
     return;
+  } else if (events.length === 0) {
+    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
+    return;
   }
 
-  const data = await worldBossEventService.getEventBoss(events[0].id);
+  let eventId = events[0].id;
+
+  const [data, topTenData] = await Promise.all([
+    worldBossEventService.getEventBoss(eventId),
+    worldBossEventLogService.getTopTen(eventId),
+  ]);
   let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
     data.id
   );
   let remainHp = data.hp - parseInt(totalDamage || 0);
   let hasCompleted = remainHp <= 0;
+
+  // 將排名資訊，補上用戶資訊
+  let topTenInfo = await Promise.all(
+    topTenData.map(async data => {
+      let profile = await LineClient.getUserProfile(data.userId);
+      return {
+        ...data,
+        ...profile,
+      };
+    })
+  );
+  // 計算有效用戶的傷害
+  let validDamage = topTenInfo.reduce((acc, cur) => acc + parseInt(cur.total_damage || 0), 0);
+  // 計算管理員的傷害
+  let adminDamage = totalDamage - validDamage;
+
+  // 組合世界事件資訊
   const infoBubble = worldBossTemplate.generateBossInformation({ ...data, hasCompleted });
+  // 組合主畫面
   const mainBubble = worldBossTemplate.generateBoss({
     ...data,
     fullHp: data.hp,
@@ -114,7 +176,39 @@ async function bossEvent(context) {
     hasCompleted,
   });
 
-  context.replyFlex("Boss", { type: "carousel", contents: [mainBubble, infoBubble] });
+  // 組合排名資訊
+  // 先組出每列的排名資訊
+  let rankBoxes = topTenInfo.map((data, index) => {
+    return worldBossTemplate.generateRankBox({
+      name: data.displayName || `路人${index + 1}`,
+      damage: data.total_damage,
+      rank: index + 1,
+    });
+  });
+
+  // 將管理員傷害加入，先插入分隔線
+  // 如果管理員傷害為0，則不顯示
+  if (adminDamage > 0) {
+    rankBoxes.push({
+      type: "separator",
+    });
+    rankBoxes.push(
+      worldBossTemplate.generateRankBox({
+        name: i18n.__("template.admin"),
+        damage: adminDamage,
+        rank: "?",
+      })
+    );
+  }
+
+  // 再組出排名資訊的總結
+  const rankBubble = worldBossTemplate.generateTopTenRank(rankBoxes);
+
+  // context.replyText(JSON.stringify(rankBubble));
+  context.replyFlex(`${data.name} 的戰鬥模板`, {
+    type: "carousel",
+    contents: [mainBubble, infoBubble, rankBubble],
+  });
 }
 
 /**

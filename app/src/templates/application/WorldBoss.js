@@ -1,5 +1,6 @@
 const dateformat = require("dateformat");
 const i18n = require("../../util/i18n");
+const humanNumber = require("human-number");
 
 exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted }) => {
   // caclute percentage of hp and round it to 0 decimal places
@@ -346,3 +347,109 @@ function getMissionCompleteBox() {
     width: "300px",
   };
 }
+
+exports.generateTopTenRank = rankBoxes => {
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: `🏆${i18n.__("template.attack_rank")}🥇`,
+              align: "center",
+              color: "#FF3434",
+            },
+          ],
+          paddingAll: "md",
+          paddingTop: "none",
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "text",
+              text: "#",
+              weight: "bold",
+              flex: 1,
+              align: "center",
+            },
+            {
+              type: "text",
+              text: i18n.__("template.nickname"),
+              weight: "bold",
+              flex: 6,
+            },
+            {
+              type: "text",
+              text: i18n.__("template.damage"),
+              weight: "bold",
+              flex: 4,
+            },
+          ],
+        },
+        {
+          type: "separator",
+          margin: "sm",
+        },
+        ...rankBoxes,
+      ],
+    },
+  };
+};
+
+/**
+ * @param {Object} param0
+ * @param {String} param0.name
+ * @param {Number} param0.damage
+ * @param {Number|String} param0.rank
+ */
+exports.generateRankBox = ({ rank, name, damage }) => {
+  let specialIcons = ["🥇", "🥈", "🥉"];
+  let box = {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: `${rank}`,
+        flex: 1,
+        size: "sm",
+        align: "center",
+      },
+      {
+        type: "text",
+        text: name,
+        flex: 6,
+        size: "sm",
+      },
+      {
+        type: "text",
+        text: `${humanNumber(damage, n => Number.parseFloat(n).toFixed(1))}`,
+        flex: 4,
+        size: "sm",
+      },
+    ],
+    margin: "sm",
+    paddingAll: "xs",
+  };
+
+  // 如果為前三名，就加上特殊icon
+  if (rank <= 3) {
+    box.contents[0].text = specialIcons[rank - 1];
+  }
+
+  // 如果排名為問號，將文字顏色設為灰色
+  if (rank === "?") {
+    box.contents[1].color = "#808080";
+    box.contents[2].color = "#808080";
+  }
+
+  return box;
+};
