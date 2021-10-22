@@ -16,3 +16,8 @@ exports.create = worldBossLogModel.create;
  * 透過 event_id 取得剩下血量
  */
 exports.getRemainHpByEventId = worldBossLogModel.getTotalDamageByEventId;
+
+/**
+ * 取得某個活動的前十名 (排名)
+ */
+exports.getTopTen = worldBossLogModel.getTopTen;
