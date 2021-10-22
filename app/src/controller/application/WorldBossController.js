@@ -9,6 +9,7 @@ const worldBossEventLogService = require("../../service/WorldBossEventLogService
 const worldBossTemplate = require("../../templates/application/WorldBoss");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
+const { DefaultLogger } = require("../../util/Logger");
 
 exports.router = [
   text("/bosslist", bosslist),
@@ -23,6 +24,14 @@ exports.router = [
  */
 async function adminAttack(context, props) {
   const { percentage } = props.match.groups;
+  const { userId } = context.event.source;
+
+  // 判斷是否為管理員
+  const isAdmin = await adminModel.isAdmin(userId);
+  if (!isAdmin) {
+    return;
+  }
+
   // 取得正在進行中的世界事件
   const events = await worldBossEventService.getCurrentEvent();
 
@@ -119,12 +128,14 @@ exports.attackOnBoss = async (context, props) => {
 
   // 沒有會員id，跳過不處理
   if (!id) {
+    DefaultLogger.info(`no member id ${userId}`);
     return;
   }
 
   // 判斷是否可以攻擊
   const canAttack = await isUserCanAttack(userId);
   if (!canAttack && process.env.NODE_ENV === "production") {
+    DefaultLogger.info(`user ${displayName} can not attack in 10 minutes ${userId}`);
     return;
   }
 
@@ -137,6 +148,9 @@ exports.attackOnBoss = async (context, props) => {
   // 如果此王已經死亡，則不處理
   let remainHp = eventBoss.hp - parseInt(totalDamage || 0);
   if (remainHp <= 0) {
+    DefaultLogger.info(
+      `boss is dead ${displayName} skip, boss hp ${eventBoss.hp}, totaldamage ${totalDamage}`
+    );
     return;
   }
 
@@ -154,21 +168,21 @@ exports.attackOnBoss = async (context, props) => {
   };
   await worldBossEventLogService.create(attributes);
 
-  context.replyText(
-    `${i18n.__("message.user_attack_on_world_boss", {
-      name,
-      damage,
-    })}，${i18n.__n("message.damage_suffix", damage)}`,
-    {
-      sender: { name: displayName, iconUrl: pictureUrl },
-    }
-  );
+  let message = `${i18n.__("message.user_attack_on_world_boss", {
+    name,
+    damage,
+  })}，${i18n.__n("message.damage_suffix", damage)}`;
+  let sender = { name: displayName.substr(0, 20), iconUrl: pictureUrl };
+
+  DefaultLogger.info(`${message} ${JSON.stringify(sender)}`);
+
+  context.replyText(message, { sender });
 };
 
 /**
  * 判斷是否可以攻擊
  * @param {String} userId
- * @returns {Boolean}
+ * @returns {Promise<Boolean>}
  */
 async function isUserCanAttack(userId) {
   const key = `${userId}_can_attack`;
@@ -196,6 +210,6 @@ async function isUserCanAttack(userId) {
  */
 function calculateDamage(level = 1) {
   // 根據等級計算攻擊力，等級越高，攻擊力越大，使用等級的平方
-  const damage = level * 0.1 + Math.floor(Math.random() * level) * 0.5 + 1;
+  const damage = (level * 0.1 + Math.floor(Math.random() * level) * 0.5 + 1) * 10;
   return Math.round(damage);
 }
