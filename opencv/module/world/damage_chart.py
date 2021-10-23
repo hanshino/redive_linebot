@@ -15,7 +15,7 @@ def process(data: List[dict]):
 
     for i in data:
         if len(labels) < 10:
-            labels.append(i.get("displayName", "路人"))
+            labels.append(i.get("display_name", "路人"))
             sizes.append(i.get("total_damage"))
             explode.append(0)
         else:
