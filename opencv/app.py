@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from module.image import proc
 from module.princess.guild import report
 from module.princess.arena import upload, search
+from module.world import damage_chart
 
 app = Flask(__name__)
 
@@ -35,6 +36,13 @@ def ABRsearch():
     result = search.process(proc.base64_to_image(body["image"]))
     if result == None:
         return jsonify({"message": "empty"}), 404
+    return jsonify(result)
+
+
+@app.route('/api/v1/World/Boss/DamageChart', methods=["POST"])
+def WBChart():
+    body = request.get_json()
+    result = damage_chart.process(body["top_data"])
     return jsonify(result)
 
 
