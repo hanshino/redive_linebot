@@ -6,19 +6,29 @@ const ChatLevelModel = require("../../model/application/ChatLevelModel");
 const worldBossModel = require("../../model/application/WorldBoss");
 const worldBossEventService = require("../../service/WorldBossEventService");
 const worldBossEventLogService = require("../../service/WorldBossEventLogService");
+const worldBossUserAttackMessageService = require("../../service/WorldBossUserAttackMessageService");
 const worldBossTemplate = require("../../templates/application/WorldBoss");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
 const LineClient = getClient("line");
+const opencvModel = require("../../model/application/OpencvModel");
+const characters = require("../../../doc/characterInfo.json");
 
 exports.router = [
   text("/bosslist", bosslist),
   text("/worldboss", bossEvent),
   text("/allevent", all),
   text("/worldrank", worldRank),
+  text("/worldattacktemplate", worldAttackTemplate),
   text(/^\/(sa|systemattack)(\s(?<percentage>\d{1,2}))?$/, adminAttack),
 ];
+
+async function worldAttackTemplate(context, props) {
+  let templates = await worldBossUserAttackMessageService.all();
+
+  context.replyText(JSON.stringify(templates));
+}
 
 /**
  * @param {Context} context
@@ -218,7 +228,7 @@ async function bossEvent(context) {
 exports.attackOnBoss = async (context, props) => {
   const { worldBossEventId } = props.payload;
   // 從事件的 source 取得用戶資料
-  const { displayName, pictureUrl, id, userId } = context.event.source;
+  const { displayName, id, userId } = context.event.source;
 
   // 沒有會員id，跳過不處理
   if (!id) {
@@ -262,7 +272,12 @@ exports.attackOnBoss = async (context, props) => {
   };
   await worldBossEventLogService.create(attributes);
 
-  let message = `${i18n.__("message.user_attack_on_world_boss", {
+  // 隨機取得此次攻擊的訊息樣板
+  let messageTemplates = await worldBossUserAttackMessageService.all();
+  let templateData = messageTemplates[Math.floor(Math.random() * messageTemplates.length)];
+  let pictureUrl = characters.find(data => data.unitId == templateData.unit_id).HeadImage;
+
+  let message = `${i18n.__(templateData.template, {
     name,
     damage,
   })}，${i18n.__n("message.damage_suffix", damage)}`;
