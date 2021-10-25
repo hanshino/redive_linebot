@@ -66,4 +66,7 @@ POST /api/v1/World/Boss/DamageChart
 | `top_data[]`              | `object` | 上榜成員資料                     |
 | `top_data[].display_name` | `string` | 成員名稱                         |
 | `top_data[].total_damage` | `number` | 傷害                             |
-| `boss_hp`                 | `number` | 小遊戲世界王的血量               |
+| `boss`                    | `object` | 小遊戲世界王的設定               |
+| `boss.name`               | `string` | 小遊戲世界王名稱                 |
+| `boss.image`              | `string` | 小遊戲世界王圖片                 |
+| `boss.caused_damage`      | `number` | 小遊戲世界王所受到的傷害         |

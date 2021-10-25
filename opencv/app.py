@@ -3,6 +3,7 @@ from module.image import proc
 from module.princess.guild import report
 from module.princess.arena import upload, search
 from module.world import damage_chart
+import os
 
 app = Flask(__name__)
 
@@ -42,8 +43,9 @@ def ABRsearch():
 @app.route('/api/v1/World/Boss/DamageChart', methods=["POST"])
 def WBChart():
     body = request.get_json()
-    result = damage_chart.process(body["top_data"])
+    result = damage_chart.process(body["top_data"], body["boss"])
     return jsonify(result)
 
 
-app.run(host="0.0.0.0", port=3000)
+app.run(host="0.0.0.0", port=3000, debug=os.environ.get(
+    "PYTHON_MODE", "PROD") == "DEBUG")
