@@ -3,6 +3,14 @@ const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
 
 /**
+ * @param {String} groupId
+ * @returns {Promise<{ID: Number, GuildId: String}>}
+ */
+exports.findByGroupId = async groupId => {
+  return await mysql.select("*").from("Guild").where({ GuildId: groupId }).first();
+};
+
+/**
  * 取得用戶所在的群組
  * @param {String} userId
  */

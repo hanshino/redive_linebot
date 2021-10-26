@@ -139,6 +139,13 @@ async function bosslist(context) {
 async function bossEvent(context) {
   // 取得正在進行中的世界事件
   const events = await worldBossEventService.getCurrentEvent();
+  // 取得訊息來源是否能夠攻擊，目前規則為：
+  // 1. 個人使用者可以攻擊
+  // 2. 群組內的話，必須具備群組 world_boss 服務
+  // 擁有群組權限
+  const isGroup = context.event.source.type === "group";
+  const hasGuildService = context.state.services.includes("world_boss");
+  const canAttack = isGroup ? hasGuildService : true;
 
   // 多起世界事件正在舉行中
   if (events.length > 1) {
@@ -184,6 +191,7 @@ async function bossEvent(context) {
     fullHp: data.hp,
     currentHp: remainHp < 0 ? 0 : remainHp,
     hasCompleted,
+    canAttack,
   });
 
   // 組合排名資訊
@@ -214,10 +222,15 @@ async function bossEvent(context) {
   // 再組出排名資訊的總結
   const rankBubble = worldBossTemplate.generateTopTenRank(rankBoxes);
 
-  // context.replyText(JSON.stringify(rankBubble));
+  const contents = [mainBubble, infoBubble, rankBubble];
+  if (canAttack === false) {
+    // 如果不能攻擊，則插入一個 bubble 在最前面
+    contents.unshift(worldBossTemplate.generateOshirase());
+  }
+
   context.replyFlex(`${data.name} 的戰鬥模板`, {
     type: "carousel",
-    contents: [mainBubble, infoBubble, rankBubble],
+    contents,
   });
 }
 
