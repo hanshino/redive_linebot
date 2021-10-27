@@ -197,7 +197,7 @@ exports.Ian.RegisterUser = (platform = 2, userId, name, avatar = "") => {
 };
 
 exports.Ian.isRegister = (platform, userId) => {
-  return doGet(`/bot/isRegister?platform=${platform}&user_id=${userId}`);
+  return doGet(`/bot/isRegister?platform=${platform}&user_id=${userId}`).catch(() => false);
 };
 
 exports.Ian.createForm = (ianUserId, month, title = "") => {

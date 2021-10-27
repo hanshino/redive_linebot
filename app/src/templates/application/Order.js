@@ -129,7 +129,7 @@ function getUserName(context) {
 function _sendImage(context, url, sender) {
   switch (context.platform) {
     case "line":
-      context.sendImage(
+      context.replyImage(
         {
           originalContentUrl: url,
           previewImageUrl: url,
