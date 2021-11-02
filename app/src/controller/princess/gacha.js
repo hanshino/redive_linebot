@@ -177,7 +177,7 @@ module.exports = {
 
       if (canDailyGacha && pickup && OwnGodStone >= 1500) {
         // 如果使用消耗抽，扣除女神石並且機率提升，前提是女神石要有1500顆
-        filtPool = makePickup(filtPool, 50);
+        filtPool = makePickup(filtPool, 200);
         costGodStone = 1500;
         DefaultLogger.info(`${userId} 使用了消耗抽，扣除1500顆女神石，並且機率提升！`);
         await InventoryModel.deleteItem(userId, 999);
