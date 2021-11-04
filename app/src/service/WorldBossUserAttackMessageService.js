@@ -5,7 +5,6 @@ exports.all = async (cache = true) => {
   let key = "worldBossUserAttackMessage";
   let data = await redis.get(key);
   if (data && cache) {
-    console.log("WorldBossUserAttackMessageService.all from redis");
     return data;
   }
 

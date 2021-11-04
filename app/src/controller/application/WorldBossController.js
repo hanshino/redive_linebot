@@ -2,10 +2,10 @@
 const { Context, getClient } = require("bottender");
 const { text } = require("bottender/router");
 const adminModel = require("../../model/application/Admin");
-const ChatLevelModel = require("../../model/application/ChatLevelModel");
 const worldBossModel = require("../../model/application/WorldBoss");
 const worldBossEventService = require("../../service/WorldBossEventService");
 const worldBossEventLogService = require("../../service/WorldBossEventLogService");
+const minigameService = require("../../service/MinigameService");
 const worldBossUserAttackMessageService = require("../../service/WorldBossUserAttackMessageService");
 const worldBossTemplate = require("../../templates/application/WorldBoss");
 const redis = require("../../util/redis");
@@ -16,6 +16,7 @@ const opencvModel = require("../../model/application/OpencvModel");
 const characters = require("../../../doc/characterInfo.json");
 
 exports.router = [
+  text("/bosstest", test),
   text("/bosslist", bosslist),
   text("/worldboss", bossEvent),
   text("/allevent", all),
@@ -23,6 +24,13 @@ exports.router = [
   text("/worldattacktemplate", worldAttackTemplate),
   text(/^\/(sa|systemattack)(\s(?<percentage>\d{1,2}))?$/, adminAttack),
 ];
+
+async function test(context) {
+  const { userId } = context.event.source;
+  const { level, exp } = await minigameService.findByUserId(userId);
+
+  context.replyText(`${level} ${exp}`);
+}
 
 async function worldAttackTemplate(context, props) {
   let templates = await worldBossUserAttackMessageService.all();
@@ -144,7 +152,7 @@ async function bossEvent(context) {
   // 2. 群組內的話，必須具備群組 world_boss 服務
   // 擁有群組權限
   const isGroup = context.event.source.type === "group";
-  const hasGuildService = context.state.services.includes("world_boss");
+  const hasGuildService = isGroup && context.state.services.includes("world_boss");
   const canAttack = isGroup ? hasGuildService : true;
 
   // 多起世界事件正在舉行中
@@ -272,7 +280,15 @@ exports.attackOnBoss = async (context, props) => {
   }
 
   // 取得用戶等級
-  const { level } = await ChatLevelModel.getUserData(userId);
+  let levelData = await minigameService.findByUserId(userId);
+  if (!levelData) {
+    DefaultLogger.info(`no level data ${userId}. Create One.`);
+    await minigameService.createByUserId(userId, minigameService.defaultData);
+    levelData = minigameService.defaultData;
+    context.replyText(i18n.__("message.minigame_level_not_found"));
+  }
+
+  const { level } = levelData;
 
   // 新增對 boss 攻擊紀錄
   let damage = calculateDamage(level);
@@ -289,14 +305,28 @@ exports.attackOnBoss = async (context, props) => {
   let messageTemplates = await worldBossUserAttackMessageService.all();
   let templateData = messageTemplates[Math.floor(Math.random() * messageTemplates.length)];
   let pictureUrl = characters.find(data => data.unitId == templateData.unit_id).HeadImage;
+  let causedDamagePercent = calculateDamagePercentage(eventBoss.hp, damage);
+  let earnedExp = (eventBoss.exp * causedDamagePercent) / 100;
+  // 計算獲得經驗後的等級狀況
+  let newLevelData = await decideLevelResult({ ...levelData, earnedExp });
+  // 將計算後的結果更新至資料庫
+  await minigameService.updateByUserId(userId, {
+    level: newLevelData.newLevel,
+    exp: newLevelData.newExp,
+  });
 
-  let message = `${i18n.__(templateData.template, {
-    name,
-    damage,
-  })}，${i18n.__n("message.damage_suffix", damage)}`;
+  if (newLevelData.levelUp) {
+    context.replyText(
+      i18n.__("message.minigame_level_up", { level: newLevelData.newLevel, displayName })
+    );
+  }
+
+  let message = i18n.__(templateData.template, { name, damage });
   let sender = { name: displayName.substr(0, 20), iconUrl: pictureUrl };
 
-  DefaultLogger.info(`${message} ${JSON.stringify(sender)}`);
+  DefaultLogger.info(
+    `${message} 造成了 ${calculateDamagePercentage(eventBoss.hp, damage)} ${JSON.stringify(sender)}`
+  );
 
   context.replyText(message, { sender });
 };
@@ -331,7 +361,60 @@ async function isUserCanAttack(userId) {
  * @returns {Number} 攻擊傷害
  */
 function calculateDamage(level = 1) {
-  // 根據等級計算攻擊力，等級越高，攻擊力越大，使用等級的平方
-  const damage = (level * 0.1 + Math.floor(Math.random() * level) * 0.5 + 1) * 10;
-  return Math.round(damage);
+  // 根據等級計算攻擊傷害，攻擊係數呈指數增加
+  // 等級也具有基礎傷害，所以等級越高，傷害越高，使用等級 * 10 當作基底傷害
+  // 最後再加上隨機值，避免每次都是同一個傷害
+  let damage = Math.floor(Math.pow(level, 2) * 2) + level * 10 + Math.floor(Math.random() * level);
+  return damage;
+}
+
+/**
+ * 計算攻擊傷害占比
+ */
+function calculateDamagePercentage(bossHp, damage) {
+  return (damage / bossHp) * 100;
+}
+
+/**
+ * @typedef {Object} LevelResult
+ * @property {Boolean} levelUp 是否升級
+ * @property {Number} newLevel 新的等級
+ * @property {Number} newExp 新的經驗值
+ * @property {Number} levelUpCount 升級次數
+ * @property {Number} nextLevelExp 下一級所需經驗值
+ * 決定等級結果
+ * @param {Object} param0
+ * @param {Number} param0.level 等級
+ * @returns {Promise<LevelResult>}
+ */
+async function decideLevelResult({ level, exp, earnedExp }) {
+  let newLevel = level;
+  let newExp = exp + earnedExp;
+  let levelUp = false;
+  // 紀錄提升的等級次數
+  let levelUpCount = 0;
+
+  // 取得等級經驗表
+  let levelExpList = await minigameService.getLevelUnit();
+
+  // 取得目前等級要升級到的經驗值
+  let nextLevelExp = levelExpList.find(data => data.level == level + 1).max_exp;
+
+  // 如果目前經驗值大於等級升級所需經驗值，則升級
+  // 也要判斷總共升級幾次
+  while (newExp >= nextLevelExp) {
+    newLevel++;
+    newExp -= nextLevelExp;
+    nextLevelExp = levelExpList.find(data => data.level == newLevel + 1).max_exp;
+    levelUpCount++;
+    levelUp = true;
+  }
+
+  return {
+    levelUp,
+    newLevel,
+    newExp,
+    levelUpCount,
+    nextLevelExp,
+  };
 }

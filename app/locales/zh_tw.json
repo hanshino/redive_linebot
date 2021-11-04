@@ -36,6 +36,8 @@
       "already_exists": "服務名稱 {{ serviceName }} 已存在於 {{ groupId }}",
       "add_success": "成功新增服務 {{ serviceName }} 到 {{ groupId }}",
       "add_usage": "使用方法： /addservice <服務名稱> --groupId=<群組ID>"
-    }
+    },
+    "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
+    "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}"
   }
 }
