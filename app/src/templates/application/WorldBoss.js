@@ -605,6 +605,11 @@ exports.generateOshirase = () => {
           backgroundColor: "#1234FF56",
           paddingAll: "md",
           cornerRadius: "md",
+          action: {
+            type: "uri",
+            label: "加入專用群組",
+            uri: "http://line.me/ti/g/Yu-Jmbxf1P",
+          },
         },
       ],
     },
