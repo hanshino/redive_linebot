@@ -154,6 +154,7 @@ const DemoArea = ({ imageUrl = "", template = "" }) => {
   const classes = useStyles();
   const imageRegex = /^https?:\/\/(?:[a-z-]+\.)+[a-z]{2,6}(?:\/[^/#?]+)+\.(?:jpe?g|png)$/;
   const isValidImage = imageRegex.test(imageUrl);
+  imageUrl = isValidImage ? imageUrl : "";
 
   return (
     <Grid
@@ -169,7 +170,7 @@ const DemoArea = ({ imageUrl = "", template = "" }) => {
       </Grid>
       <Grid container item alignItems="center" spacing={1}>
         <Grid item>
-          <Avatar src={isValidImage && imageUrl} alt={"頭像"} />
+          <Avatar src={imageUrl} alt={"頭像"} />
         </Grid>
         <Grid item>
           <Typography variant="subtitle2">

@@ -12,6 +12,7 @@ const GroupConfig = require("../../doc/GroupConfig.json");
 const {
   verifyToken,
   verifyAdmin,
+  verifyPrivilege,
   verifyId,
   verifyLineGroupId,
 } = require("../middleware/validation");
@@ -159,22 +160,46 @@ router.get("/GroupConfig", (req, res) => res.json(GroupConfig));
 /**
  * 管理員轉蛋資料
  */
-router.get("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.showGachaPool);
+router.get(
+  "/Admin/GachaPool/Data",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(1),
+  gacha.api.showGachaPool
+);
 
 /**
  * 編輯管理員轉蛋資料
  */
-router.put("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.updateCharacter);
+router.put(
+  "/Admin/GachaPool/Data",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(9),
+  gacha.api.updateCharacter
+);
 
 /**
  * 新增管理員轉蛋資料
  */
-router.post("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.insertCharacter);
+router.post(
+  "/Admin/GachaPool/Data",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(9),
+  gacha.api.insertCharacter
+);
 
 /**
  * 刪除管理員轉蛋資料
  */
-router.delete("/Admin/GachaPool/Data/:id", verifyToken, verifyAdmin, gacha.api.deleteCharacter);
+router.delete(
+  "/Admin/GachaPool/Data/:id",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(9),
+  gacha.api.deleteCharacter
+);
 
 /**
  * 取得管理員全群指令
@@ -183,6 +208,7 @@ router.get(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(1),
   GlobalOrdersController.api.showGlobalOrders
 );
 
@@ -193,6 +219,7 @@ router.post(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(9),
   GlobalOrdersController.api.insertGlobalOrders
 );
 
@@ -203,6 +230,7 @@ router.put(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(9),
   GlobalOrdersController.api.updateGlobalOrders
 );
 
@@ -213,6 +241,7 @@ router.delete(
   "/Admin/GlobalOrders/Data/:orderKey",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(9),
   GlobalOrdersController.api.deleteGlobalOrders
 );
 
@@ -302,6 +331,7 @@ router.post(
   "/Game/World/Boss/Feature/Message",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(3),
   WorldBossController.api.createAttackMessage
 );
 // 取得世界王傷害特色訊息
@@ -309,6 +339,7 @@ router.get(
   "/Game/World/Boss/Feature/Message",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(1),
   WorldBossController.api.listAttackMessage
 );
 

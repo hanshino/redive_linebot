@@ -82,6 +82,19 @@ exports.verifyAdmin = async (req, res, next) => {
   next();
 };
 
+exports.verifyPrivilege = (allow = 9) => {
+  return (req, res, next) => {
+    let { privilege } = req.profile;
+    privilege = parseInt(privilege);
+
+    if (privilege < allow) {
+      return Unauthorized(res);
+    }
+
+    next();
+  };
+};
+
 exports.socketSetProfile = async (socket, next) => {
   const { token } = socket.handshake.query;
 

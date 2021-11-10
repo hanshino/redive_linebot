@@ -1,5 +1,5 @@
 import { Grid } from "@material-ui/core";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import MessageForm from "./Form";
 import { Alert } from "@material-ui/lab";
 import useAxios from "axios-hooks";
@@ -7,14 +7,14 @@ import { Snackbar } from "@material-ui/core";
 import { Redirect } from "react-router";
 
 const WorldbossMessageCreate = () => {
-  const [{ data, loading }, sendRequest] = useAxios(
+  const [{ data, loading, error }, sendRequest] = useAxios(
     {
       url: "/api/Game/World/Boss/Feature/Message",
       method: "POST",
     },
     { manual: true }
   );
-  const [showError, setShowError] = useState(false);
+  const [errorControl, setError] = useState({ show: false, message: "" });
 
   const onSubmit = formData => {
     const { data = {}, isValidImage = false, isValidTemplate = false } = formData;
@@ -29,9 +29,15 @@ const WorldbossMessageCreate = () => {
         },
       });
     } else {
-      setShowError(true);
+      setError({ show: true, message: "Invalid form data" });
     }
   };
+
+  useEffect(() => {
+    if (error) {
+      setError({ show: true, message: error.message });
+    }
+  }, [error]);
 
   // 如果成功，就導回列表頁
   if (data && data.message === "success") {
@@ -48,9 +54,13 @@ const WorldbossMessageCreate = () => {
       <Grid item>
         <MessageForm onSubmit={onSubmit} loading={loading} />
       </Grid>
-      <Snackbar open={showError} autoHideDuration={6000} onClose={() => setShowError(false)}>
+      <Snackbar
+        open={errorControl.show}
+        autoHideDuration={6000}
+        onClose={() => setError({ ...errorControl, show: false })}
+      >
         <Alert elevation={6} variant="filled" severity="error" style={{ width: "100%" }}>
-          請檢查內容是否有錯誤！
+          {errorControl.message}
         </Alert>
       </Snackbar>
     </Grid>

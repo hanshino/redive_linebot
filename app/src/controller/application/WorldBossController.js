@@ -443,7 +443,7 @@ api.createAttackMessage = async (req, res) => {
     await worldBossUserAttackMessageService.create({
       icon_url,
       template,
-      creator_id: 1,
+      creator_id: req.profile.ID,
     });
   } catch (e) {
     return res.status(500).json({
