@@ -1,6 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 const { Context, getClient } = require("bottender");
 const { text } = require("bottender/router");
+const ajv = require("../../util/ajv");
 const adminModel = require("../../model/application/Admin");
 const worldBossModel = require("../../model/application/WorldBoss");
 const worldBossEventService = require("../../service/WorldBossEventService");
@@ -13,7 +14,6 @@ const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
 const LineClient = getClient("line");
 const opencvModel = require("../../model/application/OpencvModel");
-const characters = require("../../../doc/characterInfo.json");
 
 exports.router = [
   text("/bosstest", test),
@@ -304,7 +304,6 @@ exports.attackOnBoss = async (context, props) => {
   // 隨機取得此次攻擊的訊息樣板
   let messageTemplates = await worldBossUserAttackMessageService.all();
   let templateData = messageTemplates[Math.floor(Math.random() * messageTemplates.length)];
-  let pictureUrl = characters.find(data => data.unitId == templateData.unit_id).HeadImage;
   let causedDamagePercent = calculateDamagePercentage(eventBoss.hp, damage);
   let earnedExp = (eventBoss.exp * causedDamagePercent) / 100;
   // 計算獲得經驗後的等級狀況
@@ -321,8 +320,8 @@ exports.attackOnBoss = async (context, props) => {
     );
   }
 
-  let message = i18n.__(templateData.template, { name, damage });
-  let sender = { name: displayName.substr(0, 20), iconUrl: pictureUrl };
+  let message = i18n.__(templateData.template, { name, damage, display_name: displayName });
+  let sender = { name: displayName.substr(0, 20), iconUrl: templateData.icon_url };
 
   DefaultLogger.info(
     `${message} 造成了 ${calculateDamagePercentage(eventBoss.hp, damage)} ${JSON.stringify(sender)}`
@@ -418,3 +417,94 @@ async function decideLevelResult({ level, exp, earnedExp }) {
     nextLevelExp,
   };
 }
+
+const api = {};
+exports.api = api;
+
+/**
+ * 新增一筆特色攻擊訊息
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+api.createAttackMessage = async (req, res) => {
+  const { body } = req;
+  const validate = ajv.getSchema("createUserAttackMessage");
+  const valid = validate(body);
+
+  if (!valid) {
+    return res.status(400).json({
+      message: validate.errors,
+    });
+  }
+
+  const { icon_url, template } = body;
+
+  try {
+    await worldBossUserAttackMessageService.create({
+      icon_url,
+      template,
+      creator_id: 1,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      message: e.message,
+    });
+  }
+
+  return res.status(200).json({
+    message: "success",
+  });
+};
+
+/**
+ * 列出特色攻擊訊息
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+api.listAttackMessage = async (req, res) => {
+  const data = await worldBossUserAttackMessageService.all();
+  return res.status(200).json({
+    message: "success",
+    data,
+  });
+};
+
+/**
+ * 根據事件id取得輸出排行榜的圖片
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+api.genTopTenRankChart = async (req, res) => {
+  const { eventId } = req.query;
+  const [rawData, bossData, { total_damage: totalDamage }] = await Promise.all([
+    worldBossEventLogService.getTopTen(eventId),
+    worldBossEventService.getBossInformation(eventId),
+    worldBossEventLogService.getRemainHpByEventId(eventId),
+  ]);
+
+  // 將排名資訊，補上用戶資訊
+  let topTenInfo = await Promise.all(
+    rawData.map(async data => {
+      let profile = await LineClient.getUserProfile(data.userId);
+      return {
+        ...data,
+        ...profile,
+      };
+    })
+  );
+
+  // 組出 python 所需的資料格式
+  const topData = topTenInfo.map((data, index) => ({
+    display_name: data.displayName || `路人${index + 1}`,
+    total_damage: parseInt(data.total_damage),
+  }));
+
+  // 呼叫 python 取得圖片
+  const imageBase64 = await opencvModel.generateRankImage({
+    top_data: topData,
+    boss: { ...bossData, caused_damage: parseInt(totalDamage) },
+  });
+
+  res.setHeader("Content-Type", "image/png");
+  res.send(Buffer.from(imageBase64, "base64"));
+};

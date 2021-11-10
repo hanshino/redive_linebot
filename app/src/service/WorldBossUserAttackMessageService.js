@@ -12,3 +12,9 @@ exports.all = async (cache = true) => {
   redis.set(key, result);
   return result;
 };
+
+exports.create = async attributes => {
+  let result = await worldBossUserAttackMessageModel.create(attributes);
+  redis.del("worldBossUserAttackMessage");
+  return result;
+};

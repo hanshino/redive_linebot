@@ -22,6 +22,7 @@ const NotifyController = require("../controller/application/NotifyController");
 const { binding } = require("../controller/application/NotifyController").api;
 const ChatLevelController = require("../controller/application/ChatLevelController");
 const AnnounceController = require("../controller/application/AnnounceController");
+const WorldBossController = require("../controller/application/WorldBossController");
 
 router.get("/send-id", (req, res) => {
   const { size } = req.query || "full";
@@ -290,6 +291,26 @@ router.put("/Bot/Notify/:key/:status", verifyToken, NotifyController.api.setSubS
 router.get("/Chat/Level/Rank", ChatLevelController.api.queryRank);
 
 router.get("/Announcement/:page", AnnounceController.api.queryData);
+
+/**
+ * 小遊戲 - 世界王
+ */
+// 輸出排行圖表
+router.get("/Game/World/Boss/Rank/Chart", WorldBossController.api.genTopTenRankChart);
+// 新增世界王傷害特色訊息
+router.post(
+  "/Game/World/Boss/Feature/Message",
+  verifyToken,
+  verifyAdmin,
+  WorldBossController.api.createAttackMessage
+);
+// 取得世界王傷害特色訊息
+router.get(
+  "/Game/World/Boss/Feature/Message",
+  verifyToken,
+  verifyAdmin,
+  WorldBossController.api.listAttackMessage
+);
 
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });
