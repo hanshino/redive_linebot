@@ -258,9 +258,9 @@ exports.attackOnBoss = async (context, props) => {
   }
 
   // 判斷是否可以攻擊
-  const canAttack = await isUserCanAttack(userId);
+  const canAttack = await isUserCanAttack(id);
   if (!canAttack && process.env.NODE_ENV === "production") {
-    DefaultLogger.info(`user ${displayName} can not attack in 10 minutes ${userId}`);
+    DefaultLogger.info(`user ${displayName} can not attack in today ${userId}`);
     return;
   }
 
@@ -338,19 +338,20 @@ exports.attackOnBoss = async (context, props) => {
 async function isUserCanAttack(userId) {
   const key = `${userId}_can_attack`;
 
-  // 使用 setnx 判斷是否為10分鐘內第一次攻擊
-  const isFirstAttack = await redis.setnx(key, 1);
-
-  // 如果是第一次攻擊，則設定10分鐘後自動清除
-  if (isFirstAttack) {
-    redis.expire(key, 10 * 60);
-  }
-
-  // 如果不是第一次攻擊，則不能攻擊
-  if (!isFirstAttack) {
+  // 如果 redis 中有資料，代表一定攻擊過了
+  if (await redis.get(key)) {
     return false;
   }
 
+  // 取得今日是否有紀錄
+  let isTodayLogged = await worldBossEventLogService.isTodayLogged(userId);
+  if (isTodayLogged) {
+    // 如果有紀錄，則不能攻擊
+    await redis.setnx(key, 1, 60 * 10);
+    return false;
+  }
+  // 如果沒有紀錄，則可以攻擊，並且寫進 redis
+  await redis.setnx(key, 1, 60 * 10);
   return true;
 }
 

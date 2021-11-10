@@ -21,3 +21,16 @@ exports.getRemainHpByEventId = worldBossLogModel.getTotalDamageByEventId;
  * 取得某個活動的前十名 (排名)
  */
 exports.getTopTen = worldBossLogModel.getTopTen;
+
+/**
+ * 取得今日是否已經登錄過
+ */
+exports.isTodayLogged = async userId => {
+  const filter = {
+    created_start_at: new Date(new Date().setHours(0, 0, 0, 0)),
+    created_end_at: new Date(new Date().setHours(23, 59, 59, 999)),
+  };
+
+  const data = await worldBossLogModel.findByUserId(userId, { filter });
+  return data.length > 0;
+};
