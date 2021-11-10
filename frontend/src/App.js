@@ -29,6 +29,17 @@ import PropTypes from "prop-types";
 import Notify from "./components/Bot/Notify";
 import Binding from "./components/Bot/Binding";
 import Rankings from "./components/Rankings";
+import WorldbossMessage, { WorldBossMessageCreate } from "./components/Admin/WorldbossMessage";
+import { cyan, lightBlue } from "@material-ui/core/colors";
+import { ThemeProvider } from "@material-ui/styles";
+import { createTheme } from "@material-ui/core";
+
+const theme = createTheme({
+  palette: {
+    primary: cyan,
+    secondary: lightBlue,
+  },
+});
 
 const useStyles = makeStyles(theme => ({
   backdrop: {
@@ -45,14 +56,14 @@ function App() {
   axios.defaults.timeout = 5000;
 
   return (
-    <React.Fragment>
+    <ThemeProvider theme={theme}>
       <Router>
         <Switch>
           <Route path="/liff/:size" component={LiffSizeLayout} />
           <Route path="*" component={MainLayout} />
         </Switch>
       </Router>
-    </React.Fragment>
+    </ThemeProvider>
   );
 }
 
@@ -174,6 +185,8 @@ function AdminLayout() {
       <Route path="/Admin/GachaPool" component={GachaPool} />
       <Route path="/Admin/GlobalOrder" component={Order} />
       <Route path="/Admin/Messages" component={Message} />
+      <Route path="/Admin/Worldboss/Message/Create" component={WorldBossMessageCreate} />
+      <Route path="/Admin/Worldboss/Message" component={WorldbossMessage} />
     </Switch>
   );
 }
