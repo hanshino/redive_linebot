@@ -27,7 +27,6 @@ exports.generateBoss = ({
               type: "image",
               url: image,
               size: "full",
-              aspectMode: "cover",
             },
           ],
           cornerRadius: "md",

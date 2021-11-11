@@ -3,8 +3,6 @@ const axios = Axios.create({
   baseURL: "https://api.line.me/v2",
 });
 axios.defaults.headers.common = { Authorization: `Bearer ${process.env.LINE_ACCESS_TOKEN}` };
-
-const message = { type: "text", text: "test" };
 const { CustomLogger } = require("../lib/Logger");
 const redis = require("../lib/redis");
 const NotifyListModel = require("../model/NotifyListModel");
@@ -13,63 +11,80 @@ const NotifyRepo = require("../repository/NotifyRepository");
 
 var count = 0;
 
-exports.sendAD = async () => {
-  let keys = await redis.keys("ReplyToken*");
-  console.log(keys.length, "筆要處理");
-  await keys.forEach(async key => {
-    try {
-      let sourceId = key.replace("ReplyToken_", "");
-      let sentKey = `sent_${sourceId}`;
-      let token = await redis.get(key);
-      let msg = JSON.parse(JSON.stringify(message));
+exports.sendByDB = async params => {
+  console.log("sendByDB", params);
+  const { id } = params;
+  let data = await NotifyListModel.findAdMessage(id);
 
-      if (sourceId[0] !== "C") {
-        console.log(sourceId, "不是群組");
-        return;
-      }
-      if (!token) {
-        console.log("沒有token");
-        return;
-      }
-      if ((await redis.get(sentKey)) !== null) {
-        console.log("已發送過", sourceId);
-        return;
-      }
+  if (!data) {
+    return;
+  }
 
-      msg.contents[1].body.contents[1].action.uri =
-        msg.contents[1].body.contents[1].action.uri + `?reactRedirectUri=/Group/${sourceId}/Record`;
+  let { message, sender_name: senderName, sender_iconUrl: senderIcon } = data;
+  console.log(message, senderName, senderIcon);
 
-      // if (sourceId !== "C00c12a1e8f2daf1dd68893fbb584848f") return;
-
-      let result = await axios
-        .post("bot/message/reply", {
-          replyToken: token,
-          messages: [
-            { type: "flex", altText: "布丁快訊", contents: msg, sender: { name: "布丁開發" } },
-          ],
-        })
-        .then(req => req.status === 200)
-        .catch(err => {
-          console.log(err);
-          return false;
-        });
-
-      if (result) {
-        count++;
-        console.log(`${sourceId} 發送成功`);
-        await redis.set(sentKey, 1, 86400);
-      }
-
-      redis.del(key);
-    } catch (e) {
-      console.error(e);
-    }
-  });
+  while (true) {
+    await this.sendAD({ message: JSON.stringify(message), senderName, senderIcon });
+    console.log("休息10秒", `總共發了${count}`);
+    await delay(10);
+  }
 };
 
-exports.send = async () => {
+exports.sendAD = async params => {
+  let keys = await redis.keys("ReplyToken*");
+  let { message = "未加入訊息參數", senderName = "自動通告系統", senderIcon } = params;
+  const sender = { name: senderName, iconUrl: senderIcon };
+  console.log(keys.length, "筆要處理");
+  return await Promise.all(
+    keys.map(async key => {
+      try {
+        let sourceId = key.replace("ReplyToken_", "");
+        let sentKey = `sent_${sourceId}`;
+        let token = await redis.get(key);
+        let messages = parseMessage(message);
+
+        if (sourceId[0] !== "C") {
+          console.log(sourceId, "不是群組");
+          return;
+        }
+        if (!token) {
+          console.log("沒有token");
+          return;
+        }
+        if ((await redis.get(sentKey)) !== null) {
+          console.log("已發送過", sourceId);
+          return;
+        }
+
+        let result = await axios
+          .post("bot/message/reply", {
+            replyToken: token,
+            messages: messages.map(message => ({ ...message, sender })),
+          })
+          .then(req => req.status === 200)
+          .catch(err => {
+            console.log(err.message);
+            console.log(err.response.data);
+            return false;
+          });
+
+        if (result) {
+          count++;
+          console.log(`${sourceId} 發送成功`);
+          await redis.set(sentKey, 1, 86400);
+        }
+
+        redis.del(key);
+      } catch (e) {
+        console.error(e.data);
+      }
+    })
+  );
+};
+
+exports.send = async params => {
   while (true) {
-    await this.sendAD();
+    await this.sendAD(params);
     console.log("休息10秒", `總共發了${count}`);
     await delay(10);
   }
@@ -178,10 +193,12 @@ function verifyNotifyList(id) {
 
 function parseMessage(message) {
   try {
-    return JSON.parse(message);
+    message = JSON.parse(message);
   } catch (e) {
-    return { type: "text", text: message };
+    message = { type: "text", text: message };
   }
+
+  return Array.isArray(message) ? message : [message];
 }
 
 exports.consumePassiveNotify = async () => {

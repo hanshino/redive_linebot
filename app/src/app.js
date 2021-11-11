@@ -22,6 +22,7 @@ const ArenaContoroller = require("./controller/princess/ArenaController");
 const GuildController = require("./controller/application/GuildController");
 const WorldBossController = require("./controller/application/WorldBossController");
 const GuildServiceController = require("./controller/application/GuildServiceController");
+const AdvertisementController = require("./controller/application/AdvertisementController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -83,6 +84,7 @@ async function OrderBased(context, { next }) {
     ...ArenaContoroller.router(context),
     ...WorldBossController.router,
     ...GuildServiceController.router,
+    ...AdvertisementController.router,
     text(/^[#.](使用說明|help)$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
