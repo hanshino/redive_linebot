@@ -29,6 +29,11 @@ const attackConfig = {
   night: {
     max: 4,
     startHour: 20,
+    endHour: 24,
+  },
+  midnight: {
+    max: 1,
+    startHour: 0,
     endHour: 4,
   },
 };
@@ -377,14 +382,13 @@ async function isUserCanAttack(userId) {
   let hour = now.getHours();
   let canAttack = false;
   let period = "";
-  // 早上 4:00 ~ 12:00
-  if (hour >= 4 && hour < 12) {
-    period = "morning";
-  } else if (hour >= 12 && hour < 20) {
-    period = "afternoon";
-  } else {
-    period = "night";
-  }
+
+  Object.keys(attackConfig).forEach(key => {
+    let config = attackConfig[key];
+    if (hour >= config.startHour && hour < config.endHour) {
+      period = key;
+    }
+  });
 
   // 判斷是否可以攻擊
   let currentConfig = attackConfig[period];
@@ -396,19 +400,19 @@ async function isUserCanAttack(userId) {
       createdAt.getHours() >= currentConfig.startHour &&
       createdAt.getHours() < currentConfig.endHour
     );
-  });
+  }).length;
 
   // 如果超過攻擊次數，代表不可以攻擊
-  if (currentCount.length >= currentConfig.max) {
+  if (currentCount >= currentConfig.max) {
     canAttack = false;
   } else {
     canAttack = true;
   }
 
   console.log(
-    `${userId} can attack ${canAttack}, currentCount ${
-      currentCount.length
-    }, currentConfig ${JSON.stringify(currentConfig)}`
+    `${userId} can attack ${canAttack}, currentCount ${currentCount}, currentConfig ${JSON.stringify(
+      currentConfig
+    )}`
   );
 
   // 不管是否可以攻擊，都要更新 redis 的資料
