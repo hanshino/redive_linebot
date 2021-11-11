@@ -14,6 +14,24 @@ const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
 const LineClient = getClient("line");
 const opencvModel = require("../../model/application/OpencvModel");
+// 設定每日早中晚時段的攻擊次數
+const attackConfig = {
+  morning: {
+    max: 3,
+    startHour: 4,
+    endHour: 12,
+  },
+  afternoon: {
+    max: 3,
+    startHour: 12,
+    endHour: 20,
+  },
+  night: {
+    max: 4,
+    startHour: 20,
+    endHour: 4,
+  },
+};
 
 exports.router = [
   text("/bosstest", test),
@@ -259,8 +277,10 @@ exports.attackOnBoss = async (context, props) => {
 
   // 判斷是否可以攻擊
   const canAttack = await isUserCanAttack(id);
-  if (!canAttack && process.env.NODE_ENV === "production") {
-    DefaultLogger.info(`user ${displayName} can not attack in today ${userId}`);
+  if (!canAttack && process.env.NODE_ENV !== "development") {
+    DefaultLogger.info(
+      `user ${displayName} can not attack ${userId}. Maybe cache or reach limit in this period.`
+    );
     return;
   }
 
@@ -343,16 +363,57 @@ async function isUserCanAttack(userId) {
     return false;
   }
 
-  // 取得今日是否有紀錄
-  let isTodayLogged = await worldBossEventLogService.isTodayLogged(userId);
-  if (isTodayLogged) {
-    // 如果有紀錄，則不能攻擊
-    await redis.setnx(key, 1, 60 * 10);
-    return false;
+  // 取得今日紀錄
+  let todayLogs = await worldBossEventLogService.getTodayLogs(userId);
+  // 如果完全沒有紀錄，代表可以攻擊
+  if (todayLogs.length === 0) {
+    await redis.setnx(key, 1, 60 * 1);
+    return true;
   }
-  // 如果沒有紀錄，則可以攻擊，並且寫進 redis
-  await redis.setnx(key, 1, 60 * 10);
-  return true;
+
+  // 分成早中晚三段，每段時間可以攻擊次數不同
+  // 先判斷目前時段
+  let now = new Date();
+  let hour = now.getHours();
+  let canAttack = false;
+  let period = "";
+  // 早上 4:00 ~ 12:00
+  if (hour >= 4 && hour < 12) {
+    period = "morning";
+  } else if (hour >= 12 && hour < 20) {
+    period = "afternoon";
+  } else {
+    period = "night";
+  }
+
+  // 判斷是否可以攻擊
+  let currentConfig = attackConfig[period];
+  let currentCount = todayLogs.filter(log => {
+    let { created_at } = log;
+    let createdAt = new Date(created_at);
+    // 篩選出當前時段的紀錄
+    return (
+      createdAt.getHours() >= currentConfig.startHour &&
+      createdAt.getHours() < currentConfig.endHour
+    );
+  });
+
+  // 如果超過攻擊次數，代表不可以攻擊
+  if (currentCount.length >= currentConfig.max) {
+    canAttack = false;
+  } else {
+    canAttack = true;
+  }
+
+  console.log(
+    `${userId} can attack ${canAttack}, currentCount ${
+      currentCount.length
+    }, currentConfig ${JSON.stringify(currentConfig)}`
+  );
+
+  // 不管是否可以攻擊，都要更新 redis 的資料
+  await redis.setnx(key, 1, 60 * 1);
+  return canAttack;
 }
 
 /**
