@@ -169,7 +169,7 @@ new CronJob(
 
 // 每五分鐘執行血量剩餘通知
 new CronJob(
-  "0 */5 * * * *",
+  "0 */5 0-1,6-23 * * *",
   async () => {
     await progressNotify();
   },
