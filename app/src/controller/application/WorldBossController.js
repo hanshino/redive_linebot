@@ -194,7 +194,7 @@ async function bossEvent(context) {
     worldBossEventLogService.getTopTen(eventId),
   ]);
   let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
-    data.id
+    eventId
   );
   let remainHp = data.hp - parseInt(totalDamage || 0);
   let hasCompleted = remainHp <= 0;
@@ -223,6 +223,7 @@ async function bossEvent(context) {
     currentHp: remainHp < 0 ? 0 : remainHp,
     hasCompleted,
     canAttack,
+    id: eventId,
   });
 
   // 組合排名資訊
@@ -290,6 +291,7 @@ exports.attackOnBoss = async (context, props) => {
   }
 
   const eventBoss = await worldBossEventService.getBossInformation(worldBossEventId);
+  console.log(eventBoss, worldBossEventId);
   const { name } = eventBoss;
   let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
     worldBossEventId
