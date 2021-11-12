@@ -39,26 +39,34 @@ const attackConfig = {
 };
 
 exports.router = [
-  text("/bosstest", test),
+  text("#冒險小卡", myStatus),
   text("/bosslist", bosslist),
-  text("/worldboss", bossEvent),
+  text(["/worldboss", "#世界王"], bossEvent),
   text("/allevent", all),
   text("/worldrank", worldRank),
-  text("/worldattacktemplate", worldAttackTemplate),
   text(/^\/(sa|systemattack)(\s(?<percentage>\d{1,2}))?$/, adminAttack),
 ];
 
-async function test(context) {
-  const { userId } = context.event.source;
+async function myStatus(context) {
+  const { userId, pictureUrl, displayName } = context.event.source;
   const { level, exp } = await minigameService.findByUserId(userId);
 
-  context.replyText(`${level} ${exp}`);
-}
+  const levelUnit = await minigameService.getLevelUnit();
+  // 取得目前等級的經驗值需求
+  const levelUpExp = levelUnit.find(unit => unit.level === level + 1).max_exp;
+  const expPercentage = (exp / levelUpExp) * 100;
 
-async function worldAttackTemplate(context, props) {
-  let templates = await worldBossUserAttackMessageService.all();
+  const data = {
+    level,
+    expPercentage,
+    name: displayName,
+    image: pictureUrl,
+    exp,
+  };
 
-  context.replyText(JSON.stringify(templates));
+  let bubble = worldBossTemplate.generateAdventureCard(data);
+
+  context.replyFlex("冒險者卡片", bubble);
 }
 
 /**
@@ -291,7 +299,6 @@ exports.attackOnBoss = async (context, props) => {
   }
 
   const eventBoss = await worldBossEventService.getBossInformation(worldBossEventId);
-  console.log(eventBoss, worldBossEventId);
   const { name } = eventBoss;
   let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
     worldBossEventId
@@ -476,6 +483,12 @@ async function decideLevelResult({ level, exp, earnedExp }) {
     levelUpCount++;
     levelUp = true;
   }
+
+  console.log(
+    `${level} level up to ${newLevel}`,
+    { levelUp, levelUpCount },
+    { newExp, nextLevelExp }
+  );
 
   return {
     levelUp,

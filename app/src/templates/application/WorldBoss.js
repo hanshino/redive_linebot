@@ -614,3 +614,131 @@ exports.generateOshirase = () => {
     },
   };
 };
+
+/**
+ * 產出冒險者卡片
+ * @param {Object} param0
+ * @param {String} param0.name 冒險者名稱
+ * @param {String} param0.image 冒險者圖片
+ * @param {String} param0.level 冒險者等級
+ * @param {String} param0.exp 冒險者經驗值
+ * @param {String} param0.expPercentage 冒險者經驗值 % 數值
+ */
+exports.generateAdventureCard = ({ name, image, level, exp, expPercentage }) => {
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "image",
+          url: "https://i.imgur.com/FD0TWBR.png",
+          aspectMode: "cover",
+          size: "full",
+          aspectRatio: "15:9",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "image",
+              url: `${image}`,
+              size: "full",
+            },
+          ],
+          borderWidth: "none",
+          width: "30%",
+          position: "absolute",
+          offsetEnd: "10%",
+          offsetTop: "15%",
+          cornerRadius: "100px",
+          paddingAll: "none",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              size: "sm",
+              contents: [
+                {
+                  type: "span",
+                  text: "職稱：",
+                },
+                {
+                  type: "span",
+                  text: "冒險者",
+                },
+              ],
+            },
+            {
+              type: "text",
+              size: "sm",
+              contents: [
+                {
+                  type: "span",
+                  text: "姓名：",
+                },
+                {
+                  type: "span",
+                  text: `${name}`,
+                },
+              ],
+            },
+            {
+              type: "text",
+              size: "sm",
+              contents: [
+                {
+                  type: "span",
+                  text: "等級：",
+                },
+                {
+                  type: "span",
+                  text: `${level}`,
+                },
+              ],
+            },
+            {
+              type: "text",
+              size: "sm",
+              contents: [
+                {
+                  type: "span",
+                  text: "經驗：",
+                },
+                {
+                  type: "span",
+                  text: `${exp}`,
+                },
+              ],
+            },
+          ],
+          position: "absolute",
+          offsetStart: "7%",
+          offsetTop: "15%",
+          paddingAll: "md",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [],
+              height: "8px",
+              backgroundColor: "#56DE58",
+              width: `${expPercentage}%`,
+            },
+          ],
+          backgroundColor: "#9FD8E3CF",
+        },
+      ],
+      paddingAll: "none",
+    },
+  };
+};
