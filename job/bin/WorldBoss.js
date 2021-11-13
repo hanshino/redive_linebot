@@ -44,7 +44,7 @@ async function progressNotify() {
     const { hp, name } = event;
     const damage = parseInt(result.total_damage) || 0;
     const remainHp = hp - damage;
-    const remainHpPercent = (remainHp / hp) * 100;
+    const remainHpPercent = remainHp ? (remainHp / hp) * 100 : 0;
     const message = `${name} 剩餘血量：${remainHpPercent.toFixed(2)}%`;
 
     const notifyList = await getNotifyList();
@@ -167,9 +167,9 @@ new CronJob(
   "Asia/Taipei"
 );
 
-// 每五分鐘執行血量剩餘通知
+// 每十分鐘執行血量剩餘通知
 new CronJob(
-  "0 */5 0-1,6-23 * * *",
+  "0 */10 0-1,6-23 * * *",
   async () => {
     await progressNotify();
   },
