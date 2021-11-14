@@ -217,10 +217,6 @@ async function bossEvent(context) {
       };
     })
   );
-  // 計算有效用戶的傷害
-  let validDamage = topTenInfo.reduce((acc, cur) => acc + parseInt(cur.total_damage || 0), 0);
-  // 計算管理員的傷害
-  let adminDamage = totalDamage - validDamage;
 
   // 組合世界事件資訊
   const infoBubble = worldBossTemplate.generateBossInformation({ ...data, hasCompleted });
@@ -243,21 +239,6 @@ async function bossEvent(context) {
       rank: index + 1,
     });
   });
-
-  // 將管理員傷害加入，先插入分隔線
-  // 如果管理員傷害為0，則不顯示
-  if (adminDamage > 0) {
-    rankBoxes.push({
-      type: "separator",
-    });
-    rankBoxes.push(
-      worldBossTemplate.generateRankBox({
-        name: i18n.__("template.admin"),
-        damage: adminDamage,
-        rank: "?",
-      })
-    );
-  }
 
   // 再組出排名資訊的總結
   const rankBubble = worldBossTemplate.generateTopTenRank(rankBoxes);
