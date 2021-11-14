@@ -123,6 +123,9 @@ async function getTipList() {
   return await mysql.select(["message"]).from("world_boss_tips");
 }
 
+// 只在正式環境馬上執行
+const immediateStart = process.env.NODE_ENV === "production";
+
 // 凌晨 3:50 執行出刀通知
 new CronJob(
   "0 50 3 * * *",
@@ -130,7 +133,7 @@ new CronJob(
     await battlePreparation("morning");
   },
   null,
-  true,
+  immediateStart,
   "Asia/Taipei"
 );
 
@@ -141,7 +144,7 @@ new CronJob(
     await battlePreparation("afternoon");
   },
   null,
-  true,
+  immediateStart,
   "Asia/Taipei"
 );
 
@@ -152,7 +155,7 @@ new CronJob(
     await battlePreparation("night");
   },
   null,
-  true,
+  immediateStart,
   "Asia/Taipei"
 );
 
@@ -163,7 +166,7 @@ new CronJob(
     await battlePreparation("midnight");
   },
   null,
-  true,
+  immediateStart,
   "Asia/Taipei"
 );
 
@@ -174,7 +177,7 @@ new CronJob(
     await progressNotify();
   },
   null,
-  true,
+  immediateStart,
   "Asia/Taipei"
 );
 
@@ -185,6 +188,6 @@ new CronJob(
     await regularRemind();
   },
   null,
-  true,
+  immediateStart,
   "Asia/Taipei"
 );
