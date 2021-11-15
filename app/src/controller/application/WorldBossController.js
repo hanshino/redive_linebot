@@ -259,6 +259,53 @@ async function bossEvent(context) {
  * @param {Context} context
  * @param {import("bottender").Props} props
  */
+exports.adminSpecialAttack = async (context, { payload }) => {
+  const { userId } = context.event.source;
+  const admin = await adminModel.find(userId);
+
+  if (!admin) {
+    DefaultLogger.info(`${userId} is not admin. And click admin special attack`);
+    return;
+  }
+
+  if (admin.privilege !== "9") {
+    DefaultLogger.info(
+      `${userId} is admin. And click admin special attack. But privilege insufficient`
+    );
+    return;
+  }
+
+  const { worldBossEventId, percentage } = payload;
+  const event = await worldBossEventService.getEventBoss(worldBossEventId);
+  const { hp } = event;
+
+  const causeDamage = ((parseInt(percentage) * hp) / 100).toFixed(0);
+
+  DefaultLogger.info(
+    `${userId} is admin. And click admin special attack. And cause ${causeDamage} damage`
+  );
+
+  let attributes = {
+    user_id: 0, // 管理員用戶ID
+    world_boss_event_id: worldBossEventId,
+    action_type: "admin",
+    damage: causeDamage,
+  };
+  await worldBossEventLogService.create(attributes);
+
+  context.replyText(`造成了 ${causeDamage} 傷害`, {
+    sender: {
+      name: "エリス",
+      iconUrl:
+        "https://media.discordapp.net/attachments/798811827772981268/909817378911698984/123.png",
+    },
+  });
+};
+
+/**
+ * @param {Context} context
+ * @param {import("bottender").Props} props
+ */
 exports.attackOnBoss = async (context, props) => {
   const { worldBossEventId } = props.payload;
   // 從事件的 source 取得用戶資料

@@ -4,6 +4,10 @@ exports.getList = () => {
   return mysql.select().from("Admin");
 };
 
+exports.find = async userId => {
+  return await mysql.from("Admin").where({ userId }).first();
+};
+
 /**
  * 驗證是否為管理員
  * @param {String} userId

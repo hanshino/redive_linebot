@@ -60,6 +60,14 @@ exports.generateBoss = ({
                   text: `${currentHp}`,
                   color: "#808080",
                   size: "xs",
+                  action: {
+                    type: "postback",
+                    data: JSON.stringify({
+                      action: "adminBossAttack",
+                      worldBossEventId: id,
+                      percentage: 10,
+                    }),
+                  },
                 },
                 {
                   type: "text",
@@ -67,6 +75,14 @@ exports.generateBoss = ({
                   color: "#808080",
                   size: "xs",
                   align: "end",
+                  action: {
+                    type: "postback",
+                    data: JSON.stringify({
+                      action: "adminBossAttack",
+                      worldBossEventId: id,
+                      percentage: 20,
+                    }),
+                  },
                 },
               ],
             },

@@ -46,7 +46,7 @@ async function HandlePostback(context, { next }) {
 
     // 使用 setnx 限制每位使用者 5秒內 不能連續重複動作
     let isExist = await redis.setnx(memkey, 1, 5);
-    if (!isExist) return;
+    if (!isExist && action !== "adminBossAttack") return;
 
     return router([
       route(
@@ -60,6 +60,10 @@ async function HandlePostback(context, { next }) {
       route(
         () => action === "worldBossAttack",
         withProps(WorldBossController.attackOnBoss, { payload: payload })
+      ),
+      route(
+        () => action === "adminBossAttack",
+        withProps(WorldBossController.adminSpecialAttack, { payload: payload })
       ),
       route("*", next),
     ]);
