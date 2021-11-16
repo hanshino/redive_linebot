@@ -128,7 +128,7 @@ async function adminAttack(context, props) {
 
   const data = await worldBossEventService.getEventBoss(events[0].id);
   let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
-    data.id
+    events[0].id
   );
   let remainHp = data.hp - parseInt(totalDamage || 0);
   let hasCompleted = remainHp <= 0;
@@ -142,7 +142,7 @@ async function adminAttack(context, props) {
   let damage = ((parseInt(percentage) * remainHp) / 100).toFixed(0);
   let attributes = {
     user_id: 0, // 管理員用戶ID
-    world_boss_event_id: data.id,
+    world_boss_event_id: events[0].id,
     action_type: "admin",
     damage,
   };

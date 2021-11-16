@@ -45,6 +45,11 @@ async function progressNotify() {
     const damage = parseInt(result.total_damage) || 0;
     const remainHp = hp - damage;
     const remainHpPercent = remainHp > 0 ? (remainHp / hp) * 100 : 0;
+
+    if (remainHpPercent === 0) {
+      return 0;
+    }
+
     const message = `${name} 剩餘血量：${remainHpPercent.toFixed(2)}%`;
 
     const notifyList = await getNotifyList();
