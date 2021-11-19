@@ -9,7 +9,7 @@ exports.up = function (knex) {
   return knex.schema.createTable("world_boss_user_attack_message", table => {
     table.increments("id").primary();
 
-    table.string("icon_url").notNullable().comment("頭像 uri");
+    table.string("icon_url").comment("頭像 uri");
     table.string("template").notNullable().comment("訊息樣板");
     table.integer("creator_id").notNullable().comment("建立者 id");
 

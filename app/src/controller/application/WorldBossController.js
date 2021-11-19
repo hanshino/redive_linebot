@@ -547,7 +547,7 @@ api.createAttackMessage = async (req, res) => {
     });
   }
 
-  const { icon_url, template } = body;
+  const { icon_url = null, template } = body;
 
   try {
     await worldBossUserAttackMessageService.create({

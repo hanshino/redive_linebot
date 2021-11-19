@@ -21,11 +21,12 @@ const WorldbossMessageCreate = () => {
     const { template, imageUrl } = data;
 
     if (isValidImage && isValidTemplate) {
+      const payload = { template };
+      if (imageUrl) {
+        payload.imageUrl = imageUrl;
+      }
       sendRequest({
-        data: {
-          template,
-          icon_url: imageUrl,
-        },
+        data: payload,
       });
     } else {
       setError({ show: true, message: "Invalid form data" });
