@@ -617,3 +617,65 @@ api.genTopTenRankChart = async (req, res) => {
   res.setHeader("Content-Type", "image/png");
   res.send(Buffer.from(imageBase64, "base64"));
 };
+
+/**
+ * 取得指定特色攻擊訊息的資訊
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+api.getAttackMessage = async (req, res) => {
+  const { id } = req.params;
+  const data = await worldBossUserAttackMessageService.find(id);
+  return res.status(200).json({
+    message: "success",
+    data,
+  });
+};
+
+/**
+ * 刪除指定特色攻擊訊息
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+api.deleteAttackMessage = async (req, res) => {
+  const { id } = req.params;
+  await worldBossUserAttackMessageService.delete(id);
+  return res.status(200).json({
+    message: "success",
+  });
+};
+
+/**
+ * 更新指定特色攻擊訊息
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+api.updateAttackMessage = async (req, res) => {
+  const { id } = req.params;
+  const { body } = req;
+  const validate = ajv.getSchema("createUserAttackMessage");
+  const valid = validate(body);
+
+  if (!valid) {
+    return res.status(400).json({
+      message: validate.errors,
+    });
+  }
+
+  const { icon_url, template } = body;
+
+  try {
+    await worldBossUserAttackMessageService.update(id, {
+      icon_url,
+      template,
+    });
+  } catch (e) {
+    return res.status(500).json({
+      message: e.message,
+    });
+  }
+
+  return res.status(200).json({
+    message: "success",
+  });
+};

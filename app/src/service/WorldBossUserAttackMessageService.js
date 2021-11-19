@@ -13,6 +13,20 @@ exports.all = async (cache = true) => {
   return result;
 };
 
+exports.find = worldBossUserAttackMessageModel.find;
+
+exports.delete = async id => {
+  let result = await worldBossUserAttackMessageModel.delete(id);
+  redis.del("worldBossUserAttackMessage");
+  return result;
+};
+
+exports.update = async (id, attributes) => {
+  let result = await worldBossUserAttackMessageModel.update(id, attributes);
+  redis.del("worldBossUserAttackMessage");
+  return result;
+};
+
 exports.create = async attributes => {
   let result = await worldBossUserAttackMessageModel.create(attributes);
   redis.del("worldBossUserAttackMessage");

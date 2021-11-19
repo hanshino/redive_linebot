@@ -342,6 +342,30 @@ router.get(
   verifyPrivilege(1),
   WorldBossController.api.listAttackMessage
 );
+// 取得世界王傷害特色訊息 - 單筆
+router.get(
+  "/Game/World/Boss/Feature/Message/:id",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(1),
+  WorldBossController.api.getAttackMessage
+);
+// 編輯世界王傷害特色訊息
+router.put(
+  "/Game/World/Boss/Feature/Message/:id",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(3),
+  WorldBossController.api.updateAttackMessage
+);
+// 刪除世界王傷害特色訊息
+router.delete(
+  "/Game/World/Boss/Feature/Message/:id",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(3),
+  WorldBossController.api.deleteAttackMessage
+);
 
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });
