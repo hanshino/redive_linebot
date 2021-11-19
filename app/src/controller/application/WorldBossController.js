@@ -309,7 +309,7 @@ exports.adminSpecialAttack = async (context, { payload }) => {
 exports.attackOnBoss = async (context, props) => {
   const { worldBossEventId } = props.payload;
   // 從事件的 source 取得用戶資料
-  const { displayName, id, userId } = context.event.source;
+  const { displayName, id, userId, pictureUrl } = context.event.source;
 
   // 沒有會員id，跳過不處理
   if (!id) {
@@ -382,8 +382,9 @@ exports.attackOnBoss = async (context, props) => {
     );
   }
 
+  let iconUrl = templateData.icon_url || pictureUrl;
   let message = i18n.__(templateData.template, { name, damage, display_name: displayName });
-  let sender = { name: displayName.substr(0, 20), iconUrl: templateData.icon_url };
+  let sender = { name: displayName.substr(0, 20), iconUrl };
 
   DefaultLogger.info(
     `${message} 造成了 ${calculateDamagePercentage(eventBoss.hp, damage)} ${JSON.stringify(sender)}`
