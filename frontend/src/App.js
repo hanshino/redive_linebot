@@ -29,7 +29,10 @@ import PropTypes from "prop-types";
 import Notify from "./components/Bot/Notify";
 import Binding from "./components/Bot/Binding";
 import Rankings from "./components/Rankings";
-import WorldbossMessage, { WorldBossMessageCreate } from "./components/Admin/WorldbossMessage";
+import WorldbossMessage, {
+  WorldBossMessageCreate,
+  WorldBossMessageUpdate,
+} from "./components/Admin/WorldbossMessage";
 import { cyan, lightBlue } from "@material-ui/core/colors";
 import { ThemeProvider } from "@material-ui/styles";
 import { createTheme } from "@material-ui/core";
@@ -186,6 +189,7 @@ function AdminLayout() {
       <Route path="/Admin/GlobalOrder" component={Order} />
       <Route path="/Admin/Messages" component={Message} />
       <Route path="/Admin/Worldboss/Message/Create" component={WorldBossMessageCreate} />
+      <Route path="/Admin/Worldboss/Message/Update/:id" component={WorldBossMessageUpdate} />
       <Route path="/Admin/Worldboss/Message" component={WorldbossMessage} />
     </Switch>
   );

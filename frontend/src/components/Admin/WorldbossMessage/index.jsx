@@ -7,6 +7,10 @@ import AddIcon from "@material-ui/icons/Add";
 import MuiFab from "@material-ui/core/Fab";
 import { withStyles } from "@material-ui/styles";
 import { Link } from "react-router-dom";
+import makeStyles from "@material-ui/core/styles/makeStyles";
+import { CircularProgress } from "@material-ui/core";
+import PropTypes from "prop-types";
+import { green } from "@material-ui/core/colors";
 
 const Fab = withStyles({
   root: {
@@ -21,6 +25,21 @@ const Fab = withStyles({
     right: "10px",
   },
 })(MuiFab);
+
+const useStyles = makeStyles(theme => ({
+  wrapper: {
+    margin: theme.spacing(1),
+    position: "relative",
+  },
+  buttonProgress: {
+    color: green[500],
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    marginTop: -12,
+    marginLeft: -12,
+  },
+}));
 
 const WorldBossMessage = () => {
   const { liff } = window;
@@ -58,7 +77,13 @@ const DataList = () => {
       renderCell: genAvatar,
     },
     { headerName: "訊息樣板", field: "template", flex: 2 },
-    { headerName: "操作", field: "id", flex: 1.4, renderCell: genButton },
+    {
+      headerName: "操作",
+      field: "id",
+      flex: 1.4,
+      // eslint-disable-next-line react/display-name
+      renderCell: rawData => <ControlButtons value={rawData.value} onDeleteComplete={refetch} />,
+    },
   ];
 
   useEffect(() => {
@@ -92,17 +117,46 @@ function genAvatar({ value }) {
   return <Avatar alt={"頭像"} src={value} />;
 }
 
-function genButton() {
-  const handleClick = () => {
-    window.alert("暫時不開放");
-  };
-  return (
-    <ButtonGroup color="primary" variant="outlined">
-      <Button onClick={handleClick}>更新</Button>
-      <Button onClick={handleClick}>刪除</Button>
-    </ButtonGroup>
+const ControlButtons = ({ onDeleteComplete, value }) => {
+  const classes = useStyles();
+  const [{ data = {}, loading }, doDelete] = useAxios(
+    {
+      url: `/api/Game/World/Boss/Feature/Message/${value}`,
+      method: "DELETE",
+    },
+    { manual: true }
   );
-}
+
+  const handleDelete = () => {
+    doDelete();
+  };
+
+  useEffect(() => {
+    if (data.message === "success") {
+      onDeleteComplete();
+    }
+  }, [data]);
+
+  return (
+    <div className={classes.wrapper}>
+      <ButtonGroup color="primary" variant="outlined" disabled={loading}>
+        <Button component={Link} to={`/Admin/Worldboss/Message/Update/${value}`}>
+          更新
+        </Button>
+        <Button color="primary" variant="outlined" onClick={handleDelete}>
+          刪除
+        </Button>
+      </ButtonGroup>
+      {loading && <CircularProgress size={24} className={classes.buttonProgress} />}
+    </div>
+  );
+};
+
+ControlButtons.propTypes = {
+  onDeleteComplete: PropTypes.func.isRequired,
+  value: PropTypes.any.isRequired,
+};
 
 export default WorldBossMessage;
 export { default as WorldBossMessageCreate } from "./create";
+export { default as WorldBossMessageUpdate } from "./update";

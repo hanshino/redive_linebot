@@ -19,7 +19,6 @@ const WorldbossMessageCreate = () => {
   const onSubmit = formData => {
     const { data = {}, isValidImage = false, isValidTemplate = false } = formData;
     const { template, imageUrl } = data;
-    console.log(data);
 
     if (isValidImage && isValidTemplate) {
       sendRequest({
