@@ -1,5 +1,5 @@
 # pull official base image
-FROM node:14-alpine
+FROM node:lts
 
 LABEL Name="redive前端"
 LABEL description="由react實作的前端頁面，開發模式"
