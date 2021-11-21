@@ -7,5 +7,41 @@
   },
   "battle": {
     "status": "{{ stage }}階 {{ week }}周 {{ boss }}王"
+  },
+  "template": {
+    "attack": "攻擊",
+    "defense": "防禦",
+    "hp": "生命",
+    "speed": "速度",
+    "level": "等級",
+    "exp": "經驗",
+    "gold": "女神石",
+    "event_start_at": "開始時間",
+    "event_end_at": "結束時間",
+    "record": "紀錄",
+    "admin": "創世神",
+    "attack_rank": "輸出排名",
+    "nickname": "暱稱",
+    "rank": "排名",
+    "damage": "傷害"
+  },
+  "message": {
+    "user_attack_on_world_boss": "成功對 {{ name }} 造成 {{ damage }} 傷害",
+    "world_boss_event_multiple_ongoing": "有多個世界活動正在進行中，請選擇其中一個進行操作。",
+    "world_boss_event_no_ongoing": "目前沒有世界活動正在進行中...",
+    "damage_suffix": "[,10[效果不彰...|[,50[效果甚微...|[,100[效果不錯|[,300[效果顯著|[,400[爆擊！|致命爆擊",
+    "admin_attack_on_world_boss": "創造神路過敲了一下... 造成 {{ damage }} 傷害...",
+    "world_boss_event_completed": "世界王已被討伐..別再鞭屍了QwQ",
+    "service": {
+      "already_exists": "服務名稱 {{ serviceName }} 已存在於 {{ groupId }}",
+      "add_success": "成功新增服務 {{ serviceName }} 到 {{ groupId }}",
+      "add_usage": "使用方法： /addservice <服務名稱> --groupId=<群組ID>"
+    },
+    "advertisement": {
+      "add_usage": "使用方法： /addad <純文字訊息內容|json訊息格式> --senderName=<發送者姓名> --senderIcon=<發送者圖像> --title=<標題>",
+      "add_success": "成功新增廣告： {{ id }}, 請記住ID, 方便後續操作\n標題： {{ title }}\n發送人： {{ senderName }}\n發送頭像： {{ senderIcon }}"
+    },
+    "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
+    "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}"
   }
 }

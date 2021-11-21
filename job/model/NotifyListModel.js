@@ -90,3 +90,7 @@ exports.setPassiveNotify = (sourceId, message, senderName, senderIcon) => {
   let key = `${this.PASSIVE_PREFIX}${sourceId}`;
   return redis.set(key, { message, senderName, senderIcon }, 86400);
 };
+
+exports.findAdMessage = async id => {
+  return await mysql.from("ad_message").where({ id }).first();
+};

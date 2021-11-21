@@ -115,11 +115,10 @@ function shuffle(a) {
  * @param {String} groupId
  */
 async function isAble(userId, groupId) {
-  if ((await redis.get(`GachaCoolDown_${userId}_${groupId}`)) === null) {
-    redis.set(`GachaCoolDown_${userId}_${groupId}`, 1, 120);
-    return true;
-  }
-  return false;
+  // 使用 setnx 限制群組單一用戶轉蛋次數
+  let key = `GachaCoolDown_${userId}_${groupId}`;
+  let result = await redis.setnx(key, 1, 120);
+  return result;
 }
 
 /**

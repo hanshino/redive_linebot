@@ -4,6 +4,7 @@ i18n.configure({
   locales: ["zh_tw"],
   directory: path.join(require.main.path, "locales"),
   objectNotation: true,
+  indent: "  ",
 });
 
 i18n.setLocale("zh_tw");

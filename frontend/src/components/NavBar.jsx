@@ -32,7 +32,6 @@ import EqualizerIcon from "@material-ui/icons/Equalizer";
 const useStyles = makeStyles(theme => ({
   root: {
     display: "flex",
-    flexGrow: 1,
   },
   title: {
     flexGrow: 1,
@@ -48,7 +47,6 @@ const useStyles = makeStyles(theme => ({
       width: `calc(100% - ${drawerWidth}px)`,
       marginLeft: drawerWidth,
     },
-    backgroundColor: "#00bcd4",
   },
   menuButton: {
     marginRight: theme.spacing(2),
@@ -61,17 +59,12 @@ const useStyles = makeStyles(theme => ({
   },
   content: {
     flexGrow: 1,
-    paddingTop: 80,
-    margin: "0 auto",
-    maxWidth: "100%",
-    flex: "1 1 100%",
-    [theme.breakpoints.up("lg")]: {
-      maxWidth: theme.breakpoints.values.lg,
-    },
+    padding: theme.spacing(3),
   },
   nested: {
     paddingLeft: theme.spacing(4),
   },
+  toolbar: theme.mixins.toolbar,
 }));
 
 const drawerWidth = 240;
@@ -254,7 +247,10 @@ const NavBar = props => {
           </Drawer>
         </Hidden>
       </nav>
-      <main className={classes.content}>{children}</main>
+      <main className={classes.content}>
+        <div className={classes.toolbar} />
+        {children}
+      </main>
       {isLoggedIn ? (
         <GroupDialog open={groupDialogOpen} onClose={() => setGroupDialogOpen(false)} />
       ) : null}

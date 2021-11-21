@@ -1,0 +1,17 @@
+{
+  "create": {
+    "type": "object",
+    "properties": {
+      "icon_url": {
+        "type": "string",
+        "format": "uri"
+      },
+      "template": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "template"
+    ]
+  }
+}

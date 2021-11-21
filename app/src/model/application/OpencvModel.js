@@ -49,3 +49,18 @@ exports.getArenaSearchTeam = imageBase => {
       return false;
     });
 };
+
+/**
+ * 傷害輸出圖表產生器
+ * @param {Object} payload 要發送到api的資料
+ * @returns {Promise<String>} 傷害輸出圖表 base64
+ */
+exports.generateRankImage = async payload => {
+  return await axios
+    .post("/api/v1/World/Boss/DamageChart", payload)
+    .then(res => res.data)
+    .catch(err => {
+      console.log(err);
+      return false;
+    });
+};

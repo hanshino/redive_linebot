@@ -1,4 +1,13 @@
 const CharacterDatas = require("../../../../doc/characterInfo.json");
+const path = require("path");
+const knex = require("knex")({
+  client: "sqlite3",
+  connection: {
+    filename: path.resolve(process.cwd(), "./assets/redive_tw.db"),
+  },
+  useNullAsDefault: true,
+});
+
 let characterIds = null;
 
 exports.getDatas = () => {
@@ -46,3 +55,14 @@ exports.transHeadImageSrc = id => {
 function genChatacterIds() {
   characterIds = CharacterDatas.map(data => parseInt(data.unitId));
 }
+
+exports.getAllRarity = async () => {
+  const subQuery = knex("unit_rarity")
+    .max("rarity as max_rarity")
+    .where("unit_rarity.unit_id", knex.raw("unit_profile.unit_id"));
+  let query = knex("unit_profile").select("unit_profile.unit_id", "unit_profile.unit_name", {
+    max_rarity: subQuery,
+  });
+
+  return await query;
+};

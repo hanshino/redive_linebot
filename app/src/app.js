@@ -1,4 +1,4 @@
-const { router, text, route, line } = require("bottender/router");
+const { router, text, route } = require("bottender/router");
 const { chain, withProps } = require("bottender");
 const character = require("./controller/princess/character");
 const gacha = require("./controller/princess/gacha");
@@ -20,6 +20,9 @@ const ChatLevelController = require("./controller/application/ChatLevelControlle
 const BattleReportController = require("./controller/princess/BattleReportController");
 const ArenaContoroller = require("./controller/princess/ArenaController");
 const GuildController = require("./controller/application/GuildController");
+const WorldBossController = require("./controller/application/WorldBossController");
+const GuildServiceController = require("./controller/application/GuildServiceController");
+const AdvertisementController = require("./controller/application/AdvertisementController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -41,10 +44,9 @@ async function HandlePostback(context, { next }) {
 
     let memkey = `Postback_${userId}_${action}`;
 
-    if ((await redis.get(memkey)) === null) {
-      // 每位使用者 限制5秒內 不能連續重複動作
-      redis.set(memkey, 1, 5);
-    } else return;
+    // 使用 setnx 限制每位使用者 5秒內 不能連續重複動作
+    let isExist = await redis.setnx(memkey, 1, 5);
+    if (!isExist && action !== "adminBossAttack") return;
 
     return router([
       route(
@@ -54,6 +56,14 @@ async function HandlePostback(context, { next }) {
       route(
         () => action === "battleCancel",
         withProps(battle.BattlePostCancel, { payload: payload })
+      ),
+      route(
+        () => action === "worldBossAttack",
+        withProps(WorldBossController.attackOnBoss, { payload: payload })
+      ),
+      route(
+        () => action === "adminBossAttack",
+        withProps(WorldBossController.adminSpecialAttack, { payload: payload })
       ),
       route("*", next),
     ]);
@@ -76,12 +86,16 @@ async function OrderBased(context, { next }) {
     ...PrincessInformation(context),
     ...PersonOrder(context),
     ...ArenaContoroller.router(context),
+    ...WorldBossController.router,
+    ...GuildServiceController.router,
+    ...AdvertisementController.router,
     text(/^[#.](使用說明|help)$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
       gacha.play(context, { ...props, pickup: true })
     ),
     text("/state", showState),
+    text("/source", context => context.replyText(JSON.stringify(context.event.source))),
     text("/resetstate", context => context.resetState()),
     text("/traffic", function () {
       traffic.getSignData().then(console.table);

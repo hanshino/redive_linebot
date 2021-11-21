@@ -12,6 +12,7 @@ const GroupConfig = require("../../doc/GroupConfig.json");
 const {
   verifyToken,
   verifyAdmin,
+  verifyPrivilege,
   verifyId,
   verifyLineGroupId,
 } = require("../middleware/validation");
@@ -22,6 +23,7 @@ const NotifyController = require("../controller/application/NotifyController");
 const { binding } = require("../controller/application/NotifyController").api;
 const ChatLevelController = require("../controller/application/ChatLevelController");
 const AnnounceController = require("../controller/application/AnnounceController");
+const WorldBossController = require("../controller/application/WorldBossController");
 
 router.get("/send-id", (req, res) => {
   const { size } = req.query || "full";
@@ -158,22 +160,46 @@ router.get("/GroupConfig", (req, res) => res.json(GroupConfig));
 /**
  * 管理員轉蛋資料
  */
-router.get("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.showGachaPool);
+router.get(
+  "/Admin/GachaPool/Data",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(1),
+  gacha.api.showGachaPool
+);
 
 /**
  * 編輯管理員轉蛋資料
  */
-router.put("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.updateCharacter);
+router.put(
+  "/Admin/GachaPool/Data",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(9),
+  gacha.api.updateCharacter
+);
 
 /**
  * 新增管理員轉蛋資料
  */
-router.post("/Admin/GachaPool/Data", verifyToken, verifyAdmin, gacha.api.insertCharacter);
+router.post(
+  "/Admin/GachaPool/Data",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(9),
+  gacha.api.insertCharacter
+);
 
 /**
  * 刪除管理員轉蛋資料
  */
-router.delete("/Admin/GachaPool/Data/:id", verifyToken, verifyAdmin, gacha.api.deleteCharacter);
+router.delete(
+  "/Admin/GachaPool/Data/:id",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(9),
+  gacha.api.deleteCharacter
+);
 
 /**
  * 取得管理員全群指令
@@ -182,6 +208,7 @@ router.get(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(1),
   GlobalOrdersController.api.showGlobalOrders
 );
 
@@ -192,6 +219,7 @@ router.post(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(9),
   GlobalOrdersController.api.insertGlobalOrders
 );
 
@@ -202,6 +230,7 @@ router.put(
   "/Admin/GlobalOrders/Data",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(9),
   GlobalOrdersController.api.updateGlobalOrders
 );
 
@@ -212,6 +241,7 @@ router.delete(
   "/Admin/GlobalOrders/Data/:orderKey",
   verifyToken,
   verifyAdmin,
+  verifyPrivilege(9),
   GlobalOrdersController.api.deleteGlobalOrders
 );
 
@@ -290,6 +320,52 @@ router.put("/Bot/Notify/:key/:status", verifyToken, NotifyController.api.setSubS
 router.get("/Chat/Level/Rank", ChatLevelController.api.queryRank);
 
 router.get("/Announcement/:page", AnnounceController.api.queryData);
+
+/**
+ * 小遊戲 - 世界王
+ */
+// 輸出排行圖表
+router.get("/Game/World/Boss/Rank/Chart", WorldBossController.api.genTopTenRankChart);
+// 新增世界王傷害特色訊息
+router.post(
+  "/Game/World/Boss/Feature/Message",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(3),
+  WorldBossController.api.createAttackMessage
+);
+// 取得世界王傷害特色訊息
+router.get(
+  "/Game/World/Boss/Feature/Message",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(1),
+  WorldBossController.api.listAttackMessage
+);
+// 取得世界王傷害特色訊息 - 單筆
+router.get(
+  "/Game/World/Boss/Feature/Message/:id",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(1),
+  WorldBossController.api.getAttackMessage
+);
+// 編輯世界王傷害特色訊息
+router.put(
+  "/Game/World/Boss/Feature/Message/:id",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(3),
+  WorldBossController.api.updateAttackMessage
+);
+// 刪除世界王傷害特色訊息
+router.delete(
+  "/Game/World/Boss/Feature/Message/:id",
+  verifyToken,
+  verifyAdmin,
+  verifyPrivilege(3),
+  WorldBossController.api.deleteAttackMessage
+);
 
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });

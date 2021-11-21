@@ -1,5 +1,6 @@
 const CronJob = require("cron").CronJob;
 const script = require("./bin");
+require("./bin/WorldBoss");
 
 let halfMinutesJob = new CronJob("*/20 * * * * *", script.Notify.consumePassiveNotify);
 let weekJob = new CronJob("0 0 3 * * 3", week);
