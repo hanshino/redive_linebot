@@ -4,7 +4,7 @@ import MessageForm from "./Form";
 import { Alert } from "@material-ui/lab";
 import useAxios from "axios-hooks";
 import { Snackbar } from "@material-ui/core";
-import { Redirect } from "react-router";
+import { Redirect } from "react-router-dom";
 
 const WorldbossMessageCreate = () => {
   const [{ data, loading, error }, sendRequest] = useAxios(
