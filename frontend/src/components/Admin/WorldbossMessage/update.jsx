@@ -5,7 +5,7 @@ import MessageForm from "./Form";
 import { Grid } from "@material-ui/core";
 import { Snackbar } from "@material-ui/core";
 import { Alert } from "@material-ui/lab";
-import { Redirect } from "react-router";
+import { Redirect } from "react-router-dom";
 
 const WorldbossMessageUpdate = () => {
   const { id } = useParams();
