@@ -12,9 +12,9 @@ const { Context } = require("bottender");
 const Stages = [
   { stage: 1, min: 1, max: 3 },
   { stage: 2, min: 4, max: 10 },
-  { stage: 3, min: 11, max: 34 },
-  { stage: 4, min: 35, max: 44 },
-  { stage: 5, min: 45, max: 999 },
+  { stage: 3, min: 11, max: 30 },
+  { stage: 4, min: 31, max: 40 },
+  { stage: 5, min: 41, max: 999 },
 ];
 
 function BattleException(message, code) {
