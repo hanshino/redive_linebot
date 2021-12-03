@@ -115,7 +115,7 @@ const TabDatas = [
     description:
       "群組數據的管理，包含：說話次數記錄、機器人頭像、Discord訊息轉發、指令功能開關、歡迎訊息設定",
     buttons: [
-      { title: "群組管理", description: "設定&狀態", text: "/groupconfig" },
+      { title: "群組管理", description: "設定&狀態", text: ".groupconfig" },
       { title: "群組狀態", description: "狀態顯示", text: "/group" },
     ],
   },

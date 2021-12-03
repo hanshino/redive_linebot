@@ -36,6 +36,7 @@ import WorldbossMessage, {
 import { cyan, lightBlue } from "@material-ui/core/colors";
 import { ThemeProvider } from "@material-ui/styles";
 import { createTheme } from "@material-ui/core";
+import BattleTime from "./components/Tools/BattleTime";
 
 const theme = createTheme({
   palette: {
@@ -147,9 +148,18 @@ function MainLayout() {
         <Route path="/Source/:sourceId/Customer/Orders" component={CustomerOrder} />
         <Route path="/Panel" component={PanelLayout} />
         <Route path="/Rankings" component={Rankings} />
+        <Route path="/Tools" component={ToolsLayout} />
         <Route path="/" component={Home} />
       </Switch>
     </NavBar>
+  );
+}
+
+function ToolsLayout() {
+  return (
+    <Switch>
+      <Route path="/Tools/BattleTime" component={BattleTime} />
+    </Switch>
   );
 }
 
