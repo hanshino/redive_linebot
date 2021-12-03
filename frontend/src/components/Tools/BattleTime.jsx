@@ -366,8 +366,6 @@ const ActionPannel = ({ changeType, timeline }) => {
       return line;
     });
 
-    console.log(lines);
-
     send(lines.join("\n"));
   };
 
