@@ -22,6 +22,7 @@ import ContactsIcon from "@material-ui/icons/Contacts";
 import WebAssetIcon from "@material-ui/icons/WebAsset";
 import LanguageIcon from "@material-ui/icons/Language";
 import GitHubIcon from "@material-ui/icons/GitHub";
+import LoopIcon from "@material-ui/icons/Loop";
 import ExpandLess from "@material-ui/icons/ExpandLess";
 import ExpandMore from "@material-ui/icons/ExpandMore";
 import GroupDialog from "./GroupDialog";
@@ -110,6 +111,12 @@ const NavBar = props => {
             <NotificationsActive />
           </ListItemIcon>
           <ListItemText primary={"訂閱通知"} />
+        </ListItem>
+        <ListItem button component={Link} to="/Tools/BattleTime" onClick={closeDrawer}>
+          <ListItemIcon>
+            <LoopIcon />
+          </ListItemIcon>
+          <ListItemText primary={"補償刀軸換算"} />
         </ListItem>
         {isLoggedIn ? (
           <ListItem
