@@ -47,4 +47,56 @@ module.exports = {
 
     return `${host}${id}`;
   },
+
+  /**
+   * 產出小型的 bubble 按鈕
+   * @param {String} title 標題
+   * @param {String} url 網址
+   * @param {String} color 色碼
+   * @param {Object} option 其他參數
+   * @param {String} option.textColor 文字顏色
+   */
+  genLinkBubble: function (title, url, color, option = {}) {
+    let defaultColor = {
+      red: "#ff123436",
+      blue: "#1234ff36",
+      green: "#12ff3436",
+    };
+
+    // 如果指定的 color 存在色碼，則使用指定的色碼
+    color = defaultColor[color] || color;
+
+    const { textColor } = option;
+
+    return {
+      type: "bubble",
+      size: "nano",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: title,
+                align: "center",
+                color: textColor || undefined,
+              },
+            ],
+            paddingTop: "md",
+            paddingBottom: "md",
+          },
+        ],
+        backgroundColor: color,
+        action: {
+          type: "uri",
+          label: "action",
+          uri: url,
+        },
+      },
+    };
+  },
 };

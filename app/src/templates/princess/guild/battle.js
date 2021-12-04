@@ -451,6 +451,38 @@ function genPreviewCover(option) {
               borderColor: "#880066",
               borderWidth: "2px",
             },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "filler",
+                    },
+                    {
+                      type: "text",
+                      text: "⏱️ 刀軸轉換",
+                      align: "center",
+                      weight: "bold",
+                    },
+                    {
+                      type: "filler",
+                    },
+                  ],
+                },
+              ],
+              action: {
+                type: "uri",
+                uri: `${getLiffUri("full")}?reactRedirectUri=/Tools/BattleTime`,
+              },
+              paddingAll: "5px",
+              cornerRadius: "md",
+              borderColor: "#880066",
+              borderWidth: "2px",
+            },
           ],
           spacing: "sm",
           paddingAll: "3px",
