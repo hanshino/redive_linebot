@@ -9,6 +9,7 @@ const setProfile = require("./middleware/profile");
 const statistics = require("./middleware/statistics");
 const lineEvent = require("./controller/lineEvent");
 const welcome = require("./templates/common/welcome");
+const commonTemplate = require("./templates/common");
 const config = require("./middleware/config");
 const groupTemplate = require("./templates/application/Group/line");
 const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
@@ -107,6 +108,57 @@ async function OrderBased(context, { next }) {
     text(/^(#我的狀態|\/me)$/, ChatLevelController.showStatus),
     text(/^#狀態\s/, ChatLevelController.showFriendStatus),
     text("#等級排行", ChatLevelController.showRank),
+    text(["/link", "#實用連結", "#連結"], context => {
+      const liffUri = commonTemplate.getLiffUri("full");
+      let carousel = {
+        type: "carousel",
+        contents: [
+          commonTemplate.genLinkBubble("🏠首頁", `${liffUri}`, "red"),
+          commonTemplate.genLinkBubble("🏆排行榜", `${liffUri}?reactRedirectUri=/Rankings`, "red"),
+          commonTemplate.genLinkBubble(
+            "📑指令集",
+            `${liffUri}?reactRedirectUri=/Panel/Manual`,
+            "red"
+          ),
+          commonTemplate.genLinkBubble(
+            "⏱️刀軸轉換",
+            `${liffUri}?reactRedirectUri=/Tools/BattleTime`,
+            "green"
+          ),
+          commonTemplate.genLinkBubble(
+            "🗃️公主小卡",
+            `${liffUri}?reactRedirectUri=/Princess/Profile`,
+            "green"
+          ),
+          commonTemplate.genLinkBubble(
+            "📢訂閱系統",
+            `${liffUri}?reactRedirectUri=/Bot/Notify`,
+            "green"
+          ),
+          commonTemplate.genLinkBubble(
+            "巴哈更新",
+            `https://forum.gamer.com.tw/C.php?bsn=30861&snA=13556`,
+            "#117e96",
+            {
+              textColor: "#ffffff",
+            }
+          ),
+          commonTemplate.genLinkBubble("Discord", `https://discord.gg/Fy82rTb`, "#5865F2", {
+            textColor: "#ffffff",
+          }),
+          commonTemplate.genLinkBubble(
+            "Github",
+            `https://github.com/hanshino/redive_linebot`,
+            "#171515",
+            {
+              textColor: "#ffffff",
+            }
+          ),
+        ],
+      };
+
+      context.replyFlex("實用連結", carousel);
+    }),
     text(".test", () => pushMessage({ message: "test", token: process.env.LINE_NOTIFY_TOKEN })),
     route("*", next),
   ]);
@@ -188,6 +240,15 @@ function BattleOrder(context) {
     text(/^[#.](三刀重置|重置三刀|reset)$/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
     text(/^[#.](signtest)$/, battle.SignMessageTest),
+    text(["#刀軸轉換", ".bt", "/bt"], context => {
+      let bubble = commonTemplate.genLinkBubble(
+        "⏱️刀軸轉換",
+        `${commonTemplate.getLiffUri("full")}?reactRedirectUri=/Tools/BattleTime`,
+        "green"
+      );
+
+      return context.replyFlex("刀軸轉換按鈕", bubble);
+    }),
   ];
 }
 
