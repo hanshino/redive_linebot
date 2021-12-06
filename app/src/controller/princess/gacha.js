@@ -7,6 +7,7 @@ const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", 
 const redis = require("../../util/redis");
 const { DefaultLogger } = require("../../util/Logger");
 const { Context } = require("bottender");
+const chunk = require("lodash/chunk");
 
 function GachaException(message, code) {
   this.message = message;
@@ -135,6 +136,56 @@ function makePickup(pool, rate = 100) {
   });
 }
 
+/**
+ * 檢視自己的轉蛋包包
+ * @param {Context} context
+ */
+async function showGachaBag(context) {
+  if (context.state.guildConfig.Gacha === "N") return;
+  const { userId } = context.event.source;
+  const bag = await InventoryModel.fetchUserItem(userId);
+  const pool = await GachaModel.getPrincessCharacter();
+
+  const ownIds = bag.map(data => data.itemId);
+  const ownCharacters = pool.filter(data => ownIds.includes(data.ID));
+  const notOwnCharacters = pool.filter(data => !ownIds.includes(data.ID));
+
+  const generateBubbles = (characters, type) => {
+    // 先以 20 個做分組做為一個 bubble
+    let chunkCharacters = chunk(characters, 20);
+
+    return chunkCharacters.map(perChunk => {
+      // 在每個 bubble 中，每個橫排的角色數量為 5
+      let chunkCharactersPerRow = chunk(perChunk, 5);
+
+      let rawRows = chunkCharactersPerRow.map(perRow => {
+        // 如果角色數量不足 5，則補足
+        let rowCharacter = perRow.concat(
+          Array(5 - perRow.length).fill({
+            headImage: "https://pcredivewiki.tw/static/images/equipment/icon_equipment_999999.png",
+          })
+        );
+
+        return rowCharacter.map(character =>
+          GachaTemplate.line.genCharacterImage({ url: character.headImage })
+        );
+      });
+
+      let rows = rawRows.map(row => GachaTemplate.line.genCharacterRow(row));
+
+      return GachaTemplate.line.genCharacterBubble(type, rows);
+    });
+  };
+
+  const ownBubbles = generateBubbles(ownCharacters, "已取得");
+  const notOwnBubbles = generateBubbles(notOwnCharacters, "未取得");
+
+  context.replyFlex("轉蛋背包", {
+    type: "carousel",
+    contents: [...ownBubbles, ...notOwnBubbles],
+  });
+}
+
 module.exports = {
   /**
    * @param {Context} context
@@ -226,6 +277,8 @@ module.exports = {
       console.log(e);
     }
   },
+
+  showGachaBag,
 
   api: {
     showGachaPool: (req, res) => {

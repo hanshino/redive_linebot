@@ -31,7 +31,12 @@ exports.insertItems = params => {
  * @param {String} userId
  */
 exports.fetchUserItem = userId => {
-  return mysql.select("*").from(this.tableName).where({ userId });
+  return mysql
+    .select(["itemId", { amount: mysql.raw("SUM(itemAmount)") }])
+    .from(this.tableName)
+    .where({ userId })
+    .groupBy("itemId")
+    .orderBy("itemId");
 };
 
 /**
