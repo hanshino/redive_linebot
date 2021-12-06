@@ -95,6 +95,7 @@ async function OrderBased(context, { next }) {
     text(/^[#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
       gacha.play(context, { ...props, pickup: true })
     ),
+    text(["#我的包包", "/mybag"], gacha.showGachaBag),
     text("/state", showState),
     text("/source", context => context.replyText(JSON.stringify(context.event.source))),
     text("/resetstate", context => context.resetState()),

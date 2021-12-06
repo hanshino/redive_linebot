@@ -93,7 +93,10 @@ exports.touchSingin = userId => {
  * @return {Promise<Array>}
  */
 exports.getPrincessCharacter = () => {
-  return mysql.select("ID").from(this.table).where({ Is_Princess: 1 });
+  return mysql
+    .select(["ID", { headImage: "HeadImage_Url" }])
+    .from(this.table)
+    .where({ Is_Princess: 1 });
 };
 
 exports.getPrincessCharacterCount = async () => {

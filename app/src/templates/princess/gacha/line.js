@@ -322,6 +322,41 @@ function genGachaStatus({ current = 0, total, godStone = 0 }) {
   };
 }
 
+function genCharacterImage(character) {
+  const { url } = character;
+  return {
+    type: "image",
+    url,
+    size: "xs",
+  };
+}
+
+function genCharacterRow(images) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    contents: images,
+  };
+}
+
+function genCharacterBubble(title, rows) {
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: title,
+        },
+        ...rows,
+      ],
+      spacing: "md",
+    },
+  };
+}
+
 module.exports = {
   /**
    * 發送轉蛋結果訊息
@@ -398,4 +433,8 @@ module.exports = {
   },
 
   genGachaStatus,
+
+  genCharacterImage,
+  genCharacterRow,
+  genCharacterBubble,
 };
