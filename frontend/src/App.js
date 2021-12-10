@@ -37,6 +37,7 @@ import { cyan, lightBlue } from "@material-ui/core/colors";
 import { ThemeProvider } from "@material-ui/styles";
 import { createTheme } from "@material-ui/core";
 import BattleTime from "./components/Tools/BattleTime";
+import GodStoneShop from "./components/GodStoneShop";
 
 const theme = createTheme({
   palette: {
@@ -149,6 +150,7 @@ function MainLayout() {
         <Route path="/Panel" component={PanelLayout} />
         <Route path="/Rankings" component={Rankings} />
         <Route path="/Tools" component={ToolsLayout} />
+        <Route path="/Gacha/Exchange" component={GodStoneShop} />
         <Route path="/" component={Home} />
       </Switch>
     </NavBar>

@@ -24,6 +24,9 @@ const { binding } = require("../controller/application/NotifyController").api;
 const ChatLevelController = require("../controller/application/ChatLevelController");
 const AnnounceController = require("../controller/application/AnnounceController");
 const WorldBossController = require("../controller/application/WorldBossController");
+const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
+
+router.use("/GodStoneShop", GodStoneShopRouter);
 
 router.get("/send-id", (req, res) => {
   const { size } = req.query || "full";
