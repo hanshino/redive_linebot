@@ -14,6 +14,10 @@ exports.getDatas = () => {
   return JSON.parse(JSON.stringify(CharacterDatas));
 };
 
+exports.findByName = name => {
+  return CharacterDatas.find(data => data.Name === name || data.Nick.includes(name));
+};
+
 /**
  * 根據unitId進行角色查詢
  * @param {Number} unitId
@@ -64,5 +68,13 @@ exports.getAllRarity = async () => {
     max_rarity: subQuery,
   });
 
+  return await query;
+};
+
+exports.findDB = async unitId => {
+  const query = knex("unit_profile")
+    .select("*")
+    .where("unit_id", unitId)
+    .join("unit_rarity", "unit_rarity.unit_id", "unit_profile.unit_id");
   return await query;
 };
