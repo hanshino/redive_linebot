@@ -43,5 +43,17 @@
     },
     "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
     "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}"
+  },
+  "api": {
+    "error": {
+      "gacha": {
+        "shop": {
+          "exchanged": "已兌換過此商品",
+          "itemNotFound": "找不到此商品",
+          "notEnoughGodStone": "女神石不足"
+        }
+      },
+      "unknown": "未知錯誤"
+    }
   }
 }

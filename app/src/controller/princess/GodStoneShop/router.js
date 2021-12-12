@@ -30,6 +30,10 @@ async function test(context) {
     })
     .filter(item => item);
 
+  if (viewData.length === 0) {
+    return context.replyText("沒有任何資料");
+  }
+
   const bubbles = viewData.map(item => GodStoneShopTemplate.genShopItem(item));
 
   chunk(bubbles, 10).forEach(chunk => {
