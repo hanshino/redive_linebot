@@ -8,8 +8,12 @@ exports.find = async function (id) {
   return await mysql(GOD_STONE_SHOP_TABLE).where({ id }).first();
 };
 
+exports.findByItemId = async function (itemId) {
+  return await mysql(GOD_STONE_SHOP_TABLE).where({ item_id: itemId }).first();
+};
+
 /**
- * @returns {Promise<Array<{id: Number, item_id: Number, price: Number, stock: Number, limit: Number, is_enable: Number, name: String, headImage: String}>>}
+ * @returns {Promise<Array<{id: Number, itemId: Number, price: Number, stock: Number, limit: Number, isEnable: Number, name: String, headImage: String}>>}
  */
 exports.all = async function () {
   return await mysql(GOD_STONE_SHOP_TABLE)
@@ -18,7 +22,7 @@ exports.all = async function () {
       "price",
       "stock",
       "limit",
-      "is_enable",
+      { isEnable: "is_enable" },
       { name: "Name" },
       { headImage: "HeadImage_Url" },
     ])

@@ -2,7 +2,22 @@ const mysql = require("../../../util/mysql");
 const { getClient } = require("bottender");
 const LineClient = getClient("line");
 const redis = require("../../../util/redis");
+const { get } = require("lodash");
 exports.table = "GachaPool";
+
+exports.all = async (options = {}) => {
+  let query = mysql.from(this.table);
+
+  if (get(options, "filter.userId")) {
+    query = query.where({ userId: options.filter.userId });
+  }
+
+  if (get(options, "filter.itemIds")) {
+    query = query.whereIn("itemId", options.filter.itemIds);
+  }
+
+  return await query;
+};
 
 exports.getDatabasePool = () => {
   return mysql
