@@ -26,7 +26,7 @@ const AnnounceController = require("../controller/application/AnnounceController
 const WorldBossController = require("../controller/application/WorldBossController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
 
-router.use("/GodStoneShop", GodStoneShopRouter);
+router.use(GodStoneShopRouter);
 
 router.get("/send-id", (req, res) => {
   const { size } = req.query || "full";

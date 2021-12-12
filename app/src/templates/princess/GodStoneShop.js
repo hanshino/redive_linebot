@@ -1,4 +1,5 @@
-exports.genShopItem = function ({ image, name, price, star }) {
+const common = require("../common");
+exports.genShopItem = function ({ itemId, image, name, price, star }) {
   return {
     type: "bubble",
     hero: {
@@ -101,6 +102,12 @@ exports.genShopItem = function ({ image, name, price, star }) {
               borderWidth: "normal",
             },
           ],
+          action: {
+            type: "uri",
+            uri: `${common.getLiffUri(
+              "full"
+            )}?reactRedirectUri=/Gacha/Exchange?exchangeId=${itemId}`,
+          },
           paddingTop: "lg",
         },
       ],
