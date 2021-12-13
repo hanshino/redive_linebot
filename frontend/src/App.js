@@ -38,6 +38,7 @@ import { ThemeProvider } from "@material-ui/styles";
 import { createTheme } from "@material-ui/core";
 import BattleTime from "./components/Tools/BattleTime";
 import GodStoneShop from "./components/GodStoneShop";
+import GachaShop from "./components/Admin/GachaShop";
 
 const theme = createTheme({
   palette: {
@@ -203,6 +204,7 @@ function AdminLayout() {
       <Route path="/Admin/Worldboss/Message/Create" component={WorldBossMessageCreate} />
       <Route path="/Admin/Worldboss/Message/Update/:id" component={WorldBossMessageUpdate} />
       <Route path="/Admin/Worldboss/Message" component={WorldbossMessage} />
+      <Route path="/Admin/GachaShop" component={GachaShop} />
     </Switch>
   );
 }

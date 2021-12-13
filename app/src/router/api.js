@@ -25,8 +25,19 @@ const ChatLevelController = require("../controller/application/ChatLevelControll
 const AnnounceController = require("../controller/application/AnnounceController");
 const WorldBossController = require("../controller/application/WorldBossController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
+const AdminModel = require("../model/application/Admin");
 
 router.use(GodStoneShopRouter);
+
+router.get("/me", verifyToken, async (req, res) => {
+  const { userId } = req.profile;
+  const adminData = (await AdminModel.find(userId)) || {};
+
+  res.json({
+    ...req.profile,
+    ...adminData,
+  });
+});
 
 router.get("/send-id", (req, res) => {
   const { size } = req.query || "full";

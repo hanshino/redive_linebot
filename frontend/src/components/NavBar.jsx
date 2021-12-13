@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { makeStyles, useTheme } from "@material-ui/core/styles";
 import AppBar from "@material-ui/core/AppBar";
 import Toolbar from "@material-ui/core/Toolbar";
@@ -25,10 +25,16 @@ import GitHubIcon from "@material-ui/icons/GitHub";
 import LoopIcon from "@material-ui/icons/Loop";
 import ExpandLess from "@material-ui/icons/ExpandLess";
 import ExpandMore from "@material-ui/icons/ExpandMore";
+import SettingsIcon from "@material-ui/icons/Settings";
+import SportsEsportsIcon from "@material-ui/icons/SportsEsports";
+import MessageIcon from "@material-ui/icons/Message";
+import FitnessCenterIcon from "@material-ui/icons/FitnessCenter";
+import StorefrontIcon from "@material-ui/icons/Storefront";
 import GroupDialog from "./GroupDialog";
 import { Link } from "react-router-dom";
 import { NotificationsActive } from "@material-ui/icons";
 import EqualizerIcon from "@material-ui/icons/Equalizer";
+import useAxios from "axios-hooks";
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -62,8 +68,10 @@ const useStyles = makeStyles(theme => ({
     flexGrow: 1,
     padding: theme.spacing(3),
   },
-  nested: {
-    paddingLeft: theme.spacing(4),
+  nestList: {
+    "& > .MuiListItem-root": {
+      paddingLeft: theme.spacing(4),
+    },
   },
   toolbar: theme.mixins.toolbar,
 }));
@@ -71,6 +79,7 @@ const useStyles = makeStyles(theme => ({
 const drawerWidth = 240;
 
 const NavBar = props => {
+  const [{ data = {} }, getMe] = useAxios(`/api/me`, { manual: true });
   const { children } = props;
   const classes = useStyles();
   const [isLoggedIn, setLoggedIn] = useState(window.liff.isLoggedIn());
@@ -79,11 +88,18 @@ const NavBar = props => {
   const [oftenBoxOpen, setOftenBoxOpen] = useState(false);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
 
+  useEffect(() => {
+    if (isLoggedIn) {
+      getMe();
+    }
+  }, [isLoggedIn]);
+
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
   const closeDrawer = () => setMobileOpen(false);
+  const { privilege } = data;
 
   const drawer = (
     <div>
@@ -140,10 +156,9 @@ const NavBar = props => {
           {oftenBoxOpen ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
         <Collapse in={oftenBoxOpen} timeout="auto" unmountOnExit>
-          <List component="div" disablePadding>
+          <List component="div" disablePadding className={classes.nestList}>
             <ListItem
               button
-              className={classes.nested}
               component="a"
               href="https://forum.gamer.com.tw/C.php?bsn=30861&snA=13556"
             >
@@ -152,24 +167,14 @@ const NavBar = props => {
               </ListItemIcon>
               <ListItemText primary="布丁巴哈更新串" />
             </ListItem>
-          </List>
-          <List component="div" disablePadding>
-            <ListItem
-              button
-              className={classes.nested}
-              component="a"
-              href="https://discord.gg/Fy82rTb"
-            >
+            <ListItem button component="a" href="https://discord.gg/Fy82rTb">
               <ListItemIcon>
                 <LanguageIcon />
               </ListItemIcon>
               <ListItemText primary="布丁Discord" />
             </ListItem>
-          </List>
-          <List component="div" disablePadding>
             <ListItem
               button
-              className={classes.nested}
               component="a"
               href="https://www.facebook.com/LINE-%E5%B8%83%E4%B8%81%E6%A9%9F%E5%99%A8%E4%BA%BA-585322668658383"
             >
@@ -180,6 +185,7 @@ const NavBar = props => {
             </ListItem>
           </List>
         </Collapse>
+        {privilege && <AdminDrawer />}
         <ListItem button component="a" href="https://github.com/hanshino/redive_linebot">
           <ListItemIcon>
             <GitHubIcon />
@@ -267,6 +273,57 @@ const NavBar = props => {
 
 NavBar.propTypes = {
   children: PropTypes.node.isRequired,
+};
+
+const AdminDrawer = () => {
+  const [open, setOpen] = useState(false);
+  const classes = useStyles();
+
+  return (
+    <>
+      <ListItem button onClick={() => setOpen(!open)}>
+        <ListItemIcon>
+          <SettingsIcon />
+        </ListItemIcon>
+        <ListItemText primary="管理員" />
+        {open ? <ExpandLess /> : <ExpandMore />}
+      </ListItem>
+      <Collapse in={open} timeout="auto" unmountOnExit>
+        <List component="div" disablePadding className={classes.nestList}>
+          <ListItem button component={Link} to="/Admin/GachaPool">
+            <ListItemIcon>
+              <SportsEsportsIcon />
+            </ListItemIcon>
+            <ListItemText primary="轉蛋管理" />
+          </ListItem>
+          <ListItem button component={Link} to="/Admin/GachaShop">
+            <ListItemIcon>
+              <StorefrontIcon />
+            </ListItemIcon>
+            <ListItemText primary="女神石商店" />
+          </ListItem>
+          <ListItem button component={Link} to="/Admin/GlobalOrder">
+            <ListItemIcon>
+              <MessageIcon />
+            </ListItemIcon>
+            <ListItemText primary="全群指令管理" />
+          </ListItem>
+          <ListItem button component={Link} to="/Admin/Messages">
+            <ListItemIcon>
+              <MessageIcon />
+            </ListItemIcon>
+            <ListItemText primary="訊息實況" />
+          </ListItem>
+          <ListItem button component={Link} to="/Admin/Worldboss/Message">
+            <ListItemIcon>
+              <FitnessCenterIcon />
+            </ListItemIcon>
+            <ListItemText primary="世界王特色訊息" />
+          </ListItem>
+        </List>
+      </Collapse>
+    </>
+  );
 };
 
 const { liff, location } = window;
