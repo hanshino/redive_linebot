@@ -50,6 +50,11 @@ exports.exchangeItem = async function (req, res) {
   res.json({ userId, itemId, itemCount, remainGodStone });
 };
 
+/**
+ * 查看用戶兌換記錄
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
 exports.history = async function (req, res) {
   const { userId } = req.profile;
 
@@ -60,4 +65,68 @@ exports.history = async function (req, res) {
   ]);
 
   res.json({ userId, holdingList, shopList, godStone: parseInt(godStone) });
+};
+
+/**
+ * 新增女神石商品
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.addGodStoneShopItem = async function (req, res) {
+  const { id, price } = req.body;
+
+  await GodStoneShopModel.create({
+    item_id: id,
+    price,
+  });
+
+  res.json({ item_id: id, price });
+};
+
+/**
+ * 刪除女神石商品
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.destroyGodStoneShopItem = async function (req, res) {
+  const { id } = req.params;
+
+  try {
+    const result = await GodStoneShopModel.delete(id);
+
+    if (!result) {
+      throw i18n.__("api.error.gacha.shop.itemNotFound");
+    }
+
+    res.json({});
+  } catch (e) {
+    return res.status(400).json({
+      error: e,
+    });
+  }
+};
+
+/**
+ * 更新女神石商品
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.updateGodStoneShopItem = async function (req, res) {
+  const { id, price } = req.body;
+
+  try {
+    const result = await GodStoneShopModel.update(id, {
+      price,
+    });
+
+    if (!result) {
+      throw i18n.__("api.error.gacha.shop.itemNotFound");
+    }
+
+    res.json({});
+  } catch (e) {
+    return res.status(400).json({
+      error: e,
+    });
+  }
 };

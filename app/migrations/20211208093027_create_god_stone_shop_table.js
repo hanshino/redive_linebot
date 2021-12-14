@@ -9,9 +9,9 @@ exports.up = function (knex) {
     table.increments("id").primary();
     table.integer("item_id").notNullable();
     table.integer("price").notNullable();
-    table.integer("stock").notNullable();
-    table.integer("limit").notNullable();
-    table.integer("is_enable").notNullable();
+    table.integer("stock").defaultTo(1).notNullable();
+    table.integer("limit").defaultTo(1).notNullable();
+    table.integer("is_enable").defaultTo(1).notNullable();
 
     table.timestamps(false, true);
   });

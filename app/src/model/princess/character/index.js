@@ -15,7 +15,7 @@ exports.getDatas = () => {
 };
 
 exports.findByName = name => {
-  return CharacterDatas.find(data => data.Name === name || data.Nick.includes(name));
+  return CharacterDatas.find(data => data.Name === name || (data.Nick && data.Nick.includes(name)));
 };
 
 /**
