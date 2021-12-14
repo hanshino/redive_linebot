@@ -50,12 +50,13 @@ const GodStoneShop = () => {
   }, []);
 
   useEffect(() => {
-    if (!purchaseResponse || purchaseLoading) return;
+    if (purchaseLoading) return;
+    if (!purchaseResponse && !purchaseError) return;
 
     setBarState({
       open: true,
       severity: purchaseError ? "error" : "success",
-      message: purchaseError ? get(purchaseResponse, "error", "未知錯誤") : "兌換成功！",
+      message: purchaseError ? get(purchaseError, "response.data.error", "未知錯誤") : "兌換成功！",
     });
     refetchHistory();
 
