@@ -27,6 +27,7 @@ import ExpandLess from "@material-ui/icons/ExpandLess";
 import ExpandMore from "@material-ui/icons/ExpandMore";
 import SettingsIcon from "@material-ui/icons/Settings";
 import SportsEsportsIcon from "@material-ui/icons/SportsEsports";
+import WorkOutlineIcon from "@material-ui/icons/WorkOutline";
 import MessageIcon from "@material-ui/icons/Message";
 import FitnessCenterIcon from "@material-ui/icons/FitnessCenter";
 import StorefrontIcon from "@material-ui/icons/Storefront";
@@ -110,29 +111,18 @@ const NavBar = props => {
           </ListItemIcon>
           <ListItemText primary={"首頁"} />
         </ListItem>
+        <PrincessDrawer />
         <ListItem button component={Link} to="/Rankings" onClick={closeDrawer}>
           <ListItemIcon>
             <EqualizerIcon />
           </ListItemIcon>
           <ListItemText primary={"排行榜"} />
         </ListItem>
-        <ListItem button component={Link} to="/Princess/Profile" onClick={closeDrawer}>
-          <ListItemIcon>
-            <ContactsIcon />
-          </ListItemIcon>
-          <ListItemText primary={"公主好友小卡"} />
-        </ListItem>
         <ListItem button component={Link} to="/Bot/Notify" onClick={closeDrawer}>
           <ListItemIcon>
             <NotificationsActive />
           </ListItemIcon>
           <ListItemText primary={"訂閱通知"} />
-        </ListItem>
-        <ListItem button component={Link} to="/Tools/BattleTime" onClick={closeDrawer}>
-          <ListItemIcon>
-            <LoopIcon />
-          </ListItemIcon>
-          <ListItemText primary={"補償刀軸換算"} />
         </ListItem>
         {isLoggedIn ? (
           <ListItem
@@ -319,6 +309,45 @@ const AdminDrawer = () => {
               <FitnessCenterIcon />
             </ListItemIcon>
             <ListItemText primary="世界王特色訊息" />
+          </ListItem>
+        </List>
+      </Collapse>
+    </>
+  );
+};
+
+const PrincessDrawer = () => {
+  const [open, setOpen] = useState(false);
+  const classes = useStyles();
+
+  return (
+    <>
+      <ListItem button onClick={() => setOpen(!open)}>
+        <ListItemIcon>
+          <WorkOutlineIcon />
+        </ListItemIcon>
+        <ListItemText primary="公主連結功能" />
+        {open ? <ExpandLess /> : <ExpandMore />}
+      </ListItem>
+      <Collapse in={open} timeout="auto" unmountOnExit>
+        <List component="div" disablePadding className={classes.nestList}>
+          <ListItem button component={Link} to="/Princess/Profile">
+            <ListItemIcon>
+              <ContactsIcon />
+            </ListItemIcon>
+            <ListItemText primary={"公主好友小卡"} />
+          </ListItem>
+          <ListItem button component={Link} to="/Tools/BattleTime">
+            <ListItemIcon>
+              <LoopIcon />
+            </ListItemIcon>
+            <ListItemText primary={"補償刀軸換算"} />
+          </ListItem>
+          <ListItem button component={Link} to="/Gacha/Exchange">
+            <ListItemIcon>
+              <StorefrontIcon />
+            </ListItemIcon>
+            <ListItemText primary="轉蛋商店" />
           </ListItem>
         </List>
       </Collapse>
