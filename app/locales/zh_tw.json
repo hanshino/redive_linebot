@@ -42,7 +42,8 @@
       "add_success": "成功新增廣告： {{ id }}, 請記住ID, 方便後續操作\n標題： {{ title }}\n發送人： {{ senderName }}\n發送頭像： {{ senderIcon }}"
     },
     "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
-    "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}"
+    "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}",
+    "god_stone_shop_empty": "目前未設定任何兌換商品，請聯繫管理員設定"
   },
   "api": {
     "error": {
