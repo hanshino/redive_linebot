@@ -5,12 +5,12 @@ const CharacterModel = require("../../../model/princess/character");
 const GodStoneShopTemplate = require("../../../templates/princess/GodStoneShop");
 const chunk = require("lodash/chunk");
 
-exports.router = [text("/godstoneshop", test)];
+exports.router = [text(/^[.#]轉蛋(兌換|商店)/, showStoneShop)];
 
 /**
  * @param {Context} context
  */
-async function test(context) {
+async function showStoneShop(context) {
   const data = await GodStoneShopModel.all();
 
   const viewData = data
