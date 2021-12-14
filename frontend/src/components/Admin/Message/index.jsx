@@ -1,5 +1,5 @@
 import React from "react";
-import {io as webSocket} from "socket.io/client-dist/socket.io";
+import { io as webSocket } from "socket.io/client-dist/socket.io";
 import SourceList from "./SourceList";
 import ContentDialog from "./ContentDialog";
 
@@ -22,6 +22,10 @@ const Message = () => {
 
     socket.on("newEvent", event => handleEvent(event));
     socket.on("error", alert);
+
+    return () => {
+      socket.close();
+    };
   }, []);
 
   React.useEffect(() => {
