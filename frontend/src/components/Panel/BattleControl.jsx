@@ -102,7 +102,10 @@ const Accordions = [
   {
     title: "其他",
     description: "集合了其餘雜項功能！",
-    buttons: [{ title: "報名成功測試", text: ".signtest" }],
+    buttons: [
+      { title: "報名成功測試", text: ".signtest" },
+      { title: "補償刀軸轉換", text: ".bt" },
+    ],
   },
 ];
 

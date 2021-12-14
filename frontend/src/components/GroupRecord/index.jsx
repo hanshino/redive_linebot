@@ -112,13 +112,13 @@ const GroupRecord = () => {
             提供群組進行數據管理
           </Typography>
         </Grid>
-        <Grid item >
+        <Grid item>
           <IconButton onClick={() => fetchData(groupId)}>
             <Refresh color="action" />
           </IconButton>
         </Grid>
       </Grid>
-      <Grid container className={classes.root} justify="space-around">
+      <Grid container className={classes.root} justifyContent="space-around">
         {CardData.map((d, i) => (
           <Grid item key={i}>
             <GridCard {...d} />

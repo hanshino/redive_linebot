@@ -52,7 +52,7 @@ const Statistics = () => {
           <Typography variant="h5">儀表板</Typography>
         </Grid>
       </Grid>
-      <Grid container item justify="space-around" spacing={1}>
+      <Grid container item justifyContent="space-around" spacing={1}>
         {loading ? (
           <Skeleton className={classes.loading} animation="wave" />
         ) : (

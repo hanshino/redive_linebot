@@ -1,58 +1,70 @@
-import React from "react";
+import React, { useMemo } from "react";
 import useAxios from "axios-hooks";
 import Paper from "@material-ui/core/Paper";
-import {
-  Chart,
-  BarSeries,
-  Title,
-  ArgumentAxis,
-  ValueAxis,
-} from "@devexpress/dx-react-chart-material-ui";
-import { Animation } from "@devexpress/dx-react-chart";
 import Grid from "@material-ui/core/Grid";
-import PropTypes from "prop-types";
-import { makeStyles } from "@material-ui/core/styles";
-import Skeleton from "@material-ui/lab/Skeleton";
+import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import Typography from "@material-ui/core/Typography";
+import LinearProgress from "@material-ui/core/LinearProgress";
 
-const useStyle = makeStyles(() => ({
-  PaperChart: {
-    width: "100%",
+const columns = [
+  {
+    field: "rank",
+    headerName: "#",
   },
-}));
+  {
+    field: "displayName",
+    headerName: "暱稱",
+    width: 150,
+  },
+  {
+    field: "cnt",
+    headerName: "蒐集數量",
+    width: 150,
+  },
+];
+
+const CustomLoadingOverlay = () => {
+  return (
+    <GridOverlay>
+      <div style={{ position: "absolute", top: 0, width: "100%" }}>
+        <LinearProgress color="secondary" />
+      </div>
+    </GridOverlay>
+  );
+};
 
 const GachaRankChart = () => {
   const [{ data, loading }] = useAxios("/api/Gacha/Rank/0");
-  const classes = useStyle();
+
+  const gachaData = useMemo(() => {
+    if (!data) return [];
+    return data.slice(0, 51).map((d, i) => ({ id: i, rank: i + 1, ...d }));
+  }, [data]);
 
   return (
-    <Grid container item xs={12} sm={12} component={Paper}>
-      {loading ? (
-        <Skeleton className={classes.PaperChart} animation="wave" />
-      ) : (
-        <EuropeRank rankData={data} />
-      )}
+    <Grid container item xs={12} sm={12} justifyContent="center">
+      <Grid item xs={12}>
+        <Typography variant="h5" component="h5" style={{ marginBottom: "5px" }}>
+          轉蛋蒐集排行
+        </Typography>
+      </Grid>
+      <Grid item xs={12}>
+        <Paper style={{ width: "100%", height: 500 }}>
+          <DataGrid
+            columns={columns}
+            rows={gachaData}
+            disableColumnFilter
+            disableColumnSelector
+            disableColumnMenu
+            loading={loading}
+            components={{
+              LoadingOverlay: CustomLoadingOverlay,
+            }}
+          />
+        </Paper>
+      </Grid>
     </Grid>
   );
-};
-
-const EuropeRank = props => {
-  const classes = useStyle();
-  const { rankData } = props;
-
-  return (
-    <Chart data={rankData.reverse()} rotated className={classes.PaperChart}>
-      <ArgumentAxis />
-      <ValueAxis max={7} showLine showTicks />
-
-      <BarSeries valueField="cnt" argumentField="displayName" />
-      <Title text="🥇轉蛋蒐集排行🏆" />
-      <Animation />
-    </Chart>
-  );
-};
-
-EuropeRank.propTypes = {
-  rankData: PropTypes.array.isRequired,
 };
 
 export default GachaRankChart;

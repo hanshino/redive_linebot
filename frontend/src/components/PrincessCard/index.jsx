@@ -256,7 +256,7 @@ const PrincessCard = () => {
               ))}
             </TextField>
           </Grid>
-          <Grid container item xs={12} justify="flex-end" spacing={2}>
+          <Grid container item xs={12} justifyContent="flex-end" spacing={2}>
             <Grid item>
               <Button
                 variant="contained"

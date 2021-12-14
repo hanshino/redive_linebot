@@ -18,6 +18,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    environment:
+      "CHOKIDAR_USEPOLLING": "true"
     expose:
       - 3000
     networks:
@@ -53,7 +55,11 @@ services:
     image: mysql
     volumes:
       - ./migration:/docker-entrypoint-initdb.d
-      - "${DB_STOREPATH}/db:/var/lib/mysql"
+      - type: volume
+        source: dbdata
+        target: /var/lib/mysql
+        volume:
+          nocopy: true
     restart: always
     expose:
       - "${DB_PORT}"
@@ -128,6 +134,9 @@ services:
       PYTHON_MODE: DEBUG
     volumes:
       - ./opencv:/application
+
+volumes:
+  dbdata:
 
 networks:
   bot_network:
