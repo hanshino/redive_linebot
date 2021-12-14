@@ -19,7 +19,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     environment:
-      CHOKIDAR_USEPOLLING: true
+      "CHOKIDAR_USEPOLLING": "true"
     expose:
       - 3000
     networks:

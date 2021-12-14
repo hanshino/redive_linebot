@@ -239,7 +239,7 @@ const ManualBar = () => {
           ))}
         </Tabs>
       </AppBar>
-      <Grid container className={classes.container} justify="center">
+      <Grid container className={classes.container} justifyContent="center">
         <Grid item container>
           <Grid item>
             <Typography variant="h6" component="h2">
