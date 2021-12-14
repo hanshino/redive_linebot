@@ -7,7 +7,7 @@ const { Knex } = require("knex");
 exports.up = function (knex) {
   return knex.schema.createTable("god_stone_shop", table => {
     table.increments("id").primary();
-    table.integer("item_id").notNullable();
+    table.integer("item_id").unique().notNullable();
     table.integer("price").notNullable();
     table.integer("stock").defaultTo(1).notNullable();
     table.integer("limit").defaultTo(1).notNullable();

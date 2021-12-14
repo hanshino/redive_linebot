@@ -1,6 +1,6 @@
 const InventoryModel = require("../../../model/application/Inventory");
 const GodStoneShopModel = require("../../../model/princess/GodStoneShop");
-const GachaModel = require("../../../model/princess/Gacha");
+const GachaModel = require("../../../model/princess/gacha");
 const i18n = require("../../../util/i18n");
 
 /**
