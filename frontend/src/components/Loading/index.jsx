@@ -21,3 +21,43 @@ export const DotsLoading = () => {
     </Backdrop>
   );
 };
+
+export const ThrobberLoading = () => {
+  return (
+    <Backdrop open={true}>
+      <div className="throbber-loader" />
+    </Backdrop>
+  );
+};
+
+export const HeartbeatLoading = () => {
+  return (
+    <Backdrop open={true}>
+      <div className="heartbeat-loader" />
+    </Backdrop>
+  );
+};
+
+export const GaugeLoading = () => {
+  return (
+    <Backdrop open={true}>
+      <div className="gauge-loader" />
+    </Backdrop>
+  );
+};
+
+export const WobblebarLoading = () => {
+  return (
+    <Backdrop open={true}>
+      <div className="wobblebar-loader" />
+    </Backdrop>
+  );
+};
+
+export const WhirlyLoading = () => {
+  return (
+    <Backdrop open={true}>
+      <div className="whirly-loader" />
+    </Backdrop>
+  );
+};

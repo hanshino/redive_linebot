@@ -18,9 +18,6 @@ import Order from "./components/Admin/Order";
 import Home from "./components/Home";
 import PrincessCard from "./components/PrincessCard";
 import GroupBattle from "./components/GroupBattle";
-import Backdrop from "@material-ui/core/Backdrop";
-import CircularProgress from "@material-ui/core/CircularProgress";
-import { makeStyles } from "@material-ui/core/styles";
 import axios from "axios";
 import BattleSignPanel from "./components/Panel/BattleSign";
 import BattleControlPanel from "./components/Panel/BattleControl";
@@ -39,6 +36,7 @@ import { createTheme } from "@material-ui/core";
 import BattleTime from "./components/Tools/BattleTime";
 import GodStoneShop from "./components/GodStoneShop";
 import GachaShop from "./components/Admin/GachaShop";
+import { WhirlyLoading } from "./components/Loading";
 
 const theme = createTheme({
   palette: {
@@ -46,13 +44,6 @@ const theme = createTheme({
     secondary: lightBlue,
   },
 });
-
-const useStyles = makeStyles(theme => ({
-  backdrop: {
-    zIndex: theme.zIndex.drawer + 1,
-    color: "#fff",
-  },
-}));
 
 const useQuery = () => {
   return new URLSearchParams(useLocation().search);
@@ -89,7 +80,6 @@ RedirectDetect.propTypes = {
 };
 
 function LiffSizeLayout() {
-  const classes = useStyles();
   const [loading, setLoading] = useState(true);
   const { size } = useParams();
   const { liff } = window;
@@ -103,18 +93,12 @@ function LiffSizeLayout() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading)
-    return (
-      <Backdrop className={classes.backdrop} open={true}>
-        <CircularProgress color="inherit" />
-      </Backdrop>
-    );
+  if (loading) return <WhirlyLoading />;
 
   return <RedirectDetect redirectUri="/" />;
 }
 
 function MainLayout() {
-  const classes = useStyles();
   const { liff } = window;
   const [loading, setLoading] = useState(true);
 
@@ -132,12 +116,7 @@ function MainLayout() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading)
-    return (
-      <Backdrop className={classes.backdrop} open={true}>
-        <CircularProgress color="inherit" />
-      </Backdrop>
-    );
+  if (loading) return <WhirlyLoading />;
 
   return (
     <NavBar>
