@@ -71,6 +71,21 @@ const useStyles = makeStyles(theme => ({
 
 const TabDatas = [
   {
+    key: "Bot",
+    enableScreen: ["utou", "room", "group", "external"],
+    title: "機器人指令",
+    description: "機器人指令說明，包含了一些封包資訊，通常做為 debug 使用",
+    buttons: [
+      { title: "實用連結", description: "整合了布丁的一些實用連結", text: "/link" },
+      { title: "來源查詢", description: "查詢目前發送訊息的詳細來源", text: "/source" },
+      {
+        title: "伺服器內用戶狀態查詢",
+        description: "查詢目前發送的來源的 session 資訊",
+        text: "/state",
+      },
+    ],
+  },
+  {
     key: "Princess",
     enableScreen: ["utou", "room", "group", "external"],
     title: "公主連結指令",
@@ -78,6 +93,17 @@ const TabDatas = [
     buttons: [
       { title: "Rank表", description: "由無羽製作的表格，提供所有角色詳細推薦表", text: "rank" },
       { title: "模擬抽蛋", description: "自製模擬抽獎系統，每天都有一次的特別抽哦！", text: "#抽" },
+      { title: "抽蛋包包", description: "可以查看模擬抽蛋的蒐集進度！", text: "/mybag" },
+      {
+        title: "模擬抽蛋(加倍)",
+        description: "透過模擬抽蛋蒐集的女神石，可以把每日一抽的機率加倍！",
+        text: "#消耗抽",
+      },
+      {
+        title: "轉蛋兌換",
+        description: "透過模擬抽蛋蒐集的女神石，可以兌換成抽不到的角色！",
+        text: "#轉蛋商店",
+      },
       {
         title: "好友小卡",
         description: "透過綁定遊戲ID，可發送好友小卡，請人加你好友！",

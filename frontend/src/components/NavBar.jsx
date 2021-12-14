@@ -29,6 +29,8 @@ import SettingsIcon from "@material-ui/icons/Settings";
 import SportsEsportsIcon from "@material-ui/icons/SportsEsports";
 import WorkOutlineIcon from "@material-ui/icons/WorkOutline";
 import MessageIcon from "@material-ui/icons/Message";
+import AndroidIcon from "@material-ui/icons/Android";
+import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 import FitnessCenterIcon from "@material-ui/icons/FitnessCenter";
 import StorefrontIcon from "@material-ui/icons/Storefront";
 import GroupDialog from "./GroupDialog";
@@ -111,19 +113,14 @@ const NavBar = props => {
           </ListItemIcon>
           <ListItemText primary={"首頁"} />
         </ListItem>
-        <PrincessDrawer />
         <ListItem button component={Link} to="/Rankings" onClick={closeDrawer}>
           <ListItemIcon>
             <EqualizerIcon />
           </ListItemIcon>
           <ListItemText primary={"排行榜"} />
         </ListItem>
-        <ListItem button component={Link} to="/Bot/Notify" onClick={closeDrawer}>
-          <ListItemIcon>
-            <NotificationsActive />
-          </ListItemIcon>
-          <ListItemText primary={"訂閱通知"} />
-        </ListItem>
+        <PrincessDrawer />
+        <BotDrawer />
         {isLoggedIn ? (
           <ListItem
             button
@@ -348,6 +345,39 @@ const PrincessDrawer = () => {
               <StorefrontIcon />
             </ListItemIcon>
             <ListItemText primary="轉蛋商店" />
+          </ListItem>
+        </List>
+      </Collapse>
+    </>
+  );
+};
+
+const BotDrawer = () => {
+  const [open, setOpen] = useState(false);
+  const classes = useStyles();
+
+  return (
+    <>
+      <ListItem button onClick={() => setOpen(!open)}>
+        <ListItemIcon>
+          <AndroidIcon />
+        </ListItemIcon>
+        <ListItemText primary="機器人功能" />
+        {open ? <ExpandLess /> : <ExpandMore />}
+      </ListItem>
+      <Collapse in={open} timeout="auto" unmountOnExit>
+        <List component="div" disablePadding className={classes.nestList}>
+          <ListItem button component={Link} to="/Panel/Manual">
+            <ListItemIcon>
+              <LibraryBooksIcon />
+            </ListItemIcon>
+            <ListItemText primary="使用手冊" />
+          </ListItem>
+          <ListItem button component={Link} to="/Bot/Notify">
+            <ListItemIcon>
+              <NotificationsActive />
+            </ListItemIcon>
+            <ListItemText primary={"訂閱通知"} />
           </ListItem>
         </List>
       </Collapse>
