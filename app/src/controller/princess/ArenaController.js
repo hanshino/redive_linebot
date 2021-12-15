@@ -44,7 +44,7 @@ exports.router = context => {
   else return [];
 };
 
-function personalRouter(context) {
+function personalRouter() {
   return [
     text(/^[.#](競技場上傳|arenaupload)$/, setPersonalAllowUpload),
     text(/^[.#](競技場(搜尋|查詢)|arenasearch)$/, setArenaSearch),

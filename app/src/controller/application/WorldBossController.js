@@ -71,9 +71,8 @@ async function myStatus(context) {
 
 /**
  * @param {Context} context
- * @param {import("bottender").Props} props
  */
-async function worldRank(context, props) {
+async function worldRank(context) {
   // 取得正在進行中的世界事件
   const events = await worldBossEventService.getCurrentEvent();
 

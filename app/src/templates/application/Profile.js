@@ -54,9 +54,7 @@ exports.genOtherInformations = ({ bindInfo, subInfo }) => {
             {
               type: "box",
               layout: "horizontal",
-              contents: [
-                ...subInfo.map(info => genSubComponent(info.status === 1, info.title)),
-              ],
+              contents: [...subInfo.map(info => genSubComponent(info.status === 1, info.title))],
             },
           ],
           paddingAll: "sm",

@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 const { Context } = require("bottender");
 const { text } = require("bottender/router");
 const GuildServiceModel = require("../../model/application/GuildService");
@@ -21,9 +22,8 @@ async function guildService(context) {
 /**
  * 為特定群組建立服務權限
  * @param {Context} context
- * @param {import("bottender").Props} props
  */
-async function addService(context, props) {
+async function addService(context) {
   // 僅限於管理員
   if (context.state.isAdmin === false && context.event.source.type === "user") {
     return;

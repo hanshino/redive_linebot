@@ -7,7 +7,8 @@ exports.transfer = async (context, { next }) => {
   if (!context.event.isText) return next;
 
   const webhook = await GroupConfigModel.getDiscordWebhook(groupId);
-  if (webhook === "" || /discord.com\/api\/webhooks\/([^\/]+)\/([^\/]+)/.test(webhook) === false) return next;
+  if (webhook === "" || /discord.com\/api\/webhooks\/([^/]+)\/([^/]+)/.test(webhook) === false)
+    return next;
 
   const params = initialEvent(context);
 

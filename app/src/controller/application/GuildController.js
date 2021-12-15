@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 const { Context } = require("bottender");
 const uidModel = require("../../model/princess/uid");
 const ianService = require("../../service/ianService");
@@ -10,9 +11,8 @@ const datefromat = require("dateformat");
 /**
  * 隊長綁定，綁定後可得知戰隊情報
  * @param {Context} context
- * @param {import("bottender/dist/types").Props} props
  */
-exports.leaderBinding = async (context, props) => {
+exports.leaderBinding = async context => {
   const { userId, groupId } = context.event.source;
   const { clanBinding } = context.state;
 

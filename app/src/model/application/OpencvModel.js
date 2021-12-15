@@ -16,7 +16,7 @@ exports.analyzeGuildBattle = imageBase => {
       type: "base64",
     })
     .then(res => res.data)
-    .catch(err => false);
+    .catch(() => false);
 };
 
 /**
@@ -30,7 +30,7 @@ exports.analyzeArenaBattle = imageBase => {
       type: "base64",
     })
     .then(res => res.data)
-    .catch(err => false);
+    .catch(() => false);
 };
 
 /**

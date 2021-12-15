@@ -201,6 +201,7 @@ function getSubData(subType) {
  * 訂閱類型轉譯成數字
  * @param {Array<{key:String, status:Number}>} switchArray
  */
+// eslint-disable-next-line no-unused-vars
 function getSubType(switchArray) {
   const SubSwitch = getSubSwitch();
   switchArray.forEach(data => {
