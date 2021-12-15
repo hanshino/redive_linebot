@@ -26,6 +26,9 @@ const AnnounceController = require("../controller/application/AnnounceController
 const WorldBossController = require("../controller/application/WorldBossController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
 const AdminModel = require("../model/application/Admin");
+const WorldBossRouter = require("./WorldBoss");
+
+router.use(WorldBossRouter);
 
 router.use(GodStoneShopRouter);
 
