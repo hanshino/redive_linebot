@@ -9,6 +9,7 @@ import Snackbar from "@material-ui/core/Snackbar";
 import CharacterCard from "./CharacterCard";
 import AlertDialog from "../AlertDialog";
 import { useLocation } from "react-router-dom";
+import AlertLogin from "../AlertLogin";
 
 function useQuery() {
   const { search } = useLocation();
@@ -16,7 +17,10 @@ function useQuery() {
   return React.useMemo(() => new URLSearchParams(search), [search]);
 }
 
+const { liff } = window;
+
 const GodStoneShop = () => {
+  const isLoggedIn = useMemo(() => liff.isLoggedIn(), []);
   const query = useQuery();
   const [queryState, setQueryState] = useState({
     asked: false,
@@ -32,9 +36,12 @@ const GodStoneShop = () => {
     description: "",
     submitAction: () => {},
   });
-  const [{ data, loading }] = useAxios("/api/GodStoneShop");
-  const [{ data: history, loading: historyLoading }, refetchHistory] = useAxios(
-    "/api/GodStoneShop/history"
+  const [{ data, loading }, fetchData] = useAxios("/api/GodStoneShop", {
+    manual: true,
+  });
+  const [{ data: history, loading: historyLoading }, fetchHistory] = useAxios(
+    "/api/GodStoneShop/history",
+    { manual: true }
   );
   const [{ data: purchaseResponse, loading: purchaseLoading, error: purchaseError }, doPurchase] =
     useAxios(
@@ -58,7 +65,7 @@ const GodStoneShop = () => {
       severity: purchaseError ? "error" : "success",
       message: purchaseError ? get(purchaseError, "response.data.error", "未知錯誤") : "兌換成功！",
     });
-    refetchHistory();
+    fetchHistory();
 
     return () => {};
   }, [purchaseResponse, purchaseLoading, purchaseError]);
@@ -96,6 +103,17 @@ const GodStoneShop = () => {
     handlePurchase(target);
     setQueryState({ asked: true });
   }, [query, list]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchData();
+    fetchHistory();
+    return () => {};
+  }, [isLoggedIn]);
+
+  if (!isLoggedIn) {
+    return <AlertLogin />;
+  }
 
   if (loading) return <DotsLoading />;
 
