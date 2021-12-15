@@ -37,6 +37,7 @@ import BattleTime from "./components/Tools/BattleTime";
 import GodStoneShop from "./components/GodStoneShop";
 import GachaShop from "./components/Admin/GachaShop";
 import { WhirlyLoading } from "./components/Loading";
+import Worldboss from "./components/Admin/Worldboss";
 
 const theme = createTheme({
   palette: {
@@ -180,9 +181,10 @@ function AdminLayout() {
       <Route path="/Admin/GachaPool" component={GachaPool} />
       <Route path="/Admin/GlobalOrder" component={Order} />
       <Route path="/Admin/Messages" component={Message} />
-      <Route path="/Admin/Worldboss/Message/Create" component={WorldBossMessageCreate} />
-      <Route path="/Admin/Worldboss/Message/Update/:id" component={WorldBossMessageUpdate} />
-      <Route path="/Admin/Worldboss/Message" component={WorldbossMessage} />
+      <Route path="/Admin/Worldboss" component={Worldboss} />
+      <Route path="/Admin/WorldbossMessage/Create" component={WorldBossMessageCreate} />
+      <Route path="/Admin/WorldbossMessage/Update/:id" component={WorldBossMessageUpdate} />
+      <Route path="/Admin/WorldbossMessage" component={WorldbossMessage} />
       <Route path="/Admin/GachaShop" component={GachaShop} />
     </Switch>
   );

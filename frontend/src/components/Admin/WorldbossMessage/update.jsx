@@ -45,7 +45,7 @@ const WorldbossMessageUpdate = () => {
 
   // 如果成功，就導回列表頁
   if (updateData && updateData.message === "success") {
-    return <Redirect to="/Admin/Worldboss/Message" />;
+    return <Redirect to="/Admin/WorldbossMessage" />;
   }
 
   const message = data?.data;

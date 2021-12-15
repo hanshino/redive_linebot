@@ -59,7 +59,7 @@ const WorldBossMessage = () => {
       <Grid item>
         <DataList />
       </Grid>
-      <Fab color="primary" aria-label="add" component={Link} to={"/Admin/Worldboss/Message/Create"}>
+      <Fab color="primary" aria-label="add" component={Link} to={"/Admin/WorldbossMessage/Create"}>
         <AddIcon />
       </Fab>
     </Grid>
@@ -140,7 +140,7 @@ const ControlButtons = ({ onDeleteComplete, value }) => {
   return (
     <div className={classes.wrapper}>
       <ButtonGroup color="primary" variant="outlined" disabled={loading}>
-        <Button component={Link} to={`/Admin/Worldboss/Message/Update/${value}`}>
+        <Button component={Link} to={`/Admin/WorldbossMessage/Update/${value}`}>
           更新
         </Button>
         <Button color="primary" variant="outlined" onClick={handleDelete}>

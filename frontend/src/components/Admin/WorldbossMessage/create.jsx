@@ -41,7 +41,7 @@ const WorldbossMessageCreate = () => {
 
   // 如果成功，就導回列表頁
   if (data && data.message === "success") {
-    return <Redirect to="/Admin/Worldboss/Message" />;
+    return <Redirect to="/Admin/WorldbossMessage" />;
   }
 
   return (
