@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Button from "@material-ui/core/Button";
 import Dialog from "@material-ui/core/Dialog";
 import DialogActions from "@material-ui/core/DialogActions";
@@ -49,6 +49,36 @@ AlertDialog.propTypes = {
   onCancel: PropTypes.func.isRequired,
   submitText: PropTypes.string,
   cancelText: PropTypes.string,
+};
+
+/**
+ * 協助控制提醒視窗的開啟與關閉
+ */
+export const useAlertDialog = () => {
+  const initialState = {
+    title: "",
+    description: "",
+    submitText: "",
+    cancelText: "",
+    onSubmit: () => {},
+    onCancel: () => {},
+  };
+  const [open, setOpen] = useState(false);
+  const [dialogState, setDialogState] = useState(initialState);
+
+  const handleOpen = detail => {
+    setDialogState(detail);
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  return [
+    { open, state: dialogState },
+    { handleOpen, handleClose, setDetail: setDialogState },
+  ];
 };
 
 export default AlertDialog;

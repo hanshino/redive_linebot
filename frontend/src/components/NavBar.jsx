@@ -301,6 +301,12 @@ const AdminDrawer = () => {
             </ListItemIcon>
             <ListItemText primary="訊息實況" />
           </ListItem>
+          <ListItem button component={Link} to="/Admin/Worldboss">
+            <ListItemIcon>
+              <FitnessCenterIcon />
+            </ListItemIcon>
+            <ListItemText primary="世界王設定" />
+          </ListItem>
           <ListItem button component={Link} to="/Admin/WorldbossMessage">
             <ListItemIcon>
               <FitnessCenterIcon />
