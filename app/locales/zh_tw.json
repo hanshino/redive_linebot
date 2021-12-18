@@ -54,6 +54,9 @@
           "notEnoughGodStone": "女神石不足"
         }
       },
+      "imgur": {
+        "uploadBase64": "上傳圖片失敗，請確認圖片格式是否正確"
+      },
       "unknown": "未知錯誤"
     }
   }

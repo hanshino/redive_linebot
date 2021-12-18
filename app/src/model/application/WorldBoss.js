@@ -14,8 +14,8 @@ const fillable = [
   "defense",
   "speed",
   "luck",
-  "ex",
-  "gol",
+  "exp",
+  "gold",
 ];
 
 /**
@@ -24,6 +24,15 @@ const fillable = [
  */
 exports.all = async () => {
   return await mysql(TABLE).select("*");
+};
+
+/**
+ * 取得單一世界boss
+ * @param {Number} id
+ * @returns {Promise<Object>}
+ */
+exports.find = async id => {
+  return await mysql(TABLE).where({ id }).first();
 };
 
 /**

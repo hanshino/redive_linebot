@@ -6,9 +6,21 @@ exports.getAllWorldBoss = async (req, res) => {
   res.json(worldBoss);
 };
 
-exports.storeWorldBoss = async (req, res) => {
-  let worldBoss = await WorldBossModel.create(req.body);
+exports.getWorldBossById = async (req, res) => {
+  let worldBoss = await WorldBossModel.find(req.params.id);
   res.json(worldBoss);
+};
+
+exports.storeWorldBoss = async (req, res) => {
+  try {
+    await WorldBossModel.create(req.body);
+    res.json({});
+  } catch (e) {
+    res.status(400).json({
+      error: i18n.__("worldBoss.storeWorldBoss.error"),
+      message: e.message,
+    });
+  }
 };
 
 exports.updateWorldBoss = async (req, res) => {

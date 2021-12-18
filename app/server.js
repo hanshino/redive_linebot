@@ -30,7 +30,7 @@ app.prepare().then(() => {
   };
 
   server.use(cors());
-  server.use(express.json({ verify }));
+  server.use(express.json({ verify, limit: "3mb" }));
   server.use(express.urlencoded({ extended: false, verify }));
 
   // api group router
