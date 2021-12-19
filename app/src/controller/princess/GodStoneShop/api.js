@@ -3,7 +3,7 @@ const ShopRouter = createRouter();
 const AdminRouter = createRouter();
 const GodStoneShopModel = require("../../../model/princess/GodStoneShop");
 const CharacterModel = require("../../../model/princess/character");
-const { verifyToken, verifyAdmin } = require("../../../middleware/validation");
+const { verifyToken } = require("../../../middleware/validation");
 const {
   exchangeItem,
   history,
@@ -38,6 +38,6 @@ AdminRouter.delete("/item/:id", destroyGodStoneShopItem);
 AdminRouter.put("/item/:id", updateGodStoneShopItem);
 
 router.use("/GodStoneShop", ShopRouter);
-router.use("/Admin/GodStoneShop", verifyToken, verifyAdmin, AdminRouter);
+router.use("/Admin/GodStoneShop", AdminRouter);
 
 module.exports = router;
