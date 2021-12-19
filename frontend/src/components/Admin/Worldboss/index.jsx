@@ -24,6 +24,7 @@ import ImageIcon from "@material-ui/icons/Image";
 import get from "lodash/get";
 import HintSnackBar, { useHintBar } from "../../HintSnackBar";
 import AlertDialog, { useAlertDialog } from "../../AlertDialog";
+import AlertLogin from "../../AlertLogin";
 
 const useStyles = makeStyles(theme => ({
   form: {
@@ -58,7 +59,10 @@ const CustomLoadingOverlay = () => {
   );
 };
 
+const { liff } = window;
+
 const Worldboss = () => {
+  const isLoggedIn = liff.isLoggedIn();
   const [
     {
       open: dialogOpen,
@@ -66,7 +70,9 @@ const Worldboss = () => {
     },
     { handleOpen: openDialog, handleClose: closeDialog },
   ] = useAlertDialog();
-  const [{ data = [], loading }, refetch] = useAxios("/api/Admin/Worldboss");
+  const [{ data = [], loading }, fetchData] = useAxios("/api/Admin/Worldboss", {
+    manual: true,
+  });
   const [{ data: updateData, loading: updateLoading, error: updatedError }, updateDataRequest] =
     useAxios(
       {
@@ -176,7 +182,7 @@ const Worldboss = () => {
         id: null,
         isActive: false,
       });
-      refetch();
+      fetchData();
     }
   }, [createdLoading, createdData]);
 
@@ -189,7 +195,7 @@ const Worldboss = () => {
         id: null,
         isActive: false,
       });
-      refetch();
+      fetchData();
     } else if (updatedError) {
       handleOpen("更新失敗", "error");
     }
@@ -200,11 +206,17 @@ const Worldboss = () => {
     if (deletedLoading) return;
     if (deletedData) {
       handleOpen("刪除成功", "success");
-      refetch();
+      fetchData();
     } else if (deletedError) {
       handleOpen("刪除失敗", "error");
     }
   }, [deletedLoading, deletedData]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchData();
+    }
+  }, [isLoggedIn]);
 
   const handleSubmit = formData => {
     const id = get(formData, "id");
@@ -227,6 +239,10 @@ const Worldboss = () => {
       isActive: false,
     });
   };
+
+  if (!isLoggedIn) {
+    return <AlertLogin />;
+  }
 
   if (editState.isActive) {
     return (
