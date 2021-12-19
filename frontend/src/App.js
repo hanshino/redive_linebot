@@ -38,6 +38,7 @@ import GodStoneShop from "./components/GodStoneShop";
 import GachaShop from "./components/Admin/GachaShop";
 import { WhirlyLoading } from "./components/Loading";
 import Worldboss from "./components/Admin/Worldboss";
+import WorldbossEvent from "./components/Admin/WorldbossEvent";
 
 const theme = createTheme({
   palette: {
@@ -182,6 +183,7 @@ function AdminLayout() {
       <Route path="/Admin/GlobalOrder" component={Order} />
       <Route path="/Admin/Messages" component={Message} />
       <Route path="/Admin/Worldboss" component={Worldboss} />
+      <Route path="/Admin/WorldbossEvent" component={WorldbossEvent} />
       <Route path="/Admin/WorldbossMessage/Create" component={WorldBossMessageCreate} />
       <Route path="/Admin/WorldbossMessage/Update/:id" component={WorldBossMessageUpdate} />
       <Route path="/Admin/WorldbossMessage" component={WorldbossMessage} />
