@@ -3,6 +3,14 @@ const redis = require("../util/redis");
 
 exports.all = worldBossEventModel.all;
 
+exports.find = worldBossEventModel.find;
+
+exports.create = worldBossEventModel.create;
+
+exports.update = worldBossEventModel.update;
+
+exports.destroy = worldBossEventModel.destroy;
+
 exports.getEventBoss = async eventId => {
   let eventBoss = await worldBossEventModel.find(eventId);
   return eventBoss;

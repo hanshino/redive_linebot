@@ -153,9 +153,6 @@ exports.generateBossInformation = ({
   hasCompleted,
   level,
   hp,
-  attack,
-  defense,
-  speed,
   gold,
   exp,
 }) => {
@@ -203,7 +200,7 @@ exports.generateBossInformation = ({
               contents: [
                 {
                   type: "text",
-                  text: description,
+                  text: description || " ",
                   wrap: true,
                   size: "sm",
                 },
@@ -234,45 +231,6 @@ exports.generateBossInformation = ({
                         {
                           type: "span",
                           text: `${hp}`,
-                        },
-                      ],
-                    },
-                    {
-                      type: "text",
-                      contents: [
-                        {
-                          type: "span",
-                          text: `${i18n.__("template.attack")}: `,
-                        },
-                        {
-                          type: "span",
-                          text: `${attack}`,
-                        },
-                      ],
-                    },
-                    {
-                      type: "text",
-                      contents: [
-                        {
-                          type: "span",
-                          text: `${i18n.__("template.defense")}: `,
-                        },
-                        {
-                          type: "span",
-                          text: `${defense}`,
-                        },
-                      ],
-                    },
-                    {
-                      type: "text",
-                      contents: [
-                        {
-                          type: "span",
-                          text: `${i18n.__("template.speed")}: `,
-                        },
-                        {
-                          type: "span",
-                          text: `${speed}`,
                         },
                       ],
                     },

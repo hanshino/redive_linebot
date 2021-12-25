@@ -28,9 +28,13 @@ const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop
 const AdminModel = require("../model/application/Admin");
 const { admin: AdminWorldBossRouter } = require("./WorldBoss");
 const ImgurRouter = require("./Imgur");
+const { admin: AdminWorldBossEventRouter } = require("./WorldBossEvent");
 
 router.use(ImgurRouter);
-router.use("/Admin", verifyToken, verifyAdmin, AdminWorldBossRouter);
+router.use("/Admin", verifyToken, verifyAdmin);
+
+router.use("/Admin", AdminWorldBossRouter);
+router.use("/Admin", AdminWorldBossEventRouter);
 
 router.use(GodStoneShopRouter);
 
