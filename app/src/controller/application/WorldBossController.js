@@ -1,6 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 const { Context, getClient } = require("bottender");
 const { text } = require("bottender/router");
+const moment = require("moment");
 const ajv = require("../../util/ajv");
 const adminModel = require("../../model/application/Admin");
 const worldBossModel = require("../../model/application/WorldBoss");
@@ -326,10 +327,23 @@ exports.attackOnBoss = async (context, props) => {
   }
 
   const eventBoss = await worldBossEventService.getBossInformation(worldBossEventId);
-  const { name } = eventBoss;
+
+  // 如果抓不到資料，跳過不處理
+  if (!eventBoss) {
+    DefaultLogger.info(`no event boss ${worldBossEventId}`);
+    return;
+  }
+
+  const { name, end_time } = eventBoss;
   let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
     worldBossEventId
   );
+
+  // 如果這個活動已經結束，則不處理
+  if (moment(end_time).isBefore(moment())) {
+    DefaultLogger.info(`event ${name} is ended.`);
+    return;
+  }
 
   // 如果此王已經死亡，則不處理
   let remainHp = eventBoss.hp - parseInt(totalDamage || 0);

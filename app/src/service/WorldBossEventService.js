@@ -7,9 +7,17 @@ exports.find = worldBossEventModel.find;
 
 exports.create = worldBossEventModel.create;
 
-exports.update = worldBossEventModel.update;
+exports.update = (id, attributes) => {
+  // 必須先把 redis 的資料刪除
+  redis.del(`bossInformation:${id}`);
+  return worldBossEventModel.update(id, attributes);
+};
 
-exports.destroy = worldBossEventModel.destroy;
+exports.destroy = id => {
+  // 必須先把 redis 的資料刪除
+  redis.del(`bossInformation:${id}`);
+  return worldBossEventModel.destroy(id);
+};
 
 exports.getEventBoss = async eventId => {
   let eventBoss = await worldBossEventModel.find(eventId);
