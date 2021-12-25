@@ -315,6 +315,7 @@ const DataForm = ({ id, onSubmit, onCancel, submitting }) => {
   const hpEl = useRef(null);
   const expEl = useRef(null);
   const goldEl = useRef(null);
+  const descEl = useRef(null);
   const [{ data = {}, loading }, fetchData] = useAxios(`/api/Admin/Worldboss/${id}`, {
     manual: true,
   });
@@ -346,12 +347,13 @@ const DataForm = ({ id, onSubmit, onCancel, submitting }) => {
 
   if (loading) return <HeartbeatLoading />;
 
-  const { name, level, hp, exp, gold } = data;
+  const { name, level, hp, exp, gold, description } = data;
 
   const handleSubmit = () => {
     onSubmit({
       id,
       name: nameEl.current.value,
+      description: descEl.current.value,
       level: parseInt(levelEl.current.value),
       hp: parseInt(hpEl.current.value),
       exp: parseInt(expEl.current.value),
@@ -427,6 +429,17 @@ const DataForm = ({ id, onSubmit, onCancel, submitting }) => {
               defaultValue={level}
               margin="normal"
               inputRef={levelEl}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              multiline
+              variant="outlined"
+              label="王的個人資料"
+              defaultValue={description}
+              margin="normal"
+              inputRef={descEl}
             />
           </Grid>
           <Grid item xs={6}>

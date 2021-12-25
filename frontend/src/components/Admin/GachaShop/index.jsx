@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState } from "react";
+import React, { useRef, useMemo, useState, useEffect } from "react";
 import MaterialTable from "material-table";
 import TableLocal from "../../../config/TableLocaliztion";
 import useAxios from "axios-hooks";
@@ -11,7 +11,6 @@ import { makeStyles } from "@material-ui/core/styles";
 import Typography from "@material-ui/core/Typography";
 import Button from "@material-ui/core/Button";
 import PropTypes from "prop-types";
-import { useEffect } from "react";
 import HintSnackBar, { useHintBar } from "../../HintSnackBar";
 
 const useStyles = makeStyles(theme => ({
