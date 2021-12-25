@@ -1,15 +1,9 @@
 const dateformat = require("dateformat");
 const i18n = require("../../util/i18n");
 const humanNumber = require("human-number");
+const config = require("config");
 
-exports.generateBoss = ({
-  id,
-  image,
-  fullHp,
-  currentHp,
-  hasCompleted = false,
-  canAttack = true,
-}) => {
+exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted = false }) => {
   // caclute percentage of hp and round it to 0 decimal places
   const percentage = Math.round((currentHp / fullHp) * 100);
 
@@ -111,17 +105,16 @@ exports.generateBoss = ({
                   paddingAll: "lg",
                   cornerRadius: "lg",
                   // 如果已完成或是沒有攻擊權限，就設為灰色
-                  backgroundColor: hasCompleted || !canAttack ? "#808080AC" : "#12FF3466",
-                  ...(!hasCompleted &&
-                    canAttack && {
-                      action: {
-                        type: "postback",
-                        data: JSON.stringify({
-                          action: "worldBossAttack",
-                          worldBossEventId: id,
-                        }),
-                      },
-                    }),
+                  backgroundColor: hasCompleted ? "#808080AC" : "#12FF3466",
+                  ...(!hasCompleted && {
+                    action: {
+                      type: "postback",
+                      data: JSON.stringify({
+                        action: "worldBossAttack",
+                        worldBossEventId: id,
+                      }),
+                    },
+                  }),
                 },
               ],
               spacing: "md",
@@ -597,8 +590,9 @@ exports.generateOshirase = () => {
  * @param {String} param0.level 冒險者等級
  * @param {String} param0.exp 冒險者經驗值
  * @param {String} param0.expPercentage 冒險者經驗值 % 數值
+ * @param {Number} param0.attackCount 攻擊次數
  */
-exports.generateAdventureCard = ({ name, image, level, exp, expPercentage }) => {
+exports.generateAdventureCard = ({ name, image, level, exp, expPercentage, attackCount }) => {
   return {
     type: "bubble",
     body: {
@@ -687,6 +681,20 @@ exports.generateAdventureCard = ({ name, image, level, exp, expPercentage }) => 
                 {
                   type: "span",
                   text: `${exp}`,
+                },
+              ],
+            },
+            {
+              type: "text",
+              size: "sm",
+              contents: [
+                {
+                  type: "span",
+                  text: "刀數：",
+                },
+                {
+                  type: "span",
+                  text: `${attackCount}/${config.get("worldboss.daily_limit")}`,
                 },
               ],
             },

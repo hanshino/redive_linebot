@@ -1,0 +1,10 @@
+{
+  "redis": {
+    "keys": {
+      "worldBossAttackMessageKeeping": "worldBossAttackMessageKeeping"
+    }
+  },
+  "worldboss": {
+    "daily_limit": 10
+  }
+}

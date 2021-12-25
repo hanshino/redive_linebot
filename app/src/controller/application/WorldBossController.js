@@ -15,29 +15,7 @@ const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
 const LineClient = getClient("line");
 const opencvModel = require("../../model/application/OpencvModel");
-// 設定每日早中晚時段的攻擊次數
-const attackConfig = {
-  morning: {
-    max: 3,
-    startHour: 4,
-    endHour: 12,
-  },
-  afternoon: {
-    max: 3,
-    startHour: 12,
-    endHour: 20,
-  },
-  night: {
-    max: 4,
-    startHour: 20,
-    endHour: 24,
-  },
-  midnight: {
-    max: 1,
-    startHour: 0,
-    endHour: 4,
-  },
-};
+const config = require("config");
 
 exports.router = [
   text("#冒險小卡", myStatus),
@@ -49,7 +27,7 @@ exports.router = [
 ];
 
 async function myStatus(context) {
-  const { userId, pictureUrl, displayName } = context.event.source;
+  const { userId, pictureUrl, displayName, id } = context.event.source;
   const { level, exp } = await minigameService.findByUserId(userId);
 
   const levelUnit = await minigameService.getLevelUnit();
@@ -57,12 +35,16 @@ async function myStatus(context) {
   const levelUpExp = levelUnit.find(unit => unit.level === level + 1).max_exp;
   const expPercentage = (exp / levelUpExp) * 100;
 
+  // 取得今日已經攻擊的次數
+  const todayAttackCount = await worldBossEventLogService.getTodayAttackCount(id);
+
   const data = {
     level,
     expPercentage,
     name: displayName,
     image: pictureUrl,
     exp,
+    attackCount: todayAttackCount,
   };
 
   let bubble = worldBossTemplate.generateAdventureCard(data);
@@ -178,13 +160,6 @@ async function bosslist(context) {
 async function bossEvent(context) {
   // 取得正在進行中的世界事件
   const events = await worldBossEventService.getCurrentEvent();
-  // 取得訊息來源是否能夠攻擊，目前規則為：
-  // 1. 個人使用者可以攻擊
-  // 2. 群組內的話，必須具備群組 world_boss 服務
-  // 擁有群組權限
-  const isGroup = context.event.source.type === "group";
-  const hasGuildService = isGroup && context.state.services.includes("world_boss");
-  const canAttack = isGroup ? hasGuildService : true;
 
   // 多起世界事件正在舉行中
   if (events.length > 1) {
@@ -226,7 +201,6 @@ async function bossEvent(context) {
     fullHp: data.hp,
     currentHp: remainHp < 0 ? 0 : remainHp,
     hasCompleted,
-    canAttack,
     id: eventId,
   });
 
@@ -244,10 +218,6 @@ async function bossEvent(context) {
   const rankBubble = worldBossTemplate.generateTopTenRank(rankBoxes);
 
   const contents = [mainBubble, infoBubble, rankBubble];
-  if (canAttack === false) {
-    // 如果不能攻擊，則插入一個 bubble 在最前面
-    contents.unshift(worldBossTemplate.generateOshirase());
-  }
 
   context.replyFlex(`${data.name} 的戰鬥模板`, {
     type: "carousel",
@@ -310,6 +280,10 @@ exports.attackOnBoss = async (context, props) => {
   const { worldBossEventId } = props.payload;
   // 從事件的 source 取得用戶資料
   const { displayName, id, userId, pictureUrl } = context.event.source;
+  const hasService = (context.state.services || []).includes("world_boss");
+  const isGroup = context.event.source.type === "group";
+  // 決定要不要把訊息儲存起來，等待一段時間才一次發送
+  const keepMessage = isGroup && !hasService;
 
   // 沒有會員id，跳過不處理
   if (!id) {
@@ -319,7 +293,7 @@ exports.attackOnBoss = async (context, props) => {
 
   // 判斷是否可以攻擊
   const canAttack = await isUserCanAttack(id);
-  if (!canAttack && process.env.NODE_ENV !== "development") {
+  if (!canAttack) {
     DefaultLogger.info(
       `user ${displayName} can not attack ${userId}. Maybe cache or reach limit in this period.`
     );
@@ -360,7 +334,7 @@ exports.attackOnBoss = async (context, props) => {
     DefaultLogger.info(`no level data ${userId}. Create One.`);
     await minigameService.createByUserId(userId, minigameService.defaultData);
     levelData = minigameService.defaultData;
-    context.replyText(i18n.__("message.minigame_level_not_found"));
+    !keepMessage && context.replyText(i18n.__("message.minigame_level_not_found"));
   }
 
   const { level } = levelData;
@@ -389,7 +363,7 @@ exports.attackOnBoss = async (context, props) => {
     exp: newLevelData.newExp,
   });
 
-  if (newLevelData.levelUp) {
+  if (newLevelData.levelUp && !keepMessage) {
     context.replyText(
       i18n.__("message.minigame_level_up", { level: newLevelData.newLevel, displayName })
     );
@@ -403,8 +377,65 @@ exports.attackOnBoss = async (context, props) => {
     `${message} 造成了 ${calculateDamagePercentage(eventBoss.hp, damage)} ${JSON.stringify(sender)}`
   );
 
-  context.replyText(message, { sender });
+  if (keepMessage) {
+    await handleKeepingMessage(worldBossEventId, context, message);
+  } else {
+    context.replyText(message, { sender });
+  }
 };
+
+/**
+ * 決定要將訊息送出或是儲存
+ * @param {Number} worldBossEventId
+ * @param {Context} context
+ * @param {String} keepMessage
+ */
+async function handleKeepingMessage(worldBossEventId, context, keepMessage) {
+  // 超過一定時間，就把訊息儲存起來，等待一段時間才一次發送
+  // 目前設定為 5 分鐘
+  const isNeedKeep = (function () {
+    const { lastSendTs = moment().subtract(15, "minutes") } = context.state.worldBoss || {};
+    const now = moment();
+    const lastSendAt = moment(lastSendTs);
+    const diff = now.diff(lastSendAt, "minutes");
+    if (diff >= 5) {
+      return false;
+    } else {
+      return true;
+    }
+  })();
+
+  const { displayName, groupId } = context.event.source;
+
+  if (isNeedKeep) {
+    await worldBossEventService.keepAttackMessage(
+      worldBossEventId,
+      `${displayName}: ${keepMessage}`,
+      {
+        identify: groupId,
+      }
+    );
+    DefaultLogger.info(`keep message ${keepMessage}`);
+    return;
+  }
+
+  const messages = await worldBossEventService.getAttackMessage(worldBossEventId, {
+    identify: groupId,
+  });
+
+  // 要發送的當下並不會儲存此訊息，所以需馬上加入
+  messages.push(`${displayName}: ${keepMessage}`);
+
+  if (messages.length > 0) {
+    const message = messages.join("\n");
+    context.replyText(`這是目前累積至今的訊息，下一次會在 5 分鐘後發送：\n${message}`);
+    context.setState({
+      worldBoss: {
+        lastSendTs: new Date().getTime(),
+      },
+    });
+  }
+}
 
 /**
  * 判斷是否可以攻擊
@@ -427,44 +458,9 @@ async function isUserCanAttack(userId) {
     return true;
   }
 
-  // 分成早中晚三段，每段時間可以攻擊次數不同
-  // 先判斷目前時段
-  let now = new Date();
-  let hour = now.getHours();
-  let canAttack = false;
-  let period = "";
-
-  Object.keys(attackConfig).forEach(key => {
-    let config = attackConfig[key];
-    if (hour >= config.startHour && hour < config.endHour) {
-      period = key;
-    }
-  });
-
-  // 判斷是否可以攻擊
-  let currentConfig = attackConfig[period];
-  let currentCount = todayLogs.filter(log => {
-    let { created_at } = log;
-    let createdAt = new Date(created_at);
-    // 篩選出當前時段的紀錄
-    return (
-      createdAt.getHours() >= currentConfig.startHour &&
-      createdAt.getHours() < currentConfig.endHour
-    );
-  }).length;
-
-  // 如果超過攻擊次數，代表不可以攻擊
-  if (currentCount >= currentConfig.max) {
-    canAttack = false;
-  } else {
-    canAttack = true;
-  }
-
-  console.log(
-    `${userId} can attack ${canAttack}, currentCount ${currentCount}, currentConfig ${JSON.stringify(
-      currentConfig
-    )}`
-  );
+  let currentCount = todayLogs.length;
+  let canAttack = currentCount < config.get("worldboss.daily_limit");
+  console.log(`${userId} can attack ${canAttack}, currentCount ${currentCount}`);
 
   // 不管是否可以攻擊，都要更新 redis 的資料
   await redis.setnx(key, 1, 60 * 1);
