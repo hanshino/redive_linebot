@@ -25,6 +25,7 @@ const WorldBossController = require("./controller/application/WorldBossControlle
 const GuildServiceController = require("./controller/application/GuildServiceController");
 const AdvertisementController = require("./controller/application/AdvertisementController");
 const GodStoneShopController = require("./controller/princess/GodStoneShop");
+const JankenController = require("./controller/application/JankenController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -51,22 +52,17 @@ async function HandlePostback(context, { next }) {
     if (!isExist && action !== "adminBossAttack") return;
 
     return router([
-      route(
-        () => action === "battleSignUp",
-        withProps(battle.BattlePostSignUp, { payload: payload })
-      ),
-      route(
-        () => action === "battleCancel",
-        withProps(battle.BattlePostCancel, { payload: payload })
-      ),
+      route(() => action === "battleSignUp", withProps(battle.BattlePostSignUp, { payload })),
+      route(() => action === "battleCancel", withProps(battle.BattlePostCancel, { payload })),
       route(
         () => action === "worldBossAttack",
-        withProps(WorldBossController.attackOnBoss, { payload: payload })
+        withProps(WorldBossController.attackOnBoss, { payload })
       ),
       route(
         () => action === "adminBossAttack",
-        withProps(WorldBossController.adminSpecialAttack, { payload: payload })
+        withProps(WorldBossController.adminSpecialAttack, { payload })
       ),
+      route(() => action === "janken", withProps(JankenController.decide, { payload })),
       route("*", next),
     ]);
   } catch (e) {
@@ -92,6 +88,7 @@ async function OrderBased(context, { next }) {
     ...GuildServiceController.router,
     ...AdvertisementController.router,
     ...GodStoneShopController.router,
+    ...JankenController.router,
     text(/^[#.](使用說明|help)$/, welcome),
     text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>

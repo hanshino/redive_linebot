@@ -9,6 +9,9 @@ const GachaTemplate = require("../../templates/princess/gacha").line;
 const NotifyController = require("./NotifyController");
 const uidModel = require("../../model/princess/uid");
 const ProfileTemplate = require("../../templates/application/Profile");
+const MinigameTemplate = require("../../templates/application/Minigame");
+const JankenResult = require("../../model/application/JankenResult");
+const { get } = require("lodash");
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
@@ -36,13 +39,16 @@ exports.showStatus = async context => {
       expRate = Math.round(((exp - nowExpData.exp) / (nextExpData.exp - nowExpData.exp)) * 100);
     }
 
-    let [current = 0, total = 0, godStone = 0, subInfo, bindInfo] = await Promise.all([
-      GachaModel.getUserCollectedCharacterCount(userId),
-      GachaModel.getPrincessCharacterCount(),
-      GachaModel.getUserGodStoneCount(userId),
-      NotifyController.getData(userId),
-      uidModel.getData(userId),
-    ]);
+    let [current = 0, total = 0, godStone = 0, subInfo, bindInfo, jankenResult] = await Promise.all(
+      [
+        GachaModel.getUserCollectedCharacterCount(userId),
+        GachaModel.getPrincessCharacterCount(),
+        GachaModel.getUserGodStoneCount(userId),
+        NotifyController.getData(userId),
+        uidModel.getData(userId),
+        JankenResult.findUserGrade(userId),
+      ]
+    );
 
     if (subInfo) {
       subInfo = NotifyController.getSubData(subInfo.subType);
@@ -63,7 +69,31 @@ exports.showStatus = async context => {
     });
     const gachaBubble = GachaTemplate.genGachaStatus({ current, total, godStone });
     const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo, subInfo });
-    bubbles.push(chatlevelBubble, gachaBubble, otherBubble);
+
+    // 整理猜拳數據
+    let winCount = get(
+      jankenResult.find(data => data.result === JankenResult.resultMap.win),
+      "count",
+      0
+    );
+    let loseCount = get(
+      jankenResult.find(data => data.result === JankenResult.resultMap.lose),
+      "count",
+      0
+    );
+    let drawCount = get(
+      jankenResult.find(data => data.result === JankenResult.resultMap.draw),
+      "count",
+      0
+    );
+    let rate = Math.floor((winCount / (winCount + loseCount + drawCount)) * 100);
+    const jankenGradeBubble = MinigameTemplate.generateJankenGrade({
+      winCount,
+      loseCount,
+      drawCount,
+      rate,
+    });
+    bubbles.push(chatlevelBubble, gachaBubble, jankenGradeBubble, otherBubble);
 
     context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
 

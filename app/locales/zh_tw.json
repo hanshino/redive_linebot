@@ -44,7 +44,19 @@
     },
     "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
     "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}",
-    "god_stone_shop_empty": "目前未設定任何兌換商品，請聯繫管理員設定"
+    "god_stone_shop_empty": "目前未設定任何兌換商品，請聯繫管理員設定",
+    "duel": {
+      "usage": "使用方法：/duel @玩家",
+      "start": "{{ displayName }} 和 {{ targetDisplayName }} 開始了對決，請挑選以下選項：",
+      "too_many_mentions": "請指定一個玩家",
+      "only_in_group": "決鬥系統只能在群組中使用",
+      "result": "{{ displayName }} 和 {{ targetDisplayName }} 的對決結果：\n{{ displayName }} 出：{{ p1Type }}，{{ targetDisplayName }} 出：{{ p2Type }}",
+      "win_lose": "{{ winner }} 贏了！",
+      "draw": "平手！",
+      "paper": "布",
+      "scissors": "剪刀",
+      "rock": "石頭"
+    }
   },
   "api": {
     "error": {
