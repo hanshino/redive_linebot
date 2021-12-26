@@ -31,7 +31,7 @@ const ImgurRouter = require("./Imgur");
 const { admin: AdminWorldBossEventRouter } = require("./WorldBossEvent");
 
 router.use(ImgurRouter);
-router.use("/Admin", verifyToken, verifyAdmin);
+router.use("/Admin", verifyToken, verifyAdmin, verifyPrivilege(5));
 
 router.use("/Admin", AdminWorldBossRouter);
 router.use("/Admin", AdminWorldBossEventRouter);
