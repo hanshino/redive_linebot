@@ -277,7 +277,7 @@ exports.adminSpecialAttack = async (context, { payload }) => {
  * @param {import("bottender").Props} props
  */
 exports.attackOnBoss = async (context, props) => {
-  const { worldBossEventId } = props.payload;
+  const { worldBossEventId, attackType = "normal" } = props.payload;
   // 從事件的 source 取得用戶資料
   const { displayName, id, userId, pictureUrl } = context.event.source;
   const hasService = (context.state.services || []).includes("world_boss");
@@ -340,7 +340,7 @@ exports.attackOnBoss = async (context, props) => {
   const { level } = levelData;
 
   // 新增對 boss 攻擊紀錄
-  let damage = calculateDamage(level);
+  let damage = calculateDamage(level, attackType);
 
   let attributes = {
     user_id: id,
@@ -470,13 +470,39 @@ async function isUserCanAttack(userId) {
 /**
  * 透過等級計算攻擊傷害
  * @param {Number} level 等級
+ * @param {String} attackType 攻擊類型
  * @returns {Number} 攻擊傷害
  */
-function calculateDamage(level = 1) {
+function calculateDamage(level = 1, attackType = "normal") {
   // 根據等級計算攻擊傷害，攻擊係數呈指數增加
   // 等級也具有基礎傷害，所以等級越高，傷害越高，使用等級 * 10 當作基底傷害
   // 最後再加上隨機值，避免每次都是同一個傷害
-  let damage = Math.floor(Math.pow(level, 2) * 2) + level * 10 + Math.floor(Math.random() * level);
+  let damage = Math.floor(Math.pow(level, 2)) + level * 10 + Math.floor(Math.random() * level);
+
+  switch (attackType) {
+    case "chaos": {
+      const rateConfig = (function () {
+        let chaosConfig = config.get("worldboss.chaos_attack_rate");
+        let randomNumber = Math.floor(Math.random() * 1000);
+        let rateStackCount = 0;
+        let target = chaosConfig.find(item => {
+          rateStackCount += item.rate * 1000;
+          return randomNumber <= rateStackCount;
+        });
+
+        return target || { min: 100, max: 100 };
+      })();
+      const { min, max } = rateConfig;
+      let chaosBonus = Math.floor(Math.random() * (max - min + 1)) + min;
+      DefaultLogger.info(`chaos bonus ${chaosBonus} original damage ${damage}`);
+      damage = (damage * chaosBonus) / 100;
+      DefaultLogger.info(`chaos bonus ${chaosBonus} final damage ${damage}`);
+      break;
+    }
+    default:
+      break;
+  }
+
   return damage;
 }
 

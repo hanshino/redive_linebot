@@ -5,6 +5,23 @@
     }
   },
   "worldboss": {
-    "daily_limit": 10
+    "daily_limit": 10,
+    "chaos_attack_rate": [
+      {
+        "min": 80,
+        "max": 100,
+        "rate": 0.6
+      },
+      {
+        "min": 100,
+        "max": 200,
+        "rate": 0.3
+      },
+      {
+        "min": 200,
+        "max": 300,
+        "rate": 0.1
+      }
+    ]
   }
 }
