@@ -10,19 +10,14 @@ function StatException(message, code) {
 exports.showStatistics = async (req, res) => {
   try {
     var result = {};
-    const [
-      GuildCount,
-      UserCount,
-      CustomerOrderCount,
-      TotalSpeakTimes,
-      OnlineData,
-    ] = await Promise.all([
-      Model.getGuildCount(),
-      Model.getUserCount(),
-      Model.getCustomerOrderCount(),
-      Model.getSpeakTimesCount(),
-      traffic.getPeopleData(),
-    ]);
+    const [GuildCount, UserCount, CustomerOrderCount, TotalSpeakTimes, OnlineData] =
+      await Promise.all([
+        Model.getGuildCount(),
+        Model.getUserCount(),
+        Model.getCustomerOrderCount(),
+        Model.getSpeakTimesCount(),
+        traffic.getPeopleData(),
+      ]);
 
     result = { GuildCount, UserCount, CustomerOrderCount, TotalSpeakTimes, ...OnlineData[1] };
   } catch (e) {

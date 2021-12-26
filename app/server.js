@@ -8,7 +8,7 @@ require("./src/router/socket");
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs
   keyGenerator: req => {
     const [ip] = req.headers["x-forwarded-for"].split(",");
     return ip;
@@ -30,7 +30,7 @@ app.prepare().then(() => {
   };
 
   server.use(cors());
-  server.use(express.json({ verify }));
+  server.use(express.json({ verify, limit: "3mb" }));
   server.use(express.urlencoded({ extended: false, verify }));
 
   // api group router

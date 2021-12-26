@@ -23,7 +23,8 @@
     "attack_rank": "輸出排名",
     "nickname": "暱稱",
     "rank": "排名",
-    "damage": "傷害"
+    "damage": "傷害",
+    "chaos_attack": "混沌攻擊"
   },
   "message": {
     "user_attack_on_world_boss": "成功對 {{ name }} 造成 {{ damage }} 傷害",
@@ -53,6 +54,9 @@
           "itemNotFound": "找不到此商品",
           "notEnoughGodStone": "女神石不足"
         }
+      },
+      "imgur": {
+        "uploadBase64": "上傳圖片失敗，請確認圖片格式是否正確"
       },
       "unknown": "未知錯誤"
     }

@@ -35,6 +35,11 @@ exports.isTodayLogged = async userId => {
   return data.length > 0;
 };
 
+/**
+ * 取得今日登錄的紀錄
+ * @param {String} userId
+ * @returns {Promise<Array>}
+ */
 exports.getTodayLogs = async userId => {
   const filter = {
     created_start_at: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -43,4 +48,14 @@ exports.getTodayLogs = async userId => {
 
   const data = await worldBossLogModel.findByUserId(userId, { filter });
   return data;
+};
+
+/**
+ * 取得今日登錄的紀錄次數
+ * @param {String} userId
+ * @returns {Promise<Number>}
+ */
+exports.getTodayAttackCount = async userId => {
+  const data = await this.getTodayLogs(userId);
+  return data.length;
 };

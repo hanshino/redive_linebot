@@ -3,7 +3,6 @@ const axios = require("axios").default;
 const token = process.env.IAN_BATTLE_TOKEN;
 const headers = { "x-token": token, "user-agent": "re:dive line-bot" };
 const apiURL = process.env.IAN_BATTLE_API_URL;
-const redis = require("../../../util/redis");
 const { CustomLogger } = require("../../../util/Logger");
 
 exports.saveIanUserData = (platform = 2, userId, ianUserId) => {

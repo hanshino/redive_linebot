@@ -26,6 +26,15 @@ const AnnounceController = require("../controller/application/AnnounceController
 const WorldBossController = require("../controller/application/WorldBossController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
 const AdminModel = require("../model/application/Admin");
+const { admin: AdminWorldBossRouter } = require("./WorldBoss");
+const ImgurRouter = require("./Imgur");
+const { admin: AdminWorldBossEventRouter } = require("./WorldBossEvent");
+
+router.use(ImgurRouter);
+router.use("/Admin", verifyToken, verifyAdmin, verifyPrivilege(5));
+
+router.use("/Admin", AdminWorldBossRouter);
+router.use("/Admin", AdminWorldBossEventRouter);
 
 router.use(GodStoneShopRouter);
 
@@ -174,54 +183,28 @@ router.get("/GroupConfig", (req, res) => res.json(GroupConfig));
 /**
  * 管理員轉蛋資料
  */
-router.get(
-  "/Admin/GachaPool/Data",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(1),
-  gacha.api.showGachaPool
-);
+router.get("/Admin/GachaPool/Data", verifyPrivilege(1), gacha.api.showGachaPool);
 
 /**
  * 編輯管理員轉蛋資料
  */
-router.put(
-  "/Admin/GachaPool/Data",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(9),
-  gacha.api.updateCharacter
-);
+router.put("/Admin/GachaPool/Data", verifyPrivilege(9), gacha.api.updateCharacter);
 
 /**
  * 新增管理員轉蛋資料
  */
-router.post(
-  "/Admin/GachaPool/Data",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(9),
-  gacha.api.insertCharacter
-);
+router.post("/Admin/GachaPool/Data", verifyPrivilege(9), gacha.api.insertCharacter);
 
 /**
  * 刪除管理員轉蛋資料
  */
-router.delete(
-  "/Admin/GachaPool/Data/:id",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(9),
-  gacha.api.deleteCharacter
-);
+router.delete("/Admin/GachaPool/Data/:id", verifyPrivilege(9), gacha.api.deleteCharacter);
 
 /**
  * 取得管理員全群指令
  */
 router.get(
   "/Admin/GlobalOrders/Data",
-  verifyToken,
-  verifyAdmin,
   verifyPrivilege(1),
   GlobalOrdersController.api.showGlobalOrders
 );
@@ -231,8 +214,6 @@ router.get(
  */
 router.post(
   "/Admin/GlobalOrders/Data",
-  verifyToken,
-  verifyAdmin,
   verifyPrivilege(9),
   GlobalOrdersController.api.insertGlobalOrders
 );
@@ -242,8 +223,6 @@ router.post(
  */
 router.put(
   "/Admin/GlobalOrders/Data",
-  verifyToken,
-  verifyAdmin,
   verifyPrivilege(9),
   GlobalOrdersController.api.updateGlobalOrders
 );
@@ -253,8 +232,6 @@ router.put(
  */
 router.delete(
   "/Admin/GlobalOrders/Data/:orderKey",
-  verifyToken,
-  verifyAdmin,
   verifyPrivilege(9),
   GlobalOrdersController.api.deleteGlobalOrders
 );

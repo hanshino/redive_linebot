@@ -8,6 +8,7 @@ const { recordSign } = require("../../util/traffic");
 const BattleSender = { name: "戰隊秘書", iconUrl: "https://i.imgur.com/NuZZR7Q.jpg" };
 const redis = require("../../util/redis");
 const { CustomLogger } = require("../../util/Logger");
+// eslint-disable-next-line no-unused-vars
 const { Context } = require("bottender");
 const Stages = [
   { stage: 1, min: 1, max: 3 },
@@ -630,7 +631,7 @@ exports.api.updateGuildBattleConfig = async (req, res) => {
 
     if (affected !== 1) throw new BattleException("Update Failed", 403);
   } catch (e) {
-    if (!e instanceof BattleException) throw e;
+    if (!(e instanceof BattleException)) throw e;
     result = e;
     code = e.code;
   }

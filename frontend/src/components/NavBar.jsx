@@ -37,6 +37,8 @@ import GroupDialog from "./GroupDialog";
 import { Link } from "react-router-dom";
 import { NotificationsActive } from "@material-ui/icons";
 import EqualizerIcon from "@material-ui/icons/Equalizer";
+import PetsIcon from "@material-ui/icons/Pets";
+import SportsHandballIcon from "@material-ui/icons/SportsHandball";
 import useAxios from "axios-hooks";
 
 const useStyles = makeStyles(theme => ({
@@ -301,7 +303,19 @@ const AdminDrawer = () => {
             </ListItemIcon>
             <ListItemText primary="訊息實況" />
           </ListItem>
-          <ListItem button component={Link} to="/Admin/Worldboss/Message">
+          <ListItem button component={Link} to="/Admin/Worldboss">
+            <ListItemIcon>
+              <PetsIcon />
+            </ListItemIcon>
+            <ListItemText primary="世界王設定" />
+          </ListItem>
+          <ListItem button component={Link} to="/Admin/WorldbossEvent">
+            <ListItemIcon>
+              <SportsHandballIcon />
+            </ListItemIcon>
+            <ListItemText primary="世界王活動設定" />
+          </ListItem>
+          <ListItem button component={Link} to="/Admin/WorldbossMessage">
             <ListItemIcon>
               <FitnessCenterIcon />
             </ListItemIcon>

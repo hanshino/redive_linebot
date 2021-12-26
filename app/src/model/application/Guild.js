@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 const { Knex } = require("knex");
 const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");

@@ -120,7 +120,7 @@ const MessageForm = ({
               style={{ backgroundColor: "#FF3434" }}
               component={Link}
               disabled={loading}
-              to={"/Admin/Worldboss/Message"}
+              to={"/Admin/WorldbossMessage"}
             >
               取消
             </Button>

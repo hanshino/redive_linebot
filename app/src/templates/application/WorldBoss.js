@@ -1,15 +1,9 @@
 const dateformat = require("dateformat");
 const i18n = require("../../util/i18n");
 const humanNumber = require("human-number");
+const config = require("config");
 
-exports.generateBoss = ({
-  id,
-  image,
-  fullHp,
-  currentHp,
-  hasCompleted = false,
-  canAttack = true,
-}) => {
+exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted = false }) => {
   // caclute percentage of hp and round it to 0 decimal places
   const percentage = Math.round((currentHp / fullHp) * 100);
 
@@ -111,17 +105,42 @@ exports.generateBoss = ({
                   paddingAll: "lg",
                   cornerRadius: "lg",
                   // 如果已完成或是沒有攻擊權限，就設為灰色
-                  backgroundColor: hasCompleted || !canAttack ? "#808080AC" : "#12FF3466",
-                  ...(!hasCompleted &&
-                    canAttack && {
-                      action: {
-                        type: "postback",
-                        data: JSON.stringify({
-                          action: "worldBossAttack",
-                          worldBossEventId: id,
-                        }),
-                      },
-                    }),
+                  backgroundColor: hasCompleted ? "#808080AC" : "#12FF3466",
+                  ...(!hasCompleted && {
+                    action: {
+                      type: "postback",
+                      data: JSON.stringify({
+                        action: "worldBossAttack",
+                        worldBossEventId: id,
+                      }),
+                    },
+                  }),
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      text: i18n.__("template.chaos_attack"),
+                      align: "center",
+                      color: hasCompleted ? "#FFFFFF" : "#808080",
+                    },
+                  ],
+                  paddingAll: "lg",
+                  cornerRadius: "lg",
+                  // 如果已完成或是沒有攻擊權限，就設為灰色
+                  backgroundColor: hasCompleted ? "#808080AC" : "#52307C66",
+                  ...(!hasCompleted && {
+                    action: {
+                      type: "postback",
+                      data: JSON.stringify({
+                        action: "worldBossAttack",
+                        worldBossEventId: id,
+                        attackType: "chaos",
+                      }),
+                    },
+                  }),
                 },
               ],
               spacing: "md",
@@ -153,9 +172,6 @@ exports.generateBossInformation = ({
   hasCompleted,
   level,
   hp,
-  attack,
-  defense,
-  speed,
   gold,
   exp,
 }) => {
@@ -203,7 +219,7 @@ exports.generateBossInformation = ({
               contents: [
                 {
                   type: "text",
-                  text: description,
+                  text: description || " ",
                   wrap: true,
                   size: "sm",
                 },
@@ -234,45 +250,6 @@ exports.generateBossInformation = ({
                         {
                           type: "span",
                           text: `${hp}`,
-                        },
-                      ],
-                    },
-                    {
-                      type: "text",
-                      contents: [
-                        {
-                          type: "span",
-                          text: `${i18n.__("template.attack")}: `,
-                        },
-                        {
-                          type: "span",
-                          text: `${attack}`,
-                        },
-                      ],
-                    },
-                    {
-                      type: "text",
-                      contents: [
-                        {
-                          type: "span",
-                          text: `${i18n.__("template.defense")}: `,
-                        },
-                        {
-                          type: "span",
-                          text: `${defense}`,
-                        },
-                      ],
-                    },
-                    {
-                      type: "text",
-                      contents: [
-                        {
-                          type: "span",
-                          text: `${i18n.__("template.speed")}: `,
-                        },
-                        {
-                          type: "span",
-                          text: `${speed}`,
                         },
                       ],
                     },
@@ -478,159 +455,6 @@ exports.generateRankBox = ({ rank, name, damage }) => {
   return box;
 };
 
-exports.generateOshirase = () => {
-  return {
-    type: "bubble",
-    body: {
-      type: "box",
-      layout: "vertical",
-      contents: [
-        {
-          type: "text",
-          text: "重要告知",
-          weight: "bold",
-          color: "#FF1212",
-        },
-        {
-          type: "box",
-          layout: "vertical",
-          contents: [
-            {
-              type: "text",
-              text: "如果你看到此訊息\n代表此群組受到一些限制，目前：",
-              wrap: true,
-              size: "sm",
-            },
-            {
-              type: "text",
-              contents: [
-                {
-                  type: "span",
-                  text: "● ",
-                },
-                {
-                  type: "span",
-                  text: "只有經過特別申請的群組可以遊玩",
-                },
-              ],
-              size: "xs",
-            },
-            {
-              type: "text",
-              text: "如此做的目的是為了保持群組的秩序",
-              size: "xs",
-              align: "center",
-              color: "#123456",
-              weight: "bold",
-            },
-          ],
-          spacing: "sm",
-          paddingTop: "sm",
-          paddingBottom: "sm",
-        },
-        {
-          type: "box",
-          layout: "vertical",
-          contents: [
-            {
-              type: "text",
-              text: "為此，我們建立了一個公用群組，提供無限制的遊玩空間，提供了：",
-              size: "sm",
-              wrap: true,
-            },
-            {
-              type: "box",
-              layout: "vertical",
-              contents: [
-                {
-                  type: "text",
-                  contents: [
-                    {
-                      type: "span",
-                      text: "● ",
-                    },
-                    {
-                      type: "span",
-                      text: "任何時間隨意的使用布丁功能",
-                    },
-                  ],
-                  size: "xs",
-                },
-                {
-                  type: "text",
-                  contents: [
-                    {
-                      type: "span",
-                      text: "● ",
-                    },
-                    {
-                      type: "span",
-                      text: "管理員駐點，可以隨時提出使用疑問",
-                    },
-                  ],
-                  size: "xs",
-                },
-                {
-                  type: "text",
-                  contents: [
-                    {
-                      type: "span",
-                      text: "● ",
-                    },
-                    {
-                      type: "span",
-                      text: "提供最新消息（如果沒被洗掉的話）",
-                    },
-                  ],
-                  size: "xs",
-                },
-                {
-                  type: "text",
-                  contents: [
-                    {
-                      type: "span",
-                      text: "● ",
-                    },
-                    {
-                      type: "span",
-                      text: "會有更詳細的戰鬥紀錄",
-                    },
-                  ],
-                  size: "xs",
-                },
-              ],
-              paddingAll: "md",
-              spacing: "sm",
-            },
-          ],
-          spacing: "sm",
-          paddingTop: "md",
-        },
-        {
-          type: "box",
-          layout: "vertical",
-          contents: [
-            {
-              type: "text",
-              text: "加入專用群組",
-              align: "center",
-              color: "#C6FF34",
-            },
-          ],
-          backgroundColor: "#1234FF56",
-          paddingAll: "md",
-          cornerRadius: "md",
-          action: {
-            type: "uri",
-            label: "加入專用群組",
-            uri: "http://line.me/ti/g/Yu-Jmbxf1P",
-          },
-        },
-      ],
-    },
-  };
-};
-
 /**
  * 產出冒險者卡片
  * @param {Object} param0
@@ -639,8 +463,9 @@ exports.generateOshirase = () => {
  * @param {String} param0.level 冒險者等級
  * @param {String} param0.exp 冒險者經驗值
  * @param {String} param0.expPercentage 冒險者經驗值 % 數值
+ * @param {Number} param0.attackCount 攻擊次數
  */
-exports.generateAdventureCard = ({ name, image, level, exp, expPercentage }) => {
+exports.generateAdventureCard = ({ name, image, level, exp, expPercentage, attackCount }) => {
   return {
     type: "bubble",
     body: {
@@ -729,6 +554,20 @@ exports.generateAdventureCard = ({ name, image, level, exp, expPercentage }) => 
                 {
                   type: "span",
                   text: `${exp}`,
+                },
+              ],
+            },
+            {
+              type: "text",
+              size: "sm",
+              contents: [
+                {
+                  type: "span",
+                  text: "刀數：",
+                },
+                {
+                  type: "span",
+                  text: `${attackCount}/${config.get("worldboss.daily_limit")}`,
                 },
               ],
             },

@@ -10,10 +10,9 @@ exports.getRankDatas = async (req, res) => {
 
     var result = await Promise.all(
       rankDatas.map(async (data, index) => {
-        let { displayName } = await LineClient.getGroupMemberProfile(
-          groupId,
-          data.userId
-        ).catch(() => ({ displayName: "路人甲" }));
+        let { displayName } = await LineClient.getGroupMemberProfile(groupId, data.userId).catch(
+          () => ({ displayName: "路人甲" })
+        );
 
         let temp = {
           ...data,

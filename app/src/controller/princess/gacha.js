@@ -6,6 +6,7 @@ const { recordSign } = require("../../util/traffic");
 const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
 const redis = require("../../util/redis");
 const { DefaultLogger } = require("../../util/Logger");
+// eslint-disable-next-line no-unused-vars
 const { Context } = require("bottender");
 const chunk = require("lodash/chunk");
 

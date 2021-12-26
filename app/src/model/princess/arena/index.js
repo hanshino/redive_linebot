@@ -110,7 +110,7 @@ function genLikeQuery(params) {
   return selectQuery.then(res => {
     // 沒紀錄insert 有紀錄就 update
     return res.length === 0
-      ? mysql.insert({...option, type}).into(ARENA_LIKE_RECORD_TABLE)
+      ? mysql.insert({ ...option, type }).into(ARENA_LIKE_RECORD_TABLE)
       : mysql(ARENA_LIKE_RECORD_TABLE).update({ type }).where(option);
   });
 }
