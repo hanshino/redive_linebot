@@ -86,7 +86,7 @@ exports.showStatus = async context => {
       "count",
       0
     );
-    let rate = Math.floor((winCount / (winCount + loseCount + drawCount)) * 100);
+    let rate = Math.floor((winCount / (winCount + loseCount + drawCount)) * 100) || 0;
     const jankenGradeBubble = MinigameTemplate.generateJankenGrade({
       winCount,
       loseCount,
