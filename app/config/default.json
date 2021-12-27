@@ -1,7 +1,8 @@
 {
   "redis": {
     "keys": {
-      "worldBossAttackMessageKeeping": "worldBossAttackMessageKeeping"
+      "worldBossAttackMessageKeeping": "worldBossAttackMessageKeeping",
+      "jankenDecide": "jankenDecide"
     }
   },
   "worldboss": {
@@ -23,5 +24,12 @@
         "rate": 0.1
       }
     ]
+  },
+  "minigame": {
+    "janken": {
+      "paper": "🖐️",
+      "rock": "✊",
+      "scissors": "✌️"
+    }
   }
 }
