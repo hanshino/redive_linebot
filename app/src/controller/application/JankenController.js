@@ -38,8 +38,8 @@ async function duel(context) {
   const targetProfile = await LineClient.getGroupMemberProfile(groupId, targetUserId);
 
   const pkBubble = minigameTemplate.generateJanken({
-    p1IconUrl: pictureUrl,
-    p2IconUrl: get(targetProfile, "pictureUrl"),
+    p1IconUrl: pictureUrl || "https://i.imgur.com/469kcyB.png",
+    p2IconUrl: get(targetProfile, "pictureUrl", "https://i.imgur.com/469kcyB.png"),
     p1Uid: userId,
     p2Uid: targetUserId,
     uuid: uuid(),
