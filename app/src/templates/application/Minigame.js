@@ -250,3 +250,131 @@ exports.generateJankenGrade = ({ winCount = 0, loseCount = 0, drawCount = 0, rat
     },
   };
 };
+
+/**
+ * 猜拳舉辦方模板
+ * @param {Object} param0
+ * @param {String} param0.userId
+ * @param {String} param0.iconUrl
+ * @returns {Object}
+ */
+exports.generateJankenHolder = ({ userId, iconUrl }) => {
+  const genAction = function (type) {
+    return {
+      type: "postback",
+      label: type,
+      data: JSON.stringify({
+        action: "challenge",
+        type,
+        userId,
+      }),
+    };
+  };
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "filler",
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "image",
+                  url: `${iconUrl}`,
+                },
+              ],
+              cornerRadius: "45px",
+            },
+            {
+              type: "filler",
+            },
+          ],
+          spacing: "md",
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "text",
+                  text: config.get("minigame.janken.scissors"),
+                  size: "4xl",
+                  align: "center",
+                },
+              ],
+              paddingAll: "md",
+              backgroundColor: "#80808034",
+              cornerRadius: "lg",
+              flex: 1,
+              action: genAction("scissors"),
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "text",
+                  text: config.get("minigame.janken.rock"),
+                  size: "4xl",
+                  align: "center",
+                },
+              ],
+              paddingAll: "md",
+              backgroundColor: "#80808034",
+              cornerRadius: "lg",
+              flex: 1,
+              action: genAction("rock"),
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [
+                {
+                  type: "text",
+                  text: config.get("minigame.janken.paper"),
+                  size: "4xl",
+                  align: "center",
+                },
+              ],
+              paddingAll: "md",
+              backgroundColor: "#80808034",
+              cornerRadius: "lg",
+              flex: 1,
+              action: genAction("paper"),
+            },
+          ],
+          paddingTop: "lg",
+          spacing: "md",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              align: "center",
+              text: "交給命運",
+            },
+          ],
+          paddingAll: "lg",
+          margin: "md",
+          cornerRadius: "md",
+          backgroundColor: "#80808034",
+        },
+      ],
+    },
+  };
+};
