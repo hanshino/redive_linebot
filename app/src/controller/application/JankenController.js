@@ -157,26 +157,6 @@ exports.decide = async (context, { payload }) => {
   ]);
 };
 
-/**
- * @param {Context} context
- */
-exports.challenge = async (context, { payload }) => {
-  const { userId: holderUserId, type } = payload;
-  const redisPrefix = config.get("redis.keys.jankenChallenge");
-
-  const sourceUserId = get(context.event.source, "userId");
-  if (!sourceUserId) {
-    return;
-  }
-
-  const isHolder = sourceUserId === holderUserId;
-  const isChallenger = sourceUserId !== holderUserId;
-
-  // 一次只允許有一位挑戰者，所以挑戰者需要透過 redis 判斷是否已經有挑戰者
-};
-
-function handleChallender(context) {}
-
 function jankenPlay(p1Decide, p2Decide) {
   const resultMapping = {
     rock: {
