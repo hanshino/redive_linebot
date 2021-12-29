@@ -34,7 +34,20 @@ async function duel(context) {
     return;
   }
 
+  if (!userId) {
+    // 獲取 userId 失敗
+    await context.replyText(i18n.__("message.duel.failed_to_get_user_id"));
+    return;
+  }
+
   const { userId: targetUserId, index, length } = mentionees[0];
+
+  if (!targetUserId) {
+    // 獲取 targetUserId 失敗
+    await context.replyText(i18n.__("message.duel.failed_to_get_target_user_id"));
+    return;
+  }
+
   const targetProfile = await LineClient.getGroupMemberProfile(groupId, targetUserId);
 
   const jankenTitle = (function () {

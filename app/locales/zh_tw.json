@@ -55,7 +55,9 @@
       "draw": "平手！",
       "paper": "布",
       "scissors": "剪刀",
-      "rock": "石頭"
+      "rock": "石頭",
+      "failed_to_get_user_id": "無法取得玩家ID",
+      "failed_to_get_target_user_id": "無法取得對手玩家ID"
     }
   },
   "api": {
