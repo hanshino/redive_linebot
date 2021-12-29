@@ -1,6 +1,6 @@
 const config = require("config");
 
-exports.generateJanken = ({ p1IconUrl, p2IconUrl, p1Uid, p2Uid, uuid }) => {
+exports.generateJanken = ({ p1IconUrl, p2IconUrl, p1Uid, p2Uid, uuid, title = "" }) => {
   const genAction = function (type) {
     return {
       type: "postback",
@@ -14,7 +14,7 @@ exports.generateJanken = ({ p1IconUrl, p2IconUrl, p1Uid, p2Uid, uuid }) => {
       }),
     };
   };
-  return {
+  let bubble = {
     type: "bubble",
     body: {
       type: "box",
@@ -112,9 +112,43 @@ exports.generateJanken = ({ p1IconUrl, p2IconUrl, p1Uid, p2Uid, uuid }) => {
           paddingTop: "lg",
           spacing: "md",
         },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              align: "center",
+              text: "交給命運",
+            },
+          ],
+          paddingAll: "lg",
+          margin: "md",
+          cornerRadius: "md",
+          backgroundColor: "#80808034",
+          action: genAction("random"),
+        },
       ],
     },
   };
+
+  if (title) {
+    bubble.body.contents.unshift({
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: `${title}`,
+          align: "center",
+          weight: "bold",
+        },
+      ],
+      paddingAll: "lg",
+    });
+  }
+
+  return bubble;
 };
 
 exports.generateJankenGrade = ({ winCount = 0, loseCount = 0, drawCount = 0, rate = 0 }) => {

@@ -34,8 +34,30 @@ async function duel(context) {
     return;
   }
 
-  const { userId: targetUserId } = mentionees[0];
+  if (!userId) {
+    // 獲取 userId 失敗
+    await context.replyText(i18n.__("message.duel.failed_to_get_user_id"));
+    return;
+  }
+
+  const { userId: targetUserId, index, length } = mentionees[0];
+
+  if (!targetUserId) {
+    // 獲取 targetUserId 失敗
+    await context.replyText(i18n.__("message.duel.failed_to_get_target_user_id"));
+    return;
+  }
+
   const targetProfile = await LineClient.getGroupMemberProfile(groupId, targetUserId);
+
+  const jankenTitle = (function () {
+    // 利用 index, length 將目標使用者的名稱從 message 中移除
+    let { text } = context.event.message;
+    text = text.substr(0, index) + text.substr(index + length);
+    // 再將指令移除
+    text = text.replace(/[.#/](決鬥|duel)/g, "").trim();
+    return text;
+  })();
 
   const pkBubble = minigameTemplate.generateJanken({
     p1IconUrl: pictureUrl || "https://i.imgur.com/469kcyB.png",
@@ -43,6 +65,7 @@ async function duel(context) {
     p1Uid: userId,
     p2Uid: targetUserId,
     uuid: uuid(),
+    title: jankenTitle,
   });
 
   context.replyText(
@@ -62,7 +85,8 @@ async function duel(context) {
  */
 exports.decide = async (context, { payload }) => {
   const redisPrefix = config.get("redis.keys.jankenDecide");
-  const { uuid: recordId, type, userId, targetUserId } = payload;
+  const { uuid: recordId, userId, targetUserId } = payload;
+  let type = get(payload, "type", "random");
   if (!recordId) {
     return;
   }
@@ -75,6 +99,14 @@ exports.decide = async (context, { payload }) => {
   if (record) {
     DefaultLogger.warn(`Janken record ${recordId} already exists`);
     return;
+  }
+
+  // 這邊要將選擇『交給命運』的狀況處理
+  if (type === "random") {
+    type = (function () {
+      let types = ["rock", "paper", "scissors"];
+      return types[Math.floor(Math.random() * types.length)];
+    })();
   }
 
   DefaultLogger.info(`[Janken] ${context.event.source.userId} decide ${type}`);
