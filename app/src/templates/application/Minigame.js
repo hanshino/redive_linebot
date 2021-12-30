@@ -258,7 +258,7 @@ exports.generateJankenGrade = ({ winCount = 0, loseCount = 0, drawCount = 0, rat
  * @param {String} param0.iconUrl
  * @returns {Object}
  */
-exports.generateJankenHolder = ({ userId, iconUrl }) => {
+exports.generateJankenHolder = ({ userId, iconUrl, title }) => {
   const genAction = function (type) {
     return {
       type: "postback",
@@ -270,7 +270,7 @@ exports.generateJankenHolder = ({ userId, iconUrl }) => {
       }),
     };
   };
-  return {
+  let bubble = {
     type: "bubble",
     body: {
       type: "box",
@@ -373,8 +373,27 @@ exports.generateJankenHolder = ({ userId, iconUrl }) => {
           margin: "md",
           cornerRadius: "md",
           backgroundColor: "#80808034",
+          action: genAction("random"),
         },
       ],
     },
   };
+
+  if (title) {
+    bubble.body.contents.unshift({
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: `${title}`,
+          align: "center",
+          weight: "bold",
+        },
+      ],
+      paddingAll: "lg",
+    });
+  }
+
+  return bubble;
 };
