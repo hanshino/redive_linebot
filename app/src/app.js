@@ -63,6 +63,7 @@ async function HandlePostback(context, { next }) {
         withProps(WorldBossController.adminSpecialAttack, { payload })
       ),
       route(() => action === "janken", withProps(JankenController.decide, { payload })),
+      route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
       route("*", next),
     ]);
   } catch (e) {

@@ -57,7 +57,9 @@
       "scissors": "剪刀",
       "rock": "石頭",
       "failed_to_get_user_id": "無法取得玩家ID",
-      "failed_to_get_target_user_id": "無法取得對手玩家ID"
+      "failed_to_get_target_user_id": "無法取得對手玩家ID",
+      "challenge_success": "{{ displayName }} 已經向 {{ targetDisplayName }} 傳送了對決請求，並且出好拳了，請等待對方出拳，在對方出好拳之前都可以更改選項！",
+      "holding_manual": "{{ displayName }} 正在舉辦猜拳比賽，任何人都可以向他提出決鬥請求！"
     }
   },
   "api": {

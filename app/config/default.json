@@ -2,7 +2,8 @@
   "redis": {
     "keys": {
       "worldBossAttackMessageKeeping": "worldBossAttackMessageKeeping",
-      "jankenDecide": "jankenDecide"
+      "jankenDecide": "jankenDecide",
+      "jankenChallenge": "jankenChallenge"
     }
   },
   "worldboss": {

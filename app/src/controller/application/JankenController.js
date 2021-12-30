@@ -12,7 +12,10 @@ const redis = require("../../util/redis");
 const config = require("config");
 const { DefaultLogger } = require("../../util/Logger");
 
-exports.router = [text(/^[.#/](決鬥|duel)/, duel)];
+exports.router = [
+  text(/^[.#/](決鬥|duel)/, duel),
+  text(/^[.#/](猜拳(擂台|(大|比)賽)|hold)/, holdingChallenge),
+];
 
 /**
  * 實現決鬥功能，可以與其他人決鬥
@@ -103,10 +106,7 @@ exports.decide = async (context, { payload }) => {
 
   // 這邊要將選擇『交給命運』的狀況處理
   if (type === "random") {
-    type = (function () {
-      let types = ["rock", "paper", "scissors"];
-      return types[Math.floor(Math.random() * types.length)];
-    })();
+    type = randomType();
   }
 
   DefaultLogger.info(`[Janken] ${context.event.source.userId} decide ${type}`);
@@ -170,6 +170,181 @@ exports.decide = async (context, { payload }) => {
   ]);
 };
 
+/**
+ * 實現挑戰功能，舉辦方可以接受任何人的挑戰
+ * @param {Context} context
+ */
+async function holdingChallenge(context) {
+  const { userId, pictureUrl, displayName } = context.event.source;
+  if (!userId) {
+    return;
+  }
+
+  const [, title = ""] = context.event.message.text.split(/\s+/);
+
+  const holderBubble = minigameTemplate.generateJankenHolder({
+    userId,
+    iconUrl: pictureUrl || "https://i.imgur.com/469kcyB.png",
+    title,
+  });
+
+  context.replyText(i18n.__("message.duel.holding_manual", { displayName }));
+  context.replyFlex("猜拳大賽", holderBubble);
+}
+
+/**
+ * @param {Context} context
+ */
+exports.challenge = async (context, { payload }) => {
+  const { userId: holderUserId } = payload;
+
+  const sourceUserId = get(context.event.source, "userId");
+  if (!sourceUserId) {
+    return;
+  }
+
+  const isHolder = sourceUserId === holderUserId;
+  const isChallenger = sourceUserId !== holderUserId;
+
+  // 一次只允許有一位挑戰者，所以挑戰者需要透過 redis 判斷是否已經有挑戰者
+  if (isChallenger) {
+    return await handleChallender(context, {
+      payload,
+    });
+  } else if (isHolder) {
+    return await handleHolder(context, {
+      payload,
+    });
+  }
+};
+
+/**
+ * 處理挑戰者邏輯
+ * @param {Context} context
+ */
+async function handleChallender(context, { payload }) {
+  const redisPrefix = config.get("redis.keys.jankenChallenge");
+  const { userId: holderUserId } = payload;
+  let type = get(payload, "type", "random");
+  const { userId: sourceUserId, displayName } = context.event.source;
+
+  let redisKey = `${redisPrefix}:${holderUserId}`;
+
+  // 處理挑戰者選擇交給命運的狀況
+  if (type === "random") {
+    type = randomType();
+  }
+
+  // 一次一位挑戰者，而主辦方需在 10 分鐘內做好決定
+  let hasSet = await redis.setnx(
+    redisKey,
+    JSON.stringify({
+      sourceUserId,
+      type,
+    }),
+    10 * 60
+  );
+
+  if (!hasSet) {
+    DefaultLogger.info(`[Janken] ${holderUserId} already has a challenger`);
+    const content = await redis.get(redisKey);
+    const { sourceUserId: challengerUserId, type: challengerType } = content;
+    if (sourceUserId !== challengerUserId) {
+      // 已經有其他挑戰者了
+      return;
+    }
+
+    // 如果是同一個挑戰者的情況下，允許修改決定的出拳類型
+    if (type !== challengerType) {
+      DefaultLogger.info(`[Janken] ${sourceUserId} change his decision`);
+      await redis.set(redisKey, JSON.stringify({ sourceUserId, type }));
+    }
+  } else {
+    DefaultLogger.info(`${sourceUserId} challenge ${holderUserId}`);
+    // 挑戰者的初次決定，發送提示訊息
+    const holderProfile = await LineClient.getGroupMemberProfile(
+      context.event.source.groupId,
+      holderUserId
+    );
+    context.replyText(
+      i18n.__("message.duel.challenge_success", {
+        targetDisplayName: get(holderProfile, "displayName", "未知玩家"),
+        displayName,
+      })
+    );
+  }
+}
+
+/**
+ * 處理舉辦方的邏輯
+ * @param {Context} context
+ */
+async function handleHolder(context, { payload }) {
+  let { type } = payload;
+  const redisPrefix = config.get("redis.keys.jankenChallenge");
+  const { userId } = context.event.source;
+  const redisKey = `${redisPrefix}:${userId}`;
+
+  const content = await redis.get(redisKey);
+  if (!content) {
+    DefaultLogger.info(`[Janken] ${userId} has no challenger. Wait for challenger`);
+    return;
+  }
+
+  // 處理舉辦方選擇交給命運的狀況
+  if (type === "random") {
+    type = randomType();
+  }
+
+  const { sourceUserId: challengerId, type: challengerType } = content;
+
+  const [p1Result, p2Result] = jankenPlay(type, challengerType);
+  const [profile, targetProfile] = await Promise.all([
+    LineClient.getGroupMemberProfile(context.event.source.groupId, userId),
+    LineClient.getGroupMemberProfile(context.event.source.groupId, challengerId),
+  ]);
+  const recordId = uuid();
+
+  context.replyText(
+    i18n.__("message.duel.result", {
+      displayName: get(profile, "displayName", "未知玩家"),
+      targetDisplayName: get(targetProfile, "displayName", "未知挑戰者"),
+      p1Type: i18n.__(`message.duel.${type}`),
+      p2Type: i18n.__(`message.duel.${challengerType}`),
+    })
+  );
+  if (p1Result !== "draw") {
+    context.replyText(
+      i18n.__("message.duel.win_lose", {
+        winner: get(p1Result === "win" ? profile : targetProfile, "displayName", "未知玩家"),
+      })
+    );
+  } else {
+    context.replyText(i18n.__("message.duel.draw"));
+  }
+
+  redis.del(redisKey);
+
+  await JankenRecords.create({
+    id: recordId,
+    user_id: userId,
+    target_user_id: challengerId,
+  });
+
+  await JankenResult.insert([
+    {
+      record_id: recordId,
+      user_id: userId,
+      result: get(JankenResult.resultMap, p1Result),
+    },
+    {
+      record_id: recordId,
+      user_id: challengerId,
+      result: get(JankenResult.resultMap, p2Result),
+    },
+  ]);
+}
+
 function jankenPlay(p1Decide, p2Decide) {
   const resultMapping = {
     rock: {
@@ -193,4 +368,9 @@ function jankenPlay(p1Decide, p2Decide) {
   let p2Result = resultMapping[p2Decide][p1Decide];
 
   return [p1Result, p2Result];
+}
+
+function randomType() {
+  const types = ["rock", "paper", "scissors"];
+  return types[Math.floor(Math.random() * types.length)];
 }
