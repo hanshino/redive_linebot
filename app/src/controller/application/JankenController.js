@@ -175,8 +175,13 @@ exports.decide = async (context, { payload }) => {
  * @param {Context} context
  */
 async function holdingChallenge(context) {
-  const { userId, pictureUrl, displayName } = context.event.source;
+  const { userId, pictureUrl, displayName, groupId, type } = context.event.source;
   if (!userId) {
+    return;
+  }
+
+  if (type !== "group") {
+    context.replyText(i18n.__("message.duel.only_in_group"));
     return;
   }
 
@@ -184,6 +189,7 @@ async function holdingChallenge(context) {
 
   const holderBubble = minigameTemplate.generateJankenHolder({
     userId,
+    groupId,
     iconUrl: pictureUrl || "https://i.imgur.com/469kcyB.png",
     title,
   });
@@ -224,11 +230,11 @@ exports.challenge = async (context, { payload }) => {
  */
 async function handleChallender(context, { payload }) {
   const redisPrefix = config.get("redis.keys.jankenChallenge");
-  const { userId: holderUserId } = payload;
+  const { userId: holderUserId, groupId } = payload;
   let type = get(payload, "type", "random");
   const { userId: sourceUserId, displayName } = context.event.source;
 
-  let redisKey = `${redisPrefix}:${holderUserId}`;
+  let redisKey = `${redisPrefix}:${groupId}:${holderUserId}`;
 
   // 處理挑戰者選擇交給命運的狀況
   if (type === "random") {
@@ -280,10 +286,10 @@ async function handleChallender(context, { payload }) {
  * @param {Context} context
  */
 async function handleHolder(context, { payload }) {
-  let { type } = payload;
+  let { type, groupId } = payload;
   const redisPrefix = config.get("redis.keys.jankenChallenge");
   const { userId } = context.event.source;
-  const redisKey = `${redisPrefix}:${userId}`;
+  const redisKey = `${redisPrefix}:${groupId}:${userId}`;
 
   const content = await redis.get(redisKey);
   if (!content) {
