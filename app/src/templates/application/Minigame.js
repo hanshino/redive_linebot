@@ -255,10 +255,12 @@ exports.generateJankenGrade = ({ winCount = 0, loseCount = 0, drawCount = 0, rat
  * 猜拳舉辦方模板
  * @param {Object} param0
  * @param {String} param0.userId
+ * @param {String} param0.groupId
+ * @param {String} param0.title
  * @param {String} param0.iconUrl
  * @returns {Object}
  */
-exports.generateJankenHolder = ({ userId, iconUrl, title }) => {
+exports.generateJankenHolder = ({ userId, iconUrl, title, groupId }) => {
   const genAction = function (type) {
     return {
       type: "postback",
@@ -267,6 +269,7 @@ exports.generateJankenHolder = ({ userId, iconUrl, title }) => {
         action: "challenge",
         type,
         userId,
+        groupId,
       }),
     };
   };
