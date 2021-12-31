@@ -161,7 +161,6 @@ function getBattleDate(objDate) {
   let start = new Date(objDate);
   let end = new Date(objDate);
 
-  let year = objDate.getFullYear();
   let hour = objDate.getHours();
 
   if (hour < 5) {
@@ -172,8 +171,13 @@ function getBattleDate(objDate) {
 
   return {
     start:
-      [year, start.getMonth() + 1, start.getDate()].join("-") + " " + ["05", "00", "00"].join(":"),
-    end: [year, end.getMonth() + 1, end.getDate()].join("-") + " " + ["04", "59", "59"].join(":"),
+      [start.getFullYear(), start.getMonth() + 1, start.getDate()].join("-") +
+      " " +
+      ["05", "00", "00"].join(":"),
+    end:
+      [end.getFullYear(), end.getMonth() + 1, end.getDate()].join("-") +
+      " " +
+      ["04", "59", "59"].join(":"),
   };
 }
 
