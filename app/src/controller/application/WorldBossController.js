@@ -506,7 +506,7 @@ function calculateDamage(level = 1, attackType = "normal") {
       break;
   }
 
-  return damage;
+  return Math.round(damage);
 }
 
 /**
