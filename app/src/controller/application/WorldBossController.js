@@ -217,7 +217,10 @@ async function bossEvent(context) {
   // 再組出排名資訊的總結
   const rankBubble = worldBossTemplate.generateTopTenRank(rankBoxes);
 
-  const contents = [mainBubble, infoBubble, rankBubble];
+  // 組出規則說明 bubble
+  const ruleBubble = worldBossTemplate.generateRuleBubble(config.get("worldboss.manual"));
+
+  const contents = [ruleBubble, mainBubble, infoBubble, rankBubble];
 
   context.replyFlex(`${data.name} 的戰鬥模板`, {
     type: "carousel",

@@ -212,6 +212,10 @@ exports.challenge = async (context, { payload }) => {
   const isHolder = sourceUserId === holderUserId;
   const isChallenger = sourceUserId !== holderUserId;
 
+  DefaultLogger.info(`[Janken] ${sourceUserId} challenge ${holderUserId}`);
+  DefaultLogger.info(`[Janken] ${isHolder ? "Holder" : "Not Holder"}: ${sourceUserId}`);
+  DefaultLogger.info(`[Janken] ${isChallenger ? "Challenger" : "Not Challenger"}: ${sourceUserId}`);
+
   // 一次只允許有一位挑戰者，所以挑戰者需要透過 redis 判斷是否已經有挑戰者
   if (isChallenger) {
     return await handleChallender(context, {

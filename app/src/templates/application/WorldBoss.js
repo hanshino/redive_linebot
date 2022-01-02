@@ -597,3 +597,61 @@ exports.generateAdventureCard = ({ name, image, level, exp, expPercentage, attac
     },
   };
 };
+
+/**
+ * 產生規則 bubble
+ * @param {Array} rules
+ * @returns {Object}
+ */
+exports.generateRuleBubble = rules => {
+  let ruleBoxes = rules.map(rule => generateRuleTextBox(rule));
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "規則說明",
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              contents: ruleBoxes,
+              spacing: "lg",
+              paddingTop: "md",
+            },
+          ],
+        },
+      ],
+    },
+  };
+};
+
+function generateRuleTextBox(rule) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: "-",
+        size: "sm",
+        flex: 1,
+        align: "center",
+      },
+      {
+        type: "text",
+        text: `${rule}`,
+        wrap: true,
+        size: "sm",
+        flex: 10,
+      },
+    ],
+  };
+}
