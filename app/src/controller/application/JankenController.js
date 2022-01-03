@@ -128,23 +128,26 @@ exports.decide = async (context, { payload }) => {
   ]);
 
   const [p1Result, p2Result] = jankenPlay(p1Decide, p2Decide);
-  context.replyText(
+  let message = [
     i18n.__("message.duel.result", {
       displayName: get(profile, "displayName", "未知玩家"),
       targetDisplayName: get(targetProfile, "displayName", "未知挑戰者"),
       p1Type: i18n.__(`message.duel.${p1Decide}`),
       p2Type: i18n.__(`message.duel.${p2Decide}`),
-    })
-  );
+    }),
+  ];
+
   if (p1Result !== "draw") {
-    context.replyText(
+    message.push(
       i18n.__("message.duel.win_lose", {
         winner: get(p1Result === "win" ? profile : targetProfile, "displayName", "未知玩家"),
       })
     );
   } else {
-    context.replyText(i18n.__("message.duel.draw"));
+    message.push(i18n.__("message.duel.draw"));
   }
+
+  context.replyText(message.join("\n"));
 
   await JankenRecords.create({
     id: recordId,
@@ -315,23 +318,26 @@ async function handleHolder(context, { payload }) {
   ]);
   const recordId = uuid();
 
-  context.replyText(
+  let messages = [
     i18n.__("message.duel.result", {
       displayName: get(profile, "displayName", "未知玩家"),
       targetDisplayName: get(targetProfile, "displayName", "未知挑戰者"),
       p1Type: i18n.__(`message.duel.${type}`),
       p2Type: i18n.__(`message.duel.${challengerType}`),
-    })
-  );
+    }),
+  ];
+
   if (p1Result !== "draw") {
-    context.replyText(
+    messages.push(
       i18n.__("message.duel.win_lose", {
         winner: get(p1Result === "win" ? profile : targetProfile, "displayName", "未知玩家"),
       })
     );
   } else {
-    context.replyText(i18n.__("message.duel.draw"));
+    messages.push(i18n.__("message.duel.draw"));
   }
+
+  context.replyText(messages.join("\n"));
 
   redis.del(redisKey);
 
