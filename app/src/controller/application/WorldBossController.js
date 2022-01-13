@@ -222,6 +222,12 @@ async function bossEvent(context) {
 
   const contents = [ruleBubble, mainBubble, infoBubble, rankBubble];
 
+  const isGroup = context.event.source.type === "group";
+  const hasService = (context.state.services || []).includes("world_boss");
+  if (isGroup && !hasService) {
+    contents.unshift(worldBossTemplate.generateOshirase());
+  }
+
   context.replyFlex(`${data.name} 的戰鬥模板`, {
     type: "carousel",
     contents,
