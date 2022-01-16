@@ -154,7 +154,7 @@ const AccordionButtons = () => {
           </AccordionActions>
         </Accordion>
       )),
-    [sendable]
+    [sendable, send]
   );
 
   const alertClose = () => {
@@ -255,7 +255,7 @@ const InputDialog = props => {
         else if (!isEmpty) message += ` ${param[key].data}`;
       });
     setSendState({ text: message, pass });
-  }, [param.week.data, param.boss.data, text]);
+  }, [param, disabled, required]);
 
   return (
     <Dialog open={open} onClose={handleClose}>

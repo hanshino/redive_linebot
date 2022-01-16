@@ -303,7 +303,6 @@ BattleTimelineItem.propTypes = {
 };
 
 const BattleTimelineText = ({ timeline, remainTime }) => {
-  const offsetTime = 90 - remainTime;
   const newTimeline = cacluteNewTimeline(timeline, remainTime);
   const text = useMemo(
     () =>
@@ -322,7 +321,7 @@ const BattleTimelineText = ({ timeline, remainTime }) => {
           </Typography>
         );
       }),
-    [newTimeline, offsetTime]
+    [newTimeline]
   );
   return <Grid item>{text}</Grid>;
 };

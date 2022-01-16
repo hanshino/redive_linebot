@@ -87,10 +87,6 @@ const WorldbossEvent = () => {
     },
   ];
 
-  if (!isLoggedIn) {
-    return <AlertLogin />;
-  }
-
   useEffect(() => {
     if (isLoggedIn) {
       fetchData();
@@ -146,6 +142,10 @@ const WorldbossEvent = () => {
       fetchData();
     }
   }, [deletedResponse]);
+
+  if (!isLoggedIn) {
+    return <AlertLogin />;
+  }
 
   const pageLoading = loading || createdLoading || updatedLoading || deletedLoading;
 

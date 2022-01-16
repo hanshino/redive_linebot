@@ -1,4 +1,4 @@
-export default {
+const config = {
   header: {
     actions: "操作",
   },
@@ -31,3 +31,5 @@ export default {
     searchPlaceholder: "搜尋",
   },
 };
+
+export default config;

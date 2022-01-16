@@ -13,7 +13,7 @@ const Message = () => {
 
   React.useEffect(() => {
     window.document.title = "管理員後台訊息管理";
-    let socket = webSocket("/Admin/Messages", {
+    let socket = io("/Admin/Messages", {
       query: {
         token: window.liff.getAccessToken(),
         something: "test",

@@ -1,4 +1,4 @@
-export default {
+const flex = {
   genFlex(params) {
     let { uid, serverName: server, background, nickname } = params;
 
@@ -106,3 +106,5 @@ export default {
     };
   },
 };
+
+export default flex;

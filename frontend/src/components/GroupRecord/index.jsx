@@ -16,7 +16,7 @@ import {
 import PropTypes from "prop-types";
 import { Card, CardActions, CardContent, CardHeader, IconButton } from "@material-ui/core";
 import { Chart, Legend, PieSeries, Tooltip } from "@devexpress/dx-react-chart-material-ui";
-import { Animation, EventTracker, Palette } from "@devexpress/dx-react-chart";
+import { Animation, EventTracker } from "@devexpress/dx-react-chart";
 import MaterialTable from "material-table";
 import TableLocaliztion from "../../config/TableLocaliztion";
 import { Skeleton, Alert, AlertTitle } from "@material-ui/lab";
