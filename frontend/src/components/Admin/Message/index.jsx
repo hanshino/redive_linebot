@@ -1,5 +1,5 @@
 import React from "react";
-import { io as webSocket } from "socket.io/client-dist/socket.io";
+import { io } from "socket.io-client";
 import SourceList from "./SourceList";
 import ContentDialog from "./ContentDialog";
 
