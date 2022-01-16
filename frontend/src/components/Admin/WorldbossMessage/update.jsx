@@ -24,11 +24,12 @@ const WorldbossMessageUpdate = () => {
     const { template, imageUrl } = data;
 
     if (isValidImage && isValidTemplate) {
+      const payload = { template };
+      if (imageUrl) {
+        payload.imageUrl = imageUrl;
+      }
       update({
-        data: {
-          template,
-          icon_url: imageUrl,
-        },
+        data: payload,
       });
     } else {
       setError({ show: true, message: "Invalid form data" });

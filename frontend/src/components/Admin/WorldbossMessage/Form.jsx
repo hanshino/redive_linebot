@@ -56,7 +56,7 @@ const MessageForm = ({
     setFormData({ ...formData, [name]: value });
   };
   const imageRegex = /^https?:\/\/(?:[a-z-]+\.)+[a-z]{2,6}(?:\/[^/#?]+)+\.(?:jpe?g|png)$/;
-  const isValidImage = formData.imageUrl === "" || imageRegex.test(formData.imageUrl);
+  const isValidImage = !formData.imageUrl || imageRegex.test(formData.imageUrl);
   const isValidTemplate = formData.template.length > 0;
 
   return (
