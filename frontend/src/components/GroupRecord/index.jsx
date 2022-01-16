@@ -19,7 +19,6 @@ import { Chart, Legend, PieSeries, Tooltip } from "@devexpress/dx-react-chart-ma
 import { Animation, EventTracker, Palette } from "@devexpress/dx-react-chart";
 import MaterialTable from "material-table";
 import TableLocaliztion from "../../config/TableLocaliztion";
-import { schemeDark2 } from "d3-scale-chromatic";
 import { Skeleton, Alert, AlertTitle } from "@material-ui/lab";
 
 const useStyles = makeStyles(theme => ({
@@ -238,7 +237,6 @@ const MyStatistic = props => {
       <CardHeader title={statistic.displayName} subheader="個人訊息分佈" />
       <CardContent>
         <Chart data={datas} height={200}>
-          <Palette scheme={schemeDark2} />
           <PieSeries valueField="value" argumentField="title" innerRadius={0.6} />
           <Legend />
           <EventTracker />
@@ -267,7 +265,6 @@ const MessageStatistic = props => {
       <CardHeader title={groupName} subheader="群組訊息分佈" />
       <CardContent>
         <Chart data={statistic} height={200}>
-          <Palette scheme={schemeDark2} />
           <PieSeries valueField="value" argumentField="type" innerRadius={0.6} />
           <Legend />
           <EventTracker />
