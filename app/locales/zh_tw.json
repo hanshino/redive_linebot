@@ -42,6 +42,9 @@
       "add_usage": "使用方法： /addad <純文字訊息內容|json訊息格式> --senderName=<發送者姓名> --senderIcon=<發送者圖像> --title=<標題>",
       "add_success": "成功新增廣告： {{ id }}, 請記住ID, 方便後續操作\n標題： {{ title }}\n發送人： {{ senderName }}\n發送頭像： {{ senderIcon }}"
     },
+    "advancement": {
+      "no_data": "沒有任何成就紀錄，請多多加油喔！"
+    },
     "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
     "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}",
     "god_stone_shop_empty": "目前未設定任何兌換商品，請聯繫管理員設定",
@@ -61,6 +64,24 @@
       "challenge_success": "{{ displayName }} 已經向 {{ targetDisplayName }} 傳送了對決請求，並且出好拳了，請等待對方出拳，在對方出好拳之前都可以更改選項！",
       "holding_manual": "{{ displayName }} 正在舉辦猜拳比賽，任何人都可以向他提出決鬥請求！"
     }
+  },
+  "advancement": {
+    "system_manager": "至高神",
+    "janken_king": "拳王",
+    "janken_ruki": "猜拳小菜鳥",
+    "janken_loser": "輸到脫褲",
+    "janken_drawer": "平局高手",
+    "chat_king": "話語霸權",
+    "chat_king_2": "話術小丑",
+    "chat_king_3": "話語大師",
+    "gacha_king": "轉蛋蒐藏家",
+    "gacha_king_2": "轉蛋藝術家",
+    "gacha_king_3": "轉蛋家",
+    "gacha_rich": "女神富豪",
+    "gacha_rich_2": "女神貴族",
+    "gacha_rich_3": "女神騎士",
+    "progressors": "攻略組",
+    "leechers": "躺分組"
   },
   "api": {
     "error": {

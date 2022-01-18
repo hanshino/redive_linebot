@@ -1,0 +1,38 @@
+{
+  "advancement": {
+    "chat_king": [
+      "chat_king",
+      "chat_king_2",
+      "chat_king_3"
+    ],
+    "gacha_king": [
+      "gacha_king",
+      "gacha_king_2",
+      "gacha_king_3"
+    ],
+    "gacha_rich": [
+      "gacha_rich",
+      "gacha_rich_2",
+      "gacha_rich_3"
+    ],
+    "janken_winner": [
+      "janken_winner"
+    ],
+    "janken_loser": [
+      "janken_loser"
+    ],
+    "janken_drawer": [
+      "janken_drawer"
+    ],
+    "world_boss": {
+      "progressors": {
+        "key": "progressors",
+        "limit": 1
+      },
+      "leechers": {
+        "key": "leechers",
+        "limit": 1
+      }
+    }
+  }
+}
