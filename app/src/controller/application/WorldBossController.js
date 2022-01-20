@@ -364,6 +364,11 @@ exports.attackOnBoss = async (context, props) => {
   let templateData = messageTemplates[Math.floor(Math.random() * messageTemplates.length)];
   let causedDamagePercent = calculateDamagePercentage(eventBoss.hp, damage);
   let earnedExp = (eventBoss.exp * causedDamagePercent) / 100;
+  // 計算因等級差距的關係是否進行經驗值懲罰
+  let penaltyInfo = decidePenalty({ level: eventBoss.level, userLevel: level });
+  if (penaltyInfo.isPenalty) {
+    earnedExp = Math.round(earnedExp * penaltyInfo.expRate);
+  }
   // 計算獲得經驗後的等級狀況
   let newLevelData = await decideLevelResult({ ...levelData, earnedExp });
   // 將計算後的結果更新至資料庫
@@ -379,17 +384,27 @@ exports.attackOnBoss = async (context, props) => {
   }
 
   let iconUrl = templateData.icon_url || pictureUrl;
-  let message = i18n.__(templateData.template, { name, damage, display_name: displayName });
+  let messages = [i18n.__(templateData.template, { name, damage, display_name: displayName })];
   let sender = { name: displayName.substr(0, 20), iconUrl };
 
+  if (penaltyInfo.isPenalty) {
+    messages.push(
+      i18n.__("message.minigame_penalty", {
+        penaltyRate: penaltyInfo.expRate * 100,
+      })
+    );
+  }
+
   DefaultLogger.info(
-    `${message} 造成了 ${calculateDamagePercentage(eventBoss.hp, damage)} ${JSON.stringify(sender)}`
+    `${displayName} 造成了 ${calculateDamagePercentage(eventBoss.hp, damage)} ${JSON.stringify(
+      sender
+    )}`
   );
 
   if (keepMessage) {
     await handleKeepingMessage(worldBossEventId, context, message);
   } else {
-    context.replyText(message, { sender });
+    context.replyText(messages.join("\n"), { sender });
   }
 };
 
@@ -532,6 +547,8 @@ function calculateDamagePercentage(bossHp, damage) {
  * 決定等級結果
  * @param {Object} param0
  * @param {Number} param0.level 等級
+ * @param {Number} param0.exp 經驗值
+ * @param {Number} param0.earnedExp 已獲得經驗值
  * @returns {Promise<LevelResult>}
  */
 async function decideLevelResult({ level, exp, earnedExp }) {
@@ -569,6 +586,34 @@ async function decideLevelResult({ level, exp, earnedExp }) {
     newExp,
     levelUpCount,
     nextLevelExp,
+  };
+}
+
+/**
+ * 依照怪物等級與玩家等級，判斷是否進行等差懲罰
+ * @param {Object} param0
+ * @param {Number} param0.level 怪物等級
+ * @param {Number} param0.userLevel 玩家等級
+ * @returns {Object<{isPenalty: Boolean, expRate: Number}>} 懲罰資訊
+ */
+function decidePenalty({ level, userLevel }) {
+  // 將會按照懲罰倍率，隨著等級差距越大，懲罰倍率越大，呈線性增加
+  let penaltyRate = config.get("worldboss.penalty_rate");
+  let range = Math.abs(level - userLevel);
+
+  let isPenalty = false;
+  let expRate = 1;
+
+  if (level < userLevel) {
+    isPenalty = true;
+    expRate = expRate - penaltyRate * range * 2;
+    expRate = expRate < 0 ? 0 : expRate;
+    expRate = expRate.toFixed(2);
+  }
+
+  return {
+    isPenalty,
+    expRate,
   };
 }
 

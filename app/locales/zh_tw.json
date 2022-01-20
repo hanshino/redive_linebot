@@ -59,6 +59,7 @@
     },
     "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
     "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}",
+    "minigame_penalty": "因為等級差距的關係，取得經驗值減少，只取得 {{ penaltyRate }}% 的經驗值",
     "god_stone_shop_empty": "目前未設定任何兌換商品，請聯繫管理員設定",
     "duel": {
       "usage": "使用方法：/duel @玩家",

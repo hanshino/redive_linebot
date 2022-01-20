@@ -40,6 +40,12 @@ function showState(context) {
   context.replyText(JSON.stringify(context.state));
 }
 
+function showMention(context) {
+  const { mention } = context.event.message;
+  const userIds = mention.mentionees.map(mentionee => mentionee.userId);
+  return context.replyText(`${userIds.join("\n")}`);
+}
+
 async function HandlePostback(context, { next }) {
   if (!context.event.isPayload) return next;
 
@@ -105,6 +111,7 @@ async function OrderBased(context, { next }) {
     ),
     text(["#我的包包", "/mybag"], gacha.showGachaBag),
     text("/state", showState),
+    text(/^.show/, showMention),
     text("/source", context => context.replyText(JSON.stringify(context.event.source))),
     text("/resetstate", context => context.resetState()),
     text("/traffic", function () {
