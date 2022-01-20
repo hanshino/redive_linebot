@@ -12,8 +12,16 @@ exports.create = async (attributes = {}) => {
 
 exports.all = async (options = {}) => {
   const { userId } = get(options, "filter", {});
+  const pagination = get(options, "pagination", {});
   let query = mysql(TABLE);
   if (userId) query = query.where({ user_id: userId });
+
+  if (pagination.page) {
+    query = query.limit(pagination.perPage).offset(pagination.perPage * (pagination.page - 1));
+  }
+
+  console.log(query.toSQL().toNative());
+
   return await query.select("*");
 };
 

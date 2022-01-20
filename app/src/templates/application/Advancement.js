@@ -1,28 +1,53 @@
+const imageRegex = /^(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif))$/;
+
 exports.generateRowBox = ({ icon, name, colorCode = "#80808099" }) => {
+  let iconBox;
+
+  if (imageRegex.test(icon)) {
+    iconBox = {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "image",
+          url: icon,
+          flex: 4,
+        },
+      ],
+      cornerRadius: "md",
+      width: "35px",
+      height: "35px",
+      margin: "sm",
+    };
+  } else {
+    iconBox = {
+      type: "text",
+      text: icon,
+      align: "center",
+      gravity: "center",
+      flex: 2,
+    };
+  }
+
+  const filler = { type: "filler", flex: 1 };
+
   return {
     type: "box",
     layout: "horizontal",
     contents: [
+      filler,
+      iconBox,
       {
         type: "text",
-        contents: [
-          {
-            type: "span",
-            text: icon,
-          },
-          {
-            type: "span",
-            text: " ",
-          },
-          {
-            type: "span",
-            text: name,
-          },
-        ],
-        align: "center",
+        contents: [],
         size: "sm",
         wrap: true,
+        text: name,
+        align: "center",
+        gravity: "center",
+        flex: 8,
       },
+      filler,
     ],
     backgroundColor: colorCode,
     paddingAll: "sm",

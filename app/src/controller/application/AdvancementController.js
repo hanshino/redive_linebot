@@ -6,8 +6,13 @@ const i18n = require("../../util/i18n");
 const config = require("config");
 const advModel = require("../../model/application/Advancement");
 const advTemplate = require("../../templates/application/Advancement");
+const minimist = require("minimist");
+const get = require("lodash/get");
+const { table, getBorderCharacters } = require("table");
 
-exports.router = [text(/^[.#/](成就|稱號|adv)/, list)];
+exports.router = [text(/^[.#/](成就|稱號|adv)$/, list)];
+
+exports.adminRouter = [text(/^[/]adv list/, adminList)];
 
 /**
  * 秀出成就
@@ -40,4 +45,45 @@ async function list(context) {
   };
 
   return context.replyFlex("成就稱號系統", flex);
+}
+
+/**
+ * 管理員用 秀出成就
+ * @param {Context} context
+ */
+async function adminList(context) {
+  const args = minimist(context.event.message.text.split(" "));
+  let page = 1;
+
+  if (args.page) {
+    page = parseInt(get(args, "page", 1));
+  } else if (args.p) {
+    page = parseInt(get(args, "p", 1));
+  }
+
+  const data = await advModel.all({
+    pagination: {
+      page,
+      perPage: 10,
+    },
+  });
+
+  const config = {
+    columns: [
+      { alignment: "center", width: 3 },
+      { alignment: "justify", width: 10 },
+      { alignment: "center", width: 3 },
+    ],
+    border: getBorderCharacters("ramac"),
+    header: {
+      alignment: "center",
+      content: `[成就稱號系統]\n第 ${page} 頁`,
+    },
+  };
+
+  const messages = table(
+    data.map(item => [item.id, item.name, item.order]),
+    config
+  );
+  return context.replyText(messages);
 }
