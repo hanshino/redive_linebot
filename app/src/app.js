@@ -1,5 +1,6 @@
 const { router, text, route } = require("bottender/router");
-const { chain, withProps } = require("bottender");
+// eslint-disable-next-line no-unused-vars
+const { chain, withProps, Context } = require("bottender");
 const character = require("./controller/princess/character");
 const gacha = require("./controller/princess/gacha");
 const battle = require("./controller/princess/battle");
@@ -33,6 +34,7 @@ const traffic = require("./util/traffic");
 const { showManagePlace } = require("./templates/application/Admin");
 const { sendPreWorkMessage } = require("./templates/princess/other");
 const { pushMessage } = require("./util/LineNotify");
+const AdminModel = require("./model/application/Admin");
 
 function showState(context) {
   context.replyText(JSON.stringify(context.state));
@@ -75,11 +77,15 @@ async function HandlePostback(context, { next }) {
 
 /**
  * 基於功能指令優先辨識
+ * @param {Context}
  */
 async function OrderBased(context, { next }) {
+  const { userId } = context.event.source;
+  const isAdmin = await AdminModel.isAdmin(userId);
+
   return router([
     ...BattleOrder(context),
-    ...AdminOrder(context),
+    ...(isAdmin ? AdminOrder(context) : []),
     ...CharacterOrder(context),
     ...CustomerOrder(context),
     ...GroupOrder(context),
@@ -180,13 +186,12 @@ function PersonOrder(context) {
   ];
 }
 
-function AdminOrder(context) {
-  if (context.event.source.type !== "user") return [];
-  if (!context.state.isAdmin) return [];
+function AdminOrder() {
   return [
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
+    ...AdvancementController.adminRouter,
   ];
 }
 

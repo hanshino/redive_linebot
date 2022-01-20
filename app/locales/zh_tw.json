@@ -43,7 +43,19 @@
       "add_success": "成功新增廣告： {{ id }}, 請記住ID, 方便後續操作\n標題： {{ title }}\n發送人： {{ senderName }}\n發送頭像： {{ senderIcon }}"
     },
     "advancement": {
-      "no_data": "沒有任何成就紀錄，請多多加油喔！"
+      "no_data": "沒有任何成就紀錄，請多多加油喔！",
+      "name": "名稱",
+      "id": "ID",
+      "order": "排序",
+      "list_usage": "使用方法： /adv list --name=<成就名稱> --page=<頁數>",
+      "add_usage": "使用方法： /adv add --name|n=<成就名稱> --type|t=<類型> --order|o=<排序> --description|d=<描述> --icon|i=<圖示>",
+      "add_invalid_bad_request": "錯誤的請求，請檢查輸入的參數",
+      "add_success": "成功新增成就： {{ name }}",
+      "add_fail": "新增成就失敗，請檢查輸入的參數",
+      "attach_usage": "使用方法： /adv attach <成就id> ...@玩家",
+      "attach_no_mention": "請至少指定一個玩家",
+      "attach_success": "成功將成就 {{ name }} 附加到 {{ players }} 位玩家",
+      "attach_fail": "附加成就 {{ name }} 失敗"
     },
     "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
     "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}",
