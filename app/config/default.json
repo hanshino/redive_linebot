@@ -8,6 +8,7 @@
   },
   "worldboss": {
     "daily_limit": 10,
+    "penalty_rate": 0.1,
     "chaos_attack_rate": [
       {
         "min": 80,

@@ -98,6 +98,13 @@ const MessageForm = ({
           >
             玩家名稱
           </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => handleChange("template", `${formData.template} {{ boss_name }}`)}
+          >
+            怪物名稱
+          </Button>
         </Grid>
         <Grid item>
           <Typography variant="caption">

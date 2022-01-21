@@ -384,7 +384,16 @@ exports.attackOnBoss = async (context, props) => {
   }
 
   let iconUrl = templateData.icon_url || pictureUrl;
-  let messages = [i18n.__(templateData.template, { name, damage, display_name: displayName })];
+  let messages = [
+    i18n
+      .__(templateData.template, {
+        name,
+        damage,
+        display_name: displayName,
+        boss_name: eventBoss.name,
+      })
+      .trim(),
+  ];
   let sender = { name: displayName.substr(0, 20), iconUrl };
 
   if (penaltyInfo.isPenalty) {
@@ -402,7 +411,7 @@ exports.attackOnBoss = async (context, props) => {
   );
 
   if (keepMessage) {
-    await handleKeepingMessage(worldBossEventId, context, message);
+    await handleKeepingMessage(worldBossEventId, context, messages.join("\n"));
   } else {
     context.replyText(messages.join("\n"), { sender });
   }
