@@ -224,8 +224,6 @@ module.exports = {
 
       if (canDailyGacha) {
         OwnGodStone = await GachaModel.getUserGodStoneCount(userId);
-        // 戳個紀錄
-        GachaModel.touchSingin(userId);
       }
 
       if (canDailyGacha && pickup && OwnGodStone >= 1500) {
@@ -260,6 +258,9 @@ module.exports = {
           OwnGodStone,
           costGodStone,
         };
+
+        // 戳個紀錄
+        GachaModel.touchSingin(userId, JSON.stringify(rareCount));
       }
 
       // 沒扣女神石，卻使用消耗抽，提示用戶沒有扣也沒加倍

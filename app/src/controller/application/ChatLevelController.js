@@ -10,9 +10,11 @@ const NotifyController = require("./NotifyController");
 const uidModel = require("../../model/princess/uid");
 const ProfileTemplate = require("../../templates/application/Profile");
 const MinigameTemplate = require("../../templates/application/Minigame");
+const DailyTemplate = require("../../templates/application/DailyQuest");
 const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
 const { get } = require("lodash");
+const moment = require("moment");
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
@@ -40,16 +42,25 @@ exports.showStatus = async context => {
       expRate = Math.round(((exp - nowExpData.exp) / (nextExpData.exp - nowExpData.exp)) * 100);
     }
 
-    let [current = 0, total = 0, godStone = 0, subInfo, bindInfo, jankenResult, signinInfo] =
-      await Promise.all([
-        GachaModel.getUserCollectedCharacterCount(userId),
-        GachaModel.getPrincessCharacterCount(),
-        GachaModel.getUserGodStoneCount(userId),
-        NotifyController.getData(userId),
-        uidModel.getData(userId),
-        JankenResult.findUserGrade(userId),
-        SigninModel.find(userId),
-      ]);
+    let [
+      current = 0,
+      total = 0,
+      godStone = 0,
+      subInfo,
+      bindInfo,
+      jankenResult,
+      signinInfo,
+      dailyQuest,
+    ] = await Promise.all([
+      GachaModel.getUserCollectedCharacterCount(userId),
+      GachaModel.getPrincessCharacterCount(),
+      GachaModel.getUserGodStoneCount(userId),
+      NotifyController.getData(userId),
+      uidModel.getData(userId),
+      JankenResult.findUserGrade(userId),
+      SigninModel.find(userId),
+      getDailyQuestInfo(userId),
+    ]);
 
     if (subInfo) {
       subInfo = NotifyController.getSubData(subInfo.subType);
@@ -99,7 +110,13 @@ exports.showStatus = async context => {
       drawCount,
       rate,
     });
-    bubbles.push(chatlevelBubble, gachaBubble, jankenGradeBubble, otherBubble);
+
+    const dailyBubble = DailyTemplate.genDailyInfo({
+      isSignin: dailyQuest.gacha,
+      isJanken: dailyQuest.janken,
+    });
+
+    bubbles.push(chatlevelBubble, dailyBubble, gachaBubble, jankenGradeBubble, otherBubble);
 
     context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
 
@@ -110,6 +127,28 @@ exports.showStatus = async context => {
     DefaultLogger.error(e);
   }
 };
+
+async function getDailyQuestInfo(userId) {
+  let jankenOptions = {
+    filter: {
+      userId,
+      createdAt: {
+        start: moment().startOf("day").toDate(),
+        end: moment().endOf("day").toDate(),
+      },
+    },
+  };
+
+  let [isSignin, jankenResult] = await Promise.all([
+    GachaModel.getSignin(userId),
+    JankenResult.all(jankenOptions),
+  ]);
+
+  return {
+    gacha: isSignin,
+    janken: jankenResult.length > 0,
+  };
+}
 
 exports.showFriendStatus = async context => {
   const { mention, text } = context.event.message;

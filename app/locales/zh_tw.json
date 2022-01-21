@@ -24,7 +24,9 @@
     "nickname": "暱稱",
     "rank": "排名",
     "damage": "傷害",
-    "chaos_attack": "混沌攻擊"
+    "chaos_attack": "混沌攻擊",
+    "checked": "⭕️",
+    "unchecked": "❌"
   },
   "message": {
     "user_attack_on_world_boss": "成功對 {{ name }} 造成 {{ damage }} 傷害",

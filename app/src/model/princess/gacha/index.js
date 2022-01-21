@@ -96,11 +96,12 @@ exports.getSignin = async userId => {
 /**
  * 轉蛋紀錄
  * @param {String} userId
+ * @param {String} record
  */
-exports.touchSingin = userId => {
+exports.touchSingin = (userId, record = "") => {
   var memoryKey = `GachaSignin_${userId}`;
   redis.set(memoryKey, 1, 10 * 60);
-  return mysql.insert({ userId, signinDate: getTodayDate() }).into("GachaSignin").then();
+  return mysql.insert({ userId, signinDate: getTodayDate(), record }).into("GachaSignin").then();
 };
 
 /**
