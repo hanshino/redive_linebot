@@ -1,14 +1,35 @@
 const common = require("../common");
+const defaultHero = {
+  type: "box",
+  layout: "vertical",
+  contents: [
+    {
+      type: "text",
+      text: "尚未設定圖片",
+      position: "absolute",
+      size: "xl",
+      color: "#808080",
+      offsetTop: "45%",
+      offsetStart: "30%",
+    },
+  ],
+  height: "194px",
+};
+
 exports.genShopItem = function ({ itemId, image, name, price, star }) {
+  const hero = image
+    ? {
+        type: "image",
+        url: image,
+        size: "full",
+        aspectRatio: "20:13",
+        aspectMode: "cover",
+      }
+    : defaultHero;
+
   return {
     type: "bubble",
-    hero: {
-      type: "image",
-      url: image,
-      size: "full",
-      aspectRatio: "20:13",
-      aspectMode: "cover",
-    },
+    hero,
     body: {
       type: "box",
       layout: "vertical",

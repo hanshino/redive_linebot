@@ -20,7 +20,7 @@ const useStyles = makeStyles({
   },
 });
 
-const CharacterCard = ({ name, image, star, price, onClick, holding, isEnable }) => {
+const CharacterCard = ({ name, itemImage, star, price, onClick, holding, isEnable }) => {
   const classes = useStyles();
 
   let buttonText = "兌換";
@@ -34,7 +34,7 @@ const CharacterCard = ({ name, image, star, price, onClick, holding, isEnable })
   return (
     <Card className={classes.root}>
       <CardActionArea>
-        <CardMedia className={classes.media} image={image} title="Contemplative Reptile" />
+        <CardMedia className={classes.media} image={itemImage} title="Contemplative Reptile" />
         <CardContent>
           <Typography gutterBottom variant="h5" component="h2">
             {name}
@@ -58,7 +58,7 @@ const CharacterCard = ({ name, image, star, price, onClick, holding, isEnable })
 
 CharacterCard.propTypes = {
   name: PropTypes.string.isRequired,
-  image: PropTypes.string.isRequired,
+  itemImage: PropTypes.string.isRequired,
   star: PropTypes.number.isRequired,
   price: PropTypes.number.isRequired,
   onClick: PropTypes.func.isRequired,

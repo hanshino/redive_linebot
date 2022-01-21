@@ -2,7 +2,7 @@ const mysql = require("../../util/mysql");
 const GOD_STONE_SHOP_TABLE = "god_stone_shop";
 const pick = require("lodash/pick");
 
-const fillable = ["item_id", "price", "stock", "limit", "is_enable"];
+const fillable = ["item_id", "price", "stock", "limit", "is_enable", "item_image"];
 
 exports.find = async function (id) {
   return await mysql(GOD_STONE_SHOP_TABLE).where({ id }).first();
@@ -20,12 +20,14 @@ exports.all = async function () {
     .select([
       { id: `${GOD_STONE_SHOP_TABLE}.id` },
       { itemId: "item_id" },
+      { itemImage: "item_image" },
       "price",
       "stock",
       "limit",
       { isEnable: "is_enable" },
       { name: "Name" },
       { headImage: "HeadImage_Url" },
+      { star: "Star" },
     ])
     .join("GachaPool", "GachaPool.id", "=", "god_stone_shop.item_id");
 };

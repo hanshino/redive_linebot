@@ -73,14 +73,15 @@ exports.history = async function (req, res) {
  * @param {import("express").Response} res
  */
 exports.addGodStoneShopItem = async function (req, res) {
-  const { id, price } = req.body;
+  const { id, price, item_image } = req.body;
 
   await GodStoneShopModel.create({
     item_id: id,
+    item_image,
     price,
   });
 
-  res.json({ item_id: id, price });
+  res.json({ item_id: id, price, item_image });
 };
 
 /**
@@ -112,11 +113,12 @@ exports.destroyGodStoneShopItem = async function (req, res) {
  * @param {import("express").Response} res
  */
 exports.updateGodStoneShopItem = async function (req, res) {
-  const { id, price } = req.body;
+  const { id, price, item_image } = req.body;
 
   try {
     const result = await GodStoneShopModel.update(id, {
       price,
+      item_image,
     });
 
     if (!result) {

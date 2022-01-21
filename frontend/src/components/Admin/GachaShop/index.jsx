@@ -64,6 +64,10 @@ const GachaShop = () => {
       field: "price",
     },
     {
+      title: "大圖",
+      field: "itemImage",
+    },
+    {
       title: "編號",
       field: "id",
       hidden: true,
@@ -164,9 +168,12 @@ const GachaShop = () => {
 
 const CreateForm = ({ onSubmit, onCancel, existIds, loading }) => {
   const [{ data: gachaData }] = useAxios("/api/Admin/GachaPool/Data");
+  const [{ data: characters }] = useAxios("/api/Princess/Character/Images");
   const classes = useStyles();
   const idRef = useRef(null);
+  const imageRef = useRef(null);
   const priceRef = useRef(null);
+  const [preview, setPreview] = useState(null);
 
   const nameList = useMemo(() => {
     if (gachaData) {
@@ -175,11 +182,29 @@ const CreateForm = ({ onSubmit, onCancel, existIds, loading }) => {
     return [];
   }, [gachaData, existIds]);
 
+  const handleChange = () => {
+    const id = parseInt(idRef.current.value);
+    const target = gachaData.find(item => item.id === id);
+    const character = characters.find(item => item.name === target.name);
+
+    if (character) {
+      imageRef.current.value = character.image;
+      setPreview(character.image);
+    }
+  };
+
   const handleSubmit = () => {
-    const target = gachaData.find(item => item.id == idRef.current.value) || {};
+    const target = gachaData.find(item => item.id === parseInt(idRef.current.value)) || {};
     const price = parseInt(priceRef.current.value);
+    const bigImage = imageRef.current.value;
+
+    if (!bigImage || !price || !target.id) {
+      alert("請填寫完整");
+    }
+
     onSubmit({
       id: target.id,
+      item_image: bigImage,
       price,
     });
   };
@@ -201,6 +226,7 @@ const CreateForm = ({ onSubmit, onCancel, existIds, loading }) => {
             required
             select
             SelectProps={{ native: true }}
+            onChange={handleChange}
           >
             {nameList.map(item => (
               <option key={item.id} value={item.id}>
@@ -219,6 +245,17 @@ const CreateForm = ({ onSubmit, onCancel, existIds, loading }) => {
             variant="outlined"
             required
             defaultValue={500}
+          />
+        </Grid>
+        <Grid item>
+          <TextField
+            fullWidth
+            inputRef={imageRef}
+            color="primary"
+            id="image"
+            label="大圖"
+            variant="outlined"
+            required
           />
         </Grid>
         <Grid item container spacing={2}>
@@ -247,6 +284,7 @@ const CreateForm = ({ onSubmit, onCancel, existIds, loading }) => {
             </Button>
           </Grid>
         </Grid>
+        {preview && <Grid item xs={12} component="img" src={preview} />}
       </Grid>
     </FormControl>
   );
