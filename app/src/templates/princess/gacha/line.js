@@ -216,7 +216,7 @@ function genDailyGacha({
  * @param {Number} param.total  總共有多少角色
  * @param {Number} param.godStone 女神石數量
  */
-function genGachaStatus({ current = 0, total, godStone = 0 }) {
+function genGachaStatus({ current = 0, total, godStone = 0, sumDays = 0 }) {
   let collectPercent = total === 0 ? 0 : Math.round((current / total) * 100);
 
   return {
@@ -293,7 +293,7 @@ function genGachaStatus({ current = 0, total, godStone = 0 }) {
         },
         {
           type: "box",
-          layout: "vertical",
+          layout: "horizontal",
           contents: [
             {
               type: "text",
@@ -312,6 +312,26 @@ function genGachaStatus({ current = 0, total, godStone = 0 }) {
                 },
               ],
               size: "sm",
+              align: "center",
+            },
+            {
+              type: "text",
+              contents: [
+                {
+                  type: "span",
+                  text: "連續簽到天數",
+                },
+                {
+                  type: "span",
+                  text: " ",
+                },
+                {
+                  type: "span",
+                  text: `${sumDays}`,
+                },
+              ],
+              size: "sm",
+              align: "center",
             },
           ],
           paddingTop: "md",

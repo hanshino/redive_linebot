@@ -11,6 +11,7 @@ const uidModel = require("../../model/princess/uid");
 const ProfileTemplate = require("../../templates/application/Profile");
 const MinigameTemplate = require("../../templates/application/Minigame");
 const JankenResult = require("../../model/application/JankenResult");
+const SigninModel = require("../../model/application/SigninDays");
 const { get } = require("lodash");
 
 /**
@@ -39,16 +40,16 @@ exports.showStatus = async context => {
       expRate = Math.round(((exp - nowExpData.exp) / (nextExpData.exp - nowExpData.exp)) * 100);
     }
 
-    let [current = 0, total = 0, godStone = 0, subInfo, bindInfo, jankenResult] = await Promise.all(
-      [
+    let [current = 0, total = 0, godStone = 0, subInfo, bindInfo, jankenResult, signinInfo] =
+      await Promise.all([
         GachaModel.getUserCollectedCharacterCount(userId),
         GachaModel.getPrincessCharacterCount(),
         GachaModel.getUserGodStoneCount(userId),
         NotifyController.getData(userId),
         uidModel.getData(userId),
         JankenResult.findUserGrade(userId),
-      ]
-    );
+        SigninModel.find(userId),
+      ]);
 
     if (subInfo) {
       subInfo = NotifyController.getSubData(subInfo.subType);
@@ -67,7 +68,12 @@ exports.showStatus = async context => {
       expRate,
       exp,
     });
-    const gachaBubble = GachaTemplate.genGachaStatus({ current, total, godStone });
+    const gachaBubble = GachaTemplate.genGachaStatus({
+      current,
+      total,
+      godStone,
+      sumDays: get(signinInfo, "sum_days", 0),
+    });
     const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo, subInfo });
 
     // 整理猜拳數據
