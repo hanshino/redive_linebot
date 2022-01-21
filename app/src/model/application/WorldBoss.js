@@ -1,6 +1,7 @@
 const mysql = require("../../util/mysql");
 const TABLE = "world_boss";
 const pick = require("lodash/pick");
+const get = require("lodash/get");
 
 exports.table = TABLE;
 
@@ -20,10 +21,19 @@ const fillable = [
 
 /**
  * 取得所有世界boss
+ * @param   {Object}  options
+ * @param   {Array<{column: String, order: String}>}  options.sort
  * @returns {Promise<Array>}
  */
-exports.all = async () => {
-  return await mysql(TABLE).select("*");
+exports.all = async options => {
+  const sort = get(options, "sort", []);
+  const query = mysql(TABLE).select("*");
+
+  if (sort) {
+    query.orderBy(sort);
+  }
+
+  return await query;
 };
 
 /**

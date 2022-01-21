@@ -2,7 +2,9 @@ const WorldBossModel = require("../../model/application/WorldBoss");
 const i18n = require("../../util/i18n");
 
 exports.getAllWorldBoss = async (req, res) => {
-  let worldBoss = await WorldBossModel.all();
+  let worldBoss = await WorldBossModel.all({
+    sort: [{ column: "created_at", order: "desc" }],
+  });
   res.json(worldBoss);
 };
 
