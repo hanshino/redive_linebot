@@ -98,6 +98,13 @@ const MessageForm = ({
           >
             玩家名稱
           </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => handleChange("template", `${formData.template} {{ boss_name }}`)}
+          >
+            怪物名稱
+          </Button>
         </Grid>
         <Grid item>
           <Typography variant="caption">
@@ -106,6 +113,8 @@ const MessageForm = ({
             <code>{`{{ damage }}`}</code> - 傷害資訊
             <br />
             <code>{`{{ display_name }}`}</code> - 玩家名稱
+            <br />
+            <code>{`{{ boss_name }}`}</code> - 怪物名稱
           </Typography>
         </Grid>
         <Grid item>
@@ -150,7 +159,7 @@ MessageForm.propTypes = {
 };
 
 const DemoArea = ({ imageUrl = "", template = "" }) => {
-  const demoData = { damage: 123456, display_name: "佑樹" };
+  const demoData = { damage: 123456, display_name: "佑樹", boss_name: "要塞破壞者" };
   const classes = useStyles();
   const imageRegex = /^https?:\/\/(?:[a-z-]+\.)+[a-z]{2,6}(?:\/[^/#?]+)+\.(?:jpe?g|png)$/;
   const isValidImage = imageRegex.test(imageUrl);

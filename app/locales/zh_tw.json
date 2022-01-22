@@ -24,7 +24,17 @@
     "nickname": "暱稱",
     "rank": "排名",
     "damage": "傷害",
-    "chaos_attack": "混沌攻擊"
+    "chaos_attack": "混沌攻擊",
+    "checked": "⭕️",
+    "unchecked": "❌",
+    "daily_quest_info": "{{ quest_count }} / {{ quest_count_max }}",
+    "daily_quest_completed": "完成",
+    "daily_quest_not_completed": "未完成",
+    "daily_icon": "日",
+    "weekly_icon": "週",
+    "janken": "猜拳",
+    "gacha": "抽卡",
+    "weekly": "每週任務"
   },
   "message": {
     "user_attack_on_world_boss": "成功對 {{ name }} 造成 {{ damage }} 傷害",

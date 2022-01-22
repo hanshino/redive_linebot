@@ -12,10 +12,11 @@ exports.table = TABLE;
  * @param {Object} options
  * @param {Array} options.withs
  * @param {Array} options.filters
+ * @param {Array<{column: String, order: String}>}  options.sort
  * @returns
  */
 exports.all = async (options = {}) => {
-  const { withs = [], filters = [] } = options;
+  const { withs = [], filters = [], sort = [] } = options;
   let query = mysql(this.table).select("*");
 
   if (withs.includes("worldBoss")) {
@@ -26,6 +27,10 @@ exports.all = async (options = {}) => {
   if (filters.length > 0) {
     // 批次添加過濾條件
     filters.forEach(filter => (query = query.where(...filter)));
+  }
+
+  if (sort) {
+    query.orderBy(sort);
   }
 
   return await query;

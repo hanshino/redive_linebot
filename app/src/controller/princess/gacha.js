@@ -9,6 +9,9 @@ const { DefaultLogger } = require("../../util/Logger");
 // eslint-disable-next-line no-unused-vars
 const { Context } = require("bottender");
 const chunk = require("lodash/chunk");
+const signModel = require("../../model/application/SigninDays");
+const moment = require("moment");
+const EventCenterService = require("../../service/EventCenterService");
 
 function GachaException(message, code) {
   this.message = message;
@@ -222,8 +225,6 @@ module.exports = {
 
       if (canDailyGacha) {
         OwnGodStone = await GachaModel.getUserGodStoneCount(userId);
-        // 戳個紀錄
-        GachaModel.touchSingin(userId);
       }
 
       if (canDailyGacha && pickup && OwnGodStone >= 1500) {
@@ -258,6 +259,9 @@ module.exports = {
           OwnGodStone,
           costGodStone,
         };
+
+        // 戳個紀錄
+        GachaModel.touchSingin(userId, JSON.stringify(rareCount));
       }
 
       // 沒扣女神石，卻使用消耗抽，提示用戶沒有扣也沒加倍
@@ -274,6 +278,11 @@ module.exports = {
         },
         DailyGachaInfo
       );
+
+      if (canDailyGacha) {
+        await handleSignin(userId);
+        await EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId });
+      }
     } catch (e) {
       console.log(e);
     }
@@ -430,4 +439,24 @@ async function showGachaRank(req, res) {
   }
 
   res.json(result);
+}
+
+async function handleSignin(userId) {
+  const userData = await signModel.find(userId);
+  const now = moment();
+
+  if (!userData) {
+    return await signModel.create({ user_id: userId, last_signin_at: now.format() });
+  }
+
+  const latsSigninAt = moment(userData.last_signin_at);
+  const updateData = { last_signin_at: now.format() };
+
+  if (now.diff(latsSigninAt, "days") > 1) {
+    updateData.sum_days = 1;
+  } else {
+    updateData.sum_days = userData.sum_days + 1;
+  }
+
+  await signModel.update(userId, updateData);
 }

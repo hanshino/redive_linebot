@@ -6,7 +6,9 @@ const WorldbossEventService = require("../../service/WorldBossEventService");
  * @param {import("express").Response} res
  */
 exports.all = async (req, res) => {
-  let result = await WorldbossEventService.all();
+  let result = await WorldbossEventService.all({
+    sort: [{ column: "created_at", order: "desc" }],
+  });
   res.json(result);
 };
 

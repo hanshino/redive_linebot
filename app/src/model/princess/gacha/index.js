@@ -93,14 +93,33 @@ exports.getSignin = async userId => {
   return isSignin;
 };
 
+exports.allSignin = async options => {
+  let query = mysql.from("GachaSignin").select("*");
+
+  if (get(options, "filter.userId")) {
+    query = query.where({ userId: options.filter.userId });
+  }
+
+  if (get(options, "filter.signinAt.start")) {
+    query = query.where("signinDate", ">=", options.filter.signinAt.start);
+  }
+
+  if (get(options, "filter.signinAt.end")) {
+    query = query.where("signinDate", "<=", options.filter.signinAt.end);
+  }
+
+  return await query;
+};
+
 /**
  * 轉蛋紀錄
  * @param {String} userId
+ * @param {String} record
  */
-exports.touchSingin = userId => {
+exports.touchSingin = (userId, record = "") => {
   var memoryKey = `GachaSignin_${userId}`;
   redis.set(memoryKey, 1, 10 * 60);
-  return mysql.insert({ userId, signinDate: getTodayDate() }).into("GachaSignin").then();
+  return mysql.insert({ userId, signinDate: getTodayDate(), record }).into("GachaSignin").then();
 };
 
 /**

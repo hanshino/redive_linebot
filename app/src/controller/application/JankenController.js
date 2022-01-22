@@ -11,6 +11,7 @@ const uuid = require("uuid-random");
 const redis = require("../../util/redis");
 const config = require("config");
 const { DefaultLogger } = require("../../util/Logger");
+const EventCenterService = require("../../service/EventCenterService");
 
 exports.router = [
   text(/^[.#/](決鬥|duel)/, duel),
@@ -171,6 +172,11 @@ exports.decide = async (context, { payload }) => {
     redis.del(`${redisPrefix}:${recordId}:${userId}`),
     redis.del(`${redisPrefix}:${recordId}:${targetUserId}`),
   ]);
+
+  await EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId });
+  await EventCenterService.add(EventCenterService.getEventName("daily_quest"), {
+    userId: targetUserId,
+  });
 };
 
 /**
@@ -359,6 +365,11 @@ async function handleHolder(context, { payload }) {
       result: get(JankenResult.resultMap, p2Result),
     },
   ]);
+
+  await EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId });
+  await EventCenterService.add(EventCenterService.getEventName("daily_quest"), {
+    userId: challengerId,
+  });
 }
 
 function jankenPlay(p1Decide, p2Decide) {

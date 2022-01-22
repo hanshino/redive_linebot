@@ -9,7 +9,8 @@
     "start": "node server.js",
     "debug": "DEBUG=bottender:action node server.js",
     "test": "jest",
-    "migrate": "knex migrate:latest"
+    "migrate": "knex migrate:latest",
+    "knex": "knex"
   },
   "dependencies": {
     "@sentry/node": "^6.16.1",

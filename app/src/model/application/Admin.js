@@ -1,4 +1,6 @@
 const mysql = require("../../util/mysql");
+const redis = require("../../util/redis");
+const config = require("config");
 
 exports.getList = () => {
   return mysql.select().from("Admin");
@@ -18,4 +20,17 @@ exports.isAdmin = userId => {
     .from("Admin")
     .where({ userId })
     .then(res => (res.length > 0 ? true : false));
+};
+
+exports.isAdminFromCache = async userId => {
+  let key = config.get("redis.keys.adminList");
+  let adminList = await redis.get(key);
+
+  if (!adminList) {
+    let result = await mysql("Admin").select("userId");
+    adminList = result.map(item => item.userId);
+    await redis.set(key, adminList, 60 * 60);
+  }
+
+  return adminList.includes(userId);
 };

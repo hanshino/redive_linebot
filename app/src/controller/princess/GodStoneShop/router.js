@@ -2,7 +2,6 @@
 const { Context } = require("bottender");
 const { text } = require("bottender/router");
 const GodStoneShopModel = require("../../../model/princess/GodStoneShop");
-const CharacterModel = require("../../../model/princess/character");
 const GodStoneShopTemplate = require("../../../templates/princess/GodStoneShop");
 const chunk = require("lodash/chunk");
 const i18n = require("../../../util/i18n");
@@ -17,12 +16,7 @@ async function showStoneShop(context) {
 
   const viewData = data
     .map(item => {
-      const { name } = item;
-      const { Image: image = null, Star: star } = CharacterModel.findByName(name);
-
-      if (!image) {
-        return null;
-      }
+      const { star, itemImage: image } = item;
 
       return {
         ...item,

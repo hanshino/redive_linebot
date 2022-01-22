@@ -78,3 +78,10 @@ exports.findDB = async unitId => {
     .join("unit_rarity", "unit_rarity.unit_id", "unit_profile.unit_id");
   return await query;
 };
+
+exports.unitData = {};
+
+exports.unitData.find = async unitId => {
+  const query = knex("unit_data").first("*").where("unit_id", unitId);
+  return await query;
+};

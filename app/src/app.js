@@ -87,7 +87,7 @@ async function HandlePostback(context, { next }) {
  */
 async function OrderBased(context, { next }) {
   const { userId } = context.event.source;
-  const isAdmin = await AdminModel.isAdmin(userId);
+  const isAdmin = userId && (await AdminModel.isAdminFromCache(userId));
 
   return router([
     ...BattleOrder(context),
