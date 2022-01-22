@@ -1,4 +1,17 @@
 {
+  "event_center": {
+    "daily_quest": "event_center:daily_quest"
+  },
+  "daily_quest": {
+    "reward": {
+      "itemId": 999,
+      "itemAmount": 150
+    },
+    "weekly_reward": {
+      "itemId": 999,
+      "itemAmount": 500
+    }
+  },
   "advancement": {
     "chat_king": [
       "chat_king",
