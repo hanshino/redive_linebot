@@ -11,6 +11,7 @@ const { Context } = require("bottender");
 const chunk = require("lodash/chunk");
 const signModel = require("../../model/application/SigninDays");
 const moment = require("moment");
+const EventCenterService = require("../../service/EventCenterService");
 
 function GachaException(message, code) {
   this.message = message;
@@ -280,6 +281,7 @@ module.exports = {
 
       if (canDailyGacha) {
         await handleSignin(userId);
+        await EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId });
       }
     } catch (e) {
       console.log(e);
