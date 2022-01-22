@@ -13,6 +13,7 @@ const MinigameTemplate = require("../../templates/application/Minigame");
 const DailyTemplate = require("../../templates/application/DailyQuest");
 const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
+const DailyQuestModel = require("../../model/application/DailyQuest");
 const { get } = require("lodash");
 const moment = require("moment");
 
@@ -50,7 +51,7 @@ exports.showStatus = async context => {
       bindInfo,
       jankenResult,
       signinInfo,
-      dailyQuest,
+      questInfo,
     ] = await Promise.all([
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
@@ -59,7 +60,7 @@ exports.showStatus = async context => {
       uidModel.getData(userId),
       JankenResult.findUserGrade(userId),
       SigninModel.find(userId),
-      getDailyQuestInfo(userId),
+      getQuestInfo(userId),
     ]);
 
     if (subInfo) {
@@ -111,10 +112,7 @@ exports.showStatus = async context => {
       rate,
     });
 
-    const dailyBubble = DailyTemplate.genDailyInfo({
-      isSignin: dailyQuest.gacha,
-      isJanken: dailyQuest.janken,
-    });
+    const dailyBubble = DailyTemplate.genDailyInfo(questInfo);
 
     bubbles.push(chatlevelBubble, dailyBubble, gachaBubble, jankenGradeBubble, otherBubble);
 
@@ -128,25 +126,48 @@ exports.showStatus = async context => {
   }
 };
 
-async function getDailyQuestInfo(userId) {
+async function getQuestInfo(userId) {
+  const start = moment().startOf("day").toDate();
+  const end = moment().endOf("day").toDate();
   let jankenOptions = {
     filter: {
       userId,
       createdAt: {
-        start: moment().startOf("day").toDate(),
-        end: moment().endOf("day").toDate(),
+        start,
+        end,
       },
     },
   };
 
-  let [isSignin, jankenResult] = await Promise.all([
-    GachaModel.getSignin(userId),
+  let signinOptions = {
+    filter: {
+      userId,
+      signinAt: {
+        start,
+        end,
+      },
+    },
+  };
+
+  let weeklyQuestOptions = {
+    filter: {
+      createdAt: {
+        start: moment().startOf("week").toDate(),
+        end: moment().endOf("week").toDate(),
+      },
+    },
+  };
+
+  let [signinInfo, jankenResult, weekQuestRecord] = await Promise.all([
+    GachaModel.allSignin(signinOptions),
     JankenResult.all(jankenOptions),
+    DailyQuestModel.all(userId, weeklyQuestOptions),
   ]);
 
   return {
-    gacha: isSignin,
+    gacha: signinInfo.length > 0,
     janken: jankenResult.length > 0,
+    weeklyCompletedCount: weekQuestRecord.length,
   };
 }
 

@@ -16,8 +16,8 @@ exports.all = async (options = {}) => {
   if (userId) query = query.where({ user_id: userId });
 
   let [createdStartAt, createdEndAt] = [
-    get(options, "createdAt.start"),
-    get(options, "createdAt.end"),
+    get(options, "filter.createdAt.start"),
+    get(options, "filter.createdAt.end"),
   ];
 
   if (createdStartAt) query = query.where("created_at", ">=", createdStartAt);

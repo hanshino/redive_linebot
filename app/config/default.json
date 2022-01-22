@@ -3,7 +3,8 @@
     "keys": {
       "worldBossAttackMessageKeeping": "worldBossAttackMessageKeeping",
       "jankenDecide": "jankenDecide",
-      "jankenChallenge": "jankenChallenge"
+      "jankenChallenge": "jankenChallenge",
+      "adminList": "adminList"
     }
   },
   "worldboss": {
@@ -61,5 +62,9 @@
       "只要你不再符合資格，稱號就會被拔掉",
       "目前稱號就只是拿來炫耀用的..."
     ]
+  },
+  "event": {
+    "expire": 86400,
+    "daily_quest": "daily_quest"
   }
 }
