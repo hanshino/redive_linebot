@@ -157,7 +157,10 @@ const GachaShop = () => {
           onRowUpdate: (newData, oldData) =>
             updateItem({
               url: `/api/Admin/GodStoneShop/item/${oldData.id}`,
-              data: newData,
+              data: {
+                ...newData,
+                item_image: newData.itemImage,
+              },
             }),
         }}
       />
