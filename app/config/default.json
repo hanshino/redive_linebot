@@ -1,4 +1,11 @@
 {
+  "app": {
+    "funds": {
+      "server": 3000,
+      "available": 550,
+      "used": 0
+    }
+  },
   "redis": {
     "keys": {
       "worldBossAttackMessageKeeping": "worldBossAttackMessageKeeping",
@@ -66,5 +73,15 @@
   "event": {
     "expire": 86400,
     "daily_quest": "daily_quest"
+  },
+  "links": {
+    "discord": "https://discord.gg/Fy82rTb",
+    "github": "https://github.com/hanshino/redive_linebot",
+    "bahamut": "https://forum.gamer.com.tw/C.php?bsn=30861&snA=32345&tnum=11"
+  },
+  "color": {
+    "discord": "#5865F2",
+    "github": "#171515",
+    "bahamut": "#117e96"
   }
 }
