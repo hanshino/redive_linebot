@@ -6,8 +6,9 @@ const i18n = require("../../util/i18n");
  * @param {Boolean} param0.gacha
  * @param {Boolean} param0.janken
  * @param {Number} param0.weeklyCompletedCount
+ * @param {Number} param0.sumDays
  */
-exports.genDailyInfo = ({ gacha, janken, weeklyCompletedCount }) => {
+exports.genDailyInfo = ({ gacha, janken, weeklyCompletedCount, sumDays = 0 }) => {
   return {
     type: "bubble",
     header: {
@@ -45,6 +46,26 @@ exports.genDailyInfo = ({ gacha, janken, weeklyCompletedCount }) => {
           quest_count: weeklyCompletedCount,
           quest_count_max: 7,
         }),
+        {
+          type: "text",
+          align: "end",
+          contents: [
+            {
+              type: "span",
+              text: "連續簽到天數",
+            },
+            {
+              type: "span",
+              text: " ",
+            },
+            {
+              type: "span",
+              text: `${sumDays}天`,
+            },
+          ],
+          size: "xxs",
+          color: "#808080",
+        },
       ],
       spacing: "md",
     },

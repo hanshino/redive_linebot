@@ -14,6 +14,7 @@ const DailyTemplate = require("../../templates/application/DailyQuest");
 const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
+const DonateModel = require("../../model/application/DonateList");
 const { get } = require("lodash");
 const moment = require("moment");
 
@@ -52,6 +53,7 @@ exports.showStatus = async context => {
       jankenResult,
       signinInfo,
       questInfo,
+      donateAmount,
     ] = await Promise.all([
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
@@ -61,6 +63,7 @@ exports.showStatus = async context => {
       JankenResult.findUserGrade(userId),
       SigninModel.find(userId),
       getQuestInfo(userId),
+      DonateModel.getUserTotalAmount(userId),
     ]);
 
     if (subInfo) {
@@ -84,7 +87,7 @@ exports.showStatus = async context => {
       current,
       total,
       godStone,
-      sumDays: get(signinInfo, "sum_days", 0),
+      paidStone: donateAmount || 0,
     });
     const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo, subInfo });
 
@@ -112,7 +115,10 @@ exports.showStatus = async context => {
       rate,
     });
 
-    const dailyBubble = DailyTemplate.genDailyInfo(questInfo);
+    const dailyBubble = DailyTemplate.genDailyInfo({
+      ...questInfo,
+      sumDays: get(signinInfo, "sum_days", 0),
+    });
 
     bubbles.push(chatlevelBubble, dailyBubble, gachaBubble, jankenGradeBubble, otherBubble);
 

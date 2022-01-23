@@ -28,6 +28,7 @@ const AdvertisementController = require("./controller/application/AdvertisementC
 const GodStoneShopController = require("./controller/princess/GodStoneShop");
 const JankenController = require("./controller/application/JankenController");
 const AdvancementController = require("./controller/application/AdvancementController");
+const DonateListController = require("./controller/application/DonateListController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -199,6 +200,7 @@ function AdminOrder() {
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
     ...AdvancementController.adminRouter,
+    ...DonateListController.adminRouter,
   ];
 }
 
