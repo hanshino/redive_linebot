@@ -1,217 +1,140 @@
 const { getLiffUri } = require(".");
+const config = require("config");
 
-const PuddingStatus = {
-  type: "bubble",
-  body: {
+function genPuddingStatus() {
+  const availableFunds = config.get("app.funds.available") || 0;
+  const serverFunds = config.get("app.funds.server") || 0;
+  const progress =
+    availableFunds && serverFunds ? Math.round((availableFunds / serverFunds) * 100) : 0;
+  return {
+    type: "bubble",
+    hero: {
+      type: "image",
+      url: "https://i.imgur.com/SW3GwIA.png",
+      aspectRatio: "16:10",
+      size: "full",
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "text",
+                  text: "伺服器資金",
+                  size: "sm",
+                  align: "center",
+                  flex: 4,
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "box",
+                      layout: "vertical",
+                      contents: [],
+                      backgroundColor: "#56FF56",
+                      height: "100%",
+                      width: `${progress}%`,
+                    },
+                  ],
+                  backgroundColor: "#808080",
+                  cornerRadius: "lg",
+                  height: "10px",
+                  flex: 8,
+                },
+              ],
+              alignItems: "center",
+            },
+            {
+              type: "text",
+              align: "end",
+              contents: [
+                {
+                  type: "span",
+                  text: `${availableFunds}`,
+                },
+                {
+                  type: "span",
+                  text: " / ",
+                },
+                {
+                  type: "span",
+                  text: `${serverFunds}`,
+                },
+              ],
+              size: "xs",
+              color: "#808080",
+            },
+          ],
+        },
+        genRowButtons([
+          genLinkButton("首頁", "#00bcd488", `${getLiffUri("full")}`),
+          genLinkButton(
+            "使用手冊",
+            "#00bcd488",
+            `${getLiffUri("tall")}?reactRedirectUri=/Panel/Manual`
+          ),
+          genLinkButton(
+            "訊息訂閱",
+            "#00bcd488",
+            `${getLiffUri("tall")}?reactRedirectUri=/Bot/Notify`
+          ),
+        ]),
+        genRowButtons([
+          genLinkButton("Discord", config.get("color.discord"), config.get("links.discord")),
+          genLinkButton("GitHub", config.get("color.github"), config.get("links.github")),
+          genLinkButton("巴哈姆特", config.get("color.bahamut"), config.get("links.bahamut")),
+        ]),
+      ],
+      spacing: "sm",
+    },
+  };
+}
+
+function genRowButtons(buttons) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    contents: buttons,
+    spacing: "md",
+    margin: "md",
+  };
+}
+
+function genLinkButton(text, color, link) {
+  return {
     type: "box",
     layout: "vertical",
     contents: [
       {
-        type: "image",
-        url: "https://i.imgur.com/SW3GwIA.png",
-        size: "full",
-        aspectMode: "cover",
-        gravity: "top",
-        aspectRatio: "7:9",
-      },
-      {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              {
-                type: "text",
-                size: "xl",
-                color: "#ffffff",
-                weight: "bold",
-                contents: [
-                  {
-                    type: "span",
-                    text: "布丁運行狀態",
-                  },
-                  {
-                    type: "span",
-                    text: " ",
-                  },
-                  {
-                    type: "span",
-                    text: "ON",
-                    color: "#00FF00",
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              {
-                type: "filler",
-              },
-              {
-                type: "box",
-                layout: "baseline",
-                contents: [
-                  {
-                    type: "filler",
-                  },
-                  {
-                    type: "text",
-                    text: "首頁",
-                    color: "#ffffff",
-                    flex: 0,
-                    offsetTop: "-2px",
-                    weight: "bold",
-                  },
-                  {
-                    type: "filler",
-                  },
-                ],
-                spacing: "sm",
-              },
-              {
-                type: "filler",
-              },
-            ],
-            borderWidth: "3px",
-            cornerRadius: "4px",
-            spacing: "sm",
-            borderColor: "#ffffff",
-            margin: "xxl",
-            height: "40px",
-            action: {
-              type: "uri",
-              label: "action",
-              uri: `${getLiffUri("full")}?reactRedirectUri=/`,
-            },
-          },
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              {
-                type: "filler",
-              },
-              {
-                type: "box",
-                layout: "baseline",
-                contents: [
-                  {
-                    type: "filler",
-                  },
-                  {
-                    type: "text",
-                    text: "使用手冊",
-                    color: "#ffffff",
-                    flex: 0,
-                    offsetTop: "-2px",
-                    weight: "bold",
-                  },
-                  {
-                    type: "filler",
-                  },
-                ],
-                spacing: "sm",
-              },
-              {
-                type: "filler",
-              },
-            ],
-            borderWidth: "3px",
-            cornerRadius: "4px",
-            spacing: "sm",
-            borderColor: "#ffffff",
-            margin: "xxl",
-            height: "40px",
-            action: {
-              type: "uri",
-              label: "action",
-              uri: `${getLiffUri("compact")}?reactRedirectUri=/Panel/Manual`,
-            },
-          },
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [
-              {
-                type: "filler",
-              },
-              {
-                type: "box",
-                layout: "baseline",
-                contents: [
-                  {
-                    type: "filler",
-                  },
-                  {
-                    type: "text",
-                    text: "訂閱新訊息",
-                    color: "#ffffff",
-                    flex: 0,
-                    offsetTop: "-2px",
-                    weight: "bold",
-                  },
-                  {
-                    type: "filler",
-                  },
-                ],
-                spacing: "sm",
-              },
-              {
-                type: "filler",
-              },
-            ],
-            borderWidth: "3px",
-            cornerRadius: "4px",
-            spacing: "sm",
-            borderColor: "#ffffff",
-            margin: "xxl",
-            height: "40px",
-            action: {
-              type: "uri",
-              label: "action",
-              uri: `${getLiffUri("compact")}?reactRedirectUri=/Bot/Notify`,
-            },
-          },
-        ],
-        position: "absolute",
-        offsetBottom: "0px",
-        offsetStart: "0px",
-        offsetEnd: "0px",
-        backgroundColor: "#00bcd488",
-        paddingAll: "20px",
-        paddingTop: "18px",
-      },
-      {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: "ON AIR",
-            color: "#ffffff",
-            align: "center",
-            size: "xs",
-            offsetTop: "3px",
-          },
-        ],
-        position: "absolute",
-        cornerRadius: "20px",
-        offsetTop: "18px",
-        backgroundColor: "#ff334b",
-        offsetStart: "18px",
-        height: "25px",
-        width: "80px",
+        type: "text",
+        text: text,
+        align: "center",
+        weight: "bold",
+        color: "#FFFFFF",
+        size: "sm",
+        gravity: "center",
       },
     ],
-    paddingAll: "0px",
-  },
-};
+    paddingAll: "lg",
+    cornerRadius: "xl",
+    backgroundColor: color,
+    action: {
+      type: "uri",
+      uri: link,
+    },
+  };
+}
 
 module.exports = context => {
-  context.replyFlex("使用說明", PuddingStatus);
+  context.replyFlex("使用說明", genPuddingStatus());
 };

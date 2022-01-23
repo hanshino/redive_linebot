@@ -105,9 +105,9 @@ async function OrderBased(context, { next }) {
     ...GodStoneShopController.router,
     ...JankenController.router,
     ...AdvancementController.router,
-    text(/^[#.](使用說明|help)$/, welcome),
-    text(/^[#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
-    text(/^[#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
+    text(/^[/#.](使用說明|help)$/, welcome),
+    text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
+    text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
       gacha.play(context, { ...props, pickup: true })
     ),
     text(["#我的包包", "/mybag"], gacha.showGachaBag),
