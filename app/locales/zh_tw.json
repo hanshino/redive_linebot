@@ -43,6 +43,9 @@
     "damage_suffix": "[,10[效果不彰...|[,50[效果甚微...|[,100[效果不錯|[,300[效果顯著|[,400[爆擊！|致命爆擊",
     "admin_attack_on_world_boss": "創造神路過敲了一下... 造成 {{ damage }} 傷害...",
     "world_boss_event_completed": "世界王已被討伐..別再鞭屍了QwQ",
+    "alias": {
+      "add_usage": "請輸入參數，例如：/alias foo=指令"
+    },
     "service": {
       "already_exists": "服務名稱 {{ serviceName }} 已存在於 {{ groupId }}",
       "add_success": "成功新增服務 {{ serviceName }} 到 {{ groupId }}",

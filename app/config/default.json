@@ -12,6 +12,9 @@
       "jankenDecide": "jankenDecide",
       "jankenChallenge": "jankenChallenge",
       "adminList": "adminList"
+    },
+    "prefix": {
+      "alias": "alias"
     }
   },
   "worldboss": {
