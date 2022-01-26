@@ -8,6 +8,7 @@ const customerOrder = require("./controller/application/CustomerOrder");
 const guildConfig = require("./controller/application/GroupConfig");
 const setProfile = require("./middleware/profile");
 const statistics = require("./middleware/statistics");
+const alias = require("./middleware/alias");
 const lineEvent = require("./controller/lineEvent");
 const welcome = require("./templates/common/welcome");
 const commonTemplate = require("./templates/common");
@@ -29,6 +30,7 @@ const GodStoneShopController = require("./controller/princess/GodStoneShop");
 const JankenController = require("./controller/application/JankenController");
 const AdvancementController = require("./controller/application/AdvancementController");
 const DonateListController = require("./controller/application/DonateListController");
+const AliasController = require("./controller/application/AliasController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -105,6 +107,7 @@ async function OrderBased(context, { next }) {
     ...GodStoneShopController.router,
     ...JankenController.router,
     ...AdvancementController.router,
+
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
@@ -201,6 +204,7 @@ function AdminOrder() {
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
     ...AdvancementController.adminRouter,
     ...DonateListController.adminRouter,
+    ...AliasController.adminRouter,
   ];
 }
 
@@ -329,6 +333,7 @@ async function App(context) {
     config, // 設置群組設定檔
     transfer, // Discord Webhook轉發
     HandlePostback, // 處理postback事件
+    alias,
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
     CustomerOrderBased, // 自訂指令分析
