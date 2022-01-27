@@ -7,6 +7,9 @@ class Base {
     this.fillable = fillable;
   }
 
+  /**
+   * @returns { import("knex").Knex }
+   */
   get knex() {
     return mysql(this.table);
   }
@@ -18,16 +21,14 @@ class Base {
    * @param {Object} options.pagination 分頁設定
    * @param {Number} options.pagination.page 分頁頁數
    * @param {Number} options.pagination.perPage 分頁每頁顯示數量
-   * @param {Object} options.order 排序設定
-   * @param {String} options.order.column 排序欄位
-   * @param {String} options.order.direction 排序方向
+   * @param {Array<{column: String, direction: String}>} options.order 排序設定
    * @param {Array}  options.select 選擇欄位
    * @returns {Promise<Array>}
    */
   async all(options = {}) {
     const filter = get(options, "filter", {});
     const pagination = get(options, "pagination", {});
-    const order = get(options, "order", {});
+    const order = get(options, "order", []);
     const select = get(options, "select", ["*"]);
 
     let query = mysql(this.table);
@@ -40,11 +41,41 @@ class Base {
       query = query.limit(pagination.perPage).offset(pagination.perPage * (pagination.page - 1));
     }
 
-    if (order.column) {
-      query = query.orderBy(order.column, order.direction || "asc");
-    }
+    order.forEach(item => {
+      let col = get(item, "column");
+      if (!col) return;
+      query = query.orderBy(col, get(item, "direction", "asc"));
+    });
 
     return await query.select(select);
+  }
+
+  /**
+   * 單筆資料
+   * @param {Object} options 選填參數
+   * @param {Object} options.filter 過濾條件
+   * @param {Array<{column: String, direction: String}>} options.order 排序設定
+   * @param {Array}  options.select 選擇欄位
+   * @returns {Promise<Array>}
+   */
+  async first(options = {}) {
+    const filter = get(options, "filter", {});
+    const order = get(options, "order", []);
+    const select = get(options, "select", ["*"]);
+
+    let query = mysql(this.table);
+
+    Object.keys(filter).forEach(key => {
+      query = query.where(key, filter[key]);
+    });
+
+    order.forEach(item => {
+      let col = get(item, "column");
+      if (!col) return;
+      query = query.orderBy(col, get(item, "direction", "asc"));
+    });
+
+    return await query.first(select);
   }
 
   /**
