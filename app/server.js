@@ -11,7 +11,7 @@ require("./src/router/socket");
 // 定時更新 game data
 // 只在早上 9:00 ~ 晚上 21:00 更新
 new cron(
-  "0 * 9-21 * * *",
+  "0 5 9-21 * * *",
   async () => {
     await handleGameData();
   },
