@@ -30,6 +30,7 @@ const GodStoneShopController = require("./controller/princess/GodStoneShop");
 const JankenController = require("./controller/application/JankenController");
 const AdvancementController = require("./controller/application/AdvancementController");
 const DonateListController = require("./controller/application/DonateListController");
+const GambleController = require("./controller/application/GambleController");
 const AliasController = require("./controller/application/AliasController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
@@ -107,7 +108,7 @@ async function OrderBased(context, { next }) {
     ...GodStoneShopController.router,
     ...JankenController.router,
     ...AdvancementController.router,
-
+    ...GambleController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>

@@ -11,7 +11,8 @@
       "worldBossAttackMessageKeeping": "worldBossAttackMessageKeeping",
       "jankenDecide": "jankenDecide",
       "jankenChallenge": "jankenChallenge",
-      "adminList": "adminList"
+      "adminList": "adminList",
+      "gamebleGame": "gamebleGame"
     },
     "prefix": {
       "alias": "alias"
