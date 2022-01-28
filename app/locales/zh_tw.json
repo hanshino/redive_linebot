@@ -46,6 +46,11 @@
     "alias": {
       "add_usage": "請輸入參數，例如：/alias foo=指令"
     },
+    "vote": {
+      "notFound": "沒有找到指定的投票活動",
+      "notHolding": "這個投票活動沒有開始或已經結束",
+      "decided": "{{ displayName }} 已成功投票，舉辦期間仍可以改變決定"
+    },
     "service": {
       "already_exists": "服務名稱 {{ serviceName }} 已存在於 {{ groupId }}",
       "add_success": "成功新增服務 {{ serviceName }} 到 {{ groupId }}",
