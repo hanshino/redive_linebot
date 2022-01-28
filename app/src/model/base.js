@@ -12,13 +12,20 @@ class Base {
    * @returns { import("knex").Knex }
    */
   get knex() {
-    if (!this.trx && this.trx.isCompleted) {
+    if (this.trx && !this.trx.isCompleted) {
       return this.trx;
     } else {
       return mysql(this.table);
     }
   }
 
+  setTransaction(trx) {
+    this.trx = trx;
+  }
+
+  /**
+   * @returns {Promise<import("knex").Knex>}
+   */
   async transaction() {
     this.trx = await this.knex.transaction();
     return this.trx;
@@ -93,8 +100,6 @@ class Base {
       query = query.orderBy(col, get(item, "direction", "asc"));
     });
 
-    console.log(query.toSQL().toNative());
-
     return await query.first(select);
   }
 
@@ -104,7 +109,7 @@ class Base {
    * @returns {Promise<?Object>}
    */
   async find(id) {
-    return await mysql.first().from(this.table).where({ id });
+    return await this.knex.first().where({ id });
   }
 
   /**

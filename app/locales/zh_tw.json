@@ -104,7 +104,9 @@
       "holding_manual": "{{ displayName }} 正在舉辦猜拳比賽，任何人都可以向他提出決鬥請求！"
     },
     "gamble": {
-      "no_game": "目前沒有遊戲正在進行中"
+      "no_game": "目前沒有遊戲正在進行中",
+      "not_enough_coins": "你沒有足夠的女神石",
+      "bet_failed": "下注失敗，請檢查輸入的金額"
     }
   },
   "advancement": {
