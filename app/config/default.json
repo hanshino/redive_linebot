@@ -14,7 +14,8 @@
       "adminList": "adminList"
     },
     "prefix": {
-      "alias": "alias"
+      "alias": "alias",
+      "vote": "vote"
     }
   },
   "worldboss": {
@@ -86,5 +87,12 @@
     "discord": "#5865F2",
     "github": "#171515",
     "bahamut": "#117e96"
+  },
+  "vote": {
+    "default": {
+      "color": {
+        "option": "#808080"
+      }
+    }
   }
 }

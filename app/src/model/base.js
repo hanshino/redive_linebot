@@ -50,10 +50,19 @@ class Base {
   /**
    * 查找單筆資料
    * @param {Number} id
-   * @returns {Promise<Object>}
+   * @returns {Promise<?Object>}
    */
   async find(id) {
     return await mysql.first().from(this.table).where({ id });
+  }
+
+  /**
+   * Alias of `find`
+   * @param {Number} id
+   * @returns {Promise<?Object>}
+   */
+  findById(id) {
+    return this.find(id);
   }
 
   /**

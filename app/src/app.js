@@ -31,6 +31,7 @@ const JankenController = require("./controller/application/JankenController");
 const AdvancementController = require("./controller/application/AdvancementController");
 const DonateListController = require("./controller/application/DonateListController");
 const AliasController = require("./controller/application/AliasController");
+const VoteController = require("./controller/application/VoteController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -76,6 +77,7 @@ async function HandlePostback(context, { next }) {
       ),
       route(() => action === "janken", withProps(JankenController.decide, { payload })),
       route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
+      route(() => action === "vote", withProps(VoteController.decide, { payload })),
       route("*", next),
     ]);
   } catch (e) {
@@ -107,7 +109,7 @@ async function OrderBased(context, { next }) {
     ...GodStoneShopController.router,
     ...JankenController.router,
     ...AdvancementController.router,
-
+    ...VoteController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
