@@ -24,10 +24,10 @@ class Base {
   }
 
   /**
-   * @returns {Promise<import("knex").Knex>}
+   * @returns {Promise<import("knex").Knex.Transaction>}
    */
   async transaction() {
-    this.trx = await this.knex.transaction();
+    this.trx = await mysql.transaction();
     return this.trx;
   }
 

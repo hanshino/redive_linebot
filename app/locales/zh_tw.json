@@ -106,7 +106,9 @@
     "gamble": {
       "no_game": "目前沒有遊戲正在進行中",
       "not_enough_coins": "你沒有足夠的女神石",
-      "bet_failed": "下注失敗，請檢查輸入的金額"
+      "invalid_option": "無效的選項",
+      "bet_failed": "下注失敗，請檢查輸入的金額",
+      "bet_success": "成功下注 {{ amount }} 顆女神石"
     }
   },
   "advancement": {

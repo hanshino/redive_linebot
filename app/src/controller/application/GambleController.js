@@ -22,12 +22,19 @@ async function bet(context, props) {
   const { userId } = context.event.source;
 
   if (!game) {
-    await context.replyText(i18n.t("message.gamble.no_game"));
+    await context.replyText(i18n.__("message.gamble.no_game"));
     return;
   }
 
   const { option, amount } = props.match.groups;
-  console.log(option, amount);
+
+  const availableOptions = get(game, "options", []);
+
+  if (parseInt(option) > availableOptions.length) {
+    await context.replyText(i18n.__("message.gamble.invalid_option"));
+    return;
+  }
+
   const usedCoins = parseInt(amount);
   const sumResult = await InventoryModel.getUserOwnCountByItemId(userId, 999);
   const ownStones = parseInt(get(sumResult, "amount", 0));
@@ -47,12 +54,26 @@ async function bet(context, props) {
       option,
       amount: usedCoins,
     });
+
+    await InventoryModel.create({
+      userId,
+      itemId: 999,
+      itemAmount: -usedCoins,
+    });
   } catch (e) {
     trx.rollback();
     DefaultLogger.error(e);
     await context.replyText(i18n.__("message.gamble.bet_failed"));
     return;
   }
+
+  trx.commit();
+
+  await context.replyText(
+    i18n.__("message.gamble.bet_success", {
+      amount: usedCoins,
+    })
+  );
 }
 
 async function getHoldingGame() {
