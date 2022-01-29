@@ -4,7 +4,21 @@ const { bottender } = require("bottender");
 const apiRouter = require("./src/router/api");
 const cors = require("cors");
 const { server, http } = require("./src/util/connection");
+const { handleGameData } = require("./src/task");
+const cron = require("cron").CronJob;
 require("./src/router/socket");
+
+// 定時更新 game data
+// 只在早上 9:00 ~ 晚上 21:00 更新
+new cron(
+  "0 5 9-21 * * *",
+  async () => {
+    await handleGameData();
+  },
+  null,
+  true,
+  "Asia/Taipei"
+);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

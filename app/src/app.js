@@ -40,6 +40,7 @@ const { showManagePlace } = require("./templates/application/Admin");
 const { sendPreWorkMessage } = require("./templates/princess/other");
 const { pushMessage } = require("./util/LineNotify");
 const AdminModel = require("./model/application/Admin");
+require("./task");
 
 function showState(context) {
   context.replyText(JSON.stringify(context.state));
