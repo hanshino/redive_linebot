@@ -7,7 +7,4 @@ const knex = require("knex")({
   useNullAsDefault: true,
 });
 
-/**
- * @returns { import("knex").Knex }
- */
 module.exports = knex;

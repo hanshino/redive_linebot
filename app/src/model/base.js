@@ -19,6 +19,10 @@ class Base {
     }
   }
 
+  get connection() {
+    return mysql;
+  }
+
   setTransaction(trx) {
     this.trx = trx;
   }

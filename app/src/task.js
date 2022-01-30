@@ -8,37 +8,41 @@ const { DefaultLogger } = require("./util/Logger");
 const Notify = require("./util/LineNotify");
 
 exports.handleGameData = async () => {
-  let { data } = await axios.get(`https://${domain}/redive_db/version.json`);
-  let versionData = await gameDataModel.first({
-    order: [
-      {
-        column: "created_at",
-        direction: "desc",
-      },
-    ],
-  });
-
-  if (!versionData || versionData.truth_version !== data.TruthVersion) {
-    await downloadGameData();
-    await gameDataModel.create({
-      truth_version: data.TruthVersion,
-      hash: data.hash,
+  try {
+    let { data } = await axios.get(`https://${domain}/redive_db/version.json`);
+    let versionData = await gameDataModel.first({
+      order: [
+        {
+          column: "created_at",
+          direction: "desc",
+        },
+      ],
     });
 
-    writeLog("Download game data success");
+    if (!versionData || versionData.truth_version !== data.TruthVersion) {
+      await downloadGameData();
+      await gameDataModel.create({
+        truth_version: data.TruthVersion,
+        hash: data.hash,
+      });
 
-    // 解壓縮
-    let result = brotli.decompress(
-      fs.readFileSync(path.join(process.cwd(), "assets", "redive_tw.db.br"))
-    );
-    fs.writeFileSync(path.join(process.cwd(), "assets", "redive_tw.db"), result);
+      writeLog("Download game data success");
 
-    writeLog("Decompress game data success");
+      // 解壓縮
+      let result = brotli.decompress(
+        fs.readFileSync(path.join(process.cwd(), "assets", "redive_tw.db.br"))
+      );
+      fs.writeFileSync(path.join(process.cwd(), "assets", "redive_tw.db"), result);
 
-    // 刪除壓縮檔
-    fs.unlinkSync(path.join(process.cwd(), "assets", "redive_tw.db.br"));
-  } else {
-    DefaultLogger.info("Game data is up to date");
+      writeLog("Decompress game data success");
+
+      // 刪除壓縮檔
+      fs.unlinkSync(path.join(process.cwd(), "assets", "redive_tw.db.br"));
+    } else {
+      DefaultLogger.info("Game data is up to date");
+    }
+  } catch (e) {
+    writeLog(e.message);
   }
 };
 
