@@ -10,4 +10,7 @@ const knex = require("knex")({
   pool: { min: 0, max: 10 },
 });
 
+/**
+ * @returns { import("knex").Knex }
+ */
 module.exports = knex;

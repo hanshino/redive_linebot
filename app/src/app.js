@@ -30,6 +30,7 @@ const GodStoneShopController = require("./controller/princess/GodStoneShop");
 const JankenController = require("./controller/application/JankenController");
 const AdvancementController = require("./controller/application/AdvancementController");
 const DonateListController = require("./controller/application/DonateListController");
+const GambleController = require("./controller/application/GambleController");
 const AliasController = require("./controller/application/AliasController");
 const VoteController = require("./controller/application/VoteController");
 const { transfer } = require("./middleware/dcWebhook");
@@ -39,6 +40,7 @@ const { showManagePlace } = require("./templates/application/Admin");
 const { sendPreWorkMessage } = require("./templates/princess/other");
 const { pushMessage } = require("./util/LineNotify");
 const AdminModel = require("./model/application/Admin");
+require("./task");
 
 function showState(context) {
   context.replyText(JSON.stringify(context.state));
@@ -110,6 +112,7 @@ async function OrderBased(context, { next }) {
     ...JankenController.router,
     ...AdvancementController.router,
     ...VoteController.router,
+    ...GambleController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
@@ -204,6 +207,7 @@ function AdminOrder() {
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
+    ...GambleController.adminRouter,
     ...AdvancementController.adminRouter,
     ...DonateListController.adminRouter,
     ...AliasController.adminRouter,

@@ -102,6 +102,17 @@
       "failed_to_get_target_user_id": "無法取得對手玩家ID",
       "challenge_success": "{{ displayName }} 已經向 {{ targetDisplayName }} 傳送了對決請求，並且出好拳了，請等待對方出拳，在對方出好拳之前都可以更改選項！",
       "holding_manual": "{{ displayName }} 正在舉辦猜拳比賽，任何人都可以向他提出決鬥請求！"
+    },
+    "gamble": {
+      "no_game": "目前沒有遊戲正在進行中",
+      "not_enough_coins": "你沒有足夠的女神石",
+      "invalid_option": "無效的選項",
+      "bet_failed": "下注失敗，請檢查輸入的金額",
+      "bet_success": "成功下注 {{ amount }} 顆女神石",
+      "usage": "使用方法：#下注 編號 金額",
+      "result": "抽出獎項，現在時間是 {{ time }}\n抽到的選項是 {{ prize }}\n此次抽出的時間段為 {{ start }} ~ {{ end }} 下注的玩家",
+      "simulate_result": "此次為模擬開獎，如需正式發送，請加入 --dispatch 參數",
+      "result_usage": "使用方法：/gamble result --id|i=<遊戲編號> --date|d=<日期> --start|s=<開始時間> --end|e=<結束時間> --number|n=<開出數量>"
     }
   },
   "advancement": {
@@ -135,6 +146,11 @@
         "uploadBase64": "上傳圖片失敗，請確認圖片格式是否正確"
       },
       "unknown": "未知錯誤"
+    }
+  },
+  "princess": {
+    "wiki": {
+      "unit": "https://pcredivewiki.tw/static/images/unit/icon_unit_{{ unitId }}.png"
     }
   }
 }

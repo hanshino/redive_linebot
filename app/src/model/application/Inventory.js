@@ -1,4 +1,5 @@
 const mysql = require("../../util/mysql");
+const base = require("../base");
 
 exports.tableName = "Inventory";
 
@@ -47,3 +48,18 @@ exports.fetchUserItem = userId => {
 exports.fetchUserOwnItems = (userId, itemIds) => {
   return mysql.select("*").from(this.tableName).whereIn("itemId", itemIds).where({ userId });
 };
+
+class Inventory extends base {
+  getUserOwnCountByItemId(userId, itemId) {
+    return this.knex.sum({ amount: "itemAmount" }).where({ userId, itemId }).first();
+  }
+
+  deleteUserItem(userId, itemId) {
+    return this.knex.where({ userId, itemId }).del();
+  }
+}
+
+exports.inventory = new Inventory({
+  table: "Inventory",
+  fillable: ["userId", "itemId", "itemAmount"],
+});
