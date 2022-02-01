@@ -82,7 +82,7 @@ async function result(context) {
     return;
   }
 
-  const game = await getHoldingGame();
+  const game = await GambleGameModel.find(data.id);
 
   if (!game) {
     await context.replyText(i18n.__("message.gamble.no_game"));
