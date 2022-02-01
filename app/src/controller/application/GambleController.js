@@ -69,6 +69,10 @@ async function result(context) {
         type: "integer",
         minimum: 1,
       },
+      rate: {
+        type: "integer",
+        minimum: 1,
+      },
     },
     required: ["id", "date", "start", "end", "number"],
   };
@@ -105,11 +109,14 @@ async function result(context) {
   ).map(item => item.unit_name);
 
   if (args.dispatch) {
+    let rate = get(args, "rate", get(args, "r", 1));
+    rate = parseFloat(rate);
     await UserGambleOptionModel.dispatchReward({
       id: game.id,
       start: moment(`${data.date} ${data.start}`).toDate(),
       end: moment(`${data.date} ${data.end}`).toDate(),
       options: indexResult,
+      rate: rate + 1,
     });
   } else {
     context.replyText(i18n.__("message.gamble.simulate_result"));

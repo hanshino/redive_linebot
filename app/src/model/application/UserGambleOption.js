@@ -13,12 +13,12 @@ class UserGambleOption extends base {
     return await query;
   }
 
-  async dispatchReward({ id, start, end, options }) {
+  async dispatchReward({ id, start, end, options, rate = 2 }) {
     const knex = this.connection;
     const table = this.table;
     const query = this.knex
       .insert(function () {
-        this.select(["user_id", knex.raw("999"), knex.raw("amount * 2")])
+        this.select(["user_id", knex.raw("999"), knex.raw("round(amount * ?)", rate)])
           .from(table)
           .where("gamble_game_id", id)
           .whereBetween("created_at", [start, end])
