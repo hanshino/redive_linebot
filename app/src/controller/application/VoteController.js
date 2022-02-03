@@ -26,6 +26,12 @@ async function show(context, props) {
     return context.replyText(i18n.__("message.vote.notFound"));
   }
 
+  // 檢查是否在舉辦時間內
+  const isHolding = await getIsHolding(voteId);
+  if (!isHolding) {
+    return context.replyText(i18n.__("message.vote.notHolding"));
+  }
+
   context.replyFlex(vote.title, VoteTemplate.generateVote(vote));
 }
 
@@ -40,6 +46,17 @@ exports.decide = async (context, { payload }) => {
   const isHolding = await getIsHolding(id);
 
   if (!isHolding) {
+    // 如果最近一小時內已經通知過了，就不再通知
+    if (context.state[`vote:${id}`].notifyCoolDown > moment().toDate().getTime()) {
+      return;
+    }
+
+    context.setState({
+      [`vote:${id}`]: {
+        notifyCoolDown: moment().add(1, "hour").toDate().getTime(),
+      },
+    });
+
     return context.replyText(i18n.__("message.vote.notHolding"));
   }
 
@@ -91,7 +108,7 @@ async function getVoteFromCache(voteId) {
   const vote = await VoteModel.find(voteId);
   if (!vote) return null;
 
-  await redis.set(key, vote);
+  await redis.set(key, vote, 60);
 
   return vote;
 }
