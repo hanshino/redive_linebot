@@ -3,6 +3,8 @@ const CharacterTemplate = require("../../templates/princess/character");
 const error = require("../../util/error");
 const { recordSign } = require("../../util/traffic");
 const { CustomLogger } = require("../../util/Logger");
+const gameSqlite = require("../../model/princess/GameSqlite");
+const { sample } = require("lodash");
 
 function getCharacterByNick(nick) {
   var datas = CharacterModel.getDatas();
@@ -153,6 +155,43 @@ module.exports = {
       var data = getCharacterData(character);
 
       CharacterTemplate[context.platform].showCharacter(context, character, data);
+    } catch (e) {
+      CustomLogger.info(e);
+      error.sendError(context, e);
+    }
+  },
+
+  /**
+   * 戳一下角色
+   * @param {import ("bottender").LineContext} context
+   */
+  pingCharacter: async function (context, { match }) {
+    const { character } = match.groups;
+
+    try {
+      if (character === undefined) throw `📖使用方式：${match[0]} 布丁`;
+
+      let data = getCharacterData(character);
+      const { unitId } = data;
+      const comments = await gameSqlite("room_unit_comments")
+        .select("description")
+        .union(function () {
+          this.select("description").from("unit_comments").where("unit_id", unitId);
+        })
+        .where({ unit_id: unitId });
+
+      if (comments.length === 0) {
+        throw `查無此角色的語音包：${character}`;
+      }
+
+      const desc = sample(comments.map(c => c.description));
+
+      context.replyText(desc.replace(/\\n/g, "\n"), {
+        sender: {
+          name: data.Name,
+          iconUrl: data.HeadImage,
+        },
+      });
     } catch (e) {
       CustomLogger.info(e);
       error.sendError(context, e);
