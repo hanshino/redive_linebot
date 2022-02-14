@@ -9,9 +9,43 @@ const redis = require("../../util/redis");
 const config = require("config");
 const moment = require("moment");
 const { DefaultLogger } = require("../../util/Logger");
-const { get } = require("lodash");
+const { get, chunk } = require("lodash");
+const minimist = require("minimist");
 
-exports.router = [text(/^[.#/](投票|vote) (?<voteId>\d+)$/, show)];
+exports.router = [
+  text(/^[.#/](投票) (?<voteId>\d+)$/, show),
+  text(/^[.#/](vote) list/, commandShowVote),
+];
+
+/**
+ * 利用 /vote 命令顯示投票
+ * @param {LineContext} context
+ */
+async function commandShowVote(context) {
+  const args = minimist(context.event.message.text.split(" "));
+
+  if (args.h || args.help) {
+    return context.replyText(i18n.__("message.vote.help"));
+  }
+
+  const ids = get(args, "ids", "").split(",");
+  if (ids.length === 0) {
+    return context.replyText(i18n.__("message.vote.help"));
+  }
+
+  const votes = await VoteModel.getAllById(ids);
+  if (votes.length === 0) {
+    return context.replyText(i18n.__("message.vote.notFound"));
+  }
+
+  const voteList = votes.map(vote => VoteTemplate.generateVote(vote));
+  chunk(voteList, 12).forEach(voteListChunk => {
+    context.replyFlex("投票列表", {
+      type: "carousel",
+      contents: voteListChunk,
+    });
+  });
+}
 
 /**
  * 顯示投票
@@ -44,6 +78,7 @@ exports.decide = async (context, { payload }) => {
   const { id, option } = payload;
 
   const isHolding = await getIsHolding(id);
+  const vote = await getVoteFromCache(id);
 
   if (!isHolding) {
     // 如果最近一小時內已經通知過了，就不再通知
@@ -81,6 +116,7 @@ exports.decide = async (context, { payload }) => {
 
       context.replyText(
         i18n.__("message.vote.decided", {
+          title: vote.title,
           displayName,
         })
       );
