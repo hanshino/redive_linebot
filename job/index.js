@@ -3,6 +3,7 @@ const script = require("./bin");
 require("./bin/WorldBoss");
 require("./bin/Advancement");
 require("./bin/EventCenter");
+require("./bin/Tips");
 
 let halfMinutesJob = new CronJob("*/20 * * * * *", script.Notify.consumePassiveNotify);
 let weekJob = new CronJob("0 0 3 * * 3", week);

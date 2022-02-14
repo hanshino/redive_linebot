@@ -1,6 +1,10 @@
 const base = require("../base");
 
-class Vote extends base {}
+class Vote extends base {
+  getAllById(ids) {
+    return this.knex.whereIn("id", ids).select();
+  }
+}
 
 module.exports = new Vote({
   table: "vote",
