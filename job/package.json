@@ -14,20 +14,20 @@
   "license": "ISC",
   "dependencies": {
     "@line/bot-sdk": "^7.4.0",
-    "axios": "^0.23.0",
+    "axios": "^0.26.0",
     "cheerio": "^1.0.0-rc.10",
     "config": "^3.3.7",
     "cron": "^1.8.2",
-    "knex": "^0.95.11",
+    "knex": "^1.0.3",
     "lodash": "^4.17.21",
-    "log4js": "^6.4.0",
+    "log4js": "^6.4.1",
     "minimist": "^1.2.5",
     "moment": "^2.29.1",
-    "mysql2": "^2.3.0",
+    "mysql2": "^2.3.3",
     "redis": "^3.1.2"
   },
   "devDependencies": {
-    "dotenv": "^10.0.0",
-    "nodemon": "^2.0.13"
+    "dotenv": "^16.0.0",
+    "nodemon": "^2.0.15"
   }
 }

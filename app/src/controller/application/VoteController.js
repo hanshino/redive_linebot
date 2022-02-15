@@ -104,16 +104,18 @@ exports.decide = async (context, { payload }) => {
     });
 
     if (userDecision.length > 0) {
-      await VoteUserDecisionModel.update(get(userDecision, "0.id"), {
+      return await VoteUserDecisionModel.update(get(userDecision, "0.id"), {
         decision: option,
       });
-    } else {
-      await VoteUserDecisionModel.create({
-        user_id: userId,
-        vote_id: id,
-        decision: option,
-      });
+    }
 
+    await VoteUserDecisionModel.create({
+      user_id: userId,
+      vote_id: id,
+      decision: option,
+    });
+
+    if (context.event.source.type === "user") {
       context.replyText(
         i18n.__("message.vote.decided", {
           title: vote.title,
