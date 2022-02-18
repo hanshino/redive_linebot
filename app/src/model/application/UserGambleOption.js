@@ -1,19 +1,24 @@
 const base = require("../base");
+const { get } = require("lodash");
 
 class UserGambleOption extends base {
-  async getAllUserInfo({ id, start, end }) {
+  async getAllUserInfo(id, options = {}) {
     const query = this.knex
       .where("gamble_game_id", id)
-      .whereBetween("created_at", [start, end])
       .groupBy("option")
       .count({ count: "*" })
       .sum({ total_amount: "amount" })
       .select("option");
 
+    const [start, end] = [get(options, "start"), get(options, "end")];
+    if (start && end) {
+      query.whereBetween("created_at", [start, end]);
+    }
+
     return await query;
   }
 
-  async dispatchReward({ id, start, end, options, rate = 2 }) {
+  async dispatchReward({ id, options, rate = 2 }) {
     const knex = this.connection;
     const table = this.table;
     const query = this.knex
@@ -21,7 +26,6 @@ class UserGambleOption extends base {
         this.select(["user_id", knex.raw("999"), knex.raw("round(amount * ?)", rate)])
           .from(table)
           .where("gamble_game_id", id)
-          .whereBetween("created_at", [start, end])
           .whereIn("option", options);
       })
       .into(knex.raw("?? (??, ??, ??)", ["Inventory", "userId", "itemId", "itemAmount"]));
