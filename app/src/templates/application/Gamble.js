@@ -1,8 +1,21 @@
 const i18n = require("../../util/i18n");
 
-exports.generateGambleGame = rows => {
+exports.generateGambleGame = (name, rows) => {
   return {
     type: "bubble",
+    header: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: name,
+          align: "center",
+          weight: "bold",
+        },
+      ],
+      paddingBottom: "none",
+    },
     body: {
       type: "box",
       layout: "vertical",

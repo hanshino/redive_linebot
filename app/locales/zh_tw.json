@@ -109,11 +109,21 @@
       "not_enough_coins": "你沒有足夠的女神石",
       "invalid_option": "無效的選項",
       "bet_failed": "下注失敗，請檢查輸入的金額",
-      "bet_success": "成功下注 {{ amount }} 顆女神石",
+      "bet_success": "{{ displayName }} 成功下注 {{ amount }} 顆女神石",
       "usage": "使用方法：#下注 編號 金額",
-      "result": "抽出獎項，現在時間是 {{ time }}\n抽到的選項是 {{ prize }}\n此次抽出的時間段為 {{ start }} ~ {{ end }} 下注的玩家",
+      "result": "抽出獎項，現在時間是 {{ time }}\n抽到的選項是 {{ prize }}",
       "simulate_result": "此次為模擬開獎，如需正式發送，請加入 --dispatch 參數",
-      "result_usage": "使用方法：/gamble result --id|i=<遊戲編號> --date|d=<日期> --start|s=<開始時間> --end|e=<結束時間> --number|n=<開出數量>"
+      "result_usage": "使用方法：/gamble result --id|i=<遊戲編號> --number|n=<開出數量> --dispatch|d=<是否發送> --rate|r=<倍率>",
+      "add_help": "使用方法：/gamble add <標題> --start|s=<開始時間> --end|e=<結束時間> --prize|p=<獎項>",
+      "add_prize_required": "請指定獎項，或者加入 --random 參數",
+      "add_name_analyze_success": "標題分析成功，標題為 {{ name }}...",
+      "add_prize_analyze_success": "成功分析獎項...",
+      "add_prize_analyze_failed": "分析獎項失敗，隨機生成獎項...",
+      "add_start_now": "未指定開始時間，設定為現在之後一分鐘...",
+      "add_start_analyze_success": "成功分析開始時間...",
+      "add_end_now": "未指定結束時間，設定為現在之後一小時...",
+      "add_end_analyze_success": "成功分析結束時間...",
+      "admin_now": "正在舉辦的遊戲：\n{{ id }}\n{{ name }}"
     }
   },
   "advancement": {

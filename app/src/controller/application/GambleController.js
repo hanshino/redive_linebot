@@ -20,17 +20,133 @@ exports.router = [
   text(/^[./#]下注 (?<option>\d+) (?<amount>\d+)$/, bet),
   text(/^[./#]下注$/, show),
 ];
-exports.adminRouter = [text(/^[./#]gamble result/, result)];
+exports.adminRouter = [
+  text(/^[./#]gamble result/, result),
+  text(/^[./]gamble add/, adminAdd),
+  text(/^[./]gamble now$/, adminNow),
+];
+
+/**
+ * 管理員指令 - 正在舉辦的遊戲
+ * @example /gamble now
+ * @param {LineContext} context
+ */
+async function adminNow(context) {
+  const game = await getHoldingGame();
+  context.replyText(i18n.__("message.gamble.admin_now", game));
+}
+
+/**
+ * 管理員指令 - 新增遊戲
+ * @example /gamble add 測試 -r --end 2022-02-20,23:59:59
+ * @param {LineContext} context
+ */
+async function adminAdd(context) {
+  const args = minimist(context.event.message.text.split(" "));
+  const messageLines = [];
+
+  if (args.help || args.h) {
+    await context.replyText(i18n.__("message.gamble.add_help"));
+    return;
+  }
+
+  const data = {
+    name: get(args, "_[2]"),
+    start: get(args, "start", get(args, "s")),
+    end: get(args, "end", get(args, "e")),
+    prize: get(args, "prize", get(args, "p")),
+  };
+
+  const ajv = new Ajv();
+  ajv.addFormat("datetime", /^\d{4}-\d{2}-\d{2},\d{2}:\d{2}:\d{2}$/);
+  // unitId: 100101,100101,100101
+  ajv.addFormat("unitIds", /^\d{6}(,\d{6})*$/);
+
+  const schema = {
+    type: "object",
+    properties: {
+      name: {
+        type: "string",
+        minLength: 1,
+        maxLength: 20,
+      },
+      start: {
+        type: "string",
+        format: "datetime",
+      },
+      end: {
+        type: "string",
+        format: "datetime",
+      },
+      prize: {
+        type: "string",
+        format: "unitIds",
+      },
+    },
+    required: ["name"],
+  };
+
+  const validate = ajv.compile(schema);
+  const valid = validate(data);
+
+  if (!valid) {
+    await context.replyText(i18n.__("message.gamble.add_help"));
+    DefaultLogger.error(validate.errors);
+    return;
+  }
+
+  if (!data.prize && !args.random && !args.r) {
+    return await context.replyText(i18n.__("message.gamble.add_prize_required"));
+  }
+
+  messageLines.push(i18n.__("message.gamble.add_name_analyze_success", { name: data.name }));
+
+  if (data.prize && data.prize.length === 10) {
+    data.prize = data.prize.split(",").map(unitId => ({ unitId: parseInt(unitId) }));
+    messageLines.push(i18n.__("message.gamble.add_prize_analyze_success"));
+  } else {
+    let unitIds = (await GameSqlite("unit_profile").select("unit_id")).map(unit => unit.unit_id);
+    data.prize = sampleSize(unitIds, 10).map(unitId => ({ unitId: parseInt(unitId) }));
+    messageLines.push(i18n.__("message.gamble.add_prize_analyze_failed"));
+  }
+
+  if (!data.start) {
+    data.start = moment().add(1, "minute").toDate();
+    messageLines.push(i18n.__("message.gamble.add_start_now"));
+  } else {
+    data.start = moment(data.start, "YYYY-MM-DD,HH:mm:ss").toDate();
+    messageLines.push(i18n.__("message.gamble.add_start_analyze_success"));
+  }
+
+  if (!data.end) {
+    data.end = moment(data.start).add(1, "hour").toDate();
+    messageLines.push(i18n.__("message.gamble.add_end_now"));
+  } else {
+    data.end = moment(data.end, "YYYY-MM-DD,HH:mm:ss").toDate();
+    messageLines.push(i18n.__("message.gamble.add_end_analyze_success"));
+  }
+
+  await GambleGameModel.create({
+    ...data,
+    type: "gamble",
+    options: JSON.stringify(data.prize),
+    start_at: data.start,
+    end_at: data.end,
+  });
+
+  await context.replyText(messageLines.join("\n"));
+}
 
 /**
  * 管理員開獎
+ * @example /gamble result -i 5 --number 3 --dispatch --rate 1.5
  * @param {LineContext} context
  */
 async function result(context) {
   const args = minimist(context.event.message.text.split(" "));
 
   if (args.help || args.h) {
-    await context.replyText(i18n.__("message.gamble.result_help"));
+    await context.replyText(i18n.__("message.gamble.result_usage"));
     return;
   }
 
@@ -43,8 +159,6 @@ async function result(context) {
   };
 
   const ajv = new Ajv();
-  ajv.addFormat("date", /^\d{4}-\d{2}-\d{2}$/);
-  ajv.addFormat("time", /^\d{2}:\d{2}$/);
 
   const schema = {
     type: "object",
@@ -52,18 +166,6 @@ async function result(context) {
       id: {
         type: "integer",
         minimum: 1,
-      },
-      date: {
-        type: "string",
-        format: "date",
-      },
-      start: {
-        type: "string",
-        format: "time",
-      },
-      end: {
-        type: "string",
-        format: "time",
       },
       number: {
         type: "integer",
@@ -108,16 +210,19 @@ async function result(context) {
     await GameSqlite("unit_profile").select("unit_name").whereIn("unit_id", pickOption)
   ).map(item => item.unit_name);
 
-  if (args.dispatch) {
+  if (args.dispatch || args.d) {
     let rate = get(args, "rate", get(args, "r", 1));
     rate = parseFloat(rate);
     await UserGambleOptionModel.dispatchReward({
       id: game.id,
-      start: moment(`${data.date} ${data.start}`).toDate(),
-      end: moment(`${data.date} ${data.end}`).toDate(),
       options: indexResult,
       rate: rate + 1,
     });
+
+    await GambleGameModel.update(data.id, {
+      end_at: moment().subtract(1, "minute").toDate(),
+    });
+    purgeGame();
   } else {
     context.replyText(i18n.__("message.gamble.simulate_result"));
   }
@@ -169,7 +274,7 @@ async function show(context) {
   });
 
   const rows = chunk(optionBoxes, 5).map(chunk => GambleTemplate.generateOptionsRow(chunk));
-  const bubble = GambleTemplate.generateGambleGame(rows);
+  const bubble = GambleTemplate.generateGambleGame(game.name, rows);
 
   await context.replyFlex("下注盤", bubble);
 }
@@ -232,6 +337,7 @@ async function bet(context, props) {
 
   await context.replyText(
     i18n.__("message.gamble.bet_success", {
+      displayName: context.event.source.displayName,
       amount: usedCoins,
     })
   );
@@ -262,8 +368,13 @@ async function getHoldingGame() {
     return;
   }
 
-  await redis.set(key, game);
+  await redis.set(key, game, 60);
   return game;
+}
+
+function purgeGame() {
+  const key = config.get("redis.keys.gamebleGame");
+  return redis.del(key);
 }
 
 /**
@@ -271,12 +382,7 @@ async function getHoldingGame() {
  */
 async function getAllUserInfo() {
   const game = await getHoldingGame();
-
-  const allUserInfo = await UserGambleOptionModel.getAllUserInfo({
-    id: game.id,
-    start: moment().subtract(1, "hour").toDate(),
-    end: moment().toDate(),
-  });
+  const allUserInfo = await UserGambleOptionModel.getAllUserInfo(game.id);
 
   return allUserInfo;
 }
