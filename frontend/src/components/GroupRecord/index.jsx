@@ -1,33 +1,23 @@
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import Group from "../../api/Group";
-import Grid from "@material-ui/core/Grid";
-import Typography from "@material-ui/core/Typography";
-import makeStyles from "@material-ui/core/styles/makeStyles";
-import {
-  Flag,
-  Forum,
-  GroupSharp,
-  Image,
-  InsertEmoticon,
-  Refresh,
-  SyncAlt,
-} from "@material-ui/icons";
+import React, { useEffect, useMemo, useState } from "react";
+import { get } from "lodash";
 import PropTypes from "prop-types";
-import { Card, CardActions, CardContent, CardHeader, IconButton } from "@material-ui/core";
+import useAxios from "axios-hooks";
+import AlertLogin from "../AlertLogin";
+import Grid from "@material-ui/core/Grid";
+import { WhirlyLoading } from "../Loading";
+import { useParams } from "react-router-dom";
+import { Card, CardContent, CardHeader, Typography } from "@material-ui/core";
+import makeStyles from "@material-ui/core/styles/makeStyles";
+import { Flag, Forum, GroupSharp, Image, InsertEmoticon, SyncAlt } from "@material-ui/icons";
 import { Chart, Legend, PieSeries, Tooltip } from "@devexpress/dx-react-chart-material-ui";
 import { Animation, EventTracker } from "@devexpress/dx-react-chart";
 import MaterialTable from "material-table";
 import TableLocaliztion from "../../config/TableLocaliztion";
-import { Skeleton, Alert, AlertTitle } from "@material-ui/lab";
+import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import LinearProgress from "@material-ui/core/LinearProgress";
+import Paper from "@material-ui/core/Paper";
 
 const useStyles = makeStyles(theme => ({
-  root: {
-    padding: theme.spacing(1),
-    "& > *": {
-      padding: theme.spacing(1),
-    },
-  },
   card: {
     minWidth: 160,
   },
@@ -41,117 +31,269 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-const GroupRecord = () => {
-  const classes = useStyles();
-  const { groupId } = useParams();
-  const { userId } = window.liff.getContext();
-  const isLoggedIn = window.liff.isLoggedIn();
-  const [{ data, loading, error }, fetchData] = useGroupRank("");
-
-  React.useEffect(() => {
-    window.document.title = "群組數據管理";
-  }, []);
-
-  React.useEffect(() => {
-    if (isLoggedIn) fetchData(groupId);
-  }, [groupId]);
-
-  if (!userId || !isLoggedIn) {
-    return (
-      <Alert severity="error">
-        <AlertTitle>錯誤！</AlertTitle>
-        要查看群組數據，請先進行登入！
-      </Alert>
-    );
-  }
-
-  if (loading)
-    return (
-      <div className={classes.root}>
-        <Skeleton animation="wave" variant="text" />
-        <Skeleton animation={false} width={50} height={50} variant="circle" />
-        <Skeleton variant="rect" height={100} />
-        <Skeleton>
-          <MaterialTable columns={[]} data={[]} />
-        </Skeleton>
-      </div>
-    );
-  if (error) return <h1>{error}</h1>;
-
-  let max = 0;
-  let comment = "";
-  [
-    { value: data.textCount, comment: "聊天群" },
-    { value: data.imageCount, comment: "車群?" },
-    { value: data.stickerCount, comment: "尬聊群" },
-    { value: data.unsendCount, comment: "404 Not Found 群" },
-  ].forEach(d => {
-    if (max < d.value) {
-      max = d.value;
-      comment = d.comment;
-    }
-  });
-
-  const CardData = [
-    { CusIcon: Flag, title: "群組類別", content: comment },
-    { CusIcon: GroupSharp, title: "紀錄/群組 人數", content: `${data.factCount}/${data.count}` },
-    { CusIcon: Forum, title: "訊息次數", content: `${data.textCount}` },
-    { CusIcon: Image, title: "圖片次數", content: `${data.imageCount}` },
-    { CusIcon: InsertEmoticon, title: "貼圖次數", content: `${data.stickerCount}` },
-  ];
-
+const CustomLoadingOverlay = () => {
   return (
-    <React.Fragment>
-      <Grid container className={classes.root} alignItems="center">
-        <Grid item>
-          <Typography variant="h6" component="p">
-            群組數據 - {data.groupName}
-          </Typography>
-          <Typography variant="subtitle2" color="textSecondary" component="p">
-            提供群組進行數據管理
-          </Typography>
-        </Grid>
-        <Grid item>
-          <IconButton onClick={() => fetchData(groupId)}>
-            <Refresh color="action" />
-          </IconButton>
-        </Grid>
-      </Grid>
-      <Grid container className={classes.root} justifyContent="space-around">
-        {CardData.map((d, i) => (
-          <Grid item key={i}>
-            <GridCard {...d} />
-          </Grid>
-        ))}
-      </Grid>
-      <Grid container className={classes.root}>
-        <Grid item xs={12} sm={6}>
-          <MessageStatistic
-            groupName={data.groupName}
-            statistic={[
-              { type: "文字", value: data.textCount },
-              { type: "圖片", value: data.imageCount },
-              { type: "貼圖", value: data.stickerCount },
-              { type: "收回", value: data.unsendCount },
-            ]}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <MyStatistic statistic={data.rankData.find(d => d.userId == userId)} />
-        </Grid>
-      </Grid>
-      <Grid container className={classes.root}>
-        <Grid item xs={12}>
-          <RecordTable data={data} />
-        </Grid>
-      </Grid>
-    </React.Fragment>
+    <GridOverlay>
+      <div style={{ position: "absolute", top: 0, width: "100%" }}>
+        <LinearProgress color="secondary" />
+      </div>
+    </GridOverlay>
   );
 };
 
+const columns = [
+  {
+    field: "rank",
+    headerName: "#",
+    type: "number",
+  },
+  {
+    field: "displayName",
+    headerName: "暱稱",
+    type: "string",
+  },
+  {
+    field: "textCnt",
+    headerName: "文字",
+    type: "number",
+  },
+  {
+    field: "imageCnt",
+    headerName: "圖片",
+    type: "number",
+  },
+  {
+    field: "stickerCnt",
+    headerName: "貼圖",
+    type: "number",
+  },
+  {
+    field: "unsendCnt",
+    headerName: "收回",
+    type: "number",
+  },
+  {
+    field: "lastSpeakTS",
+    headerName: "最後發言時間",
+    renderCell: params => genDate(params.value),
+  },
+  {
+    field: "joinedTS",
+    headerName: "加入時間",
+    renderCell: params => genDate(params.value),
+  },
+];
+
+const genDate = timestamp => {
+  let d = new Date(timestamp);
+  return [d.getFullYear(), d.getMonth() + 1, d.getDate()].join("/");
+};
+
+const { liff } = window;
+
+const GroupRecord = () => {
+  const { groupId } = useParams();
+  const isLoggedIn = liff.isLoggedIn();
+  const [{ data: rankData, loading: rankLoading }, fetchRank] = useAxios({}, { manual: true });
+  const [{ data: groupData, loading: groupLoading }, fetchGroup] = useAxios({}, { manual: true });
+
+  useEffect(() => {
+    window.document.title = "群組數據管理";
+  }, []);
+
+  useEffect(() => {
+    fetchRank({
+      url: `/api/Group/${groupId}/Speak/Rank`,
+    });
+
+    fetchGroup({
+      url: `/api/Guild/${groupId}/Summary`,
+    });
+
+    return () => {};
+  }, [groupId, fetchRank, fetchGroup]);
+
+  const rank = useMemo(() => {
+    return (rankData || []).map((data, index) => ({
+      ...data,
+      rank: index + 1,
+      id: index,
+    }));
+  }, [rankData]);
+
+  if (!isLoggedIn) {
+    return <AlertLogin />;
+  }
+
+  const pageLoading = rankLoading || groupLoading || !rank || !groupData;
+
+  if (pageLoading) {
+    return <WhirlyLoading />;
+  }
+
+  return (
+    <Grid container direction="column" spacing={2}>
+      <Grid item>
+        <Typography variant="h6" component="p">
+          群組數據 - {get(groupData, "groupName")}
+        </Typography>
+        <Typography variant="subtitle2" color="textSecondary" component="p">
+          提供群組進行數據管理
+        </Typography>
+      </Grid>
+      <GroupRecordSummary group={groupData} rank={rank} />
+      <Grid container item direction="row" spacing={1}>
+        <Grid item sm={6} xs={12}>
+          <MyPieCard rank={rank} />
+        </Grid>
+        <Grid item sm={6} xs={12}>
+          <GroupPieCard rank={rank} />
+        </Grid>
+      </Grid>
+      <Grid item xs={12}>
+        <Paper style={{ width: "100%", height: 500 }}>
+          <DataGrid
+            columns={columns}
+            rows={rank}
+            disableColumnFilter
+            disableColumnSelector
+            disableColumnMenu
+            loading={pageLoading}
+            components={{
+              LoadingOverlay: CustomLoadingOverlay,
+            }}
+          />
+        </Paper>
+      </Grid>
+    </Grid>
+  );
+};
+
+const sumData = (rank = [], field) => rank.reduce((acc, cur) => acc + get(cur, field, 0), 0);
+
+const GroupRecordSummary = ({ group, rank }) => {
+  const classes = useStyles();
+  let data = rank || [];
+  const [textCount, stickerCount, imageCount] = [
+    sumData(data, "textCnt"),
+    sumData(data, "stickerCnt"),
+    sumData(data, "imageCnt"),
+  ];
+  const factCount = data.length;
+  const groupCount = get(group, "count", 0);
+
+  const SummaryData = [
+    { CusIcon: Flag, title: "群組類別", content: "聊天群" },
+    { CusIcon: GroupSharp, title: "紀錄/群組 人數", content: `${factCount}/${groupCount}` },
+    { CusIcon: Forum, title: "訊息次數", content: textCount },
+    { CusIcon: Image, title: "圖片次數", content: imageCount },
+    { CusIcon: InsertEmoticon, title: "貼圖次數", content: stickerCount },
+  ];
+
+  return (
+    <Grid container item direction="row" justifyContent="center">
+      {SummaryData.map((data, index) => (
+        <Grid container xs={3} item className={classes.card} key={index}>
+          <Grid item xs={2}>
+            <data.CusIcon />
+          </Grid>
+          <Grid container item xs={10} direction="column" spacing={1}>
+            <Grid item>
+              <Typography variant="subtitle1" color="textSecondary">
+                {get(data, "title")}
+              </Typography>
+            </Grid>
+            <Grid item>
+              <Typography variant="subtitle2">{get(data, "content")}</Typography>
+            </Grid>
+          </Grid>
+        </Grid>
+      ))}
+    </Grid>
+  );
+};
+
+GroupRecordSummary.propTypes = {
+  group: PropTypes.object.isRequired,
+  rank: PropTypes.array.isRequired,
+};
+
+const MyPieCard = ({ rank = [] }) => {
+  const { userId } = liff.getContext();
+  const data = rank.find(item => item.userId === userId);
+  const pieData = genPieData({
+    text: get(data, "textCnt", 0),
+    image: get(data, "imageCnt", 0),
+    sticker: get(data, "stickerCnt", 0),
+    unsend: get(data, "unsendCnt", 0),
+  });
+
+  return <PieCard title={get(data, "displayName", "-")} subtitle="個人數據分析" data={pieData} />;
+};
+
+MyPieCard.propTypes = {
+  rank: PropTypes.array.isRequired,
+};
+
+const GroupPieCard = ({ rank = [] }) => {
+  const [textCount, stickerCount, imageCount, unsendCount] = [
+    sumData(rank, "textCnt"),
+    sumData(rank, "stickerCnt"),
+    sumData(rank, "imageCnt"),
+    sumData(rank, "unsendCnt"),
+  ];
+
+  const pieData = genPieData({
+    text: textCount,
+    image: imageCount,
+    sticker: stickerCount,
+    unsend: unsendCount,
+  });
+
+  return <PieCard title="全員" subtitle="群組數據分析" data={pieData} />;
+};
+
+const genPieData = ({ text = 0, image = 0, sticker = 0, unsend = 0 }) => {
+  return [
+    { title: "文字", value: text },
+    { title: "圖片", value: image },
+    { title: "貼圖", value: sticker },
+    { title: "收回", value: unsend },
+  ];
+};
+
+const PieCard = ({ title, subtitle, data }) => {
+  const classes = useStyles();
+  return (
+    <Card className={classes.statistic}>
+      <CardHeader title={title} subheader={subtitle} />
+      <CardContent>
+        <Chart data={data} height={200}>
+          <PieSeries valueField="value" argumentField="title" innerRadius={0.6} />
+          <Legend />
+          <EventTracker />
+          <Tooltip />
+          <Animation />
+        </Chart>
+      </CardContent>
+    </Card>
+  );
+};
+
+PieCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  subtitle: PropTypes.string.isRequired,
+  data: PropTypes.array.isRequired,
+};
+
 const RecordTable = props => {
-  const { data } = props;
+  const { rank } = props;
   const [showPercent, setShowPercent] = useState(true);
+  const [textCount, stickerCount, imageCount] = [
+    sumData(rank, "textCnt"),
+    sumData(rank, "stickerCnt"),
+    sumData(rank, "imageCnt"),
+  ];
   const columns = [
     { title: "排名", field: "rank" },
     { title: "名字", field: "displayName" },
@@ -160,16 +302,14 @@ const RecordTable = props => {
       title: "文字(%)",
       field: "textCnt",
       hidden: !showPercent,
-      render: rowData =>
-        data.textCount ? Math.round((rowData.textCnt / data.textCount) * 100) + "%" : 0,
+      render: rowData => (textCount ? Math.round((rowData.textCnt / textCount) * 100) + "%" : 0),
     },
     { title: "圖片", field: "imageCnt", hidden: showPercent },
     {
       title: "圖片(%)",
       field: "imageCnt",
       hidden: !showPercent,
-      render: rowData =>
-        data.imageCount ? Math.round((rowData.imageCnt / data.imageCount) * 100) + "%" : 0,
+      render: rowData => (imageCount ? Math.round((rowData.imageCnt / imageCount) * 100) + "%" : 0),
     },
     { title: "貼圖", field: "stickerCnt", hidden: showPercent },
     {
@@ -177,7 +317,7 @@ const RecordTable = props => {
       field: "stickerCnt",
       hidden: !showPercent,
       render: rowData =>
-        data.stickerCount ? Math.round((rowData.stickerCnt / data.stickerCount) * 100) + "%" : 0,
+        stickerCount ? Math.round((rowData.stickerCnt / stickerCount) * 100) + "%" : 0,
     },
     { title: "收回", field: "unsendCnt" },
     { title: "上次發言", field: "lastSpeak", render: rowData => genDate(rowData.lastSpeakTS) },
@@ -186,7 +326,7 @@ const RecordTable = props => {
   return (
     <MaterialTable
       columns={columns}
-      data={data.rankData}
+      data={rank}
       title="排行"
       localization={TableLocaliztion}
       actions={[
@@ -208,168 +348,7 @@ const RecordTable = props => {
 };
 
 RecordTable.propTypes = {
-  data: PropTypes.array.isRequired,
-};
-
-const MyStatistic = props => {
-  const classes = useStyles();
-  const { statistic } = props;
-  if (!statistic) return <Skeleton variant="rect" className={classes.statistic} />;
-  const datas = [
-    { title: "文字", value: statistic.textCnt, comment: "是個廢話偏多的人捏~" },
-    { title: "圖片", value: statistic.imageCnt, comment: "廢圖大師兼流量吞噬者" },
-    { title: "貼圖", value: statistic.stickerCnt, comment: "貼圖尬聊，乙！" },
-    { title: "收回", value: statistic.unsendCnt, comment: "開車王peko?" },
-  ];
-
-  let max = 0;
-  let comment = "";
-
-  datas.forEach(data => {
-    if (max < data.value) {
-      comment = data.comment;
-      max = data.value;
-    }
-  });
-
-  return (
-    <Card className={classes.statistic}>
-      <CardHeader title={statistic.displayName} subheader="個人訊息分佈" />
-      <CardContent>
-        <Chart data={datas} height={200}>
-          <PieSeries valueField="value" argumentField="title" innerRadius={0.6} />
-          <Legend />
-          <EventTracker />
-          <Tooltip />
-          <Animation />
-        </Chart>
-      </CardContent>
-      <CardActions>
-        <Typography variant="subtitle2" color="textSecondary">
-          {comment}
-        </Typography>
-      </CardActions>
-    </Card>
-  );
-};
-
-MyStatistic.propTypes = {
-  statistic: PropTypes.object.isRequired,
-};
-
-const MessageStatistic = props => {
-  const classes = useStyles();
-  const { statistic, groupName } = props;
-  return (
-    <Card className={classes.statistic}>
-      <CardHeader title={groupName} subheader="群組訊息分佈" />
-      <CardContent>
-        <Chart data={statistic} height={200}>
-          <PieSeries valueField="value" argumentField="type" innerRadius={0.6} />
-          <Legend />
-          <EventTracker />
-          <Tooltip />
-          <Animation />
-        </Chart>
-      </CardContent>
-    </Card>
-  );
-};
-
-MessageStatistic.propTypes = {
-  groupName: PropTypes.string.isRequired,
-  statistic: PropTypes.array.isRequired,
-};
-
-const GridCard = props => {
-  const { CusIcon, title, content } = props;
-  const classes = useStyles();
-  return (
-    <Grid container direction="row" spacing={1} className={classes.card}>
-      <Grid item xs={2}>
-        <CusIcon />
-      </Grid>
-      <Grid container item xs={10} direction="column" spacing={1}>
-        <Grid item>
-          <Typography variant="subtitle1" color="textSecondary">
-            {title}
-          </Typography>
-        </Grid>
-        <Grid item>
-          <Typography variant="subtitle2">{content}</Typography>
-        </Grid>
-      </Grid>
-    </Grid>
-  );
-};
-
-GridCard.propTypes = {
-  CusIcon: PropTypes.node.isRequired,
-  title: PropTypes.string.isRequired,
-  content: PropTypes.string.isRequired,
-};
-/**
- * @typedef {Object} GroupData
- * @description Group Summary and Rank Data.
- * @property {String} groupName
- * @property {Number} count
- * @property {Number} factCount
- * @property {String} pictureUrl
- * @property {Array<{displayName: String, imageCnt: Number, joinedTS: Number}>} rankData
- */
-/**
- * @param {String} id
- * @returns {Array<{data: GroupData, loading: Boolean, error: String}, Function>}
- */
-const useGroupRank = id => {
-  const [data, setData] = useState({ rankData: [] });
-  const [groupId, setGroupId] = useState(id);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [goFetch, setFetch] = useState(1);
-
-  const refresh = groupId => {
-    setFetch(old => old + 1);
-    setGroupId(groupId);
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (!groupId) return;
-        setLoading(true);
-        setError("");
-        let [rankResult, groupInfo] = await Promise.all([
-          Group.fetchGroupSpeakRank(groupId),
-          Group.getGroupInfo(groupId),
-        ]);
-
-        let count = {
-          factCount: rankResult.length,
-          imageCount: 0,
-          textCount: 0,
-          stickerCount: 0,
-          unsendCount: 0,
-        };
-
-        rankResult.forEach(d => {
-          count.imageCount += d.imageCnt;
-          count.textCount += d.textCnt;
-          count.unsendCount += d.unsendCnt;
-          count.stickerCount += d.stickerCnt;
-        });
-
-        setData({ ...groupInfo, ...count, rankData: rankResult });
-      } catch (e) {
-        setError(e);
-      }
-      setLoading(false);
-    };
-
-    fetchData();
-  }, [groupId, goFetch]);
-
-  return [{ data, loading, error }, refresh];
+  rank: PropTypes.array.isRequired,
 };
 
 export default GroupRecord;
