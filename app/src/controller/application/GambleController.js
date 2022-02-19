@@ -15,6 +15,7 @@ const GambleTemplate = require("../../templates/application/Gamble");
 const GameSqlite = require("../../model/princess/GameSqlite");
 const minimist = require("minimist");
 const Ajv = require("ajv");
+const humanNumber = require("human-number");
 
 exports.router = [
   text(/^[./#]下注 (?<option>\d+) (?<amount>\d+)$/, bet),
@@ -269,7 +270,7 @@ async function show(context) {
         unitId: CharacterService.changeRarity(option.unitId, 3),
       }),
       amountPercentage,
-      get(targetUserInfo, "total_amount", 0)
+      humanNumber(get(targetUserInfo, "total_amount", 0))
     );
   });
 
