@@ -270,7 +270,7 @@ async function show(context) {
         unitId: CharacterService.changeRarity(option.unitId, 3),
       }),
       amountPercentage,
-      humanNumber(get(targetUserInfo, "total_amount", 0))
+      humanNumber(get(targetUserInfo, "total_amount", 0), n => Number.parseFloat(n).toFixed(1))
     );
   });
 
