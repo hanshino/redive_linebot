@@ -70,7 +70,7 @@ exports.generateOptionBox = (index, image, percentage, amount) => {
         type: "text",
         text: `${amount}`,
         align: "center",
-        size: "sm",
+        size: "xxs",
         color: "#808080",
       },
     ],
