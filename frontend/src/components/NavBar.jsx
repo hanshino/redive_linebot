@@ -149,7 +149,7 @@ const NavBar = props => {
             <ListItem
               button
               component="a"
-              href="https://forum.gamer.com.tw/C.php?bsn=30861&snA=13556"
+              href="https://forum.gamer.com.tw/C.php?bsn=30861&snA=32345&tnum=11"
             >
               <ListItemIcon>
                 <LanguageIcon />

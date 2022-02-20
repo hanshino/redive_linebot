@@ -61,3 +61,11 @@ export const WhirlyLoading = () => {
     </Backdrop>
   );
 };
+
+export const CirclesLoading = () => {
+  return (
+    <Backdrop open={true}>
+      <div className="circles-loader" />
+    </Backdrop>
+  );
+};

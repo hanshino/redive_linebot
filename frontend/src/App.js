@@ -39,6 +39,7 @@ import GachaShop from "./components/Admin/GachaShop";
 import { WhirlyLoading } from "./components/Loading";
 import Worldboss from "./components/Admin/Worldboss";
 import WorldbossEvent from "./components/Admin/WorldbossEvent";
+import TradeOrder, { Transaction } from "./components/TradeOrder";
 
 const theme = createTheme({
   palette: {
@@ -93,7 +94,7 @@ function LiffSizeLayout() {
       .then(res => res.data)
       .then(data => liff.init({ liffId: data.id }))
       .finally(() => setLoading(false));
-  }, []);
+  }, [liff, size]);
 
   if (loading) return <WhirlyLoading />;
 
@@ -116,7 +117,7 @@ function MainLayout() {
         }
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [liff]);
 
   if (loading) return <WhirlyLoading />;
 
@@ -132,10 +133,21 @@ function MainLayout() {
         <Route path="/Panel" component={PanelLayout} />
         <Route path="/Rankings" component={Rankings} />
         <Route path="/Tools" component={ToolsLayout} />
+        <Route path="/Trade" component={TradeLayout} />
         <Route path="/Gacha/Exchange" component={GodStoneShop} />
         <Route path="/" component={Home} />
       </Switch>
     </NavBar>
+  );
+}
+
+function TradeLayout() {
+  return (
+    <Switch>
+      <Route path="/Trade/History" />
+      <Route path="/Trade/Order" component={TradeOrder} />
+      <Route path="/Trade/:marketId/Transaction" component={Transaction} />
+    </Switch>
   );
 }
 
