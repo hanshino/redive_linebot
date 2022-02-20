@@ -50,6 +50,18 @@ exports.fetchUserOwnItems = (userId, itemIds) => {
 };
 
 class Inventory extends base {
+  getAllUserOwn(userId) {
+    return this.knex
+      .select([
+        "itemId",
+        { amount: this.connection.raw("SUM(itemAmount)") },
+        { name: "GachaPool.Name" },
+      ])
+      .where({ userId })
+      .join("GachaPool", "GachaPool.ID", "itemId")
+      .groupBy("itemId");
+  }
+
   getUserOwnCountByItemId(userId, itemId) {
     return this.knex.sum({ amount: "itemAmount" }).where({ userId, itemId }).first();
   }

@@ -29,7 +29,13 @@ const AdminModel = require("../model/application/Admin");
 const { admin: AdminWorldBossRouter } = require("./WorldBoss");
 const ImgurRouter = require("./Imgur");
 const { admin: AdminWorldBossEventRouter } = require("./WorldBossEvent");
+const { router: InventoryRouter } = require("./Inventory");
+const { router: TradeRouter } = require("./Trade");
+const { router: MarketRouter } = require("./Market");
 
+router.use(MarketRouter);
+router.use(InventoryRouter);
+router.use(TradeRouter);
 router.use(ImgurRouter);
 router.use("/Admin", verifyToken, verifyAdmin, verifyPrivilege(5));
 
