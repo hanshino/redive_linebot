@@ -7,7 +7,6 @@ import HintSnackBar, { useHintBar } from "../HintSnackBar";
 import { Grid, TextField, Button, Typography } from "@material-ui/core";
 import { get } from "lodash";
 import { genNotify } from "../../flex/TradeNotify";
-import Transaction from "./transaction";
 
 const { liff } = window;
 
