@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { get } from "lodash";
 import PropTypes from "prop-types";
 import useAxios from "axios-hooks";
@@ -8,11 +8,9 @@ import { WhirlyLoading } from "../Loading";
 import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, Typography } from "@material-ui/core";
 import makeStyles from "@material-ui/core/styles/makeStyles";
-import { Flag, Forum, GroupSharp, Image, InsertEmoticon, SyncAlt } from "@material-ui/icons";
+import { Flag, Forum, GroupSharp, Image, InsertEmoticon } from "@material-ui/icons";
 import { Chart, Legend, PieSeries, Tooltip } from "@devexpress/dx-react-chart-material-ui";
 import { Animation, EventTracker } from "@devexpress/dx-react-chart";
-import MaterialTable from "material-table";
-import TableLocaliztion from "../../config/TableLocaliztion";
 import { DataGrid, GridOverlay } from "@mui/x-data-grid";
 import LinearProgress from "@material-ui/core/LinearProgress";
 import Paper from "@material-ui/core/Paper";
@@ -193,7 +191,7 @@ const GroupRecordSummary = ({ group, rank }) => {
   return (
     <Grid container item direction="row" justifyContent="center">
       {SummaryData.map((data, index) => (
-        <Grid container xs={3} item className={classes.card} key={index}>
+        <Grid container xs={2} item className={classes.card} key={index}>
           <Grid item xs={2}>
             <data.CusIcon />
           </Grid>
@@ -284,71 +282,6 @@ PieCard.propTypes = {
   title: PropTypes.string.isRequired,
   subtitle: PropTypes.string.isRequired,
   data: PropTypes.array.isRequired,
-};
-
-const RecordTable = props => {
-  const { rank } = props;
-  const [showPercent, setShowPercent] = useState(true);
-  const [textCount, stickerCount, imageCount] = [
-    sumData(rank, "textCnt"),
-    sumData(rank, "stickerCnt"),
-    sumData(rank, "imageCnt"),
-  ];
-  const columns = [
-    { title: "排名", field: "rank" },
-    { title: "名字", field: "displayName" },
-    { title: "文字", field: "textCnt", hidden: showPercent },
-    {
-      title: "文字(%)",
-      field: "textCnt",
-      hidden: !showPercent,
-      render: rowData => (textCount ? Math.round((rowData.textCnt / textCount) * 100) + "%" : 0),
-    },
-    { title: "圖片", field: "imageCnt", hidden: showPercent },
-    {
-      title: "圖片(%)",
-      field: "imageCnt",
-      hidden: !showPercent,
-      render: rowData => (imageCount ? Math.round((rowData.imageCnt / imageCount) * 100) + "%" : 0),
-    },
-    { title: "貼圖", field: "stickerCnt", hidden: showPercent },
-    {
-      title: "貼圖(%)",
-      field: "stickerCnt",
-      hidden: !showPercent,
-      render: rowData =>
-        stickerCount ? Math.round((rowData.stickerCnt / stickerCount) * 100) + "%" : 0,
-    },
-    { title: "收回", field: "unsendCnt" },
-    { title: "上次發言", field: "lastSpeak", render: rowData => genDate(rowData.lastSpeakTS) },
-    { title: "紀錄時間", field: "lastSpeak", render: rowData => genDate(rowData.joinedTS) },
-  ];
-  return (
-    <MaterialTable
-      columns={columns}
-      data={rank}
-      title="排行"
-      localization={TableLocaliztion}
-      actions={[
-        {
-          icon: SyncAlt,
-          tooltip: "切換顯示",
-          isFreeAction: true,
-          onClick: () => setShowPercent(!showPercent),
-        },
-      ]}
-      options={{ headerStyle: { whiteSpace: "nowrap" }, search: false }}
-    />
-  );
-
-  function genDate(timestamp) {
-    let d = new Date(timestamp);
-    return [d.getFullYear(), d.getMonth() + 1, d.getDate()].join("/");
-  }
-};
-
-RecordTable.propTypes = {
-  rank: PropTypes.array.isRequired,
 };
 
 export default GroupRecord;
