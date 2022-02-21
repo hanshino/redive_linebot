@@ -20,7 +20,7 @@ const TradeOrder = () => {
   const seletEl = useRef(null);
   const chargeEl = useRef(null);
   const [{ data = [], loading }, fetchItems] = useAxios("/api/Inventory", { manual: true });
-  const [{ data: createResponse, loading: createLoading }, createOrder] = useAxios(
+  const [{ data: createResponse, loading: createLoading, error }, createOrder] = useAxios(
     {
       url: "/api/Trade",
       method: "POST",
@@ -46,6 +46,12 @@ const TradeOrder = () => {
     return () => {};
   }, [targetId, handleOpen]);
 
+  useEffect(() => {
+    if (!error) return;
+    handleOpen(get(error, "response.data.message"), "error");
+    return () => {};
+  }, [error]);
+
   const pageLoading = loading || createLoading;
 
   if (!isLoggedIn) {
@@ -67,7 +73,7 @@ const TradeOrder = () => {
       charge: parseInt(chargeEl.current.value),
     };
 
-    if (!get(payload, "charge", 0)) {
+    if (get(payload, "charge", 0) <= 0) {
       handleOpen("請輸入收費金額", "error");
     } else {
       createOrder({
@@ -93,6 +99,7 @@ const TradeOrder = () => {
             label="選擇商品"
             SelectProps={{
               native: true,
+              defaultValue: get(data, "[0].itemId"),
             }}
             inputRef={seletEl}
             fullWidth
