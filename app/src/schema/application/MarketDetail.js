@@ -10,6 +10,7 @@ module.exports = {
     },
     charge: {
       type: "number",
+      minimum: 1,
     },
   },
 };

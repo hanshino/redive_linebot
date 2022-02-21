@@ -134,7 +134,7 @@ class Base {
     let data = pick(attributes, this.fillable);
     await this.knex.insert(data);
 
-    let [result] = await this.connection().select(mysql.raw("LAST_INSERT_ID() as id"));
+    let [result] = await this.connection.queryBuilder().select(mysql.raw("LAST_INSERT_ID() as id"));
     return result.id;
   }
 

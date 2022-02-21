@@ -36,6 +36,7 @@ exports.create = async (req, res) => {
   DefaultLogger.info(`${userId} 建立交易 ${JSON.stringify(req.body)}`);
 
   const marketId = await MarketDetailModel.create({
+    seller_id: userId,
     item_id: get(req, "body.itemId"),
     price: get(req, "body.charge"),
     quantity: 1,

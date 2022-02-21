@@ -5,9 +5,12 @@ class MarketDetail extends base {
     return this.knex
       .select([
         { id: `${this.table}.id` },
-        { itemId: "item_id" },
+        "item_id",
+        "seller_id",
         "price",
         "quantity",
+        "sell_target_list",
+        "status",
         { name: "Name" },
         { image: "HeadImage_Url" },
       ])
@@ -15,11 +18,21 @@ class MarketDetail extends base {
       .where({ [`${this.table}.id`]: id })
       .first();
   }
+
+  setSold(id) {
+    return this.update(id, { status: 1, sold_at: new Date() });
+  }
+
+  setClosed(id) {
+    return this.update(id, { status: -1, closed_at: new Date() });
+  }
 }
 
 module.exports = new MarketDetail({
   table: "market_detail",
   fillable: [
+    "seller_id",
+    "status",
     "item_id",
     "price",
     "quantity",

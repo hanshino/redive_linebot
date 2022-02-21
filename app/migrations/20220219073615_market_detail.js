@@ -5,6 +5,7 @@
 exports.up = function (knex) {
   return knex.schema.createTable("market_detail", table => {
     table.increments("id").primary();
+    table.string("seller_id").notNullable().comment("賣家ID");
     table.bigInteger("item_id").notNullable().comment("商品ID");
     table.integer("price").notNullable().comment("商品價格");
     table.integer("quantity").notNullable().comment("商品數量").defaultTo(1);

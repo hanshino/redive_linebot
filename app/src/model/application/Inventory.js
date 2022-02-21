@@ -66,6 +66,10 @@ class Inventory extends base {
     return this.knex.sum({ amount: "itemAmount" }).where({ userId, itemId }).first();
   }
 
+  getUserMoney(userId) {
+    return this.getUserOwnCountByItemId(userId, 999);
+  }
+
   deleteUserItem(userId, itemId) {
     return this.knex.where({ userId, itemId }).del();
   }
