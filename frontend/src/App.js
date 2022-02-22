@@ -39,7 +39,7 @@ import GachaShop from "./components/Admin/GachaShop";
 import { WhirlyLoading } from "./components/Loading";
 import Worldboss from "./components/Admin/Worldboss";
 import WorldbossEvent from "./components/Admin/WorldbossEvent";
-import TradeOrder, { Transaction } from "./components/TradeOrder";
+import TradeOrder, { Detail, Manage, Transaction } from "./components/TradeOrder";
 
 const theme = createTheme({
   palette: {
@@ -146,6 +146,8 @@ function TradeLayout() {
     <Switch>
       <Route path="/Trade/History" />
       <Route path="/Trade/Order" component={TradeOrder} />
+      <Route path="/Trade/Manage" component={Manage} />
+      <Route path="/Trade/:marketId/Detail" component={Detail} />
       <Route path="/Trade/:marketId/Transaction" component={Transaction} />
     </Switch>
   );

@@ -99,7 +99,6 @@ const TradeOrder = () => {
             label="選擇商品"
             SelectProps={{
               native: true,
-              defaultValue: get(data, "[0].itemId"),
             }}
             inputRef={seletEl}
             fullWidth
@@ -179,4 +178,6 @@ const TradeCreateResult = ({ marketId }) => {
 };
 
 export { default as Transaction } from "./transaction";
+export { default as Manage } from "./manage";
+export { default as Detail } from "./detail";
 export default TradeOrder;
