@@ -50,3 +50,43 @@ exports.create = async (req, res) => {
     marketId,
   });
 };
+
+/**
+ * 搜尋自己所有交易
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.all = async (req, res) => {
+  const { userId } = req.profile;
+  const data = req.query;
+
+  const validate = ajv.getSchema("pagination");
+  const valid = validate(data);
+
+  if (!valid) {
+    return res.status(400).json({
+      message: "參數錯誤",
+      error: validate.errors,
+    });
+  }
+
+  const pagination = {
+    page: get(data, "page", 1),
+    perPage: get(data, "per_page", 10),
+  };
+
+  const marketDetailList = await MarketDetailModel.all({
+    filter: {
+      seller_id: userId,
+    },
+    pagination,
+    order: [
+      {
+        column: get(data, "order_by", "created_at"),
+        direction: get(data, "order", "desc"),
+      },
+    ],
+  });
+
+  res.json(marketDetailList);
+};
