@@ -15,6 +15,9 @@ exports.up = function (knex) {
     table.timestamp("sold_at").comment("出售時間").nullable();
     table.timestamp("closed_at").comment("關閉時間").nullable();
     table.timestamps(true, true);
+
+    table.index("seller_id");
+    table.index("item_id");
   });
 };
 

@@ -11,6 +11,10 @@ exports.up = function (knex) {
     table.integer("price").notNullable().comment("價格");
     table.integer("quantity").notNullable().comment("數量");
     table.timestamps(true, true);
+
+    table.index("seller_id");
+    table.index("buyer_id");
+    table.index("item_id");
   });
 };
 
