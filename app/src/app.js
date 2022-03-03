@@ -33,6 +33,7 @@ const DonateListController = require("./controller/application/DonateListControl
 const GambleController = require("./controller/application/GambleController");
 const AliasController = require("./controller/application/AliasController");
 const VoteController = require("./controller/application/VoteController");
+const MarketController = require("./controller/application/MarketController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -40,6 +41,7 @@ const { showManagePlace } = require("./templates/application/Admin");
 const { sendPreWorkMessage } = require("./templates/princess/other");
 const { pushMessage } = require("./util/LineNotify");
 const AdminModel = require("./model/application/Admin");
+const pConfig = require("config");
 require("./task");
 
 function showState(context) {
@@ -113,6 +115,7 @@ async function OrderBased(context, { next }) {
     ...AdvancementController.router,
     ...VoteController.router,
     ...GambleController.router,
+    ...MarketController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
@@ -162,19 +165,24 @@ async function OrderBased(context, { next }) {
           ),
           commonTemplate.genLinkBubble(
             "巴哈更新",
-            `https://forum.gamer.com.tw/C.php?bsn=30861&snA=13556`,
-            "#117e96",
+            pConfig.get("links.bahamut"),
+            pConfig.get("color.bahamut"),
             {
               textColor: "#ffffff",
             }
           ),
-          commonTemplate.genLinkBubble("Discord", `https://discord.gg/Fy82rTb`, "#5865F2", {
-            textColor: "#ffffff",
-          }),
+          commonTemplate.genLinkBubble(
+            "Discord",
+            pConfig.get("links.discord"),
+            pConfig.get("color.discord"),
+            {
+              textColor: "#ffffff",
+            }
+          ),
           commonTemplate.genLinkBubble(
             "Github",
-            `https://github.com/hanshino/redive_linebot`,
-            "#171515",
+            pConfig.get("links.github"),
+            pConfig.get("color.github"),
             {
               textColor: "#ffffff",
             }

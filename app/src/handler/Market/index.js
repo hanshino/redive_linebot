@@ -1,8 +1,10 @@
 const MarketDetailModel = require("../../model/application/MarketDetail");
+const TradeHistoryModel = require("../../model/application/TradeHistory");
 const { get, isNull } = require("lodash");
 const i18n = require("../../util/i18n");
 const { inventory: InventoryModel } = require("../../model/application/Inventory");
 const { DefaultLogger } = require("../../util/Logger");
+const moment = require("moment");
 
 /**
  * 顯示商品詳細資訊
@@ -45,8 +47,6 @@ exports.transaction = async (req, res) => {
       message: i18n.__("api.error.notFound"),
     });
   }
-
-  console.log(marketDetail);
 
   // check market status
   if (get(marketDetail, "status", -1) !== 0) {
@@ -122,6 +122,17 @@ exports.transaction = async (req, res) => {
     const updateResult = await MarketDetailModel.setSold(id);
     if (!updateResult) throw i18n.__("api.error.transaction.updateMarketFailed");
 
+    // 6. 寫入交易歷史紀錄
+    TradeHistoryModel.setTransaction(trx);
+    const tradeHistoryId = await TradeHistoryModel.create({
+      seller_id: sellerId,
+      buyer_id: userId,
+      item_id: itemId,
+      price,
+      quantity: 1,
+    });
+    if (!tradeHistoryId) throw i18n.__("api.error.transaction.createTradeHistoryFailed");
+
     // commit
     await trx.commit();
     DefaultLogger.info("success transaction item", {
@@ -139,6 +150,51 @@ exports.transaction = async (req, res) => {
     await trx.rollback();
     return res.status(500).json({
       message: i18n.__("api.error.transaction.failed"),
+    });
+  }
+};
+
+/**
+ * 取消交易
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.cancel = async (req, res) => {
+  const { userId } = req.profile;
+  const { id } = req.params;
+
+  const marketDetail = await MarketDetailModel.find(id);
+  if (!marketDetail) {
+    return res.status(404).json({
+      message: i18n.__("api.error.notFound"),
+    });
+  }
+
+  const sellTargetList = get(marketDetail, "sell_target_list", []);
+  if (marketDetail.seller_id !== userId && !sellTargetList.includes(userId)) {
+    return res.status(403).json({
+      message: i18n.__("api.error.forbidden"),
+    });
+  }
+
+  if (get(marketDetail, "status", -1) !== 0) {
+    return res.status(403).json({
+      message: i18n.__("api.error.forbidden"),
+    });
+  }
+
+  const updateResult = await MarketDetailModel.update(id, {
+    status: -1,
+    closed_at: moment().toDate(),
+  });
+
+  if (updateResult) {
+    res.json({
+      message: i18n.__("api.success"),
+    });
+  } else {
+    res.status(500).json({
+      message: i18n.__("api.error.transaction.updateMarketFailed"),
     });
   }
 };

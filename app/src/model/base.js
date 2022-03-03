@@ -72,8 +72,6 @@ class Base {
       query = query.orderBy(col, get(item, "direction", "asc"));
     });
 
-    console.log(query.toSQL().toNative());
-
     return await query.select(select);
   }
 

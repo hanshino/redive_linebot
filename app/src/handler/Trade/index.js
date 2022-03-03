@@ -3,6 +3,7 @@ const { inventory: InventoryModel } = require("../../model/application/Inventory
 const ajv = require("../../util/ajv");
 const { get } = require("lodash");
 const { DefaultLogger } = require("../../util/Logger");
+const i18n = require("../../util/i18n");
 
 /**
  * 建立一筆交易
@@ -16,7 +17,7 @@ exports.create = async (req, res) => {
 
   if (!valid) {
     return res.status(400).json({
-      message: "參數錯誤",
+      message: i18n.__("api.error.bad_request"),
       error: validate.errors,
     });
   }
@@ -29,7 +30,14 @@ exports.create = async (req, res) => {
   const targetItemCount = get(targetItemInfo, "amount", 0);
   if (targetItemCount < 1) {
     return res.status(400).json({
-      message: "沒有足夠的物品",
+      message: i18n.__("api.error.transaction.not_enough_item"),
+    });
+  }
+
+  const isSelf = userId === get(req, "body.targetId");
+  if (isSelf) {
+    return res.status(400).json({
+      message: i18n.__("api.error.transaction.self_trade"),
     });
   }
 
