@@ -77,6 +77,10 @@ export const genNotify = ({ marketId, name, image, charge }) => ({
             paddingAll: "md",
             backgroundColor: "#FF5656",
             cornerRadius: "md",
+            action: {
+              type: "uri",
+              uri: `https://liff.line.me/${window.liff.id}?reactRedirectUri=/Trade/${marketId}/Transaction?action=deny`,
+            },
           },
           {
             type: "box",
@@ -93,7 +97,7 @@ export const genNotify = ({ marketId, name, image, charge }) => ({
             backgroundColor: "#56FF56",
             action: {
               type: "uri",
-              uri: `https://liff.line.me/${window.liff.id}?reactRedirectUri=/Trade/${marketId}/Transaction`,
+              uri: `https://liff.line.me/${window.liff.id}?reactRedirectUri=/Trade/${marketId}/Transaction?action=transaction`,
             },
           },
         ],

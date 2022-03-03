@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import { makeStyles, useTheme } from "@material-ui/core/styles";
 import AppBar from "@material-ui/core/AppBar";
 import Toolbar from "@material-ui/core/Toolbar";
@@ -33,6 +33,8 @@ import AndroidIcon from "@material-ui/icons/Android";
 import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 import FitnessCenterIcon from "@material-ui/icons/FitnessCenter";
 import StorefrontIcon from "@material-ui/icons/Storefront";
+import PersonIcon from "@material-ui/icons/Person";
+import ShoppingBasketIcon from "@material-ui/icons/ShoppingBasket";
 import GroupDialog from "./GroupDialog";
 import { Link } from "react-router-dom";
 import { NotificationsActive } from "@material-ui/icons";
@@ -81,6 +83,11 @@ const useStyles = makeStyles(theme => ({
   toolbar: theme.mixins.toolbar,
 }));
 
+const BarContext = createContext({
+  groupDialogOpen: false,
+  setGroupDialogOpen: () => {},
+});
+
 const drawerWidth = 240;
 
 const NavBar = props => {
@@ -123,20 +130,7 @@ const NavBar = props => {
         </ListItem>
         <PrincessDrawer />
         <BotDrawer />
-        {isLoggedIn ? (
-          <ListItem
-            button
-            onClick={() => {
-              setGroupDialogOpen(true);
-              closeDrawer();
-            }}
-          >
-            <ListItemIcon>
-              <PeopleIcon />
-            </ListItemIcon>
-            <ListItemText primary={"我的群組"} />
-          </ListItem>
-        ) : null}
+        {isLoggedIn && <PersonalDrawer />}
         <ListItem button onClick={() => setOftenBoxOpen(!oftenBoxOpen)}>
           <ListItemIcon>
             <WebAssetIcon />
@@ -186,77 +180,84 @@ const NavBar = props => {
   );
 
   return (
-    <div className={classes.root}>
-      <CssBaseline />
-      <AppBar position="fixed" className={classes.appBar}>
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            className={classes.menuButton}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" className={classes.title}>
-            {"布丁 - 公主連結 LineBot"}
-          </Typography>
-          {!isLoggedIn ? (
-            <Button color="inherit" onClick={doLogin}>
-              登入
-            </Button>
-          ) : (
-            <Button
+    <BarContext.Provider
+      value={{
+        groupDialogOpen,
+        setGroupDialogOpen,
+      }}
+    >
+      <div className={classes.root}>
+        <CssBaseline />
+        <AppBar position="fixed" className={classes.appBar}>
+          <Toolbar>
+            <IconButton
               color="inherit"
-              onClick={() => {
-                doLogout();
-                setLoggedIn(false);
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              className={classes.menuButton}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" className={classes.title}>
+              {"布丁 - 公主連結 LineBot"}
+            </Typography>
+            {!isLoggedIn ? (
+              <Button color="inherit" onClick={doLogin}>
+                登入
+              </Button>
+            ) : (
+              <Button
+                color="inherit"
+                onClick={() => {
+                  doLogout();
+                  setLoggedIn(false);
+                }}
+              >
+                登出
+              </Button>
+            )}
+          </Toolbar>
+        </AppBar>
+        <nav className={classes.drawer} aria-label="mailbox folders">
+          {/* The implementation can be swapped with js to avoid SEO duplication of links. */}
+          <Hidden smUp implementation="css">
+            <Drawer
+              variant="temporary"
+              anchor={theme.direction === "rtl" ? "right" : "left"}
+              open={mobileOpen}
+              onClose={handleDrawerToggle}
+              classes={{
+                paper: classes.drawerPaper,
+              }}
+              ModalProps={{
+                keepMounted: true, // Better open performance on mobile.
               }}
             >
-              登出
-            </Button>
-          )}
-        </Toolbar>
-      </AppBar>
-      <nav className={classes.drawer} aria-label="mailbox folders">
-        {/* The implementation can be swapped with js to avoid SEO duplication of links. */}
-        <Hidden smUp implementation="css">
-          <Drawer
-            variant="temporary"
-            anchor={theme.direction === "rtl" ? "right" : "left"}
-            open={mobileOpen}
-            onClose={handleDrawerToggle}
-            classes={{
-              paper: classes.drawerPaper,
-            }}
-            ModalProps={{
-              keepMounted: true, // Better open performance on mobile.
-            }}
-          >
-            {drawer}
-          </Drawer>
-        </Hidden>
-        <Hidden xsDown implementation="css">
-          <Drawer
-            classes={{
-              paper: classes.drawerPaper,
-            }}
-            variant="permanent"
-            open
-          >
-            {drawer}
-          </Drawer>
-        </Hidden>
-      </nav>
-      <main className={classes.content}>
-        <div className={classes.toolbar} />
-        {children}
-      </main>
-      {isLoggedIn ? (
-        <GroupDialog open={groupDialogOpen} onClose={() => setGroupDialogOpen(false)} />
-      ) : null}
-    </div>
+              {drawer}
+            </Drawer>
+          </Hidden>
+          <Hidden xsDown implementation="css">
+            <Drawer
+              classes={{
+                paper: classes.drawerPaper,
+              }}
+              variant="permanent"
+              open
+            >
+              {drawer}
+            </Drawer>
+          </Hidden>
+        </nav>
+        <main className={classes.content}>
+          <div className={classes.toolbar} />
+          {children}
+        </main>
+        {isLoggedIn ? (
+          <GroupDialog open={groupDialogOpen} onClose={() => setGroupDialogOpen(false)} />
+        ) : null}
+      </div>
+    </BarContext.Provider>
   );
 };
 
@@ -320,6 +321,43 @@ const AdminDrawer = () => {
               <FitnessCenterIcon />
             </ListItemIcon>
             <ListItemText primary="世界王特色訊息" />
+          </ListItem>
+        </List>
+      </Collapse>
+    </>
+  );
+};
+
+/**
+ * 個人用的 NavBar Drawer
+ */
+const PersonalDrawer = () => {
+  const [open, setOpen] = useState(false);
+  const { setGroupDialogOpen } = useContext(BarContext);
+  const classes = useStyles();
+
+  return (
+    <>
+      <ListItem button onClick={() => setOpen(!open)}>
+        <ListItemIcon>
+          <PersonIcon />
+        </ListItemIcon>
+        <ListItemText primary="個人功能" />
+        {open ? <ExpandLess /> : <ExpandMore />}
+      </ListItem>
+      <Collapse in={open} timeout="auto" unmountOnExit>
+        <List component="div" disablePadding className={classes.nestList}>
+          <ListItem button onClick={() => setGroupDialogOpen(true)}>
+            <ListItemIcon>
+              <PeopleIcon />
+            </ListItemIcon>
+            <ListItemText primary={"群組列表"} />
+          </ListItem>
+          <ListItem button component={Link} to="/Trade/Manage">
+            <ListItemIcon>
+              <ShoppingBasketIcon />
+            </ListItemIcon>
+            <ListItemText primary={"交易管理"} />
           </ListItem>
         </List>
       </Collapse>

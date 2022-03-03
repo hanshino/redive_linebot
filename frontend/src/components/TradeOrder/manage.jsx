@@ -6,8 +6,9 @@ import { Grid, IconButton, Paper, Typography } from "@material-ui/core";
 import { DataGrid } from "@mui/x-data-grid";
 import Chip from "@material-ui/core/Chip";
 import { Done as DoneIcon } from "@material-ui/icons";
-import ShareIcon from "@material-ui/icons/Share";
+import SettingsIcon from "@material-ui/icons/Settings";
 import { Link } from "react-router-dom";
+import { get } from "lodash";
 
 const { liff } = window;
 
@@ -37,10 +38,14 @@ const genStatusCell = params => {
   return <Chip size="small" {...props} />;
 };
 
-const ShareButton = ({ value }) => {
+const ShareButton = params => {
+  const { value } = params;
+  const status = get(params, "row.status", -1);
+  const disabled = status !== 0;
+
   return (
-    <IconButton color="primary" component={Link} to={`/Trade/${value}/Detail`}>
-      <ShareIcon />
+    <IconButton color="primary" component={Link} to={`/Trade/${value}/Detail`} disabled={disabled}>
+      <SettingsIcon />
     </IconButton>
   );
 };
@@ -67,7 +72,7 @@ const columns = [
   },
   {
     field: "id",
-    headerName: "分享",
+    headerName: "操作",
     renderCell: ShareButton,
   },
   {
@@ -136,8 +141,6 @@ const Manage = () => {
   }
 
   const pageLoading = loading;
-
-  console.log(marketList, page);
 
   return (
     <Grid container direction="column" spacing={2}>
