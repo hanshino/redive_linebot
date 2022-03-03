@@ -8,7 +8,7 @@ const config = require("config");
 const moment = require("moment");
 const i18n = require("../../util/i18n");
 const { inventory: InventoryModel } = require("../../model/application/Inventory");
-const { get, chunk, sampleSize } = require("lodash");
+const { get, chunk, sampleSize, isNull } = require("lodash");
 const { DefaultLogger } = require("../../util/Logger");
 const CharacterService = require("../../service/CharacterService");
 const GambleTemplate = require("../../templates/application/Gamble");
@@ -306,7 +306,7 @@ async function bet(context, props) {
   const sumResult = await InventoryModel.getUserOwnCountByItemId(userId, 999);
   const ownStones = parseInt(get(sumResult, "amount", 0));
 
-  if (usedCoins > ownStones) {
+  if (isNull(ownStones) || usedCoins > ownStones) {
     await context.replyText(i18n.__("message.gamble.not_enough_coins"));
     return;
   }
