@@ -3,6 +3,7 @@ import Grid from "@material-ui/core/Grid";
 import makeStyles from "@material-ui/core/styles/makeStyles";
 import ChatLevelChart from "./ChatLevelChart";
 import GachaRankChart from "./GachaRankChart";
+import GodStoneChart from "./GodStoneChart";
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -24,6 +25,7 @@ const Rankings = () => {
     <Grid container className={classes.root}>
       <ChatLevelChart />
       <GachaRankChart />
+      <GodStoneChart />
     </Grid>
   );
 };
