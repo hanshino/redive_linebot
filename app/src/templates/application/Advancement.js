@@ -106,6 +106,41 @@ exports.generateRuleBubble = rules => {
   };
 };
 
+/**
+ * 產生狀態 bubble 用的 成就列表
+ * @param {Array<String>} icons
+ */
+exports.generateStatusBox = icons => {
+  let contents = [];
+
+  icons.forEach(icon => {
+    contents.push(
+      {
+        type: "span",
+        text: `${icon}`,
+        size: "lg",
+      },
+      {
+        type: "span",
+        text: " ",
+      }
+    );
+  });
+
+  return {
+    type: "box",
+    layout: "vertical",
+    paddingTop: "md",
+    contents: [
+      {
+        type: "text",
+        contents,
+        wrap: true,
+      },
+    ],
+  };
+};
+
 function generateRuleTextBox(rule) {
   return {
     type: "box",
