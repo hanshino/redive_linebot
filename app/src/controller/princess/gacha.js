@@ -1,5 +1,6 @@
 const GachaModel = require("../../model/princess/gacha");
 const InventoryModel = require("../../model/application/Inventory");
+const { inventory } = InventoryModel;
 const random = require("math-random");
 const GachaTemplate = require("../../templates/princess/gacha");
 const { recordSign } = require("../../util/traffic");
@@ -7,8 +8,10 @@ const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", 
 const redis = require("../../util/redis");
 const { DefaultLogger } = require("../../util/Logger");
 // eslint-disable-next-line no-unused-vars
-const { Context } = require("bottender");
+const { Context, getClient } = require("bottender");
+const lineClient = getClient("line");
 const chunk = require("lodash/chunk");
+const get = require("lodash/get");
 const signModel = require("../../model/application/SigninDays");
 const moment = require("moment");
 const EventCenterService = require("../../service/EventCenterService");
@@ -295,10 +298,11 @@ module.exports = {
       GachaModel.getDatabasePool().then(pool => res.json(pool));
     },
 
-    updateCharacter: updateCharacter,
-    insertCharacter: insertCharacter,
-    deleteCharacter: deleteCharacter,
-    showGachaRank: showGachaRank,
+    updateCharacter,
+    insertCharacter,
+    deleteCharacter,
+    showGachaRank,
+    showGodStoneRank,
   },
 };
 
@@ -459,4 +463,33 @@ async function handleSignin(userId) {
   }
 
   await signModel.update(userId, updateData);
+}
+
+/**
+ * 呼叫女神石排行 api
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+async function showGodStoneRank(req, res) {
+  try {
+    const rankData = await inventory.getGodStoneRank({ limit: 10 });
+    const result = await Promise.all(
+      rankData.map(async (data, index) => {
+        // 將 userId 轉換成 userName
+        const { userId } = data;
+        const profile = await lineClient.getUserProfile(userId);
+        const displayName = get(profile, "displayName", `未知${index + 1}`);
+
+        return {
+          ...data,
+          displayName,
+        };
+      })
+    );
+
+    res.json(result);
+  } catch (e) {
+    DefaultLogger.warn(e);
+    return res.status(400).json({ message: e.message });
+  }
 }

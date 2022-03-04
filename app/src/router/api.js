@@ -248,6 +248,11 @@ router.delete(
 router.get("/Gacha/Rank/:type", gacha.api.showGachaRank);
 
 /**
+ * 取得女神石排行榜
+ */
+router.get("/God-Stone/Rank", gacha.api.showGodStoneRank);
+
+/**
  * 取得布丁使用數據
  */
 router.get("/Pudding/Statistics", showStatistics);
