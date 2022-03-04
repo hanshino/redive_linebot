@@ -17,7 +17,7 @@ const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
 const AdvancementModel = require("../../model/application/Advancement");
-const { get } = require("lodash");
+const { get, isEmpty } = require("lodash");
 const moment = require("moment");
 const { isImageUrl } = require("../../util/string");
 
@@ -97,7 +97,7 @@ exports.showStatus = async context => {
       exp,
     });
 
-    if (achievement) {
+    if (!isEmpty(achievement)) {
       chatlevelBubble.body.contents.push(achievementBox);
     }
 

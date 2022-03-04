@@ -73,6 +73,16 @@ class Inventory extends base {
   deleteUserItem(userId, itemId) {
     return this.knex.where({ userId, itemId }).del();
   }
+
+  getGodStoneRank({ limit }) {
+    return this.knex
+      .sum({ amount: "itemAmount" })
+      .select("userId")
+      .where({ itemId: 999 })
+      .groupBy("userId")
+      .orderBy("amount", "desc")
+      .limit(limit);
+  }
 }
 
 exports.inventory = new Inventory({
