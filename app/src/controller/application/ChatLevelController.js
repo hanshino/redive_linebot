@@ -11,12 +11,15 @@ const uidModel = require("../../model/princess/uid");
 const ProfileTemplate = require("../../templates/application/Profile");
 const MinigameTemplate = require("../../templates/application/Minigame");
 const DailyTemplate = require("../../templates/application/DailyQuest");
+const AdvancementTemplate = require("../../templates/application/Advancement");
 const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
+const AdvancementModel = require("../../model/application/Advancement");
 const { get } = require("lodash");
 const moment = require("moment");
+const { isImageUrl } = require("../../util/string");
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
@@ -44,16 +47,17 @@ exports.showStatus = async context => {
       expRate = Math.round(((exp - nowExpData.exp) / (nextExpData.exp - nowExpData.exp)) * 100);
     }
 
-    let [
+    const [
       current = 0,
       total = 0,
       godStone = 0,
-      subInfo,
+      subData,
       bindInfo,
       jankenResult,
       signinInfo,
       questInfo,
       donateAmount,
+      achievement,
     ] = await Promise.all([
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
@@ -64,15 +68,24 @@ exports.showStatus = async context => {
       SigninModel.find(userId),
       getQuestInfo(userId),
       DonateModel.getUserTotalAmount(userId),
+      AdvancementModel.findUserAdvancementsByPlatformId(userId),
     ]);
 
-    if (subInfo) {
-      subInfo = NotifyController.getSubData(subInfo.subType);
+    let subInfo;
+    if (subData) {
+      subInfo = NotifyController.getSubData(subData.subType);
     } else {
       subInfo = NotifyController.getSubData(0);
     }
 
     const bubbles = [];
+
+    // ---------- 整理成就數據 ----------
+    let achievementBox = AdvancementTemplate.generateStatusBox(
+      achievement.filter(d => !isImageUrl(d.icon)).map(d => d.icon)
+    );
+
+    // ---------- 整理聊天數據 ----------
     const chatlevelBubble = ChatLevelTemplate.showStatus({
       displayName,
       range,
@@ -83,15 +96,23 @@ exports.showStatus = async context => {
       expRate,
       exp,
     });
+
+    if (achievement) {
+      chatlevelBubble.body.contents.push(achievementBox);
+    }
+
+    // ---------- 整理轉蛋數據 ----------
     const gachaBubble = GachaTemplate.genGachaStatus({
       current,
       total,
       godStone,
       paidStone: donateAmount || 0,
     });
+
+    // ---------- 整理其他雜項數據 ----------
     const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo, subInfo });
 
-    // 整理猜拳數據
+    // ---------- 整理猜拳數據 ----------
     let winCount = get(
       jankenResult.find(data => data.result === JankenResult.resultMap.win),
       "count",

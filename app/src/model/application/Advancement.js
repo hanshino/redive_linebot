@@ -2,6 +2,9 @@ const mysql = require("../../util/mysql");
 const TABLE = "advancement";
 const PIVOT_TABLE = "user_has_advancements";
 const { pick, get, chunk } = require("lodash");
+const base = require("../base");
+
+class Advancement extends base {}
 
 const fillable = ["name", "type", "description", "icon", "order"];
 
@@ -83,3 +86,8 @@ exports.findUserAdvancementsByPlatformId = async (platformId, options = {}) => {
 function platformSubquey(userId) {
   return mysql.first("No").from("User").where({ platformId: userId });
 }
+
+exports.model = new Advancement({
+  table: TABLE,
+  fillable,
+});
