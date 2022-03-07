@@ -64,8 +64,8 @@ async function HandlePostback(context, { next }) {
 
     let memkey = `Postback_${userId}_${action}`;
 
-    // 使用 setnx 限制每位使用者 5秒內 不能連續重複動作
-    let isExist = await redis.setnx(memkey, 1, 5);
+    // 使用 setnx 限制每位使用者 1秒內 不能連續重複動作
+    let isExist = await redis.setnx(memkey, 1, 1);
     if (!isExist && action !== "adminBossAttack") return;
 
     return router([

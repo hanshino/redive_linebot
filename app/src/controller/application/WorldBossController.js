@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-unused-vars
-const { Context, getClient } = require("bottender");
+const { Context, getClient, withProps } = require("bottender");
 const { text } = require("bottender/router");
 const moment = require("moment");
 const ajv = require("../../util/ajv");
@@ -16,6 +16,7 @@ const { DefaultLogger } = require("../../util/Logger");
 const LineClient = getClient("line");
 const opencvModel = require("../../model/application/OpencvModel");
 const config = require("config");
+const { get } = require("lodash");
 
 exports.router = [
   text("#冒險小卡", myStatus),
@@ -24,7 +25,45 @@ exports.router = [
   text("/allevent", all),
   text("/worldrank", worldRank),
   text(/^\/(sa|systemattack)(\s(?<percentage>\d{1,2}))?$/, adminAttack),
+  text(/^[.#/](攻擊|attack)$/, withProps(attack, { attackType: "normal" })),
+  text(
+    /^[.#/](混[沌頓]攻擊|chaos-attack|chaos_attack|chaosattack)$/,
+    withProps(attack, { attackType: "chaos" })
+  ),
 ];
+
+/**
+ * 指令攻擊
+ * @param {import ("bottender").LineContext} context
+ */
+async function attack(context, { attackType = "normal" }) {
+  const eventId = await getHoldingEventId();
+
+  if (!eventId) {
+    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
+  }
+
+  return await attackOnBoss(context, {
+    payload: {
+      worldBossEventId: eventId,
+      attackType,
+    },
+  });
+}
+
+async function getHoldingEventId() {
+  // 取得正在進行中的世界事件
+  const events = await worldBossEventService.getCurrentEvent();
+
+  // 多起世界事件正在舉行中
+  if (events.length > 1) {
+    return null;
+  } else if (events.length === 0) {
+    return null;
+  }
+
+  return get(events, "[0].id");
+}
 
 async function myStatus(context) {
   const { userId, pictureUrl, displayName, id } = context.event.source;
@@ -282,10 +321,10 @@ exports.adminSpecialAttack = async (context, { payload }) => {
 };
 
 /**
- * @param {Context} context
+ * @param {import ("bottender").LineContext} context
  * @param {import("bottender").Props} props
  */
-exports.attackOnBoss = async (context, props) => {
+const attackOnBoss = async (context, props) => {
   const { worldBossEventId, attackType = "normal" } = props.payload;
   // 從事件的 source 取得用戶資料
   const { displayName, id, userId, pictureUrl } = context.event.source;
@@ -306,6 +345,15 @@ exports.attackOnBoss = async (context, props) => {
     DefaultLogger.info(
       `user ${displayName} can not attack ${userId}. Maybe cache or reach limit in this period.`
     );
+
+    if (context.event.isText) {
+      context.replyText(
+        i18n.__("message.world_boss.can_not_attack", {
+          name: displayName,
+        })
+      );
+    }
+
     return;
   }
 
@@ -416,6 +464,8 @@ exports.attackOnBoss = async (context, props) => {
     context.replyText(messages.join("\n"), { sender });
   }
 };
+
+exports.attackOnBoss = attackOnBoss;
 
 /**
  * 決定要將訊息送出或是儲存
