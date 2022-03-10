@@ -44,6 +44,7 @@ class Base {
    * @param {Number} options.pagination.perPage 分頁每頁顯示數量
    * @param {Array<{column: String, direction: String}>} options.order 排序設定
    * @param {Array}  options.select 選擇欄位
+   * @param {Number} options.limit  限制數量
    * @returns {Promise<Array>}
    */
   async all(options = {}) {
@@ -51,6 +52,7 @@ class Base {
     const pagination = get(options, "pagination", {});
     const order = get(options, "order", []);
     const select = get(options, "select", ["*"]);
+    const limit = get(options, "limit", null);
 
     let query = this.knex;
 
@@ -64,6 +66,8 @@ class Base {
 
     if (pagination.page) {
       query = query.limit(pagination.perPage).offset(pagination.perPage * (pagination.page - 1));
+    } else if (limit) {
+      query = query.limit(limit);
     }
 
     order.forEach(item => {

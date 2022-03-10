@@ -24,6 +24,11 @@
     "nickname": "暱稱",
     "rank": "排名",
     "damage": "傷害",
+    "max_damage": "最大傷害",
+    "used_max_damage": "單次最大傷害",
+    "total_damage": "總傷害",
+    "attend_times": "參與討伐次數",
+    "boss_name": "怪物名稱",
     "chaos_attack": "混沌攻擊",
     "checked": "⭕️",
     "unchecked": "❌",
@@ -34,7 +39,8 @@
     "weekly_icon": "週",
     "janken": "猜拳",
     "gacha": "抽卡",
-    "weekly": "每週任務"
+    "weekly": "每週任務",
+    "time": "時間"
   },
   "message": {
     "user_attack_on_world_boss": "成功對 {{ name }} 造成 {{ damage }} 傷害",

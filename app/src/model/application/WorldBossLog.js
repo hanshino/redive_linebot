@@ -1,8 +1,83 @@
 const mysql = require("../../util/mysql");
 const { pick } = require("lodash");
 const TABLE = "world_boss_event_log";
+const base = require("../base");
+
+class WorldBossLog extends base {
+  async getAllLogsByDate(id, { startAt, endAt }) {
+    return await this.knex
+      .select("*")
+      .where({
+        user_id: id,
+      })
+      .whereBetween("created_at", [startAt, endAt])
+      .orderBy("created_at", "desc");
+  }
+
+  async getBossLogs(id, { limit }) {
+    return await this.knex
+      .select([
+        "world_boss_event_id",
+        {
+          name: "world_boss.name",
+        },
+      ])
+      .sum({ total_damage: "damage" })
+      .where({
+        user_id: id,
+      })
+      .groupBy("world_boss_event_id")
+      .orderBy("world_boss_event_id", "desc")
+      .join("world_boss_event", "world_boss_event_id", "world_boss_event.id")
+      .join("world_boss", "world_boss_event.world_boss_id", "world_boss.id")
+      .limit(limit);
+  }
+
+  /**
+   * 取得某個用戶的最大傷害
+   * @param {Number} userId
+   * @returns {Promise<{max: Number}>}
+   */
+  async getUserMaxDamage(userId) {
+    return await this.knex
+      .max({
+        max: "damage",
+      })
+      .first()
+      .where({
+        user_id: userId,
+      });
+  }
+
+  /**
+   * 取得某用戶參與過的所有世界王次數
+   * @param {Number} userId
+   * @returns {Promise<{count: Number}>}
+   */
+  async getUserAttendance(userId) {
+    // SELECT count(*) AS times FROM ( SELECT `user_id` FROM `world_boss_event_log` WHERE `user_id` = 1 GROUP BY `world_boss_event_id`, `user_id` ) AS t;
+    let subQuery = this.knex
+      .select("user_id")
+      .where({
+        user_id: userId,
+      })
+      .groupBy("world_boss_event_id", "user_id")
+      .as("t");
+
+    return await this.knex
+      .count({
+        count: "user_id",
+      })
+      .first()
+      .from(subQuery);
+  }
+}
 
 exports.table = TABLE;
+exports.model = new WorldBossLog({
+  table: TABLE,
+  fillable: ["world_boss_event_id", "user_id", "action_type", "damage"],
+});
 
 exports.all = async () => {
   return await mysql(TABLE).select("*");
