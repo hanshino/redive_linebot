@@ -86,7 +86,7 @@ const immediateStart = process.env.NODE_ENV === "production" || true;
 
 // 每十分鐘執行血量剩餘通知
 new CronJob(
-  "0 */10 0-1,6-23 * * *",
+  "0 */30 0-1,6-23 * * *",
   async () => {
     await progressNotify();
   },
@@ -97,7 +97,7 @@ new CronJob(
 
 // 每 15 分鐘執行提示訊息，但不包含 1:00~5:00 時段
 new CronJob(
-  "0 */15 0,6-23 * * *",
+  "0 15,45 0,6-23 * * *",
   async () => {
     await regularRemind();
   },
