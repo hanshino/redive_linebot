@@ -84,7 +84,7 @@ async function myStatus(context) {
   const [todayAttackCount, sumLogs, { max: maxDamage = 0 }, { count: attendTimes = 0 }] =
     await Promise.all([
       worldBossEventLogService.getTodayAttackCount(id),
-      worldBossLogModel.getBossLogs(id, { limit: 3 }),
+      worldBossLogModel.getBossLogs(id, { limit: 2 }),
       worldBossLogModel.getUserMaxDamage(id),
       worldBossLogModel.getUserAttendance(id),
     ]);
