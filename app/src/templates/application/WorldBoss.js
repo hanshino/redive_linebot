@@ -1014,7 +1014,7 @@ exports.generateRecentlyEventBubble = rows => ({
         contents: [...rows],
         paddingTop: "sm",
         paddingBottom: "sm",
-        spacing: "md",
+        spacing: "sm",
       },
     ],
     backgroundColor: "#EDDFC4",
@@ -1029,7 +1029,7 @@ exports.generateRecentlyEventBubble = rows => ({
  */
 exports.generateRecentlyEventRow = ({ bossName, totalDamage }) => ({
   type: "box",
-  layout: "horizontal",
+  layout: "vertical",
   contents: [
     {
       type: "text",
@@ -1068,6 +1068,9 @@ exports.generateRecentlyEventRow = ({ bossName, totalDamage }) => ({
           text: totalDamage,
         },
       ],
+    },
+    {
+      type: "separator",
     },
   ],
 });
