@@ -807,3 +807,267 @@ function generateRuleTextBox(rule) {
     ],
   };
 }
+
+/**
+ * 產出傷害履歷的 row
+ * @param {Object} param0
+ * @param {String} param0.damage 傷害
+ * @param {String} param0.datetime 建立時間
+ * @returns {Object}
+ */
+exports.generateDamageResumeRow = ({ damage, datetime }) => {
+  return {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: damage,
+        size: "xs",
+        flex: 5,
+        align: "center",
+      },
+      {
+        type: "text",
+        text: datetime,
+        size: "xs",
+        flex: 7,
+      },
+    ],
+  };
+};
+
+/**
+ * 產生傷害履歷的 bubble
+ * @param {Array} rows
+ * @returns {Object}
+ */
+exports.generateDamageResumeBubble = rows => {
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "text",
+                  text: i18n.__("template.damage"),
+                  flex: 5,
+                  size: "sm",
+                  align: "center",
+                },
+                {
+                  type: "text",
+                  text: i18n.__("template.time"),
+                  flex: 7,
+                  size: "sm",
+                },
+              ],
+            },
+            {
+              type: "separator",
+              color: "#808080",
+            },
+            ...rows,
+          ],
+          paddingAll: "sm",
+          spacing: "md",
+        },
+      ],
+    },
+  };
+};
+
+exports.generateCardStatusBubble = ({ maxDamage, attendTimes, standardDamage }) => ({
+  type: "bubble",
+  body: {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "text",
+        text: "狀態列",
+        weight: "bold",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "separator",
+            color: "#808080",
+          },
+        ],
+        paddingTop: "lg",
+        paddingBottom: "lg",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            contents: [
+              {
+                type: "span",
+                text: i18n.__("template.damage"),
+              },
+              {
+                type: "span",
+                text: "：",
+              },
+              {
+                type: "span",
+                text: standardDamage,
+              },
+            ],
+            size: "sm",
+          },
+          {
+            type: "text",
+            contents: [
+              {
+                type: "span",
+                text: i18n.__("template.used_max_damage"),
+              },
+              {
+                type: "span",
+                text: "：",
+              },
+              {
+                type: "span",
+                text: maxDamage,
+              },
+            ],
+            size: "sm",
+          },
+          {
+            type: "text",
+            contents: [
+              {
+                type: "span",
+                text: i18n.__("template.attend_times"),
+              },
+              {
+                type: "span",
+                text: "：",
+              },
+              {
+                type: "span",
+                text: `${attendTimes}`,
+              },
+              {
+                type: "span",
+                text: " 次",
+              },
+            ],
+            size: "sm",
+          },
+        ],
+        paddingTop: "sm",
+        paddingBottom: "sm",
+        spacing: "sm",
+      },
+    ],
+    backgroundColor: "#EDDFC4",
+  },
+});
+
+/**
+ * 產出近期紀錄的 bubble
+ * @param {Array} rows
+ */
+exports.generateRecentlyEventBubble = rows => ({
+  type: "bubble",
+  body: {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "text",
+        text: "近期討伐紀錄",
+        weight: "bold",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "separator",
+            color: "#808080",
+          },
+        ],
+        paddingTop: "lg",
+        paddingBottom: "lg",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [...rows],
+        paddingTop: "sm",
+        paddingBottom: "sm",
+        spacing: "md",
+      },
+    ],
+    backgroundColor: "#EDDFC4",
+  },
+});
+
+/**
+ * 產出近期討伐紀錄的 row
+ * @param {Object} param0
+ * @param {String} param0.bossName
+ * @param {String} param0.totalDamage
+ */
+exports.generateRecentlyEventRow = ({ bossName, totalDamage }) => ({
+  type: "box",
+  layout: "horizontal",
+  contents: [
+    {
+      type: "text",
+      size: "sm",
+      contents: [
+        {
+          type: "span",
+          text: i18n.__("template.boss_name"),
+          weight: "bold",
+        },
+        {
+          type: "span",
+          text: " ",
+        },
+        {
+          type: "span",
+          text: bossName,
+        },
+      ],
+    },
+    {
+      type: "text",
+      size: "sm",
+      contents: [
+        {
+          type: "span",
+          text: i18n.__("template.total_damage"),
+          weight: "bold",
+        },
+        {
+          type: "span",
+          text: " ",
+        },
+        {
+          type: "span",
+          text: totalDamage,
+        },
+      ],
+    },
+  ],
+});

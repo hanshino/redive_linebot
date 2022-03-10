@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-unused-vars
-const { Context, getClient } = require("bottender");
+const { Context, getClient, withProps } = require("bottender");
 const { text } = require("bottender/router");
 const moment = require("moment");
 const ajv = require("../../util/ajv");
@@ -10,12 +10,15 @@ const worldBossEventLogService = require("../../service/WorldBossEventLogService
 const minigameService = require("../../service/MinigameService");
 const worldBossUserAttackMessageService = require("../../service/WorldBossUserAttackMessageService");
 const worldBossTemplate = require("../../templates/application/WorldBoss");
+const { model: worldBossLogModel } = require("../../model/application/WorldBossLog");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
 const LineClient = getClient("line");
 const opencvModel = require("../../model/application/OpencvModel");
 const config = require("config");
+const { get } = require("lodash");
+const humanNumber = require("human-number");
 
 exports.router = [
   text("#冒險小卡", myStatus),
@@ -24,8 +27,50 @@ exports.router = [
   text("/allevent", all),
   text("/worldrank", worldRank),
   text(/^\/(sa|systemattack)(\s(?<percentage>\d{1,2}))?$/, adminAttack),
+  text(/^[.#/](攻擊|attack)$/, withProps(attack, { attackType: "normal" })),
+  text(
+    /^[.#/](混[沌頓]攻擊|chaos-attack|chaos_attack|chaosattack)$/,
+    withProps(attack, { attackType: "chaos" })
+  ),
 ];
 
+/**
+ * 指令攻擊
+ * @param {import ("bottender").LineContext} context
+ */
+async function attack(context, { attackType = "normal" }) {
+  const eventId = await getHoldingEventId();
+
+  if (!eventId) {
+    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
+  }
+
+  return await attackOnBoss(context, {
+    payload: {
+      worldBossEventId: eventId,
+      attackType,
+    },
+  });
+}
+
+async function getHoldingEventId() {
+  // 取得正在進行中的世界事件
+  const events = await worldBossEventService.getCurrentEvent();
+
+  // 多起世界事件正在舉行中
+  if (events.length > 1) {
+    return null;
+  } else if (events.length === 0) {
+    return null;
+  }
+
+  return get(events, "[0].id");
+}
+
+/**
+ * 冒險小卡
+ * @param {import ("bottender").LineContext} context
+ */
 async function myStatus(context) {
   const { userId, pictureUrl, displayName, id } = context.event.source;
   const { level, exp } = await minigameService.findByUserId(userId);
@@ -36,7 +81,13 @@ async function myStatus(context) {
   const expPercentage = (exp / levelUpExp) * 100;
 
   // 取得今日已經攻擊的次數
-  const todayAttackCount = await worldBossEventLogService.getTodayAttackCount(id);
+  const [todayAttackCount, sumLogs, { max: maxDamage = 0 }, { count: attendTimes = 0 }] =
+    await Promise.all([
+      worldBossEventLogService.getTodayAttackCount(id),
+      worldBossLogModel.getBossLogs(id, { limit: 3 }),
+      worldBossLogModel.getUserMaxDamage(id),
+      worldBossLogModel.getUserAttendance(id),
+    ]);
 
   const data = {
     level,
@@ -47,9 +98,30 @@ async function myStatus(context) {
     attackCount: todayAttackCount,
   };
 
-  let bubble = worldBossTemplate.generateAdventureCard(data);
+  let bubbles = [
+    worldBossTemplate.generateAdventureCard(data),
+    worldBossTemplate.generateCardStatusBubble({
+      maxDamage: humanNumber(maxDamage || 0),
+      standardDamage: humanNumber(getStandardDamage(level)),
+      attendTimes: attendTimes || 0,
+    }),
+  ];
 
-  context.replyFlex("冒險者卡片", bubble);
+  if (sumLogs.length > 0) {
+    let recentlyRows = sumLogs.map(log =>
+      worldBossTemplate.generateRecentlyEventRow({
+        bossName: get(log, "name", ""),
+        totalDamage: humanNumber(parseInt(get(log, "total_damage", "0"))),
+      })
+    );
+
+    bubbles.push(worldBossTemplate.generateRecentlyEventBubble(recentlyRows));
+  }
+
+  context.replyFlex("冒險者卡片", {
+    type: "carousel",
+    contents: bubbles,
+  });
 }
 
 /**
@@ -282,10 +354,10 @@ exports.adminSpecialAttack = async (context, { payload }) => {
 };
 
 /**
- * @param {Context} context
+ * @param {import ("bottender").LineContext} context
  * @param {import("bottender").Props} props
  */
-exports.attackOnBoss = async (context, props) => {
+const attackOnBoss = async (context, props) => {
   const { worldBossEventId, attackType = "normal" } = props.payload;
   // 從事件的 source 取得用戶資料
   const { displayName, id, userId, pictureUrl } = context.event.source;
@@ -306,6 +378,15 @@ exports.attackOnBoss = async (context, props) => {
     DefaultLogger.info(
       `user ${displayName} can not attack ${userId}. Maybe cache or reach limit in this period.`
     );
+
+    if (context.event.isText) {
+      context.replyText(
+        i18n.__("message.world_boss.can_not_attack", {
+          name: displayName,
+        })
+      );
+    }
+
     return;
   }
 
@@ -417,6 +498,8 @@ exports.attackOnBoss = async (context, props) => {
   }
 };
 
+exports.attackOnBoss = attackOnBoss;
+
 /**
  * 決定要將訊息送出或是儲存
  * @param {Number} worldBossEventId
@@ -510,7 +593,7 @@ function calculateDamage(level = 1, attackType = "normal") {
   // 根據等級計算攻擊傷害，攻擊係數呈指數增加
   // 等級也具有基礎傷害，所以等級越高，傷害越高，使用等級 * 10 當作基底傷害
   // 最後再加上隨機值，避免每次都是同一個傷害
-  let damage = Math.floor(Math.pow(level, 2)) + level * 10 + Math.floor(Math.random() * level);
+  let damage = getStandardDamage(level) + Math.floor(Math.random() * level);
 
   switch (attackType) {
     case "chaos": {
@@ -537,6 +620,15 @@ function calculateDamage(level = 1, attackType = "normal") {
   }
 
   return Math.round(damage);
+}
+
+/**
+ * 取得傷害基礎值
+ * @param {Number} level 等級
+ * @returns {Number} 基礎傷害
+ */
+function getStandardDamage(level = 1) {
+  return Math.floor(Math.pow(level, 2)) + level * 10;
 }
 
 /**
