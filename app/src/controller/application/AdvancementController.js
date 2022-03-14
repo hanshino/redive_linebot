@@ -15,9 +15,9 @@ const { DefaultLogger } = require("../../util/Logger");
 exports.router = [text(/^[.#/](成就|稱號|adv)$/, list)];
 
 exports.adminRouter = [
-  text(/^[/]adv list/, adminList),
-  text(/^[/]adv add/, adminAdd),
-  text(/^[/]adv attach/, adminAttach),
+  text(/^[!]adv list/, adminList),
+  text(/^[!]adv add/, adminAdd),
+  text(/^[!]adv attach/, adminAttach),
 ];
 
 /**

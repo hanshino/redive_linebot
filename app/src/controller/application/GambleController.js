@@ -22,9 +22,9 @@ exports.router = [
   text(/^[./#]下注$/, show),
 ];
 exports.adminRouter = [
-  text(/^[./#]gamble result/, result),
-  text(/^[./]gamble add/, adminAdd),
-  text(/^[./]gamble now$/, adminNow),
+  text(/^[!]gamble result/, result),
+  text(/^[!]gamble add/, adminAdd),
+  text(/^[!]gamble now$/, adminNow),
 ];
 
 /**

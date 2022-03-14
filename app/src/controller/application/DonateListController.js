@@ -8,7 +8,7 @@ const { table, getBorderCharacters } = require("table");
 const { DefaultLogger } = require("../../util/Logger");
 const minimist = require("minimist");
 
-exports.adminRouter = [text(/^[/]donate list/, adminList), text(/^[/]donate add/, adminAdd)];
+exports.adminRouter = [text(/^[!]donate list/, adminList), text(/^[!]donate add/, adminAdd)];
 
 /**
  * 管理員查看捐款紀錄
