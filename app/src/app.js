@@ -34,6 +34,7 @@ const GambleController = require("./controller/application/GambleController");
 const AliasController = require("./controller/application/AliasController");
 const VoteController = require("./controller/application/VoteController");
 const MarketController = require("./controller/application/MarketController");
+const CouponController = require("./controller/application/CouponController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -219,6 +220,7 @@ function AdminOrder() {
     ...AdvancementController.adminRouter,
     ...DonateListController.adminRouter,
     ...AliasController.adminRouter,
+    ...CouponController.adminRouter,
   ];
 }
 

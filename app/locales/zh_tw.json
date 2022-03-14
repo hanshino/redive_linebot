@@ -137,6 +137,12 @@
     "trade": {
       "no_mention": "請標記要交易的對象",
       "apply": "此按鈕為針對 {{ displayName }} 發起交易的申請，按下即代表對他發起交易申請"
+    },
+    "coupon": {
+      "admin_add_usage": "使用方法：/coupon add <兌換碼> --start|s=<開始時間> --end|e=<結束時間> --reward|r=<獎項>",
+      "admin_add_invalid_param": "無效的參數，請檢查參數是否正確",
+      "admin_add_success": "成功新增兌換碼 {{ code }}\n流水號 {{ id }}",
+      "admin_add_failed": "新增兌換碼失敗，請檢查參數是否正確"
     }
   },
   "advancement": {
