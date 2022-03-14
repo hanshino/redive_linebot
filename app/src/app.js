@@ -117,6 +117,7 @@ async function OrderBased(context, { next }) {
     ...VoteController.router,
     ...GambleController.router,
     ...MarketController.router,
+    ...CouponController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
