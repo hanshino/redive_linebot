@@ -8,7 +8,7 @@ const i18n = require("../../util/i18n");
 const config = require("config");
 const expire = 7 * 24 * 60 * 60; // 7天到期
 
-exports.adminRouter = [text(/^[/.]alias/, alias)];
+exports.adminRouter = [text(/^[!]alias/, alias)];
 
 /**
  * 新增別名
