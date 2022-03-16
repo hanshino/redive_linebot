@@ -560,6 +560,7 @@ async function handleKeepingMessage(worldBossEventId, context, keepMessage) {
  */
 async function isUserCanAttack(userId) {
   const key = `${userId}_can_attack`;
+  const cooldownSeconds = 30;
 
   // 如果 redis 中有資料，代表一定攻擊過了
   if (await redis.get(key)) {
@@ -570,7 +571,7 @@ async function isUserCanAttack(userId) {
   let todayLogs = await worldBossEventLogService.getTodayLogs(userId);
   // 如果完全沒有紀錄，代表可以攻擊
   if (todayLogs.length === 0) {
-    await redis.setnx(key, 1, 60 * 1);
+    await redis.setnx(key, 1, cooldownSeconds * 1);
     return true;
   }
 
@@ -579,7 +580,7 @@ async function isUserCanAttack(userId) {
   console.log(`${userId} can attack ${canAttack}, currentCount ${currentCount}`);
 
   // 不管是否可以攻擊，都要更新 redis 的資料
-  await redis.setnx(key, 1, 60 * 1);
+  await redis.setnx(key, 1, cooldownSeconds * 1);
   return canAttack;
 }
 
