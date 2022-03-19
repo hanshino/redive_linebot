@@ -15,7 +15,7 @@ router.post("/image", async (req, res) => {
     });
     res.json({
       success: true,
-      link: get(data, "0.data.link"),
+      link: get(data, "data.link"),
     });
   } catch (e) {
     res.status(400).json({
