@@ -26,7 +26,7 @@ const WorldbossMessageUpdate = () => {
     if (isValidImage && isValidTemplate) {
       const payload = { template };
       if (imageUrl) {
-        payload.imageUrl = imageUrl;
+        payload.icon_url = imageUrl;
       }
       update({
         data: payload,
