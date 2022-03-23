@@ -94,7 +94,7 @@ const MessageForm = ({
           <Button
             variant="contained"
             color="primary"
-            onClick={() => handleChange("template", `${formData.template} {{ display_name }}`)}
+            onClick={() => handleChange("template", `${formData.template} {{{ display_name }}}`)}
           >
             玩家名稱
           </Button>
