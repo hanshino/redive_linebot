@@ -48,7 +48,7 @@
     "world_boss_event_multiple_ongoing": "有多個世界活動正在進行中，請選擇其中一個進行操作。",
     "world_boss_event_no_ongoing": "目前沒有世界活動正在進行中...",
     "world_boss": {
-      "can_not_attack": "{{ name }} 攻擊失敗\n攻擊冷卻中 或是 已經達到最大攻擊次數"
+      "can_not_attack": "{{{ name }}} 攻擊失敗\n攻擊冷卻中 或是 已經達到最大攻擊次數"
     },
     "damage_suffix": "[,10[效果不彰...|[,50[效果甚微...|[,100[效果不錯|[,300[效果顯著|[,400[爆擊！|致命爆擊",
     "admin_attack_on_world_boss": "創造神路過敲了一下... 造成 {{ damage }} 傷害...",
@@ -59,7 +59,7 @@
     "vote": {
       "notFound": "沒有找到指定的投票活動",
       "notHolding": "這個投票活動沒有開始或已經結束",
-      "decided": "{{ displayName }} 已參加完 {{ title }}，舉辦期間仍可以改變決定\n註：改變決定後將不進行二次通知",
+      "decided": "{{{ displayName }}} 已參加完 {{ title }}，舉辦期間仍可以改變決定\n註：改變決定後將不進行二次通知",
       "help": "使用方式：/vote list --ids=投票活動ID，例如：/vote list --ids=1,2,3"
     },
     "service": {
@@ -95,31 +95,31 @@
       "attach_fail": "附加成就 {{ name }} 失敗"
     },
     "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
-    "minigame_level_up": "恭喜 {{ displayName }} 升級了，現在等級：{{ level }}",
+    "minigame_level_up": "恭喜 {{{ displayName }}} 升級了，現在等級：{{ level }}",
     "minigame_penalty": "因為等級差距的關係，取得經驗值減少，只取得 {{ penaltyRate }}% 的經驗值",
     "god_stone_shop_empty": "目前未設定任何兌換商品，請聯繫管理員設定",
     "duel": {
       "usage": "使用方法：/duel @玩家",
-      "start": "{{ displayName }} 和 {{ targetDisplayName }} 開始了對決，請挑選以下選項：",
+      "start": "{{{ displayName }}} 和 {{{ targetDisplayName }}} 開始了對決，請挑選以下選項：",
       "too_many_mentions": "請指定一個玩家",
       "only_in_group": "決鬥系統只能在群組中使用",
-      "result": "{{ displayName }} 和 {{ targetDisplayName }} 的對決結果：\n{{ displayName }} 出：{{ p1Type }}，{{ targetDisplayName }} 出：{{ p2Type }}",
-      "win_lose": "{{ winner }} 贏了！",
+      "result": "{{{ displayName }}} 和 {{{ targetDisplayName }}} 的對決結果：\n{{{ displayName }}} 出：{{ p1Type }}，{{{ targetDisplayName }}} 出：{{ p2Type }}",
+      "win_lose": "{{{ winner }}} 贏了！",
       "draw": "平手！",
       "paper": "布",
       "scissors": "剪刀",
       "rock": "石頭",
       "failed_to_get_user_id": "無法取得玩家ID",
       "failed_to_get_target_user_id": "無法取得對手玩家ID",
-      "challenge_success": "{{ displayName }} 已經向 {{ targetDisplayName }} 傳送了對決請求，並且出好拳了，請等待對方出拳，在對方出好拳之前都可以更改選項！",
-      "holding_manual": "{{ displayName }} 正在舉辦猜拳比賽，任何人都可以向他提出決鬥請求！"
+      "challenge_success": "{{{ displayName }}} 已經向 {{{ targetDisplayName }}} 傳送了對決請求，並且出好拳了，請等待對方出拳，在對方出好拳之前都可以更改選項！",
+      "holding_manual": "{{{ displayName }}} 正在舉辦猜拳比賽，任何人都可以向他提出決鬥請求！"
     },
     "gamble": {
       "no_game": "目前沒有遊戲正在進行中",
       "not_enough_coins": "你沒有足夠的女神石",
       "invalid_option": "無效的選項",
       "bet_failed": "下注失敗，請檢查輸入的金額",
-      "bet_success": "{{ displayName }} 成功下注 {{ amount }} 顆女神石",
+      "bet_success": "{{{ displayName }}} 成功下注 {{ amount }} 顆女神石",
       "usage": "使用方法：#下注 編號 金額",
       "result": "抽出獎項，現在時間是 {{ time }}\n抽到的選項是 {{ prize }}",
       "simulate_result": "此次為模擬開獎，如需正式發送，請加入 --dispatch 參數",
@@ -137,7 +137,7 @@
     },
     "trade": {
       "no_mention": "請標記要交易的對象",
-      "apply": "此按鈕為針對 {{ displayName }} 發起交易的申請，按下即代表對他發起交易申請"
+      "apply": "此按鈕為針對 {{{ displayName }}} 發起交易的申請，按下即代表對他發起交易申請"
     },
     "coupon": {
       "admin_add_usage": "使用方法：!coupon add <兌換碼> --start|s=<開始時間> --end|e=<結束時間> --reward|r=<獎項>",
