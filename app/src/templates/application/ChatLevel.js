@@ -1,5 +1,7 @@
+const humanNumber = require("human-number");
+
 exports.showStatus = param => {
-  let { displayName, range, rank, level, ranking, expRate, pictureUrl, exp } = param;
+  let { displayName, range, rank, level, ranking, expRate, pictureUrl, exp, achievement } = param;
 
   return {
     type: "bubble",
@@ -9,9 +11,9 @@ exports.showStatus = param => {
       contents: [
         {
           type: "text",
-          align: "center",
+          text: achievement,
           weight: "bold",
-          text: `${range} 的 ${rank}`,
+          align: "center",
         },
       ],
       paddingBottom: "0px",
@@ -29,13 +31,27 @@ exports.showStatus = param => {
               layout: "vertical",
               contents: [
                 {
-                  type: "image",
-                  url: pictureUrl,
-                  size: "full",
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "image",
+                      url: pictureUrl,
+                    },
+                  ],
+                  width: "100%",
+                  cornerRadius: "100px",
+                },
+                {
+                  type: "text",
+                  text: `${displayName}`,
+                  align: "center",
+                  weight: "bold",
+                  margin: "md",
+                  size: "xs",
                 },
               ],
-              cornerRadius: "100px",
-              width: "30%",
+              flex: 1,
             },
             {
               type: "box",
@@ -47,28 +63,9 @@ exports.showStatus = param => {
                   contents: [
                     {
                       type: "text",
-                      text: displayName,
+                      text: `${range} 的 ${rank}`,
                       weight: "bold",
-                    },
-                    {
-                      type: "text",
-                      size: "xxs",
-                      gravity: "bottom",
-                      contents: [
-                        {
-                          type: "span",
-                          text: "Rank",
-                        },
-                        {
-                          type: "span",
-                          text: " ",
-                        },
-                        {
-                          type: "span",
-                          text: `# ${ranking}`,
-                        },
-                      ],
-                      align: "end",
+                      size: "sm",
                     },
                   ],
                   paddingEnd: "3px",
@@ -103,7 +100,7 @@ exports.showStatus = param => {
                       size: "xxs",
                       gravity: "bottom",
                       color: "#808080",
-                      text: `${exp}`,
+                      text: humanNumber(exp, n => Number.parseFloat(n).toFixed(1)),
                       align: "end",
                     },
                   ],
@@ -128,8 +125,18 @@ exports.showStatus = param => {
               ],
               paddingStart: "10px",
               spacing: "sm",
+              flex: 2,
             },
           ],
+        },
+        {
+          type: "text",
+          text: `Rank #${ranking}`,
+          size: "xxs",
+          color: "#808080",
+          position: "absolute",
+          offsetEnd: "10px",
+          offsetBottom: "3px",
         },
       ],
     },

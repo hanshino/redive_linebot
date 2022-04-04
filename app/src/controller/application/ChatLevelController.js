@@ -11,15 +11,13 @@ const uidModel = require("../../model/princess/uid");
 const ProfileTemplate = require("../../templates/application/Profile");
 const MinigameTemplate = require("../../templates/application/Minigame");
 const DailyTemplate = require("../../templates/application/DailyQuest");
-const AdvancementTemplate = require("../../templates/application/Advancement");
 const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
 const AdvancementModel = require("../../model/application/Advancement");
-const { get, isEmpty } = require("lodash");
+const { get, sample } = require("lodash");
 const moment = require("moment");
-const { isImageUrl } = require("../../util/string");
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
@@ -80,11 +78,6 @@ exports.showStatus = async context => {
 
     const bubbles = [];
 
-    // ---------- 整理成就數據 ----------
-    let achievementBox = AdvancementTemplate.generateStatusBox(
-      achievement.filter(d => !isImageUrl(d.icon)).map(d => d.icon)
-    );
-
     // ---------- 整理聊天數據 ----------
     const chatlevelBubble = ChatLevelTemplate.showStatus({
       displayName,
@@ -95,11 +88,8 @@ exports.showStatus = async context => {
       pictureUrl,
       expRate,
       exp,
+      achievement: get(sample(achievement), "name", "-"),
     });
-
-    if (!isEmpty(achievement)) {
-      chatlevelBubble.body.contents.push(achievementBox);
-    }
 
     // ---------- 整理轉蛋數據 ----------
     const gachaBubble = GachaTemplate.genGachaStatus({
