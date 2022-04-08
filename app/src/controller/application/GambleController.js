@@ -348,7 +348,7 @@ async function getHoldingGame() {
   const key = config.get("redis.keys.gamebleGame");
   const data = await redis.get(key);
   if (data) {
-    return data;
+    return JSON.parse(data);
   }
 
   // 獲取正在進行的遊戲
@@ -369,7 +369,9 @@ async function getHoldingGame() {
     return;
   }
 
-  await redis.set(key, game, 60);
+  await redis.set(key, JSON.stringify(game), {
+    EX: 60,
+  });
   return game;
 }
 

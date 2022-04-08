@@ -50,7 +50,7 @@ exports.queryOrderBySourceId = async (sourceId, status = "") => {
   var memoryKey = `CustomerOrder_${sourceId}_${status}`;
   var orders = await redis.get(memoryKey);
 
-  if (orders !== null) return orders;
+  if (orders !== null) return JSON.parse(orders);
 
   var query = mysql.select(this.columnsAlias).table(this.table).where({ sourceId });
 
@@ -60,7 +60,9 @@ exports.queryOrderBySourceId = async (sourceId, status = "") => {
 
   orders = await query;
 
-  redis.set(memoryKey, orders, 60 * 60);
+  redis.set(memoryKey, JSON.stringify(orders), {
+    EX: 60 * 60,
+  });
   return orders;
 };
 

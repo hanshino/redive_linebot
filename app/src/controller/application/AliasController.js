@@ -34,5 +34,7 @@ async function alias(context) {
 async function setAlias(newAlias, command) {
   const redisKey = `${config.get("redis.prefix.alias")}:${newAlias}`;
   const redisValue = command;
-  await redis.set(redisKey, redisValue, expire);
+  await redis.set(redisKey, redisValue, {
+    EX: expire,
+  });
 }

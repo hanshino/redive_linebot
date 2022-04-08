@@ -111,7 +111,9 @@ exports.decide = async (context, { payload }) => {
   }
 
   DefaultLogger.info(`[Janken] ${context.event.source.userId} decide ${type}`);
-  await redis.set(`${redisPrefix}:${recordId}:${context.event.source.userId}`, type, 60 * 60);
+  await redis.set(`${redisPrefix}:${recordId}:${context.event.source.userId}`, type, {
+    EX: 60 * 60,
+  });
 
   const [p1Decide, p2Decide] = await Promise.all([
     redis.get(`${redisPrefix}:${recordId}:${userId}`),
@@ -255,13 +257,16 @@ async function handleChallender(context, { payload }) {
   }
 
   // 一次一位挑戰者，而主辦方需在 10 分鐘內做好決定
-  let hasSet = await redis.setnx(
+  let hasSet = await redis.set(
     redisKey,
     JSON.stringify({
       sourceUserId,
       type,
     }),
-    10 * 60
+    {
+      EX: 10 * 60,
+      NX: true,
+    }
   );
 
   if (!hasSet) {

@@ -15,7 +15,9 @@ exports.getGuildCount = async () => {
     .count({ cnt: "*" })
     .then(data => data[0].cnt);
 
-  redis.set(memoryKey, count, 3600);
+  redis.set(memoryKey, count, {
+    EX: 3600,
+  });
   return count;
 };
 
@@ -53,7 +55,9 @@ exports.getCustomerOrderCount = async () => {
     .count({ cnt: "*" })
     .then(data => data[0].cnt);
 
-  redis.set(memoryKey, count, 3600);
+  redis.set(memoryKey, count, {
+    EX: 3600,
+  });
   return count;
 };
 
@@ -79,7 +83,9 @@ exports.getSpeakTimesCount = async () => {
 
   times += historyTimes;
 
-  redis.set(memoryKey, times, 3600);
+  redis.set(memoryKey, times, {
+    EX: 3600,
+  });
   return times;
 };
 
@@ -90,7 +96,7 @@ exports.getSpeakTimesCount = async () => {
 exports.getGuildDataByUser = async userId => {
   let memoryKey = `GuildData_${userId}`;
   let guildData = await redis.get(memoryKey);
-  if (guildData !== null) return guildData;
+  if (guildData !== null) return JSON.parse(guildData);
 
   guildData = await mysql
     .select()
@@ -103,6 +109,8 @@ exports.getGuildDataByUser = async userId => {
       return data[0];
     });
 
-  redis.set(memoryKey, guildData, 1 * 60);
+  redis.set(memoryKey, JSON.stringify(guildData), {
+    EX: 3600,
+  });
   return guildData;
 };

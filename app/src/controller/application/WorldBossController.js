@@ -571,7 +571,10 @@ async function isUserCanAttack(userId) {
   let todayLogs = await worldBossEventLogService.getTodayLogs(userId);
   // 如果完全沒有紀錄，代表可以攻擊
   if (todayLogs.length === 0) {
-    await redis.setnx(key, 1, cooldownSeconds * 1);
+    await redis.set(key, 1, {
+      EX: cooldownSeconds * 1,
+      NX: true,
+    });
     return true;
   }
 
@@ -580,7 +583,10 @@ async function isUserCanAttack(userId) {
   console.log(`${userId} can attack ${canAttack}, currentCount ${currentCount}`);
 
   // 不管是否可以攻擊，都要更新 redis 的資料
-  await redis.setnx(key, 1, cooldownSeconds * 1);
+  await redis.set(key, 1, {
+    EX: cooldownSeconds * 1,
+    NX: true,
+  });
   return canAttack;
 }
 

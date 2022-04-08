@@ -29,7 +29,11 @@ exports.isAdminFromCache = async userId => {
   if (!adminList) {
     let result = await mysql("Admin").select("userId");
     adminList = result.map(item => item.userId);
-    await redis.set(key, adminList, 60 * 60);
+    await redis.set(key, JSON.stringify(adminList), {
+      EX: 60 * 60,
+    });
+  } else {
+    adminList = JSON.parse(adminList);
   }
 
   return adminList.includes(userId);

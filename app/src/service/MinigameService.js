@@ -17,14 +17,14 @@ exports.getLevelUnit = async function () {
   // 優先使用 redis 的資料
   let data = await redis.get("minigame_level_unit");
   if (data) {
-    return data;
+    return JSON.parse(data);
   }
 
   // 如果 redis 沒有資料，則從資料庫取得
   data = await MinigameUnitModel.all();
 
   // 將資料存到 redis
-  redis.set("minigame_level_unit", data);
+  redis.set("minigame_level_unit", JSON.stringify(data));
 
   return data;
 };

@@ -7,10 +7,9 @@ const memoryKey = "RandosoruEvents";
  */
 exports.getDatas = async () => {
   var datas = await redis.get(memoryKey);
-  if (datas !== null) return datas;
+  if (datas !== null) return JSON.parse(datas);
 
-  return axios.get("https://pcredivewiki.tw/static/data/event.json").then(res => {
-    redis.set(memoryKey, res.data);
-    return res.data;
-  });
+  const res = await axios.get("https://pcredivewiki.tw/static/data/event.json");
+  redis.set(memoryKey, JSON.stringify(res.data));
+  return res.data;
 };

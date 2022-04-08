@@ -109,10 +109,12 @@ exports.fetchAllData = async () => {
     .orderBy("key");
 
   var orders = await redis.get(memKey);
-  if (orders !== null) return orders;
+  if (orders !== null) return JSON.parse(orders);
 
   orders = await query.then(arrangeOrder);
-  redis.set(memKey, orders, 60 * 60);
+  redis.set(memKey, JSON.stringify(orders), {
+    EX: 60 * 60,
+  });
 
   return orders;
 };

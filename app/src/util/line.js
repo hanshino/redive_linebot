@@ -8,9 +8,11 @@ const redis = require("./redis");
 exports.getGroupSummary = groupId => {
   let key = `${groupId}_summary`;
   return redis.get(key).then(cache => {
-    if (cache !== null) return cache;
+    if (cache !== null) return JSON.parse(cache);
     return doGet(`/bot/group/${groupId}/summary`).then(res => {
-      redis.set(key, res, 60);
+      redis.set(key, JSON.stringify(res), {
+        EX: 60,
+      });
       return res;
     });
   });
@@ -19,9 +21,11 @@ exports.getGroupSummary = groupId => {
 exports.getGroupCount = groupId => {
   let key = `${groupId}_count`;
   return redis.get(key).then(cache => {
-    if (cache !== null) return cache;
+    if (cache !== null) return JSON.parse(cache);
     return doGet(`/bot/group/${groupId}/members/count`).then(res => {
-      redis.set(key, res, 60);
+      redis.set(key, JSON.stringify(res), {
+        EX: 60,
+      });
       return res;
     });
   });
@@ -51,9 +55,11 @@ exports.getGroupMemberProfile = async (groupId, userId) => {
   let key = `GroupMemberProfile_${groupId}_${userId}`;
   let profile = await redis.get(key);
 
-  if (profile !== null) return profile;
+  if (profile !== null) return JSON.parse(profile);
   profile = await LineClient.getGroupMemberProfile(groupId, userId);
-  redis.set(key, profile, 60 * 60);
+  redis.set(key, JSON.stringify(profile), {
+    EX: 60 * 60,
+  });
 
   return profile;
 };
