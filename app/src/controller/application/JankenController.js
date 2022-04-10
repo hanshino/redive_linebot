@@ -320,7 +320,7 @@ async function handleHolder(context, { payload }) {
     type = randomType();
   }
 
-  const { sourceUserId: challengerId, type: challengerType } = content;
+  const { sourceUserId: challengerId, type: challengerType } = JSON.parse(content);
 
   const [p1Result, p2Result] = jankenPlay(type, challengerType);
   const [profile, targetProfile] = await Promise.all([

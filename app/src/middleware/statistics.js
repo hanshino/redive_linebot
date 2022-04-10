@@ -16,7 +16,7 @@ const statistics = async (context, props) => {
 module.exports = statistics;
 
 async function eventEnqueue(context) {
-  return await redis.enqueue("ChatBotEvent", JSON.stringify(context.event.rawEvent), 86400);
+  return await redis.lPush("ChatBotEvent", JSON.stringify(context.event.rawEvent), 86400);
 }
 
 function eventFire(context) {

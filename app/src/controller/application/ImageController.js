@@ -4,6 +4,7 @@ const { get, uniq } = require("lodash");
 const i18n = require("../../util/i18n");
 const LineClient = getClient("line");
 const imgur = require("../../util/imgur");
+const { isImageUrl } = require("../../util/string");
 
 exports.router = [text(/^[./#]圖片上傳$/, handleStartUpload), isUploading(handleUpload)];
 
@@ -55,7 +56,7 @@ async function handleUpload(context) {
 
   const url = get(result, "data.link");
 
-  if (!url) {
+  if (!isImageUrl(url)) {
     return context.replyText(i18n.__("message.image.upload_failed"));
   }
 

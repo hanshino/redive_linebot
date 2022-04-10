@@ -6,7 +6,7 @@ const config = require("config");
 
 exports.add = async function (name, payload) {
   // 將事件存入 redis
-  await redis.enqueue(name, JSON.stringify(payload), config.get("event.expire"));
+  await redis.lPush(name, JSON.stringify(payload), config.get("event.expire"));
 };
 
 exports.getEventName = function (name) {
