@@ -10,7 +10,9 @@ const uuid = require("uuid-random");
  */
 exports.storeImageId = messageId => {
   let storeId = uuid();
-  redis.set(storeId, messageId, 60);
+  redis.set(storeId, messageId, {
+    EX: 60,
+  });
   return storeId;
 };
 

@@ -141,12 +141,14 @@ async function getVoteFromCache(voteId) {
   const key = `${config.get("redis.prefix.vote")}:${voteId}`;
   const value = await redis.get(key);
 
-  if (value) return value;
+  if (value) return JSON.parse(value);
 
   const vote = await VoteModel.find(voteId);
   if (!vote) return null;
 
-  await redis.set(key, vote, 60);
+  await redis.set(key, JSON.stringify(vote), {
+    EX: 60,
+  });
 
   return vote;
 }

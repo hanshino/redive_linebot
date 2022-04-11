@@ -13,7 +13,7 @@ exports.recordPeople = context => {
 
   redis.incr(speakKey);
 
-  redis.setnx(personKey, 1).then(res => {
+  redis.set(personKey, 1, { NX: true }).then(res => {
     if (res) {
       redis.incr(onlineKey);
     } else {
@@ -23,7 +23,7 @@ exports.recordPeople = context => {
 };
 
 exports.getSignData = () => {
-  return redis.keys("SignRecord_*").then(keys => redis.mget(keys));
+  return redis.keys("SignRecord_*").then(keys => redis.mGet(keys));
 };
 
 exports.getPeopleData = async () => {

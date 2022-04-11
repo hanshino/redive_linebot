@@ -5,11 +5,11 @@ exports.all = async (cache = true) => {
   let key = "worldBossUserAttackMessage";
   let data = await redis.get(key);
   if (data && cache) {
-    return data;
+    return JSON.parse(data);
   }
 
   let result = await worldBossUserAttackMessageModel.all();
-  redis.set(key, result);
+  redis.set(key, JSON.stringify(result));
   return result;
 };
 

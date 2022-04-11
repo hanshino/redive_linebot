@@ -8,7 +8,7 @@ const redis = require("../../../util/redis");
  */
 exports.getConfig = async groupId => {
   let data = await redis.get(`BattleConfig_${groupId}`);
-  if (data) return data;
+  if (data) return JSON.parse(data);
   let [configData] = await ConfigModel.queryConfig(groupId);
 
   if (!configData) {
@@ -20,7 +20,9 @@ exports.getConfig = async groupId => {
     ConfigModel.insertConfig(groupId, configData);
   }
 
-  await redis.set(`BattleConfig_${groupId}`, configData, 15 * 60);
+  await redis.set(`BattleConfig_${groupId}`, JSON.stringify(configData), {
+    EX: 15 * 60,
+  });
 
   return configData;
 };

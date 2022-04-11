@@ -88,7 +88,9 @@ exports.getSignin = async userId => {
     .where({ userId, signinDate: getTodayDate() });
 
   let ID = isSignin ? isSignin.ID : 1;
-  redis.set(memoryKey, ID, 10 * 60);
+  redis.set(memoryKey, ID, {
+    EX: 10 * 60,
+  });
 
   return isSignin;
 };
@@ -118,7 +120,9 @@ exports.allSignin = async options => {
  */
 exports.touchSingin = (userId, record = "") => {
   var memoryKey = `GachaSignin_${userId}`;
-  redis.set(memoryKey, 1, 10 * 60);
+  redis.set(memoryKey, 1, {
+    EX: 10 * 60,
+  });
   return mysql.insert({ userId, signinDate: getTodayDate(), record }).into("GachaSignin").then();
 };
 
@@ -198,7 +202,7 @@ exports.getCollectedRank = async options => {
   var memoryKey = `GachaRank_${options.type}`;
   var rank = await redis.get(memoryKey);
 
-  if (rank !== null) return rank;
+  if (rank !== null) return JSON.parse(rank);
 
   let order = options.type === 0 ? "DESC" : "ASC";
 
@@ -231,7 +235,9 @@ exports.getCollectedRank = async options => {
   }
 
   if (options.cache) {
-    redis.set(memoryKey, rankDatas, 1 * 60 * 60);
+    redis.set(memoryKey, JSON.stringify(rankDatas), {
+      EX: 1 * 60 * 60,
+    });
   }
 
   return rankDatas;

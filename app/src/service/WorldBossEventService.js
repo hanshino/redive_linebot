@@ -32,7 +32,7 @@ exports.getBossInformation = async eventId => {
   let bossInformation = await redis.get(`bossInformation:${eventId}`);
 
   if (bossInformation) {
-    return bossInformation;
+    return JSON.parse(bossInformation);
   }
 
   // 如果 redis 沒有資料，則從資料庫取得
@@ -40,7 +40,9 @@ exports.getBossInformation = async eventId => {
 
   if (eventBoss) {
     // 儲存 redis
-    await redis.set(`bossInformation:${eventId}`, eventBoss, 60 * 60 * 24);
+    await redis.set(`bossInformation:${eventId}`, JSON.stringify(eventBoss), {
+      EX: 60 * 60 * 24,
+    });
     return eventBoss;
   }
 
@@ -67,7 +69,7 @@ exports.getCurrentEvent = async () => {
 exports.keepAttackMessage = async (eventId, message, options = {}) => {
   let identify = get(options, "identify", "default");
   let key = `${config.get("redis.keys.worldBossAttackMessageKeeping")}_${eventId}_${identify}`;
-  return await redis.enqueue(key, message, 60 * 60 * 24);
+  return await redis.lPush(key, message, 60 * 60 * 24);
 };
 
 /**
@@ -84,7 +86,7 @@ exports.getAttackMessage = async (eventId, options = {}) => {
   // 將 redis 的資料全部拿出來
   let count = 0;
   while (count < retriveMessageMax) {
-    let message = await redis.dequeue(key);
+    let message = await redis.rPop(key);
     if (message) {
       messages.push(message);
     } else {

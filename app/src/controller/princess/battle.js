@@ -535,7 +535,9 @@ exports.showSigninList = async (context, { match }) => {
     return;
   }
 
-  redis.set(sentKey, 1, 30);
+  redis.set(sentKey, 1, {
+    EX: 30,
+  });
 
   let result = await Promise.all(
     FinishDatas.map(async data => ({

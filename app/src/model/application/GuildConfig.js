@@ -22,12 +22,14 @@ exports.fetchConfig = async groupId => {
         res = res[0].Config;
       }
 
-      redis.set(`GuildConfig_${groupId}`, res, 60 * 60);
+      redis.set(`GuildConfig_${groupId}`, JSON.stringify(res), {
+        EX: 60 * 60,
+      });
       return res;
     });
   }
 
-  return GroupConfig;
+  return JSON.parse(GroupConfig);
 };
 
 /**
@@ -59,7 +61,9 @@ exports.getDiscordWebhook = async groupId => {
   let [data] = await query;
   if (data !== undefined) {
     webhook = data.DiscordWebhook || "";
-    redis.set(memoryKey, webhook, 60 * 60);
+    redis.set(memoryKey, webhook, {
+      EX: 60 * 60,
+    });
   }
 
   return webhook;
@@ -212,7 +216,7 @@ exports.getSender = async (guildId, option = { cache: true }) => {
   let key = `Sender_${guildId}`;
   let sender = await redis.get(key);
 
-  if (sender !== null && option.cache) return sender;
+  if (sender !== null && option.cache) return JSON.parse(sender);
 
   var rows = await mysql.select(["senderName", "senderIcon"]).from(this.table).where({ guildId });
   if (rows.length === 0) {
@@ -224,6 +228,8 @@ exports.getSender = async (guildId, option = { cache: true }) => {
     };
   }
 
-  redis.set(key, sender, 60);
+  redis.set(key, JSON.stringify(sender), {
+    EX: 60,
+  });
   return sender;
 };

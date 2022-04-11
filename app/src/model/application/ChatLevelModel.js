@@ -116,14 +116,16 @@ exports.getTitleData = async level => {
  */
 exports.getLevelTitle = async () => {
   let data = await redis.get(LEVEL_TITLE_REDIS_KEY);
-  if (data !== null) return data;
+  if (data !== null) return JSON.parse(data);
 
   data = await mysql
     .select(["title", { range: "title_range" }])
     .from(LEVEL_TITLE_TABLE)
     .orderBy("id", "asc");
 
-  redis.set(LEVEL_TITLE_REDIS_KEY, data, 86400);
+  redis.set(LEVEL_TITLE_REDIS_KEY, JSON.stringify(data), {
+    EX: 86400,
+  });
   return data;
 };
 
@@ -133,11 +135,13 @@ exports.getLevelTitle = async () => {
  */
 exports.getRangeTitle = async () => {
   let data = await redis.get(RANGE_TITLE_REDIS_KEY);
-  if (data !== null) return data;
+  if (data !== null) return JSON.parse(data);
 
   data = await mysql.select("*").from(RANGE_TITLE_TABLE);
 
-  redis.set(RANGE_TITLE_REDIS_KEY, data, 86400);
+  redis.set(RANGE_TITLE_REDIS_KEY, JSON.stringify(data), {
+    EX: 86400,
+  });
   return data;
 };
 
@@ -161,10 +165,12 @@ exports.getRankList = async page => {
 exports.getAllList = async () => {
   let key = "CHAT_ALL_LIST";
   let data = await redis.get(key);
-  if (data !== null) return data;
+  if (data !== null) return JSON.parse(data);
 
   data = await mysql.select("id", "experience").from(USER_DATA_TABLE);
-  await redis.set(key, data, 10);
+  await redis.set(key, JSON.stringify(data), {
+    EX: 10,
+  });
 
   return data;
 };
@@ -176,10 +182,12 @@ exports.getAllList = async () => {
 exports.getExpUnitData = async () => {
   let key = "EXP_UNIT_DATA";
   let data = await redis.get(key);
-  if (data !== null) return data;
+  if (data !== null) return JSON.parse(data);
 
   data = await mysql.select({ level: "unit_level", exp: "total_exp" }).from(EXP_UNIT_TABLE);
-  await redis.set(key, data, 86400);
+  await redis.set(key, JSON.stringify(data), {
+    EX: 86400,
+  });
 
   return data;
 };
