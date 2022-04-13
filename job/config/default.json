@@ -1,4 +1,11 @@
 {
+  "chat_level": {
+    "exp": {
+      "rate": {
+        "default": 30
+      }
+    }
+  },
   "event_center": {
     "daily_quest": "event_center:daily_quest"
   },
