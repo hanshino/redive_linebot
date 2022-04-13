@@ -15,6 +15,7 @@ const get = require("lodash/get");
 const signModel = require("../../model/application/SigninDays");
 const moment = require("moment");
 const EventCenterService = require("../../service/EventCenterService");
+const { isNull } = require("lodash");
 
 function GachaException(message, code) {
   this.message = message;
@@ -129,7 +130,8 @@ async function isAble(userId, groupId) {
     EX: 120,
     NX: true,
   });
-  return result;
+
+  return !isNull(result);
 }
 
 /**
