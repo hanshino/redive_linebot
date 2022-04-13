@@ -1,5 +1,6 @@
 const mysql = require("../lib/mysql");
 const redis = require("../lib/redis");
+const config = require("config");
 const LEVEL_TITLE_TABLE = "chat_level_title";
 const RANGE_TITLE_TABLE = "chat_range_title";
 const USER_DATA_TABLE = "chat_user_data";
@@ -176,7 +177,7 @@ exports.writeRecords = async recordDatas => {
  * 取得伺服器倍率
  */
 exports.getGlobalRate = () => {
-  let defaultRate = 10;
+  let defaultRate = config.get("chat_level.exp.rate.default");
   return redis.get(GLOBAL_RATE_REDIS_KEY).then(val => val || defaultRate);
 };
 
