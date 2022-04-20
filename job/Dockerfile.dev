@@ -1,4 +1,4 @@
-FROM node:12-alpine
+FROM node:lts
 
 LABEL Name="redive排程"
 LABEL description="協助redive機器人運作"
