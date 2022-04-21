@@ -1,6 +1,8 @@
 const CronJob = require("cron").CronJob;
 const controller = require("../controller/AdvancementController");
 
+module.exports = controller;
+
 // 只在正式環境馬上執行
 const immediateStart = process.env.NODE_ENV === "production";
 
