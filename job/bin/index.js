@@ -6,6 +6,7 @@ exports.Event = require("./Event");
 exports.Notify = require("./Notify");
 exports.Spider = require("./Spider");
 exports.ChatLevel = require("./ChatLevel");
+exports.Advancement = require("./Advancement");
 
 exports.heartbeat = () => {
   let now = new Date();
