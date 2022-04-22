@@ -21,12 +21,11 @@ exports.push = option => {
   params.append("notificationDisabled", !alert);
 
   return axios
-    .post("https://notify-api.line.me/api/notify", {
+    .post("https://notify-api.line.me/api/notify", params, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      data: params,
     })
     .then(res => res.ok)
     .catch(err => {
