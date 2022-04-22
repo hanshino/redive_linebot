@@ -1,5 +1,6 @@
-const axios = require("axios");
+const { default: axios } = require("axios");
 const { URLSearchParams } = require("url");
+const { DefaultLogger } = require("../lib/Logger");
 
 /**
  * 使用 Line Notify 發送訊息
@@ -19,13 +20,17 @@ exports.push = option => {
   params.append("message", `${message}`);
   params.append("notificationDisabled", !alert);
 
-  return axios({
-    method: "post",
-    url: "https://notify-api.line.me/api/notify",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    data: params,
-  }).then(res => res.ok);
+  return axios
+    .post("https://notify-api.line.me/api/notify", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      data: params,
+    })
+    .then(res => res.ok)
+    .catch(err => {
+      DefaultLogger.error(err);
+      return false;
+    });
 };
