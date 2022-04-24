@@ -1,0 +1,96 @@
+version: "3.5"
+services:
+  app:
+    build: ./app
+    env_file: ./.env
+    restart: always
+    expose:
+      - 5000
+    depends_on:
+      - mysql
+      - redis
+    restart: always
+    networks:
+      - traefik
+      - bot_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.entrypoints=websecure"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.tls=true"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.tls.certresolver=leresolver"
+      - "traefik.docker.network=traefik"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "3"
+
+  mysql:
+    env_file: ./.env
+    image: mysql
+    volumes:
+      - ./migration:/docker-entrypoint-initdb.d
+      - "${DB_STOREPATH}/db:/var/lib/mysql"
+    restart: always
+    expose:
+      - "${DB_PORT}"
+    networks:
+      - bot_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "3"
+    environment:
+      "MYSQL_DATABASE": "${DB_DATABASE}"
+      "MYSQL_USER": "${DB_USER}"
+      "MYSQL_PASSWORD": "${DB_USER_PASSWORD}"
+      "MYSQL_ROOT_PASSWORD": "${DB_PASSWORD}"
+
+  redis:
+    image: redis:alpine
+    command: "redis-server --requirepass ${REDIS_PASSWORD}"
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "3"
+    networks:
+      - bot_network
+    expose:
+      - "${REDIS_PORT}"
+
+  crontab:
+    build: ./job
+    networks:
+      - bot_network
+    depends_on:
+      - mysql
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "3"
+    env_file: ./.env
+
+  phpmyadmin:
+    depends_on:
+      - mysql
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - 80
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"
+    networks:
+      - bot_network
+
+networks:
+  traefik:
+    external: true
+    name: traefik
+  bot_network:
