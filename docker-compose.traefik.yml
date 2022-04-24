@@ -44,7 +44,7 @@ services:
     image: mysql
     volumes:
       - ./migration:/docker-entrypoint-initdb.d
-      - "${DB_STOREPATH}/db:/var/lib/mysql"
+      - "mysql_data:/var/lib/mysql"
     restart: always
     expose:
       - "${DB_PORT}"
@@ -117,3 +117,7 @@ networks:
     external: true
     name: traefik
   bot_network:
+
+
+volumes:
+  mysql_data:
