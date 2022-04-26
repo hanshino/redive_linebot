@@ -4,14 +4,12 @@ on:
   push:
     branches:
       - master
-      - feat/**
 
 jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -28,13 +26,13 @@ jobs:
       - name: Backend build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
-          context: "{{defaultContext}}:app"
+          context: ./app
           push: true
           tags: hanshino/redive_backend:latest
 
       - name: Frontend build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
-          context: "{{defaultContext}}:frontend"
+          context: ./frontend
           push: true
           tags: hanshino/redive_frontend:latest
