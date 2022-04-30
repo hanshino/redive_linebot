@@ -36,3 +36,21 @@ jobs:
           context: ./frontend
           push: true
           tags: hanshino/redive_frontend:latest
+
+      - name: Deploy Redive linebot
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            git pull
+            bash scripts/run-tasks.sh traefik-run
+
+      - name: Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "{{ EVENT_PAYLOAD.repository.full_name }} 已完成部署"

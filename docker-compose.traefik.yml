@@ -21,7 +21,7 @@ services:
       - bot
 
   bot:
-    build: ./app
+    image: hanshino/redive_backend
     env_file: ./.env
     restart: always
     expose:
