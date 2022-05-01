@@ -29,6 +29,8 @@ jobs:
           context: ./app
           push: true
           tags: hanshino/redive_backend:latest
+          cache-from: type=registry,ref=hanshino/redive_backend:buildcache
+          cache-to: type=registry,ref=hanshino/redive_backend:buildcache,mode=max
 
       - name: Frontend build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
@@ -36,6 +38,8 @@ jobs:
           context: ./frontend
           push: true
           tags: hanshino/redive_frontend:latest
+          cache-from: type=registry,ref=hanshino/redive_frontend:buildcache
+          cache-to: type=registry,ref=hanshino/redive_frontend:buildcache,mode=max
 
       - name: Deploy Redive linebot
         uses: appleboy/ssh-action@master
