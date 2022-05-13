@@ -31,6 +31,8 @@ services:
       - redis
     networks:
       - bot_network
+    volumes:
+      - ./app/assets:/application/assets
     logging:
       driver: "json-file"
       options:
@@ -75,6 +77,7 @@ services:
 
   crontab:
     build: ./job
+    restart: always
     networks:
       - bot_network
     depends_on:
