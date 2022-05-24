@@ -1,6 +1,6 @@
 const { getLiffUri, assemble } = require("../../common");
 const i18n = require("../../../util/i18n");
-const datefromat = require("dateformat");
+const format = require("date-format");
 
 exports.sendSignFeedback = (context, template, data, sender) => {
   return context.replyText(assemble(data, template), { sender });
@@ -1155,7 +1155,7 @@ function genMemberRow(memberData) {
 exports.genGuildStatusBubble = (data, nearbyBox) => {
   let { leaderUnit, clanName, leaderName, rank, score, status, ts, server } = data;
   let scoreText = new Intl.NumberFormat("en").format(score);
-  let date = datefromat(new Date(ts * 1000), "yyyy-mm-dd HH:MM");
+  let date = format.asString("yyyy-mm-dd HH:MM", new Date(ts * 1000));
   return {
     type: "bubble",
     body: {

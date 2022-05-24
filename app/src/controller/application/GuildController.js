@@ -6,7 +6,7 @@ const guildService = require("../../service/guildService");
 const _ = require("lodash");
 const battleTemplate = require("../../templates/princess/guild/battle");
 const characterModel = require("../../model/princess/character");
-const datefromat = require("dateformat");
+const format = require("date-format");
 
 /**
  * 隊長綁定，綁定後可得知戰隊情報
@@ -122,7 +122,7 @@ exports.showClanInfo = async context => {
 
 function getCurrentMonth() {
   let now = new Date();
-  return datefromat(now, "yyyymm");
+  return format.asString("yyyyMM", now);
 }
 
 /**
