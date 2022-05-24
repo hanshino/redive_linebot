@@ -157,7 +157,7 @@ function caclulateState(score) {
       stage: 4,
       weight: [3.5, 3.5, 3.7, 3.8, 4],
       hp: [19000000, 20000000, 23000000, 25000000, 27000000],
-      max: 40,
+      max: 38,
     },
     {
       stage: 5,
