@@ -60,6 +60,10 @@ exports.pushMessage = objData => {
   const query = new URLSearchParams();
   query.set("message", objData.message);
 
+  if (!objData.token) {
+    return Promise.reject(new Error("Token is required."));
+  }
+
   CustomLogger.info("Request", API_NOTIFY, JSON.stringify(objData));
 
   return axios
