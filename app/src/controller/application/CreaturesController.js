@@ -7,6 +7,7 @@ const { hasSpace } = require("../../util/string");
 const { get } = require("lodash");
 const quickReplies = require("../../templates/common/quickReplies");
 const config = require("config");
+const { CustomLogger } = require("../../util/Logger");
 
 exports.router = [
   text(/^[/#.]養成$/, main),
@@ -85,7 +86,6 @@ async function preCreate(context, { isNeedCheck = true }) {
     return;
   }
 
-  context.replyText(JSON.stringify(creatures));
   context.replyFlex("flex", creatureTemplate.generateCreateBubble(creatures[0]));
 }
 
@@ -138,7 +138,7 @@ async function confirmCreate(context) {
     return;
   }
 
-  console.log("check user has creatures", userNo, context.event.source);
+  CustomLogger.info("check user has creatures", userNo, context.event.source);
 
   const userHasCreatures = await creatureModel.findUserCreature(userNo);
   if (userHasCreatures) {
