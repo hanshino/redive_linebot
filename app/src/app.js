@@ -36,6 +36,7 @@ const VoteController = require("./controller/application/VoteController");
 const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
+const CreatureController = require("./controller/application/CreaturesController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -90,6 +91,10 @@ async function HandlePostback(context, { next }) {
       route(() => action === "janken", withProps(JankenController.decide, { payload })),
       route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
       route(() => action === "vote", withProps(VoteController.decide, { payload })),
+      route(
+        () => action === "initCreatureCreate",
+        withProps(CreatureController.initCreate, { payload })
+      ),
       route("*", next),
     ]);
   } catch (e) {
@@ -113,7 +118,6 @@ async function OrderBased(context, { next }) {
     ...CustomerOrder(context),
     ...GroupOrder(context),
     ...PrincessInformation(context),
-    ...PersonOrder(context),
     ...ArenaContoroller.router(context),
     ...WorldBossController.router,
     ...GuildServiceController.router,
@@ -203,6 +207,7 @@ async function OrderBased(context, { next }) {
       context.replyFlex("實用連結", carousel);
     }),
     text(".test", () => pushMessage({ message: "test", token: process.env.LINE_NOTIFY_TOKEN })),
+    ...PersonOrder(context),
     route("*", next),
   ]);
 }
@@ -217,6 +222,7 @@ function PersonOrder(context) {
       BattleReportController.setAllowReport
     ),
     route(BattleReportController.isAllowPersonalReport, BattleReportController.personalReport),
+    ...CreatureController.router,
   ];
 }
 

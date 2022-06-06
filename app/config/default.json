@@ -95,5 +95,30 @@
         "option": "#808080"
       }
     }
+  },
+  "message": {
+    "yes": [
+      "是",
+      "Y",
+      "y",
+      "yes",
+      "Yes",
+      "YES"
+    ],
+    "no": [
+      "否",
+      "N",
+      "n",
+      "no",
+      "No",
+      "NO"
+    ]
+  },
+  "creature": {
+    "picture": {
+      "satiety": "https://i.imgur.com/StA5ySh.jpg",
+      "favorability": "https://i.imgur.com/KUnP4PH.jpg",
+      "stamina": "https://i.imgur.com/RRteEDW.jpg"
+    }
   }
 }

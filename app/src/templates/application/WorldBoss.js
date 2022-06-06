@@ -1,4 +1,4 @@
-const dateformat = require("dateformat");
+const format = require("date-format");
 const i18n = require("../../util/i18n");
 const humanNumber = require("human-number");
 const config = require("config");
@@ -175,8 +175,8 @@ exports.generateBossInformation = ({
   gold,
   exp,
 }) => {
-  start_time = dateformat(start_time, "yyyy-mm-dd");
-  end_time = dateformat(end_time, "yyyy-mm-dd");
+  start_time = format.asString("yyyy-mm-dd", start_time);
+  end_time = format.asString("yyyy-mm-dd", end_time);
 
   let bubble = {
     type: "bubble",
