@@ -49,7 +49,7 @@ async function main(context) {
 
   const bubbles = creatureTemplate.generateCreatureMainBubble(userHasCreatures);
 
-  context.replyFlex("flex", bubbles);
+  context.replyFlex(`${get(userHasCreatures, "nickname")}的狀態`, bubbles);
 }
 
 /**
@@ -86,7 +86,7 @@ async function preCreate(context, { isNeedCheck = true }) {
     return;
   }
 
-  context.replyFlex("flex", creatureTemplate.generateCreateBubble(creatures[0]));
+  context.replyFlex("創建角色", creatureTemplate.generateCreateBubble(creatures[0]));
 }
 
 /**
