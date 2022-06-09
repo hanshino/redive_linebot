@@ -30,7 +30,9 @@ function webhookSend(webhook, objData) {
         "Content-Type": "application/x-www-form-urlencoded",
       },
     })
-    .then(res => res.status === 200)
+    .then(() => {
+      return true;
+    })
     .catch(err => {
       console.error(err);
       return false;
