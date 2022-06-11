@@ -48,8 +48,11 @@
     "favorability": "好感度",
     "stamina": "耐力值",
     "satiety": "飽足度",
+    "experience": "經驗值",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "okashiya": "點心區",
+    "use": "使用"
   },
   "message": {
     "user_unreconized": "未知的使用者，請輸入 /source 並且向管理員回報此問題",
@@ -168,7 +171,8 @@
       "upload_success": "上傳圖片成功\n圖片編號 {{ id }}\n圖片網址 {{{ url }}}"
     },
     "creatures": {
-      "not_found": "您還沒有任何培養中的角色，即將幫您創立一位新的角色",
+      "not_found": "找不到培養中的角色，請先透過 `#養成` 創建一個角色",
+      "not_found_to_create": "您還沒有任何培養中的角色，即將幫您創立一位新的角色",
       "already_exists": "您已經有一位培養中的角色，請先完成該角色的培養",
       "admin_error": "此為異常錯誤，請向管理員報告此問題\n使用者編號 {{ userId }}",
       "ask_for_nickname": "哦呀，你選擇了 `{{ name }}` 作為夥伴嗎\n那麼請幫他取個名字吧\n(請直接輸入名字，不要加空格)",
