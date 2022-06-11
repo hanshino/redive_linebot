@@ -35,22 +35,6 @@ exports.run = async () => {
     }
   }
 
-  let notifyMessage = ["[DailyQuest]"];
-  if (handleResult.length > 0) {
-    const completedDailyUserCount = handleResult.filter(item => item.daily_reward).length;
-    const completedWeeklyUserCount = handleResult.filter(item => item.weekly_reward).length;
-
-    if (completedDailyUserCount !== 0 || completedWeeklyUserCount !== 0) {
-      notifyMessage.push(`已派發 ${completedDailyUserCount} 個每日任務完成獎勵`);
-      notifyMessage.push(`已派發 ${completedWeeklyUserCount} 個每週任務完成獎勵`);
-
-      notify.push({
-        message: notifyMessage.join("\n"),
-        alert: false,
-      });
-    }
-  }
-
   DefaultLogger.info(`[DailyQuest] handle ${handleCount}`);
   DefaultLogger.info(`[DailyQuest] End`);
 };
