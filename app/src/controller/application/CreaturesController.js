@@ -1,6 +1,8 @@
 const { text, route } = require("bottender/router");
 const creatureModel = require("../../model/application/Creature");
 const userHasCreatureModel = require("../../model/application/UserHasCreature");
+const creatureFoodModel = require("../../model/application/CreatureFood");
+const creatureHistoryModel = require("../../model/application/CreatureHistory");
 const i18n = require("../../util/i18n");
 const creatureTemplate = require("../../templates/application/Creatures");
 const { hasSpace } = require("../../util/string");
@@ -43,13 +45,20 @@ async function main(context) {
   const userHasCreatures = await creatureModel.findUserCreature(userNo);
 
   if (!userHasCreatures) {
-    context.replyText(i18n.__("message.creatures.not_found"));
+    context.replyText(i18n.__("message.creatures.not_found_to_create"));
     return await preCreate(context, { isNeedCheck: false });
   }
 
-  const bubbles = creatureTemplate.generateCreatureMainBubble(userHasCreatures);
+  // 取得角色可以餵食的食物
+  const creatureFoods = await creatureFoodModel.findByCreatureId(userHasCreatures.creature_id);
+  const foodItemRows = creatureFoods.map(creatureTemplate.generateFoodItemBox);
+  const foodBubble = creatureTemplate.generateFoodBubble(foodItemRows);
+  const mainBubble = creatureTemplate.generateMainBubble(userHasCreatures);
 
-  context.replyFlex("flex", bubbles);
+  context.replyFlex(`${get(userHasCreatures, "nickname")}的狀態`, {
+    type: "carousel",
+    contents: [mainBubble, foodBubble],
+  });
 }
 
 /**
@@ -86,7 +95,7 @@ async function preCreate(context, { isNeedCheck = true }) {
     return;
   }
 
-  context.replyFlex("flex", creatureTemplate.generateCreateBubble(creatures[0]));
+  context.replyFlex("創建角色", creatureTemplate.generateCreateBubble(creatures[0]));
 }
 
 /**
@@ -250,4 +259,68 @@ function clearState(context) {
       creatureId: null,
     },
   });
+}
+
+/**
+ * 使用者按下使用食物的按鈕
+ * @param {import ("bottender").LineContext} context
+ */
+exports.useFood = async (context, { payload }) => {
+  const { id: foodId } = payload;
+  const { id: userNo } = context.event.source;
+
+  const creature = await creatureModel.findUserCreature(userNo);
+
+  if (!creature) {
+    await context.replyText(i18n.__("message.creatures.not_found"));
+    return;
+  }
+
+  const food = await creatureFoodModel.find(foodId);
+  const effects = get(food, "effects", []);
+
+  // 開啟 transaction 準備寫入各種效果進入資料庫
+  const trx = await creatureFoodModel.transaction();
+  try {
+    const { user_has_creature_id } = creature;
+    creatureHistoryModel.setTransaction(trx);
+    await creatureHistoryModel.create({
+      user_has_creature_id,
+      action: "use_food",
+      data: {
+        food_id: foodId,
+        effects,
+      },
+    });
+
+    await userHasCreatureModel.update(user_has_creature_id, sideEffect(creature, effects));
+    trx.commit();
+  } catch (e) {
+    console.error(e);
+    await context.replyText(i18n.__("message.creatures.admin_error"));
+    trx.rollback();
+    return;
+  }
+};
+
+/**
+ * 傳入使用者的角色資料，並且根據 effects 進行資料更新
+ * @param {Object} creature
+ * @param {Array} effects
+ */
+function sideEffect(creature, effects) {
+  let { exp } = creature;
+
+  effects.forEach(effect => {
+    switch (effect.type) {
+      case "exp":
+        exp += effect.value;
+        break;
+    }
+  });
+
+  return {
+    ...creature,
+    exp,
+  };
 }
