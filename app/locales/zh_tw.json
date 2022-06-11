@@ -55,6 +55,8 @@
     "use": "使用"
   },
   "message": {
+    "user_own_god_stone": "你擁有的女神石: {{ god_stone }}",
+    "user_own_character_count": "你擁有的角色數量: {{ character_count }}",
     "user_unreconized": "未知的使用者，請輸入 /source 並且向管理員回報此問題",
     "user_attack_on_world_boss": "成功對 {{ name }} 造成 {{ damage }} 傷害",
     "world_boss_event_multiple_ongoing": "有多個世界活動正在進行中，請選擇其中一個進行操作。",
@@ -62,7 +64,6 @@
     "world_boss": {
       "can_not_attack": "{{{ name }}} 攻擊失敗\n攻擊冷卻中 或是 已經達到最大攻擊次數"
     },
-    "damage_suffix": "[,10[效果不彰...|[,50[效果甚微...|[,100[效果不錯|[,300[效果顯著|[,400[爆擊！|致命爆擊",
     "admin_attack_on_world_boss": "創造神路過敲了一下... 造成 {{ damage }} 傷害...",
     "world_boss_event_completed": "世界王已被討伐..別再鞭屍了QwQ",
     "alias": {

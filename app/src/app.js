@@ -37,6 +37,7 @@ const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const CreatureController = require("./controller/application/CreaturesController");
+const StatusController = require("./controller/application/StatusController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -131,6 +132,7 @@ async function OrderBased(context, { next }) {
     ...MarketController.router,
     ...CouponController.router,
     ...ImageController.router,
+    ...StatusController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
