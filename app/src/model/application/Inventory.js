@@ -83,6 +83,21 @@ class Inventory extends base {
       .orderBy("amount", "desc")
       .limit(limit);
   }
+
+  /**
+   * 將女神石傳送給指定用戶
+   * @param {Object} param0
+   * @param {String} param0.sourceId
+   * @param {String} param0.targetId
+   * @param {Number} param0.amount
+   * @returns {Promise}
+   */
+  async transferGodStone({ sourceId, targetId, amount }) {
+    return this.knex.insert([
+      { userId: sourceId, itemId: 999, itemAmount: `${-amount}` },
+      { userId: targetId, itemId: 999, itemAmount: amount },
+    ]);
+  }
 }
 
 exports.inventory = new Inventory({

@@ -95,6 +95,10 @@ async function HandlePostback(context, { next }) {
         () => action === "initCreatureCreate",
         withProps(CreatureController.initCreate, { payload })
       ),
+      route(
+        () => action === "confirmTransfer",
+        withProps(MarketController.doTransfer, { payload })
+      ),
       route(() => action === "useFood", withProps(CreatureController.useFood, { payload })),
       route("*", next),
     ]);

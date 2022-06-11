@@ -64,6 +64,32 @@ exports.getGroupMemberProfile = async (groupId, userId) => {
   return profile;
 };
 
+/**
+ * 去除訊息內 tag 別人的姓名
+ * @param {String} text
+ * @param {Array<{index: Number, length: Number, userId: String}>} mentionees
+ */
+exports.trimMentionees = (text, mentionees) => {
+  let result = text;
+  mentionees.forEach(mention => {
+    let remove = result.substring(mention.index, mention.index + mention.length);
+    result = result.replace(remove, "");
+  });
+  return result.trim();
+};
+
+/**
+ * 取出訊息內的標記對象姓名
+ * @param {String} text
+ * @param {Object} mention
+ * @param {Number} mention.index
+ * @param {Number} mention.length
+ * @param {String} mention.userId
+ */
+exports.getMentionName = (text, mention) => {
+  return text.substring(mention.index, mention.index + mention.length).replace("@", "");
+};
+
 function doGet(path) {
   return axios
     .get(`${apiURL}${path}`, {
