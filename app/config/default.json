@@ -16,7 +16,8 @@
     },
     "prefix": {
       "alias": "alias",
-      "vote": "vote"
+      "vote": "vote",
+      "atm": "atm"
     }
   },
   "worldboss": {
@@ -120,5 +121,8 @@
       "favorability": "https://i.imgur.com/KUnP4PH.jpg",
       "stamina": "https://i.imgur.com/RRteEDW.jpg"
     }
+  },
+  "trade": {
+    "transfer_countdown": 10
   }
 }

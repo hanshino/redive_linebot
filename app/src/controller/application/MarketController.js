@@ -3,11 +3,21 @@ const { get } = require("lodash");
 const i18n = require("../../util/i18n");
 const { genLinkBubble, getLiffUri } = require("../../templates/common");
 const { getClient } = require("bottender");
+const { trimMentionees, getMentionName } = require("../../util/line");
+const { removeOrder, isLineUserId } = require("../../util/string");
 const lineClient = getClient("line");
+const { inventory: inventoryModel } = require("../../model/application/Inventory");
+const marketTemplate = require("../../templates/application/Market");
+const uuid = require("uuid-random");
+const humanNumber = require("human-number");
+const redis = require("../../util/redis");
+const config = require("config");
+const { DefaultLogger } = require("../../util/Logger");
 
 exports.router = [
-  text(/^[./#](交易管理|trade-manage)$/, showManage),
-  text(/^[./#](交易|trade)/, trade),
+  text(/^[./#](交易管理|trade-manage)$/i, showManage),
+  text(/^[./#](交易|trade)/i, trade),
+  text(/^[./#](轉帳|atm)/i, transferMoney),
 ];
 
 function showManage(context) {
@@ -47,4 +57,144 @@ function getProfile(context, userId) {
     default:
       return lineClient.getProfile(userId);
   }
+}
+
+/**
+ * @param {import ("bottender").LineContext} context
+ */
+async function transferMoney(context) {
+  const { text: rawText } = context.event.message;
+  const { userId, displayName } = context.event.source;
+  const mentionees = get(context.event.message, "mention.mentionees", []);
+  const trimText = trimMentionees(rawText, mentionees);
+  const param = removeOrder(trimText);
+
+  if (mentionees.length !== 1) {
+    return context.replyText(i18n.__("message.trade.mention_invalid"));
+  }
+
+  const targetId = get(mentionees, "0.userId");
+  if (param.length === 0 || !isMoneyParam(param)) {
+    return context.replyText(i18n.__("message.trade.transfer_money_invalid"));
+  }
+
+  if (!isLineUserId(targetId)) {
+    return context.replyText(i18n.__("message.trade.mention_invalid"));
+  }
+
+  const { amount } = await inventoryModel.getUserMoney(userId);
+  const ownMoney = parseInt(amount);
+  const transferMoney = parseInt(param);
+
+  if (transferMoney > ownMoney) {
+    return context.replyText(i18n.__("message.trade.transfer_money_not_enough"));
+  }
+
+  const targetUserName = getMentionName(rawText, get(mentionees, "0"));
+  const transferId = uuid();
+  const orderBubble = marketTemplate.generateTransferOrderBubble({
+    sourceName: displayName,
+    sourceId: userId,
+    targetName: targetUserName,
+    targetId,
+    amount: humanNumber(transferMoney),
+    transferId,
+  });
+
+  await setTransfer({
+    sourceId: userId,
+    targetId,
+    amount: transferMoney,
+    transferId,
+    targetName: targetUserName,
+  });
+  context.replyText(
+    i18n.__("message.trade.transfer_money_established", {
+      time: config.get("trade.transfer_countdown") + "秒",
+    })
+  );
+  context.replyFlex("轉帳建立", orderBubble);
+}
+
+/**
+ * 檢查是否為金額參數，目前限定為整數並且最小值為1，最大單位為百萬
+ * @param {String} param
+ * @returns {Boolean}
+ */
+function isMoneyParam(param) {
+  return /^[1-9]\d{0,6}$/.test(param);
+}
+
+/**
+ * 確定交易
+ * @param {import ("bottender").LineContext} context
+ */
+exports.doTransfer = async (context, { payload }) => {
+  const { transferId } = payload;
+  const data = await getTransfer(transferId);
+
+  if (!data) {
+    DefaultLogger.warn(`Transfer ${transferId} not found`);
+    return;
+  }
+
+  const { sourceId, targetId, amount, targetName } = data;
+  const { userId, displayName } = context.event.source;
+
+  // 非本人進行轉帳確認
+  if (userId !== sourceId) {
+    return;
+  }
+
+  const { amount: ownMoney } = await inventoryModel.getUserMoney(userId);
+  if (amount > parseInt(ownMoney)) {
+    // 餘額不足，刪除此次轉帳交易
+    removeTransfer(transferId);
+    return context.replyText(i18n.__("message.trade.transfer_money_not_enough"));
+  }
+
+  const result = await inventoryModel.transferGodStone({
+    sourceId,
+    targetId,
+    amount,
+  });
+
+  if (!result) {
+    return context.replyText(i18n.__("message.trade.transfer_money_failed"));
+  }
+
+  removeTransfer(transferId);
+  context.replyText(
+    i18n.__("message.trade.transfer_money_success", {
+      displayName,
+      targetDisplayName: targetName,
+      amount: humanNumber(amount),
+    })
+  );
+  DefaultLogger.info(
+    `Transfer ${transferId} success. Source: ${sourceId}, Target: ${targetId}, Amount: ${amount}`
+  );
+};
+
+function setTransfer({ sourceId, targetId, amount, transferId, targetName }) {
+  return redis.set(
+    getTransferRedisKey(transferId),
+    JSON.stringify({ sourceId, targetId, amount, targetName }),
+    {
+      EX: config.get("trade.transfer_countdown"),
+    }
+  );
+}
+
+async function getTransfer(transferId) {
+  const result = await redis.get(getTransferRedisKey(transferId));
+  return result ? JSON.parse(result) : null;
+}
+
+function removeTransfer(transferId) {
+  return redis.del(getTransferRedisKey(transferId));
+}
+
+function getTransferRedisKey(transferId) {
+  return `${config.get("redis.prefix.atm")}:${transferId}`;
 }

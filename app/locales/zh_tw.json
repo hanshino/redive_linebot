@@ -150,7 +150,13 @@
     },
     "trade": {
       "no_mention": "請標記要交易的對象",
-      "apply": "此按鈕為針對 {{{ displayName }}} 發起交易的申請，按下即代表對他發起交易申請"
+      "mention_invalid": "請標記一個有效的玩家",
+      "apply": "此按鈕為針對 {{{ displayName }}} 發起交易的申請，按下即代表對他發起交易申請",
+      "transfer_money_invalid": "請輸入正確的金額",
+      "transfer_money_not_enough": "你沒有足夠的金額",
+      "transfer_money_established": "成功建立交易，請在 {{ time }} 內完成交易",
+      "transfer_money_failed": "金額轉帳失敗",
+      "transfer_money_success": "{{{ displayName }}} 將 {{ amount }} 顆女神石\n成功轉帳給 {{{ targetDisplayName }}}"
     },
     "coupon": {
       "admin_add_usage": "使用方法：!coupon add <兌換碼> --start|s=<開始時間> --end|e=<結束時間> --reward|r=<獎項>",
