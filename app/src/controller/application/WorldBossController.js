@@ -40,6 +40,19 @@ exports.router = [
  */
 async function attack(context, { attackType = "normal" }) {
   const eventId = await getHoldingEventId();
+  const { userId } = context.event.source;
+  const redisPrefix = config.get("redis.prefix.command_attack");
+  const redisKey = [redisPrefix, userId].join(":");
+
+  const isSet = await redis.set(redisKey, 1, {
+    EX: 1,
+    NX: true,
+  });
+
+  if (!isSet) {
+    context.replyText(i18n.__("message.world_boss.request_too_quickly"));
+    return;
+  }
 
   if (!eventId) {
     context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
