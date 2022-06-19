@@ -17,7 +17,8 @@
     "prefix": {
       "alias": "alias",
       "vote": "vote",
-      "atm": "atm"
+      "atm": "atm",
+      "command_attack": "command_attack"
     }
   },
   "worldboss": {
