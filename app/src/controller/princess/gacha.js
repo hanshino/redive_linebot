@@ -15,7 +15,7 @@ const get = require("lodash/get");
 const signModel = require("../../model/application/SigninDays");
 const moment = require("moment");
 const EventCenterService = require("../../service/EventCenterService");
-const { isNull } = require("lodash");
+const { isNull, slice } = require("lodash");
 
 function GachaException(message, code) {
   this.message = message;
@@ -77,6 +77,10 @@ function play(gachaPool, times = 1) {
   });
 
   return rewards;
+}
+
+function getRainbowCharater(gachaPool) {
+  return gachaPool.filter(data => data.star == 3);
 }
 
 /**
@@ -204,10 +208,10 @@ module.exports = {
    * @param {import("bottender/dist/types").Props} param
    * @returns
    */
-  play: async function (context, { match, pickup }) {
+  play: async function (context, { match, pickup, ensure = false }) {
     recordSign("GachaPlay");
     try {
-      var { tag, times } = match.groups;
+      let { tag, times } = match.groups;
       let { userId } = context.event.source;
 
       // 群組關閉轉蛋功能
@@ -252,6 +256,16 @@ module.exports = {
       do {
         rareCount = {};
         rewards = shuffle(play(filtPool, times));
+
+        if (canDailyGacha && ensure === true && OwnGodStone >= 3000) {
+          // 使用保證抽，扣除女神石並且將最後一抽強制轉彩，前提是女神石要有3000顆
+          costGodStone = 3000;
+          DefaultLogger.info(`${userId} 使用了保證抽，扣除3000顆女神石，並且將最後一抽強制轉彩！`);
+          await InventoryModel.insertItem(userId, 999, 3000 * -1);
+          const rainbowPool = getRainbowCharater(filtPool);
+          rewards = [...slice(rewards, 0, 9), ...play(rainbowPool, 1)];
+        }
+
         rewards.forEach(reward => {
           rareCount[reward.star] = rareCount[reward.star] || 0;
           rareCount[reward.star]++;
@@ -275,14 +289,16 @@ module.exports = {
       // 沒扣女神石，卻使用消耗抽，提示用戶沒有扣也沒加倍
       if (canDailyGacha && costGodStone === 0 && pickup) {
         context.replyText("女神石不足！此次轉蛋機率不調升～");
+      } else if (canDailyGacha && costGodStone === 0 && ensure) {
+        context.replyText("女神石不足！無法進行保證抽！");
       }
 
       GachaTemplate.line.showGachaResult(
         context,
         {
-          rewards: rewards,
-          rareCount: rareCount,
-          tag: tag,
+          rewards,
+          rareCount,
+          tag,
         },
         DailyGachaInfo
       );
