@@ -381,7 +381,7 @@ function genCharacterBubble(title, rows) {
 module.exports = {
   /**
    * 發送轉蛋結果訊息
-   * @param {LineContext} context
+   * @param {import("bottender").LineContext} context
    * @param {Object} objData
    * @param {Object} objData.rewards
    * @param {Object} objData.rareCount
