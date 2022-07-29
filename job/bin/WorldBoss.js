@@ -84,9 +84,9 @@ async function getTipList() {
 // 只在正式環境馬上執行
 const immediateStart = process.env.NODE_ENV === "production" || true;
 
-// 每十分鐘執行血量剩餘通知
+// 每 兩小時 執行血量剩餘通知
 new CronJob(
-  "0 */30 0-1,6-23 * * *",
+  "0 0 10,12,14,16,18,20,22 * * *",
   async () => {
     await progressNotify();
   },
@@ -95,9 +95,9 @@ new CronJob(
   "Asia/Taipei"
 );
 
-// 每 15 分鐘執行提示訊息，但不包含 1:00~5:00 時段
+// 每 兩小時 執行一次提示訊息
 new CronJob(
-  "0 15,45 0,6-23 * * *",
+  "0 5 11,13,15,17,19,21,23 * * *",
   async () => {
     await regularRemind();
   },
