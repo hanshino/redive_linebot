@@ -33,7 +33,7 @@ async function tipsNotify() {
 
 // 每30分鐘執行提示訊息，但不包含 1:00~5:00 時段
 new CronJob(
-  "0 20,50 0,6-23 * * *",
+  "0 20,50 11,13,15,17,19,21,23 * * *",
   async () => {
     await tipsNotify();
   },
