@@ -15,7 +15,7 @@ class Base {
    */
   get knex() {
     if (this.trx && !this.trx.isCompleted()) {
-      return this.trx;
+      return this.trx(this.table);
     } else {
       return mysql(this.table);
     }
@@ -138,7 +138,9 @@ class Base {
    */
   async create(attributes = {}) {
     let data = pick(attributes, this.fillable);
-    await this.knex.insert(data);
+    const query = this.knex.insert(data);
+    console.log("sql:", query.toSQL().toNative());
+    await query;
 
     let [result] = await this.connection.queryBuilder().select(mysql.raw("LAST_INSERT_ID() as id"));
     return result.id;

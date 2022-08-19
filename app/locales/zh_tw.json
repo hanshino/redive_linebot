@@ -52,7 +52,12 @@
     "yes": "是",
     "no": "否",
     "okashiya": "點心區",
-    "use": "使用"
+    "use": "使用",
+    "not_yet_draw": "尚未開獎",
+    "already_drawed": "已開獎",
+    "lottery_carry_over": "獎金累計",
+    "lottery_manual_buy": "人工選號",
+    "lottery_auto_buy": "電腦選號"
   },
   "message": {
     "user_own_god_stone": "你擁有的女神石: {{ god_stone }}",
@@ -190,6 +195,7 @@
       "create_success": "已經成功創立角色\n角色 {{ name }}\n角色暱稱 {{ nickname }}\n更多詳細資訊請輸入 `#養成`"
     },
     "lottery": {
+      "no_holding_event": "目前沒有樂透活動",
       "manual_buy": {
         "error_count": "公司就規定一張彩券就是 {{ max_count }} 個號碼，都是混口飯吃的，不要為難我們",
         "error_repeat_number": "您的號碼重複了，請檢查您的號碼是否正確",

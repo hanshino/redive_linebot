@@ -3,12 +3,48 @@ const i18n = require("../../util/i18n");
 const { inventory: inventoryModel } = require("../../model/application/Inventory");
 const lotteryOrderModel = require("../../model/application/LotteryOrder");
 const lotteryModel = require("../../model/application/Lottery");
+const lotteryTemplate = require("../../templates/application/Lottery");
 const { get } = require("lodash");
 const config = require("config");
 const redis = require("../../util/redis");
 const moment = require("moment");
 
-exports.router = [text(/^[.#/](買樂透)(?<numbers>(\s\d+)+)$/, manualBuy)];
+exports.router = [
+  text(/^[.#/](買樂透)(?<numbers>(\s\d+)+)$/, manualBuy),
+  text(/^[.#/](樂透|lottery)$/, lottery),
+];
+
+/**
+ * 顯示樂透資訊
+ * @param {import("bottender").LineContext} context
+ */
+async function lottery(context) {
+  const lottery = await findLatestLottery();
+  const perPrice = config.get("lottery.price");
+
+  if (!lottery) {
+    await context.replyText(i18n.__("message.lottery.no_holding_event"));
+    return;
+  }
+
+  const { id, carryover_money, status } = lottery;
+  const { count = 0 } = await lotteryOrderModel.countByLottery(id);
+  const totalCarryOver = count * perPrice + carryover_money;
+
+  let result = [];
+  if (lottery.result) {
+    result = lottery.result.split(",");
+  }
+
+  const bubble = lotteryTemplate.generateBoardBubble({
+    id,
+    result,
+    carryOver: totalCarryOver,
+    status,
+  });
+
+  await context.replyText(JSON.stringify(bubble));
+}
 
 /**
  * 人工選號
@@ -54,8 +90,8 @@ async function manualBuy(context, props) {
     return;
   }
 
-  const holdingLottery = await findHoldingLottery();
-  if (!holdingLottery) {
+  const latestLottery = await findLatestLottery();
+  if (!latestLottery || latestLottery.status !== lotteryModel.status.selling) {
     await context.replyText(i18n.__("message.lottery.manual_buy.error_no_lottery"));
     return;
   }
@@ -66,7 +102,7 @@ async function manualBuy(context, props) {
     inventoryModel.setTransaction(trx);
 
     await lotteryOrderModel.create({
-      lottery_main_id: holdingLottery.id,
+      lottery_main_id: latestLottery.id,
       user_id: userId,
       content: numbers.join(","),
     });
@@ -106,7 +142,7 @@ function isAllValidNumber(numbers) {
   return numbers.every(num => num >= minNumber && num <= maxNumber);
 }
 
-async function findHoldingLottery() {
+async function findLatestLottery() {
   // 確保每一分鐘都是及時的資料
   const redisKey = [config.get("redis.keys.holding_lottery"), ":", moment().format("Hm")].join("");
   console.log("use redis key: ", redisKey);
@@ -117,9 +153,12 @@ async function findHoldingLottery() {
   }
 
   const lottery = await lotteryModel.first({
-    filter: {
-      status: lotteryModel.status.selling,
-    },
+    order: [
+      {
+        column: "created_at",
+        direction: "desc",
+      },
+    ],
   });
 
   if (lottery) {
