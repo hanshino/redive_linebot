@@ -1,18 +1,20 @@
 const mysql = require("../util/mysql");
 const { get, pick } = require("lodash");
+const trxProvider = mysql.transactionProvider();
 
 class Base {
   constructor({ table, fillable }) {
     this.table = table;
     this.fillable = fillable;
     this.trx = null;
+    this.trxProvider = trxProvider;
   }
 
   /**
    * @returns { import("knex").Knex }
    */
   get knex() {
-    if (this.trx && !this.trx.isCompleted) {
+    if (this.trx && !this.trx.isCompleted()) {
       return this.trx;
     } else {
       return mysql(this.table);
