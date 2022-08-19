@@ -24,7 +24,7 @@ exports.autoBuy = autoBuy;
  * @param {import("bottender").LineContext} context
  */
 async function boughtList(context) {
-  const { userId } = context.event.source;
+  const { userId, displayName } = context.event.source;
   const lottery = await findLatestLottery();
 
   if (!lottery) {
@@ -42,7 +42,11 @@ async function boughtList(context) {
   });
 
   if (orders.length === 0) {
-    await context.replyText(i18n.__("message.lottery.no_bought_lottery"));
+    await context.replyText(
+      i18n.__("message.lottery.no_bought_lottery", {
+        displayName,
+      })
+    );
     return;
   }
 

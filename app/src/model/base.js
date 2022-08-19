@@ -138,9 +138,7 @@ class Base {
    */
   async create(attributes = {}) {
     let data = pick(attributes, this.fillable);
-    const query = this.knex.insert(data);
-    console.log("sql:", query.toSQL().toNative());
-    await query;
+    await this.knex.insert(data);
 
     let [result] = await this.connection.queryBuilder().select(mysql.raw("LAST_INSERT_ID() as id"));
     return result.id;

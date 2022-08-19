@@ -295,6 +295,7 @@ exports.generateTicketBubble = ({ id, total, rows }) => {
         },
       ],
       spacing: "md",
+      backgroundColor: "#fa8e8f45",
     },
   };
 };
