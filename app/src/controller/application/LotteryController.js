@@ -91,7 +91,7 @@ async function lottery(context) {
     return;
   }
 
-  const { id, carryover_money, status } = lottery;
+  const { id, carryover_money, status, created_at } = lottery;
   const { count = 0 } = await lotteryOrderModel.countByLottery(id);
   // 累計獎金為：購買人數 * 單價 * 營業用途稅率 + 前期累計獎金
   const totalCarryOver = count * perPrice * lotteryRate + carryover_money;
@@ -106,6 +106,7 @@ async function lottery(context) {
     result,
     carryOver: totalCarryOver,
     status,
+    created_at,
   });
   const ruleBubble = generateRuleBubble(config.get("lottery.manual"));
 

@@ -1,6 +1,7 @@
 const format = require("date-format");
 const { padStart } = require("lodash");
 const i18n = require("../../util/i18n");
+const moment = require("moment");
 
 exports.generateBoardCarryOverBox = (carryOver = 0) => {
   const chunk = carryOver.toString().split("");
@@ -84,10 +85,10 @@ function generateResultNumBox(strNum = "?") {
   };
 }
 
-exports.generateBoardBubble = ({ id, result, carryOver, status }) => {
+exports.generateBoardBubble = ({ id, result, carryOver, status, created_at }) => {
   const resultBox = this.generateBoardResultBox(result);
   const carryOverBox = this.generateBoardCarryOverBox(carryOver);
-  const now = new Date();
+  const createdAt = moment(created_at).toDate();
   const textStatus =
     status === "selling" ? i18n.__("template.not_yet_draw") : i18n.__("template.already_drawed");
 
@@ -118,7 +119,7 @@ exports.generateBoardBubble = ({ id, result, carryOver, status }) => {
             },
             {
               type: "span",
-              text: `${format("yyyyMMdd", now)}${padStart(id, 3, "0")}`,
+              text: `${format("yyyyMMdd", createdAt)}${padStart(id, 3, "0")}`,
             },
             {
               type: "span",
