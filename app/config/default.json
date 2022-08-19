@@ -12,7 +12,8 @@
       "jankenDecide": "jankenDecide",
       "jankenChallenge": "jankenChallenge",
       "adminList": "adminList",
-      "gamebleGame": "gamebleGame"
+      "gamebleGame": "gamebleGame",
+      "holding_lottery": "holding_lottery"
     },
     "prefix": {
       "alias": "alias",
@@ -125,5 +126,11 @@
   },
   "trade": {
     "transfer_countdown": 10
+  },
+  "lottery": {
+    "max_count": 5,
+    "max_number": 15,
+    "min_number": 1,
+    "price": 200
   }
 }

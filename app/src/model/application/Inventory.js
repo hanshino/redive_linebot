@@ -98,6 +98,10 @@ class Inventory extends base {
       { userId: targetId, itemId: 999, itemAmount: amount },
     ]);
   }
+
+  async decreaseGodStone({ userId, amount }) {
+    return this.knex.insert([{ userId, itemId: 999, itemAmount: `${-amount}` }]);
+  }
 }
 
 exports.inventory = new Inventory({
