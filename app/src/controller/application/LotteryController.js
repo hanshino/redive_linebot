@@ -12,7 +12,10 @@ const moment = require("moment");
 exports.router = [
   text(/^[.#/](買樂透)(?<numbers>(\s\d+)+)$/, buy),
   text(/^[.#/](樂透|lottery)$/, lottery),
+  text(/^[.#/](電腦選號)$/, autoBuy),
 ];
+
+exports.autoBuy = autoBuy;
 
 /**
  * 顯示樂透資訊
@@ -50,7 +53,7 @@ async function lottery(context) {
  * 自動買樂透
  * @param {import("bottender").LineContext} context
  */
-exports.autoBuy = async context => {
+async function autoBuy(context) {
   const max = config.get("lottery.max_number");
   const min = config.get("lottery.min_number");
   const allNumbers = Array.from({ length: max - min + 1 }, (_, i) => i + min);
@@ -58,17 +61,21 @@ exports.autoBuy = async context => {
     (a, b) => a - b
   );
 
+  if (!context.event.isText) {
+    context.replyText(i18n.__("message.lottery.auto_buy_notify"));
+  }
+
   return await buy(context, {
     numbers: chosenNumbers,
   });
-};
+}
 
 /**
  * 購買選號
  * @param { import("bottender").LineContext } context
  */
 async function buy(context, props) {
-  const { userId } = context.event.source;
+  const { userId, displayName } = context.event.source;
   const strNumbers = get(props, "match.groups.numbers", "");
   // 選擇使用 props 內的 numbers 或者是 context.event.message.text
   const numbers =
@@ -135,7 +142,12 @@ async function buy(context, props) {
 
     await trx.commit();
 
-    await context.replyText(i18n.__("message.lottery.manual_buy.success"));
+    await context.replyText(
+      i18n.__("message.lottery.manual_buy.success", {
+        displayName,
+        numbers: numbers.join(","),
+      })
+    );
   } catch (e) {
     await trx.rollback();
     console.error(e);

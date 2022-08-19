@@ -204,6 +204,7 @@ exports.generateBoardBubble = ({ id, result, carryOver, status }) => {
                 type: "postback",
                 data: JSON.stringify({
                   action: "lottery_auto_buy",
+                  cooldown: 30,
                 }),
               },
             },
