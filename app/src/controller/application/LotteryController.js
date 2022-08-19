@@ -8,8 +8,10 @@ const { get, sampleSize } = require("lodash");
 const config = require("config");
 const redis = require("../../util/redis");
 const moment = require("moment");
+const { generateRuleBubble } = require("../../templates/common");
 
 exports.router = [
+  text(/^[.#/](我的樂透|my[-_]?lottery)$/, boughtList),
   text(/^[.#/](買樂透)(?<numbers>(\s\d+)+)$/, buy),
   text(/^[.#/](樂透|lottery)$/, lottery),
   text(/^[.#/](電腦選號)$/, autoBuy),
@@ -18,12 +20,67 @@ exports.router = [
 exports.autoBuy = autoBuy;
 
 /**
+ * 顯示買樂透資訊
+ * @param {import("bottender").LineContext} context
+ */
+async function boughtList(context) {
+  const { userId } = context.event.source;
+  const lottery = await findLatestLottery();
+
+  if (!lottery) {
+    await context.replyText(i18n.__("message.lottery.no_holding_event"));
+    return;
+  }
+
+  const lotteryId = lottery.id;
+  const orders = await lotteryOrderModel.all({
+    filter: {
+      user_id: userId,
+      lottery_main_id: lotteryId,
+    },
+    limit: 20,
+  });
+
+  if (orders.length === 0) {
+    await context.replyText(i18n.__("message.lottery.no_bought_lottery"));
+    return;
+  }
+
+  const perPrice = config.get("lottery.price");
+  const ticketRows = orders.map((order, index) => {
+    const buyType =
+      order.buy_type === lotteryOrderModel.buyType.auto
+        ? i18n.__("template.lottery_ticket_auto_buy")
+        : i18n.__("template.lottery_ticket_manual_buy");
+    return lotteryTemplate.generateTicketRow({
+      idx: index + 1,
+      buyType,
+      numbers: order.content.split(","),
+      perPrice,
+    });
+  });
+
+  const bubble = lotteryTemplate.generateTicketBubble({
+    id: lotteryId,
+    total: orders.length * perPrice,
+    rows: ticketRows,
+  });
+
+  if (orders.length === 15) {
+    context.replyText(i18n.__("message.lottery.bought_probably_over_limit"));
+  }
+
+  await context.replyFlex("布丁大樂透購買記錄", bubble);
+}
+
+/**
  * 顯示樂透資訊
  * @param {import("bottender").LineContext} context
  */
 async function lottery(context) {
   const lottery = await findLatestLottery();
   const perPrice = config.get("lottery.price");
+  const lotteryRate = 1 - config.get("lottery.maintain_tax");
 
   if (!lottery) {
     await context.replyText(i18n.__("message.lottery.no_holding_event"));
@@ -32,7 +89,8 @@ async function lottery(context) {
 
   const { id, carryover_money, status } = lottery;
   const { count = 0 } = await lotteryOrderModel.countByLottery(id);
-  const totalCarryOver = count * perPrice + carryover_money;
+  // 累計獎金為：購買人數 * 單價 * 營業用途稅率 + 前期累計獎金
+  const totalCarryOver = count * perPrice * lotteryRate + carryover_money;
 
   let result = [];
   if (lottery.result) {
@@ -45,8 +103,12 @@ async function lottery(context) {
     carryOver: totalCarryOver,
     status,
   });
+  const ruleBubble = generateRuleBubble(config.get("lottery.manual"));
 
-  await context.replyFlex("布丁大樂透面板", bubble);
+  await context.replyFlex("布丁大樂透面板", {
+    type: "carousel",
+    contents: [bubble, ruleBubble],
+  });
 }
 
 /**
@@ -67,6 +129,7 @@ async function autoBuy(context) {
 
   return await buy(context, {
     numbers: chosenNumbers,
+    buyType: lotteryOrderModel.buyType.auto,
   });
 }
 
@@ -77,6 +140,11 @@ async function autoBuy(context) {
 async function buy(context, props) {
   const { userId, displayName } = context.event.source;
   const strNumbers = get(props, "match.groups.numbers", "");
+  const buyType = get(props, "buyType", lotteryOrderModel.buyType.manual);
+
+  console.log("buy type: ", buyType);
+  console.log(props);
+
   // 選擇使用 props 內的 numbers 或者是 context.event.message.text
   const numbers =
     get(props, "numbers") ||
@@ -133,6 +201,7 @@ async function buy(context, props) {
       lottery_main_id: latestLottery.id,
       user_id: userId,
       content: numbers.join(","),
+      buy_type: buyType,
     });
 
     await inventoryModel.decreaseGodStone({

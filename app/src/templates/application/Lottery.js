@@ -217,3 +217,121 @@ exports.generateBoardBubble = ({ id, result, carryOver, status }) => {
     },
   };
 };
+
+exports.generateTicketBubble = ({ id, total, rows }) => {
+  return {
+    type: "bubble",
+    header: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: "布丁大樂透",
+          color: "#FFFFFF",
+        },
+        {
+          type: "text",
+          size: "xxs",
+          color: "#fa8e90",
+          align: "end",
+          contents: [
+            {
+              type: "span",
+              text: "第",
+            },
+            {
+              type: "span",
+              text: " ",
+            },
+            {
+              type: "span",
+              text: `${format("yyyyMMdd", new Date())}${padStart(id, 3, "0")}`,
+            },
+            {
+              type: "span",
+              text: " ",
+            },
+            {
+              type: "span",
+              text: "期",
+            },
+          ],
+        },
+      ],
+      backgroundColor: "#c4090d",
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "separator",
+          color: "#808080",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: rows,
+        },
+        {
+          type: "separator",
+          color: "#808080",
+        },
+        {
+          type: "text",
+          contents: [
+            {
+              type: "span",
+              text: "總金額：",
+            },
+            {
+              type: "span",
+              text: `${total}`,
+            },
+          ],
+          size: "sm",
+          align: "center",
+        },
+      ],
+      spacing: "md",
+    },
+  };
+};
+
+exports.generateTicketRow = ({ idx, numbers, buyType, perPrice }) => {
+  const numberBoxes = numbers.map(number => ({
+    type: "text",
+    text: padStart(number, 2, "0"),
+    size: "xxs",
+    flex: 1,
+  }));
+  return {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: `${idx})`,
+        size: "xxs",
+        flex: 1,
+      },
+      ...numberBoxes,
+      {
+        type: "text",
+        size: "xxs",
+        flex: 2,
+        contents: [
+          {
+            type: "span",
+            text: `${buyType}`,
+          },
+          {
+            type: "span",
+            text: ` ${perPrice}`,
+          },
+        ],
+      },
+    ],
+  };
+};

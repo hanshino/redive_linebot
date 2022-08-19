@@ -57,7 +57,9 @@
     "already_drawed": "已開獎",
     "lottery_carry_over": "獎金累計",
     "lottery_manual_buy": "人工選號",
-    "lottery_auto_buy": "電腦選號"
+    "lottery_auto_buy": "電腦選號",
+    "lottery_ticket_manual_buy": "自選",
+    "lottery_ticket_auto_buy": "快選"
   },
   "message": {
     "user_own_god_stone": "你擁有的女神石: {{ god_stone }}",
@@ -205,7 +207,9 @@
         "success": "感謝 *{{{ displayName }}}* 的購買\n此次購入的號碼為 {{ numbers }}\n輸入 `#彩券` 可以查詢您的彩券資訊",
         "error": "購買彩券失敗，請向管理員報告此問題\n使用者編號 {{ userId }}"
       },
-      "auto_buy_notify": "為避免重複點擊或者誤觸\n電腦選號的按鈕每 *30* 秒才能按一次\n如需及時購買，請直接輸入 `#電腦選號`"
+      "auto_buy_notify": "為避免重複點擊或者誤觸\n電腦選號的按鈕每 *30* 秒才能按一次\n如需及時購買，請直接輸入 `#電腦選號`",
+      "no_bought_lottery": "{{{ displayName }}}：\n您還沒有購買任何彩券，請先輸入 `#樂透` 查看規則再進行購買",
+      "bought_probably_over_limit": "超過 15 張的彩券將不進行顯示，請透過網頁版查詢"
     }
   },
   "advancement": {

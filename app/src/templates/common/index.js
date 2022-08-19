@@ -99,4 +99,57 @@ module.exports = {
       },
     };
   },
+
+  generateRuleBubble: function (rules) {
+    let ruleBoxes = rules.map(rule => generateRuleTextBox(rule));
+    return {
+      type: "bubble",
+      body: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: "系統說明",
+              },
+              {
+                type: "box",
+                layout: "vertical",
+                contents: ruleBoxes,
+                spacing: "lg",
+                paddingTop: "md",
+              },
+            ],
+          },
+        ],
+      },
+    };
+  },
 };
+
+function generateRuleTextBox(rule) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: "-",
+        size: "sm",
+        flex: 1,
+        align: "center",
+      },
+      {
+        type: "text",
+        text: `${rule}`,
+        wrap: true,
+        size: "sm",
+        flex: 10,
+      },
+    ],
+  };
+}

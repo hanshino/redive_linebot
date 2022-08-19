@@ -13,6 +13,11 @@ exports.up = function (knex) {
       .notNullable()
       .comment("狀態, initial:初始, exchanged:已兌換, canceled:已取消, expired:已過期")
       .defaultTo("initial");
+    table
+      .enum("buy_type", ["manual", "auto"])
+      .notNullable()
+      .comment("購買類型, manual:手動, auto:自動")
+      .defaultTo("manual");
     table.enum("result", ["first", "second", "third", "fourth"]).comment("結果").nullable();
 
     table.timestamps(true, true);
