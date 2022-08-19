@@ -4,13 +4,13 @@ const { inventory: inventoryModel } = require("../../model/application/Inventory
 const lotteryOrderModel = require("../../model/application/LotteryOrder");
 const lotteryModel = require("../../model/application/Lottery");
 const lotteryTemplate = require("../../templates/application/Lottery");
-const { get } = require("lodash");
+const { get, sampleSize } = require("lodash");
 const config = require("config");
 const redis = require("../../util/redis");
 const moment = require("moment");
 
 exports.router = [
-  text(/^[.#/](買樂透)(?<numbers>(\s\d+)+)$/, manualBuy),
+  text(/^[.#/](買樂透)(?<numbers>(\s\d+)+)$/, buy),
   text(/^[.#/](樂透|lottery)$/, lottery),
 ];
 
@@ -43,20 +43,41 @@ async function lottery(context) {
     status,
   });
 
-  await context.replyText(JSON.stringify(bubble));
+  await context.replyFlex("布丁大樂透面板", bubble);
 }
 
 /**
- * 人工選號
+ * 自動買樂透
+ * @param {import("bottender").LineContext} context
+ */
+exports.autoBuy = async context => {
+  const max = config.get("lottery.max_number");
+  const min = config.get("lottery.min_number");
+  const allNumbers = Array.from({ length: max - min + 1 }, (_, i) => i + min);
+  const chosenNumbers = sampleSize(allNumbers, config.get("lottery.max_count")).sort(
+    (a, b) => a - b
+  );
+
+  return await buy(context, {
+    numbers: chosenNumbers,
+  });
+};
+
+/**
+ * 購買選號
  * @param { import("bottender").LineContext } context
  */
-async function manualBuy(context, props) {
+async function buy(context, props) {
   const { userId } = context.event.source;
-  const { numbers: strNumbers = "" } = get(props, "match.groups");
-  const numbers = strNumbers
-    .trim()
-    .split(/\s+/)
-    .map(strNum => parseInt(strNum));
+  const strNumbers = get(props, "match.groups.numbers", "");
+  // 選擇使用 props 內的 numbers 或者是 context.event.message.text
+  const numbers =
+    get(props, "numbers") ||
+    strNumbers
+      .trim()
+      .split(/\s+/)
+      .map(strNum => parseInt(strNum))
+      .sort((a, b) => a - b);
   const limitCount = config.get("lottery.max_count");
 
   // 個數檢查

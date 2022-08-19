@@ -102,6 +102,7 @@ async function HandlePostback(context, { next }) {
         withProps(MarketController.doTransfer, { payload })
       ),
       route(() => action === "useFood", withProps(CreatureController.useFood, { payload })),
+      route(() => action === "lottery_auto_buy", withProps(LotteryController.autoBuy, { payload })),
       route("*", next),
     ]);
   } catch (e) {

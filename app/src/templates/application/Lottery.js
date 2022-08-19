@@ -200,6 +200,12 @@ exports.generateBoardBubble = ({ id, result, carryOver, status }) => {
               paddingAll: "md",
               cornerRadius: "md",
               backgroundColor: "#f6bd7e",
+              action: {
+                type: "postback",
+                data: JSON.stringify({
+                  action: "lottery_auto_buy",
+                }),
+              },
             },
           ],
           spacing: "md",
