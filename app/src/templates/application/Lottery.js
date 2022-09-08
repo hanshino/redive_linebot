@@ -52,7 +52,7 @@ function generateCarryOverNumBox(strNum = "0") {
 
 exports.generateBoardResultBox = (result = []) => {
   if (result.length === 0) {
-    result = Array.from({ length: 6 }, () => "?");
+    result = Array.from({ length: 5 }, () => "?");
   }
   const boxes = result.map(generateResultNumBox);
 
