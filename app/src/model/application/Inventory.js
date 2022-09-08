@@ -106,5 +106,5 @@ class Inventory extends base {
 
 exports.inventory = new Inventory({
   table: "Inventory",
-  fillable: ["userId", "itemId", "itemAmount"],
+  fillable: ["userId", "itemId", "itemAmount", "note"],
 });

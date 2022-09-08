@@ -18,7 +18,10 @@ exports.up = function (knex) {
       .notNullable()
       .comment("購買類型, manual:手動, auto:自動")
       .defaultTo("manual");
-    table.enum("result", ["first", "second", "third", "fourth"]).comment("結果").nullable();
+    table
+      .enum("result", ["first", "second", "third", "fourth", "fifth"])
+      .comment("結果")
+      .nullable();
 
     table.timestamps(true, true);
     table.foreign("lottery_main_id").references("id").inTable("lottery_main");

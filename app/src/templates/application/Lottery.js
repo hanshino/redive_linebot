@@ -219,7 +219,8 @@ exports.generateBoardBubble = ({ id, result, carryOver, status, created_at }) =>
   };
 };
 
-exports.generateTicketBubble = ({ id, total, rows }) => {
+exports.generateTicketBubble = ({ id, total, rows, created_at }) => {
+  const createdAt = moment(created_at).toDate();
   return {
     type: "bubble",
     header: {
@@ -247,7 +248,7 @@ exports.generateTicketBubble = ({ id, total, rows }) => {
             },
             {
               type: "span",
-              text: `${format("yyyyMMdd", new Date())}${padStart(id, 3, "0")}`,
+              text: `${format("yyyyMMdd", createdAt)}${padStart(id, 3, "0")}`,
             },
             {
               type: "span",

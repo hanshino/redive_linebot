@@ -33,6 +33,7 @@ async function boughtList(context) {
   }
 
   const lotteryId = lottery.id;
+  const { created_at } = lottery;
   const orders = await lotteryOrderModel.all({
     filter: {
       user_id: userId,
@@ -68,6 +69,7 @@ async function boughtList(context) {
     id: lotteryId,
     total: orders.length * perPrice,
     rows: ticketRows,
+    created_at,
   });
 
   if (orders.length === 15) {
@@ -212,6 +214,7 @@ async function buy(context, props) {
     await inventoryModel.decreaseGodStone({
       userId,
       amount: price,
+      note: "lottery-buy",
     });
 
     await trx.commit();

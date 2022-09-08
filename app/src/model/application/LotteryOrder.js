@@ -20,6 +20,7 @@ class LotteryOrder extends base {
       second: "second",
       third: "third",
       fourth: "fourth",
+      fifth: "fifth",
     };
   }
 
@@ -30,6 +31,14 @@ class LotteryOrder extends base {
       })
       .where({ lottery_main_id: lotteryId })
       .first();
+  }
+
+  makeItExchanged(ids) {
+    return this.knex
+      .update({
+        status: this.status.exchanged,
+      })
+      .whereIn("id", ids);
   }
 }
 

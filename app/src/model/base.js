@@ -87,7 +87,7 @@ class Base {
    * @param {Object} options.filter 過濾條件
    * @param {Array<{column: String, direction: String}>} options.order 排序設定
    * @param {Array}  options.select 選擇欄位
-   * @returns {Promise<Array>}
+   * @returns {Promise<Object>}
    */
   async first(options = {}) {
     const filter = get(options, "filter", {});
@@ -142,6 +142,10 @@ class Base {
 
     let [result] = await this.connection.queryBuilder().select(mysql.raw("LAST_INSERT_ID() as id"));
     return result.id;
+  }
+
+  async insert(data = []) {
+    return await this.knex.insert(data);
   }
 
   /**
