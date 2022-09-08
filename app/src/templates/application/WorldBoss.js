@@ -175,8 +175,8 @@ exports.generateBossInformation = ({
   gold,
   exp,
 }) => {
-  start_time = format.asString("yyyy-mm-dd", start_time);
-  end_time = format.asString("yyyy-mm-dd", end_time);
+  start_time = format.asString("yyyy-MM-dd", start_time);
+  end_time = format.asString("yyyy-MM-dd", end_time);
 
   let bubble = {
     type: "bubble",

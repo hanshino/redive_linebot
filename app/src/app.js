@@ -38,6 +38,7 @@ const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const CreatureController = require("./controller/application/CreaturesController");
 const StatusController = require("./controller/application/StatusController");
+const LotteryController = require("./controller/application/LotteryController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -66,14 +67,15 @@ async function HandlePostback(context, { next }) {
 
   try {
     let payload = JSON.parse(context.event.payload);
-    let { action } = payload;
+    let { action, cooldown = 1 } = payload;
     const { userId } = context.event.source;
 
     let memkey = `Postback_${userId}_${action}`;
 
     // 使用 setnx 限制每位使用者 1秒內 不能連續重複動作
+    // 如果有特別指定的 cooldown 值，則使用該值
     let isExist = await redis.set(memkey, 1, {
-      EX: 1,
+      EX: cooldown,
       NX: true,
     });
     if (!isExist && action !== "adminBossAttack") return;
@@ -101,6 +103,7 @@ async function HandlePostback(context, { next }) {
         withProps(MarketController.doTransfer, { payload })
       ),
       route(() => action === "useFood", withProps(CreatureController.useFood, { payload })),
+      route(() => action === "lottery_auto_buy", withProps(LotteryController.autoBuy, { payload })),
       route("*", next),
     ]);
   } catch (e) {
@@ -137,6 +140,7 @@ async function OrderBased(context, { next }) {
     ...CouponController.router,
     ...ImageController.router,
     ...StatusController.router,
+    ...LotteryController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>

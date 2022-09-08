@@ -13,7 +13,7 @@ exports.router = [
  */
 async function godStone(context) {
   const { userId } = context.event.source;
-  const { amount } = await inventoryModel.getUserMoney(userId);
+  const { amount = 0 } = await inventoryModel.getUserMoney(userId);
 
   context.replyText(i18n.__("message.user_own_god_stone", { god_stone: amount }));
 }

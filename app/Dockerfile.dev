@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:lts
 
 LABEL Name="redive機器人核心"
 LABEL description="機器人語言組，分析所有訊息，進行功能響應"

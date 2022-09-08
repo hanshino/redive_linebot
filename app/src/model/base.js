@@ -1,19 +1,21 @@
 const mysql = require("../util/mysql");
 const { get, pick } = require("lodash");
+const trxProvider = mysql.transactionProvider();
 
 class Base {
   constructor({ table, fillable }) {
     this.table = table;
     this.fillable = fillable;
     this.trx = null;
+    this.trxProvider = trxProvider;
   }
 
   /**
    * @returns { import("knex").Knex }
    */
   get knex() {
-    if (this.trx && !this.trx.isCompleted) {
-      return this.trx;
+    if (this.trx && !this.trx.isCompleted()) {
+      return this.trx(this.table);
     } else {
       return mysql(this.table);
     }
@@ -85,7 +87,7 @@ class Base {
    * @param {Object} options.filter 過濾條件
    * @param {Array<{column: String, direction: String}>} options.order 排序設定
    * @param {Array}  options.select 選擇欄位
-   * @returns {Promise<Array>}
+   * @returns {Promise<Object>}
    */
   async first(options = {}) {
     const filter = get(options, "filter", {});
@@ -140,6 +142,10 @@ class Base {
 
     let [result] = await this.connection.queryBuilder().select(mysql.raw("LAST_INSERT_ID() as id"));
     return result.id;
+  }
+
+  async insert(data = []) {
+    return await this.knex.insert(data);
   }
 
   /**

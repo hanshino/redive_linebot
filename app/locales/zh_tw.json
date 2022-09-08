@@ -52,7 +52,14 @@
     "yes": "是",
     "no": "否",
     "okashiya": "點心區",
-    "use": "使用"
+    "use": "使用",
+    "not_yet_draw": "尚未開獎",
+    "already_drawed": "已開獎",
+    "lottery_carry_over": "獎金累計",
+    "lottery_manual_buy": "人工選號",
+    "lottery_auto_buy": "電腦選號",
+    "lottery_ticket_manual_buy": "自選",
+    "lottery_ticket_auto_buy": "快選"
   },
   "message": {
     "user_own_god_stone": "你擁有的女神石: {{ god_stone }}",
@@ -188,6 +195,21 @@
       "nickname_has_space": "您的夥伴名稱不能有空格，請重新輸入",
       "create_user_cancel": "已經取消了角色創立，如需重新創立請輸入 `#養成`",
       "create_success": "已經成功創立角色\n角色 {{ name }}\n角色暱稱 {{ nickname }}\n更多詳細資訊請輸入 `#養成`"
+    },
+    "lottery": {
+      "no_holding_event": "目前沒有樂透活動",
+      "manual_buy": {
+        "error_count": "公司就規定一張彩券就是 {{ max_count }} 個號碼，都是混口飯吃的，不要為難我們",
+        "error_repeat_number": "您的號碼重複了，請檢查您的號碼是否正確",
+        "error_number_range": "您的號碼超出範圍，請檢查您的號碼是否正確",
+        "error_not_enough_money": "我想你還是先去賺錢，再來考慮購買彩券吧",
+        "error_no_lottery": "目前沒有任何彩券可以購買，請稍後再試",
+        "success": "感謝 *{{{ displayName }}}* 的購買\n此次購入的號碼為 {{ numbers }}\n輸入 `#我的樂透` 可以查詢您的彩券資訊",
+        "error": "購買彩券失敗，請向管理員報告此問題\n使用者編號 {{ userId }}"
+      },
+      "auto_buy_notify": "為避免重複點擊或者誤觸\n電腦選號的按鈕每 *30* 秒才能按一次\n如需及時購買，請直接輸入 `#電腦選號`",
+      "no_bought_lottery": "{{{ displayName }}}：\n您還沒有購買任何彩券，請先輸入 `#樂透` 查看規則再進行購買",
+      "bought_probably_over_limit": "超過 15 張的彩券將不進行顯示，請透過網頁版查詢"
     }
   },
   "advancement": {
