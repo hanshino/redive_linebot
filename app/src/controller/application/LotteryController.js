@@ -24,7 +24,13 @@ exports.autoBuy = autoBuy;
  * @param {import("bottender").LineContext} context
  */
 async function boughtList(context) {
-  const { userId, displayName } = context.event.source;
+  const { userId, displayName, type } = context.event.source;
+
+  if (type !== "user") {
+    await context.replyText(i18n.__("message.lottery.bought_list_user_only"));
+    return;
+  }
+
   const lottery = await findLatestLottery();
 
   if (!lottery) {
@@ -72,7 +78,7 @@ async function boughtList(context) {
     created_at,
   });
 
-  if (orders.length === 15) {
+  if (orders.length >= 15) {
     context.replyText(i18n.__("message.lottery.bought_probably_over_limit"));
   }
 
@@ -85,8 +91,11 @@ async function boughtList(context) {
  */
 async function lottery(context) {
   const lottery = await findLatestLottery();
+  const isPublic = get(context, "event.source.type", "group") !== "user";
   const perPrice = config.get("lottery.price");
   const lotteryRate = 1 - config.get("lottery.maintain_tax");
+
+  console.log("isPublic", isPublic);
 
   if (!lottery) {
     await context.replyText(i18n.__("message.lottery.no_holding_event"));
@@ -109,6 +118,7 @@ async function lottery(context) {
     carryOver: totalCarryOver,
     status,
     created_at,
+    isPublic,
   });
   const ruleBubble = generateRuleBubble(config.get("lottery.manual"));
 
@@ -123,6 +133,13 @@ async function lottery(context) {
  * @param {import("bottender").LineContext} context
  */
 async function autoBuy(context) {
+  const { type } = context.event.source;
+
+  if (type !== "user") {
+    await context.replyText(i18n.__("message.lottery.buy_user_only"));
+    return;
+  }
+
   const max = config.get("lottery.max_number");
   const min = config.get("lottery.min_number");
   const allNumbers = Array.from({ length: max - min + 1 }, (_, i) => i + min);
@@ -145,7 +162,13 @@ async function autoBuy(context) {
  * @param { import("bottender").LineContext } context
  */
 async function buy(context, props) {
-  const { userId, displayName } = context.event.source;
+  const { userId, displayName, type } = context.event.source;
+
+  if (type !== "user") {
+    await context.replyText(i18n.__("message.lottery.buy_user_only"));
+    return;
+  }
+
   const strNumbers = get(props, "match.groups.numbers", "");
   const buyType = get(props, "buyType", lotteryOrderModel.buyType.manual);
 

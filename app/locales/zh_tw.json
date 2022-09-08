@@ -209,7 +209,9 @@
       },
       "auto_buy_notify": "為避免重複點擊或者誤觸\n電腦選號的按鈕每 *30* 秒才能按一次\n如需及時購買，請直接輸入 `#電腦選號`",
       "no_bought_lottery": "{{{ displayName }}}：\n您還沒有購買任何彩券，請先輸入 `#樂透` 查看規則再進行購買",
-      "bought_probably_over_limit": "超過 15 張的彩券將不進行顯示，請透過網頁版查詢"
+      "bought_probably_over_limit": "超過 15 張的彩券將不進行顯示，請透過網頁版查詢",
+      "bought_list_user_only": "購買清單只能在 *私訊* 情況下使用，請直接點布丁好友呼叫此指令！",
+      "buy_user_only": "要購買樂透只能在 *私訊* 情況下使用，請直接點布丁好友呼叫此指令！"
     }
   },
   "advancement": {

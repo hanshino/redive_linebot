@@ -52,7 +52,7 @@ function generateCarryOverNumBox(strNum = "0") {
 
 exports.generateBoardResultBox = (result = []) => {
   if (result.length === 0) {
-    result = Array.from({ length: 6 }, () => "?");
+    result = Array.from({ length: 5 }, () => "?");
   }
   const boxes = result.map(generateResultNumBox);
 
@@ -85,7 +85,7 @@ function generateResultNumBox(strNum = "?") {
   };
 }
 
-exports.generateBoardBubble = ({ id, result, carryOver, status, created_at }) => {
+exports.generateBoardBubble = ({ id, result, carryOver, status, created_at, isPublic }) => {
   const resultBox = this.generateBoardResultBox(result);
   const carryOverBox = this.generateBoardCarryOverBox(carryOver);
   const createdAt = moment(created_at).toDate();
@@ -201,13 +201,17 @@ exports.generateBoardBubble = ({ id, result, carryOver, status, created_at }) =>
               paddingAll: "md",
               cornerRadius: "md",
               backgroundColor: "#f6bd7e",
-              action: {
-                type: "postback",
-                data: JSON.stringify({
-                  action: "lottery_auto_buy",
-                  cooldown: 30,
-                }),
-              },
+              ...(isPublic
+                ? {}
+                : {
+                    action: {
+                      type: "postback",
+                      data: JSON.stringify({
+                        action: "lottery_auto_buy",
+                        cooldown: 30,
+                      }),
+                    },
+                  }),
             },
           ],
           spacing: "md",
