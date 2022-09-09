@@ -33,6 +33,21 @@ class LotteryOrder extends base {
       .first();
   }
 
+  /**
+   * 取得用戶在某樂透活動中買了幾張彩券
+   * @param {Object} param0
+   * @param {String} param0.userId
+   * @param {String} param0.lotteryId
+   * @returns {Promise<{count: string}>}
+   */
+  countUserLottery({ userId, lotteryId }) {
+    return this.knex
+      .count({ count: "*" })
+      .where("user_id", userId)
+      .where("lottery_main_id", lotteryId)
+      .first();
+  }
+
   makeItExchanged(ids) {
     return this.knex
       .update({

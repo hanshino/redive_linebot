@@ -4,17 +4,17 @@ const { inventory: inventoryModel } = require("../../model/application/Inventory
 const lotteryOrderModel = require("../../model/application/LotteryOrder");
 const lotteryModel = require("../../model/application/Lottery");
 const lotteryTemplate = require("../../templates/application/Lottery");
-const { get, sampleSize } = require("lodash");
+const { get, sampleSize, chunk } = require("lodash");
 const config = require("config");
 const redis = require("../../util/redis");
 const moment = require("moment");
 const { generateRuleBubble } = require("../../templates/common");
 
 exports.router = [
-  text(/^[.#/](我的樂透|my[-_]?lottery)$/, boughtList),
+  text(/^[.#/](我的(樂透|彩券)|my[-_]?lottery)$/, boughtList),
   text(/^[.#/](買樂透)(?<numbers>(\s\d+)+)$/, buy),
   text(/^[.#/](樂透|lottery)$/, lottery),
-  text(/^[.#/](電腦選號)$/, autoBuy),
+  text(/^[.#/](電腦選號)([\s*](?<count>\d{1,3}))?$/, autoBuy),
 ];
 
 exports.autoBuy = autoBuy;
@@ -24,13 +24,7 @@ exports.autoBuy = autoBuy;
  * @param {import("bottender").LineContext} context
  */
 async function boughtList(context) {
-  const { userId, displayName, type } = context.event.source;
-
-  if (type !== "user") {
-    await context.replyText(i18n.__("message.lottery.bought_list_user_only"));
-    return;
-  }
-
+  const { userId, displayName } = context.event.source;
   const lottery = await findLatestLottery();
 
   if (!lottery) {
@@ -79,7 +73,14 @@ async function boughtList(context) {
   });
 
   if (orders.length >= 15) {
-    context.replyText(i18n.__("message.lottery.bought_probably_over_limit"));
+    const { count: boughtCount = 0 } = await lotteryOrderModel.countUserLottery({
+      userId,
+      lotteryId,
+    });
+    console.log("超過15張");
+    return await context.replyText(
+      i18n.__("message.lottery.bought_probably_over_limit", { boughtCount })
+    );
   }
 
   await context.replyFlex("布丁大樂透購買記錄", bubble);
@@ -131,30 +132,104 @@ async function lottery(context) {
 /**
  * 自動買樂透
  * @param {import("bottender").LineContext} context
+ * @param {import("bottender").Props} props
  */
-async function autoBuy(context) {
-  const { type } = context.event.source;
+async function autoBuy(context, props) {
+  const { count = 1 } = props.match.groups;
+  const { userId, displayName, type } = context.event.source;
+  const key = `auto_buy:${userId}`;
 
-  if (type !== "user") {
-    await context.replyText(i18n.__("message.lottery.buy_user_only"));
+  const isSet = await redis.set(key, 1, { EX: 60 * 10, NX: true });
+  if (type === "group" && !isSet) {
     return;
   }
 
-  const max = config.get("lottery.max_number");
-  const min = config.get("lottery.min_number");
-  const allNumbers = Array.from({ length: max - min + 1 }, (_, i) => i + min);
-  const chosenNumbers = sampleSize(allNumbers, config.get("lottery.max_count")).sort(
-    (a, b) => a - b
-  );
+  const { amount = 0 } = await inventoryModel.getUserMoney(userId);
+  const costMoney = count * config.get("lottery.price");
 
-  if (!context.event.isText) {
-    context.replyText(i18n.__("message.lottery.auto_buy_notify"));
+  if (amount < costMoney) {
+    await context.replyText(i18n.__("message.lottery.manual_buy.error_not_enough_money"));
+    return;
   }
 
-  return await buy(context, {
-    numbers: chosenNumbers,
-    buyType: lotteryOrderModel.buyType.auto,
+  const latestLottery = await findLatestLottery();
+  if (!latestLottery || latestLottery.status !== lotteryModel.status.selling) {
+    await context.replyText(i18n.__("message.lottery.manual_buy.error_no_lottery"));
+    return;
+  }
+
+  const result = generateMultipleLotteryNumberList(count);
+  const lotteryOrderData = result.map(d => ({
+    lottery_main_id: latestLottery.id,
+    user_id: userId,
+    content: d.join(","),
+    buy_type: lotteryOrderModel.buyType.auto,
+  }));
+
+  const trx = await lotteryOrderModel.trxProvider();
+  try {
+    lotteryOrderModel.setTransaction(trx);
+    inventoryModel.setTransaction(trx);
+
+    await Promise.all(chunk(lotteryOrderData, 50).map(data => lotteryOrderModel.insert(data)));
+
+    await inventoryModel.decreaseGodStone({
+      userId,
+      amount: costMoney,
+      note: "lottery-buy",
+    });
+
+    await trx.commit();
+
+    let message = i18n.__("message.lottery.auto_buy_success", {
+      displayName,
+      count,
+      ownMoney: amount,
+      costMoney,
+      lastMoney: amount - costMoney,
+    });
+
+    if (type === "group") {
+      message += "\n備註：";
+      message += i18n.__("message.lottery.auto_buy_notify");
+    }
+
+    await context.replyText(message);
+  } catch (e) {
+    await trx.rollback();
+    console.error(e);
+    await context.replyText(
+      i18n.__("message.lottery.manual_buy.error", {
+        userId,
+      })
+    );
+  }
+}
+
+function generateMultipleLotteryNumberList(count = 1) {
+  const repeatList = [];
+  const max = config.get("lottery.max_number");
+  const min = config.get("lottery.min_number");
+  const maxCount = config.get("lottery.max_count");
+  const repeatTimes = 10;
+
+  return Array.from({ length: count }).map(() => {
+    let numbers = generateLotteryNumbers({ max, min, maxCount });
+    let repeat = 0;
+    while (repeatList.includes(numbers.join(",")) && repeat <= repeatTimes) {
+      console.log("重複重新產生", repeatList, numbers);
+      numbers = generateLotteryNumbers({ max, min, maxCount });
+      repeat++;
+    }
+
+    repeatList.push(numbers.join(","));
+    return numbers;
   });
+}
+
+function generateLotteryNumbers({ max, min, maxCount }) {
+  const allNumbers = Array.from({ length: max - min + 1 }, (_, i) => i + min);
+  return sampleSize(allNumbers, maxCount).sort((a, b) => a - b);
 }
 
 /**
@@ -162,12 +237,7 @@ async function autoBuy(context) {
  * @param { import("bottender").LineContext } context
  */
 async function buy(context, props) {
-  const { userId, displayName, type } = context.event.source;
-
-  if (type !== "user") {
-    await context.replyText(i18n.__("message.lottery.buy_user_only"));
-    return;
-  }
+  const { userId, displayName } = context.event.source;
 
   const strNumbers = get(props, "match.groups.numbers", "");
   const buyType = get(props, "buyType", lotteryOrderModel.buyType.manual);

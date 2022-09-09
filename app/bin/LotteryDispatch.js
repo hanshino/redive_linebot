@@ -13,7 +13,7 @@ async function main() {
     filter: {
       status: lotteryOrderModel.status.initial,
     },
-    limit: 100,
+    limit: 200,
   });
 
   if (orders.length === 0) {
