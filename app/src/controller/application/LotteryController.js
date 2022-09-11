@@ -217,7 +217,6 @@ function generateMultipleLotteryNumberList(count = 1) {
     let numbers = generateLotteryNumbers({ max, min, maxCount });
     let repeat = 0;
     while (repeatList.includes(numbers.join(",")) && repeat <= repeatTimes) {
-      console.log("重複重新產生", repeatList, numbers);
       numbers = generateLotteryNumbers({ max, min, maxCount });
       repeat++;
     }

@@ -63,30 +63,25 @@ async function main() {
     let result = null;
 
     switch (intersectCount) {
-      case 6:
+      case 5:
         // 頭獎
         reward = totalCarryOver;
         result = lotteryOrderModel.result.first;
         break;
-      case 5:
+      case 4:
         // 二獎
         reward = Math.floor(totalCarryOver / 6);
         result = lotteryOrderModel.result.second;
         break;
-      case 4:
+      case 3:
         // 三獎
         reward = 50000;
         result = lotteryOrderModel.result.third;
         break;
-      case 3:
+      case 2:
         // 四獎
         reward = 10000;
         result = lotteryOrderModel.result.fourth;
-        break;
-      case 2:
-        // 普通獎
-        reward = 1000;
-        result = lotteryOrderModel.result.fifth;
         break;
       default:
         noneRewardIds.push(orderId);
