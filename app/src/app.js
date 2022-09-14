@@ -48,7 +48,7 @@ const { pushMessage } = require("./util/LineNotify");
 const AdminModel = require("./model/application/Admin");
 const { default: axios } = require("axios");
 const pConfig = require("config");
-require("./task");
+const task = require("./task");
 
 axios.defaults.timeout = 5000;
 
@@ -245,6 +245,7 @@ function AdminOrder() {
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
+    text("!download", task.handleGameData),
     ...GambleController.adminRouter,
     ...AdvancementController.adminRouter,
     ...DonateListController.adminRouter,
