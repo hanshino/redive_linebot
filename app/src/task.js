@@ -9,7 +9,7 @@ const Notify = require("./util/LineNotify");
 
 exports.handleGameData = async () => {
   try {
-    let { data } = await axios.get(`https://${domain}/redive_db/version.json`);
+    let { data } = await axios.get(`https://${domain}/static/version.json`);
     let versionData = await gameDataModel.first({
       order: [
         {
@@ -47,7 +47,7 @@ exports.handleGameData = async () => {
 };
 
 async function downloadGameData() {
-  const api = `https://${domain}/redive_db/redive_tw.db.br`;
+  const api = `https://${domain}/static/redive_tw.db.br`;
   const filepath = path.join(process.cwd(), "assets", "redive_tw.db.br");
   const writer = fs.createWriteStream(filepath);
 
