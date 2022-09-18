@@ -42,7 +42,7 @@ function getCharacterData(name) {
 function _getCharacterInfoPara(characterData) {
   return {
     Image: characterData.Image,
-    Name: characterData.Info["名字"],
+    Name: characterData.Info["角色名字"],
     Guild: characterData.Info["公會"],
     Birthday: characterData.Info["生日"],
     Age: characterData.Info["年齡"],
