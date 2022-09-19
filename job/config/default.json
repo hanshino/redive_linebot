@@ -2,7 +2,7 @@
   "chat_level": {
     "exp": {
       "rate": {
-        "default": 30
+        "default": 90
       }
     }
   },
