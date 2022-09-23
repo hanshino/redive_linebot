@@ -144,7 +144,7 @@ exports.getPrincessCharacterCount = async () => {
 
   var datas = await this.getPrincessCharacter();
 
-  redis.set(memoryKey, datas.length);
+  redis.set(memoryKey, datas.length, 60);
   return datas.length;
 };
 
