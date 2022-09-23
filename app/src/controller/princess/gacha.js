@@ -167,17 +167,18 @@ async function showGachaBag(context) {
   const notOwnCharacters = pool.filter(data => !ownIds.includes(data.ID));
 
   const generateBubbles = (characters, type) => {
-    // 先以 20 個做分組做為一個 bubble
-    let chunkCharacters = chunk(characters, 20);
+    const rowLength = 6;
+    // 先以 24 個做分組做為一個 bubble
+    let chunkCharacters = chunk(characters, 36);
 
     return chunkCharacters.map(perChunk => {
-      // 在每個 bubble 中，每個橫排的角色數量為 5
-      let chunkCharactersPerRow = chunk(perChunk, 5);
+      // 在每個 bubble 中，每個橫排的角色數量為 6
+      let chunkCharactersPerRow = chunk(perChunk, rowLength);
 
       let rawRows = chunkCharactersPerRow.map(perRow => {
         // 如果角色數量不足 5，則補足
         let rowCharacter = perRow.concat(
-          Array(5 - perRow.length).fill({
+          Array(rowLength - perRow.length).fill({
             headImage: "https://pcredivewiki.tw/static/images/equipment/icon_equipment_999999.png",
           })
         );
