@@ -297,7 +297,9 @@ async function bet(context, props) {
 
   const availableOptions = get(game, "options", []);
 
-  if (parseInt(option) > availableOptions.length) {
+  console.log(parseInt(option), "option");
+
+  if (parseInt(option) > availableOptions.length || parseInt(option) === 0) {
     await context.replyText(i18n.__("message.gamble.invalid_option"));
     return;
   }
@@ -305,6 +307,11 @@ async function bet(context, props) {
   const usedCoins = parseInt(amount);
   const sumResult = await InventoryModel.getUserOwnCountByItemId(userId, 999);
   const ownStones = parseInt(get(sumResult, "amount", 0));
+
+  if (usedCoins <= 0) {
+    await context.replyText(i18n.__("message.gamble.invalid_coins"));
+    return;
+  }
 
   if (isNull(ownStones) || usedCoins > ownStones) {
     await context.replyText(i18n.__("message.gamble.not_enough_coins"));
