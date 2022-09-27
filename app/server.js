@@ -5,6 +5,7 @@ const apiRouter = require("./src/router/api");
 const cors = require("cors");
 const { server, http } = require("./src/util/connection");
 const { handleGameData } = require("./src/task");
+const ClanFetch = require("./bin/ClanFetch");
 const cron = require("cron").CronJob;
 require("./src/router/socket");
 
@@ -17,6 +18,17 @@ new cron(
   },
   null,
   true,
+  "Asia/Taipei"
+);
+
+// 戰隊期間 每五分鐘抓一次排名資料
+new cron(
+  "0 */5 * 20-31 * *",
+  async () => {
+    await ClanFetch();
+  },
+  null,
+  process.env.NODE_ENV === "production",
   "Asia/Taipei"
 );
 

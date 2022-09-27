@@ -1,5 +1,5 @@
 
-FROM python:3.9-slim
+FROM --platform=linux/x86_64 python:3.9-slim
 
 LABEL Name="redive影像辨識"
 LABEL description="機器人影像辨識模組"
