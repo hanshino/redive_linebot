@@ -31,6 +31,7 @@ async function main() {
         headers: {
           "x-token": process.env.IAN_PROFILE_TOKEN,
         },
+        timeout: 60 * 1000,
       })
       .then(() => console.log(`${i18n.__(`server.${server}`)} 獲取成功`))
       .catch(error => {
