@@ -9,7 +9,7 @@ const axios = Axios.create({
 
 exports.router = [
   text(/^[.#/](幹話|bullshit)$/i, bullshitManual),
-  text(/^[.#/](幹話|bullshit)\s(?<topic>\S+)$/i, bullshitGenerator),
+  text(/^[.#/](幹話|bullshit)\s(?<topic>\S+)\s(?<minLen>\d{1,3})$/i, bullshitGenerator),
 ];
 
 async function bullshitManual(context) {
@@ -22,13 +22,13 @@ async function bullshitManual(context) {
  * @param {import ("bottender").Props} props
  */
 async function bullshitGenerator(context, props) {
-  const { topic } = props.match.groups;
+  const { topic, minLen = 10 } = props.match.groups;
   const result = await axios
     .post(
       "/bullshit",
       {
         Topic: topic,
-        MinLen: 10,
+        MinLen: minLen,
       },
       {
         headers: {
@@ -53,7 +53,7 @@ async function bullshitGenerator(context, props) {
   }
 
   // remove nbsp and trim
-  const bullshit = data.replace(/&nbsp;/g, "").trim();
+  const bullshit = data.replace(/(&nbsp;|<br>)/g, "").trim();
 
   await context.replyText(bullshit);
 }
