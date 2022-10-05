@@ -82,6 +82,9 @@
     "expire": 86400,
     "daily_quest": "daily_quest"
   },
+  "api": {
+    "bullshit": "https://api.howtobullshit.me/"
+  },
   "links": {
     "discord": "https://discord.gg/Fy82rTb",
     "github": "https://github.com/hanshino/redive_linebot",
