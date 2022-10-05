@@ -9,7 +9,7 @@ const axios = Axios.create({
 
 exports.router = [
   text(/^[.#/](幹話|bullshit)$/i, bullshitManual),
-  text(/^[.#/](幹話|bullshit)\s(?<topic>\S+)\s(?<minLen>\d{1,3})$/i, bullshitGenerator),
+  text(/^[.#/](幹話|bullshit)\s(?<topic>\S+)(\s(?<minLen>\d{1,3}))?$/i, bullshitGenerator),
 ];
 
 async function bullshitManual(context) {
