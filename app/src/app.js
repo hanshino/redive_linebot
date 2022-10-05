@@ -47,7 +47,7 @@ const { showManagePlace } = require("./templates/application/Admin");
 const { sendPreWorkMessage } = require("./templates/princess/other");
 const { pushMessage } = require("./util/LineNotify");
 const AdminModel = require("./model/application/Admin");
-const { default: axios } = require("axios");
+const axios = require("axios");
 const pConfig = require("config");
 const task = require("./task");
 
