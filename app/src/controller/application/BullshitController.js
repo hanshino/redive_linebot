@@ -1,7 +1,11 @@
 const { text } = require("bottender/router");
-const { default: axios } = require("axios");
+const Axios = require("axios");
 const i18n = require("../../util/i18n");
 const config = require("config");
+const { get } = require("lodash");
+const axios = Axios.create({
+  baseURL: config.get("api.bullshit"),
+});
 
 exports.router = [
   text(/^[.#/](幹話|bullshit)$/i, bullshitManual),
@@ -19,16 +23,32 @@ async function bullshitManual(context) {
  */
 async function bullshitGenerator(context, props) {
   const { topic } = props.match.groups;
-  const apiUrl = `${config.get("api.bullshit")}/bullshit`;
-  const { data } = await axios
-    .post(apiUrl, {
-      Topic: topic,
-      MinLen: 10,
-    })
-    .catch(err => console.error(err));
+  const result = await axios
+    .post(
+      "/bullshit",
+      {
+        Topic: topic,
+        MinLen: 10,
+      },
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
+        },
+        responseType: "text",
+      }
+    )
+    .catch(err => {
+      console.error(err.response.data);
+    });
 
+  const data = get(result, "data");
   if (!data) {
-    await context.replyText(i18n.__("message.bullshit.failed"));
+    await context.replyText(
+      i18n.__("message.bullshit.failed", {
+        userId: get(context, "event.source.userId"),
+      })
+    );
     return;
   }
 
