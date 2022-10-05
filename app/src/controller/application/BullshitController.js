@@ -28,7 +28,7 @@ async function bullshitGenerator(context, props) {
       "/bullshit",
       {
         Topic: topic,
-        MinLen: minLen,
+        MinLen: parseInt(minLen),
       },
       {
         headers: {
@@ -53,7 +53,11 @@ async function bullshitGenerator(context, props) {
   }
 
   // remove nbsp and trim
-  const bullshit = data.replace(/(&nbsp;|<br>)/g, "").trim();
+  // then replace all <br> with new line
+  const bullshit = data
+    .replace(/&nbsp;/g, "")
+    .trim()
+    .replace(/<br>/g, "\n");
 
   await context.replyText(bullshit);
 }
