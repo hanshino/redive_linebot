@@ -214,6 +214,10 @@
       "bought_list_user_only": "購買清單只能在 *私訊* 情況下使用，請直接點布丁好友呼叫此指令！",
       "buy_user_only": "要購買樂透只能在 *私訊* 情況下使用，請直接點布丁好友呼叫此指令！",
       "auto_buy_success": "感謝 *{{{ displayName }}}* \n已成功購買了 *{{ count }}* 張彩券\n{{ ownMoney }} - {{ costMoney }} = *{{ lastMoney }}* (剩餘女神石)"
+    },
+    "bullshit": {
+      "failed": "發生錯誤，請向管理員報告此問題\n使用者編號 {{ userId }}",
+      "manual": "請輸入 `#幹話 {{ topic }}` 來取得一段幹話"
     }
   },
   "advancement": {
