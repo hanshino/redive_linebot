@@ -217,7 +217,7 @@
     },
     "bullshit": {
       "failed": "發生錯誤，請向管理員報告此問題\n使用者編號 {{ userId }}",
-      "manual": "請輸入 `#幹話 {{ topic }}` 來取得一段幹話"
+      "manual": "請輸入 `#幹話 {任意主題}` 來取得一段幹話"
     }
   },
   "advancement": {
