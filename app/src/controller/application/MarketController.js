@@ -18,6 +18,7 @@ exports.router = [
   text(/^[./#](交易管理|trade-manage)$/i, showManage),
   text(/^[./#](交易|trade)/i, trade),
   text(/^[./#](轉帳|atm)/i, transferMoney),
+  text(/^[./#](快速轉帳|fastatm)/i, doFastTransfer),
 ];
 
 function showManage(context) {
@@ -111,6 +112,7 @@ async function transferMoney(context) {
   context.replyText(
     i18n.__("message.trade.transfer_money_established", {
       time: config.get("trade.transfer_countdown") + "秒",
+      displayName,
     })
   );
   context.replyFlex("轉帳建立", orderBubble);
@@ -126,10 +128,55 @@ function isMoneyParam(param) {
 }
 
 /**
+ * 進行快速轉帳
+ * @param {import("bottender").LineContext} context
+ */
+function doFastTransfer(context) {
+  const { userId } = context.event.source;
+  const { text: rawText } = context.event.message;
+  const mentionees = get(context.event.message, "mention.mentionees", []);
+  const trimText = trimMentionees(rawText, mentionees);
+
+  if (mentionees.length !== 1) {
+    return context.replyText(i18n.__("message.trade.mention_invalid"));
+  }
+
+  const targetId = get(mentionees, "0.userId");
+  const targetUserName = getMentionName(rawText, get(mentionees, "0"));
+  const param = removeOrder(trimText);
+
+  if (param.length === 0 || !isMoneyParam(param)) {
+    return context.replyText(i18n.__("message.trade.transfer_money_invalid"));
+  }
+
+  if (!isLineUserId(targetId)) {
+    return context.replyText(i18n.__("message.trade.mention_invalid"));
+  }
+
+  const transferMoney = parseInt(param);
+
+  const transferId = uuid();
+  setTransfer({
+    sourceId: userId,
+    targetId,
+    amount: transferMoney,
+    transferId,
+    targetName: targetUserName,
+  });
+
+  const payload = {
+    transferId,
+  };
+  doTransfer(context, {
+    payload,
+  });
+}
+
+/**
  * 確定交易
  * @param {import ("bottender").LineContext} context
  */
-exports.doTransfer = async (context, { payload }) => {
+const doTransfer = async (context, { payload }) => {
   const { transferId } = payload;
   const data = await getTransfer(transferId);
 
@@ -175,6 +222,8 @@ exports.doTransfer = async (context, { payload }) => {
     `Transfer ${transferId} success. Source: ${sourceId}, Target: ${targetId}, Amount: ${amount}`
   );
 };
+
+exports.doTransfer = doTransfer;
 
 function setTransfer({ sourceId, targetId, amount, transferId, targetName }) {
   return redis.set(
