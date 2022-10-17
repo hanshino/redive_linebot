@@ -94,13 +94,13 @@ class Inventory extends base {
    */
   async transferGodStone({ sourceId, targetId, amount }) {
     return this.knex.insert([
-      { userId: sourceId, itemId: 999, itemAmount: `${-amount}` },
-      { userId: targetId, itemId: 999, itemAmount: amount },
+      { userId: sourceId, itemId: 999, itemAmount: `${-amount}`, note: "atm" },
+      { userId: targetId, itemId: 999, itemAmount: amount, note: "atm" },
     ]);
   }
 
-  async decreaseGodStone({ userId, amount }) {
-    return this.knex.insert([{ userId, itemId: 999, itemAmount: `${-amount}` }]);
+  async decreaseGodStone({ userId, amount, note }) {
+    return this.knex.insert([{ userId, itemId: 999, itemAmount: `${-amount}`, note }]);
   }
 }
 
