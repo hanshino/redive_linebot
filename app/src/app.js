@@ -40,6 +40,7 @@ const CreatureController = require("./controller/application/CreaturesController
 const StatusController = require("./controller/application/StatusController");
 const LotteryController = require("./controller/application/LotteryController");
 const BullshitController = require("./controller/application/BullshitController");
+const SubscribeController = require("./controller/application/SubscribeController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -143,6 +144,7 @@ async function OrderBased(context, { next }) {
     ...StatusController.router,
     ...LotteryController.router,
     ...BullshitController.router,
+    ...SubscribeController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
