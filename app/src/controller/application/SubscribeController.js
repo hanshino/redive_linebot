@@ -3,6 +3,7 @@ const { get } = require("lodash");
 const SubscribeCard = require("../../model/application/SubscribeCard");
 const SubscribeCardCoupon = require("../../model/application/SubscribeCardCoupon");
 const SubscribeUser = require("../../model/application/SubscribeUser");
+const DailyRation = require("../../../bin/DailyRation");
 const mement = require("moment");
 const i18n = require("../../util/i18n");
 
@@ -133,6 +134,7 @@ async function subscribeCouponExchange(context, props) {
   );
 
   await context.replyText(messages.join("\n"));
+  !isContinue && (await DailyRation());
 }
 
 /**

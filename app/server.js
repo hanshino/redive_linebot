@@ -33,9 +33,9 @@ new cron(
   "Asia/Taipei"
 );
 
-// 每日 12:00 發放每日配給
+// 每天 0:00 給予配給
 new cron(
-  "10 0 12 * * * *",
+  "10 0 0 * * *",
   async () => {
     await DailyRation();
   },
