@@ -7,21 +7,12 @@ const i18n = require("../src/util/i18n");
 async function main() {
   const periodData = await gamedata("clan_battle_period")
     .select("*")
-    .orderBy("clan_battle_id", "desc")
-    .limit(5);
+    .where("end_at", ">", moment().toDate())
+    .andWhere("start_at", "<", moment().toDate())
+    .first();
 
-  const now = moment();
-
-  const period = periodData.find(p => {
-    const { start_time, end_time } = p;
-    const startAt = moment(start_time, "YYYY/MM/DD hh:mm:ss");
-    const endAt = moment(end_time, "YYYY/MM/DD hh:mm:ss");
-
-    return now.isBetween(startAt, endAt);
-  });
-
-  if (!period) {
-    console.log("No period found");
+  if (!periodData) {
+    console.log("No period data");
     return;
   }
 
