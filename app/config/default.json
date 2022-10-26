@@ -147,5 +147,11 @@
       "三獎：50000",
       "四獎：10000"
     ]
+  },
+  "subscribe": {
+    "effects": [
+      "daily_ration",
+      "gacha_times"
+    ]
   }
 }

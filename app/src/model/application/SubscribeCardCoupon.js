@@ -11,7 +11,7 @@ class SubscribeCardCoupon extends base {
 
     this.key = {
       month: "month",
-      year: "year",
+      season: "season",
     };
   }
 }
