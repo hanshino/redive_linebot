@@ -3,7 +3,6 @@ const InventoryModel = require("../../model/application/Inventory");
 const { inventory } = InventoryModel;
 const random = require("math-random");
 const GachaTemplate = require("../../templates/princess/gacha");
-const { recordSign } = require("../../util/traffic");
 const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
 const redis = require("../../util/redis");
 const { DefaultLogger } = require("../../util/Logger");
@@ -210,7 +209,6 @@ module.exports = {
    * @returns
    */
   play: async function (context, { match, pickup, ensure = false }) {
-    recordSign("GachaPlay");
     try {
       let { tag, times } = match.groups;
       let { userId } = context.event.source;
