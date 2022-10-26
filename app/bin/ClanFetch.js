@@ -7,8 +7,8 @@ const i18n = require("../src/util/i18n");
 async function main() {
   const periodData = await gamedata("clan_battle_period")
     .select("*")
-    .where("end_at", ">", moment().toDate())
-    .andWhere("start_at", "<", moment().toDate())
+    .where("end_time", ">", moment().toDate())
+    .andWhere("start_time", "<", moment().toDate())
     .first();
 
   if (!periodData) {
