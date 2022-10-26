@@ -8,14 +8,20 @@ async function main() {
   const periodData = await gamedata("clan_battle_period")
     .select("*")
     .orderBy("clan_battle_id", "desc")
-    .first();
+    .limit(5);
 
-  const { start_time, end_time } = periodData;
-  const startAt = moment(start_time, "YYYY/MM/DD hh:mm:ss");
-  const endAt = moment(end_time, "YYYY/MM/DD hh:mm:ss");
   const now = moment();
 
-  if (now.isBetween(startAt, endAt) === false) {
+  const period = periodData.find(p => {
+    const { start_time, end_time } = p;
+    const startAt = moment(start_time, "YYYY/MM/DD hh:mm:ss");
+    const endAt = moment(end_time, "YYYY/MM/DD hh:mm:ss");
+
+    return now.isBetween(startAt, endAt);
+  });
+
+  if (!period) {
+    console.log("No period found");
     return;
   }
 
