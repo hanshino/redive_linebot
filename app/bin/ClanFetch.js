@@ -5,11 +5,13 @@ const fetchUri = `${process.env.IAN_API_URL}/clan/fetch`;
 const i18n = require("../src/util/i18n");
 
 async function main() {
-  const periodData = await gamedata("clan_battle_period")
+  const query = gamedata("clan_battle_period")
     .select("*")
-    .where("end_time", ">", moment().toDate())
-    .andWhere("start_time", "<", moment().toDate())
+    .where("end_time", ">", moment().format("YYYY/MM/DD HH:mm:ss"))
+    .andWhere("start_time", "<", moment().format("YYYY/MM/DD HH:mm:ss"))
     .first();
+
+  const periodData = await query;
 
   if (!periodData) {
     console.log("No period data");
