@@ -6,8 +6,12 @@ const SubscribeUser = require("../../model/application/SubscribeUser");
 const DailyRation = require("../../../bin/DailyRation");
 const mement = require("moment");
 const i18n = require("../../util/i18n");
+const GachaController = require("../princess/gacha");
 
 exports.router = [
+  text(/^[.#/](訂閱兌換|sub-coupon)$/, context =>
+    context.replyText(i18n.__("message.subscribe.coupon_exchange_manual"))
+  ),
   text(/^[.#/](訂閱兌換|sub-coupon)\s(?<serial_number>[\w-]{36})$/, subscribeCouponExchange),
 ];
 
@@ -106,6 +110,8 @@ async function subscribeCouponExchange(context, props) {
     console.error(e);
     return;
   }
+
+  await GachaController.purgeDailyGachaCache(userId);
 
   let messages = [];
 

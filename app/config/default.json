@@ -148,6 +148,15 @@
       "四獎：10000"
     ]
   },
+  "gacha": {
+    "daily_limit": 1,
+    "group_cooldown": 120,
+    "pick_up_cost": 1500,
+    "ensure_cost": 3000,
+    "silver_repeat_reward": 1,
+    "gold_repeat_reward": 10,
+    "rainbow_repeat_reward": 50
+  },
   "subscribe": {
     "effects": [
       "daily_ration",

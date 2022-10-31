@@ -21,6 +21,9 @@ class Base {
     }
   }
 
+  /**
+   * @returns {import("knex").Knex.QueryBuilder}
+   */
   get connection() {
     return mysql;
   }
@@ -87,9 +90,9 @@ class Base {
    * @param {Object} options.filter 過濾條件
    * @param {Array<{column: String, direction: String}>} options.order 排序設定
    * @param {Array}  options.select 選擇欄位
-   * @returns {Promise<Object>}
+   * @returns {import("knex").Knex.QueryBuilder}
    */
-  async first(options = {}) {
+  first(options = {}) {
     const filter = get(options, "filter", {});
     const order = get(options, "order", []);
     const select = get(options, "select", ["*"]);
@@ -110,7 +113,7 @@ class Base {
       query = query.orderBy(col, get(item, "direction", "asc"));
     });
 
-    return await query.first(select);
+    return query.first(select);
   }
 
   /**
