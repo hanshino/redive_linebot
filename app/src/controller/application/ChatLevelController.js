@@ -5,6 +5,7 @@ const UserModel = require("../../model/application/UserModel");
 const { getClient } = require("bottender");
 const LineClient = getClient("line");
 const GachaModel = require("../../model/princess/gacha");
+const GachaRecord = require("../../model/princess/GachaRecord");
 const GachaTemplate = require("../../templates/princess/gacha").line;
 const NotifyController = require("./NotifyController");
 const uidModel = require("../../model/princess/uid");
@@ -63,7 +64,7 @@ exports.showStatus = async context => {
       NotifyController.getData(userId),
       uidModel.getData(userId),
       JankenResult.findUserGrade(userId),
-      SigninModel.find(userId),
+      SigninModel.first({ filter: { user_id: userId } }),
       getQuestInfo(userId),
       DonateModel.getUserTotalAmount(userId),
       AdvancementModel.findUserAdvancementsByPlatformId(userId),
@@ -158,11 +159,7 @@ async function getQuestInfo(userId) {
 
   let signinOptions = {
     filter: {
-      userId,
-      signinAt: {
-        start,
-        end,
-      },
+      user_id: userId,
     },
   };
 
@@ -175,14 +172,14 @@ async function getQuestInfo(userId) {
     },
   };
 
-  let [signinInfo, jankenResult, weekQuestRecord] = await Promise.all([
-    GachaModel.allSignin(signinOptions),
+  let [gachaRecord, jankenResult, weekQuestRecord] = await Promise.all([
+    GachaRecord.first(signinOptions).andWhereBetween("created_at", [start, end]),
     JankenResult.all(jankenOptions),
     DailyQuestModel.all(userId, weeklyQuestOptions),
   ]);
 
   return {
-    gacha: signinInfo.length > 0,
+    gacha: !!gachaRecord,
     janken: jankenResult.length > 0,
     weeklyCompletedCount: weekQuestRecord.length,
   };

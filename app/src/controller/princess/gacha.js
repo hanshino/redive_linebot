@@ -10,6 +10,7 @@ const { getClient } = require("bottender");
 const lineClient = getClient("line");
 const moment = require("moment");
 const EventCenterService = require("../../service/EventCenterService");
+const signModel = require("../../model/application/SigninDays");
 const {
   isNull,
   chunk,
@@ -411,6 +412,11 @@ async function gacha(context, { match, pickup, ensure = false }) {
     );
   }
 
+  await Promise.all([
+    handleSignin(userId),
+    EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId }),
+  ]);
+
   const bubbles = [];
   // 發送每日一抽結果
   bubbles.push(
@@ -639,4 +645,27 @@ async function showGodStoneRank(req, res) {
     DefaultLogger.warn(e);
     return res.status(400).json({ message: e.message });
   }
+}
+
+async function handleSignin(userId) {
+  const userData = await signModel.first({ filter: { user_id: userId } });
+  const now = moment();
+
+  if (!userData) {
+    return await signModel.create({ user_id: userId, last_signin_at: now.toDate() });
+  }
+
+  const latsSigninAt = moment(userData.last_signin_at);
+  const updateData = { last_signin_at: now.toDate() };
+
+  if (now.isSame(latsSigninAt, "day")) {
+    // 今天已簽到
+    return;
+  } else if (now.diff(latsSigninAt, "days") > 1) {
+    updateData.sum_days = 1;
+  } else {
+    updateData.sum_days = userData.sum_days + 1;
+  }
+
+  await signModel.update(userId, updateData, { pk: "user_id" });
 }

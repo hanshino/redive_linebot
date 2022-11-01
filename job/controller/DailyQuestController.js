@@ -117,10 +117,10 @@ async function getTodayRecord(userId) {
   const end = moment().endOf("day").toDate();
 
   const [gacha, janken] = await Promise.all([
-    mysql("GachaSignin")
-      .where("userId", userId)
-      .where("signinDate", ">=", start)
-      .where("signinDate", "<=", end)
+    mysql("signin_days")
+      .where("user_id", userId)
+      .where("last_signin_at", ">=", start)
+      .where("last_signin_at", "<=", end)
       .first(),
     mysql("janken_result")
       .where("user_id", userId)

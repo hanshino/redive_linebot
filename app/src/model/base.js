@@ -155,11 +155,19 @@ class Base {
    * 更新資料
    * @param {Number} id
    * @param {Object} attributes
+   * @param {Object} options
    * @returns {Promise<Number>}
    */
-  async update(id, attributes = {}) {
+  async update(id, attributes = {}, options = {}) {
     let data = pick(attributes, this.fillable);
-    return await this.knex.update(data).where({ id });
+    const query = this.knex.update(data);
+
+    const pk = get(options, "pk", "id");
+    query.where({
+      [pk]: id,
+    });
+
+    return await query;
   }
 
   /**
