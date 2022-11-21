@@ -1,5 +1,7 @@
 # build environment
 FROM node:lts as build
+ARG REACT_APP_GOOGLE_ANALYTICS_ID
+ENV REACT_APP_GOOGLE_ANALYTICS_ID=$REACT_APP_GOOGLE_ANALYTICS_ID
 WORKDIR /app
 ENV PATH /app/node_modules/.bin:$PATH
 COPY package*.json ./
