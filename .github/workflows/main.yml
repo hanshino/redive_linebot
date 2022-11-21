@@ -34,14 +34,14 @@ jobs:
 
       - name: Frontend build and push Docker image
         uses: docker/build-push-action@c56af957549030174b10d6867f20e78cfd7debc5
+        env:
+            REACT_APP_GOOGLE_ANALYTICS_ID: ${{ secrets.GOOGLE_ANALYTICS_ID }}
         with:
           context: ./frontend
           push: true
           tags: hanshino/redive_frontend:latest
           cache-from: type=registry,ref=hanshino/redive_frontend:buildcache
           cache-to: type=registry,ref=hanshino/redive_frontend:buildcache,mode=max
-          build-args: |
-            REACT_APP_GOOGLE_ANALYTICS_ID=${{ secrets.GOOGLE_ANALYTICS_ID }}
 
       - name: Deploy Redive linebot
         uses: appleboy/ssh-action@master
