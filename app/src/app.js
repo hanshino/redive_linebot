@@ -50,7 +50,7 @@ const { pushMessage } = require("./util/LineNotify");
 const AdminModel = require("./model/application/Admin");
 const axios = require("axios");
 const pConfig = require("config");
-const task = require("./task");
+const FetchGameData = require("../bin/FetchGameData");
 
 axios.defaults.timeout = 5000;
 
@@ -249,7 +249,7 @@ function AdminOrder() {
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
-    text("!download", task.handleGameData),
+    text("!download", FetchGameData),
     ...GambleController.adminRouter,
     ...AdvancementController.adminRouter,
     ...DonateListController.adminRouter,

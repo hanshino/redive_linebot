@@ -221,15 +221,26 @@
       "manual": "請輸入 `#幹話 {任意主題}` 來取得一段幹話"
     },
     "subscribe": {
+      "month": "月卡",
+      "season": "季卡",
+      "coupon_exchange_manual": "請輸入 `#訂閱兌換 {兌換碼}` 來兌換訂閱禮包",
       "serial_number_not_found": "找不到您的序號，請確認您的序號是否正確",
       "serial_number_used": "您的序號已經被使用過了，請確認您的序號是否正確",
       "coupon_exchange_success": "感謝您的訂閱，您已經成功兌換了 *{{ name }}*",
       "coupon_exchange_success_continue": "已成功為您延期至 *{{ end_at }}*",
-      "effects_row": "+ *{{ type }}* +{{ value }}",
+      "effects_row_positive": "+ {{ type }} +{{ value }}",
+      "effects_row_negative": "- {{ type }} -{{ value }}",
       "effects": {
         "gacha_times": "每日單抽次數",
         "daily_ration": "每日寶石"
       }
+    },
+    "gacha": {
+      "not_enough_stone": "女神石不足，無法進行保證抽",
+      "pick_up_cost_note": "消耗抽扣除女神石",
+      "ensure_cost_note": "保證抽扣除女神石",
+      "repeat_reward_note": "重複角色女神石",
+      "new_character_note": "獲得新角色"
     }
   },
   "advancement": {

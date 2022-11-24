@@ -5,23 +5,29 @@ const UserModel = require("../../model/application/UserModel");
 const { getClient } = require("bottender");
 const LineClient = getClient("line");
 const GachaModel = require("../../model/princess/gacha");
+const GachaRecord = require("../../model/princess/GachaRecord");
 const GachaTemplate = require("../../templates/princess/gacha").line;
 const NotifyController = require("./NotifyController");
 const uidModel = require("../../model/princess/uid");
 const ProfileTemplate = require("../../templates/application/Profile");
 const MinigameTemplate = require("../../templates/application/Minigame");
 const DailyTemplate = require("../../templates/application/DailyQuest");
+const SubscribeTemplate = require("../../templates/application/Subscribe");
 const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
 const AdvancementModel = require("../../model/application/Advancement");
-const { get, sample } = require("lodash");
+const SubscribeUserModel = require("../../model/application/SubscribeUser");
+const SubscribeCardModel = require("../../model/application/SubscribeCard");
+const { get, sample, set } = require("lodash");
+const config = require("config");
 const moment = require("moment");
+const i18n = require("../../util/i18n");
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
- * @param {Context} context
+ * @param {import("bottender").LineContext} context
  */
 exports.showStatus = async context => {
   try {
@@ -56,6 +62,7 @@ exports.showStatus = async context => {
       questInfo,
       donateAmount,
       achievement,
+      subscribeInfo,
     ] = await Promise.all([
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
@@ -63,10 +70,11 @@ exports.showStatus = async context => {
       NotifyController.getData(userId),
       uidModel.getData(userId),
       JankenResult.findUserGrade(userId),
-      SigninModel.find(userId),
+      SigninModel.first({ filter: { user_id: userId } }),
       getQuestInfo(userId),
       DonateModel.getUserTotalAmount(userId),
       AdvancementModel.findUserAdvancementsByPlatformId(userId),
+      getSubscribeInfo(userId),
     ]);
 
     let subInfo;
@@ -90,6 +98,45 @@ exports.showStatus = async context => {
       exp,
       achievement: get(sample(achievement), "name", "-"),
     });
+
+    // ---------- 整理訂閱數據 ----------
+    const monthCard = subscribeInfo.find(data => data.key === "month");
+    let monthBubble;
+    if (monthCard) {
+      monthBubble = SubscribeTemplate.generateStatus({
+        title: i18n.__("message.subscribe.month"),
+        effects: monthCard.effects.map(effect =>
+          SubscribeTemplate.generateEffect(
+            i18n.__("message.subscribe.effects_row_positive", {
+              type: i18n.__(`message.subscribe.effects.${effect.type}`),
+              value: effect.value,
+            }),
+            "blue"
+          )
+        ),
+        expiredAt: moment(monthCard.end_at).format("YYYY-MM-DD"),
+        theme: "blue",
+      });
+    }
+
+    const seasonCard = subscribeInfo.find(data => data.key === "season");
+    let seasonBubble = [];
+    if (seasonCard) {
+      seasonBubble = SubscribeTemplate.generateStatus({
+        title: i18n.__("message.subscribe.season"),
+        effects: seasonCard.effects.map(effect =>
+          SubscribeTemplate.generateEffect(
+            i18n.__("message.subscribe.effects_row_positive", {
+              type: i18n.__(`message.subscribe.effects.${effect.type}`),
+              value: effect.value,
+            }),
+            "red"
+          )
+        ),
+        expiredAt: moment(seasonCard.end_at).format("YYYY-MM-DD"),
+        theme: "red",
+      });
+    }
 
     // ---------- 整理轉蛋數據 ----------
     const gachaBubble = GachaTemplate.genGachaStatus({
@@ -132,6 +179,23 @@ exports.showStatus = async context => {
     });
 
     bubbles.push(chatlevelBubble, dailyBubble, gachaBubble, jankenGradeBubble, otherBubble);
+    const subscribeBubbles = [];
+
+    if (monthBubble) {
+      bubbles.forEach(bubble =>
+        changeBackgroundColor(bubble, config.get("subscribe.month_user_background_color"))
+      );
+      subscribeBubbles.push(monthBubble);
+    }
+
+    if (seasonBubble) {
+      bubbles.forEach(bubble =>
+        changeBackgroundColor(bubble, config.get("subscribe.season_user_background_color"))
+      );
+      subscribeBubbles.push(seasonBubble);
+    }
+
+    bubbles.push(...subscribeBubbles);
 
     context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
 
@@ -142,6 +206,17 @@ exports.showStatus = async context => {
     DefaultLogger.error(e);
   }
 };
+
+function getSubscribeInfo(userId) {
+  return SubscribeUserModel.knex
+    .select(["effects", "end_at", "key"])
+    .where({ user_id: userId })
+    .join(
+      SubscribeCardModel.table,
+      SubscribeCardModel.getColumnName("key"),
+      SubscribeUserModel.getColumnName("subscribe_card_key")
+    );
+}
 
 async function getQuestInfo(userId) {
   const start = moment().startOf("day").toDate();
@@ -158,11 +233,7 @@ async function getQuestInfo(userId) {
 
   let signinOptions = {
     filter: {
-      userId,
-      signinAt: {
-        start,
-        end,
-      },
+      user_id: userId,
     },
   };
 
@@ -175,14 +246,14 @@ async function getQuestInfo(userId) {
     },
   };
 
-  let [signinInfo, jankenResult, weekQuestRecord] = await Promise.all([
-    GachaModel.allSignin(signinOptions),
+  let [gachaRecord, jankenResult, weekQuestRecord] = await Promise.all([
+    GachaRecord.first(signinOptions).andWhereBetween("created_at", [start, end]),
     JankenResult.all(jankenOptions),
     DailyQuestModel.all(userId, weeklyQuestOptions),
   ]);
 
   return {
-    gacha: signinInfo.length > 0,
+    gacha: !!gachaRecord,
     janken: jankenResult.length > 0,
     weeklyCompletedCount: weekQuestRecord.length,
   };
@@ -274,6 +345,11 @@ function appendLevelTitle(data) {
       data = { ...data, rank, range };
       return data;
     });
+}
+
+function changeBackgroundColor(bubble, color) {
+  set(bubble, "header.backgroundColor", color);
+  set(bubble, "body.backgroundColor", color);
 }
 
 exports.api = {};

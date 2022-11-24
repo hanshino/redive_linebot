@@ -16,6 +16,6 @@ RUN yarn install --production=true
 
 COPY . .
 
-CMD [ "npm", "start" ]
+CMD [ "yarn", "start" ]
 
 EXPOSE 5000

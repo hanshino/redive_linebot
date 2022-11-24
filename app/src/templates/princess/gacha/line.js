@@ -1,14 +1,13 @@
-const gachaTPL = {
-  type: "bubble",
-  body: { type: "box", layout: "vertical", spacing: "sm", contents: [] },
-};
-
 /**
  * 產出轉蛋頭像框
  * @param {Array} rewards
  */
 function genGachaContent(rewards) {
-  let bubbleMessage = JSON.parse(JSON.stringify(gachaTPL));
+  let bubbleMessage = {
+    type: "bubble",
+    body: { type: "box", layout: "vertical", spacing: "sm", contents: [] },
+  };
+
   let box = {
     type: "box",
     layout: "horizontal",
@@ -40,23 +39,23 @@ function genGachaContent(rewards) {
 /**
  * 產生每日一抽報表
  * @param {Object}  DailyGachaInfo
- * @param {Array}   DailyGachaInfo.NewCharacters
- * @param {Number}  DailyGachaInfo.GodStoneAmount
+ * @param {Array}   DailyGachaInfo.newCharacters
  * @param {Number}  DailyGachaInfo.collectedCount
  * @param {Number}  DailyGachaInfo.allCount
- * @param {Number}  DailyGachaInfo.OwnGodStone  擁有女神石
+ * @param {Number}  DailyGachaInfo.gainGodStoneAmount
+ * @param {Number}  DailyGachaInfo.ownGodStone  擁有女神石
  * @param {Number}  DailyGachaInfo.costGodStone 消耗女神石
  */
 function genDailyGacha({
-  NewCharacters,
-  GodStoneAmount,
+  newCharacters,
   collectedCount,
   allCount,
-  OwnGodStone,
+  gainGodStoneAmount,
+  ownGodStone,
   costGodStone,
 }) {
-  var collectRate = Math.round((collectedCount / allCount) * 10000) / 100;
-  var bubble = {
+  let collectRate = Math.round((collectedCount / allCount) * 10000) / 100;
+  let bubble = {
     type: "bubble",
     body: {
       type: "box",
@@ -109,7 +108,7 @@ function genDailyGacha({
                   contents: [
                     {
                       type: "span",
-                      text: `獲得女神石：${OwnGodStone} + ${GodStoneAmount} ${
+                      text: `獲得女神石：${ownGodStone} + ${gainGodStoneAmount} ${
                         costGodStone ? `- ${costGodStone}` : ""
                       }`,
                     },
@@ -148,11 +147,7 @@ function genDailyGacha({
                     {
                       type: "box",
                       layout: "vertical",
-                      contents: [
-                        {
-                          type: "filler",
-                        },
-                      ],
+                      contents: [],
                       height: "6px",
                       width: `${collectRate}%`,
                       backgroundColor: "#DE5658",
@@ -199,7 +194,7 @@ function genDailyGacha({
     },
   };
 
-  NewCharacters.forEach(character => {
+  newCharacters.forEach(character => {
     bubble.body.contents[1].contents[1].contents[0].contents.push({
       type: "span",
       text: `${character.name} `,
@@ -378,84 +373,142 @@ function genCharacterBubble(title, rows) {
   };
 }
 
-module.exports = {
-  /**
-   * 發送轉蛋結果訊息
-   * @param {import("bottender").LineContext} context
-   * @param {Object} objData
-   * @param {Object} objData.rewards
-   * @param {Object} objData.rareCount
-   * @param {Object} objData.tag
-   * @param {Object} DailyGachaInfo
-   */
-  showGachaResult: function (context, { rewards, rareCount, tag = "無" }, DailyGachaInfo) {
-    var bubbleMessage = genGachaContent(rewards);
+/**
+ * 發送轉蛋結果訊息
+ * @param {import("bottender").LineContext} context
+ * @param {Object} objData
+ * @param {Object} objData.rewards
+ * @param {Object} objData.rareCount
+ * @param {Object} objData.tag
+ * @param {Object} DailyGachaInfo
+ */
+function showGachaResult(context, { rewards, rareCount, tag = "無" }, DailyGachaInfo) {
+  let bubbleMessage = genGachaContent(rewards);
 
-    let reportBox = {
-      type: "box",
-      layout: "vertical",
-      contents: [],
-      spacing: "md",
-    };
+  let reportBox = {
+    type: "box",
+    layout: "vertical",
+    contents: [],
+    spacing: "md",
+  };
 
-    reportBox.contents.push({
-      type: "text",
-      contents: [
-        { type: "span", text: "許願內容：" },
-        { type: "span", text: tag },
-      ],
-      weight: "bold",
-      align: "center",
+  reportBox.contents.push({
+    type: "text",
+    contents: [
+      { type: "span", text: "許願內容：" },
+      { type: "span", text: tag },
+    ],
+    weight: "bold",
+    align: "center",
+  });
+
+  let strReport = [];
+  Object.keys(rareCount)
+    .sort((a, b) => b - a)
+    .forEach(key => {
+      switch (key) {
+        case "3":
+          strReport.push(`彩*${rareCount[key]}`);
+          break;
+        case "2":
+          strReport.push(`金*${rareCount[key]}`);
+          break;
+        case "1":
+          strReport.push(`銀*${rareCount[key]}`);
+          break;
+      }
     });
 
-    let strReport = [];
-    Object.keys(rareCount)
-      .sort((a, b) => b - a)
-      .forEach(key => {
-        switch (key) {
-          case "3":
-            strReport.push(`彩*${rareCount[key]}`);
-            break;
-          case "2":
-            strReport.push(`金*${rareCount[key]}`);
-            break;
-          case "1":
-            strReport.push(`銀*${rareCount[key]}`);
-            break;
-        }
-      });
+  reportBox.contents.push({
+    type: "text",
+    text: strReport.join(" "),
+    align: "center",
+  });
 
+  if (context.event.source.type === "group") {
     reportBox.contents.push({
       type: "text",
-      text: strReport.join(" "),
+      text: "群組聊天室，每位成員限定120秒CD",
+      size: "xxs",
+      color: "#808080",
       align: "center",
     });
+  }
 
-    if (context.event.source.type === "group") {
-      reportBox.contents.push({
-        type: "text",
-        text: "群組聊天室，每位成員限定120秒CD",
-        size: "xxs",
-        color: "#808080",
-        align: "center",
-      });
-    }
+  bubbleMessage.footer = reportBox;
 
-    bubbleMessage.footer = reportBox;
+  if (DailyGachaInfo === false) {
+    context.replyFlex("轉蛋結果", bubbleMessage);
+  } else {
+    context.replyFlex("轉蛋結果", {
+      type: "carousel",
+      contents: [genDailyGacha(DailyGachaInfo), bubbleMessage],
+    });
+  }
+}
 
-    if (DailyGachaInfo === false) {
-      context.replyFlex("轉蛋結果", bubbleMessage);
-    } else {
-      context.replyFlex("轉蛋結果", {
-        type: "carousel",
-        contents: [genDailyGacha(DailyGachaInfo), bubbleMessage],
-      });
-    }
-  },
+function generateGachaResult({ rewards, tag, rareCount, hasCooldown }) {
+  let bubbleMessage = genGachaContent(rewards);
 
-  genGachaStatus,
+  let reportBox = {
+    type: "box",
+    layout: "vertical",
+    contents: [],
+    spacing: "md",
+  };
 
-  genCharacterImage,
-  genCharacterRow,
-  genCharacterBubble,
-};
+  reportBox.contents.push({
+    type: "text",
+    contents: [
+      { type: "span", text: "許願內容：" },
+      { type: "span", text: tag || "-" },
+    ],
+    weight: "bold",
+    align: "center",
+  });
+
+  let strReport = [];
+  Object.keys(rareCount)
+    .sort((a, b) => b - a)
+    .forEach(key => {
+      switch (key) {
+        case "3":
+          strReport.push(`彩*${rareCount[key]}`);
+          break;
+        case "2":
+          strReport.push(`金*${rareCount[key]}`);
+          break;
+        case "1":
+          strReport.push(`銀*${rareCount[key]}`);
+          break;
+      }
+    });
+
+  reportBox.contents.push({
+    type: "text",
+    text: strReport.join(" "),
+    align: "center",
+  });
+
+  if (hasCooldown) {
+    reportBox.contents.push({
+      type: "text",
+      text: "群組聊天室，每位成員限定120秒CD",
+      size: "xxs",
+      color: "#808080",
+      align: "center",
+    });
+  }
+
+  bubbleMessage.footer = reportBox;
+
+  return bubbleMessage;
+}
+
+exports.showGachaResult = showGachaResult;
+exports.genGachaStatus = genGachaStatus;
+exports.genCharacterImage = genCharacterImage;
+exports.genCharacterRow = genCharacterRow;
+exports.genCharacterBubble = genCharacterBubble;
+exports.generateGachaResult = generateGachaResult;
+exports.generateDailyGachaInfo = genDailyGacha;
