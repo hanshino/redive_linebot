@@ -297,8 +297,6 @@ async function bet(context, props) {
 
   const availableOptions = get(game, "options", []);
 
-  console.log(parseInt(option), "option");
-
   if (parseInt(option) > availableOptions.length || parseInt(option) === 0) {
     await context.replyText(i18n.__("message.gamble.invalid_option"));
     return;
