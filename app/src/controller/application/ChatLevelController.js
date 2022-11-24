@@ -120,7 +120,7 @@ exports.showStatus = async context => {
     }
 
     const seasonCard = subscribeInfo.find(data => data.key === "season");
-    let seasonBubble = [];
+    let seasonBubble;
     if (seasonCard) {
       seasonBubble = SubscribeTemplate.generateStatus({
         title: i18n.__("message.subscribe.season"),
@@ -195,7 +195,7 @@ exports.showStatus = async context => {
       subscribeBubbles.push(seasonBubble);
     }
 
-    bubbles.push(...subscribeBubbles);
+    subscribeBubbles && bubbles.push(...subscribeBubbles);
 
     context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
 
