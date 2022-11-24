@@ -39,6 +39,24 @@ services:
         max-size: "1k"
         max-file: "3"
 
+  worker:
+    image: hanshino/redive_backend
+    env_file: ./.env
+    restart: always
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - bot_network
+    volumes:
+      - ./app/assets:/application/assets
+    command: yarn worker
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1k"
+        max-file: "3"
+
   mysql:
     env_file: ./.env
     image: mysql
