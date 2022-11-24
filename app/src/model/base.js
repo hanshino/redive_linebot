@@ -47,9 +47,9 @@ class Base {
    * @param {Array<{column: String, direction: String}>} options.order 排序設定
    * @param {Array}  options.select 選擇欄位
    * @param {Number} options.limit  限制數量
-   * @returns {Promise<Array>}
+   * @returns {import("knex").Knex.QueryBuilder}
    */
-  async all(options = {}) {
+  all(options = {}) {
     const filter = get(options, "filter", {});
     const pagination = get(options, "pagination", {});
     const order = get(options, "order", []);
@@ -78,7 +78,7 @@ class Base {
       query = query.orderBy(col, get(item, "direction", "asc"));
     });
 
-    return await query.select(select);
+    return query.select(select);
   }
 
   /**
@@ -166,6 +166,10 @@ class Base {
    */
   async delete(id) {
     return await this.knex.delete().where({ id });
+  }
+
+  getColumnName(column) {
+    return `${this.table}.${column}`;
   }
 }
 

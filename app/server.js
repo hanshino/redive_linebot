@@ -6,6 +6,7 @@ const cors = require("cors");
 const { server, http } = require("./src/util/connection");
 const { handleGameData } = require("./src/task");
 const ClanFetch = require("./bin/ClanFetch");
+const DailyRation = require("./bin/DailyRation");
 const cron = require("cron").CronJob;
 require("./src/router/socket");
 
@@ -29,6 +30,17 @@ new cron(
   },
   null,
   process.env.NODE_ENV === "production",
+  "Asia/Taipei"
+);
+
+// 每天 0:00 給予配給
+new cron(
+  "10 0 0 * * *",
+  async () => {
+    await DailyRation();
+  },
+  null,
+  true,
   "Asia/Taipei"
 );
 

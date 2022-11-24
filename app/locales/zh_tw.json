@@ -62,6 +62,7 @@
     "lottery_ticket_auto_buy": "快選"
   },
   "message": {
+    "error_contact_admin": "如發現此訊息，請向管理員報告此問題\n使用者ID: {{ user_id }}\n錯誤類型: {{ error_key }}",
     "user_own_god_stone": "你擁有的女神石: {{ god_stone }}",
     "user_own_character_count": "你擁有的角色數量: {{ character_count }}",
     "user_unreconized": "未知的使用者，請輸入 /source 並且向管理員回報此問題",
@@ -218,6 +219,17 @@
     "bullshit": {
       "failed": "發生錯誤，請向管理員報告此問題\n使用者編號 {{ userId }}",
       "manual": "請輸入 `#幹話 {任意主題}` 來取得一段幹話"
+    },
+    "subscribe": {
+      "serial_number_not_found": "找不到您的序號，請確認您的序號是否正確",
+      "serial_number_used": "您的序號已經被使用過了，請確認您的序號是否正確",
+      "coupon_exchange_success": "感謝您的訂閱，您已經成功兌換了 *{{ name }}*",
+      "coupon_exchange_success_continue": "已成功為您延期至 *{{ end_at }}*",
+      "effects_row": "+ *{{ type }}* +{{ value }}",
+      "effects": {
+        "gacha_times": "每日單抽次數",
+        "daily_ration": "每日寶石"
+      }
     }
   },
   "advancement": {
