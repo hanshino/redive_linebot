@@ -2,12 +2,12 @@ const { default: axios } = require("axios");
 const fs = require("fs");
 const brotli = require("brotli");
 const domain = process.env.PRINCESS_DB_REMOTE_HOST;
-const gameDataModel = require("./model/princess/GameData");
+const gameDataModel = require("../src/model/princess/GameData");
 const path = require("path");
-const { DefaultLogger } = require("./util/Logger");
-const Notify = require("./util/LineNotify");
+const { DefaultLogger } = require("../src/util/Logger");
+const Notify = require("../src/util/LineNotify");
 
-exports.handleGameData = async () => {
+module.exports = async () => {
   try {
     let { data } = await axios.get(`https://${domain}/static/version.json`);
     let versionData = await gameDataModel.first({

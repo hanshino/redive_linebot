@@ -4,45 +4,7 @@ const { bottender } = require("bottender");
 const apiRouter = require("./src/router/api");
 const cors = require("cors");
 const { server, http } = require("./src/util/connection");
-const { handleGameData } = require("./src/task");
-const ClanFetch = require("./bin/ClanFetch");
-const DailyRation = require("./bin/DailyRation");
-const cron = require("cron").CronJob;
 require("./src/router/socket");
-
-// 定時更新 game data
-// 只在早上 9:00 ~ 晚上 21:00 更新
-new cron(
-  "0 5 9-21 * * *",
-  async () => {
-    await handleGameData();
-  },
-  null,
-  true,
-  "Asia/Taipei"
-);
-
-// 戰隊期間 每五分鐘抓一次排名資料
-new cron(
-  "0 */5 * 20-31 * *",
-  async () => {
-    await ClanFetch();
-  },
-  null,
-  process.env.NODE_ENV === "production",
-  "Asia/Taipei"
-);
-
-// 每天 0:00 給予配給
-new cron(
-  "10 0 0 * * *",
-  async () => {
-    await DailyRation();
-  },
-  null,
-  true,
-  "Asia/Taipei"
-);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
