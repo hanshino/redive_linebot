@@ -297,7 +297,7 @@
   },
   "princess": {
     "wiki": {
-      "unit": "https://pcredivewiki.tw/static/images/unit/icon_unit_{{ unitId }}.png"
+      "unit": "https://chieru.randosoru.me/assets/units/head/{{ unitId }}.png"
     }
   }
 }
