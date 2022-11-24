@@ -158,6 +158,10 @@
     "rainbow_repeat_reward": 50
   },
   "subscribe": {
+    "month_icon": "https://redive.estertion.win/icon/item/23001.webp",
+    "season_icon": "https://redive.estertion.win/icon/item/24001.webp",
+    "month_user_background_color": "#D9FFFF",
+    "season_user_background_color": "#FFECEC",
     "effects": [
       "daily_ration",
       "gacha_times"

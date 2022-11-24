@@ -7,13 +7,45 @@ const DailyRation = require("../../../bin/DailyRation");
 const mement = require("moment");
 const i18n = require("../../util/i18n");
 const GachaController = require("../princess/gacha");
+const config = require("config");
+const { generateCard, generateEffect } = require("../../templates/application/Subscribe");
 
 exports.router = [
+  text(/^[.#/](訂閱|sub)$/, showInformation),
   text(/^[.#/](訂閱兌換|sub-coupon)$/, context =>
     context.replyText(i18n.__("message.subscribe.coupon_exchange_manual"))
   ),
   text(/^[.#/](訂閱兌換|sub-coupon)\s(?<serial_number>[\w-]{36})$/, subscribeCouponExchange),
 ];
+
+/**
+ * 訂閱卡片資訊
+ * @param {import("bottender").LineContext} context
+ */
+async function showInformation(context) {
+  const cards = await SubscribeCard.all();
+  const bubbles = cards.map(card => {
+    const effects = get(card, "effects", []).map(effect =>
+      generateEffect(
+        i18n.__("message.subscribe.effects_row_positive", {
+          type: i18n.__(`message.subscribe.effects.${effect.type}`),
+          value: effect.value,
+        })
+      )
+    );
+
+    return generateCard({
+      title: i18n.__(`message.subscribe.${card.key}`),
+      effects,
+      image: config.get(`subscribe.${card.key}_icon`),
+    });
+  });
+
+  await context.replyFlex("訂閱卡片資訊", {
+    type: "carousel",
+    contents: bubbles,
+  });
+}
 
 /**
  * 兌換訂閱卡
@@ -132,7 +164,7 @@ async function subscribeCouponExchange(context, props) {
   const effects = get(card, "effects", []);
   effects.forEach(effect =>
     messages.push(
-      i18n.__("message.subscribe.effects_row", {
+      i18n.__("message.subscribe.effects_row_positive", {
         type: i18n.__(`message.subscribe.effects.${effect.type}`),
         value: effect.value,
       })
