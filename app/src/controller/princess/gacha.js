@@ -140,6 +140,24 @@ async function isAble(userId, groupId) {
 }
 
 /**
+ * 針對用戶進行冷卻時間設定，避免用戶快速轉蛋
+ * @param {String} userId 用戶ID
+ */
+async function userCooldown(userId) {
+  const userCooldown = config.get("gacha.user_cooldown");
+  // 使用 setnx 限制用戶轉蛋次數
+  let key = `GachaCoolDown_${userId}`;
+  let result = await redis.set(key, 1, {
+    EX: userCooldown,
+    NX: true,
+  });
+
+  console.log(result, "result");
+
+  return !isNull(result);
+}
+
+/**
  * 將轉蛋池3*機率調升
  * @param {Array} pool
  */
@@ -226,7 +244,7 @@ async function gacha(context, { match, pickup, ensure = false }) {
   // 群組狀態下，進行冷卻時間檢查
   const isAbleGacha =
     process.env.NODE_ENV !== "production" ||
-    type === "user" ||
+    (type !== "group" && (await userCooldown(userId))) ||
     (type === "group" && (await isAble(userId, groupId)));
 
   if (!isAbleGacha) {

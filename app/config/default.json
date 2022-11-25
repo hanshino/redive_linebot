@@ -151,6 +151,7 @@
   "gacha": {
     "daily_limit": 1,
     "group_cooldown": 120,
+    "user_cooldown": 1,
     "pick_up_cost": 1500,
     "ensure_cost": 3000,
     "silver_repeat_reward": 1,
