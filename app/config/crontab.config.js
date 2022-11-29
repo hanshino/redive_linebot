@@ -16,7 +16,7 @@ module.exports = [
   {
     name: "Daily Ration",
     description: "daily ration",
-    period: ["10", "0", "0", "*", "*", "*"],
+    period: ["10", "*/10", "*", "*", "*", "*"],
     immediate: true,
     require_path: "./bin/DailyRation",
   },
