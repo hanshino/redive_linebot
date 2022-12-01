@@ -1,5 +1,4 @@
 const moment = require("moment");
-const now = moment();
 const SubscribeCard = require("../src/model/application/SubscribeCard");
 const SubscribeUser = require("../src/model/application/SubscribeUser");
 const SubscribeJobLog = require("../src/model/application/SubscribeJobLog");
@@ -15,6 +14,7 @@ async function main() {
 }
 
 async function handleUser(key) {
+  const now = moment();
   if (![SubscribeCard.key.month, SubscribeCard.key.season].includes(key)) {
     throw new Error("key is not valid");
   }
