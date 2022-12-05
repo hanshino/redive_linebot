@@ -4,7 +4,6 @@
   "description": "進行 redive-linebot 排程任務",
   "main": "index.js",
   "scripts": {
-    "predev": "yarn install",
     "dev": "nodemon -L index.js",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
