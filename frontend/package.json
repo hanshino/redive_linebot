@@ -22,7 +22,7 @@
     "axios-hooks": "^3.0.1",
     "caniuse-lite": "^1.0.30001346",
     "d3-scale-chromatic": "^3.0.0",
-    "eslint-plugin-react": "^7.28.0",
+    "eslint-plugin-react": "^7.31.10",
     "fontsource-roboto": "^4.0.0",
     "lodash": "^4.17.21",
     "material-table": "^1.69.3",
