@@ -3,7 +3,6 @@
   "version": "1.0.1",
   "private": true,
   "scripts": {
-    "predev": "yarn install",
     "dev": "nodemon -L server.js",
     "lint": "eslint . ",
     "start": "node server.js",
