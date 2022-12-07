@@ -31,7 +31,8 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   // 檢查是否可以使用 AI 功能, 這是避免被濫用
   const isAbleToUse = await isAbleToUseAIFeature();
   if (!isAbleToUse) {
-    return next;
+    await context.replyText("窩太累了，等等再問我吧( ˘•ω•˘ )◞");
+    return;
   }
 
   let result;
