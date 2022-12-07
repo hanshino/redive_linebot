@@ -41,6 +41,7 @@ const StatusController = require("./controller/application/StatusController");
 const LotteryController = require("./controller/application/LotteryController");
 const BullshitController = require("./controller/application/BullshitController");
 const SubscribeController = require("./controller/application/SubscribeController");
+const { naturalLanguageUnderstanding } = require("./controller/application/OpenaiController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -388,6 +389,7 @@ async function App(context) {
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
     CustomerOrderBased, // 自訂指令分析
+    naturalLanguageUnderstanding, // 自然語言理解
     Nothing, // 無符合事件
   ]);
 }
