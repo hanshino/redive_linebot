@@ -82,8 +82,6 @@ async function isAbleToUseAIFeature() {
     NX: true,
   });
 
-  console.log("isSet", isSet);
-
   return isSet;
 }
 
