@@ -18,7 +18,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   const { text } = context.event.message;
 
   // 不處理太長的文字訊息
-  if (text.length > 100) {
+  if (text.length > 1000) {
     return next;
   }
 
