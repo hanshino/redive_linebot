@@ -22,6 +22,11 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
     return next;
   }
 
+  if (get("event.source.type") !== "group" || get("event.source.groupId") !== "C686ad6e801927000dc06a074224ca3c0") {
+    // 暫時只服務於布丁大神的群組
+    return next;
+  }
+
   const isQAText = isAskingQuestion(text);
   const isFriendChatText = isTalkingToFriendChat(text);
   if (!isQAText && !isFriendChatText) {
