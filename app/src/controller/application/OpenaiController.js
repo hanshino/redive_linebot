@@ -22,6 +22,12 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
     return next;
   }
 
+  const isQAText = isAskingQuestion(text);
+  const isFriendChatText = isTalkingToFriendChat(text);
+  if (!isQAText && !isFriendChatText) {
+    return next;
+  }
+
   // 檢查是否可以使用 AI 功能, 這是避免被濫用
   const isAbleToUse = await isAbleToUseAIFeature();
   if (!isAbleToUse) {
@@ -29,19 +35,17 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   }
 
   let result;
-  if (isAskingQuestion(text)) {
+  let option;
+  if (isQAText) {
     const question = text.replace("布丁大神", "").replace("?", "");
-    const option = makeQAOption(question);
-    const { choices } = await fetchFromOpenAI(option);
-    result = choices;
-  } else if (isTalkingToFriendChat(text)) {
+    option = makeQAOption(question);
+  } else if (isFriendChatText) {
     const question = text.replace("布丁", "");
-    const option = makeFriendChatOption(question);
-    const { choices } = await fetchFromOpenAI(option);
-    result = choices;
-  } else {
-    return next;
+    option = makeFriendChatOption(question);
   }
+
+  const { choices } = await fetchFromOpenAI(option);
+  result = choices;
 
   const { finish_reason } = get(result, "0", {});
   result = finish_reason === "stop" ? result[0].text.trim() : "窩不知道( ˘•ω•˘ )◞";
