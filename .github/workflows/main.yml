@@ -44,7 +44,7 @@ jobs:
             REACT_APP_GOOGLE_ANALYTICS_ID=${{ secrets.GOOGLE_ANALYTICS_ID }}
 
       - name: Deploy Redive linebot
-        uses: appleboy/ssh-action@b937d64a58227b96d6eaeeb8c2895824703039f9
+        uses: appleboy/ssh-action@v0.1.4
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
