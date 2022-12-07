@@ -388,8 +388,8 @@ async function App(context) {
     alias,
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
-    CustomerOrderBased, // 自訂指令分析
     naturalLanguageUnderstanding, // 自然語言理解
+    CustomerOrderBased, // 自訂指令分析
     Nothing, // 無符合事件
   ]);
 }
