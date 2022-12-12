@@ -5,6 +5,8 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 const { get } = require("lodash");
 const redis = require("../../util/redis");
+const { format } = require("util");
+const groupSessionKeyTemplate = "group:session:%s";
 
 /**
  * 自然言語理解
@@ -22,13 +24,16 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
     return next;
   }
 
-  if (
-    get(context, "event.source.type") !== "group" ||
-    get(context, "event.source.groupId") !== "C686ad6e801927000dc06a074224ca3c0"
-  ) {
+  const sourceType = get(context, "event.source.type");
+  const sourceId = get(context, `event.source.${sourceType}Id`);
+  const displayName = get(context, "event.source.displayName");
+
+  if (sourceType !== "group" || sourceId !== "C686ad6e801927000dc06a074224ca3c0") {
     // 暫時只服務於布丁大神的群組
     return next;
   }
+
+  const chatSession = await getSession(sourceId);
 
   const isQAText = isAskingQuestion(text);
   const isFriendChatText = isTalkingToFriendChat(text);
@@ -47,10 +52,12 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   let option;
   if (isQAText) {
     const question = text.replace("布丁大神", "").replace("?", "");
-    option = makeQAOption(question);
+    option = makeQAOption(`${displayName}: ${question}`, chatSession.join("\n"));
+    await recordSession(sourceId, `${displayName}:${question}`);
   } else if (isFriendChatText) {
     const question = text.replace("布丁", "");
-    option = makeFriendChatOption(question);
+    option = makeFriendChatOption(`${displayName}: ${question}`, chatSession.join("\n"));
+    await recordSession(sourceId, `${displayName}:${question}`);
   }
 
   const { choices } = await fetchFromOpenAI(option);
@@ -58,6 +65,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
 
   const { finish_reason } = get(result, "0", {});
   result = finish_reason === "stop" ? result[0].text.trim() : "窩不知道( ˘•ω•˘ )◞";
+  await recordSession(sourceId, `小助理:${result}`);
   await context.replyText(result);
 };
 
@@ -80,6 +88,19 @@ function isAskingQuestion(text) {
 function isTalkingToFriendChat(text) {
   const isContainAskingToBot = /^布丁[,，\s]/.test(text);
   return isContainAskingToBot;
+}
+
+async function recordSession(groupId, text) {
+  const sessionKey = format(groupSessionKeyTemplate, groupId);
+  await redis.rPush(sessionKey, text);
+  // 保留最近 20 則訊息
+  await redis.lTrim(sessionKey, 0, 20);
+}
+
+async function getSession(groupId) {
+  const sessionKey = format(groupSessionKeyTemplate, groupId);
+  const session = await redis.lRange(sessionKey, 0, 20);
+  return session;
 }
 
 async function isAbleToUseAIFeature() {
@@ -106,13 +127,13 @@ const defaultOption = {
 
 const makeQAOption = (question, context = "") => ({
   ...defaultOption,
-  prompt: `${context}\n用戶:${question}`,
+  prompt: `${context}\n${question}\n小助理:`,
   temperature: 0,
 });
 
 const makeFriendChatOption = (question, context = "") => ({
   ...defaultOption,
-  prompt: `${context}\n用戶:${question}\n小助理:`,
+  prompt: `${context}\n${question}\n小助理:`,
   temperature: 0.5,
   max_tokens: 500,
   frequency_penalty: 0.5,
