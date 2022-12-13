@@ -13,7 +13,8 @@
       "jankenChallenge": "jankenChallenge",
       "adminList": "adminList",
       "gamebleGame": "gamebleGame",
-      "holding_lottery": "holding_lottery"
+      "holding_lottery": "holding_lottery",
+      "groupSession": "group:session:%s"
     },
     "prefix": {
       "alias": "alias",
