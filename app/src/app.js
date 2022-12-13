@@ -52,6 +52,7 @@ const AdminModel = require("./model/application/Admin");
 const axios = require("axios");
 const pConfig = require("config");
 const FetchGameData = require("../bin/FetchGameData");
+const { format } = require("util");
 
 axios.defaults.timeout = 5000;
 
@@ -164,6 +165,20 @@ async function OrderBased(context, { next }) {
     }),
     text("/people", function () {
       traffic.getPeopleData().then(console.table);
+    }),
+    text("/chatsession", async context => {
+      const sourceType = context.event.source.type;
+      const sourceId = context.event.source[sourceType + "Id"];
+      const key = format(pConfig.get("redis.keys.groupSession"), sourceId);
+      const records = await redis.lRange(key, 0, -1);
+      context.replyText(["近 20 筆聊天記錄", ...records].join("\n"));
+    }),
+    text("/resetchatsession", async context => {
+      const sourceType = context.event.source.type;
+      const sourceId = context.event.source[sourceType + "Id"];
+      const key = format(pConfig.get("redis.keys.groupSession"), sourceId);
+      await redis.del(key);
+      context.replyText("已清除聊天記錄");
     }),
     text(/^[.#]自訂頭像( (?<param1>\S+))?( (?<param2>\S+))?/, guildConfig.setSender),
     text(/^(#我的狀態|\/me)$/, ChatLevelController.showStatus),
