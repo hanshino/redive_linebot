@@ -1,4 +1,4 @@
-FROM node:lts-bullseye-slim
+FROM node:lts
 
 LABEL Name="redive機器人核心"
 LABEL description="機器人語言組，分析所有訊息，進行功能響應"

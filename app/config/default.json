@@ -168,5 +168,11 @@
       "daily_ration",
       "gacha_times"
     ]
+  },
+  "princess": {
+    "character": {
+      "full_image": "https://chieru.randosoru.me/assets/units/full/%s.png",
+      "head_image": "https://chieru.randosoru.me/assets/units/head/%s.png"
+    }
   }
 }
