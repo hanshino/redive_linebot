@@ -4,5 +4,5 @@ class GameData extends base {}
 
 module.exports = new GameData({
   table: "game_version",
-  fillable: ["truth_version", "hash"],
+  fillable: ["truth_version", "hash", "server"],
 });
