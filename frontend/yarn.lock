@@ -1974,10 +1974,10 @@
   resolved "https://registry.yarnpkg.com/@devexpress/dx-core/-/dx-core-3.0.1.tgz#a096e14c572ba12b84a3429ba09ec7d80dc728f1"
   integrity sha512-nLYSD+RwGnrPmp03Z2wUsEKZnC6B5if7WUH6FYjmw8AJp5cN13DuFoFKHeImW55VsJwtND2G5q1Uz7IAy9AQ1g==
 
-"@devexpress/dx-react-chart-material-ui@^3.0.1":
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/@devexpress/dx-react-chart-material-ui/-/dx-react-chart-material-ui-3.0.1.tgz#7fab29807cbfb55d92f972363d72b3b2727f1940"
-  integrity sha512-pE0j20J1KDERM8Bb5/bv8ik3lvDe1016cHn0HcVeQ7l83sbhEccJ76Be1rOifXfoMg5tbnC4wEt3ZqhXxLnpeQ==
+"@devexpress/dx-react-chart-material-ui@^3.0.6":
+  version "3.0.6"
+  resolved "https://registry.yarnpkg.com/@devexpress/dx-react-chart-material-ui/-/dx-react-chart-material-ui-3.0.6.tgz#bf3a4e2eb3253c6d54abc612685a6973a744b5cb"
+  integrity sha512-iUsIfKCMOJu95ElxRl4paYq7bsoaxDQLad0uODQeOXxiLExlh38VyTjN5ARV9bZBiE5bsnfourLWAdFDVIe+KA==
   dependencies:
     clsx "^1.0.4"
     prop-types "^15.7.2"

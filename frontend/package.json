@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@devexpress/dx-react-chart": "^3.0.1",
-    "@devexpress/dx-react-chart-material-ui": "^3.0.1",
+    "@devexpress/dx-react-chart-material-ui": "^3.0.6",
     "@devexpress/dx-react-core": "^3.0.1",
     "@emotion/react": "^11.10.5",
     "@emotion/styled": "^11.6.0",
