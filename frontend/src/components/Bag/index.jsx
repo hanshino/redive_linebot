@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, Fragment } from "react";
 import useAxios from "axios-hooks";
 import { Avatar, Grid, makeStyles, Typography } from "@material-ui/core";
 import { CirclesLoading } from "../Loading";
@@ -63,7 +63,7 @@ const Bag = () => {
   ];
 
   const renderItems = ({ title, items }) => (
-    <>
+    <Fragment key={title}>
       <Grid container alignItems="baseline" spacing={1}>
         <Grid item>
           <Typography variant="h6">{title}</Typography>
@@ -75,7 +75,7 @@ const Bag = () => {
         </Grid>
       </Grid>
       <ItemList items={items} />
-    </>
+    </Fragment>
   );
 
   return (

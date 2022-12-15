@@ -11,18 +11,7 @@ const lineClient = getClient("line");
 const moment = require("moment");
 const EventCenterService = require("../../service/EventCenterService");
 const signModel = require("../../model/application/SigninDays");
-const {
-  isNull,
-  chunk,
-  get,
-  countBy,
-  shuffle,
-  uniqBy,
-  difference,
-  sum,
-  uniq,
-  pullAt,
-} = require("lodash");
+const { isNull, get, countBy, shuffle, uniqBy, difference, sum, uniq, pullAt } = require("lodash");
 const GachaRecord = require("../../model/princess/GachaRecord");
 const SubscribeUser = require("../../model/application/SubscribeUser");
 const SubscribeCard = require("../../model/application/SubscribeCard");
