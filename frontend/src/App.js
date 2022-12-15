@@ -40,6 +40,7 @@ import { WhirlyLoading } from "./components/Loading";
 import Worldboss from "./components/Admin/Worldboss";
 import WorldbossEvent from "./components/Admin/WorldbossEvent";
 import TradeOrder, { Detail, Manage, Transaction } from "./components/TradeOrder";
+import Bag from "./components/Bag";
 
 const theme = createTheme({
   palette: {
@@ -135,6 +136,7 @@ function MainLayout() {
         <Route path="/Tools" component={ToolsLayout} />
         <Route path="/Trade" component={TradeLayout} />
         <Route path="/Gacha/Exchange" component={GodStoneShop} />
+        <Route path="/Bag" component={Bag} />
         <Route path="/" component={Home} />
       </Switch>
     </NavBar>

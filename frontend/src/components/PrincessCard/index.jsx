@@ -250,8 +250,8 @@ const PrincessCard = () => {
               onChange={e => setBack(e.target.value)}
             >
               {characters.map(option => (
-                <MenuItem key={option.name} value={option.image}>
-                  {option.name}
+                <MenuItem key={option.unitName} value={option.fullImage}>
+                  {option.unitName}
                 </MenuItem>
               ))}
             </TextField>
