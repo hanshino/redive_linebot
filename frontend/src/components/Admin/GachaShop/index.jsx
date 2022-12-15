@@ -188,7 +188,7 @@ const CreateForm = ({ onSubmit, onCancel, existIds, loading }) => {
   const handleChange = () => {
     const id = parseInt(idRef.current.value);
     const target = gachaData.find(item => item.id === id);
-    const character = characters.find(item => item.name === target.name);
+    const character = characters.find(item => item.unitName === target.unitName);
 
     if (character) {
       imageRef.current.value = character.image;

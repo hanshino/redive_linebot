@@ -6,74 +6,73 @@ const gameDataModel = require("../src/model/princess/GameData");
 const path = require("path");
 const { DefaultLogger } = require("../src/util/Logger");
 const Notify = require("../src/util/LineNotify");
+const { get } = require("lodash");
 
 module.exports = async () => {
   try {
-    let { data } = await axios.get(`https://${domain}/static/version.json`);
-    let versionData = await gameDataModel.first({
-      order: [
-        {
-          column: "created_at",
-          direction: "desc",
-        },
-      ],
-    });
+    const [{ data: jpVersion }, { data: twVersion }] = await Promise.all([
+      axios.get("https://redive.estertion.win/last_version_jp.json"),
+      axios.get(`https://${domain}/static/version.json`),
+    ]);
 
-    if (!versionData || versionData.truth_version !== data.TruthVersion) {
-      await downloadGameData();
-      await gameDataModel.create({
-        truth_version: data.TruthVersion,
-        hash: data.hash,
+    const [dbJpversion, dbTwVersion] = await Promise.all([
+      gameDataModel.first({ filter: { server: "jp" } }).orderBy("created_at", "desc"),
+      gameDataModel.first({ filter: { server: "tw" } }).orderBy("created_at", "desc"),
+    ]);
+
+    const insertData = [];
+
+    if (get(dbJpversion, "truth_version") !== jpVersion.TruthVersion) {
+      await downloadGameData({
+        uri: "https://redive.estertion.win/db/redive_jp.db.br",
+        filename: "redive_jp.db",
       });
+      insertData.push({
+        truth_version: jpVersion.TruthVersion,
+        hash: jpVersion.hash,
+        server: "jp",
+      });
+    }
 
-      writeLog("Download game data success");
+    if (get(dbTwVersion, "truth_version") !== twVersion.TruthVersion) {
+      await downloadGameData({
+        uri: `https://${domain}/static/redive_tw.db.br`,
+        filename: "redive_tw.db",
+      });
+      insertData.push({
+        truth_version: twVersion.TruthVersion,
+        hash: twVersion.hash,
+        server: "tw",
+      });
+    }
 
-      // 解壓縮
-      let result = brotli.decompress(
-        fs.readFileSync(path.join(process.cwd(), "assets", "redive_tw.db.br"))
-      );
-      fs.writeFileSync(path.join(process.cwd(), "assets", "redive_tw.db"), result);
-
-      writeLog("Decompress game data success");
-
-      // 刪除壓縮檔
-      fs.unlinkSync(path.join(process.cwd(), "assets", "redive_tw.db.br"));
-    } else {
-      DefaultLogger.info("Game data is up to date");
+    if (insertData.length > 0) {
+      await gameDataModel.insert(insertData);
+      writeLog(`FetchGameData: ${JSON.stringify(insertData)}`);
     }
   } catch (e) {
-    writeLog(e.message);
+    writeLog(`FetchGameData: ${e}`);
+    return;
   }
 };
 
-async function downloadGameData() {
-  const api = `https://${domain}/static/redive_tw.db.br`;
-  const filepath = path.join(process.cwd(), "assets", "redive_tw.db.br");
-  const writer = fs.createWriteStream(filepath);
-
-  await axios({
-    url: api,
-    method: "GET",
-    responseType: "stream",
-  }).then(response => {
-    response.data.pipe(writer);
+async function downloadGameData({ uri, filename }) {
+  const filepath = path.join(process.cwd(), "assets", filename);
+  const compressedFilepath = `${filepath}.br`;
+  const response = await axios.get(uri, {
+    responseType: "arraybuffer",
   });
 
-  return new Promise((res, rej) => {
-    writer.on("finish", () => {
-      res();
-    });
-    writer.on("error", () => {
-      rej();
-    });
-  });
+  fs.writeFileSync(compressedFilepath, response.data);
+  fs.writeFileSync(filepath, brotli.decompress(fs.readFileSync(compressedFilepath)));
+  fs.unlinkSync(compressedFilepath);
 }
 
 function writeLog(message) {
   Notify.pushMessage({
     message,
     token: process.env.LINE_NOTIFY_TOKEN,
-  });
+  }).catch(err => DefaultLogger.error(err));
 
   DefaultLogger.info(message);
 }

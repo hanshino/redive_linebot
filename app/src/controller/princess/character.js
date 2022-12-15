@@ -4,7 +4,45 @@ const error = require("../../util/error");
 const { recordSign } = require("../../util/traffic");
 const { CustomLogger } = require("../../util/Logger");
 const gameSqlite = require("../../model/princess/GameSqlite");
+const path = require("path");
 const { sample } = require("lodash");
+const rediveTW = require("../../util/sqlite")(path.join(process.cwd(), "assets", "redive_tw.db"));
+const rediveJP = require("../../util/sqlite")(path.join(process.cwd(), "assets", "redive_jp.db"));
+const config = require("config");
+const { format } = require("util");
+
+/**
+ * 取得角色資料
+ * @returns {Promise<{unit_id: number, unit_name: string, rarity: number}[]>}
+ */
+async function getAllCharacter() {
+  const query = rediveJP("unit_profile")
+    .join("unit_rarity", "unit_profile.unit_id", "unit_rarity.unit_id")
+    .select({ unit_id: "unit_profile.unit_id" }, "unit_name")
+    .max({ rarity: "rarity" })
+    .groupBy("unit_profile.unit_id");
+
+  const jpCharacters = await query;
+
+  const twChatacters = await rediveTW("unit_profile").select("unit_id", "unit_name");
+
+  const characters = jpCharacters.map(jpCharacter => {
+    // 如果有中文名稱就用中文名稱
+    const twCharacter = twChatacters.find(
+      twCharacter => twCharacter.unit_id === jpCharacter.unit_id
+    );
+    if (!twCharacter) {
+      return jpCharacter;
+    }
+
+    return {
+      ...jpCharacter,
+      unit_name: twCharacter.unit_name,
+    };
+  });
+
+  return characters;
+}
 
 function getCharacterByNick(nick) {
   var datas = CharacterModel.getDatas();
@@ -55,9 +93,19 @@ function _getCharacterInfoPara(characterData) {
   };
 }
 
-function getCharacterImages() {
-  let datas = CharacterModel.getDatas();
-  return datas.map(data => ({ name: data.Name, image: data.Image }));
+async function getCharacterImages() {
+  const characters = await getAllCharacter();
+  return characters.map(character => {
+    const { unit_id: unitId, rarity, unit_name: unitName } = character;
+    // 角色圖片編號為角色編號 + 10 * 角色稀有度(3 or 6)
+    const picUnitId = unitId + (rarity === 6 ? 6 : 3) * 10;
+    return {
+      unitId,
+      unitName,
+      fullImage: format(config.get("princess.character.full_image"), picUnitId),
+      headImage: format(config.get("princess.character.head_image"), picUnitId),
+    };
+  });
 }
 
 module.exports = {
@@ -199,6 +247,6 @@ module.exports = {
   },
 
   api: {
-    getCharacterImages: (req, res) => res.json(getCharacterImages()),
+    getCharacterImages: (req, res) => getCharacterImages().then(images => res.json(images)),
   },
 };

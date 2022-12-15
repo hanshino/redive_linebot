@@ -11,23 +11,13 @@ const lineClient = getClient("line");
 const moment = require("moment");
 const EventCenterService = require("../../service/EventCenterService");
 const signModel = require("../../model/application/SigninDays");
-const {
-  isNull,
-  chunk,
-  get,
-  countBy,
-  shuffle,
-  uniqBy,
-  difference,
-  sum,
-  uniq,
-  pullAt,
-} = require("lodash");
+const { isNull, get, countBy, shuffle, uniqBy, difference, sum, uniq, pullAt } = require("lodash");
 const GachaRecord = require("../../model/princess/GachaRecord");
 const SubscribeUser = require("../../model/application/SubscribeUser");
 const SubscribeCard = require("../../model/application/SubscribeCard");
 const config = require("config");
 const i18n = require("../../util/i18n");
+const commonTemplate = require("../../templates/common");
 
 function GachaException(message, code) {
   this.message = message;
@@ -173,53 +163,14 @@ function makePickup(pool, rate = 100) {
 
 /**
  * 檢視自己的轉蛋包包
- * @param {Context} context
+ * @param {import("bottender").LineContext} context
  */
 async function showGachaBag(context) {
   if (context.state.guildConfig.Gacha === "N") return;
-  const { userId } = context.event.source;
-  const bag = await InventoryModel.fetchUserItem(userId);
-  const pool = await GachaModel.getPrincessCharacter();
+  const bagUri = commonTemplate.getLiffUri("tall", "/Bag");
+  const bubble = commonTemplate.genLinkBubble("轉蛋包包", bagUri, "blue");
 
-  const ownIds = bag.map(data => data.itemId);
-  const ownCharacters = pool.filter(data => ownIds.includes(data.ID));
-  const notOwnCharacters = pool.filter(data => !ownIds.includes(data.ID));
-
-  const generateBubbles = (characters, type) => {
-    const rowLength = 6;
-    // 先以 24 個做分組做為一個 bubble
-    let chunkCharacters = chunk(characters, 36);
-
-    return chunkCharacters.map(perChunk => {
-      // 在每個 bubble 中，每個橫排的角色數量為 6
-      let chunkCharactersPerRow = chunk(perChunk, rowLength);
-
-      let rawRows = chunkCharactersPerRow.map(perRow => {
-        // 如果角色數量不足 5，則補足
-        let rowCharacter = perRow.concat(
-          Array(rowLength - perRow.length).fill({
-            headImage: "https://pcredivewiki.tw/static/images/equipment/icon_equipment_999999.png",
-          })
-        );
-
-        return rowCharacter.map(character =>
-          GachaTemplate.line.genCharacterImage({ url: character.headImage })
-        );
-      });
-
-      let rows = rawRows.map(row => GachaTemplate.line.genCharacterRow(row));
-
-      return GachaTemplate.line.genCharacterBubble(type, rows);
-    });
-  };
-
-  const ownBubbles = generateBubbles(ownCharacters, "已取得");
-  const notOwnBubbles = generateBubbles(notOwnCharacters, "未取得");
-
-  context.replyFlex("轉蛋背包", {
-    type: "carousel",
-    contents: [...ownBubbles, ...notOwnBubbles],
-  });
+  context.replyFlex("轉蛋包包", bubble);
 }
 
 /**
