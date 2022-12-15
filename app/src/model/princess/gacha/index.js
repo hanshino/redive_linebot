@@ -132,7 +132,7 @@ exports.touchSingin = (userId, record = "") => {
  */
 exports.getPrincessCharacter = () => {
   return mysql
-    .select(["ID", { headImage: "HeadImage_Url" }])
+    .select(["ID", { headImage: "HeadImage_Url" }, "Name"])
     .from(this.table)
     .where({ Is_Princess: 1 });
 };

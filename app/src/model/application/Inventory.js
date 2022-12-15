@@ -56,6 +56,7 @@ class Inventory extends base {
         "itemId",
         { amount: this.connection.raw("SUM(itemAmount)") },
         { name: "GachaPool.Name" },
+        { headImage: "HeadImage_Url" },
       ])
       .where({ userId })
       .join("GachaPool", "GachaPool.ID", "itemId")
