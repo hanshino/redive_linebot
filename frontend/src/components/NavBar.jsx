@@ -32,6 +32,7 @@ import MessageIcon from "@material-ui/icons/Message";
 import AndroidIcon from "@material-ui/icons/Android";
 import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 import FitnessCenterIcon from "@material-ui/icons/FitnessCenter";
+import LocalMallIcon from '@material-ui/icons/LocalMall';
 import StorefrontIcon from "@material-ui/icons/Storefront";
 import PersonIcon from "@material-ui/icons/Person";
 import ShoppingBasketIcon from "@material-ui/icons/ShoppingBasket";
@@ -358,6 +359,12 @@ const PersonalDrawer = () => {
               <ShoppingBasketIcon />
             </ListItemIcon>
             <ListItemText primary={"交易管理"} />
+          </ListItem>
+          <ListItem button component={Link} to="/Bag">
+            <ListItemIcon>
+              <LocalMallIcon />
+            </ListItemIcon>
+            <ListItemText primary={"轉蛋包包"} />
           </ListItem>
         </List>
       </Collapse>
