@@ -23,8 +23,9 @@ module.exports = {
   /**
    * 取得Liff網址
    * @param {String} type ian, compact, full, tall
+   * @param {String} path 路徑
    */
-  getLiffUri: function (type) {
+  getLiffUri: function (type, path) {
     let host = "https://liff.line.me/";
     let id = process.env.LINE_LIFF_ID;
     let typeId;
@@ -45,7 +46,8 @@ module.exports = {
 
     id = typeId || id;
 
-    return `${host}${id}`;
+    const liffurl = `${host}${id}`;
+    return path ? `${liffurl}?reactRedirectUri=${path}` : liffurl;
   },
 
   /**
