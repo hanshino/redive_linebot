@@ -12,21 +12,21 @@
   "author": "hanshino@github",
   "license": "ISC",
   "dependencies": {
-    "@line/bot-sdk": "^7.5.0",
+    "@line/bot-sdk": "^7.5.2",
     "axios": "^0.27.2",
     "cheerio": "^1.0.0-rc.12",
-    "config": "^3.3.7",
+    "config": "^3.3.8",
     "cron": "^2.1.0",
-    "knex": "^2.2.0",
+    "knex": "^2.3.0",
     "lodash": "^4.17.21",
-    "log4js": "^6.6.1",
-    "minimist": "^1.2.6",
+    "log4js": "^6.7.1",
+    "minimist": "^1.2.7",
     "moment": "^2.29.4",
     "mysql2": "^2.3.3",
     "redis": "^3.1.2"
   },
   "devDependencies": {
-    "dotenv": "^16.0.1",
-    "nodemon": "^2.0.19"
+    "dotenv": "^16.0.3",
+    "nodemon": "^2.0.20"
   }
 }
