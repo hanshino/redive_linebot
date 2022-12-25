@@ -32,7 +32,7 @@ services:
     networks:
       - bot_network
     volumes:
-      - ./app/assets:/application/assets
+      - ./app/assets:/usr/src/app/assets
     logging:
       driver: "json-file"
       options:
