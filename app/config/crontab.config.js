@@ -20,4 +20,11 @@ module.exports = [
     immediate: true,
     require_path: "./bin/DailyRation",
   },
+  {
+    name: "Clean Expired Subscriber",
+    description: "clean expired subscriber",
+    period: ["0", "0", "0", "*", "*", "*"],
+    immediate: true,
+    require_path: "./bin/CleanExpiredSubscriber",
+  },
 ];
