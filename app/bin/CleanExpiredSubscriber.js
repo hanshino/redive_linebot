@@ -5,7 +5,10 @@ const { DefaultLogger } = require("../src/util/Logger");
 
 async function main() {
   const now = moment();
-  const query = SubscribeUser.connection.delete().where("end_at", "<", now.toDate());
+  const query = SubscribeUser.connection
+    .from(SubscribeUser.table)
+    .delete()
+    .where("end_at", "<", now.toDate());
 
   const affectedRows = await query;
 
