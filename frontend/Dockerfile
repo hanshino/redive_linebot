@@ -16,7 +16,7 @@ LABEL version="1.0"
 LABEL maintainer="hanshino@github"
 
 # production environment
-FROM nginx:stable-alpine
+FROM nginx:1.23.3-alpine
 COPY --from=build /app/build /usr/share/nginx/html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
