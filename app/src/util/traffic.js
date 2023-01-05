@@ -1,7 +1,7 @@
 const redis = require("./redis");
 
 exports.recordSign = sign => {
-  redis.incr(`SignRecord_${sign}`);
+  redis.incr(`SignRecord_${sign}`, { EX: 86400 });
 };
 
 exports.recordPeople = context => {
@@ -11,13 +11,13 @@ exports.recordPeople = context => {
   let onlineKey = `OnlinePeople_${current}`;
   let personKey = `PersonTraffic_${userId}_${current}`;
 
-  redis.incr(speakKey);
+  redis.incr(speakKey, { EX: 86400 });
 
-  redis.set(personKey, 1, { NX: true }).then(res => {
+  redis.set(personKey, 1, { NX: true, EX: 86400 }).then(res => {
     if (res) {
-      redis.incr(onlineKey);
+      redis.incr(onlineKey, { EX: 86400 });
     } else {
-      redis.incr(personKey);
+      redis.incr(personKey, { EX: 86400 });
     }
   });
 };
