@@ -31,8 +31,7 @@ import WorldbossMessage, {
   WorldBossMessageUpdate,
 } from "./components/Admin/WorldbossMessage";
 import { cyan, lightBlue } from "@material-ui/core/colors";
-import { ThemeProvider } from "@material-ui/styles";
-import { createTheme } from "@material-ui/core";
+import { ThemeProvider, createTheme } from "@material-ui/core/styles";
 import BattleTime from "./components/Tools/BattleTime";
 import GodStoneShop from "./components/GodStoneShop";
 import GachaShop from "./components/Admin/GachaShop";
@@ -54,7 +53,7 @@ const useQuery = () => {
 };
 
 function App() {
-  axios.defaults.timeout = 5000;
+  axios.defaults.timeout = 10000;
 
   return (
     <ThemeProvider theme={theme}>
