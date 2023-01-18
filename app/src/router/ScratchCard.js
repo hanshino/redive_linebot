@@ -6,6 +6,7 @@ const router = createRouter();
 router.get("/", api.list);
 
 router.get("/:id", api.show);
+router.post("/:id/Purchase", verifyToken, api.purchase);
 
 router.post("/generate", verifyToken, verifyAdmin, api.generateCards);
 

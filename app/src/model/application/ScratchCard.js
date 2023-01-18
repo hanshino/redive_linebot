@@ -30,6 +30,17 @@ class ScratchCard extends base {
 
     return rewards;
   }
+
+  async fetchRandomCards(id, count) {
+    const cards = await this.knex
+      .where("scratch_card_type_id", id)
+      .andWhere("buyer_id", null)
+      .andWhere("is_used", false)
+      .orderByRaw("RAND()")
+      .limit(count);
+
+    return cards;
+  }
 }
 
 module.exports = new ScratchCard({

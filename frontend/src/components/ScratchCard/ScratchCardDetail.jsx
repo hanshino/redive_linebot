@@ -1,7 +1,9 @@
 import {
+  Avatar,
   Badge as MuiBadge,
   Button,
   Grid,
+  IconButton,
   makeStyles,
   Typography,
   useTheme,
@@ -10,7 +12,7 @@ import {
 import { Alert } from "@material-ui/lab";
 import { DataGrid } from "@mui/x-data-grid";
 import useAxios from "axios-hooks";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import AlertLogin from "../AlertLogin";
 import { DotsLoading } from "../Loading";
@@ -58,6 +60,14 @@ const ScratchCardDetail = () => {
       manual: true,
     }
   );
+  const [{ data: purchaseResult, loading: purchaseLoading }, doPurchase] = useAxios(
+    {
+      url: `/api/ScratchCard/${id}/Purchase`,
+      method: "POST",
+    },
+    { manual: true }
+  );
+  const [chooseList, setChooseList] = useState([]);
   const [regenerate, setRegenerate] = React.useState(1);
   const randomCharacter = useMemo(() => sampleSize(characters, 10), [characters, regenerate]);
 
@@ -71,7 +81,7 @@ const ScratchCardDetail = () => {
     return <AlertLogin />;
   }
 
-  const pageLoading = loading || !card || charactersLoading || !characters;
+  const pageLoading = loading || !card || charactersLoading || !characters || purchaseLoading;
 
   if (pageLoading) {
     return <DotsLoading />;
@@ -81,6 +91,16 @@ const ScratchCardDetail = () => {
 
   const handleRegenerate = () => {
     setRegenerate(regenerate + 1);
+    setChooseList([]);
+  };
+
+  const handleSubmit = () => {
+    doPurchase({
+      data: {
+        count: chooseList.length,
+        options: chooseList,
+      },
+    });
   };
 
   return (
@@ -88,7 +108,7 @@ const ScratchCardDetail = () => {
       <Grid item>
         <Typography variant="h4">{card.name}</Typography>
       </Grid>
-      <Grid item xs={12} sm={6}>
+      <Grid item xs={12} sm={12} md={8}>
         <img alt={card.name} src={card.image} style={{ maxWidth: "100%" }} />
       </Grid>
       <Grid item>
@@ -98,14 +118,30 @@ const ScratchCardDetail = () => {
         </Alert>
       </Grid>
       {pieces.map((piece, idx) => (
-        <Grid container item spacing={2} justifyContent="space-between">
-          {piece.map((char, index) => (
-            <Grid item xs={2} key={index} alignItems="center">
-              <Badge variant="dot">
-                <img alt={char.unitName} src={char.headImage} style={{ maxWidth: "100%" }} />
-              </Badge>
-            </Grid>
-          ))}
+        <Grid container item spacing={1} justifyContent="space-between" key={idx}>
+          {piece.map((char, index) => {
+            const isSelected = chooseList.includes(char.unitId);
+            const onClick = () => {
+              if (isSelected) {
+                setChooseList(chooseList.filter(x => x !== char.unitId));
+              } else {
+                setChooseList([...chooseList, char.unitId]);
+              }
+            };
+            return (
+              <Grid item xs={2} key={index} alignItems="center">
+                <Badge variant="dot" invisible={!isSelected}>
+                  <IconButton onClick={onClick}>
+                    <Avatar
+                      alt={char.unitName}
+                      src={char.headImage}
+                      style={{ width: theme.spacing(8), height: theme.spacing(8) }}
+                    />
+                  </IconButton>
+                </Badge>
+              </Grid>
+            );
+          })}
         </Grid>
       ))}
       <Grid container item spacing={1}>
@@ -115,7 +151,7 @@ const ScratchCardDetail = () => {
           </Button>
         </Grid>
         <Grid item xs={6}>
-          <Button variant="contained" fullWidth color="primary">
+          <Button variant="contained" fullWidth color="primary" onClick={handleSubmit}>
             購買
           </Button>
         </Grid>
