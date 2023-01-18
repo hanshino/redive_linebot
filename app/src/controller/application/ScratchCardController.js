@@ -52,3 +52,13 @@ exports.api.generateCards = async (req, res) => {
 
   res.json({ message: "ok" });
 };
+
+exports.api.show = async (req, res) => {
+  const { id } = req.params;
+  const [card, cardInfo] = await Promise.all([ScratchCard.find(id), ScratchCard.getCardInfo(id)]);
+
+  res.json({
+    ...card,
+    info: cardInfo,
+  });
+};

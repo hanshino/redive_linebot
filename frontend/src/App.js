@@ -42,6 +42,7 @@ import TradeOrder, { Detail, Manage, Transaction } from "./components/TradeOrder
 import Bag from "./components/Bag";
 import ScratchCard from "./components/ScratchCard";
 import AdminScratchCard from "./components/Admin/ScratchCard";
+import ScratchCardDetail from "./components/ScratchCard/ScratchCardDetail";
 
 const theme = createTheme({
   palette: {
@@ -138,6 +139,7 @@ function MainLayout() {
         <Route path="/Trade" component={TradeLayout} />
         <Route path="/Gacha/Exchange" component={GodStoneShop} />
         <Route path="/Bag" component={Bag} />
+        <Route path="/ScratchCard/:id" component={ScratchCardDetail} />
         <Route path="/ScratchCard" component={ScratchCard} />
         <Route path="/" component={Home} />
       </Switch>
