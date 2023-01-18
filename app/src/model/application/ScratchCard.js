@@ -8,4 +8,5 @@ class ScratchCard extends base {
 
 module.exports = new ScratchCard({
   table: "scratch_cards",
+  fillable: ["scratch_card_type_id", "buyer_id", "reward", "is_used"],
 });
