@@ -108,8 +108,6 @@ exports.api.purchase = async (req, res) => {
         cards.map(c => c.id)
       );
 
-    console.log(affectedRows);
-
     const actualCostGodStone = exceptCostGodStone - affectedRows * card.price;
     await Inventory.decreaseGodStone({
       userId,
@@ -124,5 +122,60 @@ exports.api.purchase = async (req, res) => {
 
   res.json({
     cards,
+  });
+};
+
+/**
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.api.showMyCards = async (req, res) => {
+  const { userId } = req.profile;
+  const { limit = 10, offset = 0 } = req.query;
+
+  const cards = await ScratchCard.fetchMyCards(userId, { limit, offset });
+
+  res.json(cards);
+};
+
+/**
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+exports.api.exchange = async (req, res) => {
+  const { userId } = req.profile;
+  const cards = await ScratchCard.fetchMyUnusedCards(userId);
+  if (cards.length === 0) {
+    return res.status(400).json({ message: "你沒有可兌換的刮刮樂" });
+  }
+
+  // 計算總共可以兌換多少女神石
+  const totalGodStone = cards.reduce((acc, card) => acc + card.reward, 0);
+  const exchangeIds = cards.map(c => c.id);
+
+  const trx = await ScratchCard.transaction();
+  Inventory.setTransaction(trx);
+
+  try {
+    await Inventory.increaseGodStone({
+      userId,
+      amount: totalGodStone,
+      note: "刮刮樂兌換",
+    });
+    await trx
+      .from(ScratchCard.table)
+      .update({
+        is_used: true,
+      })
+      .whereIn("id", exchangeIds);
+    await trx.commit();
+  } catch (e) {
+    await trx.rollback();
+    throw e;
+  }
+
+  res.json({
+    message: "兌換成功",
+    rewards: totalGodStone,
   });
 };

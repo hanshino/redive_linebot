@@ -5,6 +5,9 @@ const router = createRouter();
 
 router.get("/", api.list);
 
+router.get("/MyCards", verifyToken, api.showMyCards);
+router.put("/Exchange", verifyToken, api.exchange);
+
 router.get("/:id", api.show);
 router.post("/:id/Purchase", verifyToken, api.purchase);
 

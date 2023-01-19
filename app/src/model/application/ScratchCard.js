@@ -41,6 +41,38 @@ class ScratchCard extends base {
 
     return cards;
   }
+
+  async fetchMyCards(userId, options = {}) {
+    const query = this.knex
+      .select({
+        id: "scratch_cards.id",
+        reward: "scratch_cards.reward",
+        is_used: "scratch_cards.is_used",
+        price: "scratch_card_types.price",
+        name: "scratch_card_types.name",
+      })
+      .from("scratch_cards")
+      .where("buyer_id", userId)
+      .join("scratch_card_types", "scratch_card_types.id", "scratch_cards.scratch_card_type_id")
+      .orderBy("is_used", "desc");
+
+    if (options.limit) {
+      query.limit(options.limit);
+    }
+
+    if (options.offset) {
+      query.offset(options.offset);
+    }
+
+    return await query;
+  }
+
+  async fetchMyUnusedCards(userId) {
+    return await this.knex
+      .from("scratch_cards")
+      .where("buyer_id", userId)
+      .andWhere("is_used", false);
+  }
 }
 
 module.exports = new ScratchCard({
