@@ -29,6 +29,12 @@ const ScratchCardExchange = () => {
   const [{ data = [], loading }, refetch] = useAxios("/api/ScratchCard/MyCards", {
     manual: true,
   });
+  const [{ data: cardCountData, loading: cardCountLoading }, fetchCount] = useAxios(
+    "/api/ScratchCard/MyCards/Count",
+    {
+      manual: true,
+    }
+  );
   const [{ data: exchangeData, loading: exchangeLoading, error }, exchange] = useAxios(
     {
       url: "/api/ScratchCard/Exchange",
@@ -42,30 +48,41 @@ const ScratchCardExchange = () => {
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    refetch({
-      params: {
-        limit: 10,
-        offset: page * 10,
-      },
-    });
+    fetchCount();
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    fetchCards();
   }, [page]);
 
   useEffect(() => {
     if (!exchangeData) return;
 
     if (exchangeData) {
-      handleOpen(`兌換成功，獲得 ${get(exchangeData, "reward")}`, "success");
-      refetch();
+      handleOpen(`兌換成功，獲得 ${get(exchangeData, "rewards")}`, "success");
+      fetchCards();
     } else {
       handleOpen(get(error, "response.data.message"), "error");
     }
   }, [exchangeData]);
 
-  const pageLoading = loading || exchangeLoading;
+  const fetchCards = () =>
+    refetch({
+      params: {
+        limit: 10,
+        offset: page * 10,
+      },
+    });
+
+  const pageLoading = loading || exchangeLoading || cardCountLoading;
 
   if (!isLoggedIn) {
     return <AlertLogin />;
   }
+
+  const hasCardToExchange = data.some(card => !card.is_used);
 
   return (
     <>
@@ -79,7 +96,7 @@ const ScratchCardExchange = () => {
               variant="outlined"
               fullWidth
               color="primary"
-              disabled={pageLoading}
+              disabled={pageLoading || !hasCardToExchange}
               onClick={exchange}
             >
               一鍵兌換
@@ -95,6 +112,9 @@ const ScratchCardExchange = () => {
               pageSize={10}
               pagination
               paginationMode="server"
+              disableColumnFilter
+              disableColumnMenu
+              rowCount={get(cardCountData, "count", 0)}
               onPageChange={page => setPage(page)}
             />
           </div>

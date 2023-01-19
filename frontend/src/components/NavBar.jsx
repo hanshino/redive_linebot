@@ -32,7 +32,8 @@ import MessageIcon from "@material-ui/icons/Message";
 import AndroidIcon from "@material-ui/icons/Android";
 import LibraryBooksIcon from "@material-ui/icons/LibraryBooks";
 import FitnessCenterIcon from "@material-ui/icons/FitnessCenter";
-import LocalMallIcon from '@material-ui/icons/LocalMall';
+import LocalMallIcon from "@material-ui/icons/LocalMall";
+import MoneyIcon from "@material-ui/icons/Money";
 import StorefrontIcon from "@material-ui/icons/Storefront";
 import PersonIcon from "@material-ui/icons/Person";
 import ShoppingBasketIcon from "@material-ui/icons/ShoppingBasket";
@@ -128,6 +129,12 @@ const NavBar = props => {
             <EqualizerIcon />
           </ListItemIcon>
           <ListItemText primary={"排行榜"} />
+        </ListItem>
+        <ListItem button component={Link} to="/ScratchCard">
+          <ListItemIcon>
+            <MoneyIcon />
+          </ListItemIcon>
+          <ListItemText primary={"刮刮卡"} />
         </ListItem>
         <PrincessDrawer />
         <BotDrawer />
@@ -365,6 +372,12 @@ const PersonalDrawer = () => {
               <LocalMallIcon />
             </ListItemIcon>
             <ListItemText primary={"轉蛋包包"} />
+          </ListItem>
+          <ListItem button component={Link} to="/ScratchCard/Exchange">
+            <ListItemIcon>
+              <MoneyIcon />
+            </ListItemIcon>
+            <ListItemText primary={"刮刮卡兌獎"} />
           </ListItem>
         </List>
       </Collapse>

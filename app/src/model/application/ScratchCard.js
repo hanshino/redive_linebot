@@ -54,7 +54,7 @@ class ScratchCard extends base {
       .from("scratch_cards")
       .where("buyer_id", userId)
       .join("scratch_card_types", "scratch_card_types.id", "scratch_cards.scratch_card_type_id")
-      .orderBy("is_used", "desc");
+      .orderBy("is_used", "asc");
 
     if (options.limit) {
       query.limit(options.limit);
@@ -67,11 +67,33 @@ class ScratchCard extends base {
     return await query;
   }
 
+  async fetchMyCardsCount(userId) {
+    const { count } = await this.knex
+      .count({ count: "id" })
+      .from("scratch_cards")
+      .where("buyer_id", userId)
+      .first();
+
+    return parseInt(count);
+  }
+
   async fetchMyUnusedCards(userId) {
     return await this.knex
       .from("scratch_cards")
+      .select({
+        id: "scratch_cards.id",
+        reward: "scratch_cards.reward",
+        is_used: "scratch_cards.is_used",
+        price: "scratch_card_types.price",
+        name: "scratch_card_types.name",
+      })
       .where("buyer_id", userId)
+      .join("scratch_card_types", "scratch_card_types.id", "scratch_cards.scratch_card_type_id")
       .andWhere("is_used", false);
+  }
+
+  async fetchByName(name) {
+    return await this.knex.from("scratch_card_types").where("name", name).first();
   }
 }
 

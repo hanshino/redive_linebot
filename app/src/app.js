@@ -109,6 +109,10 @@ async function HandlePostback(context, { next }) {
       ),
       route(() => action === "useFood", withProps(CreatureController.useFood, { payload })),
       route(() => action === "lottery_auto_buy", withProps(LotteryController.autoBuy, { payload })),
+      route(
+        () => action === "exchangeScratchCard",
+        withProps(ScratchCardController.exchange, { payload })
+      ),
       route("*", next),
     ]);
   } catch (e) {
