@@ -88,6 +88,10 @@ async function buy(context, props) {
   const unusedCard = await ScratchCard.fetchRandomCards(card.id, count);
   const cardIds = unusedCard.map(c => c.id);
 
+  if (cardIds.length === 0) {
+    return await context.replyText("購買失敗，刮刮卡庫存不足");
+  }
+
   const trx = await ScratchCard.transaction();
   Inventory.setTransaction(trx);
 
