@@ -78,7 +78,7 @@ async function buy(context, props) {
     return await context.replyText("沒有這張刮刮卡");
   }
 
-  const ownCostGodStone = await Inventory.getUserMoney(userId);
+  const { amount: ownCostGodStone } = await Inventory.getUserMoney(userId);
   const exceptCostGodStone = card.price * count;
 
   if (exceptCostGodStone > ownCostGodStone) {
