@@ -40,6 +40,10 @@ import Worldboss from "./components/Admin/Worldboss";
 import WorldbossEvent from "./components/Admin/WorldbossEvent";
 import TradeOrder, { Detail, Manage, Transaction } from "./components/TradeOrder";
 import Bag from "./components/Bag";
+import ScratchCard from "./components/ScratchCard";
+import AdminScratchCard from "./components/Admin/ScratchCard";
+import ScratchCardDetail from "./components/ScratchCard/ScratchCardDetail";
+import ScratchCardExchange from "./components/ScratchCard/ScratchCardExchange";
 
 const theme = createTheme({
   palette: {
@@ -136,6 +140,9 @@ function MainLayout() {
         <Route path="/Trade" component={TradeLayout} />
         <Route path="/Gacha/Exchange" component={GodStoneShop} />
         <Route path="/Bag" component={Bag} />
+        <Route path="/ScratchCard/Exchange" component={ScratchCardExchange} />
+        <Route path="/ScratchCard/:id" component={ScratchCardDetail} />
+        <Route path="/ScratchCard" component={ScratchCard} />
         <Route path="/" component={Home} />
       </Switch>
     </NavBar>
@@ -203,6 +210,7 @@ function AdminLayout() {
       <Route path="/Admin/WorldbossMessage/Update/:id" component={WorldBossMessageUpdate} />
       <Route path="/Admin/WorldbossMessage" component={WorldbossMessage} />
       <Route path="/Admin/GachaShop" component={GachaShop} />
+      <Route path="/Admin/ScratchCard" component={AdminScratchCard} />
     </Switch>
   );
 }

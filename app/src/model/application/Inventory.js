@@ -100,6 +100,10 @@ class Inventory extends base {
     ]);
   }
 
+  async increaseGodStone({ userId, amount, note }) {
+    return this.knex.insert([{ userId, itemId: 999, itemAmount: amount, note }]);
+  }
+
   async decreaseGodStone({ userId, amount, note }) {
     return this.knex.insert([{ userId, itemId: 999, itemAmount: `${-amount}`, note }]);
   }

@@ -32,11 +32,13 @@ const { admin: AdminWorldBossEventRouter } = require("./WorldBossEvent");
 const { router: InventoryRouter } = require("./Inventory");
 const { router: TradeRouter } = require("./Trade");
 const { router: MarketRouter } = require("./Market");
+const ScratchCardRouter = require("./ScratchCard");
 
 router.use(MarketRouter);
 router.use(InventoryRouter);
 router.use(TradeRouter);
 router.use(ImgurRouter);
+router.use("/ScratchCard", ScratchCardRouter);
 router.use("/Admin", verifyToken, verifyAdmin, verifyPrivilege(5));
 
 router.use("/Admin", AdminWorldBossRouter);

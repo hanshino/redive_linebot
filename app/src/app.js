@@ -41,6 +41,7 @@ const StatusController = require("./controller/application/StatusController");
 const LotteryController = require("./controller/application/LotteryController");
 const BullshitController = require("./controller/application/BullshitController");
 const SubscribeController = require("./controller/application/SubscribeController");
+const ScratchCardController = require("./controller/application/ScratchCardController");
 const { naturalLanguageUnderstanding } = require("./controller/application/OpenaiController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
@@ -108,6 +109,10 @@ async function HandlePostback(context, { next }) {
       ),
       route(() => action === "useFood", withProps(CreatureController.useFood, { payload })),
       route(() => action === "lottery_auto_buy", withProps(LotteryController.autoBuy, { payload })),
+      route(
+        () => action === "exchangeScratchCard",
+        withProps(ScratchCardController.exchange, { payload })
+      ),
       route("*", next),
     ]);
   } catch (e) {
@@ -147,6 +152,7 @@ async function OrderBased(context, { next }) {
     ...LotteryController.router,
     ...BullshitController.router,
     ...SubscribeController.router,
+    ...ScratchCardController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>

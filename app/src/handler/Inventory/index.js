@@ -23,3 +23,10 @@ exports.getPool = async (_, res) => {
 
   res.json(princessCharacters);
 };
+
+exports.totalGodStone = async (req, res) => {
+  const { userId } = req.profile;
+  const { amount: total = 0 } = await InventoryModel.getUserMoney(userId);
+
+  res.json({ total });
+};
