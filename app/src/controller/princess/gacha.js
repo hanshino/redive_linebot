@@ -457,7 +457,7 @@ async function detectCanDaily(userId) {
     // 以免每次都要去資料庫檢查
     // 此次的回傳便可以讓呼叫端知道是否超過
     await redis.set(key, "1", {
-      EX: 60 * 60 * 24,
+      EX: 60,
     });
 
     return usedCount < dailyLimit;
@@ -476,7 +476,7 @@ async function detectCanDaily(userId) {
   if (usedCount >= bonusCount) {
     // 超過每日限制，設定 cache 1 天
     await redis.set(key, "1", {
-      EX: 60 * 60 * 24,
+      EX: 60,
     });
     return false;
   }
