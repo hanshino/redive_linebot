@@ -14,7 +14,8 @@ class ScratchCard extends base {
       .groupBy("reward")
       .count({ count: "reward" })
       .select("reward")
-      .where("scratch_card_type_id", id);
+      .where("scratch_card_type_id", id)
+      .orderBy("reward", "desc");
 
     const soldCount = await this.knex
       .count({ count: "reward" })
