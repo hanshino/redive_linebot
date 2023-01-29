@@ -1431,7 +1431,7 @@ exports.genGuildStatusPanel = (server, leaderHash) => {
           action: {
             type: "uri",
             label: "戰隊詳細",
-            uri: `https://pcrd.randosoru.me/clanRanking/#/clan/${server}/${leaderHash}`,
+            uri: `https://pcrd.randosoru.me/#/clan/${server}/${leaderHash}`,
           },
           style: "secondary",
         },
@@ -1440,7 +1440,7 @@ exports.genGuildStatusPanel = (server, leaderHash) => {
           action: {
             type: "uri",
             label: "全服排行",
-            uri: `https://pcrd.randosoru.me/clanRanking/#/?server=${server}`,
+            uri: `https://pcrd.randosoru.me/#/?server=${server}`,
           },
           style: "secondary",
         },
