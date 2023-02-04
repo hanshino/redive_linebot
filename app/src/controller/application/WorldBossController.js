@@ -11,13 +11,14 @@ const minigameService = require("../../service/MinigameService");
 const worldBossUserAttackMessageService = require("../../service/WorldBossUserAttackMessageService");
 const worldBossTemplate = require("../../templates/application/WorldBoss");
 const { model: worldBossLogModel } = require("../../model/application/WorldBossLog");
+const { inventory: Inventory } = require("../../model/application/Inventory");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
 const LineClient = getClient("line");
 const opencvModel = require("../../model/application/OpencvModel");
 const config = require("config");
-const { get } = require("lodash");
+const { get, sample } = require("lodash");
 const humanNumber = require("human-number");
 
 exports.router = [
@@ -28,9 +29,11 @@ exports.router = [
   text("/worldrank", worldRank),
   text(/^\/(sa|systemattack)(\s(?<percentage>\d{1,2}))?$/, adminAttack),
   text(/^[.#/](攻擊|attack)$/, withProps(attack, { attackType: "normal" })),
+  text(/^[.#/](混[沌頓]攻擊|chaos[-_]?attack)$/, withProps(attack, { attackType: "chaos" })),
+  text(/^[.#/](課金(攻擊|之力)|money[-_]?attack)$/, withProps(attack, { attackType: "money" })),
   text(
-    /^[.#/](混[沌頓]攻擊|chaos-attack|chaos_attack|chaosattack)$/,
-    withProps(attack, { attackType: "chaos" })
+    /^[.#/](混亂(攻擊|之力)|money[-_]?chaos[-_]?attack)$/,
+    withProps(attack, { attackType: "moneyChaos" })
   ),
 ];
 
@@ -440,6 +443,43 @@ const attackOnBoss = async (context, props) => {
     !keepMessage && context.replyText(i18n.__("message.minigame_level_not_found"));
   }
 
+  if (["money", "moneyChaos"].includes(attackType)) {
+    const { amount: userOwnMoney } = await Inventory.getUserMoney(userId);
+    const moneyMap = {
+      money: config.get("worldboss.money_attack_cost"),
+      moneyChaos: config.get("worldboss.money_chaos_attack_cost"),
+    };
+    const needMoney = moneyMap[attackType];
+    // 看今天打幾次了，前三次可以免除消耗
+    const todayLogs = await worldBossEventLogService.getTodayLogs(id);
+    const hasFreeQuota = todayLogs.length < 3;
+
+    // 如果沒有免費次數，且用戶沒有足夠的金錢，則不處理
+    if (hasFreeQuota === false && userOwnMoney < needMoney) {
+      if (context.event.isText) {
+        const message = sample(i18n.__("message.world_boss.money_attack_not_enough"));
+        context.replyText(message, {
+          sender: {
+            iconUrl: pictureUrl,
+            name: displayName,
+          },
+        });
+      }
+      return;
+    }
+
+    if (hasFreeQuota) {
+      DefaultLogger.info(`today attack ${todayLogs.length} times, skip money cost`);
+      context.replyText(i18n.__("message.world_boss.money_attack_free"));
+    } else {
+      await Inventory.decreaseGodStone({
+        userId,
+        amount: needMoney,
+        note: "課金攻擊",
+      });
+    }
+  }
+
   const { level } = levelData;
 
   // 新增對 boss 攻擊紀錄
@@ -572,6 +612,10 @@ async function handleKeepingMessage(worldBossEventId, context, keepMessage) {
  * @returns {Promise<Boolean>}
  */
 async function isUserCanAttack(userId) {
+  if (process.env.NODE_ENV !== "production") {
+    return true;
+  }
+
   const key = `${userId}_can_attack`;
   const cooldownSeconds = 30;
 
@@ -614,32 +658,48 @@ function calculateDamage(level = 1, attackType = "normal") {
   // 等級也具有基礎傷害，所以等級越高，傷害越高，使用等級 * 10 當作基底傷害
   // 最後再加上隨機值，避免每次都是同一個傷害
   let damage = getStandardDamage(level) + Math.floor(Math.random() * level);
+  let rateConfig = { min: 100, max: 100 };
 
   switch (attackType) {
     case "chaos": {
-      const rateConfig = (function () {
-        let chaosConfig = config.get("worldboss.chaos_attack_rate");
-        let randomNumber = Math.floor(Math.random() * 1000);
-        let rateStackCount = 0;
-        let target = chaosConfig.find(item => {
-          rateStackCount += item.rate * 1000;
-          return randomNumber <= rateStackCount;
-        });
-
-        return target || { min: 100, max: 100 };
-      })();
-      const { min, max } = rateConfig;
-      let chaosBonus = Math.floor(Math.random() * (max - min + 1)) + min;
-      DefaultLogger.info(`chaos bonus ${chaosBonus} original damage ${damage}`);
-      damage = (damage * chaosBonus) / 100;
-      DefaultLogger.info(`chaos bonus ${chaosBonus} final damage ${damage}`);
+      rateConfig = getRandomConfigByRandomStack(config.get("worldboss.chaos_attack_rate"));
+      break;
+    }
+    case "money": {
+      rateConfig = getRandomConfigByRandomStack(config.get("worldboss.money_attack_rate"));
+      break;
+    }
+    case "moneyChaos": {
+      rateConfig = getRandomConfigByRandomStack(config.get("worldboss.money_chaos_attack_rate"));
       break;
     }
     default:
       break;
   }
 
+  const { min, max } = rateConfig;
+  let bonus = Math.floor(Math.random() * (max - min + 1)) + min;
+  DefaultLogger.info(`${attackType} bonus ${bonus} original damage ${damage}`);
+  damage = (damage * bonus) / 100;
+  DefaultLogger.info(`${attackType} bonus ${bonus} final damage ${damage}`);
+
   return Math.round(damage);
+}
+
+/**
+ * 透過隨機堆疊取得隨機值
+ * @param {Array<{min: Number, max: Number, rate: Number}>} randomStack
+ * @returns {Object<{min: Number, max: Number, rate: Number}>}
+ */
+function getRandomConfigByRandomStack(randomStack) {
+  let randomNumber = Math.floor(Math.random() * 1000);
+  let rateStackCount = 0;
+  let target = randomStack.find(item => {
+    rateStackCount += item.rate * 1000;
+    return randomNumber <= rateStackCount;
+  });
+
+  return target || { min: 100, max: 100 };
 }
 
 /**

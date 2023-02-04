@@ -86,6 +86,7 @@ exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted = false }) 
         {
           type: "box",
           layout: "vertical",
+          spacing: "md",
           contents: [
             {
               type: "box",
@@ -138,6 +139,99 @@ exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted = false }) 
                         action: "worldBossAttack",
                         worldBossEventId: id,
                         attackType: "chaos",
+                      }),
+                    },
+                  }),
+                },
+              ],
+              spacing: "md",
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      align: "center",
+                      color: "#808080",
+                      contents: [
+                        {
+                          type: "span",
+                          text: i18n.__("template.money_attack"),
+                          size: "sm",
+                        },
+                        {
+                          type: "span",
+                          text: "\n",
+                          size: "sm",
+                        },
+                        {
+                          type: "span",
+                          text: `- ${config.get("worldboss.money_attack_cost")} $`,
+                          size: "xs",
+                        },
+                      ],
+                      wrap: true,
+                    },
+                  ],
+                  paddingAll: "lg",
+                  cornerRadius: "lg",
+                  // 如果已完成或是沒有攻擊權限，就設為灰色
+                  backgroundColor: hasCompleted ? "#808080AC" : "#D4AF37",
+                  ...(!hasCompleted && {
+                    action: {
+                      type: "postback",
+                      data: JSON.stringify({
+                        action: "worldBossAttack",
+                        worldBossEventId: id,
+                        attackType: "money",
+                      }),
+                    },
+                  }),
+                },
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [
+                    {
+                      type: "text",
+                      align: "center",
+                      color: "#808080",
+                      contents: [
+                        {
+                          type: "span",
+                          text: i18n.__("template.money_chaos_attack"),
+                          size: "sm",
+                        },
+                        {
+                          type: "span",
+                          text: "\n",
+                          size: "sm",
+                        },
+                        {
+                          type: "span",
+                          text: `- ${config.get("worldboss.money_chaos_attack_cost")} $`,
+                          size: "xs",
+                        },
+                      ],
+                      wrap: true,
+                    },
+                  ],
+                  paddingAll: "lg",
+                  cornerRadius: "lg",
+                  // 如果已完成或是沒有攻擊權限，就設為灰色
+                  backgroundColor: hasCompleted ? "#808080AC" : "#8B0000",
+                  ...(!hasCompleted && {
+                    action: {
+                      type: "postback",
+                      data: JSON.stringify({
+                        action: "worldBossAttack",
+                        worldBossEventId: id,
+                        attackType: "moneyChaos",
                       }),
                     },
                   }),
