@@ -612,10 +612,6 @@ async function handleKeepingMessage(worldBossEventId, context, keepMessage) {
  * @returns {Promise<Boolean>}
  */
 async function isUserCanAttack(userId) {
-  if (process.env.NODE_ENV !== "production") {
-    return true;
-  }
-
   const key = `${userId}_can_attack`;
   const cooldownSeconds = 30;
 
