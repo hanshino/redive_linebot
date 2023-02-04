@@ -30,6 +30,8 @@
     "attend_times": "參與討伐次數",
     "boss_name": "怪物名稱",
     "chaos_attack": "混沌攻擊",
+    "money_attack": "課金之力",
+    "money_chaos_attack": "混亂之力",
     "checked": "⭕️",
     "unchecked": "❌",
     "daily_quest_info": "{{ quest_count }} / {{ quest_count_max }}",
@@ -71,7 +73,12 @@
     "world_boss_event_no_ongoing": "目前沒有世界活動正在進行中...",
     "world_boss": {
       "can_not_attack": "{{{ name }}} 攻擊失敗\n攻擊冷卻中 或是 已經達到最大攻擊次數",
-      "request_too_quickly": "偵測到你的攻擊速度過快，請稍後再試"
+      "request_too_quickly": "偵測到你的攻擊速度過快，請稍後再試",
+      "money_attack_free": "免費課金之力加成（當日前三次免費）",
+      "money_attack_not_enough": [
+        "自分にもっと力があれば結果は変わった...",
+        "我還需要更多的力量..."
+      ]
     },
     "admin_attack_on_world_boss": "創造神路過敲了一下... 造成 {{ damage }} 傷害...",
     "world_boss_event_completed": "世界王已被討伐..別再鞭屍了QwQ",
