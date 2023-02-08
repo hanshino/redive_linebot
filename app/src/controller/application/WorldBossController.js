@@ -260,9 +260,9 @@ async function bossEvent(context) {
 
   let eventId = events[0].id;
 
-  const [data, topTenData] = await Promise.all([
+  const [data, topData] = await Promise.all([
     worldBossEventService.getEventBoss(eventId),
-    worldBossEventLogService.getTopTen(eventId),
+    worldBossEventLogService.getTopRank({ eventId, limit: 15 }),
   ]);
   let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
     eventId
@@ -272,7 +272,7 @@ async function bossEvent(context) {
 
   // 將排名資訊，補上用戶資訊
   let topTenInfo = await Promise.all(
-    topTenData.map(async data => {
+    topData.map(async data => {
       let profile = await LineClient.getUserProfile(data.userId);
       return {
         ...data,

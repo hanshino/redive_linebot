@@ -18,9 +18,9 @@ exports.create = worldBossLogModel.create;
 exports.getRemainHpByEventId = worldBossLogModel.getTotalDamageByEventId;
 
 /**
- * 取得某個活動的前十名 (排名)
+ * 取得某個活動的排名
  */
-exports.getTopTen = worldBossLogModel.getTopTen;
+exports.getTopRank = worldBossLogModel.getTopRank;
 
 /**
  * 取得今日是否已經登錄過
