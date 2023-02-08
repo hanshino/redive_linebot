@@ -12,7 +12,7 @@
     "@material-ui/core": "^4.12.4",
     "@material-ui/icons": "^4.11.3",
     "@material-ui/lab": "^4.0.0-alpha.60",
-    "@mui/material": "^5.11.4",
+    "@mui/material": "^5.11.5",
     "@mui/x-data-grid": "^5.17.19",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^12.1.5",
