@@ -675,7 +675,7 @@ function calculateDamage(level = 1, attackType = "normal", id) {
 
   if (id == 191) {
     DefaultLogger.info("特別處理");
-    rateConfig = { min: 40, max: 250 };
+    rateConfig = { min: 0, max: 150 };
   }
 
   const { min, max } = rateConfig;
