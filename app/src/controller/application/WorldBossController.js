@@ -676,7 +676,7 @@ function calculateDamage(level = 1, attackType = "normal", id) {
   if (id == 191) {
     DefaultLogger.info("特別處理");
     rateConfig = { min: 0, max: 150 };
-  } else if (rateConfig.min < 100) {
+  } else if (rateConfig.min < 100 && attackType === "moneyChaos") {
     rateConfig = { min: 100, max: 600 };
   }
 
