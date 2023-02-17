@@ -42,7 +42,6 @@ const LotteryController = require("./controller/application/LotteryController");
 const BullshitController = require("./controller/application/BullshitController");
 const SubscribeController = require("./controller/application/SubscribeController");
 const ScratchCardController = require("./controller/application/ScratchCardController");
-const { naturalLanguageUnderstanding } = require("./controller/application/OpenaiController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -187,7 +186,20 @@ async function OrderBased(context, { next }) {
       context.replyText("已清除聊天記錄");
     }),
     text(/^[.#]自訂頭像( (?<param1>\S+))?( (?<param2>\S+))?/, guildConfig.setSender),
-    text(/^(#我的狀態|\/me)$/, ChatLevelController.showStatus),
+    text(/^(#我的狀態|\/me)$/, context =>
+      withProps(ChatLevelController.showStatus, { userId: context.event.source.userId })
+    ),
+    text(/^[.#/](你的狀態|you)/, context => {
+      const mentionees = context.event.message.mention.mentionees;
+      console.log(mentionees);
+      if (mentionees.length === 0) {
+        return context.replyText("請標記要查詢的對象");
+      }
+
+      const userId = mentionees[0].userId;
+
+      return withProps(ChatLevelController.showStatus, { userId })(context);
+    }),
     text(/^#狀態\s/, ChatLevelController.showFriendStatus),
     text("#等級排行", ChatLevelController.showRank),
     text(["/link", "#實用連結", "#連結"], context => {
@@ -409,7 +421,6 @@ async function App(context) {
     alias,
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
-    // naturalLanguageUnderstanding, // 自然語言理解
     CustomerOrderBased, // 自訂指令分析
     Nothing, // 無符合事件
   ]);

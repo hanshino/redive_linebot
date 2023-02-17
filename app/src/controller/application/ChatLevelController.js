@@ -29,9 +29,14 @@ const i18n = require("../../util/i18n");
  * 顯示個人狀態，現複合了其他布丁系統的資訊
  * @param {import("bottender").LineContext} context
  */
-exports.showStatus = async context => {
+exports.showStatus = async (context, props) => {
   try {
-    let { userId, displayName, pictureUrl } = context.event.source;
+    const userId = get(props, "userId", context.event.source.userId);
+    const profile =
+      context.event.source.type === "user"
+        ? context.event.source
+        : await LineClient.getGroupMemberProfile(context.event.source.groupId, userId);
+    let { displayName, pictureUrl } = profile;
     pictureUrl = pictureUrl || "https://i.imgur.com/NMl4z2u.png";
 
     if (!userId || !displayName) {
@@ -199,7 +204,8 @@ exports.showStatus = async context => {
 
     context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
 
-    if (!level) {
+    const isSelf = context.event.source.userId === userId;
+    if (!level && isSelf) {
       context.replyText("尚未有任何數據，經驗開始累積後即可投胎！");
     }
   } catch (e) {
