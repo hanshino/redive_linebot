@@ -483,7 +483,7 @@ const attackOnBoss = async (context, props) => {
   const { level } = levelData;
 
   // 新增對 boss 攻擊紀錄
-  let damage = calculateDamage(level, attackType, id);
+  let damage = calculateDamage(level, attackType);
 
   let attributes = {
     user_id: id,
@@ -649,7 +649,7 @@ async function isUserCanAttack(userId) {
  * @param {String} attackType 攻擊類型
  * @returns {Number} 攻擊傷害
  */
-function calculateDamage(level = 1, attackType = "normal", id) {
+function calculateDamage(level = 1, attackType = "normal") {
   // 根據等級計算攻擊傷害，攻擊係數呈指數增加
   // 等級也具有基礎傷害，所以等級越高，傷害越高，使用等級 * 10 當作基底傷害
   // 最後再加上隨機值，避免每次都是同一個傷害
@@ -671,13 +671,6 @@ function calculateDamage(level = 1, attackType = "normal", id) {
     }
     default:
       break;
-  }
-
-  if (id == 191) {
-    DefaultLogger.info("特別處理");
-    rateConfig = { min: 0, max: 150 };
-  } else if (rateConfig.min < 100 && attackType === "moneyChaos") {
-    rateConfig = { min: 100, max: 600 };
   }
 
   const { min, max } = rateConfig;
