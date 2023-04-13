@@ -42,11 +42,6 @@ services:
       - redis
     networks:
       - bot_network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1k"
-        max-file: "3"
     environment:
       - "NODE_ENV=development"
 
@@ -65,11 +60,6 @@ services:
       - "${DB_PORT}"
     networks:
       - bot_network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1k"
-        max-file: "3"
     environment:
       "MYSQL_DATABASE": "${DB_DATABASE}"
       "MYSQL_USER": "${DB_USER}"
@@ -80,11 +70,6 @@ services:
     image: redis:alpine
     command: "redis-server --requirepass ${REDIS_PASSWORD}"
     restart: always
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1k"
-        max-file: "3"
     networks:
       - bot_network
     expose:
@@ -99,11 +84,6 @@ services:
     depends_on:
       - mysql
       - redis
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1k"
-        max-file: "3"
     env_file: ./.env
     environment:
       - "NODE_ENV=development"

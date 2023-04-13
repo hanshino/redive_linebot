@@ -63,7 +63,7 @@ function play(gachaPool, times = 1) {
 
   gachaPool.forEach(data => {
     if (anchor >= randomAry.length) return;
-    let top = Math.floor(parseFloat(data.rate.replace("%", "") * rate));
+    let top = Math.floor(parseFloat(data.rate.replace(/[^\d.]+/, "") * rate));
 
     // 介於轉蛋池中的 堆疊數 和 頂點 的亂數 即為抽出內容物
     while (
