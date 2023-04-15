@@ -26,7 +26,8 @@ exports.binding = option => {
 
     queryUid
       .then(res => (res.length > 0 ? updateUid : insertUid))
-      .then(result => (result ? trx.commit() : trx.rollback()));
+      .then(result => (result ? trx.commit() : trx.rollback()))
+      .catch(() => trx.rollback());
   });
 };
 
