@@ -1,3 +1,5 @@
+const { get } = require("lodash");
+
 /**
  * 產出轉蛋頭像框
  * @param {Array} rewards
@@ -212,7 +214,7 @@ function genDailyGacha({
  * @param {Number} param.godStone 女神石數量
  * @param {Number} param.paidStone 有償女神石數量
  */
-function genGachaStatus({ current = 0, total, godStone = 0, paidStone = 0 }) {
+function genGachaStatus({ current = 0, total, godStone = 0, paidStone = 0, gachaHistory }) {
   let collectPercent = total === 0 ? 0 : Math.round((current / total) * 100);
 
   return {
@@ -296,6 +298,53 @@ function genGachaStatus({ current = 0, total, godStone = 0, paidStone = 0 }) {
               contents: [
                 {
                   type: "span",
+                  text: `${get(gachaHistory, "rainbow", 0)}`,
+                  weight: "bold",
+                },
+                {
+                  type: "span",
+                  text: " ",
+                },
+                {
+                  type: "span",
+                  text: "天前出彩",
+                },
+              ],
+              size: "sm",
+              align: "center",
+            },
+            {
+              type: "text",
+              contents: [
+                {
+                  type: "span",
+                  text: `${get(gachaHistory, "hasNew", 0)}`,
+                  weight: "bold",
+                },
+                {
+                  type: "span",
+                  text: " ",
+                },
+                {
+                  type: "span",
+                  text: "天前出新角",
+                },
+              ],
+              size: "sm",
+              align: "center",
+            },
+          ],
+          paddingBottom: "xs",
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "text",
+              contents: [
+                {
+                  type: "span",
                   text: "女神石",
                 },
                 {
@@ -305,6 +354,7 @@ function genGachaStatus({ current = 0, total, godStone = 0, paidStone = 0 }) {
                 {
                   type: "span",
                   text: `${godStone}`,
+                  weight: "bold",
                 },
               ],
               size: "sm",
@@ -324,14 +374,14 @@ function genGachaStatus({ current = 0, total, godStone = 0, paidStone = 0 }) {
                 {
                   type: "span",
                   text: `${paidStone}`,
+                  weight: "bold",
                 },
               ],
               size: "sm",
               align: "center",
             },
           ],
-          paddingTop: "md",
-          paddingBottom: "md",
+          paddingTop: "xs",
         },
       ],
     },
