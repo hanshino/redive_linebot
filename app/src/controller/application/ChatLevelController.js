@@ -225,7 +225,7 @@ async function getGachaHistory(userId) {
         value: 0,
       },
     },
-    order: [{ column: "created_at", order: "desc" }],
+    order: [{ column: "created_at", direction: "desc" }],
   });
 
   const lastHasNewRecord = await GachaRecord.first({
@@ -233,7 +233,7 @@ async function getGachaHistory(userId) {
       user_id: userId,
       has_new: 1,
     },
-    order: [{ column: "created_at", order: "desc" }],
+    order: [{ column: "created_at", direction: "desc" }],
   });
 
   const now = moment();
