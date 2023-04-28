@@ -68,6 +68,7 @@ exports.showStatus = async (context, props) => {
       donateAmount,
       achievement,
       subscribeInfo,
+      gachaHistory,
     ] = await Promise.all([
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
@@ -80,6 +81,7 @@ exports.showStatus = async (context, props) => {
       DonateModel.getUserTotalAmount(userId),
       AdvancementModel.findUserAdvancementsByPlatformId(userId),
       getSubscribeInfo(userId),
+      getGachaHistory(userId),
     ]);
 
     let subInfo;
@@ -149,6 +151,7 @@ exports.showStatus = async (context, props) => {
       total,
       godStone,
       paidStone: donateAmount || 0,
+      gachaHistory,
     });
 
     // ---------- 整理其他雜項數據 ----------
@@ -212,6 +215,48 @@ exports.showStatus = async (context, props) => {
     DefaultLogger.error(e);
   }
 };
+
+async function getGachaHistory(userId) {
+  const lastRainbowRecord = await GachaRecord.first({
+    filter: {
+      user_id: userId,
+      rainbow: {
+        operator: ">",
+        value: 0,
+      },
+    },
+    order: [{ column: "created_at", order: "desc" }],
+  });
+
+  const lastHasNewRecord = await GachaRecord.first({
+    filter: {
+      user_id: userId,
+      has_new: 1,
+    },
+    order: [{ column: "created_at", order: "desc" }],
+  });
+
+  const now = moment();
+  const countLastDay = createdAt => {
+    const start = moment(createdAt).startOf("day");
+    return now.diff(start, "days");
+  };
+
+  let lastRainbow = "-";
+  if (lastRainbowRecord) {
+    lastRainbow = countLastDay(lastRainbowRecord.created_at);
+  }
+
+  let lastHasNew = "-";
+  if (lastHasNewRecord) {
+    lastHasNew = countLastDay(lastHasNewRecord.created_at);
+  }
+
+  return {
+    rainbow: lastRainbow,
+    hasNew: lastHasNew,
+  };
+}
 
 function getSubscribeInfo(userId) {
   return SubscribeUserModel.knex
