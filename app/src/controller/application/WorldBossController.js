@@ -613,7 +613,7 @@ async function handleKeepingMessage(worldBossEventId, context, keepMessage) {
  */
 async function isUserCanAttack(userId) {
   const key = `${userId}_can_attack`;
-  const cooldownSeconds = 30;
+  const cooldownSeconds = 5;
 
   // 如果 redis 中有資料，代表一定攻擊過了
   if (await redis.get(key)) {
