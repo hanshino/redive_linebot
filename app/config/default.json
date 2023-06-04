@@ -215,8 +215,8 @@
   },
   "princess": {
     "character": {
-      "full_image": "https://chieru.randosoru.me/assets/units/full/%s.png",
-      "head_image": "https://chieru.randosoru.me/assets/units/head/%s.png"
+      "full_image": "https://chieru.hanshino.dev/assets/units/full/%s.png",
+      "head_image": "https://chieru.hanshino.dev/assets/units/head/%s.png"
     }
   }
 }

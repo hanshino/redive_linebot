@@ -304,7 +304,7 @@
   },
   "princess": {
     "wiki": {
-      "unit": "https://chieru.randosoru.me/assets/units/head/{{ unitId }}.png"
+      "unit": "https://chieru.hanshino.dev/assets/units/head/{{ unitId }}.png"
     }
   }
 }

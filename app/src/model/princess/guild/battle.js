@@ -222,7 +222,7 @@ exports.Ian.getFormRecords = (formId, week, boss) => {
  * @param {Number} limit
  */
 exports.Ian.getUserFormRecords = (formId, userId, limit = 5) => {
-  // https://guild.randosoru.me/api/users/aqLdqN/records?limit=5&form_id=ff0d74e7770b4c43830934a629851be1
+  // https://guild.hanshino.dev/api/users/aqLdqN/records?limit=5&form_id=ff0d74e7770b4c43830934a629851be1
   return doGet(`/users/${userId}/records?limit=${limit}&form_id=${formId}`);
 };
 
