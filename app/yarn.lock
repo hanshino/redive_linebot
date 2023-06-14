@@ -3646,10 +3646,10 @@ image-type@^4.1.0:
   dependencies:
     file-type "^10.10.0"
 
-imgur@^2.2.0:
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/imgur/-/imgur-2.2.0.tgz#27a967f42745ac87256ecf742b123f1883fe0fc9"
-  integrity sha512-O6713RN9zaCdw7QuVEi0XRXjkEHTfKDkhjL1EEtlTW6VeRxVnj1JDQGBeqk2Bzj6d7WJp0WKdac2i0IO33nidQ==
+imgur@^2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/imgur/-/imgur-2.3.0.tgz#eccfb08108ff3e986223554c44770cbb1a59bf27"
+  integrity sha512-ZAgK0YXHfrR+P1KavYSBRQyr0kSvBFrSYrCAr0Zm8EddAakTn8T5WcdX+NvI6GMvHuzwMePjNvV9sFD4sETIUg==
   dependencies:
     axios "^0.25.0"
     form-data "^4.0.0"

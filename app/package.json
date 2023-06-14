@@ -27,7 +27,7 @@
     "express-rate-limit": "^6.7.0",
     "human-number": "^2.0.1",
     "i18n": "^0.15.1",
-    "imgur": "^2.2.0",
+    "imgur": "^2.3.0",
     "knex": "^2.4.2",
     "lodash": "^4.17.21",
     "log4js": "^6.9.1",
