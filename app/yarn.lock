@@ -2340,10 +2340,10 @@ cors@^2.8.5, cors@~2.8.5:
     object-assign "^4"
     vary "^1"
 
-cron@^2.3.0:
-  version "2.3.0"
-  resolved "https://registry.yarnpkg.com/cron/-/cron-2.3.0.tgz#20df6da18d4f7d2f8937def2eb5fc0d1a320c526"
-  integrity sha512-ZN5HP8zDY41sJolMsbc+GksRATcbvkPKF5wR/qc8FrV4NBVi9ORQa1HmYa5GydaysUB80X9XpRlRkooa5uEtTA==
+cron@^2.3.1:
+  version "2.3.1"
+  resolved "https://registry.yarnpkg.com/cron/-/cron-2.3.1.tgz#71caa566ffef60ada9183b8677df4afa9a214ad7"
+  integrity sha512-1eRRlIT0UfIqauwbG9pkg3J6CX9A6My2ytJWqAXoK0T9oJnUZTzGBNPxao0zjodIbPgf8UQWjE62BMb9eVllSQ==
   dependencies:
     luxon "^3.2.1"
 
@@ -3646,10 +3646,10 @@ image-type@^4.1.0:
   dependencies:
     file-type "^10.10.0"
 
-imgur@^2.2.0:
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/imgur/-/imgur-2.2.0.tgz#27a967f42745ac87256ecf742b123f1883fe0fc9"
-  integrity sha512-O6713RN9zaCdw7QuVEi0XRXjkEHTfKDkhjL1EEtlTW6VeRxVnj1JDQGBeqk2Bzj6d7WJp0WKdac2i0IO33nidQ==
+imgur@^2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/imgur/-/imgur-2.3.0.tgz#eccfb08108ff3e986223554c44770cbb1a59bf27"
+  integrity sha512-ZAgK0YXHfrR+P1KavYSBRQyr0kSvBFrSYrCAr0Zm8EddAakTn8T5WcdX+NvI6GMvHuzwMePjNvV9sFD4sETIUg==
   dependencies:
     axios "^0.25.0"
     form-data "^4.0.0"

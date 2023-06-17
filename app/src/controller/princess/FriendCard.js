@@ -1,27 +1,10 @@
 const uidModel = require("../../model/princess/uid");
-const FriendCardTemplate = require("../../templates/princess/FriendCard");
 
+/**
+ * @deprecated 本功能已無法繼續維護
+ */
 exports.showCard = async context => {
-  let { userId } = context.event.source;
-  let bindData = {};
-
-  try {
-    bindData = await uidModel.getIanProfileData(userId);
-  } catch (err) {
-    context.replyText("資料獲取失敗..請稍後再試");
-    return;
-  }
-
-  let serverName = ["美食殿堂", "真步真步王國", "破曉之星", "小小甜心"];
-
-  if (Object.keys(bindData).length === 0) {
-    FriendCardTemplate.showBindingPage(context);
-    return;
-  }
-
-  bindData.server = serverName[bindData.server - 1];
-
-  FriendCardTemplate.showCard(context, bindData);
+  return await context.replyText("本功能已無法繼續維護，暫時不會有更新的消息，請見諒。");
 };
 
 exports.api = {};
