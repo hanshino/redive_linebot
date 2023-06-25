@@ -400,12 +400,6 @@ const PrincessDrawer = () => {
       </ListItem>
       <Collapse in={open} timeout="auto" unmountOnExit>
         <List component="div" disablePadding className={classes.nestList}>
-          <ListItem button component={Link} to="/Princess/Profile">
-            <ListItemIcon>
-              <ContactsIcon />
-            </ListItemIcon>
-            <ListItemText primary={"公主好友小卡"} />
-          </ListItem>
           <ListItem button component={Link} to="/Tools/BattleTime">
             <ListItemIcon>
               <LoopIcon />

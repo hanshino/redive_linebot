@@ -16,7 +16,6 @@ import GachaPool from "./components/Admin/GachaPool";
 import Message from "./components/Admin/Message";
 import Order from "./components/Admin/Order";
 import Home from "./components/Home";
-import PrincessCard from "./components/PrincessCard";
 import GroupBattle from "./components/GroupBattle";
 import axios from "axios";
 import BattleSignPanel from "./components/Panel/BattleSign";
@@ -129,7 +128,6 @@ function MainLayout() {
     <NavBar>
       <RedirectDetect />
       <Switch>
-        <Route path="/Princess/Profile" component={PrincessCard} />
         <Route path="/Bot" component={BotLayout} />
         <Route path="/Group" component={GroupLayout} />
         <Route path="/Admin" component={AdminLayout} />

@@ -6,7 +6,6 @@ const GroupConfigController = require("../controller/application/GroupConfig");
 const GlobalOrdersController = require("../controller/application/GlobalOrders");
 const GuildBattleController = require("../controller/princess/battle");
 const GuildController = require("../controller/application/Guild");
-const FriendCardController = require("../controller/princess/FriendCard");
 const PrincessCharacterController = require("../controller/princess/character");
 const GroupConfig = require("../../doc/GroupConfig.json");
 const {
@@ -305,13 +304,7 @@ router.put(
   GuildBattleController.api.updateGuildBattleConfig
 );
 
-router.post("/Princess/Friend/Card", verifyToken, FriendCardController.api.binding);
-
-router.get("/Princess/Friend/Card", verifyToken, FriendCardController.api.getData);
-
 router.get("/Princess/Character/Images", PrincessCharacterController.api.getCharacterImages);
-
-router.delete("/Princess/Friend/Card", verifyToken, FriendCardController.api.clearBinding);
 
 router.get("/Bot/Notify/Data", verifyToken, NotifyController.api.getUserData);
 

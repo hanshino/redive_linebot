@@ -18,7 +18,6 @@ const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
 const { showAnnounce } = require("./controller/princess/announce");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const { showSchedule } = require("./controller/princess/schedule");
-const FriendCardController = require("./controller/princess/FriendCard");
 const ChatLevelController = require("./controller/application/ChatLevelController");
 const BattleReportController = require("./controller/princess/BattleReportController");
 const ArenaContoroller = require("./controller/princess/ArenaController");
@@ -219,11 +218,6 @@ async function OrderBased(context, { next }) {
             "green"
           ),
           commonTemplate.genLinkBubble(
-            "🗃️公主小卡",
-            `${liffUri}?reactRedirectUri=/Princess/Profile`,
-            "green"
-          ),
-          commonTemplate.genLinkBubble(
             "📢訂閱系統",
             `${liffUri}?reactRedirectUri=/Bot/Notify`,
             "green"
@@ -375,7 +369,6 @@ function PrincessInformation(context) {
   if (context.state.guildConfig.PrincessInformation === "N") return [];
 
   return [
-    text(/^[#.](好友小卡|加我好友)$/, FriendCardController.showCard),
     text(/^[#.]官方公告$/, showAnnounce),
     text(/^[#.]?(官方活動|公主活動|公主行事曆)/, showSchedule),
     text(/^#(前作|前作劇情|公連歌曲|前作個人劇情)/, sendPreWorkMessage),
