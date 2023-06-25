@@ -65,6 +65,19 @@ services:
       "MYSQL_USER": "${DB_USER}"
       "MYSQL_PASSWORD": "${DB_USER_PASSWORD}"
       "MYSQL_ROOT_PASSWORD": "${DB_PASSWORD}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u $$DB_USER",
+          "-p$$DB_PASSWORD"
+        ]
+      timeout: 20s
+      retries: 10
 
   redis:
     image: redis:alpine

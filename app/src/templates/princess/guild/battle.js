@@ -494,24 +494,23 @@ function genPreviewCover(option) {
 }
 
 function genPreviewDetail(option) {
-  const { FullCount, NotFullCount, KyaryuCount, OtherCount, boss, week, datas, config, formId } =
-    option;
+  const { Counts, boss, week, datas, config, formId } = option;
 
   let bossConfig = { name: `${boss}王`, image: "", ...config };
   bossConfig.image = bossConfig.image || "https://i.imgur.com/zsAFota.png";
   let stage = 0;
 
   switch (true) {
-    case week >= 45:
+    case week >= 26:
       stage = 4;
       break;
-    case week >= 35:
+    case week >= 10:
       stage = 3;
       break;
-    case week >= 11:
+    case week >= 4:
       stage = 2;
       break;
-    case week >= 4:
+    case week >= 1:
       stage = 1;
       break;
   }
@@ -595,12 +594,12 @@ function genPreviewDetail(option) {
                   align: "center",
                   wrap: true,
                 },
-                {
+                ...Counts.map(({ status, count }) => ({
                   type: "text",
                   contents: [
                     {
                       type: "span",
-                      text: "完整",
+                      text: getStatusText(status),
                       weight: "bold",
                     },
                     {
@@ -609,64 +608,10 @@ function genPreviewDetail(option) {
                     },
                     {
                       type: "span",
-                      text: `${FullCount}`,
+                      text: `${count}`,
                     },
                   ],
-                },
-                {
-                  type: "text",
-                  contents: [
-                    {
-                      type: "span",
-                      text: "補償",
-                      weight: "bold",
-                    },
-                    {
-                      type: "span",
-                      text: " ",
-                    },
-                    {
-                      type: "span",
-                      text: `${NotFullCount}`,
-                    },
-                  ],
-                },
-                {
-                  type: "text",
-                  contents: [
-                    {
-                      type: "span",
-                      text: "凱留",
-                      weight: "bold",
-                    },
-                    {
-                      type: "span",
-                      text: " ",
-                    },
-                    {
-                      type: "span",
-                      text: `${KyaryuCount}`,
-                    },
-                  ],
-                },
-                {
-                  type: "text",
-                  contents: [
-                    {
-                      type: "span",
-                      text: "其他",
-                      weight: "bold",
-                    },
-                    {
-                      type: "span",
-                      text: " ",
-                    },
-                    {
-                      type: "span",
-                      text: `${OtherCount}`,
-                    },
-                  ],
-                },
+                })),
               ],
               flex: 7,
               spacing: "xs",
@@ -739,13 +684,13 @@ function genPreviewDetail(option) {
                           action: "battleSignUp",
                           week: week,
                           boss: boss,
-                          type: 1,
+                          type: 31,
                           comment: "物理",
                         }),
                       },
                     },
                   ],
-                  backgroundColor: "#FF5151",
+                  backgroundColor: "#FF7575",
                   paddingAll: "5px",
                 },
                 {
@@ -762,7 +707,7 @@ function genPreviewDetail(option) {
                           action: "battleSignUp",
                           week: week,
                           boss: boss,
-                          type: 2,
+                          type: 41,
                           comment: "魔法",
                         }),
                       },
@@ -785,13 +730,13 @@ function genPreviewDetail(option) {
                           action: "battleSignUp",
                           week: week,
                           boss: boss,
-                          type: 3,
+                          type: 2,
                           comment: "補償",
                         }),
                       },
                     },
                   ],
-                  backgroundColor: "#00EC00",
+                  backgroundColor: "#BBFFBB",
 
                   paddingAll: "5px",
                 },
@@ -811,7 +756,7 @@ function genPreviewDetail(option) {
                       },
                     },
                   ],
-                  backgroundColor: "#9F5000",
+                  backgroundColor: "#B87070",
                   paddingAll: "5px",
                 },
               ],
@@ -834,7 +779,7 @@ function genPreviewDetail(option) {
                           action: "battleSignUp",
                           week: week,
                           boss: boss,
-                          type: 1,
+                          type: 32,
                           damage: `${hp}`,
                           comment: "物理一刀殺",
                         }),
@@ -858,7 +803,7 @@ function genPreviewDetail(option) {
                           action: "battleSignUp",
                           week: week,
                           boss: boss,
-                          type: 1,
+                          type: 42,
                           damage: `${hp}`,
                           comment: "魔法一刀殺",
                         }),
@@ -937,6 +882,14 @@ function getStatusText(status) {
       return "補償";
     case 3:
       return "凱留";
+    case 31:
+      return "物理";
+    case 32:
+      return "物一刀";
+    case 41:
+      return "魔法";
+    case 42:
+      return "法一刀";
     default:
       return "其他";
   }
