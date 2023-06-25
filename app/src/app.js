@@ -22,7 +22,6 @@ const FriendCardController = require("./controller/princess/FriendCard");
 const ChatLevelController = require("./controller/application/ChatLevelController");
 const BattleReportController = require("./controller/princess/BattleReportController");
 const ArenaContoroller = require("./controller/princess/ArenaController");
-const GuildController = require("./controller/application/GuildController");
 const WorldBossController = require("./controller/application/WorldBossController");
 const GuildServiceController = require("./controller/application/GuildServiceController");
 const AdvertisementController = require("./controller/application/AdvertisementController");
@@ -298,8 +297,6 @@ function GroupOrder(context) {
 
   return [
     text(/^[#.]?(群組(設定|狀態|管理)|groupconfig)$/, groupTemplate.showGroupStatus),
-    text(/^[#.]?(隊長綁定|iamleader)$/, GuildController.leaderBinding),
-    text(/^[#.]?(戰隊狀態|guildstatus)$/, GuildController.showClanInfo),
     text(/^[#./]group$/, groupTemplate.showGroupConfig),
   ];
 }
