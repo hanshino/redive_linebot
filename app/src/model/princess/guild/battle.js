@@ -270,5 +270,8 @@ function doPost(path, data) {
     .then(json => {
       CustomLogger.info(`result: ${JSON.stringify(json)}`);
       return json;
+    })
+    .catch(err => {
+      CustomLogger.error(err);
     });
 }

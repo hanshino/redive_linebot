@@ -18,11 +18,9 @@ const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
 const { showAnnounce } = require("./controller/princess/announce");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const { showSchedule } = require("./controller/princess/schedule");
-const FriendCardController = require("./controller/princess/FriendCard");
 const ChatLevelController = require("./controller/application/ChatLevelController");
 const BattleReportController = require("./controller/princess/BattleReportController");
 const ArenaContoroller = require("./controller/princess/ArenaController");
-const GuildController = require("./controller/application/GuildController");
 const WorldBossController = require("./controller/application/WorldBossController");
 const GuildServiceController = require("./controller/application/GuildServiceController");
 const AdvertisementController = require("./controller/application/AdvertisementController");
@@ -220,11 +218,6 @@ async function OrderBased(context, { next }) {
             "green"
           ),
           commonTemplate.genLinkBubble(
-            "🗃️公主小卡",
-            `${liffUri}?reactRedirectUri=/Princess/Profile`,
-            "green"
-          ),
-          commonTemplate.genLinkBubble(
             "📢訂閱系統",
             `${liffUri}?reactRedirectUri=/Bot/Notify`,
             "green"
@@ -298,8 +291,6 @@ function GroupOrder(context) {
 
   return [
     text(/^[#.]?(群組(設定|狀態|管理)|groupconfig)$/, groupTemplate.showGroupStatus),
-    text(/^[#.]?(隊長綁定|iamleader)$/, GuildController.leaderBinding),
-    text(/^[#.]?(戰隊狀態|guildstatus)$/, GuildController.showClanInfo),
     text(/^[#./]group$/, groupTemplate.showGroupConfig),
   ];
 }
@@ -378,7 +369,6 @@ function PrincessInformation(context) {
   if (context.state.guildConfig.PrincessInformation === "N") return [];
 
   return [
-    text(/^[#.](好友小卡|加我好友)$/, FriendCardController.showCard),
     text(/^[#.]官方公告$/, showAnnounce),
     text(/^[#.]?(官方活動|公主活動|公主行事曆)/, showSchedule),
     text(/^#(前作|前作劇情|公連歌曲|前作個人劇情)/, sendPreWorkMessage),

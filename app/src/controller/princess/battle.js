@@ -14,8 +14,7 @@ const Stages = [
   { stage: 1, min: 1, max: 3 },
   { stage: 2, min: 4, max: 10 },
   { stage: 3, min: 11, max: 30 },
-  { stage: 4, min: 31, max: 38 },
-  { stage: 5, min: 39, max: 999 },
+  { stage: 4, min: 31, max: 999 },
 ];
 
 function BattleException(message, code) {
@@ -116,23 +115,20 @@ async function getIanUserId(context) {
  * @param {Number} boss
  */
 function genPreivewData(records, boss) {
+  const retriveCount = (status, boss) => {
+    return records.filter(
+      record => (record.boss === undefined || record.boss == boss) && record.status == status
+    ).length;
+  };
   let temp = {
     Boss: boss,
     TotalCount: records.filter(record => record.boss === undefined || record.boss == boss).length,
-    FullCount: records.filter(
-      record => (record.boss === undefined || record.boss == boss) && record.status == 1
-    ).length, // 正式
-    NotFullCount: records.filter(
-      record => (record.boss === undefined || record.boss == boss) && record.status == 2
-    ).length, // 補償
-    KyaryuCount: records.filter(
-      record => (record.boss === undefined || record.boss == boss) && record.status == 3
-    ).length, // 凱留刀
-    OtherCount: records.filter(
-      record =>
-        (record.boss === undefined || record.boss == boss) &&
-        [1, 2, 3].indexOf(record.status) === -1
-    ).length,
+    Counts: [
+      { status: 31, count: retriveCount(31, boss) },
+      { status: 32, count: retriveCount(32, boss) },
+      { status: 41, count: retriveCount(41, boss) },
+      { status: 42, count: retriveCount(42, boss) },
+    ],
   };
 
   return temp;
@@ -208,9 +204,7 @@ exports.BattleSignUp = async (context, props) => {
       stage: getStageByWeek(parseInt(week)),
     });
   } catch (e) {
-    if (e.name === "GuildBattle") {
-      context.replyText(e.message);
-    } else throw e; // keep throw
+    return context.replyText("報名失敗，請稍後再試");
   }
 };
 
@@ -312,6 +306,14 @@ function getStatusText(status) {
       return "補償";
     case 3:
       return "凱留";
+    case 31:
+      return "物理";
+    case 32:
+      return "物一刀";
+    case 41:
+      return "魔法";
+    case 42:
+      return "法一刀";
     case 21:
       return "完成";
     default:

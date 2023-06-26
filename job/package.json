@@ -16,17 +16,17 @@
     "axios": "^0.27.2",
     "cheerio": "^1.0.0-rc.12",
     "config": "^3.3.9",
-    "cron": "^2.3.0",
-    "knex": "^2.4.1",
+    "cron": "^2.3.1",
+    "knex": "^2.4.2",
     "lodash": "^4.17.21",
-    "log4js": "^6.8.0",
+    "log4js": "^6.9.1",
     "minimist": "^1.2.8",
     "moment": "^2.29.4",
-    "mysql2": "^2.3.3",
+    "mysql2": "^3.4.1",
     "redis": "^3.1.2"
   },
   "devDependencies": {
-    "dotenv": "^16.0.3",
-    "nodemon": "^2.0.20"
+    "dotenv": "^16.3.1",
+    "nodemon": "^2.0.22"
   }
 }
