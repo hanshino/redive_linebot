@@ -13,7 +13,7 @@
     "knex": "knex"
   },
   "dependencies": {
-    "@sentry/node": "^7.56.0",
+    "@sentry/node": "^7.57.0",
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "axios": "0.27.2",
