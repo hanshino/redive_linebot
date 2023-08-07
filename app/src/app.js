@@ -9,6 +9,7 @@ const guildConfig = require("./controller/application/GroupConfig");
 const setProfile = require("./middleware/profile");
 const statistics = require("./middleware/statistics");
 const alias = require("./middleware/alias");
+const rateLimit = require("./middleware/rateLimit");
 const lineEvent = require("./controller/lineEvent");
 const welcome = require("./templates/common/welcome");
 const commonTemplate = require("./templates/common");
@@ -408,6 +409,7 @@ async function App(context) {
     config, // 設置群組設定檔
     transfer, // Discord Webhook轉發
     HandlePostback, // 處理postback事件
+    rateLimit, // 限制使用者指令速度
     alias,
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
