@@ -106,6 +106,14 @@ async function buy(context, props) {
       .from(ScratchCard.table);
 
     const actualCostGodStone = card.price * affectedRows;
+
+    const { amount: ownCostGodStone } = await Inventory.getUserMoney(userId);
+    const exceptCostGodStone = card.price * count;
+
+    if (exceptCostGodStone > ownCostGodStone) {
+      throw new Error("Not Enough Money");
+    }
+
     await Inventory.decreaseGodStone({
       userId,
       amount: actualCostGodStone,
