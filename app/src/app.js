@@ -1,7 +1,6 @@
 const { router, text, route } = require("bottender/router");
 // eslint-disable-next-line no-unused-vars
 const { chain, withProps, Context } = require("bottender");
-const character = require("./controller/princess/character");
 const gacha = require("./controller/princess/gacha");
 const battle = require("./controller/princess/battle");
 const customerOrder = require("./controller/application/CustomerOrder");
@@ -16,9 +15,7 @@ const commonTemplate = require("./templates/common");
 const config = require("./middleware/config");
 const groupTemplate = require("./templates/application/Group/line");
 const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
-const { showAnnounce } = require("./controller/princess/announce");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
-const { showSchedule } = require("./controller/princess/schedule");
 const ChatLevelController = require("./controller/application/ChatLevelController");
 const BattleReportController = require("./controller/princess/BattleReportController");
 const ArenaContoroller = require("./controller/princess/ArenaController");
@@ -45,7 +42,6 @@ const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
 const { showManagePlace } = require("./templates/application/Admin");
-const { sendPreWorkMessage } = require("./templates/princess/other");
 const { pushMessage } = require("./util/LineNotify");
 const AdminModel = require("./model/application/Admin");
 const axios = require("axios");
@@ -130,10 +126,8 @@ async function OrderBased(context, { next }) {
   return router([
     ...BattleOrder(context),
     ...(isAdmin ? AdminOrder(context) : []),
-    ...CharacterOrder(context),
     ...CustomerOrder(context),
     ...GroupOrder(context),
-    ...PrincessInformation(context),
     ...ArenaContoroller.router(context),
     ...WorldBossController.router,
     ...GuildServiceController.router,
@@ -346,33 +340,6 @@ function BattleOrder(context) {
 
       return context.replyFlex("刀軸轉換按鈕", bubble);
     }),
-  ];
-}
-
-function CharacterOrder(context) {
-  if (context.state.guildConfig.PrincessCharacter === "N") return [];
-
-  return [
-    text(/^[#./]角色資訊(\s(?<character>[\s\S]+))?$/, character.getInfo),
-    text(/^[#./]角色技能(\s(?<character>[\s\S]+))?$/, character.getSkill),
-    text(/^[#./](角色)?行動(模式)?(\s(?<character>[\s\S]+))?$/, character.getAction),
-    text(/^[#./](角色)?專武(資訊)?(\s(?<character>[\s\S]+))?$/, character.getUniqueEquip),
-    text(/^[#./](角色)?裝備(需求)?(\s(?<character>[\s\S]+))?$/, character.getEquipRequire),
-    text(/^[#./](公主|角色)(\s(?<character>[\s\S]+))?$/, character.getCharacter),
-    text(/^[#./](戳)(\s(?<character>[\s\S]+))?$/, character.pingCharacter),
-    text(/^[#.](角色)?rank(推薦)?(\s(?<character>[\s\S]+))?$/, context =>
-      context.replyText("此功能暫時廢棄，重建中！")
-    ),
-  ];
-}
-
-function PrincessInformation(context) {
-  if (context.state.guildConfig.PrincessInformation === "N") return [];
-
-  return [
-    text(/^[#.]官方公告$/, showAnnounce),
-    text(/^[#.]?(官方活動|公主活動|公主行事曆)/, showSchedule),
-    text(/^#(前作|前作劇情|公連歌曲|前作個人劇情)/, sendPreWorkMessage),
   ];
 }
 

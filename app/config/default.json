@@ -26,6 +26,7 @@
   "worldboss": {
     "daily_limit": 10,
     "penalty_rate": 0.1,
+    "free_attack_times": 2,
     "chaos_attack_rate": [
       {
         "min": 80,
@@ -83,7 +84,7 @@
       }
     ],
     "money_attack_cost": 300,
-    "money_chaos_attack_cost": 1000,
+    "money_chaos_attack_cost": 2000,
     "manual": [
       "每日可挑戰次數：10次",
       "每日可免費三次使用課金相關攻擊",
