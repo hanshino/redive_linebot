@@ -452,7 +452,7 @@ const attackOnBoss = async (context, props) => {
     const needMoney = moneyMap[attackType];
     // 看今天打幾次了，前三次可以免除消耗
     const todayLogs = await worldBossEventLogService.getTodayLogs(id);
-    const hasFreeQuota = todayLogs.length < 3;
+    const hasFreeQuota = todayLogs.length < config.get("worldboss.free_attack_times");
 
     // 如果沒有免費次數，且用戶沒有足夠的金錢，則不處理
     if (hasFreeQuota === false && userOwnMoney < needMoney) {

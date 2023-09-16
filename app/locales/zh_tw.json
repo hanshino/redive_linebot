@@ -74,7 +74,7 @@
     "world_boss": {
       "can_not_attack": "{{{ name }}} 攻擊失敗\n攻擊冷卻中 或是 已經達到最大攻擊次數",
       "request_too_quickly": "偵測到你的攻擊速度過快，請稍後再試",
-      "money_attack_free": "免費課金之力加成（當日前三次免費）",
+      "money_attack_free": "免費課金之力加成（當日前兩次免費）",
       "money_attack_not_enough": [
         "自分にもっと力があれば結果は変わった...",
         "我還需要更多的力量..."
