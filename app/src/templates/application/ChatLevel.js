@@ -154,10 +154,10 @@ exports.showTopRank = (context, { rankData, sendType }) => {
   let message = sendType === "text" ? genTextTopRank(rankData) : genTextTopRank(rankData);
 
   if (sendType === "text") {
-    context.replyText(message);
+    context.quoteReply(message);
   }
 
-  context.replyText("為減少伺服器負擔，此訊息一分鐘只能查一次！");
+  context.quoteReply("為減少伺服器負擔，此訊息一分鐘只能查一次！");
 };
 
 /**

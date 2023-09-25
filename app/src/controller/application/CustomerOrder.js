@@ -119,10 +119,10 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
 
     CustomerOrderModel.insertOrder(params);
 
-    context.replyText(`${order} 新增成功`);
+    context.quoteReply(`${order} 新增成功`);
   } catch (e) {
     if (e.name === "CusOrderException") {
-      context.replyText(e.message);
+      context.quoteReply(e.message);
     } else {
       // keep throw
       throw e;
@@ -262,7 +262,7 @@ exports.deleteCustomerOrder = async (context, { match }) => {
         0
       );
 
-      context.replyText(`"${order}"刪除成功！`);
+      context.quoteReply(`"${order}"刪除成功！`);
       return;
     }
 
@@ -270,7 +270,7 @@ exports.deleteCustomerOrder = async (context, { match }) => {
     CustomerOrderTemplate[context.platform].showDeleteOption(context, deleteOrders);
   } catch (e) {
     if (e.name === "CusOrderException") {
-      context.replyText(e.message);
+      context.quoteReply(e.message);
     } else throw e;
   }
 };

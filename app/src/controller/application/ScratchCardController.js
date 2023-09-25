@@ -47,7 +47,7 @@ async function showUnused(context) {
   const cards = await ScratchCard.fetchMyUnusedCards(userId);
 
   if (cards.length === 0) {
-    return await context.replyText("窩沒有刮刮卡了", { sender });
+    return await context.quoteReply("窩沒有刮刮卡了", { sender });
   }
 
   const group = groupBy(cards, ({ reward, name }) => `${reward},${name}`);
@@ -75,21 +75,21 @@ async function buy(context, props) {
   const { name, count = 1 } = props.match.groups;
   const card = await ScratchCard.fetchByName(name);
   if (!card) {
-    return await context.replyText("沒有這張刮刮卡");
+    return await context.quoteReply("沒有這張刮刮卡");
   }
 
   const { amount: ownCostGodStone } = await Inventory.getUserMoney(userId);
   const exceptCostGodStone = card.price * count;
 
   if (exceptCostGodStone > ownCostGodStone) {
-    return await context.replyText("窩的錢錢不夠QQ", { sender });
+    return await context.quoteReply("窩的錢錢不夠QQ", { sender });
   }
 
   const unusedCard = await ScratchCard.fetchRandomCards(card.id, count);
   const cardIds = unusedCard.map(c => c.id);
 
   if (cardIds.length === 0) {
-    return await context.replyText("購買失敗，刮刮卡庫存不足");
+    return await context.quoteReply("購買失敗，刮刮卡庫存不足");
   }
 
   const trx = await ScratchCard.transaction();
@@ -124,10 +124,10 @@ async function buy(context, props) {
   } catch (error) {
     await trx.rollback();
     console.log(error);
-    return await context.replyText("購買失敗", { sender });
+    return await context.quoteReply("購買失敗", { sender });
   }
 
-  await context.replyText("購買成功", { sender });
+  await context.quoteReply("購買成功", { sender });
 }
 
 exports.exchange = exchange;
@@ -147,7 +147,7 @@ async function exchange(context, { payload }) {
 
   const cards = await ScratchCard.fetchMyUnusedCards(userId);
   if (cards.length === 0) {
-    return await context.replyText("窩沒有刮刮卡了", { sender });
+    return await context.quoteReply("窩沒有刮刮卡了", { sender });
   }
 
   // 計算總共可以兌換多少女神石
@@ -175,7 +175,7 @@ async function exchange(context, { payload }) {
     throw e;
   }
 
-  await context.replyText(`YA~我獲得了 ${totalGodStone} 個女神石`, { sender });
+  await context.quoteReply(`YA~我獲得了 ${totalGodStone} 個女神石`, { sender });
 }
 
 exports.api.list = async (req, res) => {

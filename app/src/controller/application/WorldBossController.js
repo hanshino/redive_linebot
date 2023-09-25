@@ -53,12 +53,12 @@ async function attack(context, { attackType = "normal" }) {
   });
 
   if (!isSet) {
-    context.replyText(i18n.__("message.world_boss.request_too_quickly"));
+    context.quoteReply(i18n.__("message.world_boss.request_too_quickly"));
     return;
   }
 
   if (!eventId) {
-    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
+    context.quoteReply(i18n.__("message.world_boss_event_no_ongoing"));
   }
 
   return await attackOnBoss(context, {
@@ -149,10 +149,10 @@ async function worldRank(context) {
 
   // 多起世界事件正在舉行中
   if (events.length > 1) {
-    context.replyText(i18n.__("message.world_boss_event_multiple_ongoing"));
+    context.quoteReply(i18n.__("message.world_boss_event_multiple_ongoing"));
     return;
   } else if (events.length === 0) {
-    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
+    context.quoteReply(i18n.__("message.world_boss_event_no_ongoing"));
     return;
   }
 
@@ -167,7 +167,7 @@ async function worldRank(context) {
     })
   );
 
-  context.replyText(JSON.stringify(topTenData));
+  context.quoteReply(JSON.stringify(topTenData));
 }
 
 /**
@@ -189,10 +189,10 @@ async function adminAttack(context, props) {
 
   // 多起世界事件正在舉行中
   if (events.length > 1) {
-    context.replyText(i18n.__("message.world_boss_event_multiple_ongoing"));
+    context.quoteReply(i18n.__("message.world_boss_event_multiple_ongoing"));
     return;
   } else if (events.length === 0) {
-    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
+    context.quoteReply(i18n.__("message.world_boss_event_no_ongoing"));
     return;
   }
 
@@ -205,7 +205,7 @@ async function adminAttack(context, props) {
 
   // 如果已經完成，則不能攻擊
   if (hasCompleted) {
-    context.replyText(i18n.__("message.world_boss_event_completed"));
+    context.quoteReply(i18n.__("message.world_boss_event_completed"));
     return;
   }
 
@@ -218,7 +218,7 @@ async function adminAttack(context, props) {
   };
   await worldBossEventLogService.create(attributes);
 
-  context.replyText(i18n.__("message.admin_attack_on_world_boss", { damage }));
+  context.quoteReply(i18n.__("message.admin_attack_on_world_boss", { damage }));
 }
 
 /**
@@ -231,7 +231,7 @@ async function all(context) {
       ["end_time", ">", new Date()],
     ],
   });
-  context.replyText(JSON.stringify(data));
+  context.quoteReply(JSON.stringify(data));
 }
 
 /**
@@ -239,7 +239,7 @@ async function all(context) {
  */
 async function bosslist(context) {
   const data = await worldBossModel.all();
-  context.replyText(JSON.stringify(data));
+  context.quoteReply(JSON.stringify(data));
 }
 
 /**
@@ -251,10 +251,10 @@ async function bossEvent(context) {
 
   // 多起世界事件正在舉行中
   if (events.length > 1) {
-    context.replyText(i18n.__("message.world_boss_event_multiple_ongoing"));
+    context.quoteReply(i18n.__("message.world_boss_event_multiple_ongoing"));
     return;
   } else if (events.length === 0) {
-    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
+    context.quoteReply(i18n.__("message.world_boss_event_no_ongoing"));
     return;
   }
 
@@ -360,7 +360,7 @@ exports.adminSpecialAttack = async (context, { payload }) => {
   };
   await worldBossEventLogService.create(attributes);
 
-  context.replyText(`造成了 ${causeDamage} 傷害`, {
+  context.quoteReply(`造成了 ${causeDamage} 傷害`, {
     sender: {
       name: "エリス",
       iconUrl:
@@ -396,7 +396,7 @@ const attackOnBoss = async (context, props) => {
     );
 
     if (context.event.isText) {
-      context.replyText(
+      context.quoteReply(
         i18n.__("message.world_boss.can_not_attack", {
           name: displayName,
         })
@@ -440,7 +440,7 @@ const attackOnBoss = async (context, props) => {
     DefaultLogger.info(`no level data ${userId}. Create One.`);
     await minigameService.createByUserId(userId, minigameService.defaultData);
     levelData = minigameService.defaultData;
-    !keepMessage && context.replyText(i18n.__("message.minigame_level_not_found"));
+    !keepMessage && context.quoteReply(i18n.__("message.minigame_level_not_found"));
   }
 
   if (["money", "moneyChaos"].includes(attackType)) {
@@ -458,7 +458,7 @@ const attackOnBoss = async (context, props) => {
     if (hasFreeQuota === false && userOwnMoney < needMoney) {
       if (context.event.isText) {
         const message = sample(i18n.__("message.world_boss.money_attack_not_enough"));
-        context.replyText(message, {
+        context.quoteReply(message, {
           sender: {
             iconUrl: pictureUrl,
             name: displayName,
@@ -470,7 +470,7 @@ const attackOnBoss = async (context, props) => {
 
     if (hasFreeQuota) {
       DefaultLogger.info(`today attack ${todayLogs.length} times, skip money cost`);
-      context.replyText(i18n.__("message.world_boss.money_attack_free"));
+      context.quoteReply(i18n.__("message.world_boss.money_attack_free"));
     } else {
       await Inventory.decreaseGodStone({
         userId,
@@ -512,7 +512,7 @@ const attackOnBoss = async (context, props) => {
   });
 
   if (newLevelData.levelUp && !keepMessage) {
-    context.replyText(
+    context.quoteReply(
       i18n.__("message.minigame_level_up", { level: newLevelData.newLevel, displayName })
     );
   }
@@ -547,7 +547,7 @@ const attackOnBoss = async (context, props) => {
   if (keepMessage) {
     await handleKeepingMessage(worldBossEventId, context, messages.join("\n"));
   } else {
-    context.replyText(messages.join("\n"), { sender });
+    context.quoteReply(messages.join("\n"), { sender });
   }
 };
 
@@ -597,7 +597,7 @@ async function handleKeepingMessage(worldBossEventId, context, keepMessage) {
 
   if (messages.length > 0) {
     const message = messages.join("\n");
-    context.replyText(`這是目前累積至今的訊息，下一次會在 5 分鐘後發送：\n${message}`);
+    context.quoteReply(`這是目前累積至今的訊息，下一次會在 5 分鐘後發送：\n${message}`);
     context.setState({
       worldBoss: {
         lastSendTs: new Date().getTime(),

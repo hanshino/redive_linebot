@@ -239,9 +239,9 @@ async function gacha(context, { match, pickup, ensure = false }) {
 
   // 檢查是否有足夠的女神石
   if (pickup && userOwnStone < pickupCost) {
-    return context.replyText(i18n.__("message.gacha.not_enough_stone"));
+    return context.quoteReply(i18n.__("message.gacha.not_enough_stone"));
   } else if (ensure && userOwnStone < ensureCost) {
-    return context.replyText(i18n.__("message.gacha.not_enough_stone"));
+    return context.quoteReply(i18n.__("message.gacha.not_enough_stone"));
   }
 
   const queries = [];
@@ -373,7 +373,7 @@ async function gacha(context, { match, pickup, ensure = false }) {
   } catch (err) {
     await trx.rollback();
     console.log(err);
-    return context.replyText(
+    return context.quoteReply(
       i18n.__("message.error_contact_admin", {
         user_id: userId,
         error_key: "gacha_daily: transaction error when insert data",

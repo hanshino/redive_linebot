@@ -264,7 +264,7 @@ exports.showGroupConfig = context => {
     `公主查詢:${getIcon(guildConfig.PrincessCharacter)}`,
     `公主資訊:${getIcon(guildConfig.PrincessInformation)}`,
   ];
-  context.replyText(messages.join("\n"));
+  context.quoteReply(messages.join("\n"));
 
   function getIcon(isOpen) {
     return isOpen === "Y" ? "✔" : "❌";

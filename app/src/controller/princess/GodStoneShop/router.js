@@ -27,7 +27,7 @@ async function showStoneShop(context) {
     .filter(item => item);
 
   if (viewData.length === 0) {
-    return context.replyText(i18n.__("message.god_stone_shop_empty"));
+    return context.quoteReply(i18n.__("message.god_stone_shop_empty"));
   }
 
   const bubbles = viewData.map(item => GodStoneShopTemplate.genShopItem(item));
