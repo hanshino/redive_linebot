@@ -45,7 +45,7 @@ async function main(context) {
   const userHasCreatures = await creatureModel.findUserCreature(userNo);
 
   if (!userHasCreatures) {
-    context.quoteReply(i18n.__("message.creatures.not_found_to_create"));
+    context.replyText(i18n.__("message.creatures.not_found_to_create"));
     return await preCreate(context, { isNeedCheck: false });
   }
 
@@ -75,7 +75,7 @@ async function preCreate(context, { isNeedCheck = true }) {
     const userHasCreatures = await creatureModel.findUserCreature(userNo);
 
     if (userHasCreatures) {
-      await context.quoteReply(i18n.__("message.creatures.already_exists"));
+      await context.replyText(i18n.__("message.creatures.already_exists"));
       return;
     }
   }
@@ -87,7 +87,7 @@ async function preCreate(context, { isNeedCheck = true }) {
   });
 
   if (creatures.length === 0) {
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.creatures.admin_error", {
         userId: context.event.source.userId,
       })
@@ -109,7 +109,7 @@ exports.initCreate = async (context, { payload }) => {
   const userHasCreatures = await creatureModel.findUserCreature(userNo);
 
   if (userHasCreatures) {
-    await context.quoteReply(i18n.__("message.creatures.already_exists"));
+    await context.replyText(i18n.__("message.creatures.already_exists"));
     return;
   }
 
@@ -117,7 +117,7 @@ exports.initCreate = async (context, { payload }) => {
   const creature = await creatureModel.findById(creature_id);
 
   if (!creature) {
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.creatures.admin_error", {
         userId: context.event.source.userId,
       })
@@ -125,7 +125,7 @@ exports.initCreate = async (context, { payload }) => {
     return;
   }
 
-  context.quoteReply(i18n.__("message.creatures.ask_for_nickname", { name: creature.name }));
+  context.replyText(i18n.__("message.creatures.ask_for_nickname", { name: creature.name }));
   context.setState({
     creature: {
       isCreating: true,
@@ -143,7 +143,7 @@ async function confirmCreate(context) {
   const { text: nickname } = context.event.message;
 
   if (hasSpace(nickname)) {
-    await context.quoteReply(i18n.__("message.creatures.nickname_has_space"));
+    await context.replyText(i18n.__("message.creatures.nickname_has_space"));
     return;
   }
 
@@ -151,21 +151,21 @@ async function confirmCreate(context) {
 
   const userHasCreatures = await creatureModel.findUserCreature(userNo);
   if (userHasCreatures) {
-    await context.quoteReply(i18n.__("message.creatures.already_exists"));
+    await context.replyText(i18n.__("message.creatures.already_exists"));
     clearState(context);
     return;
   }
 
   const creatureId = get(context.state, "creature.creatureId");
   if (!creatureId) {
-    await context.quoteReply(i18n.__("message.creatures.admin_error"));
+    await context.replyText(i18n.__("message.creatures.admin_error"));
     clearState(context);
     return;
   }
 
   const creature = await creatureModel.findById(creatureId);
   if (!creature) {
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.creatures.admin_error", {
         userId: context.event.source.userId,
       })
@@ -187,7 +187,7 @@ async function confirmCreate(context) {
     items: [quickReplies.yes, quickReplies.no],
   };
 
-  await context.quoteReply(
+  await context.replyText(
     i18n.__("message.creatures.ask_for_nickname_confirm", {
       name: creature.name,
       nickname,
@@ -211,13 +211,13 @@ async function create(context) {
 
   if (denyText.includes(text)) {
     clearState(context);
-    context.quoteReply(i18n.__("message.creatures.create_user_cancel"));
+    context.replyText(i18n.__("message.creatures.create_user_cancel"));
     return;
   }
 
   const creature = await creatureModel.findById(creatureId);
   if (!allowText.includes(text)) {
-    context.quoteReply(
+    context.replyText(
       i18n.__("message.creatures.ask_for_nickname_confirm", {
         name: get(creature, "name", ""),
         nickname,
@@ -233,12 +233,12 @@ async function create(context) {
   });
 
   if (!id) {
-    context.quoteReply(i18n.__("message.creatures.admin_error"));
+    context.replyText(i18n.__("message.creatures.admin_error"));
     clearState(context);
     return;
   }
 
-  await context.quoteReply(
+  await context.replyText(
     i18n.__("message.creatures.create_success", {
       name: get(creature, "name", ""),
       nickname,
@@ -272,7 +272,7 @@ exports.useFood = async (context, { payload }) => {
   const creature = await creatureModel.findUserCreature(userNo);
 
   if (!creature) {
-    await context.quoteReply(i18n.__("message.creatures.not_found"));
+    await context.replyText(i18n.__("message.creatures.not_found"));
     return;
   }
 
@@ -297,7 +297,7 @@ exports.useFood = async (context, { payload }) => {
     trx.commit();
   } catch (e) {
     console.error(e);
-    await context.quoteReply(i18n.__("message.creatures.admin_error"));
+    await context.replyText(i18n.__("message.creatures.admin_error"));
     trx.rollback();
     return;
   }

@@ -29,7 +29,7 @@ async function list(context) {
   const data = await advModel.findUserAdvancementsByPlatformId(userId);
 
   if (data.length === 0) {
-    return context.quoteReply(i18n.__("message.advancement.no_data"));
+    return context.replyText(i18n.__("message.advancement.no_data"));
   }
 
   const rows = data.map(item => {
@@ -62,7 +62,7 @@ async function adminList(context) {
   let page = 1;
 
   if (args.help || args.h) {
-    return context.quoteReply(i18n.__("message.advancement.list_usage"));
+    return context.replyText(i18n.__("message.advancement.list_usage"));
   }
 
   if (args.page) {
@@ -109,7 +109,7 @@ async function adminList(context) {
     config
   );
 
-  return context.quoteReply(messages);
+  return context.replyText(messages);
 }
 
 /**
@@ -120,7 +120,7 @@ async function adminAdd(context) {
   const args = minimist(context.event.message.text.split(" "));
 
   if (args.help || args.h) {
-    return context.quoteReply(i18n.__("message.advancement.add_usage"));
+    return context.replyText(i18n.__("message.advancement.add_usage"));
   }
 
   const ajv = new Ajv();
@@ -165,15 +165,15 @@ async function adminAdd(context) {
   const valid = validate(attributes);
   if (!valid) {
     DefaultLogger.warn("管理員新增成就錯誤", validate.errors);
-    return context.quoteReply(i18n.__("message.advancement.add_invalid_bad_request"));
+    return context.replyText(i18n.__("message.advancement.add_invalid_bad_request"));
   }
 
   const result = await advModel.create(attributes);
 
   if (result) {
-    return context.quoteReply(i18n.__("message.advancement.add_success", { name: attributes.name }));
+    return context.replyText(i18n.__("message.advancement.add_success", { name: attributes.name }));
   } else {
-    return context.quoteReply(i18n.__("message.advancement.add_fail"));
+    return context.replyText(i18n.__("message.advancement.add_fail"));
   }
 }
 
@@ -183,16 +183,16 @@ async function adminAttach(context) {
   const mentionees = get(mention, "mentionees", []);
 
   if (args.help || args.h) {
-    return context.quoteReply(i18n.__("message.advancement.attach_usage"));
+    return context.replyText(i18n.__("message.advancement.attach_usage"));
   }
 
   const advId = get(args, "_.2", null);
   if (!isNumber(advId)) {
-    return context.quoteReply(i18n.__("message.advancement.attach_usage"));
+    return context.replyText(i18n.__("message.advancement.attach_usage"));
   }
 
   if (mentionees.length === 0) {
-    return context.quoteReply(i18n.__("message.advancement.attach_no_mention"));
+    return context.replyText(i18n.__("message.advancement.attach_no_mention"));
   }
 
   const userIds = mentionees.map(item => item.userId);
@@ -200,13 +200,13 @@ async function adminAttach(context) {
 
   if (result) {
     const { name } = await advModel.find(advId);
-    return context.quoteReply(
+    return context.replyText(
       i18n.__("message.advancement.attach_success", {
         players: userIds.length,
         name,
       })
     );
   } else {
-    return context.quoteReply(i18n.__("message.advancement.attach_fail"));
+    return context.replyText(i18n.__("message.advancement.attach_fail"));
   }
 }

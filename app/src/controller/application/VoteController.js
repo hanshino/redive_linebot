@@ -25,17 +25,17 @@ async function commandShowVote(context) {
   const args = minimist(context.event.message.text.split(" "));
 
   if (args.h || args.help) {
-    return context.quoteReply(i18n.__("message.vote.help"));
+    return context.replyText(i18n.__("message.vote.help"));
   }
 
   const ids = get(args, "ids", "").split(",");
   if (ids.length === 0) {
-    return context.quoteReply(i18n.__("message.vote.help"));
+    return context.replyText(i18n.__("message.vote.help"));
   }
 
   const votes = await VoteModel.getAllById(ids);
   if (votes.length === 0) {
-    return context.quoteReply(i18n.__("message.vote.notFound"));
+    return context.replyText(i18n.__("message.vote.notFound"));
   }
 
   const voteList = votes.map(vote => VoteTemplate.generateVote(vote));
@@ -57,13 +57,13 @@ async function show(context, props) {
   const vote = await VoteModel.find(voteId);
 
   if (!vote) {
-    return context.quoteReply(i18n.__("message.vote.notFound"));
+    return context.replyText(i18n.__("message.vote.notFound"));
   }
 
   // 檢查是否在舉辦時間內
   const isHolding = await getIsHolding(voteId);
   if (!isHolding) {
-    return context.quoteReply(i18n.__("message.vote.notHolding"));
+    return context.replyText(i18n.__("message.vote.notHolding"));
   }
 
   context.replyFlex(vote.title, VoteTemplate.generateVote(vote));
@@ -92,7 +92,7 @@ exports.decide = async (context, { payload }) => {
       },
     });
 
-    return context.quoteReply(i18n.__("message.vote.notHolding"));
+    return context.replyText(i18n.__("message.vote.notHolding"));
   }
 
   try {
@@ -116,7 +116,7 @@ exports.decide = async (context, { payload }) => {
     });
 
     if (context.event.source.type === "user") {
-      context.quoteReply(
+      context.replyText(
         i18n.__("message.vote.decided", {
           title: vote.title,
           displayName,

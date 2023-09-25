@@ -370,11 +370,7 @@ function Nothing(context) {
 async function App(context) {
   traffic.recordPeople(context);
 
-  context.quoteReply = function (...args) {
-    if (!context.event.isText) {
-      return context.reply(...args);
-    }
-
+  context.replyText = function (...args) {
     const { quoteToken } = context.event.message;
     const [text] = args;
     let replyObject = {};

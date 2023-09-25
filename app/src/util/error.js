@@ -2,7 +2,7 @@ module.exports = {
   sendError: function (context, errMsg) {
     switch (context.platform) {
       case "line":
-        context.quoteReply(errMsg);
+        context.replyText(errMsg);
         break;
       case "telegram":
         context.sendMessage(errMsg);

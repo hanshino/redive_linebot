@@ -50,7 +50,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   // 檢查是否可以使用 AI 功能, 這是避免被濫用
   const isAbleToUse = await isAbleToUseAIFeature();
   if (!isAbleToUse) {
-    await context.quoteReply("窩太累了，等等再問我吧( ˘•ω•˘ )◞");
+    await context.replyText("窩太累了，等等再問我吧( ˘•ω•˘ )◞");
     return;
   }
 
@@ -68,7 +68,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   const { finish_reason } = get(result, "0", {});
   result = finish_reason === "stop" ? result[0].text.trim() : "窩不知道( ˘•ω•˘ )◞";
   await recordSession(sourceId, `小助理:${result}`);
-  await context.quoteReply(result);
+  await context.replyText(result);
 };
 
 /**

@@ -15,7 +15,7 @@ async function godStone(context) {
   const { userId } = context.event.source;
   const { amount = 0 } = await inventoryModel.getUserMoney(userId);
 
-  context.quoteReply(i18n.__("message.user_own_god_stone", { god_stone: amount }));
+  context.replyText(i18n.__("message.user_own_god_stone", { god_stone: amount }));
 }
 
 /**
@@ -26,7 +26,7 @@ async function ownCharacter(context) {
   const { userId } = context.event.source;
   const result = await inventoryModel.getAllUserOwn(userId);
 
-  context.quoteReply(
+  context.replyText(
     i18n.__("message.user_own_character_count", { character_count: result.length })
   );
 }
