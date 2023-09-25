@@ -191,7 +191,8 @@
     },
     "image": {
       "upload_start": "準備接收圖片，請直接上傳圖片",
-      "upload_failed": "上傳圖片失敗，請重新上傳",
+      "upload_failed": "上傳圖片失敗，請確認是否針對圖片回覆！",
+      "upload_without_quote": "請直接針對要上傳得圖片回覆 `#圖片上傳`",
       "upload_success": "上傳圖片成功\n圖片編號 {{ id }}\n圖片網址 {{{ url }}}"
     },
     "creatures": {
