@@ -234,7 +234,7 @@ module.exports = {
 
       const desc = sample(comments.map(c => c.description));
 
-      context.replyText(desc.replace(/\\n/g, "\n"), {
+      context.quoteReply(desc.replace(/\\n/g, "\n"), {
         sender: {
           name: data.Name,
           iconUrl: data.HeadImage,

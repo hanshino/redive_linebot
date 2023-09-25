@@ -8,7 +8,7 @@ exports.showUploadInfo = (context, info) => {
     `右方：${info.right.team.map(char => char.name).join(" ")} *${isSuccess[info.right.result]}*`
   );
 
-  context.replyText(messages.join("\n"));
+  context.quoteReply(messages.join("\n"));
 };
 /**
  * 詢問是否繼續操作
@@ -135,7 +135,7 @@ exports.askContinue = context => {
 
 exports.showSearchNoneData = (context, searchTeam) => {
   context.replyFlex("查無結果", genSearchCover(searchTeam));
-  context.replyText("很抱歉，查無此陣容的解法！");
+  context.quoteReply("很抱歉，查無此陣容的解法！");
 };
 
 /**

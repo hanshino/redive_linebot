@@ -36,7 +36,7 @@ async function trade(context) {
   const mentionees = get(mention, "mentionees", []);
 
   if (mentionees.length === 0) {
-    return context.replyText(i18n.__("message.trade.no_mention"));
+    return context.quoteReply(i18n.__("message.trade.no_mention"));
   }
 
   const targetUserId = get(mentionees, "[0].userId");
@@ -45,7 +45,7 @@ async function trade(context) {
 
   const { displayName } = await getProfile(context, targetUserId);
 
-  context.replyText(i18n.__("message.trade.apply", { displayName }));
+  context.quoteReply(i18n.__("message.trade.apply", { displayName }));
   await context.replyFlex("交易申請", bubble);
 }
 
@@ -71,16 +71,16 @@ async function transferMoney(context) {
   const param = removeOrder(trimText);
 
   if (mentionees.length !== 1) {
-    return context.replyText(i18n.__("message.trade.mention_invalid"));
+    return context.quoteReply(i18n.__("message.trade.mention_invalid"));
   }
 
   const targetId = get(mentionees, "0.userId");
   if (param.length === 0 || !isMoneyParam(param)) {
-    return context.replyText(i18n.__("message.trade.transfer_money_invalid"));
+    return context.quoteReply(i18n.__("message.trade.transfer_money_invalid"));
   }
 
   if (!isLineUserId(targetId)) {
-    return context.replyText(i18n.__("message.trade.mention_invalid"));
+    return context.quoteReply(i18n.__("message.trade.mention_invalid"));
   }
 
   const { amount } = await inventoryModel.getUserMoney(userId);
@@ -88,7 +88,7 @@ async function transferMoney(context) {
   const transferMoney = parseInt(param);
 
   if (transferMoney > ownMoney) {
-    return context.replyText(i18n.__("message.trade.transfer_money_not_enough"));
+    return context.quoteReply(i18n.__("message.trade.transfer_money_not_enough"));
   }
 
   const targetUserName = getMentionName(rawText, get(mentionees, "0"));
@@ -109,7 +109,7 @@ async function transferMoney(context) {
     transferId,
     targetName: targetUserName,
   });
-  context.replyText(
+  context.quoteReply(
     i18n.__("message.trade.transfer_money_established", {
       time: config.get("trade.transfer_countdown") + "秒",
       displayName,
@@ -138,7 +138,7 @@ function doFastTransfer(context) {
   const trimText = trimMentionees(rawText, mentionees);
 
   if (mentionees.length !== 1) {
-    return context.replyText(i18n.__("message.trade.mention_invalid"));
+    return context.quoteReply(i18n.__("message.trade.mention_invalid"));
   }
 
   const targetId = get(mentionees, "0.userId");
@@ -146,11 +146,11 @@ function doFastTransfer(context) {
   const param = removeOrder(trimText);
 
   if (param.length === 0 || !isMoneyParam(param)) {
-    return context.replyText(i18n.__("message.trade.transfer_money_invalid"));
+    return context.quoteReply(i18n.__("message.trade.transfer_money_invalid"));
   }
 
   if (!isLineUserId(targetId)) {
-    return context.replyText(i18n.__("message.trade.mention_invalid"));
+    return context.quoteReply(i18n.__("message.trade.mention_invalid"));
   }
 
   const transferMoney = parseInt(param);
@@ -197,7 +197,7 @@ const doTransfer = async (context, { payload }) => {
   if (amount > parseInt(ownMoney)) {
     // 餘額不足，刪除此次轉帳交易
     removeTransfer(transferId);
-    return context.replyText(i18n.__("message.trade.transfer_money_not_enough"));
+    return context.quoteReply(i18n.__("message.trade.transfer_money_not_enough"));
   }
 
   const result = await inventoryModel.transferGodStone({
@@ -207,11 +207,11 @@ const doTransfer = async (context, { payload }) => {
   });
 
   if (!result) {
-    return context.replyText(i18n.__("message.trade.transfer_money_failed"));
+    return context.quoteReply(i18n.__("message.trade.transfer_money_failed"));
   }
 
   removeTransfer(transferId);
-  context.replyText(
+  context.quoteReply(
     i18n.__("message.trade.transfer_money_success", {
       displayName,
       targetDisplayName: targetName,

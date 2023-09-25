@@ -3,7 +3,7 @@ const i18n = require("../../../util/i18n");
 const format = require("date-format");
 
 exports.sendSignFeedback = (context, template, data, sender) => {
-  return context.replyText(assemble(data, template), { sender });
+  return context.quoteReply(assemble(data, template), { sender });
 };
 
 exports.showBattleList = (context, data) => {

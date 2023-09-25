@@ -24,7 +24,7 @@ async function addAdvertisement(context) {
   const strMessage = match ? match[0] : "";
 
   if (!strMessage) {
-    await context.replyText(i18n.__("message.advertisement.add_usage"));
+    await context.quoteReply(i18n.__("message.advertisement.add_usage"));
     return;
   }
 
@@ -40,7 +40,7 @@ async function addAdvertisement(context) {
 
   const ad = await adModel.findLatestByTitle(title);
 
-  await context.replyText(
+  await context.quoteReply(
     i18n.__("message.advertisement.add_success", {
       title: ad.title,
       id: ad.id,

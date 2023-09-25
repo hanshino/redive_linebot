@@ -40,7 +40,7 @@ exports.showStatus = async (context, props) => {
     pictureUrl = pictureUrl || "https://i.imgur.com/NMl4z2u.png";
 
     if (!userId || !displayName) {
-      context.replyText("獲取失敗，無法辨識用戶");
+      context.quoteReply("獲取失敗，無法辨識用戶");
       throw "userId or displayName is empty";
     }
 
@@ -209,7 +209,7 @@ exports.showStatus = async (context, props) => {
 
     const isSelf = context.event.source.userId === userId;
     if (!level && isSelf) {
-      context.replyText("尚未有任何數據，經驗開始累積後即可投胎！");
+      context.quoteReply("尚未有任何數據，經驗開始累積後即可投胎！");
     }
   } catch (e) {
     DefaultLogger.error(e);
@@ -313,7 +313,7 @@ async function getQuestInfo(userId) {
 exports.showFriendStatus = async context => {
   const { mention, text } = context.event.message;
   if (!mention) {
-    return context.replyText("請tag想要查詢的夥伴們！");
+    return context.quoteReply("請tag想要查詢的夥伴們！");
   }
   let users = mention.mentionees.map(d => ({
     ...d,
@@ -330,10 +330,10 @@ exports.showFriendStatus = async context => {
   );
 
   if (messages.length === 0) {
-    context.replyText("查詢失敗！");
+    context.quoteReply("查詢失敗！");
   } else {
     messages = [">>>查詢結果<<<", ...messages];
-    context.replyText(messages.join("\n"));
+    context.quoteReply(messages.join("\n"));
   }
 };
 
@@ -348,7 +348,7 @@ exports.setEXP = (context, { match }) => {
   console.log(userId, exp, "修改經驗");
   ChatLevelModel.setExperience(userId, exp).then(result => {
     let msg = result ? "修改成功" : "修改失敗";
-    context.replyText(msg, { sender: { name: "管理員指令" } });
+    context.quoteReply(msg, { sender: { name: "管理員指令" } });
   });
 };
 
@@ -363,7 +363,7 @@ exports.setEXPRate = (context, { match }) => {
   console.log(expRate, "修改經驗倍率");
   ChatLevelModel.setExperienceRate(expRate).then(result => {
     let msg = result ? "修改成功" : "修改失敗";
-    context.replyText(msg, { sender: { name: "管理員指令" } });
+    context.quoteReply(msg, { sender: { name: "管理員指令" } });
   });
 };
 

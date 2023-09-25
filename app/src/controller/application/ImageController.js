@@ -16,7 +16,7 @@ async function handleUpload(context) {
   const { quotedMessageId: id } = context.event.message;
 
   if (!id) {
-    return context.replyText(i18n.__("message.image.upload_without_quote"));
+    return context.quoteReply(i18n.__("message.image.upload_without_quote"));
   }
 
   try {
@@ -30,13 +30,13 @@ async function handleUpload(context) {
     const url = get(result, "data.link");
 
     if (!isImageUrl(url)) {
-      return context.replyText(i18n.__("message.image.upload_failed"));
+      return context.quoteReply(i18n.__("message.image.upload_failed"));
     }
 
     const imageUpload = get(context.state, "imageUpload", []);
     imageUpload.splice(imageUpload.indexOf(context.event.source.userId), 1);
 
-    return context.replyText(
+    return context.quoteReply(
       i18n.__("message.image.upload_success", {
         id: get(result, "data.id"),
         url,
@@ -44,6 +44,6 @@ async function handleUpload(context) {
     );
   } catch (e) {
     console.log(e);
-    return context.replyText(i18n.__("message.image.upload_failed"));
+    return context.quoteReply(i18n.__("message.image.upload_failed"));
   }
 }

@@ -216,7 +216,7 @@ exports.showInsertManual = context => {
       },
     });
   } else if (context.event.source.type !== "user") {
-    context.replyText("剛剛才發送此訊息，我才不想洗版..");
+    context.quoteReply("剛剛才發送此訊息，我才不想洗版..");
   }
 };
 
@@ -246,7 +246,7 @@ exports.showDeleteManual = context => {
       },
     });
   } else if (context.event.source.type !== "user") {
-    context.replyText("剛剛才發送此訊息，我才不想洗版..");
+    context.quoteReply("剛剛才發送此訊息，我才不想洗版..");
   }
 };
 

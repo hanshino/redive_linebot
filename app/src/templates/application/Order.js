@@ -27,7 +27,7 @@ exports.send = (context, replyDatas, sender = { name: null, iconUrl: null }) => 
           _sendImage(context, content, sender);
           return;
         case "text":
-          context.replyText(content, { sender });
+          context.quoteReply(content, { sender });
           return;
       }
     });
@@ -143,7 +143,7 @@ function _sendImage(context, url, sender) {
       context.sendPhoto(url);
       break;
     default:
-      context.replyText(url);
+      context.quoteReply(url);
       break;
   }
 }

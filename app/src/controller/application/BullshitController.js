@@ -13,7 +13,7 @@ exports.router = [
 ];
 
 async function bullshitManual(context) {
-  await context.replyText(i18n.__("message.bullshit.manual"));
+  await context.quoteReply(i18n.__("message.bullshit.manual"));
 }
 
 /**
@@ -44,7 +44,7 @@ async function bullshitGenerator(context, props) {
 
   const data = get(result, "data");
   if (!data) {
-    await context.replyText(
+    await context.quoteReply(
       i18n.__("message.bullshit.failed", {
         userId: get(context, "event.source.userId"),
       })
@@ -59,5 +59,5 @@ async function bullshitGenerator(context, props) {
     .trim()
     .replace(/<br>/g, "\n");
 
-  await context.replyText(bullshit);
+  await context.quoteReply(bullshit);
 }
