@@ -52,20 +52,20 @@ exports.reportDamage = async (context, params) => {
     }
   }
 
-  if (!formId) return context.quoteReply("取報名表異常，請通知作者");
+  if (!formId) return context.replyText("取報名表異常，請通知作者");
 
   let ianUserData = await BattleModel.getIanUserData("2", userId);
   let { ianUserId } = ianUserData[0];
   let records = await BattleModel.Ian.getUserFormRecords(formId, ianUserId);
 
   if (records.length === 0) {
-    context.quoteReply("尚未在戰隊群組內部報名過！因此找無任何紀錄！");
+    context.replyText("尚未在戰隊群組內部報名過！因此找無任何紀錄！");
     return;
   }
 
   context.setState({ ianUserId });
 
-  context.quoteReply("請選擇要回報的紀錄");
+  context.replyText("請選擇要回報的紀錄");
   BattleTemplate.showReportList(
     context,
     records.map(record => ({
@@ -79,7 +79,7 @@ exports.reportDamage = async (context, params) => {
 exports.setAllowReport = (context, params) => {
   let { recordId, week, boss } = params.match.groups;
   context.setState({ report: { recordId, week, boss } });
-  context.quoteReply(`請上傳 ${week}周 ${boss}王\n戰隊傷害報告圖片`);
+  context.replyText(`請上傳 ${week}周 ${boss}王\n戰隊傷害報告圖片`);
 };
 
 exports.personalReport = async context => {
@@ -94,7 +94,7 @@ exports.personalReport = async context => {
       message: `圖片分析系統分析失敗，訊息ID：${imageId}`,
       token: process.env.LINE_NOTIFY_TOKEN,
     });
-    return context.quoteReply(
+    return context.replyText(
       "圖片分析失敗，請確認！\n歡迎至Discord回報 https://discord.gg/Fy82rTb"
     );
   }
@@ -126,7 +126,7 @@ exports.personalReport = async context => {
   await BattleModel.Ian.setRecord(formId, week, boss, ianUserId, option);
   let flexMessage = BattleTemplate.genReportInformation({ totalDamage, team });
 
-  context.quoteReply(`已將 ${week}周 ${boss}王\n傷害紀錄上傳`);
+  context.replyText(`已將 ${week}周 ${boss}王\n傷害紀錄上傳`);
   context.replyFlex("隊伍詳細資訊", flexMessage);
 
   // 清除state 避免重複收到圖片

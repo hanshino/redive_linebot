@@ -16,7 +16,7 @@ async function guildService(context) {
   const { groupId } = context.event.source;
   const guildService = await GuildServiceModel.findByGroupId(groupId);
 
-  context.quoteReply(JSON.stringify(guildService));
+  context.replyText(JSON.stringify(guildService));
 }
 
 /**
@@ -34,23 +34,23 @@ async function addService(context) {
   const serviceName = _[1];
 
   if (!serviceName) {
-    context.quoteReply(i18n.__("message.service.add_usage"));
+    context.replyText(i18n.__("message.service.add_usage"));
     return;
   }
 
   if (!groupId) {
-    context.quoteReply(i18n.__("message.service.add_usage"));
+    context.replyText(i18n.__("message.service.add_usage"));
     return;
   }
 
   const guildServices = await GuildServiceModel.findByGroupId(groupId);
   if (guildServices.includes(serviceName)) {
-    context.quoteReply(i18n.__("message.service.already_exists", { serviceName, groupId }));
+    context.replyText(i18n.__("message.service.already_exists", { serviceName, groupId }));
     return;
   }
 
   const guild = await GuildModel.findByGroupId(groupId);
 
   await GuildServiceModel.create({ guild_id: guild.ID, service: serviceName });
-  context.quoteReply(i18n.__("message.service.add_success", { serviceName, groupId }));
+  context.replyText(i18n.__("message.service.add_success", { serviceName, groupId }));
 }

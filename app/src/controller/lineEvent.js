@@ -30,7 +30,7 @@ async function HandleMemberJoined(context) {
   const { displayName } = await LineClient.getGroupMemberProfile(groupId, userId);
   const { groupName } = await lineAPI.getGroupSummary(groupId);
 
-  context.quoteReply(
+  context.replyText(
     assemble(
       {
         username: displayName,
@@ -46,7 +46,7 @@ function HandleMemberLeft() {
 }
 
 function HandleFollow(context) {
-  context.quoteReply(`感謝加我好友，先為您提供以下功能`);
+  context.replyText(`感謝加我好友，先為您提供以下功能`);
   welcome(context);
 }
 
@@ -56,18 +56,18 @@ async function HandleJoin(context) {
     return;
   }
 
-  context.quoteReply("感謝邀請我至群組，群組初始化開始...");
+  context.replyText("感謝邀請我至群組，群組初始化開始...");
 
   const [summary, countData] = await Promise.all([
     lineAPI.getGroupSummary(context.event.source.groupId),
     lineAPI.getGroupCount(context.event.source.groupId),
   ]);
 
-  context.quoteReply(
+  context.replyText(
     `已設置好群組資訊：\n群組名稱：${summary.groupName}\n群組人數：${countData.count}`
   );
 
-  context.quoteReply("如需觀看使用說明，請輸入：#使用說明");
+  context.replyText("如需觀看使用說明，請輸入：#使用說明");
 }
 
 function HandleUnfollow(context) {

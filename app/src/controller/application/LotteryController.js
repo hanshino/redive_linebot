@@ -28,7 +28,7 @@ async function boughtList(context) {
   const lottery = await findLatestLottery();
 
   if (!lottery) {
-    await context.quoteReply(i18n.__("message.lottery.no_holding_event"));
+    await context.replyText(i18n.__("message.lottery.no_holding_event"));
     return;
   }
 
@@ -43,7 +43,7 @@ async function boughtList(context) {
   });
 
   if (orders.length === 0) {
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.lottery.no_bought_lottery", {
         displayName,
       })
@@ -78,7 +78,7 @@ async function boughtList(context) {
       lotteryId,
     });
     console.log("超過15張");
-    return await context.quoteReply(
+    return await context.replyText(
       i18n.__("message.lottery.bought_probably_over_limit", { boughtCount })
     );
   }
@@ -99,7 +99,7 @@ async function lottery(context) {
   console.log("isPublic", isPublic);
 
   if (!lottery) {
-    await context.quoteReply(i18n.__("message.lottery.no_holding_event"));
+    await context.replyText(i18n.__("message.lottery.no_holding_event"));
     return;
   }
 
@@ -148,13 +148,13 @@ async function autoBuy(context, props) {
   const costMoney = count * config.get("lottery.price");
 
   if (amount < costMoney) {
-    await context.quoteReply(i18n.__("message.lottery.manual_buy.error_not_enough_money"));
+    await context.replyText(i18n.__("message.lottery.manual_buy.error_not_enough_money"));
     return;
   }
 
   const latestLottery = await findLatestLottery();
   if (!latestLottery || latestLottery.status !== lotteryModel.status.selling) {
-    await context.quoteReply(i18n.__("message.lottery.manual_buy.error_no_lottery"));
+    await context.replyText(i18n.__("message.lottery.manual_buy.error_no_lottery"));
     return;
   }
 
@@ -194,11 +194,11 @@ async function autoBuy(context, props) {
       message += i18n.__("message.lottery.auto_buy_notify");
     }
 
-    await context.quoteReply(message);
+    await context.replyText(message);
   } catch (e) {
     await trx.rollback();
     console.error(e);
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.lottery.manual_buy.error", {
         userId,
       })
@@ -256,7 +256,7 @@ async function buy(context, props) {
 
   // 個數檢查
   if (isValidLength(numbers) === false) {
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.lottery.manual_buy.error_count", {
         max_count: limitCount,
       })
@@ -266,13 +266,13 @@ async function buy(context, props) {
 
   // 重複檢查
   if (isRepeat(numbers) === true) {
-    await context.quoteReply(i18n.__("message.lottery.manual_buy.error_repeat_number"));
+    await context.replyText(i18n.__("message.lottery.manual_buy.error_repeat_number"));
     return;
   }
 
   // 數字檢查
   if (isAllValidNumber(numbers) === false) {
-    await context.quoteReply(i18n.__("message.lottery.manual_buy.error_number_range"));
+    await context.replyText(i18n.__("message.lottery.manual_buy.error_number_range"));
     return;
   }
 
@@ -281,13 +281,13 @@ async function buy(context, props) {
   const ownMoney = parseInt(amount);
 
   if (ownMoney < price) {
-    await context.quoteReply(i18n.__("message.lottery.manual_buy.error_not_enough_money"));
+    await context.replyText(i18n.__("message.lottery.manual_buy.error_not_enough_money"));
     return;
   }
 
   const latestLottery = await findLatestLottery();
   if (!latestLottery || latestLottery.status !== lotteryModel.status.selling) {
-    await context.quoteReply(i18n.__("message.lottery.manual_buy.error_no_lottery"));
+    await context.replyText(i18n.__("message.lottery.manual_buy.error_no_lottery"));
     return;
   }
 
@@ -311,7 +311,7 @@ async function buy(context, props) {
 
     await trx.commit();
 
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.lottery.manual_buy.success", {
         displayName,
         numbers: numbers.join(","),
@@ -320,7 +320,7 @@ async function buy(context, props) {
   } catch (e) {
     await trx.rollback();
     console.error(e);
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.lottery.manual_buy.error", {
         userId,
       })

@@ -369,56 +369,6 @@ function Nothing(context) {
 
 async function App(context) {
   traffic.recordPeople(context);
-
-  context.quoteReply = function (...args) {
-    if (!context.event.isText) {
-      return context.reply(...args);
-    }
-
-    const { quoteToken } = context.event.message;
-    const [text] = args;
-    let replyObject = {};
-
-    const textType = typeof text;
-
-    if (textType === "string") {
-      replyObject = [
-        {
-          type: "text",
-          text,
-          quoteToken,
-        },
-      ];
-    } else if (Array.isArray(text)) {
-      replyObject = text.map((t, index) => {
-        let reply;
-        if (typeof t === "string") {
-          reply = {
-            type: "text",
-            text: t,
-          };
-        } else if (typeof t === "object") {
-          reply = {
-            ...t,
-          };
-        }
-
-        if (index === 0) {
-          reply.quoteToken = quoteToken;
-        }
-
-        return reply;
-      });
-    } else if (textType === "object") {
-      replyObject = {
-        ...text,
-        quoteToken,
-      };
-    }
-
-    return context.reply(replyObject);
-  };
-
   return chain([
     setProfile, // 設置各式用戶資料
     statistics, // 數據蒐集

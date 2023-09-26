@@ -20,7 +20,7 @@ async function alias(context) {
   const restStr = message.replace(get(args, "_.0"), "").trim();
 
   if (get(args, "_").length === 1) {
-    await context.quoteReply(i18n.__("message.alias.add_usage"));
+    await context.replyText(i18n.__("message.alias.add_usage"));
     return;
   }
 
@@ -28,7 +28,7 @@ async function alias(context) {
 
   await setAlias(newAlias, command);
 
-  return context.quoteReply(`${newAlias} 已經設定成 ${command}`);
+  return context.replyText(`${newAlias} 已經設定成 ${command}`);
 }
 
 async function setAlias(newAlias, command) {

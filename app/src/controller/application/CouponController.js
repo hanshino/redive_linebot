@@ -21,7 +21,7 @@ async function adminAdd(context) {
   const args = minimist(context.event.text.split(" "));
 
   if (args.h || args.help) {
-    return context.quoteReply(i18n.__("message.coupon.admin_add_usage"));
+    return context.replyText(i18n.__("message.coupon.admin_add_usage"));
   }
 
   const [code, startAt, endAt, reward] = [
@@ -39,7 +39,7 @@ async function adminAdd(context) {
     DefaultLogger.warn(
       `[CouponController.addCoupon] Validation failed: ${JSON.stringify(validate.errors)}`
     );
-    return context.quoteReply(i18n.__("message.coupon.admin_add_invalid_param"));
+    return context.replyText(i18n.__("message.coupon.admin_add_invalid_param"));
   }
 
   try {
@@ -53,10 +53,10 @@ async function adminAdd(context) {
       end_at: moment(endAt).toDate(),
     });
 
-    return context.quoteReply(i18n.__("message.coupon.admin_add_success", { id, code }));
+    return context.replyText(i18n.__("message.coupon.admin_add_success", { id, code }));
   } catch (e) {
     DefaultLogger.error(e);
-    return context.quoteReply(i18n.__("message.coupon.admin_add_failed"));
+    return context.replyText(i18n.__("message.coupon.admin_add_failed"));
   }
 }
 
@@ -69,24 +69,24 @@ async function userUse(context, props) {
   const { userId } = context.event.source;
 
   if (!userId) {
-    return context.quoteReply(i18n.__("message.user_unreconized"));
+    return context.replyText(i18n.__("message.user_unreconized"));
   }
 
   const coupon = await couponCode.findByCode(code);
 
   if (!coupon) {
-    return context.quoteReply(i18n.__("message.coupon.not_found", { code }));
+    return context.replyText(i18n.__("message.coupon.not_found", { code }));
   }
 
   const [startAt, endAt] = [moment(coupon.start_at), moment(coupon.end_at)];
   const now = moment();
 
   if (now.isBefore(startAt)) {
-    return context.quoteReply(i18n.__("message.coupon.not_yet_available", { code }));
+    return context.replyText(i18n.__("message.coupon.not_yet_available", { code }));
   }
 
   if (now.isAfter(endAt)) {
-    return context.quoteReply(i18n.__("message.coupon.expired", { code }));
+    return context.replyText(i18n.__("message.coupon.expired", { code }));
   }
 
   const records = await couponUsedHistory.all({
@@ -103,7 +103,7 @@ async function userUse(context, props) {
   });
 
   if (records.length > 0) {
-    return context.quoteReply(i18n.__("message.coupon.already_used", { code }));
+    return context.replyText(i18n.__("message.coupon.already_used", { code }));
   }
 
   try {
@@ -114,7 +114,7 @@ async function userUse(context, props) {
       coupon_code_id: coupon.id,
     });
 
-    return context.quoteReply(
+    return context.replyText(
       i18n.__("message.coupon.success", {
         code,
         reward: getRewardMessage(coupon.reward),
@@ -122,7 +122,7 @@ async function userUse(context, props) {
     );
   } catch (e) {
     DefaultLogger.error(e);
-    return context.quoteReply(
+    return context.replyText(
       i18n.__("message.coupon.failed", {
         userId,
         code,

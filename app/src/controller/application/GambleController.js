@@ -34,7 +34,7 @@ exports.adminRouter = [
  */
 async function adminNow(context) {
   const game = await getHoldingGame();
-  context.quoteReply(i18n.__("message.gamble.admin_now", game));
+  context.replyText(i18n.__("message.gamble.admin_now", game));
 }
 
 /**
@@ -47,7 +47,7 @@ async function adminAdd(context) {
   const messageLines = [];
 
   if (args.help || args.h) {
-    await context.quoteReply(i18n.__("message.gamble.add_help"));
+    await context.replyText(i18n.__("message.gamble.add_help"));
     return;
   }
 
@@ -91,13 +91,13 @@ async function adminAdd(context) {
   const valid = validate(data);
 
   if (!valid) {
-    await context.quoteReply(i18n.__("message.gamble.add_help"));
+    await context.replyText(i18n.__("message.gamble.add_help"));
     DefaultLogger.error(validate.errors);
     return;
   }
 
   if (!data.prize && !args.random && !args.r) {
-    return await context.quoteReply(i18n.__("message.gamble.add_prize_required"));
+    return await context.replyText(i18n.__("message.gamble.add_prize_required"));
   }
 
   messageLines.push(i18n.__("message.gamble.add_name_analyze_success", { name: data.name }));
@@ -135,7 +135,7 @@ async function adminAdd(context) {
     end_at: data.end,
   });
 
-  await context.quoteReply(messageLines.join("\n"));
+  await context.replyText(messageLines.join("\n"));
 }
 
 /**
@@ -147,7 +147,7 @@ async function result(context) {
   const args = minimist(context.event.message.text.split(" "));
 
   if (args.help || args.h) {
-    await context.quoteReply(i18n.__("message.gamble.result_usage"));
+    await context.replyText(i18n.__("message.gamble.result_usage"));
     return;
   }
 
@@ -184,7 +184,7 @@ async function result(context) {
   const valid = validate(data);
 
   if (!valid) {
-    await context.quoteReply(i18n.__("message.gamble.result_usage"));
+    await context.replyText(i18n.__("message.gamble.result_usage"));
     DefaultLogger.error(validate.errors);
     return;
   }
@@ -192,7 +192,7 @@ async function result(context) {
   const game = await GambleGameModel.find(data.id);
 
   if (!game) {
-    await context.quoteReply(i18n.__("message.gamble.no_game"));
+    await context.replyText(i18n.__("message.gamble.no_game"));
     return;
   }
 
@@ -225,10 +225,10 @@ async function result(context) {
     });
     purgeGame();
   } else {
-    context.quoteReply(i18n.__("message.gamble.simulate_result"));
+    context.replyText(i18n.__("message.gamble.simulate_result"));
   }
 
-  context.quoteReply(
+  context.replyText(
     i18n.__("message.gamble.result", {
       time: moment().format("YYYY-MM-DD HH:mm:ss"),
       start: get(data, "start"),
@@ -237,7 +237,7 @@ async function result(context) {
     })
   );
 
-  context.quoteReply(JSON.stringify(indexResult));
+  context.replyText(JSON.stringify(indexResult));
 }
 
 /**
@@ -248,7 +248,7 @@ async function show(context) {
   const game = await getHoldingGame();
 
   if (!game) {
-    await context.quoteReply(i18n.__("message.gamble.no_game"));
+    await context.replyText(i18n.__("message.gamble.no_game"));
     return;
   }
 
@@ -289,7 +289,7 @@ async function bet(context, props) {
   const { userId } = context.event.source;
 
   if (!game) {
-    await context.quoteReply(i18n.__("message.gamble.no_game"));
+    await context.replyText(i18n.__("message.gamble.no_game"));
     return;
   }
 
@@ -298,7 +298,7 @@ async function bet(context, props) {
   const availableOptions = get(game, "options", []);
 
   if (parseInt(option) > availableOptions.length || parseInt(option) === 0) {
-    await context.quoteReply(i18n.__("message.gamble.invalid_option"));
+    await context.replyText(i18n.__("message.gamble.invalid_option"));
     return;
   }
 
@@ -307,12 +307,12 @@ async function bet(context, props) {
   const ownStones = parseInt(get(sumResult, "amount", 0));
 
   if (usedCoins <= 0) {
-    await context.quoteReply(i18n.__("message.gamble.invalid_coins"));
+    await context.replyText(i18n.__("message.gamble.invalid_coins"));
     return;
   }
 
   if (isNull(ownStones) || usedCoins > ownStones) {
-    await context.quoteReply(i18n.__("message.gamble.not_enough_coins"));
+    await context.replyText(i18n.__("message.gamble.not_enough_coins"));
     return;
   }
 
@@ -335,13 +335,13 @@ async function bet(context, props) {
   } catch (e) {
     trx.rollback();
     DefaultLogger.error(e);
-    await context.quoteReply(i18n.__("message.gamble.bet_failed"));
+    await context.replyText(i18n.__("message.gamble.bet_failed"));
     return;
   }
 
   trx.commit();
 
-  await context.quoteReply(
+  await context.replyText(
     i18n.__("message.gamble.bet_success", {
       displayName: context.event.source.displayName,
       amount: usedCoins,

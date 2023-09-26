@@ -13,7 +13,7 @@ const { generateCard, generateEffect } = require("../../templates/application/Su
 exports.router = [
   text(/^[.#/](訂閱|sub)$/, showInformation),
   text(/^[.#/](訂閱兌換|sub-coupon)$/, context =>
-    context.quoteReply(i18n.__("message.subscribe.coupon_exchange_manual"))
+    context.replyText(i18n.__("message.subscribe.coupon_exchange_manual"))
   ),
   text(/^[.#/](訂閱兌換|sub-coupon)\s(?<serial_number>[\w-]{36})$/, subscribeCouponExchange),
 ];
@@ -67,7 +67,7 @@ async function subscribeCouponExchange(context, props) {
   }
 
   if (get(coupon, "status") === SubscribeCardCoupon.status.used) {
-    await context.quoteReply(i18n.__("message.subscribe.serial_number_used"));
+    await context.replyText(i18n.__("message.subscribe.serial_number_used"));
     return;
   }
 
@@ -78,7 +78,7 @@ async function subscribeCouponExchange(context, props) {
   });
 
   if (!card) {
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.error_contact_admin", {
         user_id: userId,
         error_key: "subscribe_card_not_found",
@@ -133,7 +133,7 @@ async function subscribeCouponExchange(context, props) {
     trx.commit();
   } catch (e) {
     trx.rollback();
-    await context.quoteReply(
+    await context.replyText(
       i18n.__("message.error_contact_admin", {
         user_id: userId,
         error_key: "subscribe_coupon_exchange",
@@ -171,7 +171,7 @@ async function subscribeCouponExchange(context, props) {
     )
   );
 
-  await context.quoteReply(messages.join("\n"));
+  await context.replyText(messages.join("\n"));
   !isContinue && (await DailyRation());
 }
 
