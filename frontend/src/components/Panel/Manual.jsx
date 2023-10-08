@@ -86,40 +86,6 @@ const TabDatas = [
     ],
   },
   {
-    key: "Princess",
-    enableScreen: ["utou", "room", "group", "external"],
-    title: "公主連結指令",
-    description: "與公主連結相關的所有指令",
-    buttons: [
-      { title: "Rank表", description: "由無羽製作的表格，提供所有角色詳細推薦表", text: "rank" },
-      { title: "模擬抽蛋", description: "自製模擬抽獎系統，每天都有一次的特別抽哦！", text: "#抽" },
-      { title: "抽蛋包包", description: "可以查看模擬抽蛋的蒐集進度！", text: "/mybag" },
-      {
-        title: "模擬抽蛋(加倍)",
-        description: "透過模擬抽蛋蒐集的女神石，可以把每日一抽的機率加倍！",
-        text: "#消耗抽",
-      },
-      {
-        title: "轉蛋兌換",
-        description: "透過模擬抽蛋蒐集的女神石，可以兌換成抽不到的角色！",
-        text: "#轉蛋商店",
-      },
-      {
-        title: "好友小卡",
-        description: "透過綁定遊戲ID，可發送好友小卡，請人加你好友！",
-        text: "#好友小卡",
-      },
-      { title: "官方公告", description: "即時獲取官方公告", text: "#官方公告" },
-      { title: "官方活動", description: "顯示目前正在舉辦的遊戲活動", text: "#公主行事曆" },
-      { title: "前作劇情", description: "觀看巴友們翻譯的前作劇情", text: "#前作劇情" },
-      { title: "角色資訊", description: "查看角色資訊", text: "#角色資訊 布丁" },
-      { title: "角色技能", description: "查看角色技能", text: "#角色技能 布丁" },
-      { title: "角色行動", description: "查看角色行動", text: "#角色行動 布丁" },
-      { title: "角色裝備", description: "查看角色裝備", text: "#角色裝備 布丁" },
-      { title: "角色", description: "查看角色", text: "#角色 布丁" },
-    ],
-  },
-  {
     key: "ChatLevel",
     enableScreen: ["utou", "room", "group", "external"],
     title: "聊天等級系統",
@@ -155,37 +121,6 @@ const TabDatas = [
       { title: "新增關鍵字指令", description: "關鍵字型指令新增", text: "#新增關鍵字指令" },
       { title: "指令列表", description: "顯示目前擁有的指令", text: ".orderlist" },
       { title: "刪除指令", description: "刪除特定指令", text: "#刪除指令" },
-    ],
-  },
-  {
-    key: "ArenaOrder",
-    enableScreen: ["utou", "external"],
-    title: "競技場指令",
-    description: "有關競技場的所有指令，可進行上傳戰報、查詢解陣配置",
-    buttons: [
-      {
-        title: "上傳戰報",
-        description: "將競技場的戰鬥結果上傳，提供其他玩家查詢",
-        text: ".arenaupload",
-      },
-      {
-        title: "解陣查詢",
-        description: "上傳競技場敵方配置，為您查詢最符合的結果",
-        text: ".arenasearch",
-      },
-    ],
-  },
-  {
-    key: "GuildBattleOrder",
-    enableScreen: ["utou", "external"],
-    title: "戰隊指令",
-    description: "此只收錄1對1聊天可使用指令，詳細戰隊指令可透過報名表查看",
-    buttons: [
-      {
-        title: "回報傷害",
-        description: "將戰鬥結果上傳，完成戰隊系統的回報",
-        text: ".formreport",
-      },
     ],
   },
 ];
