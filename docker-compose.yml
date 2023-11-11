@@ -116,18 +116,6 @@ services:
     networks:
       - bot_network
 
-  python:
-    build: ./opencv
-    networks:
-      - bot_network
-    restart: always
-    expose:
-      - 3000
-    environment:
-      PYTHON_MODE: DEBUG
-    volumes:
-      - ./opencv:/application
-
 volumes:
   dbdata:
 

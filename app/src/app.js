@@ -1,6 +1,5 @@
 const { router, text, route } = require("bottender/router");
-// eslint-disable-next-line no-unused-vars
-const { chain, withProps, Context } = require("bottender");
+const { chain, withProps } = require("bottender");
 const gacha = require("./controller/princess/gacha");
 const battle = require("./controller/princess/battle");
 const customerOrder = require("./controller/application/CustomerOrder");
@@ -17,8 +16,6 @@ const groupTemplate = require("./templates/application/Group/line");
 const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const ChatLevelController = require("./controller/application/ChatLevelController");
-const BattleReportController = require("./controller/princess/BattleReportController");
-const ArenaContoroller = require("./controller/princess/ArenaController");
 const WorldBossController = require("./controller/application/WorldBossController");
 const GuildServiceController = require("./controller/application/GuildServiceController");
 const AdvertisementController = require("./controller/application/AdvertisementController");
@@ -32,7 +29,6 @@ const VoteController = require("./controller/application/VoteController");
 const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
-const CreatureController = require("./controller/application/CreaturesController");
 const StatusController = require("./controller/application/StatusController");
 const LotteryController = require("./controller/application/LotteryController");
 const BullshitController = require("./controller/application/BullshitController");
@@ -47,7 +43,6 @@ const AdminModel = require("./model/application/Admin");
 const axios = require("axios");
 const pConfig = require("config");
 const FetchGameData = require("../bin/FetchGameData");
-const { format } = require("util");
 
 axios.defaults.timeout = 5000;
 
@@ -94,14 +89,9 @@ async function HandlePostback(context, { next }) {
       route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
       route(() => action === "vote", withProps(VoteController.decide, { payload })),
       route(
-        () => action === "initCreatureCreate",
-        withProps(CreatureController.initCreate, { payload })
-      ),
-      route(
         () => action === "confirmTransfer",
         withProps(MarketController.doTransfer, { payload })
       ),
-      route(() => action === "useFood", withProps(CreatureController.useFood, { payload })),
       route(() => action === "lottery_auto_buy", withProps(LotteryController.autoBuy, { payload })),
       route(
         () => action === "exchangeScratchCard",
@@ -128,7 +118,6 @@ async function OrderBased(context, { next }) {
     ...(isAdmin ? AdminOrder(context) : []),
     ...CustomerOrder(context),
     ...GroupOrder(context),
-    ...ArenaContoroller.router(context),
     ...WorldBossController.router,
     ...GuildServiceController.router,
     ...AdvertisementController.router,
@@ -163,20 +152,6 @@ async function OrderBased(context, { next }) {
     }),
     text("/people", function () {
       traffic.getPeopleData().then(console.table);
-    }),
-    text("/chatsession", async context => {
-      const sourceType = context.event.source.type;
-      const sourceId = context.event.source[sourceType + "Id"];
-      const key = format(pConfig.get("redis.keys.groupSession"), sourceId);
-      const records = await redis.lRange(key, 0, -1);
-      context.replyText(["近 20 筆聊天記錄", ...records].join("\n"));
-    }),
-    text("/resetchatsession", async context => {
-      const sourceType = context.event.source.type;
-      const sourceId = context.event.source[sourceType + "Id"];
-      const key = format(pConfig.get("redis.keys.groupSession"), sourceId);
-      await redis.del(key);
-      context.replyText("已清除聊天記錄");
     }),
     text(/^[.#]自訂頭像( (?<param1>\S+))?( (?<param2>\S+))?/, guildConfig.setSender),
     text(/^(#我的狀態|\/me)$/, context =>
@@ -247,23 +222,8 @@ async function OrderBased(context, { next }) {
       context.replyFlex("實用連結", carousel);
     }),
     text(".test", () => pushMessage({ message: "test", token: process.env.LINE_NOTIFY_TOKEN })),
-    ...PersonOrder(context),
     route("*", next),
   ]);
-}
-
-function PersonOrder(context) {
-  if (context.event.source.type !== "user") return [];
-  return [
-    text(/^[#.](重選報名表|formreset)$/, BattleReportController.resetGuild),
-    text(/^[#.](我要回報|formreport)(\s(?<formId>\S+))?/, BattleReportController.reportDamage),
-    text(
-      /^[#.](傷害回報|回報傷害)\s(?<recordId>\d+)\s(?<week>\d+)\s(?<boss>[1-5])$/,
-      BattleReportController.setAllowReport
-    ),
-    route(BattleReportController.isAllowPersonalReport, BattleReportController.personalReport),
-    ...CreatureController.router,
-  ];
 }
 
 function AdminOrder() {
