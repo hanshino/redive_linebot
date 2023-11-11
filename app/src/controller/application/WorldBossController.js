@@ -16,7 +16,6 @@ const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
 const LineClient = getClient("line");
-const opencvModel = require("../../model/application/OpencvModel");
 const config = require("config");
 const { get, sample } = require("lodash");
 const humanNumber = require("human-number");
@@ -264,9 +263,8 @@ async function bossEvent(context) {
     worldBossEventService.getEventBoss(eventId),
     worldBossEventLogService.getTopRank({ eventId, limit: 15 }),
   ]);
-  let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
-    eventId
-  );
+  let { total_damage: totalDamage = 0 } =
+    await worldBossEventLogService.getRemainHpByEventId(eventId);
   let remainHp = data.hp - parseInt(totalDamage || 0);
   let hasCompleted = remainHp <= 0;
 
@@ -415,9 +413,8 @@ const attackOnBoss = async (context, props) => {
   }
 
   const { name, end_time } = eventBoss;
-  let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
-    worldBossEventId
-  );
+  let { total_damage: totalDamage = 0 } =
+    await worldBossEventLogService.getRemainHpByEventId(worldBossEventId);
 
   // 如果這個活動已經結束，則不處理
   if (moment(end_time).isBefore(moment())) {
@@ -843,46 +840,6 @@ api.listAttackMessage = async (req, res) => {
     message: "success",
     data,
   });
-};
-
-/**
- * 根據事件id取得輸出排行榜的圖片
- * @param {import("express").Request} req
- * @param {import("express").Response} res
- */
-api.genTopTenRankChart = async (req, res) => {
-  const { eventId } = req.query;
-  const [rawData, bossData, { total_damage: totalDamage }] = await Promise.all([
-    worldBossEventLogService.getTopTen(eventId),
-    worldBossEventService.getBossInformation(eventId),
-    worldBossEventLogService.getRemainHpByEventId(eventId),
-  ]);
-
-  // 將排名資訊，補上用戶資訊
-  let topTenInfo = await Promise.all(
-    rawData.map(async data => {
-      let profile = await LineClient.getUserProfile(data.userId);
-      return {
-        ...data,
-        ...profile,
-      };
-    })
-  );
-
-  // 組出 python 所需的資料格式
-  const topData = topTenInfo.map((data, index) => ({
-    display_name: data.displayName || `路人${index + 1}`,
-    total_damage: parseInt(data.total_damage),
-  }));
-
-  // 呼叫 python 取得圖片
-  const imageBase64 = await opencvModel.generateRankImage({
-    top_data: topData,
-    boss: { ...bossData, caused_damage: parseInt(totalDamage) },
-  });
-
-  res.setHeader("Content-Type", "image/png");
-  res.send(Buffer.from(imageBase64, "base64"));
 };
 
 /**

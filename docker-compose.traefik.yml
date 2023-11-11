@@ -127,14 +127,6 @@ services:
       - bot_network
       - traefik
 
-  python:
-    build: ./opencv
-    networks:
-      - bot_network
-    restart: always
-    expose:
-      - 3000
-
 networks:
   traefik:
     external: true

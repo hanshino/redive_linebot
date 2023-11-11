@@ -321,8 +321,6 @@ router.get("/Announcement/:page", AnnounceController.api.queryData);
 /**
  * 小遊戲 - 世界王
  */
-// 輸出排行圖表
-router.get("/Game/World/Boss/Rank/Chart", WorldBossController.api.genTopTenRankChart);
 // 新增世界王傷害特色訊息
 router.post(
   "/Game/World/Boss/Feature/Message",
