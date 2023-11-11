@@ -49,7 +49,6 @@
 | redis      | [redis](https://hub.docker.com/_/redis)                                                | 6379   | 記憶體快取資料庫                      |
 | crontab    | [crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)       |        | `node:lts-bullseye-slim` 定時排程執行 |
 | phpmyadmin | [phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)                          | 80     | `phpmyadmin` 資料庫管理               |
-| opencv     | [opencv](https://github.com/hanshino/redive_linebot/blob/master/opencv/Dockerfile)     | 3000   | `opencv` 影像處理                     |
 
 可使用`docker-compose`指令水平擴展主程式，端看於個人硬體強度來做提升。
 
@@ -69,7 +68,6 @@
 | redis      | [redis](https://hub.docker.com/_/redis)                                                | 6379   | 記憶體快取資料庫                 |
 | crontab    | [crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)       |        | `node.js:12-alpine` 定時排程執行 |
 | phpmyadmin | [phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)                          | 8080   | `phpmyadmin` 資料庫管理          |
-| opencv     | [opencv](https://github.com/hanshino/redive_linebot/blob/master/opencv/Dockerfile)     | 3000   | `opencv` 影像處理                |
 
 ## 目前適用聊天軟體
 
@@ -135,14 +133,9 @@
 
 `make build-project`
 
-### 正式用
+### 啟動專案
 
-1. `docker-compose -f docker-compose-prod.yml up -d`
-2. 此時電腦的 **80 port** 將會開啟服務，如無固定 ip 可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
-
-### 開發用
-
-1. `docker-compose -f docker-compose-dev.yml up -d`
+1. `docker-compose up -d`
 2. 此時電腦的 **5000 port** 將會開啟服務，如無固定 ip 可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
 
 ### 額外教學 (ngrok)
