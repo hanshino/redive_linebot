@@ -180,9 +180,18 @@ async function showGachaBag(context) {
  * @param {Boolean} param1.pickup
  * @param {Boolean} param1.ensure
  */
-async function gacha(context, { match, pickup, ensure = false }) {
+async function gacha(context, { match, pickup, ensure = false, europe = false }) {
   let { tag, times = 10 } = match.groups;
   const { userId, type, groupId } = context.event.source;
+  const now = moment();
+  const month = now.month() + 1;
+  const date = now.date();
+  const isCrossYear = (month === 12 && date === 31) || (month === 1 && date === 1);
+
+  // 只有 12/31~1/1 這兩天才會開放歐洲轉蛋池
+  if (europe && !isCrossYear) {
+    return context.replyText(i18n.__("message.gacha.cross_year_only"));
+  }
 
   if (type === "group" && context.state.guildConfig.Gacha === "N") {
     DefaultLogger.info(`${userId} 在群組 ${groupId} 嘗試進行轉蛋，但該群組已關閉轉蛋功能`);
@@ -236,11 +245,14 @@ async function gacha(context, { match, pickup, ensure = false }) {
   const userOwnStone = parseInt(await GachaModel.getUserGodStoneCount(userId));
   const pickupCost = config.get("gacha.pick_up_cost");
   const ensureCost = config.get("gacha.ensure_cost");
+  const europeCost = config.get("gacha.europe_cost");
 
   // 檢查是否有足夠的女神石
   if (pickup && userOwnStone < pickupCost) {
     return context.replyText(i18n.__("message.gacha.not_enough_stone"));
   } else if (ensure && userOwnStone < ensureCost) {
+    return context.replyText(i18n.__("message.gacha.not_enough_stone"));
+  } else if (europe && userOwnStone < europeCost) {
     return context.replyText(i18n.__("message.gacha.not_enough_stone"));
   }
 
@@ -252,14 +264,33 @@ async function gacha(context, { match, pickup, ensure = false }) {
     newCharacters: [],
     repeatReward: 0,
   };
-  const dailyPool = pickup ? makePickup(filteredPool, 200) : filteredPool;
+  // const dailyPool = pickup ? makePickup(filteredPool, 200) : filteredPool;
+  const dailyPool = (() => {
+    if (pickup) {
+      return makePickup(filteredPool, 200);
+    } else if (ensure) {
+      return filteredPool;
+    } else if (europe) {
+      return filteredPool.filter(data => data.star == "3");
+    }
+    return filteredPool;
+  })();
 
   // 進行特殊費用扣除
-  if (pickup || ensure) {
-    const cost = pickup ? pickupCost : ensureCost;
-    const note = pickup
-      ? i18n.__("message.gacha.pick_up_cost_note")
-      : i18n.__("message.gacha.ensure_cost_note");
+  if (pickup || ensure || europe) {
+    let cost = 0;
+    let note = "";
+    if (pickup) {
+      cost = pickupCost;
+      note = i18n.__("message.gacha.pick_up_cost_note");
+    } else if (ensure) {
+      cost = ensureCost;
+      note = i18n.__("message.gacha.ensure_cost_note");
+    } else if (europe) {
+      cost = europeCost;
+      note = i18n.__("message.gacha.europe_cost_note");
+    }
+
     queries.push(
       inventory.knex.insert({
         userId,

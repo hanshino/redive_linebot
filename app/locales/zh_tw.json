@@ -233,11 +233,13 @@
       }
     },
     "gacha": {
-      "not_enough_stone": "女神石不足，無法進行保證抽",
+      "not_enough_stone": "女神石不足，無法花錢進行特別抽取",
       "pick_up_cost_note": "消耗抽扣除女神石",
       "ensure_cost_note": "保證抽扣除女神石",
+      "europe_cost_note": "歐洲抽扣除女神石",
       "repeat_reward_note": "重複角色女神石",
-      "new_character_note": "獲得新角色"
+      "new_character_note": "獲得新角色",
+      "cross_year_only": "現在並非活動期間"
     }
   },
   "advancement": {

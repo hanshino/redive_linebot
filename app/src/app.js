@@ -139,6 +139,9 @@ async function OrderBased(context, { next }) {
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
       gacha.play(context, { ...props, pickup: true })
     ),
+    text(/^[/#.]歐洲抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
+      gacha.play(context, { ...props, europe: true })
+    ),
     text(/^[/#.]保證抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
       withProps(gacha.play, { ...props, ensure: true })
     ),
