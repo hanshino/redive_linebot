@@ -200,6 +200,7 @@
     "user_cooldown": 1,
     "pick_up_cost": 1500,
     "ensure_cost": 3000,
+    "europe_cost": 10000,
     "silver_repeat_reward": 1,
     "gold_repeat_reward": 10,
     "rainbow_repeat_reward": 50
