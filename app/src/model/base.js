@@ -141,10 +141,9 @@ class Base {
    */
   async create(attributes = {}) {
     let data = pick(attributes, this.fillable);
-    await this.knex.insert(data);
+    const [id] = await this.knex.insert(data);
 
-    let [result] = await this.connection.queryBuilder().select(mysql.raw("LAST_INSERT_ID() as id"));
-    return result.id;
+    return id;
   }
 
   async insert(data = []) {
