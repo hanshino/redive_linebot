@@ -15,10 +15,13 @@ const { inventory: Inventory } = require("../../model/application/Inventory");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
+const { delay, random } = require("../../util/index");
 const LineClient = getClient("line");
 const config = require("config");
-const { get, sample } = require("lodash");
+const { get, sample, sortBy } = require("lodash");
 const humanNumber = require("human-number");
+const { format } = require("util");
+const { table, getBorderCharacters } = require("table");
 
 exports.router = [
   text("#冒險小卡", myStatus),
@@ -34,7 +37,133 @@ exports.router = [
     /^[.#/](混亂(攻擊|之力)|money[-_]?chaos[-_]?attack)$/,
     withProps(attack, { attackType: "moneyChaos" })
   ),
+  text("#夢幻回歸", revokeAttack),
+  text("#傷害紀錄", todayLogs),
+  text(config.get("worldboss.revoke_charm"), revokeCharm),
 ];
+
+/**
+ * 詠唱
+ * @param {import ("bottender").LineContext} context
+ */
+async function revokeCharm(context) {
+  const { userId } = context.event.source;
+  const redisKey = format(config.get("redis.keys.revokeHasCharm"), userId);
+  await redis.set(redisKey, 1, {
+    EX: 20,
+  });
+
+  DefaultLogger.info(`${userId} 已詠唱 持續 20 秒`);
+}
+
+/**
+ * 取得今日傷害紀錄
+ * @param {import ("bottender").LineContext} context
+ */
+async function todayLogs(context) {
+  const { id } = context.event.source;
+  const { quoteToken } = context.event.message;
+  const logs = await worldBossEventLogService.getTodayLogs(id);
+  const data = [
+    ["damage", "time"],
+    ...logs.map(log => [humanNumber(log.damage), moment(log.created_at).format("HH:mm:ss")]),
+  ];
+
+  const output = table(data, { border: getBorderCharacters("ramac") });
+
+  context.replyText(output, { quoteToken });
+}
+
+/**
+ * 撤回一次攻擊
+ * @param {import ("bottender").LineContext} context
+ */
+async function revokeAttack(context) {
+  const revokeCost = config.get("worldboss.money_revoke_attack_cost");
+  const today = moment().format("MMDD");
+  const { userId, id } = context.event.source;
+  const { quoteToken } = context.event.message;
+  const redisTodayHasRevokeKey = format(config.get("redis.keys.todayHasRevoke"), today, userId);
+
+  const isTodayHasRevoke = await redis.get(redisTodayHasRevokeKey);
+  if (isTodayHasRevoke) {
+    context.replyText(sample(i18n.__("message.world_boss.not_enough_power")), {
+      quoteToken,
+    });
+    return;
+  }
+
+  // 確認使用者是否有足夠的金錢
+  const { amount: userOwnMoney } = await Inventory.getUserMoney(userId);
+  if (userOwnMoney < revokeCost) {
+    context.replyText(i18n.__("message.world_boss.revoke_attack_not_enough_money"), {
+      quoteToken,
+    });
+    return;
+  }
+
+  // 確認是否已出完刀
+  const todayLogs = await worldBossEventLogService.getTodayLogs(id);
+  if (todayLogs.length !== 10) {
+    context.replyText(i18n.__("message.world_boss.revoke_attack_not_enough_times"), {
+      quoteToken,
+    });
+    return;
+  }
+
+  const messages = [];
+  const redisKey = format(config.get("redis.keys.revokeHasCharm"), userId);
+  // 給予5秒的時間詠唱，有機會可以免除花費
+  await delay(5000);
+
+  // 是否詠唱過
+  const hasCharm = await redis.get(redisKey);
+  let cost = revokeCost;
+
+  // 即使有詠唱，也有機率會詠唱失敗
+  const successSettings = [
+    {
+      rate: 80,
+      value: true,
+    },
+    {
+      rate: 20,
+      value: false,
+    },
+  ];
+  const isSuccess = random(successSettings);
+  DefaultLogger.info(`${userId} 詠唱結果 ${isSuccess ? "成功" : "失敗"}`);
+  if (hasCharm == 1 && isSuccess) {
+    cost = 0;
+    messages.push(i18n.__("message.world_boss.revoke_attack_success"));
+  }
+
+  // 扣除金錢
+  await Inventory.decreaseGodStone({
+    userId,
+    amount: cost,
+    note: "撤回攻擊",
+  });
+
+  // 取得最低的一筆攻擊紀錄
+  const sortedByDamage = sortBy(todayLogs, ["damage"]);
+  const { id: logId, damage } = sortedByDamage[0];
+
+  // 刪除最低的一筆攻擊紀錄
+  await worldBossLogModel.delete(logId);
+
+  // 回傳訊息
+  messages.push(i18n.__("message.world_boss.revoke_attack", { damage }));
+
+  messages.forEach(message => {
+    context.replyText(message, { quoteToken });
+  });
+
+  // 設定今日已經詠唱過
+  await redis.set(redisTodayHasRevokeKey, 1, {
+    EX: 86400,
+  });
+}
 
 /**
  * 指令攻擊
@@ -68,6 +197,10 @@ async function attack(context, { attackType = "normal" }) {
   });
 }
 
+/**
+ * 取得正在進行中的世界事件的 ID。
+ * @returns {string|null} 正在進行中的世界事件的 ID，若無則返回 null。
+ */
 async function getHoldingEventId() {
   // 取得正在進行中的世界事件
   const events = await worldBossEventService.getCurrentEvent();

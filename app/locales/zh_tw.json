@@ -78,7 +78,15 @@
       "money_attack_not_enough": [
         "自分にもっと力があれば結果は変わった...",
         "我還需要更多的力量..."
-      ]
+      ],
+      "revoke_attack_success": "詠唱成功！",
+      "revoke_attack_not_enough_money": "女神石不足，無法進行此動作",
+      "revoke_attack_not_enough_times": "尚未完成今日的攻擊次數，無法進行此動作",
+      "not_enough_power": [
+        "自分にもっと力があれば結果は変わった...",
+        "我還需要更多的力量..."
+      ],
+      "revoke_attack": "時間線已重置，已將今日最低的傷害 {{ damage }} 移除"
     },
     "admin_attack_on_world_boss": "創造神路過敲了一下... 造成 {{ damage }} 傷害...",
     "world_boss_event_completed": "世界王已被討伐..別再鞭屍了QwQ",
