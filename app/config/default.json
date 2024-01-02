@@ -14,7 +14,9 @@
       "adminList": "adminList",
       "gamebleGame": "gamebleGame",
       "holding_lottery": "holding_lottery",
-      "groupSession": "group:session:%s"
+      "groupSession": "group:session:%s",
+      "revokeHasCharm": "revokeHasCharm:%s",
+      "todayHasRevoke": "todayHasRevoke:%s:%s"
     },
     "prefix": {
       "alias": "alias",
@@ -85,6 +87,8 @@
     ],
     "money_attack_cost": 300,
     "money_chaos_attack_cost": 2000,
+    "money_revoke_attack_cost": 10000,
+    "revoke_charm": "隱匿於夜之黑暗，撫慰心靈的爆裂之炎，吾以幻夢之名，呼喚初晨的重生，在夢幻之境、遺落之地，引領破碎時光的歸來吧。",
     "manual": [
       "每日可挑戰次數：10次",
       "每日可免費兩次使用課金相關攻擊",
