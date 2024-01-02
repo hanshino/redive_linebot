@@ -111,6 +111,11 @@ async function revokeAttack(context) {
     return;
   }
 
+  // 完成驗證，設定今日已經詠唱過
+  await redis.set(redisTodayHasRevokeKey, 1, {
+    EX: 86400,
+  });
+
   const messages = [];
   const redisKey = format(config.get("redis.keys.revokeHasCharm"), userId);
   // 給予5秒的時間詠唱，有機會可以免除花費
@@ -157,11 +162,6 @@ async function revokeAttack(context) {
 
   messages.forEach(message => {
     context.replyText(message, { quoteToken });
-  });
-
-  // 設定今日已經詠唱過
-  await redis.set(redisTodayHasRevokeKey, 1, {
-    EX: 86400,
   });
 }
 
