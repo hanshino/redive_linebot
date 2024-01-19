@@ -92,6 +92,7 @@ async function userDecide(context, props) {
   }
 
   const messages = [
+    "[公測] 不管輸贏都不會扣除籌碼，也不會贏得籌碼，僅供測試",
     i18n.__("message.gamble.sic_bo_rolled", {
       dice1: dice[0],
       dice2: dice[1],

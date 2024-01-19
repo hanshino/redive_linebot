@@ -1,3 +1,5 @@
+const humanNumber = require("human-number");
+
 exports.generatePanel = ({ chips }) => ({
   type: "bubble",
   body: {
@@ -72,7 +74,7 @@ exports.generatePanel = ({ chips }) => ({
           },
           {
             type: "span",
-            text: ` ${chips} `,
+            text: ` ${humanNumber(chips)} `,
             weight: "bold",
             color: "#FF6513",
           },
@@ -110,6 +112,7 @@ exports.generatePanel = ({ chips }) => ({
                 option: "big",
                 chips,
               }),
+              displayText: `#猜 大 ${chips}`,
             },
           },
           {
@@ -136,6 +139,7 @@ exports.generatePanel = ({ chips }) => ({
                 option: "small",
                 chips,
               }),
+              displayText: `#猜 小 ${chips}`,
             },
           },
           {
@@ -162,6 +166,7 @@ exports.generatePanel = ({ chips }) => ({
                 option: "double",
                 chips,
               }),
+              displayText: `#猜 兩顆 ${chips}`,
             },
           },
           {
@@ -188,6 +193,7 @@ exports.generatePanel = ({ chips }) => ({
                 option: "triple",
                 chips,
               }),
+              displayText: `#猜 三顆 ${chips}`,
             },
           },
         ],
