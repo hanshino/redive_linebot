@@ -1,3 +1,10 @@
+const path = require("path");
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config({
+    path: path.resolve(__dirname, "../.env"),
+  });
+}
+
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const { bottender } = require("bottender");
