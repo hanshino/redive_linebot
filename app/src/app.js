@@ -34,6 +34,7 @@ const LotteryController = require("./controller/application/LotteryController");
 const BullshitController = require("./controller/application/BullshitController");
 const SubscribeController = require("./controller/application/SubscribeController");
 const ScratchCardController = require("./controller/application/ScratchCardController");
+const NumberController = require("./controller/application/NumberController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -97,6 +98,7 @@ async function HandlePostback(context, { next }) {
         () => action === "exchangeScratchCard",
         withProps(ScratchCardController.exchange, { payload })
       ),
+      route(() => action === "sicBoGuess", withProps(NumberController.postbackDecide, { payload })),
       route("*", next),
     ]);
   } catch (e) {
@@ -134,6 +136,7 @@ async function OrderBased(context, { next }) {
     ...BullshitController.router,
     ...SubscribeController.router,
     ...ScratchCardController.router,
+    ...NumberController.router,
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
