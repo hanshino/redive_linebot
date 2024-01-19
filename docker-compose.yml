@@ -1,52 +1,6 @@
 version: "3.5"
 services:
-  nginx:
-    image: nginx
-    env_file: ./.env
-    volumes:
-      - ./docker/config:/etc/nginx/conf.d/templates
-    ports:
-      - "5000:80"
-    networks:
-      - bot_network
-    depends_on:
-      - bot
-      - frontend
-    command: /bin/bash -c "envsubst '$$APP_DOMAIN' < /etc/nginx/conf.d/templates/redive.dev.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    environment:
-      "CHOKIDAR_USEPOLLING": "true"
-    expose:
-      - 3000
-    networks:
-      - bot_network
-    volumes:
-      - ./frontend:/app
-
-  bot:
-    build:
-      context: ./app
-      dockerfile: Dockerfile.dev
-    env_file: ./.env
-    restart: always
-    volumes:
-      - ./app:/application
-    expose:
-      - 5000
-    depends_on:
-      - mysql
-      - redis
-    networks:
-      - bot_network
-    environment:
-      - "NODE_ENV=development"
-
   mysql:
-    env_file: ./.env
     image: mysql
     volumes:
       - ./migration:/docker-entrypoint-initdb.d
@@ -56,8 +10,8 @@ services:
         volume:
           nocopy: true
     restart: always
-    expose:
-      - "${DB_PORT}"
+    ports:
+      - 3306:3306
     networks:
       - bot_network
     environment:
@@ -85,23 +39,8 @@ services:
     restart: always
     networks:
       - bot_network
-    expose:
-      - "${REDIS_PORT}"
-
-  crontab:
-    build:
-      context: ./job
-      dockerfile: Dockerfile.dev
-    networks:
-      - bot_network
-    depends_on:
-      - mysql
-      - redis
-    env_file: ./.env
-    environment:
-      - "NODE_ENV=development"
-    volumes:
-      - ./job:/script
+    ports:
+      - 6379:6379
 
   phpmyadmin:
     depends_on:
