@@ -1,7 +1,9 @@
 // Update with your config settings.
-require("dotenv").config({
-  path: "../.env",
-});
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config({
+    path: "../.env",
+  });
+}
 
 module.exports = {
   development: {
