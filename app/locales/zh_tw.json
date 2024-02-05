@@ -262,7 +262,9 @@
       "swordman_start_job_mission": "已開始進行劍士的轉職任務，限時 10 分鐘",
       "mage_start_job_mission": "已開始進行法師的轉職任務，限時 10 分鐘",
       "mage_start_job_mission_help": "那麼就先從火元素開始詠唱吧～",
-      "thief_start_job_mission": "已開始進行盜賊的轉職任務，限時 10 分鐘，請摸走三個有價值的錢包"
+      "thief_start_job_mission": "已開始進行盜賊的轉職任務，限時 10 分鐘",
+      "thief_start_job_mission_help": "那麼找出三個有價值的錢包吧～",
+      "change_job_level_limit": "至少要到達 30 等才能進行轉職"
     }
   },
   "advancement": {

@@ -119,7 +119,10 @@ exports.startThiefChangeJobMission = async function (context) {
   context.replyText(i18n.__("message.rpg.thief_start_job_mission"), {
     sender: { name: "系統提示" },
   });
-  return await context.replyFlex("盜賊轉職考驗", JobTemplate.thiefMission);
+  context.replyFlex("盜賊轉職考驗", JobTemplate.thiefMission);
+  return await context.replyText(i18n.__("message.rpg.thief_start_job_mission_help"), {
+    sender: thiefTeacher,
+  });
 };
 
 /**
@@ -361,9 +364,14 @@ async function isUserCanAcceptMission(context) {
   const { userId } = context.event.source;
   const { changeJobMission } = context.state;
 
-  const { job_class_advancement: classAdv } = await minigameService.findByUserId(userId);
+  const { job_class_advancement: classAdv, level = 0 } = await minigameService.findByUserId(userId);
   if (classAdv !== 0) {
     context.replyText(i18n.__("message.rpg.change_job_already"));
+    return false;
+  }
+
+  if (level < 30) {
+    context.replyText(i18n.__("message.rpg.change_job_level_limit"));
     return false;
   }
 
