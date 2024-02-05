@@ -102,7 +102,13 @@ module.exports = {
     };
   },
 
-  generateRuleBubble: function (rules) {
+  /**
+   * Generates a rule bubble.
+   * @param {string[]} rules
+   * @param {string} title
+   * @returns
+   */
+  generateRuleBubble: function (rules, title = "") {
     let ruleBoxes = rules.map(rule => generateRuleTextBox(rule));
     return {
       type: "bubble",
@@ -116,7 +122,7 @@ module.exports = {
             contents: [
               {
                 type: "text",
-                text: "系統說明",
+                text: title || "系統說明",
               },
               {
                 type: "box",
@@ -133,6 +139,11 @@ module.exports = {
   },
 };
 
+/**
+ * Generates a rule text box.
+ * @param {string} rule - The rule to be displayed in the text box.
+ * @returns {object} - The generated rule text box object.
+ */
 function generateRuleTextBox(rule) {
   return {
     type: "box",

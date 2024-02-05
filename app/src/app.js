@@ -35,6 +35,7 @@ const BullshitController = require("./controller/application/BullshitController"
 const SubscribeController = require("./controller/application/SubscribeController");
 const ScratchCardController = require("./controller/application/ScratchCardController");
 const NumberController = require("./controller/application/NumberController");
+const JobController = require("./controller/application/JobController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const traffic = require("./util/traffic");
@@ -99,6 +100,30 @@ async function HandlePostback(context, { next }) {
         withProps(ScratchCardController.exchange, { payload })
       ),
       route(() => action === "sicBoGuess", withProps(NumberController.postbackDecide, { payload })),
+      route(
+        () => action === "startSwordmanChangeJobMission",
+        withProps(JobController.startSwordmanJobMission, { payload })
+      ),
+      route(
+        () => action === "swordmanChangeJobMission",
+        withProps(JobController.swordmanAttackTarget, { payload })
+      ),
+      route(
+        () => action === "startMageChangeJobMission",
+        withProps(JobController.startMageChangeJobMission, { payload })
+      ),
+      route(
+        () => action === "mageChangeJobMission",
+        withProps(JobController.mageUseElement, { payload })
+      ),
+      route(
+        () => action === "startThiefChangeJobMission",
+        withProps(JobController.startThiefChangeJobMission, { payload })
+      ),
+      route(
+        () => action === "thiefChangeJobMission",
+        withProps(JobController.thiefSteal, { payload })
+      ),
       route("*", next),
     ]);
   } catch (e) {
@@ -109,10 +134,10 @@ async function HandlePostback(context, { next }) {
 
 /**
  * 基於功能指令優先辨識
- * @param {Context}
+ * @param {import("bottender").LineContext} context
  */
 async function OrderBased(context, { next }) {
-  const { userId } = context.event.source;
+  const { userId, type } = context.event.source;
   const isAdmin = userId && (await AdminModel.isAdminFromCache(userId));
 
   return router([
@@ -137,6 +162,7 @@ async function OrderBased(context, { next }) {
     ...SubscribeController.router,
     ...ScratchCardController.router,
     ...NumberController.router,
+    ...(type === "user" ? JobController.router : []),
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>

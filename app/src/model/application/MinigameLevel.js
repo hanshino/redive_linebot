@@ -10,6 +10,10 @@ exports.table = TABLE;
  * @property {Number} user_id
  * @property {Number} level
  * @property {Number} exp
+ * @property {Number} job_key
+ * @property {String} job_name
+ * @property {String} job_description
+ * @property {Number} job_class_advancement
  * @property {Date} created_at
  * @property {Date} updated_at
  */
@@ -22,7 +26,23 @@ exports.table = TABLE;
 exports.findByUserId = async userId => {
   // 先組出 從 User 表中找出 userId 的 subQuery
   const subQuery = getWhere(userId);
-  const query = mysql.from(TABLE).where({ user_id: subQuery }).first();
+  const query = mysql
+    .select({
+      id: "minigame_level.id",
+      user_id: "minigame_level.user_id",
+      level: "minigame_level.level",
+      exp: "minigame_level.exp",
+      job_key: "minigame_job.key",
+      job_name: "minigame_job.name",
+      job_description: "minigame_job.description",
+      job_class_advancement: "minigame_job.class_advancement",
+      created_at: "minigame_level.created_at",
+      updated_at: "minigame_level.updated_at",
+    })
+    .from(TABLE)
+    .where({ user_id: subQuery })
+    .first()
+    .join("minigame_job", "minigame_job.id", "=", "minigame_level.job_id");
 
   return await query;
 };
@@ -39,6 +59,14 @@ exports.updateByUserId = (userId, attributes) => {
     .where({ user_id: getWhere(userId) })
     .update(attributes);
   return query;
+};
+
+exports.changeUserJob = async (userId, jobKey) => {
+  const subQuery = getWhere(userId);
+  const query = mysql(TABLE)
+    .where({ user_id: subQuery })
+    .update({ job_id: mysql("minigame_job").where({ key: jobKey }).select("id") });
+  return await query;
 };
 
 /**
