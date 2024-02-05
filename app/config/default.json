@@ -1,4 +1,5 @@
 {
+  "defaultUserIcon": "https://i.imgur.com/SGDoCtd.png",
   "app": {
     "funds": {
       "server": 3000,

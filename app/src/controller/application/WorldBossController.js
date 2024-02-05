@@ -221,7 +221,8 @@ async function getHoldingEventId() {
  */
 async function myStatus(context) {
   const { userId, pictureUrl, displayName, id } = context.event.source;
-  const { level, exp } = await minigameService.findByUserId(userId);
+  const { level, exp, job_name, job_class_advancement } =
+    await minigameService.findByUserId(userId);
 
   const levelUnit = await minigameService.getLevelUnit();
   // 取得目前等級的經驗值需求
@@ -244,6 +245,8 @@ async function myStatus(context) {
     image: pictureUrl,
     exp,
     attackCount: todayAttackCount,
+    jobName: job_name,
+    jobAdvancement: job_class_advancement,
   };
 
   let bubbles = [
@@ -647,7 +650,7 @@ const attackOnBoss = async (context, props) => {
     );
   }
 
-  let iconUrl = templateData.icon_url || pictureUrl;
+  let iconUrl = get(templateData, "icon_url", pictureUrl);
   let messages = [
     i18n
       .__(templateData.template, {

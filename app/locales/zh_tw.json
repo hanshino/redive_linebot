@@ -251,6 +251,17 @@
       "repeat_reward_note": "重複角色女神石",
       "new_character_note": "獲得新角色",
       "cross_year_only": "現在並非活動期間"
+    },
+    "rpg": {
+      "change_job": "請選擇職業",
+      "change_job_already": "你已經通過轉職任務，無法再次轉職",
+      "swordman_job_mission_already_started": "你已經開始進行劍士的轉職任務了，時間還剩下 {{ time }} 秒",
+      "mage_job_mission_already_started": "你已經開始進行法師的轉職任務了，時間還剩下 {{ time }} 秒",
+      "thief_job_mission_already_started": "你已經開始進行盜賊的轉職任務了，時間還剩下 {{ time }} 秒",
+      "swordman_start_job_mission": "已開始進行劍士的轉職任務，限時 10 分鐘",
+      "mage_start_job_mission": "已開始進行法師的轉職任務，限時 10 分鐘",
+      "mage_start_job_mission_help": "那麼就先從火元素開始詠唱吧～",
+      "thief_start_job_mission": "已開始進行盜賊的轉職任務，限時 10 分鐘，請摸走三個有價值的錢包"
     }
   },
   "advancement": {

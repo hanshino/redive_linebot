@@ -8,6 +8,8 @@ exports.createByUserId = MinigameModel.createByUserId;
 
 exports.updateByUserId = MinigameModel.updateByUserId;
 
+exports.changeUserJob = MinigameModel.changeUserJob;
+
 exports.defaultData = { level: 1, exp: 0 };
 
 /**
