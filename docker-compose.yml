@@ -19,6 +19,7 @@ services:
       "MYSQL_USER": "${DB_USER}"
       "MYSQL_PASSWORD": "${DB_USER_PASSWORD}"
       "MYSQL_ROOT_PASSWORD": "${DB_PASSWORD}"
+      "TZ": "Asia/Taipei"
     healthcheck:
       test:
         [
