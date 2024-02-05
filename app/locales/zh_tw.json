@@ -174,7 +174,8 @@
       "admin_now": "正在舉辦的遊戲：\n{{ id }}\n{{ name }}",
       "sic_bo_rolled": "骰出了 {{ dice1 }}、{{ dice2 }}、{{ dice3 }}，總和為 {{ sum }}",
       "sic_bo_win": "你選擇的是 {{ option }}，獲得 {{ chips }} * {{ payout }} = {{ total }} 顆女神石",
-      "sic_bo_lose": "你選擇的是 {{ option }}，失去 {{ chips }} 顆女神石"
+      "sic_bo_lose": "你選擇的是 {{ option }}，失去 {{ chips }} 顆女神石",
+      "reach_daily_limit": "防賭博沉迷系統，啟動!"
     },
     "trade": {
       "no_mention": "請標記要交易的對象",

@@ -2,10 +2,14 @@ const { text } = require("bottender/router");
 const { sample, get } = require("lodash");
 const NumberTemplate = require("../../templates/application/Number");
 const i18n = require("../../util/i18n");
+const redis = require("../../util/redis");
+const { inventory } = require("../../model/application/Inventory");
+const numberGambleHistory = require("../../model/application/NumberGambleHistory");
+const moment = require("moment");
 
 exports.router = [
-  text(/^[.#/](猜大小) (?<chips>\d{1,7})$/, privateSicBoHolding),
-  text(/^[.#/](猜) (?<option>\S+) (?<chips>\d{1,7})$/, userDecide),
+  text(/^[.#/](猜大小) (?<chips>\d{1,5})$/, privateSicBoHolding),
+  text(/^[.#/](猜) (?<option>\S+) (?<chips>\d{1,5})$/, userDecide),
 ];
 
 const optionMapping = {
@@ -40,15 +44,48 @@ function searchOption(option) {
 async function userDecide(context, props) {
   const { option, chips } = props.match.groups;
   const quoteToken = get(context, "event.message.quoteToken");
+  const { userId } = context.event.source;
+  const redisKey = `number:gamble:${userId}`;
+
+  if (!userId) {
+    return;
+  }
 
   const key = searchOption(option);
   if (!key) {
-    await context.replyText("請選擇正確的選項，例如：大、小、雙、三", { quoteToken });
+    await context.replyText("請選擇正確的選項，例如：大、小、兩顆、三顆", { quoteToken });
     return;
   }
 
   if (!chips) {
     await context.replyText("請先下注", { quoteToken });
+    return;
+  }
+
+  const query = numberGambleHistory.knex
+    .where({ user_id: userId })
+    .where("created_at", ">=", moment().startOf("day").format("YYYY-MM-DD HH:mm:ss"))
+    .where("created_at", "<=", moment().endOf("day").format("YYYY-MM-DD HH:mm:ss"))
+    .count("* as count")
+    .first();
+
+  const { count: todayHistoryCount } = await query;
+
+  if (todayHistoryCount >= 10) {
+    await context.replyText(i18n.__("message.gamble.reach_daily_limit"));
+    return;
+  }
+
+  const isSuccess = await redis.set(redisKey, 1, { NX: true, EX: 10 });
+  if (!isSuccess) {
+    // 避免使用者快速下注造成 race condition issue
+    return;
+  }
+
+  const userMoney = await inventory.getUserMoney(userId);
+  if (userMoney.amount < parseInt(chips)) {
+    await unlockUser(userId);
+    await context.replyText(i18n.__("message.gamble.not_enough_coins"));
     return;
   }
 
@@ -75,7 +112,7 @@ async function userDecide(context, props) {
       break;
   }
 
-  let payout = 1;
+  let payout = 0;
   if (result) {
     switch (key) {
       case "big":
@@ -83,16 +120,15 @@ async function userDecide(context, props) {
         payout += 1;
         break;
       case "double":
-        payout += 8;
+        payout += 5;
         break;
       case "triple":
-        payout += 180;
+        payout += 24;
         break;
     }
   }
 
   const messages = [
-    "[公測] 不管輸贏都不會扣除籌碼，也不會贏得籌碼，僅供測試",
     i18n.__("message.gamble.sic_bo_rolled", {
       dice1: dice[0],
       dice2: dice[1],
@@ -104,15 +140,28 @@ async function userDecide(context, props) {
   const total = parseInt(chips) * payout;
   if (result) {
     messages.push(i18n.__("message.gamble.sic_bo_win", { option, chips, payout, total }));
+    await inventory.increaseGodStone({ userId, amount: total, note: "猜大小" });
   } else {
     messages.push(i18n.__("message.gamble.sic_bo_lose", { option, chips }));
+    await inventory.decreaseGodStone({ userId, amount: chips, note: "猜大小" });
   }
+
+  await numberGambleHistory.create({
+    user_id: userId,
+    option,
+    dices: dice.join(","),
+    chips,
+    payout,
+    result: result ? 1 : 0,
+    reward: total,
+  });
 
   const replyOption = {};
   if (quoteToken) {
     replyOption.quoteToken = quoteToken;
   }
   await context.replyText(messages.join("\n"), replyOption);
+  await unlockUser(userId);
 }
 
 /**
@@ -139,4 +188,9 @@ function rollDice(times) {
     result.push(sample(dice));
   }
   return result;
+}
+
+async function unlockUser(userId) {
+  const redisKey = `number:gamble:${userId}`;
+  return redis.del(redisKey);
 }

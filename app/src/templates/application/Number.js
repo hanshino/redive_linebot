@@ -39,13 +39,13 @@ exports.generatePanel = ({ chips }) => ({
           },
           {
             type: "text",
-            text: "● 猜其中兩顆骰子同數字，賠率8",
+            text: "● 猜其中兩顆骰子同數字，賠率5",
             size: "sm",
             color: "#666666",
           },
           {
             type: "text",
-            text: "● 猜其中三顆骰子同數字，賠率180",
+            text: "● 猜其中三顆骰子同數字，賠率24",
             size: "sm",
             color: "#666666",
           },
@@ -65,7 +65,7 @@ exports.generatePanel = ({ chips }) => ({
       {
         type: "text",
         align: "center",
-        size: "sm",
+        size: "xs",
         color: "#FF0000",
         contents: [
           {
@@ -83,6 +83,14 @@ exports.generatePanel = ({ chips }) => ({
             text: "女神石",
           },
         ],
+      },
+      {
+        type: "text",
+        align: "center",
+        text: "為避免誤觸，目前僅限定自行輸入指令\n#猜 大/小/兩顆/三顆 金額",
+        size: "xs",
+        color: "#FF0000",
+        wrap: true,
       },
       {
         type: "box",
@@ -105,15 +113,15 @@ exports.generatePanel = ({ chips }) => ({
             cornerRadius: "md",
             borderColor: "#009688",
             paddingAll: "md",
-            action: {
-              type: "postback",
-              data: JSON.stringify({
-                action: "sicBoGuess",
-                option: "big",
-                chips,
-              }),
-              displayText: `#猜 大 ${chips}`,
-            },
+            // action: {
+            //   type: "postback",
+            //   data: JSON.stringify({
+            //     action: "sicBoGuess",
+            //     option: "big",
+            //     chips,
+            //   }),
+            //   displayText: `#猜 大 ${chips}`,
+            // },
           },
           {
             type: "box",
@@ -132,15 +140,15 @@ exports.generatePanel = ({ chips }) => ({
             cornerRadius: "md",
             borderColor: "#009688",
             paddingAll: "md",
-            action: {
-              type: "postback",
-              data: JSON.stringify({
-                action: "sicBoGuess",
-                option: "small",
-                chips,
-              }),
-              displayText: `#猜 小 ${chips}`,
-            },
+            // action: {
+            //   type: "postback",
+            //   data: JSON.stringify({
+            //     action: "sicBoGuess",
+            //     option: "small",
+            //     chips,
+            //   }),
+            //   displayText: `#猜 小 ${chips}`,
+            // },
           },
           {
             type: "box",
@@ -159,15 +167,15 @@ exports.generatePanel = ({ chips }) => ({
             cornerRadius: "md",
             borderColor: "#009688",
             paddingAll: "md",
-            action: {
-              type: "postback",
-              data: JSON.stringify({
-                action: "sicBoGuess",
-                option: "double",
-                chips,
-              }),
-              displayText: `#猜 兩顆 ${chips}`,
-            },
+            // action: {
+            //   type: "postback",
+            //   data: JSON.stringify({
+            //     action: "sicBoGuess",
+            //     option: "double",
+            //     chips,
+            //   }),
+            //   displayText: `#猜 兩顆 ${chips}`,
+            // },
           },
           {
             type: "box",
@@ -186,15 +194,15 @@ exports.generatePanel = ({ chips }) => ({
             cornerRadius: "md",
             borderColor: "#009688",
             paddingAll: "md",
-            action: {
-              type: "postback",
-              data: JSON.stringify({
-                action: "sicBoGuess",
-                option: "triple",
-                chips,
-              }),
-              displayText: `#猜 三顆 ${chips}`,
-            },
+            // action: {
+            //   type: "postback",
+            //   data: JSON.stringify({
+            //     action: "sicBoGuess",
+            //     option: "triple",
+            //     chips,
+            //   }),
+            //   displayText: `#猜 三顆 ${chips}`,
+            // },
           },
         ],
         spacing: "sm",
