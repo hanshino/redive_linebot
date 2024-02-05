@@ -134,10 +134,10 @@ async function HandlePostback(context, { next }) {
 
 /**
  * 基於功能指令優先辨識
- * @param {Context}
+ * @param {import("bottender").LineContext} context
  */
 async function OrderBased(context, { next }) {
-  const { userId } = context.event.source;
+  const { userId, type } = context.event.source;
   const isAdmin = userId && (await AdminModel.isAdminFromCache(userId));
 
   return router([
@@ -162,7 +162,7 @@ async function OrderBased(context, { next }) {
     ...SubscribeController.router,
     ...ScratchCardController.router,
     ...NumberController.router,
-    ...JobController.router,
+    ...(type === "user" ? JobController.router : []),
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>
