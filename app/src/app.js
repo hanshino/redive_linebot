@@ -161,7 +161,7 @@ async function OrderBased(context, { next }) {
     ...BullshitController.router,
     ...SubscribeController.router,
     ...ScratchCardController.router,
-    ...NumberController.router,
+    // ...NumberController.router,
     ...(type === "user" ? JobController.router : []),
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
