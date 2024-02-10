@@ -15,7 +15,7 @@ exports.router = [
 const optionMapping = {
   big: ["大"],
   small: ["小"],
-  double: ["兩顆"],
+  // double: ["兩顆"],
   triple: ["三顆"],
 };
 
