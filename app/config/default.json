@@ -225,5 +225,10 @@
       "full_image": "https://chieru.hanshino.dev/assets/units/full/%s.png",
       "head_image": "https://chieru.hanshino.dev/assets/units/head/%s.png"
     }
+  },
+  "gamble": {
+    "number": {
+      "daily_limit": 100
+    }
   }
 }
