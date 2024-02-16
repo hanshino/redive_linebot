@@ -6,6 +6,7 @@ const redis = require("../../util/redis");
 const { inventory } = require("../../model/application/Inventory");
 const numberGambleHistory = require("../../model/application/NumberGambleHistory");
 const moment = require("moment");
+const config = require("config");
 
 exports.router = [
   text(/^[.#/](猜大小) (?<chips>\d{1,5})$/, privateSicBoHolding),
@@ -15,7 +16,7 @@ exports.router = [
 const optionMapping = {
   big: ["大"],
   small: ["小"],
-  // double: ["兩顆"],
+  double: ["兩顆"],
   triple: ["三顆"],
 };
 
@@ -37,8 +38,10 @@ function searchOption(option) {
  * Handles the user's decision in a game.
  * @param {Object} context - The context object.
  * @param {Object} props - The props object containing the user's decision.
- * @param {string} props.option - The user's selected option.
- * @param {string} props.chips - The amount of chips the user has bet.
+ * @param {Object} props.match - The match object containing the user's decision.
+ * @param {Object} props.match.groups - The groups object containing the user's decision.
+ * @param {string} props.match.groups.option - The user's selected option.
+ * @param {string} props.match.groups.chips - The amount of chips the user has bet.
  * @returns {Promise<void>} - A promise that resolves when the function is done.
  */
 async function userDecide(context, props) {
@@ -51,10 +54,24 @@ async function userDecide(context, props) {
     return;
   }
 
-  const key = searchOption(option);
+  // 去除掉數字的部分進行驗證
+  const key = searchOption(option.replace(/\d+/g, ""));
   if (!key) {
     await context.replyText("請選擇正確的選項，例如：大、小、兩顆、三顆", { quoteToken });
     return;
+  }
+
+  // 如果選項為兩顆，必須要有數字且介於 1~6，ex: 兩顆1, 兩顆2
+  if (key === "double") {
+    if (option.replace(/\D/g, "").length !== 1) {
+      await context.replyText("請選擇正確的選項，例如：兩顆1、兩顆2", { quoteToken });
+      return;
+    }
+
+    if (/^[1-6]$/.test(option.replace(/\D/g, "")) === false) {
+      await context.replyText("請選擇正確的範圍，僅限於 1~6", { quoteToken });
+      return;
+    }
   }
 
   if (!chips) {
@@ -71,7 +88,7 @@ async function userDecide(context, props) {
 
   const { count: todayHistoryCount } = await query;
 
-  if (todayHistoryCount >= 10) {
+  if (todayHistoryCount >= config.get("gamble.number.daily_limit")) {
     await context.replyText(i18n.__("message.gamble.reach_daily_limit"));
     return;
   }
@@ -89,12 +106,18 @@ async function userDecide(context, props) {
     return;
   }
 
-  const dice = rollDice(3);
-  const sum = dice.reduce((acc, cur) => acc + cur, 0);
+  const dices = rollDice(3);
+  const sum = dices.reduce((acc, cur) => acc + cur, 0);
   const isSmall = sum >= 3 && sum <= 10;
   const isBig = sum >= 11 && sum <= 18;
-  const isDouble = dice[0] === dice[1] || dice[0] === dice[2] || dice[1] === dice[2];
-  const isTriple = dice[0] === dice[1] && dice[0] === dice[2];
+  const isDouble = (() => {
+    if (key !== "double") {
+      return false;
+    }
+    const double = parseInt(option.replace(/\D/g, ""));
+    return dices.includes(double) && dices.filter(d => d === double).length === 2;
+  })();
+  const isTriple = dices[0] === dices[1] && dices[0] === dices[2];
 
   let result = false;
   switch (key) {
@@ -130,9 +153,9 @@ async function userDecide(context, props) {
 
   const messages = [
     i18n.__("message.gamble.sic_bo_rolled", {
-      dice1: dice[0],
-      dice2: dice[1],
-      dice3: dice[2],
+      dice1: dices[0],
+      dice2: dices[1],
+      dice3: dices[2],
       sum,
     }),
   ];
@@ -149,7 +172,7 @@ async function userDecide(context, props) {
   await numberGambleHistory.create({
     user_id: userId,
     option,
-    dices: dice.join(","),
+    dices: dices.join(","),
     chips,
     payout,
     result: result ? 1 : 0,
