@@ -23,7 +23,6 @@ async function handleUpload(context) {
     const buf = await LineClient.getMessageContent(id);
 
     const result = await imgur.upload({
-      type: "buffer",
       image: buf,
     });
 
