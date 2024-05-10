@@ -22,7 +22,7 @@
     "log4js": "^6.9.1",
     "minimist": "^1.2.8",
     "moment": "^2.29.4",
-    "mysql2": "^3.6.0",
+    "mysql2": "^3.9.7",
     "redis": "^3.1.2"
   },
   "devDependencies": {
