@@ -186,7 +186,7 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   const now = moment();
   const month = now.month() + 1;
   const date = now.date();
-  const isEventTime = month === 5 && (date >= 11 || date <= 14);
+  const isEventTime = month === 5 && (date >= 11 && date <= 15);
 
   // 只有 12/31~1/1 這兩天才會開放歐洲轉蛋池
   if (europe && !isEventTime) {
