@@ -17,7 +17,8 @@ PARENT_DIR="$(cd "${PARENT_DIR}" && cd ../ && pwd)"
 export TASK_SECTION="${1}"
 export PROJECT_NAME="${PROJECT_NAME:-}"
 
-export COMPOSE_CMD=("docker-compose")
+export DOCKER_CMD=("docker")
+export COMPOSE_CMD=("${DOCKER_CMD[@]}" "compose")
 
 if [[ ! -z "${PROJECT_NAME}" ]]; then
     COMPOSE_CMD+=("-p" "${PROJECT_NAME}")
