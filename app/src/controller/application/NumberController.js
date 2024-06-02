@@ -9,8 +9,8 @@ const moment = require("moment");
 const config = require("config");
 
 exports.router = [
-  text(/^[.#/](猜大小) (?<chips>\d{1,5})$/, privateSicBoHolding),
-  text(/^[.#/](猜) (?<option>\S+) (?<chips>\d{1,5})$/, userDecide),
+  text(/^[.#/](猜大小) (?<chips>\d{1,6})$/, privateSicBoHolding),
+  text(/^[.#/](猜) (?<option>\S+) (?<chips>\d{1,6})$/, userDecide),
 ];
 
 const optionMapping = {
