@@ -163,6 +163,7 @@ async function OrderBased(context, { next }) {
     ...ScratchCardController.router,
     ...NumberController.router,
     ...(type === "user" ? JobController.router : []),
+    ...(type === "user" ? SubscribeController.privateRouter : []),
     text(/^[/#.](使用說明|help)$/, welcome),
     text(/^[/#.]抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, gacha.play),
     text(/^[/#.]消耗抽(\*(?<times>\d+))?(\s*(?<tag>[\s\S]+))?$/, (context, props) =>

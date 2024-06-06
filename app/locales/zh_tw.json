@@ -242,7 +242,10 @@
       "effects": {
         "gacha_times": "每日單抽次數",
         "daily_ration": "每日寶石"
-      }
+      },
+      "not_enough_money": "女神石不足，無法購買月卡",
+      "buy_month_card_success": "成功購買月卡，以下是您的月卡序號，請複製再發送此訊息",
+      "give_serial_nubmer": "#訂閱兌換 {{ serial_number }}"
     },
     "gacha": {
       "not_enough_stone": "女神石不足，無法花錢進行特別抽取",
