@@ -6,8 +6,12 @@ const { CustomLogger } = require("../../util/Logger");
 const gameSqlite = require("../../model/princess/GameSqlite");
 const path = require("path");
 const { sample } = require("lodash");
-const rediveTW = require("../../util/sqlite")(path.join(process.cwd(), "assets", "redive_tw.db"));
-const rediveJP = require("../../util/sqlite")(path.join(process.cwd(), "assets", "redive_jp.db"));
+const rediveTW = require("../../util/sqlite")(
+  path.join(process.cwd(), "assets", "redive_tw.db")
+);
+const rediveJP = require("../../util/sqlite")(
+  path.join(process.cwd(), "assets", "redive_jp.db")
+);
 const config = require("config");
 const { format } = require("util");
 
@@ -16,38 +20,18 @@ const { format } = require("util");
  * @returns {Promise<{unit_id: number, unit_name: string, rarity: number}[]>}
  */
 async function getAllCharacter() {
-  const query = rediveJP("unit_profile")
-    .join("unit_rarity", "unit_profile.unit_id", "unit_rarity.unit_id")
-    .select({ unit_id: "unit_profile.unit_id" }, "unit_name")
-    .max({ rarity: "rarity" })
-    .groupBy("unit_profile.unit_id");
+  const twChatacters = await rediveTW("unit_profile").select(
+    "unit_id",
+    "unit_name"
+  );
 
-  const jpCharacters = await query;
-
-  const twChatacters = await rediveTW("unit_profile").select("unit_id", "unit_name");
-
-  const characters = jpCharacters.map(jpCharacter => {
-    // 如果有中文名稱就用中文名稱
-    const twCharacter = twChatacters.find(
-      twCharacter => twCharacter.unit_id === jpCharacter.unit_id
-    );
-    if (!twCharacter) {
-      return jpCharacter;
-    }
-
-    return {
-      ...jpCharacter,
-      unit_name: twCharacter.unit_name,
-    };
-  });
-
-  return characters;
+  return twChatacters;
 }
 
 function getCharacterByNick(nick) {
   var datas = CharacterModel.getDatas();
 
-  var result = datas.find(data => {
+  var result = datas.find((data) => {
     let aryNick =
       data.Nick === undefined || data.Nick.trim() === ""
         ? [data.Name]
@@ -66,7 +50,7 @@ function getCharacterData(name) {
   if (character === false) throw "找無此角色";
 
   var datas = CharacterModel.getDatas();
-  var result = datas.find(data => {
+  var result = datas.find((data) => {
     return data.Name == character;
   });
 
@@ -95,7 +79,7 @@ function _getCharacterInfoPara(characterData) {
 
 async function getCharacterImages() {
   const characters = await getAllCharacter();
-  return characters.map(character => {
+  return characters.map((character) => {
     const { unit_id: unitId, rarity, unit_name: unitName } = character;
     // 角色圖片編號為角色編號 + 10 * 角色稀有度(3 or 6)
     const picUnitId = unitId + (rarity === 6 ? 6 : 3) * 10;
@@ -170,7 +154,11 @@ module.exports = {
       if (Object.prototype.hasOwnProperty.call(Unique, "Name") === false)
         throw "此角色尚未擁有專屬武器";
 
-      CharacterTemplate[context.platform].showUniqEquip(context, character, Unique);
+      CharacterTemplate[context.platform].showUniqEquip(
+        context,
+        character,
+        Unique
+      );
     } catch (e) {
       CustomLogger.info(e);
       error.sendError(context, e);
@@ -186,7 +174,11 @@ module.exports = {
 
       var data = getCharacterData(character);
 
-      CharacterTemplate[context.platform].showEquipRequire(context, character, data);
+      CharacterTemplate[context.platform].showEquipRequire(
+        context,
+        character,
+        data
+      );
     } catch (e) {
       CustomLogger.info(e);
       error.sendError(context, e);
@@ -202,7 +194,11 @@ module.exports = {
 
       var data = getCharacterData(character);
 
-      CharacterTemplate[context.platform].showCharacter(context, character, data);
+      CharacterTemplate[context.platform].showCharacter(
+        context,
+        character,
+        data
+      );
     } catch (e) {
       CustomLogger.info(e);
       error.sendError(context, e);
@@ -224,7 +220,9 @@ module.exports = {
       const comments = await gameSqlite("room_unit_comments")
         .select("description")
         .union(function () {
-          this.select("description").from("unit_comments").where("unit_id", unitId);
+          this.select("description")
+            .from("unit_comments")
+            .where("unit_id", unitId);
         })
         .where({ unit_id: unitId });
 
@@ -232,7 +230,7 @@ module.exports = {
         throw `查無此角色的語音包：${character}`;
       }
 
-      const desc = sample(comments.map(c => c.description));
+      const desc = sample(comments.map((c) => c.description));
 
       context.replyText(desc.replace(/\\n/g, "\n"), {
         sender: {
@@ -247,6 +245,7 @@ module.exports = {
   },
 
   api: {
-    getCharacterImages: (req, res) => getCharacterImages().then(images => res.json(images)),
+    getCharacterImages: (req, res) =>
+      getCharacterImages().then((images) => res.json(images)),
   },
 };
