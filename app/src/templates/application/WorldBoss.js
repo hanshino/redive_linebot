@@ -2,8 +2,184 @@ const format = require("date-format");
 const i18n = require("../../util/i18n");
 const humanNumber = require("human-number");
 const config = require("config");
+const RPGCharacter = require("../../model/application/RPGCharacter");
 
-exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted = false }) => {
+const makeAttackPayload = (worldBossEventId, jobKey, skill) => ({
+  action: "worldBossAttack",
+  worldBossEventId,
+  attackType: [jobKey, skill].join("|"),
+});
+
+exports.generateAttackBubble = () => ({
+  type: "bubble",
+  body: {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "text",
+        text: "攻擊技能",
+        weight: "bold",
+        size: "xl",
+        margin: "md",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "冒險家",
+            weight: "bold",
+            size: "md",
+          },
+          {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "image",
+                url: "https://i.imgur.com/jzA0Pp9.jpeg",
+                size: "xxs",
+                align: "start",
+                action: {
+                  type: "postback",
+                  data: JSON.stringify(
+                    makeAttackPayload(
+                      1,
+                      RPGCharacter.Adventurer.key,
+                      RPGCharacter.enumSkills.STANDARD
+                    )
+                  ),
+                },
+              },
+            ],
+            spacing: "md",
+          },
+        ],
+        spacing: "sm",
+        margin: "lg",
+      },
+      {
+        type: "separator",
+        margin: "lg",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "劍士",
+            weight: "bold",
+            size: "md",
+          },
+          {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "image",
+                url: "https://i.imgur.com/oqS9wAU.jpeg",
+                size: "xxs",
+                align: "start",
+                action: {
+                  type: "postback",
+                  data: JSON.stringify(
+                    makeAttackPayload(
+                      1,
+                      RPGCharacter.Swordman.key,
+                      RPGCharacter.enumSkills.SKILL_ONE
+                    )
+                  ),
+                },
+              },
+            ],
+            spacing: "md",
+          },
+        ],
+        spacing: "sm",
+        margin: "lg",
+      },
+      {
+        type: "separator",
+        margin: "lg",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "法師",
+            weight: "bold",
+            size: "md",
+          },
+          {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "image",
+                url: "https://i.imgur.com/uZdWvhO.jpeg",
+                size: "xxs",
+                align: "start",
+                action: {
+                  type: "postback",
+                  data: JSON.stringify(
+                    makeAttackPayload(1, RPGCharacter.Mage.key, RPGCharacter.enumSkills.SKILL_ONE)
+                  ),
+                },
+              },
+            ],
+            spacing: "md",
+          },
+        ],
+        spacing: "sm",
+        margin: "lg",
+      },
+      {
+        type: "separator",
+        margin: "lg",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "盜賊",
+            weight: "bold",
+            size: "md",
+          },
+          {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "image",
+                url: "https://i.imgur.com/jGqXGTf.jpeg",
+                size: "xxs",
+                align: "start",
+                action: {
+                  type: "postback",
+                  data: JSON.stringify(
+                    makeAttackPayload(1, RPGCharacter.Thief.key, RPGCharacter.enumSkills.SKILL_ONE)
+                  ),
+                },
+              },
+            ],
+            spacing: "md",
+          },
+        ],
+        spacing: "sm",
+        margin: "lg",
+      },
+    ],
+  },
+});
+
+exports.generateBoss = ({ id, image, fullHp, currentHp }) => {
   // caclute percentage of hp and round it to 0 decimal places
   const percentage = Math.round((currentHp / fullHp) * 100);
 
@@ -54,14 +230,6 @@ exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted = false }) 
                   text: `${currentHp}`,
                   color: "#808080",
                   size: "xs",
-                  action: {
-                    type: "postback",
-                    data: JSON.stringify({
-                      action: "adminBossAttack",
-                      worldBossEventId: id,
-                      percentage: 10,
-                    }),
-                  },
                 },
                 {
                   type: "text",
@@ -69,178 +237,11 @@ exports.generateBoss = ({ id, image, fullHp, currentHp, hasCompleted = false }) 
                   color: "#808080",
                   size: "xs",
                   align: "end",
-                  action: {
-                    type: "postback",
-                    data: JSON.stringify({
-                      action: "adminBossAttack",
-                      worldBossEventId: id,
-                      percentage: 20,
-                    }),
-                  },
                 },
               ],
             },
           ],
           paddingTop: "10px",
-        },
-        {
-          type: "box",
-          layout: "vertical",
-          spacing: "md",
-          contents: [
-            {
-              type: "box",
-              layout: "horizontal",
-              contents: [
-                {
-                  type: "box",
-                  layout: "vertical",
-                  contents: [
-                    {
-                      type: "text",
-                      text: i18n.__("template.attack"),
-                      align: "center",
-                      color: hasCompleted ? "#FFFFFF" : "#808080",
-                    },
-                  ],
-                  paddingAll: "lg",
-                  cornerRadius: "lg",
-                  // 如果已完成或是沒有攻擊權限，就設為灰色
-                  backgroundColor: hasCompleted ? "#808080AC" : "#12FF3466",
-                  ...(!hasCompleted && {
-                    action: {
-                      type: "postback",
-                      data: JSON.stringify({
-                        action: "worldBossAttack",
-                        worldBossEventId: id,
-                      }),
-                    },
-                  }),
-                },
-                {
-                  type: "box",
-                  layout: "vertical",
-                  contents: [
-                    {
-                      type: "text",
-                      text: i18n.__("template.chaos_attack"),
-                      align: "center",
-                      color: hasCompleted ? "#FFFFFF" : "#808080",
-                    },
-                  ],
-                  paddingAll: "lg",
-                  cornerRadius: "lg",
-                  // 如果已完成或是沒有攻擊權限，就設為灰色
-                  backgroundColor: hasCompleted ? "#808080AC" : "#52307C66",
-                  ...(!hasCompleted && {
-                    action: {
-                      type: "postback",
-                      data: JSON.stringify({
-                        action: "worldBossAttack",
-                        worldBossEventId: id,
-                        attackType: "chaos",
-                      }),
-                    },
-                  }),
-                },
-              ],
-              spacing: "md",
-            },
-            {
-              type: "box",
-              layout: "horizontal",
-              contents: [
-                {
-                  type: "box",
-                  layout: "vertical",
-                  contents: [
-                    {
-                      type: "text",
-                      align: "center",
-                      color: "#808080",
-                      contents: [
-                        {
-                          type: "span",
-                          text: i18n.__("template.money_attack"),
-                          size: "sm",
-                        },
-                        {
-                          type: "span",
-                          text: "\n",
-                          size: "sm",
-                        },
-                        {
-                          type: "span",
-                          text: `- ${config.get("worldboss.money_attack_cost")} $`,
-                          size: "xs",
-                        },
-                      ],
-                      wrap: true,
-                    },
-                  ],
-                  paddingAll: "lg",
-                  cornerRadius: "lg",
-                  // 如果已完成或是沒有攻擊權限，就設為灰色
-                  backgroundColor: hasCompleted ? "#808080AC" : "#D4AF37",
-                  ...(!hasCompleted && {
-                    action: {
-                      type: "postback",
-                      data: JSON.stringify({
-                        action: "worldBossAttack",
-                        worldBossEventId: id,
-                        attackType: "money",
-                      }),
-                    },
-                  }),
-                },
-                {
-                  type: "box",
-                  layout: "vertical",
-                  contents: [
-                    {
-                      type: "text",
-                      align: "center",
-                      color: "#808080",
-                      contents: [
-                        {
-                          type: "span",
-                          text: i18n.__("template.money_chaos_attack"),
-                          size: "sm",
-                        },
-                        {
-                          type: "span",
-                          text: "\n",
-                          size: "sm",
-                        },
-                        {
-                          type: "span",
-                          text: `- ${config.get("worldboss.money_chaos_attack_cost")} $`,
-                          size: "xs",
-                        },
-                      ],
-                      wrap: true,
-                    },
-                  ],
-                  paddingAll: "lg",
-                  cornerRadius: "lg",
-                  // 如果已完成或是沒有攻擊權限，就設為灰色
-                  backgroundColor: hasCompleted ? "#808080AC" : "#8B0000",
-                  ...(!hasCompleted && {
-                    action: {
-                      type: "postback",
-                      data: JSON.stringify({
-                        action: "worldBossAttack",
-                        worldBossEventId: id,
-                        attackType: "moneyChaos",
-                      }),
-                    },
-                  }),
-                },
-              ],
-              spacing: "md",
-            },
-          ],
-          paddingTop: "md",
         },
       ],
       spacing: "md",

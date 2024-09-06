@@ -3,7 +3,6 @@ const { Context, getClient, withProps } = require("bottender");
 const { text } = require("bottender/router");
 const moment = require("moment");
 const ajv = require("../../util/ajv");
-const adminModel = require("../../model/application/Admin");
 const worldBossModel = require("../../model/application/WorldBoss");
 const worldBossEventService = require("../../service/WorldBossEventService");
 const worldBossEventLogService = require("../../service/WorldBossEventLogService");
@@ -12,6 +11,7 @@ const worldBossUserAttackMessageService = require("../../service/WorldBossUserAt
 const worldBossTemplate = require("../../templates/application/WorldBoss");
 const { model: worldBossLogModel } = require("../../model/application/WorldBossLog");
 const { inventory: Inventory } = require("../../model/application/Inventory");
+const { make: makeCharacter, enumSkills } = require("../../model/application/RPGCharacter");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
@@ -29,14 +29,7 @@ exports.router = [
   text(["/worldboss", "#世界王"], bossEvent),
   text("/allevent", all),
   text("/worldrank", worldRank),
-  text(/^\/(sa|systemattack)(\s(?<percentage>\d{1,2}))?$/, adminAttack),
   text(/^[.#/](攻擊|attack)$/, withProps(attack, { attackType: "normal" })),
-  text(/^[.#/](混[沌頓]攻擊|chaos[-_]?attack)$/, withProps(attack, { attackType: "chaos" })),
-  text(/^[.#/](課金(攻擊|之力)|money[-_]?attack)$/, withProps(attack, { attackType: "money" })),
-  text(
-    /^[.#/](混亂(攻擊|之力)|money[-_]?chaos[-_]?attack)$/,
-    withProps(attack, { attackType: "moneyChaos" })
-  ),
   text("#夢幻回歸", revokeAttack),
   text("#傷害紀錄", todayLogs),
   text(config.get("worldboss.revoke_charm"), revokeCharm),
@@ -307,57 +300,6 @@ async function worldRank(context) {
 
 /**
  * @param {Context} context
- * @param {import("bottender").Props} props
- */
-async function adminAttack(context, props) {
-  const { percentage } = props.match.groups;
-  const { userId } = context.event.source;
-
-  // 判斷是否為管理員
-  const isAdmin = await adminModel.isAdmin(userId);
-  if (!isAdmin) {
-    return;
-  }
-
-  // 取得正在進行中的世界事件
-  const events = await worldBossEventService.getCurrentEvent();
-
-  // 多起世界事件正在舉行中
-  if (events.length > 1) {
-    context.replyText(i18n.__("message.world_boss_event_multiple_ongoing"));
-    return;
-  } else if (events.length === 0) {
-    context.replyText(i18n.__("message.world_boss_event_no_ongoing"));
-    return;
-  }
-
-  const data = await worldBossEventService.getEventBoss(events[0].id);
-  let { total_damage: totalDamage = 0 } = await worldBossEventLogService.getRemainHpByEventId(
-    events[0].id
-  );
-  let remainHp = data.hp - parseInt(totalDamage || 0);
-  let hasCompleted = remainHp <= 0;
-
-  // 如果已經完成，則不能攻擊
-  if (hasCompleted) {
-    context.replyText(i18n.__("message.world_boss_event_completed"));
-    return;
-  }
-
-  let damage = ((parseInt(percentage) * remainHp) / 100).toFixed(0);
-  let attributes = {
-    user_id: 0, // 管理員用戶ID
-    world_boss_event_id: events[0].id,
-    action_type: "admin",
-    damage,
-  };
-  await worldBossEventLogService.create(attributes);
-
-  context.replyText(i18n.__("message.admin_attack_on_world_boss", { damage }));
-}
-
-/**
- * @param {Context} context
  */
 async function all(context) {
   const data = await worldBossEventService.all({
@@ -422,7 +364,6 @@ async function bossEvent(context) {
     ...data,
     fullHp: data.hp,
     currentHp: remainHp < 0 ? 0 : remainHp,
-    hasCompleted,
     id: eventId,
   });
 
@@ -442,7 +383,10 @@ async function bossEvent(context) {
   // 組出規則說明 bubble
   const ruleBubble = worldBossTemplate.generateRuleBubble(config.get("worldboss.manual"));
 
-  const contents = [ruleBubble, mainBubble, infoBubble, rankBubble];
+  // 取得攻擊面板
+  const attackBubble = worldBossTemplate.generateAttackBubble();
+
+  const contents = [ruleBubble, attackBubble, mainBubble, infoBubble, rankBubble];
 
   const isGroup = context.event.source.type === "group";
   const hasService = (context.state.services || []).includes("world_boss");
@@ -457,58 +401,11 @@ async function bossEvent(context) {
 }
 
 /**
- * @param {Context} context
- * @param {import("bottender").Props} props
- */
-exports.adminSpecialAttack = async (context, { payload }) => {
-  const { userId } = context.event.source;
-  const admin = await adminModel.find(userId);
-
-  if (!admin) {
-    DefaultLogger.info(`${userId} is not admin. And click admin special attack`);
-    return;
-  }
-
-  if (admin.privilege !== "9") {
-    DefaultLogger.info(
-      `${userId} is admin. And click admin special attack. But privilege insufficient`
-    );
-    return;
-  }
-
-  const { worldBossEventId, percentage } = payload;
-  const event = await worldBossEventService.getEventBoss(worldBossEventId);
-  const { hp } = event;
-
-  const causeDamage = ((parseInt(percentage) * hp) / 100).toFixed(0);
-
-  DefaultLogger.info(
-    `${userId} is admin. And click admin special attack. And cause ${causeDamage} damage`
-  );
-
-  let attributes = {
-    user_id: 0, // 管理員用戶ID
-    world_boss_event_id: worldBossEventId,
-    action_type: "admin",
-    damage: causeDamage,
-  };
-  await worldBossEventLogService.create(attributes);
-
-  context.replyText(`造成了 ${causeDamage} 傷害`, {
-    sender: {
-      name: "エリス",
-      iconUrl:
-        "https://media.discordapp.net/attachments/798811827772981268/909817378911698984/123.png",
-    },
-  });
-};
-
-/**
  * @param {import ("bottender").LineContext} context
  * @param {import("bottender").Props} props
  */
 const attackOnBoss = async (context, props) => {
-  const { worldBossEventId, attackType = "normal" } = props.payload;
+  const { worldBossEventId, attackType = "standard" } = props.payload;
   // 從事件的 source 取得用戶資料
   const { displayName, id, userId, pictureUrl } = context.event.source;
   const hasService = (context.state.services || []).includes("world_boss");
@@ -575,54 +472,30 @@ const attackOnBoss = async (context, props) => {
     levelData = minigameService.defaultData;
     !keepMessage && context.replyText(i18n.__("message.minigame_level_not_found"));
   }
-
-  if (["money", "moneyChaos"].includes(attackType)) {
-    const { amount: userOwnMoney } = await Inventory.getUserMoney(userId);
-    const moneyMap = {
-      money: config.get("worldboss.money_attack_cost"),
-      moneyChaos: config.get("worldboss.money_chaos_attack_cost"),
-    };
-    const needMoney = moneyMap[attackType];
-    // 看今天打幾次了，前三次可以免除消耗
-    const todayLogs = await worldBossEventLogService.getTodayLogs(id);
-    const hasFreeQuota = todayLogs.length < config.get("worldboss.free_attack_times");
-
-    // 如果沒有免費次數，且用戶沒有足夠的金錢，則不處理
-    if (hasFreeQuota === false && userOwnMoney < needMoney) {
-      if (context.event.isText) {
-        const message = sample(i18n.__("message.world_boss.money_attack_not_enough"));
-        context.replyText(message, {
-          sender: {
-            iconUrl: pictureUrl,
-            name: displayName,
-          },
-        });
-      }
-      return;
-    }
-
-    if (hasFreeQuota) {
-      DefaultLogger.info(`today attack ${todayLogs.length} times, skip money cost`);
-      context.replyText(i18n.__("message.world_boss.money_attack_free"));
-    } else {
-      await Inventory.decreaseGodStone({
-        userId,
-        amount: needMoney,
-        note: "課金攻擊",
-      });
-    }
-  }
-
-  const { level } = levelData;
+  const { level, job_key: jobKey } = levelData;
+  const rpgCharacter = makeCharacter(jobKey, { level });
 
   // 新增對 boss 攻擊紀錄
-  let damage = calculateDamage(level, attackType);
+  let damage = rpgCharacter.getStandardDamage(); // 預設使用基礎攻擊
+  let cost = 10; // 預設消耗的扣打
+  const [attackJobKey, attackSkill] = attackType.split("|");
+
+  if (attackJobKey !== rpgCharacter.key) {
+    // 如果攻擊職業不同，則不處理
+    return;
+  }
+
+  if (attackSkill === enumSkills.SKILL_ONE) {
+    damage = rpgCharacter.getSkillOneDamage();
+    cost = rpgCharacter.skillOne.cost;
+  }
 
   let attributes = {
     user_id: id,
     world_boss_event_id: worldBossEventId,
-    action_type: "normal",
+    action_type: attackType,
     damage,
+    cost,
   };
   await worldBossEventLogService.create(attributes);
 
@@ -650,6 +523,10 @@ const attackOnBoss = async (context, props) => {
     );
   }
 
+  // 獲取今日花費 cost 並且在訊息中提示
+  const { totalCost: todayCost } = await worldBossEventLogService.getTodayCost(id);
+  const dailyLimit = config.get("worldboss.daily_limit");
+
   let iconUrl = get(templateData, "icon_url", pictureUrl);
   let messages = [
     i18n
@@ -659,7 +536,7 @@ const attackOnBoss = async (context, props) => {
         display_name: displayName,
         boss_name: eventBoss.name,
       })
-      .trim(),
+      .trim() + `\n_目前 cost: ${todayCost}/${dailyLimit}_`,
   ];
   let sender = { name: displayName.substr(0, 20), iconUrl };
 
@@ -764,9 +641,9 @@ async function isUserCanAttack(userId) {
     return true;
   }
 
-  let currentCount = todayLogs.length;
-  let canAttack = currentCount < config.get("worldboss.daily_limit");
-  console.log(`${userId} can attack ${canAttack}, currentCount ${currentCount}`);
+  let currentCost = todayLogs.reduce((acc, log) => acc + get(log, "cost", 0), 0);
+  let canAttack = currentCost < config.get("worldboss.daily_limit");
+  console.log(`${userId} can attack ${canAttack}, currentCost ${currentCost}`);
 
   // 不管是否可以攻擊，都要更新 redis 的資料
   await redis.set(key, 1, {
@@ -774,70 +651,6 @@ async function isUserCanAttack(userId) {
     NX: true,
   });
   return canAttack;
-}
-
-/**
- * 透過等級計算攻擊傷害
- * @param {Number} level 等級
- * @param {String} attackType 攻擊類型
- * @returns {Number} 攻擊傷害
- */
-function calculateDamage(level = 1, attackType = "normal") {
-  // 根據等級計算攻擊傷害，攻擊係數呈指數增加
-  // 等級也具有基礎傷害，所以等級越高，傷害越高，使用等級 * 10 當作基底傷害
-  // 最後再加上隨機值，避免每次都是同一個傷害
-  let damage = getStandardDamage(level) + Math.floor(Math.random() * level);
-  let rateConfig = { min: 100, max: 100 };
-
-  switch (attackType) {
-    case "chaos": {
-      rateConfig = getRandomConfigByRandomStack(config.get("worldboss.chaos_attack_rate"));
-      break;
-    }
-    case "money": {
-      rateConfig = getRandomConfigByRandomStack(config.get("worldboss.money_attack_rate"));
-      break;
-    }
-    case "moneyChaos": {
-      rateConfig = getRandomConfigByRandomStack(config.get("worldboss.money_chaos_attack_rate"));
-      break;
-    }
-    default:
-      break;
-  }
-
-  const { min, max } = rateConfig;
-  let bonus = Math.floor(Math.random() * (max - min + 1)) + min;
-  DefaultLogger.info(`${attackType} bonus ${bonus} original damage ${damage}`);
-  damage = (damage * bonus) / 100;
-  DefaultLogger.info(`${attackType} bonus ${bonus} final damage ${damage}`);
-
-  return Math.round(damage);
-}
-
-/**
- * 透過隨機堆疊取得隨機值
- * @param {Array<{min: Number, max: Number, rate: Number}>} randomStack
- * @returns {Object<{min: Number, max: Number, rate: Number}>}
- */
-function getRandomConfigByRandomStack(randomStack) {
-  let randomNumber = Math.floor(Math.random() * 1000);
-  let rateStackCount = 0;
-  let target = randomStack.find(item => {
-    rateStackCount += item.rate * 1000;
-    return randomNumber <= rateStackCount;
-  });
-
-  return target || { min: 100, max: 100 };
-}
-
-/**
- * 取得傷害基礎值
- * @param {Number} level 等級
- * @returns {Number} 基礎傷害
- */
-function getStandardDamage(level = 1) {
-  return Math.floor(Math.pow(level, 2)) + level * 10;
 }
 
 /**

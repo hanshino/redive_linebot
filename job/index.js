@@ -1,3 +1,7 @@
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config({ path: "../.env" });
+}
+
 const CronJob = require("cron").CronJob;
 const script = require("./bin");
 require("./bin/WorldBoss");

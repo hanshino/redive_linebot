@@ -71,12 +71,30 @@ class WorldBossLog extends base {
       .first()
       .from(subQuery);
   }
+
+  /**
+   * 取得用戶某天的 cost 量
+   * @param {Number} userId
+   * @param {Object} param1
+   * @param {String} param1.startAt
+   * @param {String} param1.endAt
+   * @returns {Promise<{totalCost: Number}>}
+   */
+  async countCostByDate(userId, { startAt, endAt }) {
+    return await this.knex
+      .sum("cost as totalCost")
+      .where({
+        user_id: userId,
+      })
+      .whereBetween("created_at", [startAt, endAt])
+      .first();
+  }
 }
 
 exports.table = TABLE;
 exports.model = new WorldBossLog({
   table: TABLE,
-  fillable: ["world_boss_event_id", "user_id", "action_type", "damage"],
+  fillable: ["world_boss_event_id", "user_id", "action_type", "damage", "cost"],
 });
 
 exports.all = async () => {
@@ -90,9 +108,16 @@ exports.all = async () => {
  * @param {String} attributes.world_boss_event_id 活動 world_boss_event_id
  * @param {String} attributes.action_type 攻擊類型
  * @param {Number} attributes.damage 傷害
+ * @param {Number} attributes.cost 花費
  */
 exports.create = async attributes => {
-  attributes = pick(attributes, ["user_id", "world_boss_event_id", "action_type", "damage"]);
+  attributes = pick(attributes, [
+    "user_id",
+    "world_boss_event_id",
+    "action_type",
+    "damage",
+    "cost",
+  ]);
   return await mysql(TABLE).insert(attributes);
 };
 
