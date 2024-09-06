@@ -214,13 +214,15 @@ async function getHoldingEventId() {
  */
 async function myStatus(context) {
   const { userId, pictureUrl, displayName, id } = context.event.source;
-  const { level, exp, job_name, job_class_advancement } =
+  const { level, exp, job_name, job_class_advancement, job_key } =
     await minigameService.findByUserId(userId);
 
   const levelUnit = await minigameService.getLevelUnit();
   // 取得目前等級的經驗值需求
   const levelUpExp = levelUnit.find(unit => unit.level === level + 1).max_exp;
   const expPercentage = (exp / levelUpExp) * 100;
+
+  const character = makeCharacter(job_key, { level });
 
   // 取得今日已經攻擊的次數
   const [todayAttackCount, sumLogs, { max: maxDamage = 0 }, { count: attendTimes = 0 }] =
@@ -246,7 +248,7 @@ async function myStatus(context) {
     worldBossTemplate.generateAdventureCard(data),
     worldBossTemplate.generateCardStatusBubble({
       maxDamage: humanNumber(maxDamage || 0),
-      standardDamage: humanNumber(getStandardDamage(level)),
+      standardDamage: humanNumber(character.getStandardDamage()),
       attendTimes: attendTimes || 0,
     }),
   ];
