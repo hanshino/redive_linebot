@@ -1,4 +1,5 @@
 const worldBossLogModel = require("../model/application/WorldBossLog");
+const moment = require("moment");
 
 exports.findByUserId = worldBossLogModel.findByUserId;
 
@@ -21,6 +22,16 @@ exports.getRemainHpByEventId = worldBossLogModel.getTotalDamageByEventId;
  * 取得某個活動的排名
  */
 exports.getTopRank = worldBossLogModel.getTopRank;
+
+exports.getTodayCost = async id => {
+  const filter = {
+    startAt: moment().startOf("day").toDate(),
+    endAt: moment().endOf("day").toDate(),
+  };
+  const data = await worldBossLogModel.model.countCostByDate(id, filter);
+
+  return data;
+};
 
 /**
  * 取得今日是否已經登錄過

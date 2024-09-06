@@ -83,10 +83,6 @@ async function HandlePostback(context, { next }) {
         () => action === "worldBossAttack",
         withProps(WorldBossController.attackOnBoss, { payload })
       ),
-      route(
-        () => action === "adminBossAttack",
-        withProps(WorldBossController.adminSpecialAttack, { payload })
-      ),
       route(() => action === "janken", withProps(JankenController.decide, { payload })),
       route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
       route(() => action === "vote", withProps(VoteController.decide, { payload })),
