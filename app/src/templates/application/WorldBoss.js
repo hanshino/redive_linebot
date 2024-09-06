@@ -10,7 +10,7 @@ const makeAttackPayload = (worldBossEventId, jobKey, skill) => ({
   attackType: [jobKey, skill].join("|"),
 });
 
-exports.generateAttackBubble = () => ({
+exports.generateAttackBubble = ({eventId}) => ({
   type: "bubble",
   body: {
     type: "box",
@@ -46,7 +46,7 @@ exports.generateAttackBubble = () => ({
                   type: "postback",
                   data: JSON.stringify(
                     makeAttackPayload(
-                      1,
+                      eventId,
                       RPGCharacter.Adventurer.key,
                       RPGCharacter.enumSkills.STANDARD
                     )
@@ -87,7 +87,7 @@ exports.generateAttackBubble = () => ({
                   type: "postback",
                   data: JSON.stringify(
                     makeAttackPayload(
-                      1,
+                      eventId,
                       RPGCharacter.Swordman.key,
                       RPGCharacter.enumSkills.SKILL_ONE
                     )
@@ -127,7 +127,7 @@ exports.generateAttackBubble = () => ({
                 action: {
                   type: "postback",
                   data: JSON.stringify(
-                    makeAttackPayload(1, RPGCharacter.Mage.key, RPGCharacter.enumSkills.SKILL_ONE)
+                    makeAttackPayload(eventId, RPGCharacter.Mage.key, RPGCharacter.enumSkills.SKILL_ONE)
                   ),
                 },
               },
@@ -164,7 +164,7 @@ exports.generateAttackBubble = () => ({
                 action: {
                   type: "postback",
                   data: JSON.stringify(
-                    makeAttackPayload(1, RPGCharacter.Thief.key, RPGCharacter.enumSkills.SKILL_ONE)
+                    makeAttackPayload(eventId, RPGCharacter.Thief.key, RPGCharacter.enumSkills.SKILL_ONE)
                   ),
                 },
               },

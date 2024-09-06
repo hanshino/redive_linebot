@@ -386,7 +386,9 @@ async function bossEvent(context) {
   const ruleBubble = worldBossTemplate.generateRuleBubble(config.get("worldboss.manual"));
 
   // 取得攻擊面板
-  const attackBubble = worldBossTemplate.generateAttackBubble();
+  const attackBubble = worldBossTemplate.generateAttackBubble({
+    eventId
+  });
 
   const contents = [ruleBubble, attackBubble, mainBubble, infoBubble, rankBubble];
 
