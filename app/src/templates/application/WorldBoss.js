@@ -10,7 +10,7 @@ const makeAttackPayload = (worldBossEventId, jobKey, skill) => ({
   attackType: [jobKey, skill].join("|"),
 });
 
-exports.generateAttackBubble = ({eventId}) => ({
+exports.generateAttackBubble = ({ eventId }) => ({
   type: "bubble",
   body: {
     type: "box",
@@ -127,7 +127,11 @@ exports.generateAttackBubble = ({eventId}) => ({
                 action: {
                   type: "postback",
                   data: JSON.stringify(
-                    makeAttackPayload(eventId, RPGCharacter.Mage.key, RPGCharacter.enumSkills.SKILL_ONE)
+                    makeAttackPayload(
+                      eventId,
+                      RPGCharacter.Mage.key,
+                      RPGCharacter.enumSkills.SKILL_ONE
+                    )
                   ),
                 },
               },
@@ -164,7 +168,11 @@ exports.generateAttackBubble = ({eventId}) => ({
                 action: {
                   type: "postback",
                   data: JSON.stringify(
-                    makeAttackPayload(eventId, RPGCharacter.Thief.key, RPGCharacter.enumSkills.SKILL_ONE)
+                    makeAttackPayload(
+                      eventId,
+                      RPGCharacter.Thief.key,
+                      RPGCharacter.enumSkills.SKILL_ONE
+                    )
                   ),
                 },
               },
@@ -710,7 +718,7 @@ exports.generateOshirase = () => ({
  * @param {String} param0.level 冒險者等級
  * @param {String} param0.exp 冒險者經驗值
  * @param {String} param0.expPercentage 冒險者經驗值 % 數值
- * @param {Number} param0.attackCount 攻擊次數
+ * @param {Number} param0.totalCost cost 總量
  */
 exports.generateAdventureCard = ({
   name,
@@ -718,7 +726,7 @@ exports.generateAdventureCard = ({
   level,
   exp,
   expPercentage,
-  attackCount,
+  totalCost,
   jobName,
   jobAdvancement = 0,
 }) => ({
@@ -824,11 +832,11 @@ exports.generateAdventureCard = ({
             contents: [
               {
                 type: "span",
-                text: "刀數：",
+                text: "cost：",
               },
               {
                 type: "span",
-                text: `${attackCount}/${config.get("worldboss.daily_limit")}`,
+                text: `${totalCost}/${config.get("worldboss.daily_limit")}`,
               },
             ],
           },

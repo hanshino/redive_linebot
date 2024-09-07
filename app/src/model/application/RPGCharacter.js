@@ -176,7 +176,7 @@ class Swordman extends Adventurer {
   constructor({ level }) {
     super({ level });
     this.key = "swordman";
-    this.power = 1.5;
+    this.power = 1.8;
   }
 
   get skillOne() {
@@ -209,8 +209,8 @@ class Mage extends Adventurer {
       name: "元素之力",
       description: "敵に1.1倍のダメージを与える。クリティカル時は2倍",
       cost: 8,
-      rate: 1.1,
-      criticalRate: 10,
+      rate: 0.8,
+      criticalRate: 20,
       criticalConfig: [makeCriticalConfig(1.5, 2, 90), makeCriticalConfig(2, 3, 10)],
     };
   }
@@ -243,7 +243,7 @@ class Thief extends Adventurer {
       description: "敵に1.2倍のダメージを与える",
       cost: 12,
       rate: 1.2,
-      criticalRate: 30,
+      criticalRate: 40,
       criticalConfig: [
         makeCriticalConfig(1.5, 2, 70),
         makeCriticalConfig(2, 3, 20),
