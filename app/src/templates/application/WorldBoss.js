@@ -824,7 +824,7 @@ exports.generateAdventureCard = ({
             contents: [
               {
                 type: "span",
-                text: "刀數：",
+                text: "cost：",
               },
               {
                 type: "span",
