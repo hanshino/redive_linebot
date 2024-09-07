@@ -22,6 +22,7 @@ const { get, sample, sortBy } = require("lodash");
 const humanNumber = require("human-number");
 const { format } = require("util");
 const { table, getBorderCharacters } = require("table");
+const { parse } = require("path");
 
 exports.router = [
   text("#冒險小卡", myStatus),
@@ -387,7 +388,7 @@ async function bossEvent(context) {
 
   // 取得攻擊面板
   const attackBubble = worldBossTemplate.generateAttackBubble({
-    eventId
+    eventId,
   });
 
   const contents = [ruleBubble, attackBubble, mainBubble, infoBubble, rankBubble];
@@ -635,9 +636,10 @@ async function isUserCanAttack(userId) {
   }
 
   // 取得今日紀錄
-  let todayLogs = await worldBossEventLogService.getTodayLogs(userId);
+  const result = await worldBossEventLogService.getTodayCost(userId);
+  const totalCost = parseInt(get(result, "totalCost", 0));
   // 如果完全沒有紀錄，代表可以攻擊
-  if (todayLogs.length === 0) {
+  if (totalCost === 0) {
     await redis.set(key, 1, {
       EX: cooldownSeconds * 1,
       NX: true,
@@ -645,9 +647,8 @@ async function isUserCanAttack(userId) {
     return true;
   }
 
-  let currentCost = todayLogs.reduce((acc, log) => acc + get(log, "cost", 0), 0);
-  let canAttack = currentCost < config.get("worldboss.daily_limit");
-  console.log(`${userId} can attack ${canAttack}, currentCost ${currentCost}`);
+  let canAttack = totalCost < config.get("worldboss.daily_limit");
+  console.log(`${userId} can attack ${canAttack}, currentCost ${totalCost}`);
 
   // 不管是否可以攻擊，都要更新 redis 的資料
   await redis.set(key, 1, {
