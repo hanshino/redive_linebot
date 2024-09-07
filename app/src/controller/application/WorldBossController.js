@@ -639,7 +639,7 @@ async function isUserCanAttack(userId) {
 
   // 取得今日紀錄
   const result = await worldBossEventLogService.getTodayCost(userId);
-  const totalCost = parseInt(get(result, "totalCost", 0));
+  const totalCost = isNull(result.totalCost) ? 0 : parseInt(result.totalCost);
   // 如果完全沒有紀錄，代表可以攻擊
   if (totalCost === 0) {
     await redis.set(key, 1, {
