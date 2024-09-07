@@ -176,7 +176,7 @@ class Swordman extends Adventurer {
   constructor({ level }) {
     super({ level });
     this.key = "swordman";
-    this.power = 2;
+    this.power = 1.8;
   }
 
   get skillOne() {
