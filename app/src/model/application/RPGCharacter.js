@@ -211,7 +211,11 @@ class Mage extends Adventurer {
       cost: 8,
       rate: 0.8,
       criticalRate: 20,
-      criticalConfig: [makeCriticalConfig(1.5, 2, 90), makeCriticalConfig(2, 3, 10)],
+      criticalConfig: [
+        makeCriticalConfig(1.5, 2, 70),
+        makeCriticalConfig(2, 3, 20),
+        makeCriticalConfig(3, 4, 10),
+      ],
     };
   }
 
@@ -244,11 +248,7 @@ class Thief extends Adventurer {
       cost: 12,
       rate: 1.2,
       criticalRate: 40,
-      criticalConfig: [
-        makeCriticalConfig(1.5, 2, 70),
-        makeCriticalConfig(2, 3, 20),
-        makeCriticalConfig(3, 4, 10),
-      ],
+      criticalConfig: [makeCriticalConfig(1.5, 2, 80), makeCriticalConfig(2, 3, 20)],
     };
   }
 
