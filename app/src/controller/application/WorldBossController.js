@@ -18,7 +18,7 @@ const { DefaultLogger } = require("../../util/Logger");
 const { delay, random } = require("../../util/index");
 const LineClient = getClient("line");
 const config = require("config");
-const { get, sample, sortBy } = require("lodash");
+const { get, sample, sortBy, isNull } = require("lodash");
 const humanNumber = require("human-number");
 const { format } = require("util");
 const { table, getBorderCharacters } = require("table");
@@ -226,13 +226,15 @@ async function myStatus(context) {
   const character = makeCharacter(job_key, { level });
 
   // 取得今日已經攻擊的次數
-  const [{ totalCost = 0 }, sumLogs, { max: maxDamage = 0 }, { count: attendTimes = 0 }] =
+  const [costResult, sumLogs, { max: maxDamage = 0 }, { count: attendTimes = 0 }] =
     await Promise.all([
       worldBossEventLogService.getTodayCost(id),
       worldBossLogModel.getBossLogs(id, { limit: 2 }),
       worldBossLogModel.getUserMaxDamage(id),
       worldBossLogModel.getUserAttendance(id),
     ]);
+
+  const totalCost = isNull(costResult.totalCost) ? 0 : costResult.totalCost;
 
   const data = {
     level,
