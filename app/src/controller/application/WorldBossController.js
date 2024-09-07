@@ -18,7 +18,7 @@ const { DefaultLogger } = require("../../util/Logger");
 const { delay, random } = require("../../util/index");
 const LineClient = getClient("line");
 const config = require("config");
-const { get, sample, sortBy } = require("lodash");
+const { get, sample, sortBy, isNull } = require("lodash");
 const humanNumber = require("human-number");
 const { format } = require("util");
 const { table, getBorderCharacters } = require("table");
@@ -226,13 +226,15 @@ async function myStatus(context) {
   const character = makeCharacter(job_key, { level });
 
   // 取得今日已經攻擊的次數
-  const [{ totalCost = 0 }, sumLogs, { max: maxDamage = 0 }, { count: attendTimes = 0 }] =
+  const [costResult, sumLogs, { max: maxDamage = 0 }, { count: attendTimes = 0 }] =
     await Promise.all([
       worldBossEventLogService.getTodayCost(id),
       worldBossLogModel.getBossLogs(id, { limit: 2 }),
       worldBossLogModel.getUserMaxDamage(id),
       worldBossLogModel.getUserAttendance(id),
     ]);
+
+  const totalCost = isNull(costResult.totalCost) ? 0 : costResult.totalCost;
 
   const data = {
     level,
@@ -637,7 +639,7 @@ async function isUserCanAttack(userId) {
 
   // 取得今日紀錄
   const result = await worldBossEventLogService.getTodayCost(userId);
-  const totalCost = parseInt(get(result, "totalCost", 0));
+  const totalCost = isNull(result.totalCost) ? 0 : parseInt(result.totalCost);
   // 如果完全沒有紀錄，代表可以攻擊
   if (totalCost === 0) {
     await redis.set(key, 1, {
