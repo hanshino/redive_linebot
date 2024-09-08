@@ -184,7 +184,7 @@ class Swordman extends Adventurer {
       name: "震地斬擊",
       description: "敵に1.5倍のダメージを与える",
       cost: 15,
-      rate: 1.5,
+      rate: 1.8,
     };
   }
 
@@ -209,8 +209,8 @@ class Mage extends Adventurer {
       name: "元素之力",
       description: "敵に1.1倍のダメージを与える。クリティカル時は2倍",
       cost: 8,
-      rate: 0.8,
-      criticalRate: 20,
+      rate: 0.85,
+      criticalRate: 25,
       criticalConfig: [
         makeCriticalConfig(1.5, 2, 70),
         makeCriticalConfig(2, 3, 20),
@@ -248,7 +248,12 @@ class Thief extends Adventurer {
       cost: 12,
       rate: 1.2,
       criticalRate: 40,
-      criticalConfig: [makeCriticalConfig(1.5, 2, 80), makeCriticalConfig(2, 3, 20)],
+      criticalConfig: [
+        makeCriticalConfig(0.8, 1.2, 5),
+        makeCriticalConfig(1.2, 1.5, 45),
+        makeCriticalConfig(1.5, 2, 40),
+        makeCriticalConfig(2, 3, 10),
+      ],
     };
   }
 
