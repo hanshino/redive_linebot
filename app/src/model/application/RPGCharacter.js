@@ -176,7 +176,7 @@ class Swordman extends Adventurer {
   constructor({ level }) {
     super({ level });
     this.key = "swordman";
-    this.power = 1.8;
+    this.power = 1;
   }
 
   get skillOne() {
@@ -201,7 +201,7 @@ class Mage extends Adventurer {
   constructor({ level }) {
     super({ level });
     this.key = "mage";
-    this.power = 0.8;
+    this.power = 1;
   }
 
   get skillOne() {
@@ -212,8 +212,8 @@ class Mage extends Adventurer {
       rate: 0.85,
       criticalRate: 25,
       criticalConfig: [
-        makeCriticalConfig(1.5, 2, 70),
-        makeCriticalConfig(2, 3, 20),
+        makeCriticalConfig(2, 2.5, 70),
+        makeCriticalConfig(2.5, 3, 20),
         makeCriticalConfig(3, 4, 10),
       ],
     };
@@ -238,7 +238,7 @@ class Thief extends Adventurer {
   constructor({ level }) {
     super({ level });
     this.key = "thief";
-    this.power = 1.2;
+    this.power = 1;
   }
 
   get skillOne() {
