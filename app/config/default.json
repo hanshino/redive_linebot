@@ -160,7 +160,26 @@
   "princess": {
     "character": {
       "full_image": "https://chieru.hanshino.dev/assets/units/full/%s.png",
-      "head_image": "https://chieru.hanshino.dev/assets/units/head/%s.png"
+      "head_image": "https://chieru.hanshino.dev/assets/units/head/%s.png",
+      "rank_up_cost_rate": 1.5,
+      "rank_up_cost": [
+        {
+          "rank": 1,
+          "cost": 30
+        },
+        {
+          "rank": 2,
+          "cost": 50
+        },
+        {
+          "rank": 3,
+          "cost": 100
+        },
+        {
+          "rank": 4,
+          "cost": 120
+        }
+      ]
     }
   },
   "gamble": {

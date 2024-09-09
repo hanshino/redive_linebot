@@ -2,6 +2,84 @@ const path = require("path");
 const rediveTW = require("../../util/sqlite")(path.join(process.cwd(), "assets", "redive_tw.db"));
 const config = require("config");
 const { format } = require("util");
+const { text } = require("bottender/router");
+const i18n = require("../../util/i18n");
+const Inventory = require("../../model/application/Inventory");
+const { inventory: inventoryModel } = Inventory;
+
+exports.router = [text(/^[!#/]升星\s(?<name>\S+)$/, rankup)];
+
+async function rankup(context, props) {
+  const { name } = props.match.groups;
+  const { userId } = context.event.source;
+  const message = context.event.message.text;
+
+  const userOwnList = await inventoryModel.getAllUserOwnCharacters(userId);
+  const findResult = userOwnList.filter(character => character.name === name);
+  const filterResult = userOwnList.filter(character => character.name.includes(name));
+
+  if (!findResult && filterResult.length === 0) {
+    return context.replyText(i18n.__("message.character.not_found"));
+  }
+
+  if (!findResult && filterResult.length > 1) {
+    return context.replyText(i18n.__("message.character.multiple_found"));
+  }
+
+  const [character] = findResult || filterResult;
+  if (character.attribute.find(attr => attr.key === "star").value === 5) {
+    return context.replyText(i18n.__("message.character.rank_max"));
+  }
+
+  const rankUpCostConfig = config.get("princess.character.rank_up_cost");
+  const userMoney = await inventoryModel.getUserMoney(userId);
+  const characterStar = character.attribute.find(attr => attr.key === "star").value;
+  const costConfig = rankUpCostConfig.find(cost => cost.rank == characterStar);
+  const cost = costConfig.cost * 10;
+
+  if (userMoney.amount < cost) {
+    return context.replyText(i18n.__("message.character.not_enough_money"));
+  }
+
+  if (!message.startsWith("!")) {
+    return context.replyText(
+      i18n.__("message.character.rank_up_confirm", {
+        name: character.name,
+        cost,
+        rank: costConfig.rank + 1,
+      })
+    );
+  }
+
+  const trx = await inventoryModel.transaction();
+
+  try {
+    await inventoryModel.decreaseGodStone({ userId, amount: cost, note: "rank up" });
+    const itemAttribute = character.attribute;
+    const restAttribute = itemAttribute.filter(attr => attr.key !== "star");
+    const newAttribute = [...restAttribute, { key: "star", value: costConfig.rank + 1 }];
+    await inventoryModel.editAttributeByItemId(userId, character.itemId, newAttribute);
+
+    await trx.commit();
+  } catch (e) {
+    console.error(e);
+    trx.rollback();
+  }
+
+  context.replyText(
+    i18n.__("message.character.rank_up_success", {
+      name: character.name,
+      rank: costConfig.rank + 1,
+    }),
+    {
+      sender: {
+        name: character.name,
+        iconUrl: convertUrl(character.headImage, costConfig.rank + 1),
+      },
+    }
+  );
+  context.replyText(convertUrl(character.headImage, costConfig.rank + 1));
+}
 
 /**
  * 取得角色資料
@@ -9,6 +87,40 @@ const { format } = require("util");
  */
 async function getAllCharacter() {
   return await rediveTW("unit_profile").select("unit_id", "unit_name");
+}
+
+function convertUrl(url, rarity) {
+  // 如果給的 rarity 是 2 或 4，則推算到最近的合法稀有度
+  if (rarity === 2) {
+    rarity = 1;
+  } else if (rarity === 4 || rarity === 5) {
+    rarity = 3;
+  }
+
+  // 稀有度只接受 1, 3, 6
+  if (![1, 3, 6].includes(rarity)) {
+    throw new Error("稀有度必須是 1, 3, 或 6");
+  }
+
+  // 找到角色編號部分，假設是以 / 分隔的，並且在最後一個段落
+  let parts = url.split("/");
+  let fileName = parts[parts.length - 1];
+
+  // 確保 "icon_unit" 不受影響，只修改角色編號部分
+  let characterId = fileName.replace("icon_unit_", "").split(".")[0];
+
+  // 修改角色編號的第五碼，假設是從 0 開始的第 4 個字元
+  let newCharacterId = characterId.slice(0, 4) + rarity + characterId.slice(5);
+
+  // 構建新的檔案名稱
+  let newFileName = "icon_unit_" + newCharacterId + ".png";
+
+  // 替換新的檔案名稱
+  parts[parts.length - 1] = newFileName;
+
+  // 返回新的 URL
+  let newUrl = parts.join("/");
+  return newUrl;
 }
 
 async function getCharacterImages() {

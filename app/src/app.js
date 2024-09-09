@@ -20,6 +20,7 @@ const WorldBossController = require("./controller/application/WorldBossControlle
 const GuildServiceController = require("./controller/application/GuildServiceController");
 const AdvertisementController = require("./controller/application/AdvertisementController");
 const GodStoneShopController = require("./controller/princess/GodStoneShop");
+const CharacterController = require("./controller/princess/character");
 const JankenController = require("./controller/application/JankenController");
 const AdvancementController = require("./controller/application/AdvancementController");
 const DonateListController = require("./controller/application/DonateListController");
@@ -158,6 +159,7 @@ async function OrderBased(context, { next }) {
     ...SubscribeController.router,
     ...ScratchCardController.router,
     ...NumberController.router,
+    ...CharacterController.router,
     ...(type === "user" ? JobController.router : []),
     ...(type === "user" ? SubscribeController.privateRouter : []),
     text(/^[/#.](使用說明|help)$/, welcome),

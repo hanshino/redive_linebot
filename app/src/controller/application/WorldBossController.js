@@ -22,7 +22,6 @@ const { get, sample, sortBy, isNull } = require("lodash");
 const humanNumber = require("human-number");
 const { format } = require("util");
 const { table, getBorderCharacters } = require("table");
-const { parse } = require("path");
 
 exports.router = [
   text("#冒險小卡", myStatus),
