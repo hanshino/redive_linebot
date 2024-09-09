@@ -122,6 +122,10 @@ class Adventurer {
     this.level = level;
     this.key = "adventurer";
     this.power = 1;
+    /**
+     * 熟練度：皆預設在 90%，此數值會影響基礎傷害在 90%~110% 之間浮動
+     */
+    this.proficiency = 90;
   }
 
   async getJobName() {
@@ -133,9 +137,13 @@ class Adventurer {
   }
 
   getStandardDamage() {
-    const damage = Math.floor(Math.pow(this.level, 2)) + this.level * 10;
-    // 職業補正
-    return Math.floor(damage * this.power);
+    return Math.floor(Math.pow(this.level, 2)) + this.level * 10;
+  }
+
+  getNormalDamage() {
+    // 熟練度補正
+    const proficiencyRate = _.random(90, 110, true) / 100;
+    return Math.floor(this.getStandardDamage() * proficiencyRate);
   }
 
   getSkillOneDamage() {
@@ -189,7 +197,7 @@ class Swordman extends Adventurer {
   }
 
   getSkillOneDamage() {
-    return Math.floor(this.getStandardDamage() * this.skillOne.rate);
+    return Math.floor(this.getNormalDamage() * this.skillOne.rate);
   }
 }
 
@@ -210,17 +218,18 @@ class Mage extends Adventurer {
       description: "敵に1.1倍のダメージを与える。クリティカル時は2倍",
       cost: 8,
       rate: 0.85,
-      criticalRate: 25,
+      criticalRate: 20,
       criticalConfig: [
         makeCriticalConfig(2, 2.5, 70),
-        makeCriticalConfig(2.5, 3, 20),
-        makeCriticalConfig(3, 4, 10),
+        makeCriticalConfig(2.5, 2.8, 20),
+        makeCriticalConfig(2.8, 3.2, 8),
+        makeCriticalConfig(3.2, 3.8, 2),
       ],
     };
   }
 
   getSkillOneDamage() {
-    const damage = Math.floor(this.getStandardDamage() * this.skillOne.rate);
+    const damage = Math.floor(this.getNormalDamage() * this.skillOne.rate);
     if (!this.isCritical(this.skillOne.criticalRate)) {
       return damage;
     }
@@ -249,16 +258,17 @@ class Thief extends Adventurer {
       rate: 1.2,
       criticalRate: 40,
       criticalConfig: [
-        makeCriticalConfig(0.8, 1.2, 5),
-        makeCriticalConfig(1.2, 1.5, 45),
+        makeCriticalConfig(0.8, 1, 2),
+        makeCriticalConfig(1, 1.2, 3),
+        makeCriticalConfig(1.2, 1.5, 40),
         makeCriticalConfig(1.5, 2, 40),
-        makeCriticalConfig(2, 3, 10),
+        makeCriticalConfig(2, 3, 15),
       ],
     };
   }
 
   getSkillOneDamage() {
-    const damage = Math.floor(this.getStandardDamage() * this.skillOne.rate);
+    const damage = Math.floor(this.getNormalDamage() * this.skillOne.rate);
     if (!this.isCritical(this.skillOne.criticalRate)) {
       return damage;
     }
