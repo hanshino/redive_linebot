@@ -42,13 +42,13 @@ async function fullRankup(context, props) {
   }
 
   const [character] = findResult || filterResult;
-  if (character.attribute.find(attr => attr.key === "star").value === 5) {
+  if (character.attributes.find(attr => attr.key === "star").value === 5) {
     return context.replyText(i18n.__("message.character.rank_max"));
   }
 
   const rankUpCostConfig = config.get("princess.character.rank_up_cost");
   const userMoney = await inventoryModel.getUserMoney(userId);
-  const characterStar = character.attribute.find(attr => attr.key === "star").value;
+  const characterStar = character.attributes.find(attr => attr.key === "star").value;
   const cost = rankUpCostConfig
     .filter(cost => cost.rank > characterStar)
     .reduce((acc, cur) => acc + cur.cost * config.get("princess.character.rank_up_cost_rate"), 0);
@@ -80,10 +80,10 @@ async function fullRankup(context, props) {
 
   try {
     await inventoryModel.decreaseGodStone({ userId, amount: cost, note: "rank up" });
-    const itemAttribute = character.attribute;
-    const restAttribute = itemAttribute.filter(attr => attr.key !== "star");
-    const newAttribute = [...restAttribute, { key: "star", value: 5 }];
-    await inventoryModel.editAttributeByItemId(userId, character.itemId, newAttribute);
+    const itemAttributes = character.attributes;
+    const restAttributes = itemAttributes.filter(attr => attr.key !== "star");
+    const newAttributes = [...restAttributes, { key: "star", value: 5 }];
+    await inventoryModel.editAttributesByItemId(userId, character.itemId, newAttributes);
 
     await trx.commit();
   } catch (e) {
@@ -130,13 +130,13 @@ async function rankup(context, props) {
   }
 
   const [character] = findResult || filterResult;
-  if (character.attribute.find(attr => attr.key === "star").value === 5) {
+  if (character.attributes.find(attr => attr.key === "star").value === 5) {
     return context.replyText(i18n.__("message.character.rank_max"));
   }
 
   const rankUpCostConfig = config.get("princess.character.rank_up_cost");
   const userMoney = await inventoryModel.getUserMoney(userId);
-  const characterStar = character.attribute.find(attr => attr.key === "star").value;
+  const characterStar = character.attributes.find(attr => attr.key === "star").value;
   const costConfig = rankUpCostConfig.find(cost => cost.rank == characterStar);
   const cost = costConfig.cost * 10;
 
@@ -168,10 +168,10 @@ async function rankup(context, props) {
 
   try {
     await inventoryModel.decreaseGodStone({ userId, amount: cost, note: "rank up" });
-    const itemAttribute = character.attribute;
-    const restAttribute = itemAttribute.filter(attr => attr.key !== "star");
-    const newAttribute = [...restAttribute, { key: "star", value: costConfig.rank + 1 }];
-    await inventoryModel.editAttributeByItemId(userId, character.itemId, newAttribute);
+    const itemAttributes = character.attributes;
+    const restAttributes = itemAttributes.filter(attr => attr.key !== "star");
+    const newAttributes = [...restAttributes, { key: "star", value: costConfig.rank + 1 }];
+    await inventoryModel.editAttributesByItemId(userId, character.itemId, newAttributes);
 
     await trx.commit();
   } catch (e) {

@@ -213,8 +213,16 @@ function genDailyGacha({
  * @param {Number} param.total  總共有多少角色
  * @param {Number} param.godStone 女神石數量
  * @param {Number} param.paidStone 有償女神石數量
+ * @param {Number} param.gachaStarProgress 進度
  */
-function genGachaStatus({ current = 0, total, godStone = 0, paidStone = 0, gachaHistory }) {
+function genGachaStatus({
+  current = 0,
+  total,
+  godStone = 0,
+  paidStone = 0,
+  gachaHistory,
+  gachaStarProgress = 0,
+}) {
   let collectPercent = total === 0 ? 0 : Math.round((current / total) * 100);
 
   return {
@@ -254,14 +262,14 @@ function genGachaStatus({ current = 0, total, godStone = 0, paidStone = 0, gacha
                   type: "box",
                   layout: "vertical",
                   contents: [],
-                  height: "10px",
+                  height: "5px",
                   backgroundColor: "#FFABCD",
                   width: `${collectPercent}%`,
                 },
               ],
               backgroundColor: "#80808080",
               flex: 4,
-              height: "10px",
+              height: "5px",
               cornerRadius: "md",
             },
             {
@@ -285,8 +293,48 @@ function genGachaStatus({ current = 0, total, godStone = 0, paidStone = 0, gacha
               align: "end",
             },
           ],
-          paddingTop: "md",
-          paddingBottom: "md",
+          paddingTop: "xs",
+          paddingBottom: "xs",
+          spacing: "sm",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "累積星數",
+              flex: 2,
+              size: "sm",
+            },
+            {
+              type: "box",
+              layout: "horizontal",
+              contents: [
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [],
+                  height: "5px",
+                  backgroundColor: "#FFEC8B",
+                  width: `${gachaStarProgress}%`,
+                },
+              ],
+              backgroundColor: "#80808080",
+              flex: 4,
+              height: "5px",
+              cornerRadius: "md",
+            },
+            {
+              type: "text",
+              text: `${gachaStarProgress}%`,
+              size: "xs",
+              flex: 2,
+              align: "end",
+            },
+          ],
+          paddingTop: "xs",
+          paddingBottom: "xs",
           spacing: "sm",
         },
         {

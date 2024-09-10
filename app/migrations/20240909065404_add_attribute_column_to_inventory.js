@@ -4,7 +4,7 @@
  */
 exports.up = function (knex) {
   return knex.schema.table("Inventory", table => {
-    table.json("attribute").after("itemAmount");
+    table.json("attributes").after("itemAmount");
   });
 };
 
@@ -14,6 +14,6 @@ exports.up = function (knex) {
  */
 exports.down = function (knex) {
   return knex.schema.table("Inventory", table => {
-    table.dropColumn("attribute");
+    table.dropColumn("attributes");
   });
 };
