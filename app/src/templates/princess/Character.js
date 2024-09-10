@@ -1,3 +1,5 @@
+const { pad } = require("lodash");
+
 exports.generateRankupBubble = ({ beforeHeadImage, afterHeadImage, command, unitName }) => ({
   type: "bubble",
   body: {
@@ -13,13 +15,23 @@ exports.generateRankupBubble = ({ beforeHeadImage, afterHeadImage, command, unit
             url: beforeHeadImage,
           },
           {
-            type: "text",
-            text: "➡️",
-            gravity: "center",
-            align: "center",
-            size: "xxl",
-            weight: "bold",
-            color: "#888888",
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "image",
+                url: "https://i.imgur.com/LTggbcZ.jpeg",
+                size: "xxs",
+              },
+              {
+                type: "text",
+                text: "→→→",
+                align: "center",
+                weight: "bold",
+                size: "xs",
+              },
+            ],
+            paddingTop: "lg",
           },
           {
             type: "image",
