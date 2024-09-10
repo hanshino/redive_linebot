@@ -30,7 +30,7 @@ async function fullRankup(context, props) {
   const message = context.event.message.text;
 
   const userOwnList = await inventoryModel.getAllUserOwnCharacters(userId);
-  const findResult = userOwnList.filter(character => character.name === name);
+  const findResult = userOwnList.find(character => character.name === name);
   const filterResult = userOwnList.filter(character => character.name.includes(name));
 
   if (!findResult && filterResult.length === 0) {
@@ -118,7 +118,7 @@ async function rankup(context, props) {
   const message = context.event.message.text;
 
   const userOwnList = await inventoryModel.getAllUserOwnCharacters(userId);
-  const findResult = userOwnList.filter(character => character.name === name);
+  const findResult = userOwnList.find(character => character.name === name);
   const filterResult = userOwnList.filter(character => character.name.includes(name));
 
   if (!findResult && filterResult.length === 0) {
@@ -191,7 +191,6 @@ async function rankup(context, props) {
       },
     }
   );
-  context.replyText(convertUrl(character.headImage, costConfig.rank + 1));
 }
 
 /**
