@@ -268,6 +268,18 @@
       "thief_start_job_mission": "已開始進行盜賊的轉職任務，限時 10 分鐘",
       "thief_start_job_mission_help": "那麼找出三個有價值的錢包吧～",
       "change_job_level_limit": "至少要到達 30 等才能進行轉職"
+    },
+    "character": {
+      "not_found": "找不到角色",
+      "multiple_found": "找到多個角色，請輸入更多資訊以縮小搜尋範圍",
+      "not_enough_money": "女神石不足，無法進行此動作",
+      "rank_up_confirm": "確定要花費 *{{ cost }}* 將 *{{ name }}* 升級到 *{{ rank }}* 星嗎？\n請改輸入 `!升星 {{ name }}`\n手機用戶可直接點擊上面按鈕",
+      "rank_up_success": "成功將 *{{ name }}* 升級到 *{{ rank }}* 星",
+      "rank_max": "已達到最高星數",
+      "rank_up_manual": "請輸入 `#升星 {角色名稱}` 來提昇角色星數\n_小提示：將開頭符號 `#` 改為 `!` 可以跳過確認步驟_",
+      "full_rank_up_manual": "請輸入 `#升滿星 {角色名稱}` 可一次將角色升滿星\n_小提示：將開頭符號 `#` 改為 `!` 可以跳過確認步驟_",
+      "full_rank_up_confirm": "確定要花費 *{{ cost }}* 將 *{{ name }}* 升滿星嗎？\n請改輸入 `!升滿星 {{ name }}`\n手機用戶可直接點擊上面按鈕",
+      "full_rank_up_success": "成功將 *{{ name }}* 升滿星"
     }
   },
   "advancement": {

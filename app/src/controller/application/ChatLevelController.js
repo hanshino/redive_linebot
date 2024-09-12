@@ -24,6 +24,7 @@ const { get, sample, set } = require("lodash");
 const config = require("config");
 const moment = require("moment");
 const i18n = require("../../util/i18n");
+const { inventory } = require("../../model/application/Inventory");
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
@@ -69,6 +70,7 @@ exports.showStatus = async (context, props) => {
       achievement,
       subscribeInfo,
       gachaHistory,
+      gachaProgress,
     ] = await Promise.all([
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
@@ -82,6 +84,7 @@ exports.showStatus = async (context, props) => {
       AdvancementModel.findUserAdvancementsByPlatformId(userId),
       getSubscribeInfo(userId),
       getGachaHistory(userId),
+      getGachaCollectProgress(userId),
     ]);
 
     let subInfo;
@@ -152,6 +155,7 @@ exports.showStatus = async (context, props) => {
       godStone,
       paidStone: donateAmount || 0,
       gachaHistory,
+      gachaStarProgress: gachaProgress.progress,
     });
 
     // ---------- 整理其他雜項數據 ----------
@@ -212,9 +216,32 @@ exports.showStatus = async (context, props) => {
       context.replyText("尚未有任何數據，經驗開始累積後即可投胎！");
     }
   } catch (e) {
+    console.error(e);
     DefaultLogger.error(e);
   }
 };
+
+/**
+ * 取得轉蛋進度
+ * @param {String} userId
+ * @returns {Promise<{userTotalStar: Number, totalStarInGame: Number, progress: Number}>}
+ */
+async function getGachaCollectProgress(userId) {
+  const ownItems = await inventory.getAllUserOwnCharacters(userId);
+  const princessCountInGame = await GachaModel.getPrincessCharacterCount();
+  const userTotalStar = ownItems.reduce((acc, item) => {
+    const { attributes } = item;
+    return parseInt(attributes.find(attr => attr.key === "star").value) + acc;
+  }, 0);
+
+  const totalStarInGame = princessCountInGame * 5;
+
+  return {
+    userTotalStar,
+    totalStarInGame,
+    progress: Math.floor((userTotalStar / totalStarInGame) * 100),
+  };
+}
 
 async function getGachaHistory(userId) {
   const lastRainbowRecord = await GachaRecord.first({

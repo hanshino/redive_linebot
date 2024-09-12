@@ -63,6 +63,18 @@ class Inventory extends base {
       .groupBy("itemId");
   }
 
+  getAllUserOwnCharacters(userId) {
+    return this.knex
+      .select(["itemId", { name: "GachaPool.Name" }, { headImage: "HeadImage_Url" }, "attributes"])
+      .where({ userId })
+      .join("GachaPool", "GachaPool.ID", "itemId")
+      .whereNot({ itemId: 999 });
+  }
+
+  editAttributesByItemId(userId, itemId, attributes) {
+    return this.knex.where({ userId, itemId }).update({ attributes: JSON.stringify(attributes) });
+  }
+
   getUserOwnCountByItemId(userId, itemId) {
     return this.knex.sum({ amount: "itemAmount" }).where({ userId, itemId }).first();
   }

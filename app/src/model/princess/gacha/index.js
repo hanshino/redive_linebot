@@ -72,61 +72,6 @@ exports.deleteData = id => {
 };
 
 /**
- * 當日轉蛋紀錄
- * @param {String} userId
- * @returns {object|undefined}
- */
-exports.getSignin = async userId => {
-  var memoryKey = `GachaSignin_${userId}`;
-  var isSignin = await redis.get(memoryKey);
-
-  if (isSignin !== null) return isSignin;
-
-  [isSignin] = await mysql
-    .select("ID")
-    .from("GachaSignin")
-    .where({ userId, signinDate: getTodayDate() });
-
-  let ID = isSignin ? isSignin.ID : 1;
-  redis.set(memoryKey, ID, {
-    EX: 10 * 60,
-  });
-
-  return isSignin;
-};
-
-exports.allSignin = async options => {
-  let query = mysql.from("GachaSignin").select("*");
-
-  if (get(options, "filter.userId")) {
-    query = query.where({ userId: options.filter.userId });
-  }
-
-  if (get(options, "filter.signinAt.start")) {
-    query = query.where("signinDate", ">=", options.filter.signinAt.start);
-  }
-
-  if (get(options, "filter.signinAt.end")) {
-    query = query.where("signinDate", "<=", options.filter.signinAt.end);
-  }
-
-  return await query;
-};
-
-/**
- * 轉蛋紀錄
- * @param {String} userId
- * @param {String} record
- */
-exports.touchSingin = (userId, record = "") => {
-  var memoryKey = `GachaSignin_${userId}`;
-  redis.set(memoryKey, 1, {
-    EX: 10 * 60,
-  });
-  return mysql.insert({ userId, signinDate: getTodayDate(), record }).into("GachaSignin").then();
-};
-
-/**
  * 獲取所有公主角色
  * @return {Promise<Array>}
  */
@@ -144,7 +89,9 @@ exports.getPrincessCharacterCount = async () => {
 
   var datas = await this.getPrincessCharacter();
 
-  redis.set(memoryKey, datas.length, 60);
+  redis.set(memoryKey, datas.length, {
+    EX: 60,
+  });
   return datas.length;
 };
 
