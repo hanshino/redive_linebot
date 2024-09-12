@@ -278,7 +278,8 @@
       "rank_max": "已達到最高星數",
       "rank_up_manual": "請輸入 `#升星 {角色名稱}` 來提昇角色星數\n_小提示：將開頭符號 `#` 改為 `!` 可以跳過確認步驟_",
       "full_rank_up_manual": "請輸入 `#升滿星 {角色名稱}` 可一次將角色升滿星\n_小提示：將開頭符號 `#` 改為 `!` 可以跳過確認步驟_",
-      "full_rank_up_confirm": "確定要花費 *{{ cost }}* 將 *{{ name }}* 升滿星嗎？\n請改輸入 `!升滿星 {{ name }}`\n手機用戶可直接點擊上面按鈕"
+      "full_rank_up_confirm": "確定要花費 *{{ cost }}* 將 *{{ name }}* 升滿星嗎？\n請改輸入 `!升滿星 {{ name }}`\n手機用戶可直接點擊上面按鈕",
+      "full_rank_up_success": "成功將 *{{ name }}* 升滿星"
     }
   },
   "advancement": {

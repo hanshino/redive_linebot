@@ -366,10 +366,16 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   if (dailyResult.newCharacters.length > 0) {
     queries.push(
       inventory.knex.insert(
-        newItemIds.map(itemId => ({
+        dailyResult.newCharacters.map(character => ({
           userId,
-          itemId,
+          itemId: character.id,
           itemAmount: 1,
+          attributes: JSON.stringify([
+            {
+              key: "star",
+              value: parseInt(character.star),
+            },
+          ]),
           note: i18n.__("message.gacha.new_character_note"),
         }))
       )

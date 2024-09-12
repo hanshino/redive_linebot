@@ -41,7 +41,7 @@ async function fullRankup(context, props) {
     return context.replyText(i18n.__("message.character.multiple_found"));
   }
 
-  const [character] = findResult || filterResult;
+  const character = findResult || filterResult[0];
   if (character.attributes.find(attr => attr.key === "star").value === 5) {
     return context.replyText(i18n.__("message.character.rank_max"));
   }
@@ -129,7 +129,7 @@ async function rankup(context, props) {
     return context.replyText(i18n.__("message.character.multiple_found"));
   }
 
-  const [character] = findResult || filterResult;
+  const character = findResult || filterResult[0];
   if (character.attributes.find(attr => attr.key === "star").value === 5) {
     return context.replyText(i18n.__("message.character.rank_max"));
   }
