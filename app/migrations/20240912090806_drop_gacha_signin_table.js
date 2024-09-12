@@ -11,5 +11,7 @@ exports.up = function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = function (knex) {
-  return;
+  return knex.schema.createTable("GachaSignin", table => {
+    table.increments("id").primary().comment("為了 rollback 用的");
+  });
 };
