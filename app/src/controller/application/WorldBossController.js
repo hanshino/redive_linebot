@@ -10,6 +10,7 @@ const minigameService = require("../../service/MinigameService");
 const worldBossUserAttackMessageService = require("../../service/WorldBossUserAttackMessageService");
 const worldBossTemplate = require("../../templates/application/WorldBoss");
 const { model: worldBossLogModel } = require("../../model/application/WorldBossLog");
+const UserModel = require("../../model/application/UserModel");
 const { inventory: Inventory } = require("../../model/application/Inventory");
 const { make: makeCharacter, enumSkills } = require("../../model/application/RPGCharacter");
 const redis = require("../../util/redis");
@@ -31,7 +32,7 @@ exports.router = [
   text("/worldrank", worldRank),
   text(/^[.#/](攻擊|attack)$/, withProps(attack, { attackType: "normal" })),
   text("#夢幻回歸", revokeAttack),
-  text("#傷害紀錄", todayLogs),
+  text(/^[#]傷害[紀記]錄/, todayLogs),
   text(config.get("worldboss.revoke_charm"), revokeCharm),
 ];
 
@@ -54,8 +55,16 @@ async function revokeCharm(context) {
  * @param {import ("bottender").LineContext} context
  */
 async function todayLogs(context) {
-  const { id } = context.event.source;
+  const mentionees = get(context.event, "message.mention.mentionees", []);
   const { quoteToken } = context.event.message;
+  // 預設使用者為自己
+  let id = context.event.source.id;
+
+  if (mentionees.length > 0) {
+    const [target] = mentionees;
+    id = await UserModel.getId(target.userId);
+  }
+
   const logs = await worldBossEventLogService.getTodayLogs(id);
   const data = [
     ["damage", "time"],
