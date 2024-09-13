@@ -193,6 +193,8 @@ class Swordman extends Adventurer {
       description: "敵に1.5倍のダメージを与える",
       cost: 15,
       rate: 1.8,
+      criticalRate: 5,
+      criticalConfig: [makeCriticalConfig(1, 1.5, 100)],
     };
   }
 
