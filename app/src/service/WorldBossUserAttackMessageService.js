@@ -1,4 +1,5 @@
 const worldBossUserAttackMessageModel = require("../model/application/WorldBossUserAttackMessage");
+const AttackMessageTags = require("../model/application/AttackMessageTags");
 const redis = require("../util/redis");
 
 exports.all = async (cache = true) => {
@@ -9,6 +10,23 @@ exports.all = async (cache = true) => {
   }
 
   let result = await worldBossUserAttackMessageModel.all();
+  redis.set(key, JSON.stringify(result));
+  return result;
+};
+
+/**
+ * Get all tags
+ * @param {Boolean} cache
+ * @returns {Promise<string[]>}
+ */
+exports.getTags = async (cache = true) => {
+  let key = "attackMessageTags";
+  let data = await redis.get(key);
+  if (data && cache) {
+    return JSON.parse(data);
+  }
+
+  let result = await AttackMessageTags.getTags();
   redis.set(key, JSON.stringify(result));
   return result;
 };
