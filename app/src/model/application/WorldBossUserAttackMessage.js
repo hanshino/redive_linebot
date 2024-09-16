@@ -5,7 +5,14 @@ const pick = require("lodash/pick");
 exports.table = TABLE;
 
 exports.all = async () => {
-  return await mysql.select("*").from(TABLE);
+  return await mysql
+    .select("*")
+    .from(TABLE)
+    .join(
+      "attack_message_has_tags",
+      "world_boss_user_attack_message.id",
+      "attack_message_has_tags.attack_message_id"
+    );
 };
 
 exports.find = async id => {

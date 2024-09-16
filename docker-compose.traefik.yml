@@ -72,6 +72,10 @@ services:
       options:
         max-size: "1k"
         max-file: "3"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u $$DB_USER", "-p$$DB_PASSWORD" ]
+      timeout: 20s
+      retries: 10
     environment:
       "MYSQL_DATABASE": "${DB_DATABASE}"
       "MYSQL_USER": "${DB_USER}"

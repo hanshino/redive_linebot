@@ -105,8 +105,9 @@ async function revokeAttack(context) {
   }
 
   // 確認是否已出完刀
-  const todayLogs = await worldBossEventLogService.getTodayLogs(id);
-  if (todayLogs.length !== 10) {
+  const result = await worldBossEventLogService.getTodayCost(id);
+  const totalCost = isNull(result.totalCost) ? 0 : parseInt(result.totalCost);
+  if (totalCost < config.get("worldboss.daily_limit")) {
     context.replyText(i18n.__("message.world_boss.revoke_attack_not_enough_times"), {
       quoteToken,
     });
@@ -201,7 +202,7 @@ async function attack(context, { attackType = "normal" }) {
 
 /**
  * 取得正在進行中的世界事件的 ID。
- * @returns {string|null} 正在進行中的世界事件的 ID，若無則返回 null。
+ * @returns {Promise<Number>} 世界事件 ID
  */
 async function getHoldingEventId() {
   // 取得正在進行中的世界事件
@@ -515,8 +516,13 @@ const attackOnBoss = async (context, props) => {
   await worldBossEventLogService.create(attributes);
 
   // 隨機取得此次攻擊的訊息樣板
-  let messageTemplates = await worldBossUserAttackMessageService.all();
-  let templateData = messageTemplates[Math.floor(Math.random() * messageTemplates.length)];
+  const messageTemplates = await worldBossUserAttackMessageService.all();
+  const tags = await worldBossUserAttackMessageService.getTags();
+  // 先抽取 tag
+  const tag = sample(tags);
+  // 再根據 tag 抽取訊息樣板
+  const templateData = sample(messageTemplates.filter(data => data.tag === tag));
+
   let causedDamagePercent = calculateDamagePercentage(eventBoss.hp, damage);
   let earnedExp = (eventBoss.exp * causedDamagePercent) / 100;
   // 計算因等級差距的關係是否進行經驗值懲罰
