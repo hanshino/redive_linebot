@@ -202,7 +202,6 @@ async function getAllCharacter() {
 }
 
 function convertUrl(url, rarity) {
-  rarity = parseInt(rarity);
   // 如果給的 rarity 是 2 或 4，則推算到最近的合法稀有度
   if (rarity === 2) {
     rarity = 1;
@@ -219,14 +218,14 @@ function convertUrl(url, rarity) {
   let parts = url.split("/");
   let fileName = parts[parts.length - 1];
 
-  // 確保 "icon_unit" 不受影響，只修改角色編號部分
-  let characterId = fileName.replace("icon_unit_", "").split(".")[0];
+  // 提取角色編號部分 (例如 100511)，去除圖片的副檔名 .png
+  let characterId = fileName.split(".")[0];
 
   // 修改角色編號的第五碼，假設是從 0 開始的第 4 個字元
   let newCharacterId = characterId.slice(0, 4) + rarity + characterId.slice(5);
 
   // 構建新的檔案名稱
-  let newFileName = "icon_unit_" + newCharacterId + ".png";
+  let newFileName = newCharacterId + ".png";
 
   // 替換新的檔案名稱
   parts[parts.length - 1] = newFileName;
