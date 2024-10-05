@@ -3,6 +3,7 @@ const { getClient } = require("bottender");
 const LineClient = getClient("line");
 const redis = require("../../../util/redis");
 const { get } = require("lodash");
+const base = require("../../base");
 exports.table = "GachaPool";
 
 exports.all = async (options = {}) => {
@@ -189,3 +190,9 @@ exports.getCollectedRank = async options => {
 
   return rankDatas;
 };
+
+class GachaPool extends base {}
+
+exports.model = new GachaPool({
+  table: "GachaPool",
+});
