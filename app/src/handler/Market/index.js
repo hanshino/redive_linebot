@@ -1,5 +1,6 @@
 const MarketDetailModel = require("../../model/application/MarketDetail");
 const TradeHistoryModel = require("../../model/application/TradeHistory");
+const { model: GachaPoolModel } = require("../../model/princess/gacha");
 const { get, isNull } = require("lodash");
 const i18n = require("../../util/i18n");
 const { inventory: InventoryModel } = require("../../model/application/Inventory");
@@ -91,11 +92,14 @@ exports.transaction = async (req, res) => {
     const delResult = await InventoryModel.deleteUserItem(sellerId, itemId);
     if (!delResult) throw i18n.__("api.error.transaction.removeItemFailed");
 
+    const character = await GachaPoolModel.find(itemId);
+
     // 2. 從買方身上新增該商品
     const invId = await InventoryModel.create({
       userId,
       itemId,
       itemAmount: 1,
+      attributes: JSON.stringify([{ key: "star", value: get(character, "star", 1) }]),
     });
     if (!invId) throw i18n.__("api.error.transaction.addItemFailed");
 
