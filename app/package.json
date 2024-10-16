@@ -22,7 +22,7 @@
     "config": "^3.3.12",
     "cron": "^3.1.7",
     "date-format": "^4.0.14",
-    "express": "^4.21.0",
+    "express": "^4.21.1",
     "express-rate-limit": "^7.4.1",
     "human-number": "^2.0.4",
     "i18n": "^0.15.1",
