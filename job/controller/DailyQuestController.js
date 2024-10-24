@@ -1,6 +1,5 @@
 const redis = require("../lib/redis");
 const mysql = require("../lib/mysql");
-const notify = require("../lib/notify");
 const moment = require("moment");
 const config = require("config");
 const redis_key = config.get("event_center.daily_quest");
