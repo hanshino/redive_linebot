@@ -1,5 +1,4 @@
 const mysql = require("../lib/mysql");
-const notify = require("../lib/notify");
 const RecordModel = require("../model/record");
 const GroupModel = require("../model/GroupModel");
 const redis = require("../lib/redis");
@@ -27,7 +26,7 @@ exports.clearClosed = async () => {
     .then(res => res.map(data => data.guildId));
 
   if (delGuilds.length === 0) {
-    await notify.push({
+    CustomLogger.info({
       message: "沒有關閉的群組需要清除",
       alert: true,
     });
@@ -76,7 +75,7 @@ exports.clearClosed = async () => {
       .catch(trx.rollback);
   });
 
-  await notify.push({
+  CustomLogger.info({
     message: records.join("\n"),
     alert: true,
   });
@@ -95,7 +94,7 @@ exports.clearLeftMembers = async () => {
     .where("status", "=", 0)
     .delete();
 
-  notify.push({ message: `清除了 ${affectedRows} 退出成員資料` });
+  CustomLogger.info({ message: `清除了 ${affectedRows} 退出成員資料` });
 };
 
 exports.resetRecords = async () => {
@@ -105,10 +104,10 @@ exports.resetRecords = async () => {
 
     await RecordModel.clearRecords();
 
-    notify.push({ message: "每月次數已重置" });
+    CustomLogger.info({ message: "每月次數已重置" });
   } catch (e) {
     console.log(e);
-    notify.push({ message: e, alert: true });
+    CustomLogger.info({ message: e, alert: true });
   }
 };
 

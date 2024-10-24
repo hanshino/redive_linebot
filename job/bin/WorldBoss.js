@@ -1,6 +1,6 @@
 const CronJob = require("cron").CronJob;
 const mysql = require("../lib/mysql");
-const notify = require("../lib/notify");
+const { CustomLogger } = require("../lib/Logger");
 
 async function progressNotify() {
   try {
@@ -29,7 +29,7 @@ async function progressNotify() {
     const sentPromise = Promise.all(
       notifyList.map(async item => {
         const { token } = item;
-        await notify.push({ token, message });
+        await CustomLogger.info({ token, message });
       })
     );
 
@@ -55,7 +55,7 @@ async function regularRemind() {
   const sentPromise = Promise.all(
     notifyList.map(async item => {
       const { token } = item;
-      await notify.push({ token, message: tipMessage });
+      await CustomLogger.info({ token, message: tipMessage });
     })
   );
 
