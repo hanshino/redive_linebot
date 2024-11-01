@@ -142,8 +142,6 @@ async function userCooldown(userId) {
     NX: true,
   });
 
-  console.log(result, "result");
-
   return !isNull(result);
 }
 
