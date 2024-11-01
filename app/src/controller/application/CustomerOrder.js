@@ -5,6 +5,7 @@ const random = require("math-random");
 const CustomerOrderTemplate = require("../../templates/application/CustomerOrder");
 const { send } = require("../../templates/application/Order");
 const { recordSign } = require("../../util/traffic");
+const { get } = require("lodash");
 
 function CusOrderException(message, code = 0) {
   this.message = message;
@@ -18,7 +19,7 @@ function CusOrderException(message, code = 0) {
  * @return {Object}
  */
 function initialReply(strReply) {
-  var replyDatas = strReply
+  let replyDatas = strReply
     .split(/\|/)
     .filter(reply => reply.trim() !== "")
     .map(reply => {
@@ -80,16 +81,17 @@ function handleSender(param) {
  * 新增自訂指令
  * @param {Context} context
  * @param {Object} props
- * @param {Number} touchType 觸發類型，1:完全符合，2:部分符合
+ * @param {Number} props.touchType 觸發類型，1:完全符合，2:部分符合
  */
-exports.insertCustomerOrder = async (context, props, touchType = 1) => {
+exports.insertCustomerOrder = async (context, props) => {
   try {
     recordSign("insertCustomerOrder");
     const param = minimist(context.event.message.text.split(/\s+/));
+    const { touchType } = props;
 
-    var [prefix, order] = param._;
-    var reply = context.event.message.text.replace(prefix, "").replace(order, "").trim();
-    var [sourceId, userId] = getSourceId(context);
+    let [prefix, order] = param._;
+    let reply = context.event.message.text.replace(prefix, "").replace(order, "").trim();
+    let [sourceId, userId] = getSourceId(context);
 
     if (order === undefined || reply === undefined) {
       CustomerOrderTemplate[context.platform].showInsertManual(context);
@@ -98,8 +100,30 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
 
     reply = reply.toString();
 
-    var replyDatas = initialReply(reply);
-    var { name, iconUrl } = handleSender(param);
+    const mentionees = get(context, "event.message.mention.mentionees", []);
+    let substitution = {};
+    // 如果 reply 內容有 mention，需轉換為替代字元
+    mentionees.forEach((mentionee, idx) => {
+      const name = get(context, "event.message.text", "").substring(
+        mentionee.index,
+        mentionee.index + mentionee.length
+      );
+
+      // @all 不處理
+      if (mentionee.type === "all") return;
+
+      substitution[`user${idx}`] = {
+        type: "mention",
+        mentionee: {
+          type: "user",
+          userId: mentionee.userId,
+        },
+      };
+      reply = reply.replace(name, `{user${idx}}`);
+    });
+
+    let replyDatas = initialReply(reply);
+    let { name, iconUrl } = handleSender(param);
     let orderKey = uuid();
 
     let params = replyDatas.map((data, index) => ({
@@ -110,6 +134,7 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
       touchType,
       MessageType: data.type,
       Reply: data.data,
+      Substitution: substitution,
       CreateDTM: new Date(),
       CreateUser: userId,
       ModifyUser: userId,
@@ -155,13 +180,13 @@ function getSourceId(context) {
  * @param {Context} context
  */
 exports.CustomerOrderDetect = async context => {
-  var [sourceId] = getSourceId(context);
-  var orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId, 1);
+  let [sourceId] = getSourceId(context);
+  let orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId, 1);
 
   // 尚未建立任何指令
   if (orderDatas.length === 0) return false;
 
-  var chosenOrderKey = chooseOrder(orderDatas);
+  let chosenOrderKey = chooseOrder(orderDatas);
 
   if (chosenOrderKey === false) return false;
   recordSign("CustomerOrderDetect");
@@ -245,12 +270,12 @@ exports.deleteCustomerOrder = async (context, { match }) => {
       return;
     }
 
-    var [sourceId, userId] = getSourceId(context);
+    let [sourceId, userId] = getSourceId(context);
 
-    var deleteOrders = await CustomerOrderModel.queryOrderToDelete(order, sourceId);
+    let deleteOrders = await CustomerOrderModel.queryOrderToDelete(order, sourceId);
 
     if (deleteOrders.length === 0) throw new CusOrderException(`未搜尋到"${order}"的指令`);
-    var { orderKey: key } = autoComplete(orderKey, deleteOrders);
+    let { orderKey: key } = autoComplete(orderKey, deleteOrders);
     // 剛好只有一筆符合刪除條件
     if (deleteOrders.length === 1 || key !== undefined) {
       await CustomerOrderModel.setStatus(
@@ -289,7 +314,7 @@ exports.api = {};
 
 exports.api.fetchCustomerOrders = async (req, res) => {
   const { sourceId } = req.params;
-  var orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId);
+  let orderDatas = await CustomerOrderModel.queryOrderBySourceId(sourceId);
 
   let userIds = [];
   orderDatas.forEach(data => {
@@ -311,7 +336,7 @@ exports.api.updateOrder = async (req, res) => {
   const { userId } = req.profile;
 
   try {
-    var updateResult = await CustomerOrderModel.updateOrder(sourceId, req.body, userId);
+    let updateResult = await CustomerOrderModel.updateOrder(sourceId, req.body, userId);
     if (updateResult === false) throw new CusOrderException("Update Failed", 2);
 
     res.json({});
@@ -331,8 +356,8 @@ exports.api.insertOrder = async (req, res) => {
   const { body: orderDatas, profile } = req;
 
   try {
-    var { order, senderName, senderIcon, touchType } = orderDatas;
-    var orderKey = uuid();
+    let { order, senderName, senderIcon, touchType } = orderDatas;
+    let orderKey = uuid();
 
     if ([order, touchType].includes("")) throw new CusOrderException("Bad Request.");
     if ([order, touchType].includes(null)) throw new CusOrderException("Bad Request.");
@@ -346,7 +371,7 @@ exports.api.insertOrder = async (req, res) => {
         throw new CusOrderException("Bad Request.");
     });
 
-    var params = orderDatas.replyDatas.map((data, index) => ({
+    let params = orderDatas.replyDatas.map((data, index) => ({
       No: index,
       sourceId,
       orderKey,

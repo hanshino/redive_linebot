@@ -286,12 +286,8 @@ function CustomerOrder(context) {
 
   return [
     text(/^[#.]?(指令列表|orderlist)$/, showOrderManager),
-    text(/^[#.]?新增指令/, (context, props) =>
-      customerOrder.insertCustomerOrder(context, props, 1)
-    ),
-    text(/^[#.]?新增關鍵字指令/, (context, props) =>
-      customerOrder.insertCustomerOrder(context, props, 2)
-    ),
+    text(/^[#.]?新增指令/, withProps(customerOrder.insertCustomerOrder, { touchType: 1 })),
+    text(/^[#.]?新增關鍵字指令/, withProps(customerOrder.insertCustomerOrder, { touchType: 2 })),
     text(
       /^[#.]?[移刪]除指令(\s*(?<order>\S+))?(\s*(?<orderKey>\S+))?$/,
       customerOrder.deleteCustomerOrder

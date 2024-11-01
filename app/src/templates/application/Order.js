@@ -4,7 +4,7 @@ const CharacterModel = require("../../model/princess/character");
 
 /**
  * 發送訊息整合，整合多平台發送方式
- * @param {Context} context
+ * @param {import("bottender").LineContext} context
  * @param {Array.<Object>} replyData
  * @param {String|Number} replyData.no
  * @param {String} replyData.messageType
@@ -21,13 +21,25 @@ exports.send = (context, replyDatas, sender = { name: null, iconUrl: null }) => 
   replyDatas
     .sort((a, b) => a.no - b.no)
     .forEach(data => {
-      let content = handleText(data.reply, context);
-      switch (data.messageType) {
+      const { reply, messageType, substitution } = data;
+      let content = handleText(reply, context);
+      switch (messageType) {
         case "image":
           _sendImage(context, content, sender);
           return;
         case "text":
-          context.replyText(content, { sender });
+          if (substitution !== null) {
+            context.reply([
+              {
+                type: "textV2",
+                text: content,
+                sender,
+                substitution,
+              },
+            ]);
+          } else {
+            context.replyText(content, { sender });
+          }
           return;
       }
     });
