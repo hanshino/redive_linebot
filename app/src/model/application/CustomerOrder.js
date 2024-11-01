@@ -10,6 +10,7 @@ exports.columnsAlias = [
   "touchType",
   "messageType",
   "reply",
+  "substitution",
   "createDTM",
   "createUser",
   "modifyDTM",
