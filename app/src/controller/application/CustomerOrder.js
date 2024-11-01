@@ -5,6 +5,7 @@ const random = require("math-random");
 const CustomerOrderTemplate = require("../../templates/application/CustomerOrder");
 const { send } = require("../../templates/application/Order");
 const { recordSign } = require("../../util/traffic");
+const { get } = require("lodash");
 
 function CusOrderException(message, code = 0) {
   this.message = message;
@@ -80,12 +81,13 @@ function handleSender(param) {
  * 新增自訂指令
  * @param {Context} context
  * @param {Object} props
- * @param {Number} touchType 觸發類型，1:完全符合，2:部分符合
+ * @param {Number} props.touchType 觸發類型，1:完全符合，2:部分符合
  */
-exports.insertCustomerOrder = async (context, props, touchType = 1) => {
+exports.insertCustomerOrder = async (context, props) => {
   try {
     recordSign("insertCustomerOrder");
     const param = minimist(context.event.message.text.split(/\s+/));
+    const { touchType } = props;
 
     let [prefix, order] = param._;
     let reply = context.event.message.text.replace(prefix, "").replace(order, "").trim();
@@ -97,6 +99,28 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
     }
 
     reply = reply.toString();
+
+    const mentionees = get(context, "event.message.mention.mentionees", []);
+    let substitution = {};
+    // 如果 reply 內容有 mention，需轉換為替代字元
+    mentionees.forEach((mentionee, idx) => {
+      const name = get(context, "event.message.text", "").substring(
+        mentionee.index,
+        mentionee.index + mentionee.length
+      );
+
+      // @all 不處理
+      if (mentionee.type === "all") return;
+
+      substitution[`user${idx}`] = {
+        type: "mention",
+        mentionee: {
+          type: "user",
+          userId: mentionee.userId,
+        },
+      };
+      reply = reply.replace(name, `{user${idx}}`);
+    });
 
     let replyDatas = initialReply(reply);
     let { name, iconUrl } = handleSender(param);
@@ -110,6 +134,7 @@ exports.insertCustomerOrder = async (context, props, touchType = 1) => {
       touchType,
       MessageType: data.type,
       Reply: data.data,
+      Substitution: substitution,
       CreateDTM: new Date(),
       CreateUser: userId,
       ModifyUser: userId,
