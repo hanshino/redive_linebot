@@ -64,6 +64,23 @@
     "lottery_ticket_auto_buy": "快選"
   },
   "message": {
+    "whos_problem": [
+      "{user} 在搞吧...",
+      "{user} 這個人在搞什麼...",
+      "{user} 這個人在搞什麼鬼...",
+      "{user} 的鍋!!!",
+      "{user} 出來背鍋",
+      "{user} 好了啦",
+      "{user} 超級可悲，就是你",
+      "{user} you",
+      "都 {user} 的錯",
+      "{user} 你是不是有點太過分了"
+    ],
+    "whos_problem_only_one": [
+      "好了啦，就你在搞",
+      "就你在講話而已",
+      "老哥，就你在這而已"
+    ],
     "error_contact_admin": "如發現此訊息，請向管理員報告此問題\n使用者ID: {{ user_id }}\n錯誤類型: {{ error_key }}",
     "user_own_god_stone": "你擁有的女神石: {{ god_stone }}",
     "user_own_character_count": "你擁有的角色數量: {{ character_count }}",

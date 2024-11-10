@@ -39,6 +39,7 @@ const NumberController = require("./controller/application/NumberController");
 const JobController = require("./controller/application/JobController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
+const i18n = require("./util/i18n");
 const traffic = require("./util/traffic");
 const { showManagePlace } = require("./templates/application/Admin");
 const { pushMessage } = require("./util/LineNotify");
@@ -46,8 +47,35 @@ const AdminModel = require("./model/application/Admin");
 const axios = require("axios");
 const pConfig = require("config");
 const FetchGameData = require("../bin/FetchGameData");
+const { get, sample } = require("lodash");
 
 axios.defaults.timeout = 5000;
+
+const askBot = (keyword, action) =>
+  route(context => {
+    if (context.event.isText === false) return false;
+    const mentionees = get(context, "event.message.mention.mentionees", []);
+    const isAskingBot = mentionees.some(mentionee => mentionee.isSelf === true);
+    if (!isAskingBot) return false;
+
+    if (keyword === undefined) {
+      throw new Error("Missing keyword");
+    }
+
+    if (typeof keyword === "string") {
+      return context.event.text.includes(keyword);
+    }
+
+    if (Array.isArray(keyword)) {
+      return keyword.some(k => context.event.text.includes(k));
+    }
+
+    if (keyword instanceof RegExp) {
+      return keyword.test(context.event.text);
+    }
+
+    return false;
+  }, action);
 
 function showState(context) {
   context.replyText(JSON.stringify(context.state));
@@ -339,6 +367,67 @@ async function CustomerOrderBased(context, { next }) {
   if (detectResult === false) return next;
 }
 
+function interactWithBot(context) {
+  return router([
+    askBot("你好", context => context.replyText("你好啊！")),
+    askBot(["誰的問題", "誰在搞"], whosProblem),
+  ]);
+}
+
+const recordLatestGroupUser = async (context, { next }) => {
+  if (context.event.source.type !== "group") return;
+  const { userId, groupId } = context.event.source;
+  const key = `latestGroupUser:${groupId}`;
+  await redis.zAdd(key, [
+    {
+      score: Date.now(),
+      value: userId,
+    },
+  ]);
+  // 保留 timestamp 在 30 分鐘內的資料
+  await redis.zRemRangeByScore(key, 0, Date.now() - 30 * 60 * 1000);
+  return next;
+};
+
+/**
+ * 誰的問題
+ * @param {import("bottender").LineContext} context
+ */
+async function whosProblem(context) {
+  if (context.event.source.type !== "group") return;
+  const { groupId } = context.event.source;
+  const key = `latestGroupUser:${groupId}`;
+  const users = await redis.zRange(key, 0, -1);
+  const { quoteToken } = context.event.message;
+
+  if (users.length === 1) {
+    return context.replyText(sample(i18n.__("message.whos_problem_only_one")), { quoteToken });
+  }
+
+  const target = sample(users);
+  const replyMessage = [
+    {
+      type: "textV2",
+      text: sample(i18n.__("message.whos_problem")),
+      sender: {
+        name: "裁決者",
+      },
+      substitution: {
+        user: {
+          type: "mention",
+          mentionee: {
+            type: "user",
+            userId: target,
+          },
+        },
+      },
+      quoteToken,
+    },
+  ];
+
+  context.reply(replyMessage);
+}
+
 function Nothing(context) {
   switch (context.platform) {
     case "line":
@@ -359,6 +448,7 @@ async function App(context) {
   return chain([
     setProfile, // 設置各式用戶資料
     statistics, // 數據蒐集
+    recordLatestGroupUser, // 紀錄最近群組用戶
     lineEvent, // 事件處理
     config, // 設置群組設定檔
     transfer, // Discord Webhook轉發
@@ -368,6 +458,7 @@ async function App(context) {
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
     CustomerOrderBased, // 自訂指令分析
+    interactWithBot, // 標記機器人回應
     Nothing, // 無符合事件
   ]);
 }
