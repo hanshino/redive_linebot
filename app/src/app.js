@@ -367,14 +367,15 @@ async function CustomerOrderBased(context, { next }) {
   if (detectResult === false) return next;
 }
 
-function interactWithBot(context) {
+function interactWithBot(context, { next }) {
   return router([
     askBot("你好", context => context.replyText("你好啊！")),
     askBot(["誰的問題", "誰在搞"], whosProblem),
+    route("*", next),
   ]);
 }
 
-const recordLatestGroupUser = async (context, { next }) => {
+async function recordLatestGroupUser(context, { next }) {
   if (context.event.source.type !== "group") return next;
   const { userId, groupId } = context.event.source;
   if (!userId) return next;
@@ -393,7 +394,7 @@ const recordLatestGroupUser = async (context, { next }) => {
   }
 
   return next;
-};
+}
 
 /**
  * 誰的問題
