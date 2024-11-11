@@ -379,14 +379,19 @@ const recordLatestGroupUser = async (context, { next }) => {
   const { userId, groupId } = context.event.source;
   if (!userId) return next;
   const key = `latestGroupUser:${groupId}`;
-  await redis.zAdd(key, [
-    {
-      score: Date.now(),
-      value: userId,
-    },
-  ]);
-  // 保留 timestamp 在 30 分鐘內的資料
-  await redis.zRemRangeByScore(key, 0, Date.now() - 30 * 60 * 1000);
+  try {
+    await redis.zAdd(key, [
+      {
+        score: Date.now(),
+        value: userId,
+      },
+    ]);
+    // 保留 timestamp 在 30 分鐘內的資料
+    await redis.zRemRangeByScore(key, 0, Date.now() - 30 * 60 * 1000);
+  } catch (e) {
+    console.error(e);
+  }
+
   return next;
 };
 
