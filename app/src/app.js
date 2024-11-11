@@ -375,7 +375,7 @@ function interactWithBot(context) {
 }
 
 const recordLatestGroupUser = async (context, { next }) => {
-  if (context.event.source.type !== "group") return;
+  if (context.event.source.type !== "group") return next;
   const { userId, groupId } = context.event.source;
   const key = `latestGroupUser:${groupId}`;
   await redis.zAdd(key, [
