@@ -468,6 +468,7 @@ async function App(context) {
     OrderBased, // 指令分析
     CustomerOrderBased, // 自訂指令分析
     interactWithBot, // 標記機器人回應
+    OpenaiController.recordSession, // 記錄對話
     Nothing, // 無符合事件
   ]);
 }
