@@ -53,6 +53,30 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
 };
 
 /**
+ * 只記錄對話
+ * @param {import("bottender").LineContext} context
+ */
+exports.recordSession = async function (context, { next }) {
+  // 只處理文字訊息
+  if (!context.event.isText) {
+    return next;
+  }
+  const { text } = context.event.message;
+
+  // 不處理太長的文字訊息
+  if (text.length > 100) {
+    return next;
+  }
+
+  const sourceType = get(context, "event.source.type");
+  const sourceId = get(context, `event.source.${sourceType}Id`);
+  const displayName = get(context, "event.source.displayName");
+
+  await recordSession(sourceId, `${displayName}:${text}`);
+  return next;
+};
+
+/**
  * 紀錄對話
  * @param {String} groupId
  * @param {String|Array} text
