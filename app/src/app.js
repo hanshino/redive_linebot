@@ -282,6 +282,7 @@ async function OrderBased(context, { next }) {
       context.replyFlex("實用連結", carousel);
     }),
     text(".test", () => pushMessage({ message: "test", token: process.env.LINE_NOTIFY_TOKEN })),
+    text("/resetsession", OpenaiController.resetSession),
     route("*", next),
   ]);
 }

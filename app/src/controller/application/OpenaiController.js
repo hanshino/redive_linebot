@@ -89,6 +89,13 @@ exports.recordSession = async function (context, { next }) {
   return next;
 };
 
+exports.resetSession = async function (context) {
+  const sourceType = get(context, "event.source.type");
+  const sourceId = get(context, `event.source.${sourceType}Id`);
+  await redis.del(format(groupSessionKeyTemplate, sourceId));
+  await context.replyText("已經將對話紀錄清空");
+};
+
 /**
  * 紀錄對話
  * @param {String} groupId
