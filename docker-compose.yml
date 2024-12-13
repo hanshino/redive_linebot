@@ -1,4 +1,14 @@
 services:
+  ngrok:
+    image: ngrok/ngrok:latest
+    command:
+      - "http"
+      - "http://host.docker.internal:80"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - 4040:4040
+
   nginx:
     image: nginx:latest
     restart: always
@@ -31,16 +41,7 @@ services:
       "MYSQL_ROOT_PASSWORD": "${DB_PASSWORD}"
       "TZ": "Asia/Taipei"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-u $$DB_USER",
-          "-p$$DB_PASSWORD"
-        ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u $$DB_USER", "-p$$DB_PASSWORD" ]
       timeout: 20s
       retries: 10
 
