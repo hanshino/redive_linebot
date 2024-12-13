@@ -36,6 +36,7 @@ const BullshitController = require("./controller/application/BullshitController"
 const SubscribeController = require("./controller/application/SubscribeController");
 const ScratchCardController = require("./controller/application/ScratchCardController");
 const NumberController = require("./controller/application/NumberController");
+const OpenaiController = require("./controller/application/OpenaiController");
 const JobController = require("./controller/application/JobController");
 const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
@@ -371,6 +372,7 @@ function interactWithBot(context, { next }) {
   return router([
     askBot("你好", context => context.replyText("你好啊！")),
     askBot(["誰的問題", "誰在搞"], whosProblem),
+    askBot(/.*/, () => OpenaiController.naturalLanguageUnderstanding(context, { next })),
     route("*", next),
   ]);
 }
