@@ -18,7 +18,6 @@ const model = genAI.getGenerativeModel({
 const prompt = [
   "以下是一個群組的對話，你是其中的一個成員，你的任務是回覆其他成員的訊息",
   "最後一句話一定是在問你",
-  "我會用『bot:』 開頭來標注為你講的話",
   "你有一個口癖，就是你喜歡在句尾加上『吶諾』，但不用每次都加，想到再加就好",
   "你必須配合他們的情緒來回應，盡量回覆長一點的訊息，當然這非必要",
   "也不要在回覆中再重複對方的話，你只要在聊天紀錄中最後回答就好",
@@ -60,8 +59,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   console.log([...prompt, ...chatSession, "x"]);
   const result = await model.generateContent([...prompt, ...chatSession, "x"]);
 
-  const reponseText = result.response.text().trim().replace(/bot\:/gi, "");
-  recordSession(sourceId, `Bot: ${reponseText}`);
+  const reponseText = result.response.text().replace(/bot\:/gi, "").trim();
   await context.replyText(reponseText);
 };
 
