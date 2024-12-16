@@ -90,7 +90,6 @@ function genPuddingStatus() {
           ),
         ]),
         genRowButtons([
-          genLinkButton("Discord", config.get("color.discord"), config.get("links.discord")),
           genLinkButton("GitHub", config.get("color.github"), config.get("links.github")),
           genLinkButton("巴哈姆特", config.get("color.bahamut"), config.get("links.bahamut")),
         ]),

@@ -26,16 +26,6 @@ const Home = () => {
       <Announcement />
       <Statistics />
       <Features />
-      <Grid item xs={12}>
-        <iframe
-          width="100%"
-          src="https://discord.com/widget?id=669080231079968770&theme=dark"
-          height="500"
-          allowtransparency="true"
-          frameBorder="0"
-          sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-        ></iframe>
-      </Grid>
     </Grid>
   );
 };

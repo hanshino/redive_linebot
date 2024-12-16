@@ -158,12 +158,6 @@ const NavBar = props => {
               </ListItemIcon>
               <ListItemText primary="布丁巴哈更新串" />
             </ListItem>
-            <ListItem button component="a" href="https://discord.gg/Fy82rTb">
-              <ListItemIcon>
-                <LanguageIcon />
-              </ListItemIcon>
-              <ListItemText primary="布丁Discord" />
-            </ListItem>
             <ListItem
               button
               component="a"
