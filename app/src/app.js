@@ -261,14 +261,6 @@ async function OrderBased(context, { next }) {
             }
           ),
           commonTemplate.genLinkBubble(
-            "Discord",
-            pConfig.get("links.discord"),
-            pConfig.get("color.discord"),
-            {
-              textColor: "#ffffff",
-            }
-          ),
-          commonTemplate.genLinkBubble(
             "Github",
             pConfig.get("links.github"),
             pConfig.get("color.github"),
