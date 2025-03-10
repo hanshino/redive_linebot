@@ -68,7 +68,7 @@ jobs:
     needs: [backend, frontend] # Ensure that both backend and frontend jobs are finished before deploying
     steps:
       - name: Deploy Redive linebot
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
