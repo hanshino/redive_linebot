@@ -6,7 +6,7 @@ const knex = require("knex");
 module.exports = file => {
   console.log("file", file);
   return knex({
-    client: "sqlite3",
+    client: "better-sqlite3",
     connection: {
       filename: file,
     },
