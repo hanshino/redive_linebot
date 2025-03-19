@@ -1,6 +1,7 @@
 const InventoryModel = require("../../../model/application/Inventory");
 const GodStoneShopModel = require("../../../model/princess/GodStoneShop");
 const GachaModel = require("../../../model/princess/gacha");
+const gacha = GachaModel.model;
 const i18n = require("../../../util/i18n");
 
 /**
@@ -36,6 +37,8 @@ exports.exchangeItem = async function (req, res) {
     });
   }
 
+  const character = await gacha.find(itemId);
+
   // 兌換物品
   // 1. 扣除女神石
   // 2. 加入物品
@@ -43,7 +46,7 @@ exports.exchangeItem = async function (req, res) {
   console.log("使用女神石兌換物品", itemInfo.price, remainGodStone, godStone);
   await InventoryModel.deleteItem(userId, 999);
   await InventoryModel.insertItems([
-    { userId, itemId, itemAmount: itemCount },
+    { userId, itemId, itemAmount: itemCount, attributes: [{ key: "star", value: character.Star }] },
     { userId, itemId: 999, itemAmount: remainGodStone },
   ]);
 
