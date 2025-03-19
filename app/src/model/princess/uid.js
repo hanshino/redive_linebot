@@ -59,7 +59,7 @@ exports.getData = async userId => {
 
   return {
     ...uidData,
-    nickname: await getPrincessNickName(uidData.uid, uidData.server),
+    nickname: "-",
   };
 };
 
