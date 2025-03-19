@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@line/bot-sdk": "^7.7.0",
-    "axios": "^1.7.9",
+    "axios": "^1.8.2",
     "cheerio": "^1.0.0",
     "config": "^3.3.12",
     "cron": "^2.4.4",
