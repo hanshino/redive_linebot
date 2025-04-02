@@ -46,7 +46,12 @@ exports.exchangeItem = async function (req, res) {
   console.log("使用女神石兌換物品", itemInfo.price, remainGodStone, godStone);
   await InventoryModel.deleteItem(userId, 999);
   await InventoryModel.insertItems([
-    { userId, itemId, itemAmount: itemCount, attributes: [{ key: "star", value: character.Star }] },
+    {
+      userId,
+      itemId,
+      itemAmount: itemCount,
+      attributes: JSON.stringify([{ key: "star", value: character.Star }]),
+    },
     { userId, itemId: 999, itemAmount: remainGodStone },
   ]);
 
