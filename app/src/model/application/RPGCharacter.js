@@ -190,11 +190,11 @@ class Swordman extends Adventurer {
   get skillOne() {
     return {
       name: "震地斬擊",
-      description: "敵に1.5倍のダメージを与える",
-      cost: 15,
-      rate: 1.8,
-      criticalRate: 5,
-      criticalConfig: [makeCriticalConfig(1, 1.5, 100)],
+      description: "穩定的重擊，造成 2.2 倍傷害",
+      cost: 10,
+      rate: 2.2,
+      criticalRate: 8,
+      criticalConfig: [makeCriticalConfig(1.2, 1.4, 100)],
     };
   }
 
@@ -217,15 +217,15 @@ class Mage extends Adventurer {
   get skillOne() {
     return {
       name: "元素之力",
-      description: "敵に1.1倍のダメージを与える。クリティカル時は2倍",
-      cost: 8,
-      rate: 0.85,
-      criticalRate: 20,
+      description: "低消耗的魔法攻擊，容易產生爆擊",
+      cost: 7,
+      rate: 1.0,
+      criticalRate: 25,
       criticalConfig: [
-        makeCriticalConfig(2, 2.5, 70),
-        makeCriticalConfig(2.5, 2.8, 20),
-        makeCriticalConfig(2.8, 3.2, 8),
-        makeCriticalConfig(3.2, 3.8, 2),
+        makeCriticalConfig(1.8, 2.2, 60),
+        makeCriticalConfig(2.2, 2.6, 25),
+        makeCriticalConfig(2.6, 3.0, 12),
+        makeCriticalConfig(3.0, 3.5, 3),
       ],
     };
   }
@@ -255,16 +255,16 @@ class Thief extends Adventurer {
   get skillOne() {
     return {
       name: "致命一擊",
-      description: "敵に1.2倍のダメージを与える",
-      cost: 12,
-      rate: 1.2,
-      criticalRate: 40,
+      description: "高風險高回報的攻擊，有機會造成巨額傷害",
+      cost: 20,
+      rate: 1.5,
+      criticalRate: 50,
       criticalConfig: [
-        makeCriticalConfig(0.8, 1, 2),
-        makeCriticalConfig(1, 1.2, 3),
-        makeCriticalConfig(1.2, 1.5, 40),
-        makeCriticalConfig(1.5, 2, 40),
-        makeCriticalConfig(2, 3, 15),
+        makeCriticalConfig(1.2, 1.5, 10),
+        makeCriticalConfig(1.5, 2.0, 25),
+        makeCriticalConfig(2.0, 2.8, 35),
+        makeCriticalConfig(2.8, 3.8, 25),
+        makeCriticalConfig(3.8, 5.0, 5),
       ],
     };
   }
