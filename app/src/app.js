@@ -364,7 +364,7 @@ async function CustomerOrderBased(context, { next }) {
 function interactWithBot(context, { next }) {
   return router([
     askBot("你好", context => context.replyText("你好啊！")),
-    askBot(["誰的問題", "誰在搞"], whosProblem),
+    text(/(誰的問題|誰在搞)/, whosProblem),
     askBot(/.*/, () => OpenaiController.naturalLanguageUnderstanding(context, { next })),
     route("*", next),
   ]);
