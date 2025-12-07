@@ -69,3 +69,21 @@ database
 data
 
 .vscode
+
+# Monorepo / Build
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# Prisma
+apps/backend/prisma/migrations/**/migration_lock.toml
+
+# IDE
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
