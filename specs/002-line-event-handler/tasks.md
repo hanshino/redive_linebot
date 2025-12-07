@@ -24,9 +24,9 @@
 
 **Purpose**: 專案初始化和基礎結構設定
 
-- [ ] T001 新增 LINE Bot 環境變數到 config 模組 in `apps/backend/src/config/configuration.ts`
-- [ ] T002 設定 Fastify raw body 支援（簽名驗證需要原始請求體） in `apps/backend/src/main.ts`
-- [ ] T003 [P] 建立 LINE 模組目錄結構 in `apps/backend/src/line/`
+- [x] T001 新增 LINE Bot 環境變數到 config 模組 in `apps/backend/src/config/configuration.ts`
+- [x] T002 設定 Fastify raw body 支援（簽名驗證需要原始請求體） in `apps/backend/src/main.ts`
+- [x] T003 [P] 建立 LINE 模組目錄結構 in `apps/backend/src/line/`
 
 ---
 
@@ -36,10 +36,10 @@
 
 **⚠️ CRITICAL**: 此階段完成前無法開始任何 User Story 實作
 
-- [ ] T004 建立 LINE 事件型別定義（re-export from SDK） in `apps/backend/src/line/types/events.ts`
-- [ ] T005 [P] 建立 Middleware 型別定義（Context, NextFunction, Middleware interface） in `apps/backend/src/line/middleware/middleware.types.ts`
-- [ ] T006 [P] 建立 LINE 模組定義（空殼，稍後填入 providers） in `apps/backend/src/line/line.module.ts`
-- [ ] T007 將 LineModule 匯入至 AppModule in `apps/backend/src/app.module.ts`
+- [x] T004 建立 LINE 事件型別定義（re-export from SDK） in `apps/backend/src/line/types/events.ts`
+- [x] T005 [P] 建立 Middleware 型別定義（Context, NextFunction, Middleware interface） in `apps/backend/src/line/middleware/middleware.types.ts`
+- [x] T006 [P] 建立 LINE 模組定義（空殼，稍後填入 providers） in `apps/backend/src/line/line.module.ts`
+- [x] T007 將 LineModule 匯入至 AppModule in `apps/backend/src/app.module.ts`
 
 **Checkpoint**: 基礎設施就緒 - 可開始 User Story 實作
 
@@ -53,12 +53,12 @@
 
 ### Implementation for User Story 1 & 2
 
-- [ ] T008 [US1] 實作 MiddlewareRunner（洋蔥模型執行器） in `apps/backend/src/line/middleware/middleware.runner.ts`
-- [ ] T009 [US2] 實作 SignatureGuard（LINE 簽名驗證 Guard） in `apps/backend/src/line/guards/signature.guard.ts`
-- [ ] T010 [P] [US1] 實作 LoggingMiddleware（結構化日誌記錄） in `apps/backend/src/line/middleware/logging.middleware.ts`
-- [ ] T011 [US1] 實作 LineService（LINE client 封裝，處理回覆訊息） in `apps/backend/src/line/line.service.ts`
-- [ ] T012 [US1] 實作 LineController（Webhook 端點，POST /line/webhook） in `apps/backend/src/line/line.controller.ts`
-- [ ] T013 更新 LineModule 註冊所有 providers 和 guards in `apps/backend/src/line/line.module.ts`
+- [x] T008 [US1] 實作 MiddlewareRunner（洋蔥模型執行器） in `apps/backend/src/line/middleware/middleware.runner.ts`
+- [x] T009 [US2] 實作 SignatureGuard（LINE 簽名驗證 Guard） in `apps/backend/src/line/guards/signature.guard.ts`
+- [x] T010 [P] [US1] 實作 LoggingMiddleware（結構化日誌記錄） in `apps/backend/src/line/middleware/logging.middleware.ts`
+- [x] T011 [US1] 實作 LineService（LINE client 封裝，處理回覆訊息） in `apps/backend/src/line/line.service.ts`
+- [x] T012 [US1] 實作 LineController（Webhook 端點，POST /line/webhook） in `apps/backend/src/line/line.controller.ts`
+- [x] T013 更新 LineModule 註冊所有 providers 和 guards in `apps/backend/src/line/line.module.ts`
 
 **Checkpoint**: 此時 User Story 1 & 2 應完全可用：系統可接收 LINE Webhook 並驗證簽名
 
@@ -113,7 +113,7 @@
 
 **Purpose**: 改進影響多個 User Story 的功能
 
-- [ ] T024 [P] 新增 LINE 模組 barrel export in `apps/backend/src/line/index.ts`
+- [x] T024 [P] 新增 LINE 模組 barrel export in `apps/backend/src/line/index.ts`
 - [ ] T025 [P] 錯誤處理優化：確保單一事件失敗不影響批次中其他事件 in `apps/backend/src/line/line.controller.ts`
 - [ ] T026 驗證 quickstart.md 所有範例可正常運作 in `specs/002-line-event-handler/quickstart.md`
 - [ ] T027 執行手動測試：發送真實 LINE 訊息驗證完整流程
