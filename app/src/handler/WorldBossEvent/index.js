@@ -1,1 +1,0 @@
-exports.admin = require("./admin");
