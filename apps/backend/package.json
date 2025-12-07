@@ -1,0 +1,40 @@
+{
+  "name": "@repo/backend",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "nest start",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:cov": "vitest --coverage"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-fastify": "^11.0.0",
+    "@nestjs/schedule": "^5.0.0",
+    "@prisma/client": "^6.1.0",
+    "@line/bot-sdk": "^9.7.0",
+    "bullmq": "^5.30.0",
+    "ioredis": "^5.4.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@types/node": "^22.10.2",
+    "prisma": "^6.1.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
