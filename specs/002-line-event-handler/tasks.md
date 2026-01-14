@@ -36,10 +36,10 @@
 
 **⚠️ CRITICAL**: Must complete before Phase 3.
 
-- [ ] T004 Define LINE event types (re-export from SDK) in `apps/backend/src/line/types/events.ts`
-- [ ] T005 [P] Define Middleware types (Context, NextFunction, Middleware interface) in `apps/backend/src/line/middleware/middleware.types.ts`
-- [ ] T006 [P] Create empty LINE module definition in `apps/backend/src/line/line.module.ts`
-- [ ] T007 Import LineModule into AppModule in `apps/backend/src/app.module.ts`
+- [x] T004 Define LINE event types (re-export from SDK) in `apps/backend/src/line/types/events.ts`
+- [x] T005 [P] Define Middleware types (Context, NextFunction, Middleware interface) in `apps/backend/src/line/middleware/middleware.types.ts`
+- [x] T006 [P] Create empty LINE module definition in `apps/backend/src/line/line.module.ts`
+- [x] T007 Import LineModule into AppModule in `apps/backend/src/app.module.ts`
 
 **Checkpoint**: Infrastructure ready. Start User Stories.
 
@@ -52,17 +52,17 @@
 **Independent Test**: Send request with valid signature to `/line/webhook`, expect 200 OK and event log.
 
 ### Tests
-- [ ] T008 [P] [US2] Create unit test for SignatureGuard in `apps/backend/test/line/signature.guard.spec.ts`
-- [ ] T009 [P] [US1] Create unit test for MiddlewareRunner (basic execution) in `apps/backend/test/line/middleware.runner.spec.ts`
-- [ ] T010 [P] [US1] Create unit/integration test for LineController (webhook endpoint) in `apps/backend/test/line/line.controller.spec.ts`
+- [x] T008 [P] [US2] Create unit test for SignatureGuard in `apps/backend/test/line/signature.guard.spec.ts`
+- [x] T009 [P] [US1] Create unit test for MiddlewareRunner (basic execution) in `apps/backend/test/line/middleware.runner.spec.ts`
+- [x] T010 [P] [US1] Create unit/integration test for LineController (webhook endpoint) in `apps/backend/test/line/line.controller.spec.ts`
 
 ### Implementation
-- [ ] T011 [US1] Implement MiddlewareRunner (Onion model executor) in `apps/backend/src/line/middleware/middleware.runner.ts`
-- [ ] T012 [US2] Implement SignatureGuard (LINE signature validation) in `apps/backend/src/line/guards/signature.guard.ts`
-- [ ] T013 [P] [US1] Implement LoggingMiddleware (structured logging) in `apps/backend/src/line/middleware/logging.middleware.ts`
-- [ ] T014 [US1] Implement LineService (LINE client wrapper) in `apps/backend/src/line/line.service.ts`
-- [ ] T015 [US1] Implement LineController (Webhook endpoint POST /line/webhook) in `apps/backend/src/line/line.controller.ts`
-- [ ] T016 Register providers and guards in LineModule in `apps/backend/src/line/line.module.ts`
+- [x] T011 [US1] Implement MiddlewareRunner (Onion model executor) in `apps/backend/src/line/middleware/middleware.runner.ts`
+- [x] T012 [US2] Implement SignatureGuard (LINE signature validation) in `apps/backend/src/line/guards/signature.guard.ts`
+- [x] T013 [P] [US1] Implement LoggingMiddleware (structured logging) in `apps/backend/src/line/middleware/logging.middleware.ts`
+- [x] T014 [US1] Implement LineService (LINE client wrapper) in `apps/backend/src/line/line.service.ts`
+- [x] T015 [US1] Implement LineController (Webhook endpoint POST /line/webhook) in `apps/backend/src/line/line.controller.ts`
+- [x] T016 Register providers and guards in LineModule in `apps/backend/src/line/line.module.ts`
 
 **Checkpoint**: MVP complete. Webhook active and secured.
 
@@ -75,13 +75,13 @@
 **Independent Test**: Simulate Follow/Postback events, verify correct log type and handling.
 
 ### Tests
-- [ ] T017 [US3] Update LineController tests for batch event processing in `apps/backend/test/line/line.controller.spec.ts`
-- [ ] T018 [US3] Add unit tests for unknown event types in `apps/backend/test/line/line.service.spec.ts`
+- [x] T017 [US3] Update LineController tests for batch event processing in `apps/backend/test/line/line.controller.spec.ts`
+- [x] T018 [US3] Add unit tests for unknown event types in `apps/backend/test/line/line.service.spec.ts`
 
 ### Implementation
-- [ ] T019 [US3] Update LoggingMiddleware to log specific event types in `apps/backend/src/line/middleware/logging.middleware.ts`
-- [ ] T020 [US3] Implement batch event processing loop in LineController in `apps/backend/src/line/line.controller.ts`
-- [ ] T021 [US3] Add event type dispatch logic and graceful fallback in `apps/backend/src/line/line.service.ts`
+- [x] T019 [US3] Update LoggingMiddleware to log specific event types in `apps/backend/src/line/middleware/logging.middleware.ts`
+- [x] T020 [US3] Implement batch event processing loop in LineController in `apps/backend/src/line/line.controller.ts`
+- [x] T021 [US3] Add event type dispatch logic and graceful fallback in `apps/backend/src/line/line.service.ts`
 
 **Checkpoint**: 5+ event types supported.
 
@@ -94,13 +94,13 @@
 **Independent Test**: Register A->B->C middlewares, verify execution order and interruption logic.
 
 ### Tests
-- [ ] T022 [US4] Update MiddlewareRunner tests for interruption and error handling in `apps/backend/test/line/middleware.runner.spec.ts`
+- [x] T022 [US4] Update MiddlewareRunner tests for interruption and error handling in `apps/backend/test/line/middleware.runner.spec.ts`
 
 ### Implementation
-- [ ] T023 [US4] Enhance MiddlewareRunner to support interruption/exceptions in `apps/backend/src/line/middleware/middleware.runner.ts`
-- [ ] T024 [US4] Implement dynamic middleware registration (DI token) in `apps/backend/src/line/line.module.ts`
-- [ ] T025 [P] [US4] Create example EchoMiddleware in `apps/backend/src/line/middleware/echo.middleware.ts`
-- [ ] T026 [US4] Update quickstart.md with custom middleware guide in `specs/002-line-event-handler/quickstart.md`
+- [x] T023 [US4] Enhance MiddlewareRunner to support interruption/exceptions in `apps/backend/src/line/middleware/middleware.runner.ts`
+- [x] T024 [US4] Implement dynamic middleware registration (DI token) in `apps/backend/src/line/line.module.ts`
+- [x] T025 [P] [US4] Create example EchoMiddleware in `apps/backend/src/line/middleware/echo.middleware.ts`
+- [x] T026 [US4] Update quickstart.md with custom middleware guide in `specs/002-line-event-handler/quickstart.md`
 
 **Checkpoint**: Extensible middleware architecture active.
 
@@ -111,12 +111,12 @@
 **Purpose**: Prevent duplicate event processing using Redis.
 
 ### Tests
-- [ ] T027 [P] Create unit test for IdempotencyService (mock Redis) in `apps/backend/test/line/idempotency.service.spec.ts`
+- [x] T027 [P] Create unit test for IdempotencyService (mock Redis) in `apps/backend/test/line/idempotency.service.spec.ts`
 
 ### Implementation
-- [ ] T028 Implement IdempotencyService (Redis SETNX + TTL) in `apps/backend/src/line/services/idempotency.service.ts`
-- [ ] T029 Integrate IdempotencyService into LineController in `apps/backend/src/line/line.controller.ts`
-- [ ] T030 Register IdempotencyService in LineModule in `apps/backend/src/line/line.module.ts`
+- [x] T028 Implement IdempotencyService (Redis SETNX + TTL) in `apps/backend/src/line/services/idempotency.service.ts`
+- [x] T029 Integrate IdempotencyService into LineController in `apps/backend/src/line/line.controller.ts`
+- [x] T030 Register IdempotencyService in LineModule in `apps/backend/src/line/line.module.ts`
 
 **Checkpoint**: Duplicate events filtered.
 
@@ -126,10 +126,10 @@
 
 **Purpose**: Refinement and multi-story improvements.
 
-- [ ] T031 [P] Create barrel export for LINE module in `apps/backend/src/line/index.ts`
-- [ ] T032 Optimize error handling for partial batch failures in `apps/backend/src/line/line.controller.ts`
-- [ ] T033 Verify all quickstart examples in `specs/002-line-event-handler/quickstart.md`
-- [ ] T034 [P] Implement Rate Limiting middleware (basic traffic control) in `apps/backend/src/line/middleware/rate-limit.middleware.ts`
+- [x] T031 [P] Create barrel export for LINE module in `apps/backend/src/line/index.ts`
+- [x] T032 Optimize error handling for partial batch failures in `apps/backend/src/line/line.controller.ts`
+- [x] T033 Verify all quickstart examples in `specs/002-line-event-handler/quickstart.md`
+- [x] T034 [P] Implement Rate Limiting middleware (basic traffic control) in `apps/backend/src/line/middleware/rate-limit.middleware.ts`
 
 ---
 
