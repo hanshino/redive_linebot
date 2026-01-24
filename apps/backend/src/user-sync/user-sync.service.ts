@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
 import { messagingApi } from "@line/bot-sdk";
+import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
 import { RedisService } from "../redis/redis.service";
@@ -27,10 +27,10 @@ export class UserSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly config: ConfigService,
+    private readonly config: ConfigService
   ) {
     const channelAccessToken = this.config.get<string>(
-      "line.channelAccessToken",
+      "line.channelAccessToken"
     );
     if (!channelAccessToken) {
       throw new Error("LINE channel access token not configured");
@@ -61,7 +61,7 @@ export class UserSyncService {
 
   async fetchProfile(
     userId: string,
-    context: FetchProfileContext,
+    context: FetchProfileContext
   ): Promise<UserProfileData | null> {
     try {
       let profile: messagingApi.UserProfileResponse;
@@ -69,12 +69,12 @@ export class UserSyncService {
       if (context.sourceType === "group" && context.groupId) {
         profile = await this.client.getGroupMemberProfile(
           context.groupId,
-          userId,
+          userId
         );
       } else if (context.sourceType === "room" && context.roomId) {
         profile = await this.client.getRoomMemberProfile(
           context.roomId,
-          userId,
+          userId
         );
       } else {
         profile = await this.client.getProfile(userId);
@@ -95,7 +95,7 @@ export class UserSyncService {
 
   async syncUserProfile(
     userId: string,
-    profileData: UserProfileData,
+    profileData: UserProfileData
   ): Promise<void> {
     await this.prisma.lineUser.upsert({
       where: { userId },
@@ -119,7 +119,7 @@ export class UserSyncService {
     await this.redis.set(cacheKey, "1", this.USER_EXISTS_CACHE_TTL);
 
     this.logger.debug(
-      `User profile synced: ${userId} (${profileData.displayName})`,
+      `User profile synced: ${userId} (${profileData.displayName})`
     );
   }
 

@@ -5,8 +5,8 @@
  * Each middleware can process events before and after the next middleware.
  */
 import { Logger } from "@nestjs/common";
-import type { WebhookEvent } from "../types/events";
 import type { Role } from "@prisma/client";
+import type { WebhookEvent } from "../types/events";
 
 /**
  * Permission information for the current user and context

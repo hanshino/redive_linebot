@@ -1,10 +1,15 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { Queue, QueueOptions } from 'bullmq';
-import { RedisService } from '../redis/redis.service';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import { Queue, QueueOptions } from "bullmq";
+import { RedisService } from "../redis/redis.service";
 
 /**
  * Queue Service - BullMQ wrapper
- * 
+ *
  * Provides a centralized service for creating and managing BullMQ queues.
  */
 @Injectable()
@@ -12,21 +17,19 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(QueueService.name);
   private readonly queues = new Map<string, Queue>();
 
-  constructor(
-    private readonly redisService: RedisService,
-  ) {}
+  constructor(private readonly redisService: RedisService) {}
 
   async onModuleInit() {
-    this.logger.log('Queue service initialized');
+    this.logger.log("Queue service initialized");
   }
 
   async onModuleDestroy() {
     // Gracefully close all queues
     const closePromises = Array.from(this.queues.values()).map((queue) =>
-      queue.close(),
+      queue.close()
     );
     await Promise.all(closePromises);
-    this.logger.log('All queues closed');
+    this.logger.log("All queues closed");
   }
 
   /**
@@ -43,7 +46,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       defaultJobOptions: {
         attempts: 3,
         backoff: {
-          type: 'exponential',
+          type: "exponential",
           delay: 2000,
         },
         removeOnComplete: {
@@ -99,7 +102,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       // Check if we can access Redis
       return await this.redisService.healthCheck();
     } catch (error) {
-      this.logger.error('Queue health check failed', error);
+      this.logger.error("Queue health check failed", error);
       return false;
     }
   }

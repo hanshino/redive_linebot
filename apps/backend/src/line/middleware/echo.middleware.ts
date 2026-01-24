@@ -1,11 +1,11 @@
+import { webhook } from "@line/bot-sdk";
 import { Injectable, Logger } from "@nestjs/common";
+import { LineService } from "../line.service";
 import {
   LineMiddleware,
   MiddlewareContext,
   NextFunction,
 } from "./middleware.types";
-import { LineService } from "../line.service";
-import { webhook } from "@line/bot-sdk";
 
 /**
  * Echo Middleware
@@ -23,7 +23,11 @@ export class EchoMiddleware implements LineMiddleware {
     const event = ctx.event;
 
     // Only process text messages
-    if (event.type === "message" && "message" in event && event.message.type === "text") {
+    if (
+      event.type === "message" &&
+      "message" in event &&
+      event.message.type === "text"
+    ) {
       const messageEvent = event as webhook.MessageEvent;
       const text = (messageEvent.message as webhook.TextMessageContent).text;
       const replyToken = ctx.replyToken;

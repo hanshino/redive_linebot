@@ -1,9 +1,9 @@
-import "reflect-metadata";
 import { Test, TestingModule } from "@nestjs/testing";
-import { EchoMiddleware } from "../../src/line/middleware/echo.middleware";
+import "reflect-metadata";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LineService } from "../../src/line/line.service";
+import { EchoMiddleware } from "../../src/line/middleware/echo.middleware";
 import { MiddlewareContext } from "../../src/line/middleware/middleware.types";
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
 describe("EchoMiddleware", () => {
   let middleware: EchoMiddleware;

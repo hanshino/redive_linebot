@@ -1,6 +1,6 @@
+import { messagingApi } from "@line/bot-sdk";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { messagingApi } from "@line/bot-sdk";
 
 /**
  * LINE Service

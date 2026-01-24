@@ -1,7 +1,7 @@
-import { Injectable, ForbiddenException, Logger } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
+import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
 import { Role } from "@prisma/client";
 import type { MiddlewareContext } from "../line/middleware/middleware.types";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class PermissionService {

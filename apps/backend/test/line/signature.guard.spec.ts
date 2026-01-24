@@ -1,10 +1,10 @@
-import "reflect-metadata";
-import { Test, TestingModule } from "@nestjs/testing";
-import { ConfigService } from "@nestjs/config";
-import { UnauthorizedException, ExecutionContext } from "@nestjs/common";
-import { SignatureGuard } from "../../src/line/guards/signature.guard";
 import { validateSignature } from "@line/bot-sdk";
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { ExecutionContext, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Test, TestingModule } from "@nestjs/testing";
+import "reflect-metadata";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SignatureGuard } from "../../src/line/guards/signature.guard";
 
 // Mock @line/bot-sdk
 vi.mock("@line/bot-sdk", () => ({
@@ -55,9 +55,12 @@ describe("SignatureGuard", () => {
   it("should validate valid signature", async () => {
     (validateSignature as any).mockReturnValue(true);
 
-    const context = createMockContext({
-      "x-line-signature": "valid_signature",
-    }, Buffer.from("body"));
+    const context = createMockContext(
+      {
+        "x-line-signature": "valid_signature",
+      },
+      Buffer.from("body")
+    );
 
     const result = await guard.canActivate(context);
     expect(result).toBe(true);
@@ -77,9 +80,12 @@ describe("SignatureGuard", () => {
   });
 
   it("should throw UnauthorizedException for missing raw body", async () => {
-    const context = createMockContext({
-      "x-line-signature": "valid_signature",
-    }, undefined);
+    const context = createMockContext(
+      {
+        "x-line-signature": "valid_signature",
+      },
+      undefined
+    );
 
     await expect(guard.canActivate(context)).rejects.toThrow(
       UnauthorizedException
@@ -89,9 +95,12 @@ describe("SignatureGuard", () => {
   it("should throw UnauthorizedException for invalid signature", async () => {
     (validateSignature as any).mockReturnValue(false);
 
-    const context = createMockContext({
-      "x-line-signature": "invalid_signature",
-    }, Buffer.from("body"));
+    const context = createMockContext(
+      {
+        "x-line-signature": "invalid_signature",
+      },
+      Buffer.from("body")
+    );
 
     await expect(guard.canActivate(context)).rejects.toThrow(
       UnauthorizedException

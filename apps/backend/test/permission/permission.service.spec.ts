@@ -1,9 +1,9 @@
-import "reflect-metadata";
 import { Test, TestingModule } from "@nestjs/testing";
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { Role } from "@prisma/client";
+import "reflect-metadata";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PermissionService } from "../../src/permission/permission.service";
 import { PrismaService } from "../../src/prisma/prisma.service";
-import { Role } from "@prisma/client";
 
 describe("PermissionService", () => {
   let service: PermissionService;

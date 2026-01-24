@@ -1,8 +1,12 @@
-import "reflect-metadata";
 import { Test, TestingModule } from "@nestjs/testing";
+import "reflect-metadata";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MiddlewareRunner } from "../../src/line/middleware/middleware.runner";
-import { LINE_MIDDLEWARES, MiddlewareContext, NextFunction } from "../../src/line/middleware/middleware.types";
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import {
+  LINE_MIDDLEWARES,
+  MiddlewareContext,
+  NextFunction,
+} from "../../src/line/middleware/middleware.types";
 
 describe("MiddlewareRunner", () => {
   let runner: MiddlewareRunner;
@@ -86,7 +90,7 @@ describe("MiddlewareRunner", () => {
 
     const injectedRunner = module.get<MiddlewareRunner>(MiddlewareRunner);
     const mockEvent = { type: "message", webhookEventId: "evt1" } as any;
-    
+
     await injectedRunner.run(mockEvent, "dest1");
     expect(injectedMw.handle).toHaveBeenCalled();
   });

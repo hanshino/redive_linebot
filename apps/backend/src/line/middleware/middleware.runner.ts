@@ -1,12 +1,12 @@
-import { Injectable, Logger, Inject, Optional } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
+import type { WebhookEvent } from "../types/events";
 import {
+  EventProcessingResult,
+  LINE_MIDDLEWARES,
+  LineMiddleware,
   Middleware,
   MiddlewareContext,
-  LineMiddleware,
-  LINE_MIDDLEWARES,
-  EventProcessingResult,
 } from "./middleware.types";
-import type { WebhookEvent } from "../types/events";
 
 /**
  * Middleware Runner

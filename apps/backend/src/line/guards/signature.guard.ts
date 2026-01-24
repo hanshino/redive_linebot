@@ -1,13 +1,13 @@
+import { validateSignature } from "@line/bot-sdk";
 import {
-  Injectable,
   CanActivate,
   ExecutionContext,
-  UnauthorizedException,
+  Injectable,
   Logger,
   RawBodyRequest,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { validateSignature } from "@line/bot-sdk";
 import type { FastifyRequest } from "fastify";
 
 /**

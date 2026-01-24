@@ -1,11 +1,11 @@
-import "reflect-metadata";
+import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
+import "reflect-metadata";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SignatureGuard } from "../../src/line/guards/signature.guard";
 import { LineController } from "../../src/line/line.controller";
 import { MiddlewareRunner } from "../../src/line/middleware/middleware.runner";
 import { IdempotencyService } from "../../src/line/services/idempotency.service";
-import { SignatureGuard } from "../../src/line/guards/signature.guard";
-import { ConfigService } from "@nestjs/config";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 describe("LineController", () => {
   let controller: LineController;
@@ -91,9 +91,7 @@ describe("LineController", () => {
   it("should handle unknown event types gracefully", async () => {
     const body = {
       destination: "dest1",
-      events: [
-        { type: "unknown_type", webhookEventId: "evt_unknown" },
-      ],
+      events: [{ type: "unknown_type", webhookEventId: "evt_unknown" }],
     };
 
     const result = await controller.handleWebhook(body as any);
@@ -107,9 +105,7 @@ describe("LineController", () => {
 
     const body = {
       destination: "dest1",
-      events: [
-        { type: "message", webhookEventId: "evt1" },
-      ],
+      events: [{ type: "message", webhookEventId: "evt1" }],
     };
 
     const result = await controller.handleWebhook(body as any);

@@ -30,13 +30,13 @@ export class IdempotencyService {
       // Returns 'OK' if key was set (new event)
       // Returns null if key already exists (duplicate event)
       const result = await client.set(key, "1", "EX", this.TTL_SECONDS, "NX");
-      
+
       const isDuplicate = result === null;
-      
+
       if (isDuplicate) {
         this.logger.warn(`Duplicate event detected: ${eventId}`);
       }
-      
+
       return isDuplicate;
     } catch (error) {
       this.logger.error(

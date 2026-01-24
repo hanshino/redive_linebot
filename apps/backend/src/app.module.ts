@@ -1,16 +1,16 @@
+import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
-import { BullModule } from "@nestjs/bullmq";
-import { HealthModule } from "./health/health.module";
-import { PrismaModule } from "./prisma/prisma.module";
-import { RedisModule } from "./redis/redis.module";
-import { QueueModule } from "./queue/queue.module";
-import { PermissionModule } from "./permission/permission.module";
-import { GroupConfigModule } from "./group-config/group-config.module";
-import { UserSyncModule } from "./user-sync/user-sync.module";
-import { LineModule } from "./line/line.module";
 import configuration from "./config/configuration";
+import { GroupConfigModule } from "./group-config/group-config.module";
+import { HealthModule } from "./health/health.module";
+import { LineModule } from "./line/line.module";
+import { PermissionModule } from "./permission/permission.module";
+import { PrismaModule } from "./prisma/prisma.module";
+import { QueueModule } from "./queue/queue.module";
+import { RedisModule } from "./redis/redis.module";
+import { UserSyncModule } from "./user-sync/user-sync.module";
 
 @Module({
   imports: [

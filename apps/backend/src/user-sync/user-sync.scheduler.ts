@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { UserSyncService } from './user-sync.service';
-import { Queue } from 'bullmq';
-import { QueueService } from '../queue/queue.service';
-import { SyncProfileJobData } from './user-sync.processor';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { Queue } from "bullmq";
+import { QueueService } from "../queue/queue.service";
+import { SyncProfileJobData } from "./user-sync.processor";
+import { UserSyncService } from "./user-sync.service";
 
 @Injectable()
 export class UserSyncScheduler {
@@ -12,9 +12,9 @@ export class UserSyncScheduler {
 
   constructor(
     private readonly userSyncService: UserSyncService,
-    private readonly queueService: QueueService,
+    private readonly queueService: QueueService
   ) {
-    this.queue = this.queueService.getQueue<SyncProfileJobData>('user-sync');
+    this.queue = this.queueService.getQueue<SyncProfileJobData>("user-sync");
   }
 
   @Cron(CronExpression.EVERY_5_MINUTES)
@@ -25,14 +25,14 @@ export class UserSyncScheduler {
     }
   }
 
-  @Cron('0 3 * * *')
+  @Cron("0 3 * * *")
   async refreshStaleProfiles() {
     const staleUserIds = await this.userSyncService.findStaleProfiles(7);
 
     for (const userId of staleUserIds) {
-      await this.queue.add('sync-profile', {
+      await this.queue.add("sync-profile", {
         userId,
-        context: { sourceType: 'user' },
+        context: { sourceType: "user" },
       });
     }
 

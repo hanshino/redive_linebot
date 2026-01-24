@@ -1,17 +1,17 @@
 import { Module } from "@nestjs/common";
+import { QueueModule } from "../queue/queue.module";
+import { UserSyncModule } from "../user-sync/user-sync.module";
+import { SignatureGuard } from "./guards/signature.guard";
 import { LineController } from "./line.controller";
 import { LineService } from "./line.service";
-import { MiddlewareRunner } from "./middleware/middleware.runner";
-import { LoggingMiddleware } from "./middleware/logging.middleware";
-import { RateLimitMiddleware } from "./middleware/rate-limit.middleware";
-import { PermissionMiddleware } from "./middleware/permission.middleware";
-import { UserTrackMiddleware } from "./middleware/user-track.middleware";
 import { EchoMiddleware } from "./middleware/echo.middleware";
-import { SignatureGuard } from "./guards/signature.guard";
+import { LoggingMiddleware } from "./middleware/logging.middleware";
+import { MiddlewareRunner } from "./middleware/middleware.runner";
 import { LINE_MIDDLEWARES } from "./middleware/middleware.types";
+import { PermissionMiddleware } from "./middleware/permission.middleware";
+import { RateLimitMiddleware } from "./middleware/rate-limit.middleware";
+import { UserTrackMiddleware } from "./middleware/user-track.middleware";
 import { IdempotencyService } from "./services/idempotency.service";
-import { UserSyncModule } from "../user-sync/user-sync.module";
-import { QueueModule } from "../queue/queue.module";
 
 /**
  * LINE Bot Module

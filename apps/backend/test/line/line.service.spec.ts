@@ -1,14 +1,13 @@
-import "reflect-metadata";
-import { Test, TestingModule } from "@nestjs/testing";
-import { LineService } from "../../src/line/line.service";
 import { ConfigService } from "@nestjs/config";
-import { messagingApi } from "@line/bot-sdk";
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { Test, TestingModule } from "@nestjs/testing";
+import "reflect-metadata";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LineService } from "../../src/line/line.service";
 
 // Mock @line/bot-sdk
 vi.mock("@line/bot-sdk", () => ({
   messagingApi: {
-    MessagingApiClient: vi.fn().mockImplementation(function() {
+    MessagingApiClient: vi.fn().mockImplementation(function () {
       return {
         replyMessage: vi.fn().mockResolvedValue({}),
         pushMessage: vi.fn().mockResolvedValue({}),

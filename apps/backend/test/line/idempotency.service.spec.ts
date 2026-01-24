@@ -1,8 +1,8 @@
-import "reflect-metadata";
 import { Test, TestingModule } from "@nestjs/testing";
+import "reflect-metadata";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IdempotencyService } from "../../src/line/services/idempotency.service";
 import { RedisService } from "../../src/redis/redis.service";
-import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 
 describe("IdempotencyService", () => {
   let service: IdempotencyService;

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { PermissionService } from "../../permission/permission.service";
-import { GroupConfigService } from "../../group-config/group-config.service";
 import { Role } from "@prisma/client";
+import { GroupConfigService } from "../../group-config/group-config.service";
+import { PermissionService } from "../../permission/permission.service";
 import type {
   LineMiddleware,
   MiddlewareContext,
@@ -24,7 +24,7 @@ export class GroupConfigCommandMiddleware implements LineMiddleware {
 
     const text = ctx.event.message.text;
     const groupId = ctx.permission?.groupId;
-    
+
     if (!groupId) {
       return next();
     }
@@ -67,7 +67,7 @@ export class GroupConfigCommandMiddleware implements LineMiddleware {
     const userId = ctx.permission!.userId;
 
     const existingOwner = await this.permissionService.getGroupAdmins(groupId);
-    
+
     if (existingOwner.length > 0) {
       await this.replyText(ctx, "❌ 此群組已完成初始化");
       return;
@@ -80,10 +80,7 @@ export class GroupConfigCommandMiddleware implements LineMiddleware {
     );
     await this.groupConfigService.initializeGroup(groupId);
 
-    await this.replyText(
-      ctx,
-      "✅ 群組初始化完成！\n你已成為群組擁有者"
-    );
+    await this.replyText(ctx, "✅ 群組初始化完成！\n你已成為群組擁有者");
 
     this.logger.log(`Group ${groupId} initialized by ${userId}`);
   }
@@ -129,7 +126,9 @@ export class GroupConfigCommandMiddleware implements LineMiddleware {
     try {
       await this.groupConfigService.setCommandPrefix(groupId, newPrefix);
       await this.replyText(ctx, `✅ 指令前綴已更改為：${newPrefix}`);
-      this.logger.log(`Command prefix updated to "${newPrefix}" for ${groupId}`);
+      this.logger.log(
+        `Command prefix updated to "${newPrefix}" for ${groupId}`
+      );
     } catch (error) {
       await this.replyText(
         ctx,
@@ -150,7 +149,7 @@ export class GroupConfigCommandMiddleware implements LineMiddleware {
     }
 
     const match = text.match(new RegExp(`${prefix}功能 (開啟|關閉) (.+)`));
-    
+
     if (!match) {
       await this.replyText(
         ctx,
@@ -162,22 +161,25 @@ export class GroupConfigCommandMiddleware implements LineMiddleware {
     const [, action, featureName] = match;
     const enabled = action === "開啟";
 
-    const featureMap: Record<string, keyof typeof import("../../group-config/types/config.types").DEFAULT_CONFIG.features> = {
-      "歡迎訊息": "welcomeMessage",
-      "抽卡": "gacha",
-      "角色查詢": "character",
-      "公告": "announce",
-      "自訂指令": "customCommands",
-      "世界王": "worldBoss",
-      "會戰": "clanBattle",
-      "小遊戲": "minigames",
-      "聊天等級": "chatLevel",
-      "市場": "market",
-      "Discord通知": "discordWebhook",
+    const featureMap: Record<
+      string,
+      keyof typeof import("../../group-config/types/config.types").DEFAULT_CONFIG.features
+    > = {
+      歡迎訊息: "welcomeMessage",
+      抽卡: "gacha",
+      角色查詢: "character",
+      公告: "announce",
+      自訂指令: "customCommands",
+      世界王: "worldBoss",
+      會戰: "clanBattle",
+      小遊戲: "minigames",
+      聊天等級: "chatLevel",
+      市場: "market",
+      Discord通知: "discordWebhook",
     };
 
     const featureKey = featureMap[featureName];
-    
+
     if (!featureKey) {
       await this.replyText(
         ctx,
@@ -189,7 +191,9 @@ export class GroupConfigCommandMiddleware implements LineMiddleware {
     try {
       await this.groupConfigService.toggleFeature(groupId, featureKey, enabled);
       await this.replyText(ctx, `✅ 功能「${featureName}」已${action}`);
-      this.logger.log(`Feature ${featureKey} ${enabled ? "enabled" : "disabled"} for ${groupId}`);
+      this.logger.log(
+        `Feature ${featureKey} ${enabled ? "enabled" : "disabled"} for ${groupId}`
+      );
     } catch (error) {
       await this.replyText(
         ctx,
@@ -222,10 +226,7 @@ export class GroupConfigCommandMiddleware implements LineMiddleware {
     await this.replyText(ctx, message);
   }
 
-  private async replyText(
-    ctx: MiddlewareContext,
-    text: string
-  ): Promise<void> {
+  private async replyText(ctx: MiddlewareContext, text: string): Promise<void> {
     if (!ctx.replyToken) {
       this.logger.warn("No reply token available");
       return;

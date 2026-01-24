@@ -1,11 +1,11 @@
-import "reflect-metadata";
 import { Test, TestingModule } from "@nestjs/testing";
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { Role } from "@prisma/client";
+import "reflect-metadata";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GroupConfigService } from "../../src/group-config/group-config.service";
+import { DEFAULT_CONFIG } from "../../src/group-config/types/config.types";
 import { GroupConfigCommandMiddleware } from "../../src/line/middleware/group-config-command.middleware";
 import { PermissionService } from "../../src/permission/permission.service";
-import { GroupConfigService } from "../../src/group-config/group-config.service";
-import { Role } from "@prisma/client";
-import { DEFAULT_CONFIG } from "../../src/group-config/types/config.types";
 
 describe("GroupConfigCommandMiddleware", () => {
   let middleware: GroupConfigCommandMiddleware;

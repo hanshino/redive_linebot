@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { GroupConfigData } from "./types/config.types";
 import { DEFAULT_CONFIG, MIN_COOLDOWNS } from "./types/config.types";
@@ -54,10 +54,7 @@ export class GroupConfigService {
     );
   }
 
-  async setWelcomeMessage(
-    groupId: string,
-    message: string
-  ): Promise<void> {
+  async setWelcomeMessage(groupId: string, message: string): Promise<void> {
     if (message.length > 500) {
       throw new BadRequestException("歡迎訊息不可超過 500 字元");
     }
@@ -74,10 +71,7 @@ export class GroupConfigService {
     this.logger.log(`Welcome message updated for ${groupId}`);
   }
 
-  async setCommandPrefix(
-    groupId: string,
-    prefix: string
-  ): Promise<void> {
+  async setCommandPrefix(groupId: string, prefix: string): Promise<void> {
     if (prefix.length !== 1) {
       throw new BadRequestException("指令前綴必須是單一字元");
     }
@@ -102,17 +96,15 @@ export class GroupConfigService {
     const minCooldown = MIN_COOLDOWNS[feature];
 
     if (seconds < minCooldown) {
-      throw new BadRequestException(
-        `冷卻時間不可低於 ${minCooldown} 秒`
-      );
+      throw new BadRequestException(`冷卻時間不可低於 ${minCooldown} 秒`);
     }
 
     const config = await this.getConfig(groupId);
-    
+
     if (!config.cooldowns) {
       config.cooldowns = {};
     }
-    
+
     config.cooldowns[feature] = seconds;
 
     await this.prisma.groupConfig.upsert({
