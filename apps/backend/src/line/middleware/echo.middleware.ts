@@ -31,7 +31,7 @@ export class EchoMiddleware implements LineMiddleware {
       this.logger.log(`Echoing message: ${text}`);
 
       if (replyToken) {
-        await this.lineService.replyText(replyToken, `Echo: ${text}`);
+        await this.lineService.replyText(replyToken, text);
       }
     }
 

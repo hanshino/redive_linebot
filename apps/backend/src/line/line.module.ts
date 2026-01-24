@@ -4,6 +4,7 @@ import { LineService } from "./line.service";
 import { MiddlewareRunner } from "./middleware/middleware.runner";
 import { LoggingMiddleware } from "./middleware/logging.middleware";
 import { RateLimitMiddleware } from "./middleware/rate-limit.middleware";
+import { EchoMiddleware } from "./middleware/echo.middleware";
 import { SignatureGuard } from "./guards/signature.guard";
 import { LINE_MIDDLEWARES } from "./middleware/middleware.types";
 import { IdempotencyService } from "./services/idempotency.service";
@@ -21,7 +22,9 @@ import { IdempotencyService } from "./services/idempotency.service";
  * - Structured logging (without message content)
  *
  * Default middleware chain:
- * 1. LoggingMiddleware - Logs event metadata
+ * 1. RateLimitMiddleware - Prevents spam
+ * 2. LoggingMiddleware - Logs event metadata
+ * 3. EchoMiddleware - Replies with the same text message
  *
  * To add custom middleware:
  * 1. Create a class implementing LineMiddleware
@@ -36,13 +39,15 @@ import { IdempotencyService } from "./services/idempotency.service";
     SignatureGuard,
     LoggingMiddleware,
     RateLimitMiddleware,
+    EchoMiddleware,
     {
       provide: LINE_MIDDLEWARES,
       useFactory: (
         rateLimitMiddleware: RateLimitMiddleware,
-        loggingMiddleware: LoggingMiddleware
-      ) => [rateLimitMiddleware, loggingMiddleware],
-      inject: [RateLimitMiddleware, LoggingMiddleware],
+        loggingMiddleware: LoggingMiddleware,
+        echoMiddleware: EchoMiddleware
+      ) => [rateLimitMiddleware, loggingMiddleware, echoMiddleware],
+      inject: [RateLimitMiddleware, LoggingMiddleware, EchoMiddleware],
     },
     MiddlewareRunner,
   ],

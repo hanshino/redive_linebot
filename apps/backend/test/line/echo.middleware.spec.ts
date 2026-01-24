@@ -50,7 +50,7 @@ describe("EchoMiddleware", () => {
 
     await middleware.handle(context, next);
 
-    expect(mockLineService.replyText).toHaveBeenCalledWith("token", "Echo: hello");
+    expect(mockLineService.replyText).toHaveBeenCalledWith("token", "hello");
     expect(next).toHaveBeenCalled();
   });
 
