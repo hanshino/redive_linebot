@@ -4,6 +4,7 @@ import { LineService } from "./line.service";
 import { MiddlewareRunner } from "./middleware/middleware.runner";
 import { LoggingMiddleware } from "./middleware/logging.middleware";
 import { RateLimitMiddleware } from "./middleware/rate-limit.middleware";
+import { PermissionMiddleware } from "./middleware/permission.middleware";
 import { EchoMiddleware } from "./middleware/echo.middleware";
 import { SignatureGuard } from "./guards/signature.guard";
 import { LINE_MIDDLEWARES } from "./middleware/middleware.types";
@@ -39,15 +40,17 @@ import { IdempotencyService } from "./services/idempotency.service";
     SignatureGuard,
     LoggingMiddleware,
     RateLimitMiddleware,
+    PermissionMiddleware,
     EchoMiddleware,
     {
       provide: LINE_MIDDLEWARES,
       useFactory: (
         rateLimitMiddleware: RateLimitMiddleware,
         loggingMiddleware: LoggingMiddleware,
+        permissionMiddleware: PermissionMiddleware,
         echoMiddleware: EchoMiddleware
-      ) => [rateLimitMiddleware, loggingMiddleware, echoMiddleware],
-      inject: [RateLimitMiddleware, LoggingMiddleware, EchoMiddleware],
+      ) => [rateLimitMiddleware, loggingMiddleware, permissionMiddleware, echoMiddleware],
+      inject: [RateLimitMiddleware, LoggingMiddleware, PermissionMiddleware, EchoMiddleware],
     },
     MiddlewareRunner,
   ],

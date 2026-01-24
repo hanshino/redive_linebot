@@ -6,6 +6,16 @@
  */
 import { Logger } from "@nestjs/common";
 import type { WebhookEvent } from "../types/events";
+import type { Role } from "@prisma/client";
+
+/**
+ * Permission information for the current user and context
+ */
+export interface PermissionInfo {
+  userId: string;
+  groupId?: string;
+  role: Role;
+}
 
 /**
  * Middleware execution context
@@ -40,6 +50,11 @@ export interface MiddlewareContext {
    * Logger instance for structured logging
    */
   logger: Logger;
+
+  /**
+   * Permission information for the current user (injected by PermissionMiddleware)
+   */
+  permission?: PermissionInfo;
 }
 
 /**
