@@ -87,3 +87,6 @@ apps/backend/prisma/migrations/**/migration_lock.toml
 Thumbs.db
 *.swp
 *.tmp
+
+# uipro
+__pycache__

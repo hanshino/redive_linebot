@@ -3,6 +3,8 @@ import { ConfigModule } from "@nestjs/config";
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
+import { PermissionModule } from "./permission/permission.module";
+import { GroupConfigModule } from "./group-config/group-config.module";
 import { LineModule } from "./line/line.module";
 import configuration from "./config/configuration";
 
@@ -15,6 +17,8 @@ import configuration from "./config/configuration";
     }),
     PrismaModule,
     RedisModule,
+    PermissionModule,
+    GroupConfigModule,
     HealthModule,
     LineModule,
   ],
