@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { SignatureGuard } from "./guards/signature.guard";
 import { MiddlewareRunner } from "./middleware/middleware.runner";
+import { IdempotencyService } from "./services/idempotency.service";
 import type { WebhookRequestBody } from "./types/events";
 
 /**
@@ -23,7 +24,10 @@ import type { WebhookRequestBody } from "./types/events";
 export class LineController {
   private readonly logger = new Logger(LineController.name);
 
-  constructor(private readonly middlewareRunner: MiddlewareRunner) {}
+  constructor(
+    private readonly middlewareRunner: MiddlewareRunner,
+    private readonly idempotencyService: IdempotencyService
+  ) {}
 
   /**
    * Handle LINE webhook events
@@ -47,11 +51,33 @@ export class LineController {
 
     this.logger.log(`Received ${events.length} event(s) from LINE`);
 
+    // Filter duplicate events
+    const uniqueEvents = [];
+    for (const event of events) {
+      const eventId = "webhookEventId" in event ? event.webhookEventId : null;
+      if (eventId) {
+        const isProcessed = await this.idempotencyService.isProcessed(eventId);
+        if (!isProcessed) {
+          uniqueEvents.push(event);
+        } else {
+          this.logger.debug(`Skipping duplicate event: ${eventId}`);
+        }
+      } else {
+        // Events without ID (rare/impossible in current API) are processed
+        uniqueEvents.push(event);
+      }
+    }
+
+    if (uniqueEvents.length === 0) {
+      this.logger.log("All events were duplicates or filtered");
+      return "OK";
+    }
+
     // Process each event through the middleware chain
     // Use Promise.allSettled to ensure all events are processed
     // even if some fail
     const results = await Promise.allSettled(
-      events.map((event) => this.middlewareRunner.run(event, destination))
+      uniqueEvents.map((event) => this.middlewareRunner.run(event, destination))
     );
 
     // Log summary of results

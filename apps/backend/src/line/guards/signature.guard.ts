@@ -4,10 +4,11 @@ import {
   ExecutionContext,
   UnauthorizedException,
   Logger,
+  RawBodyRequest,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { validateSignature } from "@line/bot-sdk";
-import type { FastifyRequestWithRawBody } from "../types/events";
+import type { FastifyRequest } from "fastify";
 
 /**
  * LINE Signature Guard
@@ -41,13 +42,8 @@ export class SignatureGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
-      .getRequest<
-        {
-          headers: Record<string, string | string[] | undefined>;
-        } & FastifyRequestWithRawBody
-      >();
+      .getRequest<RawBodyRequest<FastifyRequest>>();
 
-    // Get the signature from the header
     const signature = request.headers["x-line-signature"];
 
     if (!signature || typeof signature !== "string") {
@@ -55,21 +51,18 @@ export class SignatureGuard implements CanActivate {
       throw new UnauthorizedException("Missing X-Line-Signature header");
     }
 
-    // Get the raw body for signature verification
     const rawBody = request.rawBody;
 
     if (!rawBody) {
       this.logger.error(
-        "Raw body not available. Ensure raw body parsing is enabled."
+        "Raw body not available. Ensure rawBody: true is set in NestFactory.create options."
       );
       throw new UnauthorizedException("Unable to verify signature");
     }
 
-    // Convert Buffer to string if necessary
     const bodyString =
       rawBody instanceof Buffer ? rawBody.toString("utf-8") : String(rawBody);
 
-    // Validate the signature using LINE SDK's function
     const isValid = validateSignature(
       bodyString,
       this.channelSecret,

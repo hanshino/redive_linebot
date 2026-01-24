@@ -63,9 +63,9 @@ pnpm dev
 
 | 服務         | URL                          | 說明              |
 | ------------ | ---------------------------- | ----------------- |
-| Backend API  | http://localhost:3000        | NestJS API 伺服器 |
+| Backend API  | http://localhost:3080        | NestJS API 伺服器 |
 | Frontend     | http://localhost:5173        | Vite 開發伺服器   |
-| Health Check | http://localhost:3000/health | 健康檢查端點      |
+| Health Check | http://localhost:3080/health | 健康檢查端點      |
 
 ## 常用指令
 
