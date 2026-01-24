@@ -8,10 +8,12 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 // Mock @line/bot-sdk
 vi.mock("@line/bot-sdk", () => ({
   messagingApi: {
-    MessagingApiClient: vi.fn().mockImplementation(() => ({
-      replyMessage: vi.fn().mockResolvedValue({}),
-      pushMessage: vi.fn().mockResolvedValue({}),
-    })),
+    MessagingApiClient: vi.fn().mockImplementation(function() {
+      return {
+        replyMessage: vi.fn().mockResolvedValue({}),
+        pushMessage: vi.fn().mockResolvedValue({}),
+      };
+    }),
   },
 }));
 
