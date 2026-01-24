@@ -20,9 +20,16 @@
     "db:push": "pnpm --filter @repo/backend exec prisma db push",
     "db:migrate": "pnpm --filter @repo/backend exec prisma migrate dev",
     "db:studio": "pnpm --filter @repo/backend exec prisma studio",
-    "clean": "pnpm -r exec rm -rf node_modules dist .turbo && rm -rf node_modules"
+    "clean": "pnpm -r exec rm -rf node_modules dist .turbo && rm -rf node_modules",
+    "prepare": "husky",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
+    "prettier-plugin-organize-imports": "^4.3.0",
     "typescript": "^5.7.2"
   }
 }
