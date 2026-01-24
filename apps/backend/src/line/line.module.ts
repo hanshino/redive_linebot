@@ -5,10 +5,13 @@ import { MiddlewareRunner } from "./middleware/middleware.runner";
 import { LoggingMiddleware } from "./middleware/logging.middleware";
 import { RateLimitMiddleware } from "./middleware/rate-limit.middleware";
 import { PermissionMiddleware } from "./middleware/permission.middleware";
+import { UserTrackMiddleware } from "./middleware/user-track.middleware";
 import { EchoMiddleware } from "./middleware/echo.middleware";
 import { SignatureGuard } from "./guards/signature.guard";
 import { LINE_MIDDLEWARES } from "./middleware/middleware.types";
 import { IdempotencyService } from "./services/idempotency.service";
+import { UserSyncModule } from "../user-sync/user-sync.module";
+import { QueueModule } from "../queue/queue.module";
 
 /**
  * LINE Bot Module
@@ -22,17 +25,19 @@ import { IdempotencyService } from "./services/idempotency.service";
  * - Onion-model middleware architecture
  * - Structured logging (without message content)
  *
- * Default middleware chain:
+ * Middleware chain:
  * 1. RateLimitMiddleware - Prevents spam
  * 2. LoggingMiddleware - Logs event metadata
- * 3. EchoMiddleware - Replies with the same text message
+ * 3. UserTrackMiddleware - Tracks user activity and syncs profiles
+ * 4. PermissionMiddleware - Injects user permissions
+ * 5. EchoMiddleware - Replies with the same text message
  *
  * To add custom middleware:
  * 1. Create a class implementing LineMiddleware
  * 2. Add it to the LINE_MIDDLEWARES provider array
  */
 @Module({
-  imports: [],
+  imports: [UserSyncModule, QueueModule],
   controllers: [LineController],
   providers: [
     LineService,
@@ -40,6 +45,7 @@ import { IdempotencyService } from "./services/idempotency.service";
     SignatureGuard,
     LoggingMiddleware,
     RateLimitMiddleware,
+    UserTrackMiddleware,
     PermissionMiddleware,
     EchoMiddleware,
     {
@@ -47,10 +53,23 @@ import { IdempotencyService } from "./services/idempotency.service";
       useFactory: (
         rateLimitMiddleware: RateLimitMiddleware,
         loggingMiddleware: LoggingMiddleware,
+        userTrackMiddleware: UserTrackMiddleware,
         permissionMiddleware: PermissionMiddleware,
         echoMiddleware: EchoMiddleware
-      ) => [rateLimitMiddleware, loggingMiddleware, permissionMiddleware, echoMiddleware],
-      inject: [RateLimitMiddleware, LoggingMiddleware, PermissionMiddleware, EchoMiddleware],
+      ) => [
+        rateLimitMiddleware,
+        loggingMiddleware,
+        userTrackMiddleware,
+        permissionMiddleware,
+        echoMiddleware,
+      ],
+      inject: [
+        RateLimitMiddleware,
+        LoggingMiddleware,
+        UserTrackMiddleware,
+        PermissionMiddleware,
+        EchoMiddleware,
+      ],
     },
     MiddlewareRunner,
   ],

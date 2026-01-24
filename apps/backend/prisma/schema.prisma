@@ -9,13 +9,22 @@ datasource db {
   provider = "postgresql"
 }
 
-// Initial User model for testing database connection
-model User {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("users")
+// LINE user profile data
+model LineUser {
+  userId        String   @id @map("user_id")
+  displayName   String   @map("display_name")
+  pictureUrl    String?  @map("picture_url")
+  statusMessage String?  @map("status_message")
+  language      String?  @map("language")
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  lastSeenAt    DateTime @default(now()) @map("last_seen_at")
+  
+  permissions   UserPermission[]
+  
+  @@index([lastSeenAt], name: "idx_last_seen")
+  @@map("line_users")
 }
 
 // User permission management
@@ -26,6 +35,8 @@ model UserPermission {
   role      Role
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  
+  user      LineUser @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   @@unique([userId, groupId])
   @@index([userId])
