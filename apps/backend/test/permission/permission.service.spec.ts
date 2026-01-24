@@ -12,6 +12,7 @@ describe("PermissionService", () => {
   beforeEach(async () => {
     mockPrisma = {
       userPermission: {
+        findFirst: vi.fn(),
         findUnique: vi.fn(),
         upsert: vi.fn(),
         delete: vi.fn(),
@@ -42,7 +43,7 @@ describe("PermissionService", () => {
 
   describe("getUserRole", () => {
     it("should return global permission if exists", async () => {
-      mockPrisma.userPermission.findUnique.mockResolvedValueOnce({
+      mockPrisma.userPermission.findFirst.mockResolvedValueOnce({
         id: "1",
         userId: "U123",
         groupId: null,
@@ -57,16 +58,15 @@ describe("PermissionService", () => {
     });
 
     it("should return group permission if no global permission", async () => {
-      mockPrisma.userPermission.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: "2",
-          userId: "U123",
-          groupId: "C456",
-          role: Role.GROUP_ADMIN,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+      mockPrisma.userPermission.findFirst.mockResolvedValueOnce(null);
+      mockPrisma.userPermission.findUnique.mockResolvedValueOnce({
+        id: "2",
+        userId: "U123",
+        groupId: "C456",
+        role: Role.GROUP_ADMIN,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
 
       const role = await service.getUserRole("U123", "C456");
 
@@ -74,6 +74,7 @@ describe("PermissionService", () => {
     });
 
     it("should return USER if no permission found", async () => {
+      mockPrisma.userPermission.findFirst.mockResolvedValue(null);
       mockPrisma.userPermission.findUnique.mockResolvedValue(null);
 
       const role = await service.getUserRole("U123", "C456");
@@ -82,7 +83,7 @@ describe("PermissionService", () => {
     });
 
     it("should return USER if no groupId provided and no global permission", async () => {
-      mockPrisma.userPermission.findUnique.mockResolvedValue(null);
+      mockPrisma.userPermission.findFirst.mockResolvedValue(null);
 
       const role = await service.getUserRole("U123");
 
