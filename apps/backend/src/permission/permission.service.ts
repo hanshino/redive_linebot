@@ -10,12 +10,10 @@ export class PermissionService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getUserRole(userId: string, groupId?: string): Promise<Role> {
-    const globalPermission = await this.prisma.userPermission.findUnique({
+    const globalPermission = await this.prisma.userPermission.findFirst({
       where: {
-        userId_groupId: {
-          userId,
-          groupId: null as any,
-        },
+        userId,
+        groupId: null,
       },
     });
 
@@ -88,20 +86,37 @@ export class PermissionService {
     groupId: string | null,
     role: Role
   ): Promise<void> {
-    await this.prisma.userPermission.upsert({
-      where: {
-        userId_groupId: {
-          userId,
-          groupId: groupId as any,
+    if (groupId === null) {
+      const existing = await this.prisma.userPermission.findFirst({
+        where: { userId, groupId: null },
+      });
+
+      if (existing) {
+        await this.prisma.userPermission.update({
+          where: { id: existing.id },
+          data: { role },
+        });
+      } else {
+        await this.prisma.userPermission.create({
+          data: { userId, groupId: null, role },
+        });
+      }
+    } else {
+      await this.prisma.userPermission.upsert({
+        where: {
+          userId_groupId: {
+            userId,
+            groupId,
+          },
         },
-      },
-      update: { role },
-      create: {
-        userId,
-        groupId: groupId as any,
-        role,
-      },
-    });
+        update: { role },
+        create: {
+          userId,
+          groupId,
+          role,
+        },
+      });
+    }
 
     this.logger.log(
       `Permission set: ${userId} -> ${role} in ${groupId || "global"}`
@@ -112,14 +127,26 @@ export class PermissionService {
     userId: string,
     groupId: string | null
   ): Promise<void> {
-    await this.prisma.userPermission.delete({
-      where: {
-        userId_groupId: {
-          userId,
-          groupId: groupId as any,
+    if (groupId === null) {
+      const existing = await this.prisma.userPermission.findFirst({
+        where: { userId, groupId: null },
+      });
+
+      if (existing) {
+        await this.prisma.userPermission.delete({
+          where: { id: existing.id },
+        });
+      }
+    } else {
+      await this.prisma.userPermission.delete({
+        where: {
+          userId_groupId: {
+            userId,
+            groupId,
+          },
         },
-      },
-    });
+      });
+    }
 
     this.logger.log(
       `Permission removed: ${userId} from ${groupId || "global"}`
