@@ -22,8 +22,6 @@ services:
     image: redis:7-alpine
     container_name: ${COMPOSE_PROJECT_NAME:-redive}_redis
     restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru

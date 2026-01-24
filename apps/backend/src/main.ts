@@ -8,28 +8,12 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter({ logger: true });
 
-  // Enable raw body parsing for LINE signature verification
-  // The raw body is needed to verify the HMAC-SHA256 signature
-  fastifyAdapter
-    .getInstance()
-    .addContentTypeParser(
-      "application/json",
-      { parseAs: "buffer" },
-      (req, body: Buffer, done) => {
-        // Attach raw body to request for signature verification
-        (req as unknown as { rawBody: Buffer }).rawBody = body;
-        try {
-          const json = JSON.parse(body.toString());
-          done(null, json);
-        } catch (err) {
-          done(err as Error, undefined);
-        }
-      }
-    );
-
+  // Create NestJS application with rawBody enabled for LINE signature verification
+  // NestJS will automatically provide req.rawBody as a Buffer
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    fastifyAdapter
+    fastifyAdapter,
+    { rawBody: true }
   );
 
   // Enable CORS for frontend development

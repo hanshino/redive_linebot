@@ -49,10 +49,3 @@ export interface WebhookRequestBody {
    */
   events: WebhookEvent[];
 }
-
-/**
- * Fastify request with raw body attached for signature verification
- */
-export interface FastifyRequestWithRawBody {
-  rawBody: Buffer;
-}
