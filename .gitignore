@@ -88,5 +88,5 @@ Thumbs.db
 *.swp
 *.tmp
 
-# uipro
-__pycache__
+# opencode
+.opencode/
