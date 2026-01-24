@@ -1,11 +1,5 @@
 {
-  "apps/**/*.{ts,tsx}": [
-    "pnpm exec prettier --write",
-    "pnpm exec eslint --fix"
-  ],
-  "apps/**/*.{js,jsx}": [
-    "pnpm exec prettier --write",
-    "pnpm exec eslint --fix"
-  ],
+  "apps/**/*.{ts,tsx}": ["pnpm exec prettier --write"],
+  "apps/**/*.{js,jsx}": ["pnpm exec prettier --write"],
   "*.{json,md,yml,yaml}": ["pnpm exec prettier --write"]
 }
