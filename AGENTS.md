@@ -1,12 +1,13 @@
 # AGENTS.md - Developer Guide for AI Coding Agents
 
-This document provides essential information for AI coding agents working on the Redive LineBot project. This is a LINE Bot project built with NestJS (backend) and React (frontend) in a pnpm monorepo, currently undergoing refactoring.
+This document provides essential information for AI coding agents working on the Redive LineBot project. This is a LINE Bot project built with NestJS (backend) and React (frontend) in a pnpm monorepo.
 
-**⚠️ CONSTITUTIONAL MANDATE**: All code changes MUST comply with `.specify/memory/constitution.md` principles:
-1. **Testability-First Design** (NON-NEGOTIABLE): All business logic decoupled from external dependencies
+## Core Development Principles
+
+1. **Testability-First Design**: All business logic decoupled from external dependencies
 2. **Library Reuse Priority**: Search existing code/libraries before implementing
 3. **Clean Code Compliance**: Functions ≤30 lines, single responsibility, clear naming
-4. **No Over-Engineering** (NON-NEGOTIABLE): YAGNI principle, readable over clever
+4. **No Over-Engineering**: YAGNI principle, readable over clever
 5. **Database-Free Integration Testing**: Use mocks/SQLite, never production databases
 
 ## Project Overview
@@ -95,6 +96,7 @@ pnpm --filter @repo/frontend lint        # ESLint
 3. **Path aliases**: Backend uses `@/*` for `./src/*` (configured in tsconfig.json)
 
 **Example:**
+
 ```typescript
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -106,14 +108,14 @@ import type { WebhookEvent } from "./types/events";
 
 ### Naming Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| **Files** | kebab-case with type suffix | `line.service.ts`, `health.controller.ts`, `middleware.types.ts` |
-| **Classes** | PascalCase | `LineService`, `PrismaModule`, `HealthController` |
-| **Interfaces/Types** | PascalCase | `WebhookEvent`, `HealthResponse`, `MiddlewareContext` |
-| **Functions/Methods** | camelCase | `extractSourceId()`, `handle()`, `replyMessage()` |
-| **Variables** | camelCase | `eventId`, `startTime`, `mockRedisClient` |
-| **Constants** | UPPER_SNAKE_CASE | `LINE_MIDDLEWARES`, `REDIS_TTL` |
+| Type                  | Convention                  | Example                                                          |
+| --------------------- | --------------------------- | ---------------------------------------------------------------- |
+| **Files**             | kebab-case with type suffix | `line.service.ts`, `health.controller.ts`, `middleware.types.ts` |
+| **Classes**           | PascalCase                  | `LineService`, `PrismaModule`, `HealthController`                |
+| **Interfaces/Types**  | PascalCase                  | `WebhookEvent`, `HealthResponse`, `MiddlewareContext`            |
+| **Functions/Methods** | camelCase                   | `extractSourceId()`, `handle()`, `replyMessage()`                |
+| **Variables**         | camelCase                   | `eventId`, `startTime`, `mockRedisClient`                        |
+| **Constants**         | UPPER_SNAKE_CASE            | `LINE_MIDDLEWARES`, `REDIS_TTL`                                  |
 
 ### TypeScript Standards
 
@@ -125,6 +127,7 @@ import type { WebhookEvent } from "./types/events";
 - **Type imports**: Use `import type` for type-only imports
 
 **Example:**
+
 ```typescript
 async replyMessage(
   replyToken: string,
@@ -155,12 +158,13 @@ async replyMessage(
 2. **Error logging**: Log errors with context using NestJS Logger
 3. **Error messages**: Extract message safely:
    ```typescript
-   error instanceof Error ? error.message : String(error)
+   error instanceof Error ? error.message : String(error);
    ```
 4. **Re-throw when needed**: In middleware, log then re-throw to propagate errors
 5. **Return null pattern**: For API clients, return `null` on error instead of throwing
 
 **Example:**
+
 ```typescript
 try {
   const response = await this.client.replyMessage({ replyToken, messages });
@@ -220,8 +224,8 @@ redive_linebot/
 │           ├── stores/         # Zustand state stores
 │           └── lib/            # Utilities (e.g., cn for Tailwind)
 ├── docker/                      # Docker Compose configuration
-├── packages/                    # Shared packages (reserved for future)
-└── specs/                       # Feature specification documents
+├── docs/                        # Documentation and architecture plans
+└── packages/                    # Shared packages (reserved for future)
 ```
 
 ---
@@ -246,12 +250,14 @@ redive_linebot/
 ### Testability Requirements (CONSTITUTIONAL)
 
 All business logic MUST:
+
 - Be decoupled from external dependencies (database, Redis, LINE SDK)
 - Use dependency injection for all external services
 - Be mockable via constructor injection
 - Run in isolation without real connections
 
 **Example: Service with proper dependency injection**
+
 ```typescript
 import "reflect-metadata";
 import { Test, TestingModule } from "@nestjs/testing";
@@ -375,16 +381,41 @@ await client.set("key", "value", "EX", 3600);
 
 ---
 
+## Code Formatting & Linting
+
+### Prettier Configuration
+
+- **Semi**: true
+- **Quote style**: Double quotes
+- **Tab width**: 2 spaces
+- **Line width**: 80 characters
+- **Plugin**: `prettier-plugin-organize-imports` (auto-organizes imports)
+
+### Pre-commit Hooks
+
+- **Husky** + **lint-staged** configured
+- Runs Prettier on staged files automatically
+- Format manually: `pnpm format`
+- Check formatting: `pnpm format:check`
+
+---
+
 ## Important Notes
 
 - **Always run type checking** before committing: `pnpm typecheck`
 - **Docker must be running** for local development (PostgreSQL + Redis)
-- **No CI tests yet**: The GitHub Actions workflow focuses on deployment only
+- **Pre-commit hooks** automatically format code with Prettier
 - **Frontend testing**: Not configured yet; consider adding Vitest or Playwright
-- **Refactoring in progress**: Some patterns may be inconsistent; follow the newest code in `apps/backend/src/line/`
+- **Module structure**: Backend uses NestJS modules with clear separation of concerns:
+  - `line/` - LINE Bot webhook handling and middleware
+  - `prisma/` - Database module
+  - `redis/` - Redis module (global)
+  - `config/` - Configuration module
+  - `queue/` - BullMQ job queue module
+  - `group-config/`, `permission/`, `user-sync/` - Feature modules
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: 2025-01-XX  
+**Version**: 2.0  
+**Last Updated**: 2025-01-25  
 **Maintainer**: Redive LineBot Team
