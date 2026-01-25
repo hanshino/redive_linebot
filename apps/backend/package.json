@@ -15,6 +15,9 @@
     "test:watch": "vitest --watch",
     "test:cov": "vitest --coverage"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "dependencies": {
     "@line/bot-sdk": "^10.6.0",
     "@nestjs/bullmq": "^11.0.4",

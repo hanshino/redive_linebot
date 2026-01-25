@@ -22,6 +22,10 @@ model LineUser {
   lastSeenAt    DateTime @default(now()) @map("last_seen_at")
   
   permissions   UserPermission[]
+  wallet        UserWallet?
+  dailyLimit    GachaDailyLimit?
+  inventory     InventoryItem[]
+  exchanges     GachaExchange[]
   
   @@index([lastSeenAt], name: "idx_last_seen")
   @@map("line_users")
@@ -60,4 +64,180 @@ model GroupConfig {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("group_configs")
+}
+
+// ============================================================================
+// GACHA & INVENTORY SYSTEM
+// ============================================================================
+
+// --------------------------------------------------------
+// Wallet Layer - Currency Management
+// --------------------------------------------------------
+
+/// User wallet for managing currencies
+model UserWallet {
+  userId    String   @id @map("user_id")
+  jewel     Int      @default(0)      // Jewel (gacha currency)
+  stone     Int      @default(0)      // Divine Stone (duplicate compensation/upgrade)
+  mana      BigInt   @default(0)      // Mana (gold for enhancement)
+  coins     Json?                     // Other tokens { "arena": 500, "clan": 1000 }
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      LineUser @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("user_wallets")
+}
+
+/// Daily gacha draw limit tracking
+model GachaDailyLimit {
+  userId     String   @id @map("user_id")
+  lastDrawAt DateTime @map("last_draw_at")   // Last real draw timestamp
+  drawCount  Int      @default(0)             // Today's draw count
+  maxDraws   Int      @default(1)             // Daily limit (VIP can increase)
+
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user       LineUser @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("gacha_daily_limits")
+}
+
+// --------------------------------------------------------
+// Item Layer - Item Definitions and Instances
+// --------------------------------------------------------
+
+enum ItemType {
+  CHARACTER   // Character (maxStack=1)
+  CONSUMABLE  // Consumable (maxStack>1)
+  EQUIPMENT   // Equipment (reserved for future)
+  CURRENCY    // Currency token (reserved, mainly in UserWallet)
+}
+
+/// Static item definitions (catalog)
+model ItemDefinition {
+  id          Int      @id @default(autoincrement())
+  type        ItemType
+  name        String
+  description String?
+  rarity      Int      @default(1)                // Rarity (1-3 stars, 4-5 reserved)
+  maxStack    Int      @default(1)                // Max stack (1=unique instance)
+  imageUrl    String?  @map("image_url")
+
+  // Static metadata
+  // CHARACTER: { "isPrincess": true, "alias": ["NewYearKurumi"], "baseStats": {...} }
+  // CONSUMABLE: { "effect": "restore_stamina", "value": 100 }
+  meta        Json?
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  instances   InventoryItem[]
+  poolItems   GachaPoolItem[]
+
+  @@map("item_definitions")
+}
+
+/// User inventory items (dynamic instances)
+model InventoryItem {
+  id         String   @id @default(cuid())        // Unique instance ID
+  userId     String   @map("user_id")
+  itemDefId  Int      @map("item_def_id")
+
+  amount     Int      @default(1)                 // Stack amount (for consumables)
+
+  // Dynamic instance properties
+  // CHARACTER: { "level": 100, "rank": 15, "bond": 8, "star": 3 }
+  // CONSUMABLE: not used
+  properties Json?
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  definition ItemDefinition @relation(fields: [itemDefId], references: [id])
+  user       LineUser       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([itemDefId])
+  @@index([userId, itemDefId])
+  @@map("inventory_items")
+}
+
+// --------------------------------------------------------
+// Gacha Layer - Pool Configuration and Mechanics
+// --------------------------------------------------------
+
+enum PoolType {
+  PERMANENT   // Permanent pool
+  PICKUP      // Rate-up pool
+  FES         // Festival (3★ rate doubled)
+  LIMITED     // Limited pool
+}
+
+/// Gacha pool definitions
+model GachaPool {
+  id          Int       @id @default(autoincrement())
+  name        String                                  // Pool name (e.g., "New Year Kurumi PickUp")
+  type        PoolType  @default(PICKUP)
+  isActive    Boolean   @default(true) @map("is_active")
+  priority    Int       @default(0)                   // Display order (higher = more priority)
+
+  startTime   DateTime? @map("start_time")            // Pool start time
+  endTime     DateTime? @map("end_time")              // Pool end time
+
+  // Pool configuration
+  // {
+  //   "cost": 150,                    // Single draw cost (jewel)
+  //   "ceil": 200,                    // Ceiling points
+  //   "exchangeItems": [2001, 2002],  // Exchangeable character IDs
+  //   "conversionRate": { "1": 1, "2": 10, "3": 50 },  // Duplicate → stone
+  //   "pointExpiry": { "enabled": true, "rate": 1 }    // 1 Pt = 1 stone
+  // }
+  config      Json?
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  items       GachaPoolItem[]
+  exchanges   GachaExchange[]
+
+  @@map("gacha_pools")
+}
+
+/// Gacha pool items with weights
+model GachaPoolItem {
+  poolId      Int       @map("pool_id")
+  itemId      Int       @map("item_id")
+
+  weight      Int                                     // Weight (integer to avoid float errors)
+  isPickup    Boolean   @default(false) @map("is_pickup")
+
+  // Special metadata (e.g., limited character, ceiling character)
+  meta        Json?
+
+  pool        GachaPool      @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  item        ItemDefinition @relation(fields: [itemId], references: [id])
+
+  @@id([poolId, itemId])
+  @@map("gacha_pool_items")
+}
+
+/// Ceiling (spark) points tracking
+model GachaExchange {
+  userId      String    @map("user_id")
+  poolId      Int       @map("pool_id")
+
+  points      Int       @default(0)                   // Accumulated ceiling points
+  totalDraws  Int       @default(0)                   // Total draws in this pool (statistics)
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        LineUser  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  pool        GachaPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@id([userId, poolId])
+  @@map("gacha_exchanges")
 }

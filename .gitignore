@@ -79,6 +79,8 @@ build/
 
 # Prisma
 apps/backend/prisma/migrations/**/migration_lock.toml
+apps/backend/prisma/**/*.js
+apps/backend/check-db.js
 
 # IDE
 .idea/
