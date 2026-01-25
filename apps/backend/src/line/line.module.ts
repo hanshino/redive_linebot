@@ -1,10 +1,13 @@
 import { Module } from "@nestjs/common";
+
 import { QueueModule } from "../queue/queue.module";
 import { UserSyncModule } from "../user-sync/user-sync.module";
+import { TestCommandController } from "./__tests__/test-command.controller";
+import { CommandModule } from "./commands/command.module";
+import { CommandDispatcherMiddleware } from "./commands/middleware/command-dispatcher.middleware";
 import { SignatureGuard } from "./guards/signature.guard";
 import { LineController } from "./line.controller";
 import { LineService } from "./line.service";
-import { EchoMiddleware } from "./middleware/echo.middleware";
 import { LoggingMiddleware } from "./middleware/logging.middleware";
 import { MiddlewareRunner } from "./middleware/middleware.runner";
 import { LINE_MIDDLEWARES } from "./middleware/middleware.types";
@@ -23,6 +26,7 @@ import { IdempotencyService } from "./services/idempotency.service";
  * - Webhook endpoint for receiving LINE events
  * - HMAC-SHA256 signature verification
  * - Onion-model middleware architecture
+ * - Decorator-based command routing
  * - Structured logging (without message content)
  *
  * Middleware chain:
@@ -30,15 +34,16 @@ import { IdempotencyService } from "./services/idempotency.service";
  * 2. LoggingMiddleware - Logs event metadata
  * 3. UserTrackMiddleware - Tracks user activity and syncs profiles
  * 4. PermissionMiddleware - Injects user permissions
- * 5. EchoMiddleware - Replies with the same text message
+ * 5. CommandDispatcherMiddleware - Routes events to command handlers
  *
- * To add custom middleware:
- * 1. Create a class implementing LineMiddleware
- * 2. Add it to the LINE_MIDDLEWARES provider array
+ * To add custom commands:
+ * 1. Create a controller with @Controller()
+ * 2. Use @Command(), @OnEvent(), or @Postback() decorators on methods
+ * 3. The module will automatically discover and register handlers
  */
 @Module({
-  imports: [UserSyncModule, QueueModule],
-  controllers: [LineController],
+  imports: [UserSyncModule, QueueModule, CommandModule],
+  controllers: [LineController, TestCommandController],
   providers: [
     LineService,
     IdempotencyService,
@@ -47,7 +52,6 @@ import { IdempotencyService } from "./services/idempotency.service";
     RateLimitMiddleware,
     UserTrackMiddleware,
     PermissionMiddleware,
-    EchoMiddleware,
     {
       provide: LINE_MIDDLEWARES,
       useFactory: (
@@ -55,20 +59,20 @@ import { IdempotencyService } from "./services/idempotency.service";
         loggingMiddleware: LoggingMiddleware,
         userTrackMiddleware: UserTrackMiddleware,
         permissionMiddleware: PermissionMiddleware,
-        echoMiddleware: EchoMiddleware
+        commandDispatcherMiddleware: CommandDispatcherMiddleware
       ) => [
         rateLimitMiddleware,
         loggingMiddleware,
         userTrackMiddleware,
         permissionMiddleware,
-        echoMiddleware,
+        commandDispatcherMiddleware,
       ],
       inject: [
         RateLimitMiddleware,
         LoggingMiddleware,
         UserTrackMiddleware,
         PermissionMiddleware,
-        EchoMiddleware,
+        CommandDispatcherMiddleware,
       ],
     },
     MiddlewareRunner,
