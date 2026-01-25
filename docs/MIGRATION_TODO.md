@@ -37,17 +37,54 @@
 
 **Priority**: CRITICAL (Must complete before Phase 1)  
 **Complexity**: High  
-**Estimated Effort**: 2-3 days
+**Estimated Effort**: 2-3 days  
+**Status**: ✅ **COMPLETED** (2026-01-25)
 
 #### Shared Components to Build First
 
-| Component                    | Description                                                            | Delegation Strategy                             | Priority |
-| ---------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------- | -------- |
-| **Command Router Service**   | Central command pattern matching & routing (replaces Bottender router) | `category="ultrabrain"`, `load_skills=[]`       | P0       |
-| **Postback Handler**         | Handle LINE postback events (buttons, quick replies)                   | `category="unspecified-high"`, `load_skills=[]` | P0       |
-| **Message Template Builder** | Flex message, carousel, bubble templates                               | `category="unspecified-low"`, `load_skills=[]`  | P1       |
-| **LINE Profile Service**     | Fetch & cache user/group profiles                                      | `category="quick"`, `load_skills=[]`            | P0       |
-| **Event Type Guards**        | NestJS guards for different event types                                | `category="quick"`, `load_skills=[]`            | P1       |
+| Component                    | Description                                                            | Delegation Strategy                             | Priority | Status |
+| ---------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------- | -------- | ------ |
+| **Command Router Service**   | Central command pattern matching & routing (replaces Bottender router) | `category="ultrabrain"`, `load_skills=[]`       | P0       | ✅     |
+| **Postback Handler**         | Handle LINE postback events (buttons, quick replies)                   | `category="unspecified-high"`, `load_skills=[]` | P0       | ✅     |
+| **Message Template Builder** | Flex message, carousel, bubble templates                               | `category="unspecified-low"`, `load_skills=[]`  | P1       | ⏳     |
+| **LINE Profile Service**     | Fetch & cache user/group profiles                                      | `category="quick"`, `load_skills=[]`            | P0       | ⏳     |
+| **Event Type Guards**        | NestJS guards for different event types                                | `category="quick"`, `load_skills=[]`            | P1       | ⏳     |
+
+#### Command Router Implementation ✅
+
+**Completed**: 2026-01-25  
+**Commit**: `9f253b6`
+
+- [x] **CommandModule** with decorator-based routing
+  - [x] `@Command()` decorator - string commands with aliases
+  - [x] `@OnEvent()` decorator - LINE event handlers (follow, join, etc.)
+  - [x] `@Postback()` decorator - postback action routing
+  - [x] Parameter decorators: `@Context()`, `@Text()`, `@Args()`, `@Match()`
+- [x] **CommandDiscoveryService**
+  - [x] Automatic handler scanning at startup
+  - [x] O(1) command lookup with Map
+  - [x] Regex command fallback
+  - [x] Duplicate detection (commands, postbacks, aliases)
+- [x] **CommandDispatcherMiddleware**
+  - [x] Support 4 prefixes: `#`, `/`, `.`, `!`
+  - [x] Argument parsing with whitespace handling
+  - [x] Error handling & logging
+- [x] **Unit Tests**
+  - [x] CommandDiscoveryService: 18 tests
+  - [x] CommandDispatcherMiddleware: 20 tests
+  - [x] All 38 tests passing
+- [x] **Integration**
+  - [x] Replaced EchoMiddleware with CommandDispatcherMiddleware
+  - [x] Integrated into LineModule
+  - [x] TestCommandController for verification
+
+**Documentation**:
+
+- ✅ `docs/specs/COMMAND_ROUTER_SPEC.md` - Architecture specification
+- ✅ `docs/FEATURE_AUDIT.md` - Feature audit results
+- ✅ `docs/MIGRATION_ROADMAP.md` - Migration phases
+
+**Next Steps**: Ready to migrate first real controller (Gacha System)
 
 #### Middleware Migration (Remaining)
 

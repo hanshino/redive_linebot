@@ -9,18 +9,23 @@
 
 **目標**: 建立穩固的 NestJS 後端架構，確保基本指令路由與事件處理正常運作。
 
-- [ ] **Command Router Service**
-  - [ ] 實作指令解析器 (Text Command Parser)
-  - [ ] 支援 Regex 與前綴 (`#`, `/`, `.`)
-  - [ ] 整合 NestJS Decorator (`@Command()`)
+- [x] **Command Router Service**
+  - [x] 實作指令解析器 (Text Command Parser)
+  - [x] 支援 Regex 與前綴 (`#`, `/`, `.`, `!`)
+  - [x] 整合 NestJS Decorator (`@Command()`, `@OnEvent()`, `@Postback()`)
+  - [x] 建立 CommandDiscoveryService (自動掃描與註冊)
+  - [x] 建立 CommandDispatcherMiddleware (O(1) 查找 + Regex fallback)
+  - [x] 支援 aliases (指令別名)
+  - [x] 完整單元測試 (38 tests passing)
 - [ ] **Postback Handler**
-  - [ ] 實作 Payload 解析
-  - [ ] 建立 Postback 路由機制
+  - [x] 實作 Payload 解析 (JSON + Query String)
+  - [x] 建立 Postback 路由機制
+  - [ ] 實際應用到功能中 (待 Phase 2 整合)
 - [ ] **Middleware Enhancement**
   - [ ] **Statistics**: 設計資料埋點架構 (Log events to Redis/DB)
   - [ ] **Config**: 完善群組設定載入
-  - [ ] **Profile**: 完善使用者資料同步 (UserSync)
-  - [ ] **RateLimit**: 確認 Redis 限速機制運作正常
+  - [x] **Profile**: 完善使用者資料同步 (UserSync)
+  - [x] **RateLimit**: 確認 Redis 限速機制運作正常
 - [ ] **Global Orders**
   - [ ] 移植 `GlobalOrderBase` 邏輯
 
