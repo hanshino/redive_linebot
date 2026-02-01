@@ -20,7 +20,7 @@ export class GachaCommands {
   ) {}
 
   @Command("抽")
-  async singleDraw({ event }: CommandContext) {
+  async draw({ event }: CommandContext) {
     if (event.type !== "message" || event.message.type !== "text") {
       return;
     }
@@ -46,61 +46,12 @@ export class GachaCommands {
         return;
       }
 
-      const result = await this.gachaService.performDraw(userId, pool.id, 1);
-      const item = result.items[0];
-
-      let message = "🎲 單抽結果\n\n✨ 恭喜獲得:\n";
-      const star = "★".repeat(item.rarity);
-      message += `${star} ${item.name}`;
-
-      if (!item.isDuplicate) {
-        message += " [NEW!]";
-      } else {
-        message += ` [重複 → +${item.stoneConverted} 女神石]`;
-      }
-
-      message += `\n\n💎 寶石: ${result.remainingJewels} (-150)`;
-      message += `\n🎯 天井點數: +1 點 (已累積)`;
-
-      await this.lineService.replyText(replyToken, message);
-      this.logger.log(
-        `User ${userId} performed single draw in pool ${pool.id}`
-      );
-    } catch (error) {
-      this.handleError(replyToken, error);
-    }
-  }
-
-  @Command("抽十")
-  async tenDraw({ event }: CommandContext) {
-    if (event.type !== "message" || event.message.type !== "text") {
-      return;
-    }
-
-    const replyToken = event.replyToken;
-    if (!replyToken) {
-      return;
-    }
-
-    const userId = event.source?.userId;
-    if (!userId) {
-      return;
-    }
-
-    try {
-      const pool = await this.gachaService.getActivePool();
-      if (!pool) {
-        await this.lineService.replyText(
-          replyToken,
-          "❌ 目前沒有開放中的轉蛋池"
-        );
-        return;
-      }
-
       const result = await this.gachaService.performDraw(userId, pool.id, 10);
       let totalStones = 0;
 
-      let message = "🎲 十連結果 ✅ 已保底 2★+\n\n✨ 本次獲得:\n";
+      const drawType = result.isFree ? "🎁 每日免費十連" : "💎 寶石十連";
+      let message = `🎲 ${drawType} ✅ 已保底 2★+\n\n✨ 本次獲得:\n`;
+
       result.items.forEach((item, index) => {
         const star = "★".repeat(item.rarity);
         message += `${index + 1}. ${star} ${item.name}`;
@@ -112,12 +63,23 @@ export class GachaCommands {
         }
       });
 
-      message += `\n💎 寶石: ${result.remainingJewels} (-1500)`;
+      if (result.isFree) {
+        const status = await this.gachaService.getFreeDrawStatus(userId);
+        message += `\n🎁 今日免費次數: 已用 ${status.used}/${status.quota}`;
+        if (!status.hasFreeDraw) {
+          message += `\n⏰ 明天 00:00 重置`;
+        }
+      } else {
+        message += `\n💎 寶石: ${result.remainingJewels} (-${result.totalCost})`;
+      }
+
       message += `\n💠 女神石: +${totalStones}`;
       message += `\n🎯 天井點數: +10 點`;
 
       await this.lineService.replyText(replyToken, message);
-      this.logger.log(`User ${userId} performed ten-pull in pool ${pool.id}`);
+      this.logger.log(
+        `User ${userId} performed draw in pool ${pool.id}, free: ${result.isFree}`
+      );
     } catch (error) {
       this.handleError(replyToken, error);
     }
@@ -149,19 +111,27 @@ export class GachaCommands {
         return;
       }
 
-      const progress = await this.gachaService.getCeilingProgress(
-        userId,
-        pool.id
-      );
+      const [progress, freeStatus, wallet] = await Promise.all([
+        this.gachaService.getCeilingProgress(userId, pool.id),
+        this.gachaService.getFreeDrawStatus(userId),
+        this.gachaService["prisma"].userWallet.findUnique({
+          where: { userId },
+        }),
+      ]);
+
       const remaining = Math.max(0, 200 - progress.points);
       const tens = Math.ceil(remaining / 10);
 
-      const message = `🎯 天井進度
+      const message = `🎯 抽卡狀態
 
-當前點數: ${progress.points} / 200
-距離兌換: 還需 ${remaining} 點 (約 ${tens} 次十連)
+🎁 每日免費十連: ${freeStatus.used}/${freeStatus.quota}
+${!freeStatus.hasFreeDraw ? "⏰ 明天 00:00 重置\n" : "✅ 今天還可以免費抽！\n"}
+💎 寶石: ${wallet?.jewel ?? 0}
+💠 女神石: ${wallet?.stone ?? 0}
 
-📊 統計:
+📊 天井進度:
+- 當前點數: ${progress.points} / 200
+- 距離兌換: 還需 ${remaining} 點 (約 ${tens} 次十連)
 - 總抽卡次數: ${progress.totalDraws} 次
 
 💡 提示: 累積 200 點可兌換任意 3★ 角色
