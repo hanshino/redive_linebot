@@ -53,8 +53,21 @@ export class GachaService {
     const pool = await this.loadPoolWithItems(poolId);
     const config = pool.config as unknown as PoolConfig;
 
-    const totalCost = config.cost * count;
     const pointsToAdd = count;
+    let totalCost = 0;
+    let isFree = false;
+
+    if (count === 10) {
+      const hasFreeDraw = await this.checkAndConsumeFreeDraw(userId);
+      if (hasFreeDraw) {
+        isFree = true;
+        this.logger.log(`User ${userId} used free daily draw`);
+      } else {
+        totalCost = config.cost * count;
+      }
+    } else {
+      totalCost = config.cost * count;
+    }
 
     return await this.prisma.$transaction(
       async (tx) => {
@@ -94,6 +107,7 @@ export class GachaService {
           totalCost,
           newCeilingPoints: pointsToAdd,
           remainingJewels: wallet?.jewel ?? 0,
+          isFree,
         };
       },
       { maxWait: 5000, timeout: 15000 }
@@ -234,13 +248,17 @@ export class GachaService {
     userId: string,
     amount: number
   ): Promise<void> {
+    if (amount === 0) {
+      return;
+    }
+
     const wallet = await tx.userWallet.findUnique({
       where: { userId },
     });
 
     if (!wallet) {
       throw new BadRequestException(
-        "Wallet not found. Please contact support."
+        "Wallet not found. This should not happen - please contact support."
       );
     }
 
@@ -398,5 +416,89 @@ export class GachaService {
         totalDraws: drawCount,
       },
     });
+  }
+
+  private async checkAndConsumeFreeDraw(userId: string): Promise<boolean> {
+    const today = this.getToday();
+
+    const limit = await this.prisma.gachaDailyLimit.findUnique({
+      where: { userId },
+    });
+
+    if (!limit || !this.isSameDay(limit.date, today)) {
+      await this.prisma.gachaDailyLimit.upsert({
+        where: { userId },
+        create: {
+          userId,
+          date: today,
+          freeDrawsUsed: 1,
+        },
+        update: {
+          date: today,
+          freeDrawsUsed: 1,
+        },
+      });
+      return true;
+    }
+
+    const quota = this.getDailyQuota();
+    if (limit.freeDrawsUsed < quota) {
+      await this.prisma.gachaDailyLimit.update({
+        where: { userId },
+        data: {
+          freeDrawsUsed: { increment: 1 },
+        },
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  private getDailyQuota(): number {
+    return 1;
+  }
+
+  private getToday(): Date {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+  }
+
+  private isSameDay(date1: Date, date2: Date): boolean {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
+  }
+
+  async getFreeDrawStatus(userId: string): Promise<{
+    hasFreeDraw: boolean;
+    quota: number;
+    used: number;
+    resetTime: Date;
+  }> {
+    const today = this.getToday();
+    const quota = this.getDailyQuota();
+
+    const limit = await this.prisma.gachaDailyLimit.findUnique({
+      where: { userId },
+    });
+
+    let used = 0;
+    if (limit && this.isSameDay(limit.date, today)) {
+      used = limit.freeDrawsUsed;
+    }
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    return {
+      hasFreeDraw: used < quota,
+      quota,
+      used,
+      resetTime: tomorrow,
+    };
   }
 }

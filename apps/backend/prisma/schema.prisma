@@ -92,14 +92,13 @@ model UserWallet {
 
 /// Daily gacha draw limit tracking
 model GachaDailyLimit {
-  userId     String   @id @map("user_id")
-  lastDrawAt DateTime @map("last_draw_at")   // Last real draw timestamp
-  drawCount  Int      @default(0)             // Today's draw count
-  maxDraws   Int      @default(1)             // Daily limit (VIP can increase)
+  userId        String   @id @map("user_id")
+  date          DateTime @map("date")                      // Current date for reset checking
+  freeDrawsUsed Int      @default(0) @map("free_draws_used") // Free draws used today
 
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  user       LineUser @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  user          LineUser @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
   @@map("gacha_daily_limits")
 }

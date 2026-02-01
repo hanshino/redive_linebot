@@ -36,6 +36,7 @@ export interface GachaDrawResult {
   totalCost: number;
   newCeilingPoints: number;
   remainingJewels: number;
+  isFree: boolean;
 }
 
 export interface CeilingProgress {
