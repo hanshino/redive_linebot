@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+import { GachaModule } from "../gacha/gacha.module";
 import { QueueModule } from "../queue/queue.module";
 import { UserSyncModule } from "../user-sync/user-sync.module";
 import { TestCommandController } from "./__tests__/test-command.controller";
@@ -9,6 +10,7 @@ import { CommandDispatcherMiddleware } from "./commands/middleware/command-dispa
 import { SignatureGuard } from "./guards/signature.guard";
 import { LineController } from "./line.controller";
 import { LineService } from "./line.service";
+import { EnsureWalletMiddleware } from "./middleware/ensure-wallet.middleware";
 import { LoggingMiddleware } from "./middleware/logging.middleware";
 import { MiddlewareRunner } from "./middleware/middleware.runner";
 import { LINE_MIDDLEWARES } from "./middleware/middleware.types";
@@ -34,8 +36,9 @@ import { IdempotencyService } from "./services/idempotency.service";
  * 1. RateLimitMiddleware - Prevents spam
  * 2. LoggingMiddleware - Logs event metadata
  * 3. UserTrackMiddleware - Tracks user activity and syncs profiles
- * 4. PermissionMiddleware - Injects user permissions
- * 5. CommandDispatcherMiddleware - Routes events to command handlers
+ * 4. EnsureWalletMiddleware - Ensures user wallet exists
+ * 5. PermissionMiddleware - Injects user permissions
+ * 6. CommandDispatcherMiddleware - Routes events to command handlers
  *
  * To add custom commands:
  * 1. Create a controller with @Controller()
@@ -43,7 +46,7 @@ import { IdempotencyService } from "./services/idempotency.service";
  * 3. The module will automatically discover and register handlers
  */
 @Module({
-  imports: [UserSyncModule, QueueModule, CommandModule],
+  imports: [UserSyncModule, QueueModule, CommandModule, GachaModule],
   controllers: [LineController, TestCommandController, GachaCommands],
   providers: [
     LineService,
@@ -52,6 +55,7 @@ import { IdempotencyService } from "./services/idempotency.service";
     LoggingMiddleware,
     RateLimitMiddleware,
     UserTrackMiddleware,
+    EnsureWalletMiddleware,
     PermissionMiddleware,
     {
       provide: LINE_MIDDLEWARES,
@@ -59,12 +63,14 @@ import { IdempotencyService } from "./services/idempotency.service";
         rateLimitMiddleware: RateLimitMiddleware,
         loggingMiddleware: LoggingMiddleware,
         userTrackMiddleware: UserTrackMiddleware,
+        ensureWalletMiddleware: EnsureWalletMiddleware,
         permissionMiddleware: PermissionMiddleware,
         commandDispatcherMiddleware: CommandDispatcherMiddleware
       ) => [
         rateLimitMiddleware,
         loggingMiddleware,
         userTrackMiddleware,
+        ensureWalletMiddleware,
         permissionMiddleware,
         commandDispatcherMiddleware,
       ],
@@ -72,6 +78,7 @@ import { IdempotencyService } from "./services/idempotency.service";
         RateLimitMiddleware,
         LoggingMiddleware,
         UserTrackMiddleware,
+        EnsureWalletMiddleware,
         PermissionMiddleware,
         CommandDispatcherMiddleware,
       ],
