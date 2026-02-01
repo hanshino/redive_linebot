@@ -1,11 +1,13 @@
 import { Module } from "@nestjs/common";
 
 import { GachaModule } from "../gacha/gacha.module";
+import { InventoryModule } from "../inventory/inventory.module";
 import { QueueModule } from "../queue/queue.module";
 import { UserSyncModule } from "../user-sync/user-sync.module";
 import { TestCommandController } from "./__tests__/test-command.controller";
 import { CommandModule } from "./commands/command.module";
 import { GachaCommands } from "./commands/gacha.commands";
+import { InventoryCommands } from "./commands/inventory.commands";
 import { CommandDispatcherMiddleware } from "./commands/middleware/command-dispatcher.middleware";
 import { SignatureGuard } from "./guards/signature.guard";
 import { LineController } from "./line.controller";
@@ -46,8 +48,19 @@ import { IdempotencyService } from "./services/idempotency.service";
  * 3. The module will automatically discover and register handlers
  */
 @Module({
-  imports: [UserSyncModule, QueueModule, CommandModule, GachaModule],
-  controllers: [LineController, TestCommandController, GachaCommands],
+  imports: [
+    UserSyncModule,
+    QueueModule,
+    CommandModule,
+    GachaModule,
+    InventoryModule,
+  ],
+  controllers: [
+    LineController,
+    TestCommandController,
+    GachaCommands,
+    InventoryCommands,
+  ],
   providers: [
     LineService,
     IdempotencyService,
