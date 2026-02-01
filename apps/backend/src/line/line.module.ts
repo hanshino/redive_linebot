@@ -4,6 +4,7 @@ import { QueueModule } from "../queue/queue.module";
 import { UserSyncModule } from "../user-sync/user-sync.module";
 import { TestCommandController } from "./__tests__/test-command.controller";
 import { CommandModule } from "./commands/command.module";
+import { GachaCommands } from "./commands/gacha.commands";
 import { CommandDispatcherMiddleware } from "./commands/middleware/command-dispatcher.middleware";
 import { SignatureGuard } from "./guards/signature.guard";
 import { LineController } from "./line.controller";
@@ -43,7 +44,7 @@ import { IdempotencyService } from "./services/idempotency.service";
  */
 @Module({
   imports: [UserSyncModule, QueueModule, CommandModule],
-  controllers: [LineController, TestCommandController],
+  controllers: [LineController, TestCommandController, GachaCommands],
   providers: [
     LineService,
     IdempotencyService,
