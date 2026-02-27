@@ -1,3 +1,5 @@
+import { getLiffId } from "../utils/liff";
+
 export const genNotify = ({ marketId, name, image, charge }) => ({
   type: "bubble",
   header: {
@@ -52,7 +54,7 @@ export const genNotify = ({ marketId, name, image, charge }) => ({
             cornerRadius: "md",
             action: {
               type: "uri",
-              uri: `https://liff.line.me/${window.liff.id}?reactRedirectUri=/trade/${marketId}/transaction?action=deny`,
+              uri: `https://liff.line.me/${getLiffId()}?reactRedirectUri=/trade/${marketId}/transaction?action=deny`,
             },
           },
           {
@@ -64,7 +66,7 @@ export const genNotify = ({ marketId, name, image, charge }) => ({
             backgroundColor: "#56FF56",
             action: {
               type: "uri",
-              uri: `https://liff.line.me/${window.liff.id}?reactRedirectUri=/trade/${marketId}/transaction?action=transaction`,
+              uri: `https://liff.line.me/${getLiffId()}?reactRedirectUri=/trade/${marketId}/transaction?action=transaction`,
             },
           },
         ],

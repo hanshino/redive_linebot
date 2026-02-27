@@ -4,16 +4,15 @@ import {
   Button,
 } from "@mui/material";
 import { FullPageLoading } from "../../components/Loading";
-
-const { liff } = window;
+import { isLiffLoggedIn, getLiffContext, liffLogin } from "../../utils/liff";
 
 export default function Binding() {
-  const isLoggedIn = liff.isLoggedIn();
+  const isLoggedIn = isLiffLoggedIn();
   return isLoggedIn ? <RedirectToBinding /> : <LoginAlert />;
 }
 
 function RedirectToBinding() {
-  const { userId } = liff.getContext();
+  const { userId } = getLiffContext();
   const params = new URLSearchParams();
   params.set("response_type", "code");
   params.set("client_id", "CQZhxtEo0NeSgGRQ2LNeEp");
@@ -43,7 +42,7 @@ function LoginAlert() {
         </Button>
         <Button color="primary" variant="outlined" onClick={() => {
           window.localStorage.setItem("reactRedirectUri", "/bot/notify");
-          window.liff.login();
+          liffLogin();
         }}>
           登入
         </Button>

@@ -17,8 +17,7 @@ import {
 import { green } from "@mui/material/colors";
 import { FullPageLoading } from "../../components/Loading";
 import AlertLogin from "../../components/AlertLogin";
-
-const { liff } = window;
+import { isLiffLoggedIn } from "../../utils/liff";
 
 function DemoArea({ imageUrl = "", template = "" }) {
   const demoData = {
@@ -199,7 +198,7 @@ function MessageForm({
 }
 
 export default function AdminWorldbossMessageUpdate() {
-  const isLoggedIn = liff.isLoggedIn();
+  const isLoggedIn = isLiffLoggedIn();
   const { id } = useParams();
   const navigate = useNavigate();
   const [errorControl, setError] = useState({ show: false, message: "" });

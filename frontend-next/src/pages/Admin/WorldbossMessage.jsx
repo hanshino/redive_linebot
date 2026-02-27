@@ -16,8 +16,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { green } from "@mui/material/colors";
 import { Link, useNavigate } from "react-router-dom";
 import AlertLogin from "../../components/AlertLogin";
-
-const { liff } = window;
+import { isLiffLoggedIn } from "../../utils/liff";
 
 function ControlButtons({ onDeleteComplete, value }) {
   const navigate = useNavigate();
@@ -124,7 +123,7 @@ export default function AdminWorldbossMessage() {
     document.title = "管理員用－世界王訊息管理";
   }, []);
 
-  if (!liff.isLoggedIn()) {
+  if (!isLiffLoggedIn()) {
     return <AlertLogin />;
   }
 

@@ -25,8 +25,7 @@ import { FullPageLoading } from "../../components/Loading";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 import AlertLogin from "../../components/AlertLogin";
-
-const { liff } = window;
+import { isLiffLoggedIn } from "../../utils/liff";
 
 function EditDialog({ open, onClose, onSubmit, loading: parentLoading }) {
   const [{ data: bossData = [], loading }] = useAxios("/api/Admin/WorldBoss");
@@ -119,7 +118,7 @@ function EditDialog({ open, onClose, onSubmit, loading: parentLoading }) {
 }
 
 export default function AdminWorldbossEvent() {
-  const isLoggedIn = liff.isLoggedIn();
+  const isLoggedIn = isLiffLoggedIn();
   const [hintState, { handleOpen, handleClose }] = useHintBar();
   const [{ data, loading, error }, fetchData] = useAxios(
     "/api/Admin/WorldBossEvent",

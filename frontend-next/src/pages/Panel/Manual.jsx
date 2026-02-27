@@ -17,6 +17,7 @@ import { CopyToClipboard } from "react-copy-to-clipboard";
 import { useSendMessage } from "../../hooks/useLiff";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
+import { getLiffContext } from "../../utils/liff";
 
 function a11yProps(index) {
   return {
@@ -90,7 +91,7 @@ function ManualBar() {
   // Filter tabs based on LIFF context type
   const [EnableTabDatas] = useState(() => {
     try {
-      const { type: screenType } = window.liff.getContext();
+      const { type: screenType } = getLiffContext();
       return TabDatas.filter((data) => data.enableScreen.indexOf(screenType) !== -1);
     } catch {
       // Fallback: show all tabs when not in LIFF context

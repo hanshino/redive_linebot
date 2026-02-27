@@ -10,6 +10,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import CloseIcon from "@mui/icons-material/Close";
 import { FullPageLoading } from "../../components/Loading";
 import * as NotifyAPI from "../../services/notify";
+import { isLiffLoggedIn } from "../../utils/liff";
 
 function useOption() {
   const [loading, setLoading] = useState(false);
@@ -17,7 +18,7 @@ function useOption() {
   const [reload, setReload] = useState(0);
   const [option, setOption] = useState({});
   const [open, setOpen] = useState(false);
-  const isLoggedIn = window.liff.isLoggedIn();
+  const isLoggedIn = isLiffLoggedIn();
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);

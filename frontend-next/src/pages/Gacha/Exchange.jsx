@@ -8,16 +8,15 @@ import { FullPageLoading } from "../../components/Loading";
 import AlertDialog from "../../components/AlertDialog";
 import CharacterCard from "../../components/CharacterCard";
 import useAlertDialog from "../../hooks/useAlertDialog";
+import { isLiffLoggedIn } from "../../utils/liff";
 
 function useQuery() {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
 }
 
-const { liff } = window;
-
 export default function GachaExchange() {
-  const isLoggedIn = useMemo(() => liff.isLoggedIn(), []);
+  const isLoggedIn = useMemo(() => isLiffLoggedIn(), []);
   const query = useQuery();
   const [queryState, setQueryState] = useState({ asked: false });
   const [barState, setBarState] = useState({

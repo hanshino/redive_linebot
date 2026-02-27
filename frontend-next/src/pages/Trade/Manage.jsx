@@ -7,8 +7,7 @@ import { Link } from "react-router-dom";
 import { get } from "lodash";
 import AlertLogin from "../../components/AlertLogin";
 import { FullPageLoading } from "../../components/Loading";
-
-const { liff } = window;
+import { isLiffLoggedIn } from "../../utils/liff";
 
 function genStatusCell(params) {
   const status = params.value;
@@ -116,7 +115,7 @@ export default function TradeManage() {
     },
     { manual: true }
   );
-  const isLoggedIn = liff.isLoggedIn();
+  const isLoggedIn = isLiffLoggedIn();
 
   useEffect(() => {
     if (!isLoggedIn) return;

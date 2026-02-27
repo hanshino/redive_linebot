@@ -19,8 +19,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AlertLogin from "../../components/AlertLogin";
-
-const { liff } = window;
+import { isLiffLoggedIn, getLiffAccessToken } from "../../utils/liff";
 
 // --- Helper functions ---
 
@@ -225,7 +224,7 @@ function ContentDialog({ open, handleClose, datas }) {
 // --- Main Component ---
 
 export default function AdminMessages() {
-  const isLoggedIn = liff.isLoggedIn();
+  const isLoggedIn = isLiffLoggedIn();
   const [events, setEvents] = useState([]);
   const [dialogState, setDialog] = useState({
     open: false,
@@ -238,7 +237,7 @@ export default function AdminMessages() {
     document.title = "管理員後台訊息管理";
     const socket = io("/Admin/Messages", {
       auth: {
-        token: liff.getAccessToken(),
+        token: getLiffAccessToken(),
       },
     });
 

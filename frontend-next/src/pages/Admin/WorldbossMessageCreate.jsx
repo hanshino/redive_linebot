@@ -16,8 +16,7 @@ import {
 } from "@mui/material";
 import { green } from "@mui/material/colors";
 import AlertLogin from "../../components/AlertLogin";
-
-const { liff } = window;
+import { isLiffLoggedIn } from "../../utils/liff";
 
 function DemoArea({ imageUrl = "", template = "" }) {
   const demoData = {
@@ -198,7 +197,7 @@ function MessageForm({
 }
 
 export default function AdminWorldbossMessageCreate() {
-  const isLoggedIn = liff.isLoggedIn();
+  const isLoggedIn = isLiffLoggedIn();
   const navigate = useNavigate();
   const [{ data, loading, error }, sendRequest] = useAxios(
     {

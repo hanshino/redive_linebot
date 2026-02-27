@@ -3,11 +3,10 @@ import useAxios from "axios-hooks";
 import { Avatar, Grid, Typography } from "@mui/material";
 import { FullPageLoading } from "../../components/Loading";
 import AlertLogin from "../../components/AlertLogin";
-
-const { liff } = window;
+import { isLiffLoggedIn } from "../../utils/liff";
 
 export default function Bag() {
-  const isLoggedIn = liff.isLoggedIn();
+  const isLoggedIn = isLiffLoggedIn();
   const [{ data: items = [], loading: itemLoading }] = useAxios("/api/Inventory", {
     manual: !isLoggedIn,
   });
