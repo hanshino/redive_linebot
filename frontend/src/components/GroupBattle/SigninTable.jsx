@@ -1,136 +1,104 @@
-import React, { useState, useEffect } from "react";
-import MaterialTable from "material-table";
-import PropTypes from "prop-types";
-import CheckIcon from "@material-ui/icons/Check";
-import CloseIcon from "@material-ui/icons/Close";
-import Avatar from "@material-ui/core/Avatar";
-import TableLocaliztion from "../../config/TableLocaliztion";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { makeStyles } from "@material-ui/core/styles";
-import Grid from "@material-ui/core/Grid";
-import Pagination from "@material-ui/lab/Pagination";
-import Paper from "@material-ui/core/Paper";
-import Typography from "@material-ui/core/Typography";
-import GroupAPI from "../../api/Group";
-import Skeleton from "@material-ui/lab/Skeleton";
+import {
+  Box, Grid, Paper, Typography, Pagination, Skeleton, Avatar,
+} from "@mui/material";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
+import { DataGrid, GridOverlay } from "@mui/x-data-grid";
+import LinearProgress from "@mui/material/LinearProgress";
+import * as GroupAPI from "../../services/group";
 
-const useStyles = makeStyles(theme => ({
-  root: {
-    padding: theme.spacing(2),
-    "& > *": {
-      marginTop: theme.spacing(1),
-      marginBottom: theme.spacing(1),
-    },
-  },
-}));
-
-function genMemberAvatar(url, displayName) {
-  return <Avatar src={url} alt={displayName} />;
-}
-
-const TableList = props => {
-  const { signDatas, month } = props;
-
-  const columns = [
-    {
-      title: "成員頭像",
-      field: "pictureUrl",
-      render: rowData => genMemberAvatar(rowData.pictureUrl, rowData.displayName),
-    },
-    { title: "成員姓名", field: "displayName" },
-  ];
-
-  let result = initialDatas(signDatas);
-
-  const { dates, signDatas: displayDatas } = result;
-
-  dates
-    .filter(date => date > 23)
-    .forEach(date => {
-      columns.push({
-        title: `${month}/${date}`,
-        field: `${date}`,
-        lookup: { Y: <CheckIcon color="primary" />, N: <CloseIcon color="error" /> },
-      });
-    });
-
-  const SignTable = () => (
-    <MaterialTable
-      data={displayDatas}
-      columns={columns}
-      title="三刀簽到表"
-      localization={TableLocaliztion}
-      options={{
-        pageSize: 30,
-        pageSizeOptions: [10, 20, 30],
-        headerStyle: { whiteSpace: "nowrap" },
-      }}
-    />
+function CustomLoadingOverlay() {
+  return (
+    <GridOverlay>
+      <LinearProgress color="secondary" sx={{ position: "absolute", top: 0, width: "100%" }} />
+    </GridOverlay>
   );
-
-  return <SignTable />;
-};
+}
 
 /**
- * 整理簽到資料
- * @param {Array<{guildId: String, userId: String, signDates: Array<Number>, displayName: String}>} signDatas
+ * Process sign-in data: extract unique dates & build row objects
  */
-function initialDatas(signDatas) {
+function processSignData(signDatas) {
   let dates = [];
-  signDatas.forEach(data => (dates = [...dates, ...data.signDates]));
-  dates = [...new Set(dates)].sort();
-  let result = [];
+  signDatas.forEach((data) => {
+    dates = [...dates, ...data.signDates];
+  });
+  dates = [...new Set(dates)].sort((a, b) => a - b);
 
-  signDatas.forEach(userData => {
-    let temp = { ...userData };
-
-    dates.forEach(date => {
-      temp[date] = userData.signDates.includes(date) ? "Y" : "N";
+  const rows = signDatas.map((userData, index) => {
+    const row = { id: index, ...userData };
+    dates.forEach((date) => {
+      row[`d${date}`] = userData.signDates.includes(date) ? "Y" : "N";
     });
-
-    result.push(temp);
+    return row;
   });
 
-  return { dates, signDatas: result };
+  return { dates, rows };
 }
 
-TableList.propTypes = {
-  signDatas: PropTypes.array.isRequired,
-  month: PropTypes.number.isRequired,
-};
-
-const SigninTable = () => {
-  const classes = useStyles();
+export default function SigninTable() {
   const { groupId } = useParams();
   const [signDatas, setSignDatas] = useState([]);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
-    let result = await GroupAPI.getSignList(groupId, month);
-    setSignDatas(result);
-    setLoading(false);
-  };
-
   useEffect(() => {
-    window.document.title = "三刀簽到表";
+    document.title = "三刀簽到表";
   }, []);
 
   useEffect(() => {
-    fetchData();
+    setLoading(true);
+    GroupAPI.getSignList(groupId, month)
+      .then((result) => setSignDatas(result))
+      .catch(() => setSignDatas([]))
+      .finally(() => setLoading(false));
   }, [month, groupId]);
 
+  const { dates, rows } = useMemo(() => processSignData(signDatas), [signDatas]);
+
+  const columns = useMemo(() => {
+    const base = [
+      {
+        field: "pictureUrl",
+        headerName: "頭像",
+        width: 70,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => (
+          <Avatar src={params.value} alt={params.row.displayName} sx={{ width: 32, height: 32 }} />
+        ),
+      },
+      { field: "displayName", headerName: "成員姓名", flex: 1, minWidth: 120 },
+    ];
+
+    const dateCols = dates
+      .filter((date) => date > 23)
+      .map((date) => ({
+        field: `d${date}`,
+        headerName: `${month}/${date}`,
+        width: 80,
+        sortable: false,
+        renderCell: (params) =>
+          params.value === "Y" ? (
+            <CheckIcon color="primary" fontSize="small" />
+          ) : (
+            <CloseIcon color="error" fontSize="small" />
+          ),
+      }));
+
+    return [...base, ...dateCols];
+  }, [dates, month]);
+
   return (
-    <Grid container className={classes.root}>
-      <Grid item xs={12} sm={12} component={Paper}>
-        <Grid container className={classes.root} direction="column" alignItems="center">
-          <Grid item xs={12} sm={12}>
-            <Typography component="p" variant="h5">
-              月份
-            </Typography>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2, p: 2 }}>
+      <Paper sx={{ p: 2 }}>
+        <Grid container direction="column" alignItems="center" spacing={1}>
+          <Grid>
+            <Typography variant="h6">月份</Typography>
           </Grid>
-          <Grid item xs={12} sm={12}>
+          <Grid>
             <Pagination
               count={12}
               page={month}
@@ -138,16 +106,33 @@ const SigninTable = () => {
               color="primary"
               boundaryCount={1}
               siblingCount={0}
-              onChange={(event, page) => setMonth(page)}
+              onChange={(_, page) => setMonth(page)}
             />
           </Grid>
         </Grid>
-      </Grid>
-      <Grid item xs={12} sm={12}>
-        {loading ? <Skeleton /> : <TableList signDatas={signDatas} month={month} />}
-      </Grid>
-    </Grid>
-  );
-};
+      </Paper>
 
-export default SigninTable;
+      {loading ? (
+        <Skeleton variant="rectangular" height={400} />
+      ) : (
+        <Paper sx={{ width: "100%", height: 500 }}>
+          <DataGrid
+            columns={columns}
+            rows={rows}
+            disableColumnFilter
+            disableColumnSelector
+            disableColumnMenu
+            disableRowSelectionOnClick
+            loading={loading}
+            slots={{ loadingOverlay: CustomLoadingOverlay }}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 30 } },
+            }}
+            pageSizeOptions={[10, 20, 30]}
+            sx={{ border: 0 }}
+          />
+        </Paper>
+      )}
+    </Box>
+  );
+}

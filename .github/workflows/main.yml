@@ -59,8 +59,6 @@ jobs:
           tags: hanshino/redive_frontend:latest
           cache-from: type=registry,ref=hanshino/redive_frontend:buildcache
           cache-to: type=registry,ref=hanshino/redive_frontend:buildcache,mode=max
-          build-args: |
-            REACT_APP_GOOGLE_ANALYTICS_ID=${{ secrets.GOOGLE_ANALYTICS_ID }}
 
   # Deployment job, dependent on both backend and frontend build completion
   deploy:

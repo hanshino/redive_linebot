@@ -1,9 +1,7 @@
 const { DefaultLogger, CustomLogger } = require("../lib/Logger");
 const ChatModel = require("../model/ChatModel");
 const GroupModel = require("../model/GroupModel");
-const NotifyListModel = require("../model/NotifyListModel");
 const ChatRepo = require("../repository/ChatRepository");
-const NotifyRepo = require("../repository/NotifyRepository");
 
 /**
  * 將紀錄進行合併寫入
@@ -27,7 +25,6 @@ exports.updateRecords = async () => {
 
   await ChatRepo.initialUsers(userIds);
   await ChatModel.writeRecords(expDatas);
-  await handleNotify(hashRecord);
 };
 
 /**
@@ -117,94 +114,3 @@ function getExpUnit(rate, additionRate, globalRate) {
   return Math.round((additionRate * rate * globalRate) / 100);
 }
 
-/**
- * 處理通知
- * @param {Object} hashRecord
- */
-async function handleNotify(hashRecord) {
-  let [list, SubTypes] = await Promise.all([
-    NotifyListModel.getList(),
-    NotifyListModel.getSubTypes(),
-  ]);
-  let levelUpRecords = list
-    .filter(data => {
-      let subTypes = NotifyRepo.transSubData(SubTypes, data.subType);
-      let ChatStatus = subTypes.find(data => data.key === "ChatInfo");
-      if (ChatStatus.status !== 1) return false;
-      if (!hashRecord[data.userId]) return false;
-      return true;
-    })
-    .map(data => ({ ...data, experience: hashRecord[data.userId] }));
-
-  await levelUpNotify(levelUpRecords);
-}
-
-/**
- * 判斷升等
- * @param {Array<{userId: String, experience: Number, token: String}>}
- */
-async function levelUpNotify(records) {
-  let userIds = records.map(data => data.userId);
-  let [userDatas, exp_unit] = await Promise.all([
-    ChatModel.getUserDatas(userIds),
-    ChatModel.getExpUnit(),
-  ]);
-
-  for (let i = 0; i < records.length; i++) {
-    let user = await processUserExp(records[i], userDatas);
-    let levelInfo = await expFilter(user, exp_unit);
-
-    let { token } = records[i];
-    let { rank, range, level, levelUp, getexp, total_exp, after } = levelInfo;
-
-    if (levelUp) {
-      await NotifyListModel.insertNotifyList({
-        token,
-        message: `\n恭喜提升至 ${level} 等\n新稱號：${range} 的 ${rank}`,
-        type: 3,
-      });
-    } else {
-      await NotifyListModel.insertNotifyList({
-        token,
-        message: `\n獲得 ${getexp} 經驗\n距離下次升等還有：${total_exp - after}`,
-        type: 3,
-      });
-    }
-  }
-}
-
-/**
- * 取出每一位使用者的資料
- * @returns {Object<{after: int, now: int, getexp: int}>}
- */
-function processUserExp(record, userDatas) {
-  let { userId: id, experience: getexp } = record;
-  let { exp: after } = userDatas.find(data => data.userId === record.userId);
-  let now = after - getexp;
-
-  return { id, after, now, getexp };
-}
-
-/**
- * 比較total_exp看有沒有升等
- * @returns {Object<{rank: String, title: String, level: Number}>}
- */
-function expFilter(user, exp_unit) {
-  //取下限
-  let lowerBound = exp_unit.find(function (data) {
-    return data.total_exp > user.now;
-  });
-  //取上限
-  let upperBound = exp_unit.find(function (data) {
-    return data.total_exp > user.after;
-  });
-
-  let { unit_level } = lowerBound;
-  return ChatRepo.getLevelTitle(unit_level).then(res => ({
-    ...res,
-    ...user,
-    ...upperBound,
-    level: unit_level,
-    levelUp: lowerBound.total_exp === upperBound.total_exp ? false : true,
-  }));
-}

@@ -1,233 +1,168 @@
-import React, { useState } from "react";
-import Button from "@material-ui/core/Button";
-import TextField from "@material-ui/core/TextField";
-import DialogTitle from "@material-ui/core/DialogTitle";
-import DialogContent from "@material-ui/core/DialogContent";
-import Dialog from "@material-ui/core/Dialog";
-import InputLabel from "@material-ui/core/InputLabel";
-import InputAdornment from "@material-ui/core/InputAdornment";
-import MenuItem from "@material-ui/core/MenuItem";
-import Select from "@material-ui/core/Select";
-import FormControl from "@material-ui/core/FormControl";
-import DialogActions from "@material-ui/core/DialogActions";
-import AddCircleOutlineIcon from "@material-ui/icons/AddCircleOutline";
-import RemoveCircleOutlineIcon from "@material-ui/icons/RemoveCircleOutline";
-import MessageIcon from "@material-ui/icons/Message";
-import ImageIcon from "@material-ui/icons/Image";
-import Grid from "@material-ui/core/Grid";
-import PropTypes from "prop-types";
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Grid,
+  IconButton,
+  InputAdornment,
+} from "@mui/material";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import MessageIcon from "@mui/icons-material/Message";
+import ImageIcon from "@mui/icons-material/Image";
 
-const DialogForm = props => {
-  const { onClose, open, exec, orderDatas } = props;
+const imageRegex = /^https:.*?(jpg|jpeg|tiff|png)$/i;
+const MAX_REPLIES = 5;
 
-  const initialState = {
-    order: "",
-    replyDatas: [],
-    touchType: 1,
-    senderName: "",
-    senderIcon: "",
-  };
-  const [state, setState] = useState(initialState);
+function ReplyField({ index, value, onChange, onRemove, canRemove }) {
+  const isImage = imageRegex.test(value);
+  return (
+    <TextField
+      fullWidth
+      label={`回覆 ${index + 1}`}
+      value={value}
+      onChange={(e) => onChange(index, e.target.value)}
+      size="small"
+      sx={{ mb: 1 }}
+      slotProps={{
+        input: {
+          startAdornment: (
+            <InputAdornment position="start">
+              {isImage ? <ImageIcon fontSize="small" /> : <MessageIcon fontSize="small" />}
+            </InputAdornment>
+          ),
+          endAdornment: canRemove ? (
+            <InputAdornment position="end">
+              <IconButton size="small" onClick={() => onRemove(index)}>
+                <RemoveCircleOutlineIcon fontSize="small" />
+              </IconButton>
+            </InputAdornment>
+          ) : null,
+        },
+      }}
+    />
+  );
+}
 
-  React.useEffect(() => {
-    let datas = JSON.parse(JSON.stringify(orderDatas));
+export default function OrderDialog({ open, onClose, onSave, data }) {
+  const [order, setOrder] = useState("");
+  const [touchType, setTouchType] = useState("1");
+  const [senderName, setSenderName] = useState("");
+  const [senderIcon, setSenderIcon] = useState("");
+  const [replyDatas, setReplyDatas] = useState([""]);
 
-    if (Object.keys(orderDatas).length !== 0) {
-      setState({
-        ...state,
-        ...datas,
-      });
+  useEffect(() => {
+    if (data) {
+      setOrder(data.order || "");
+      setTouchType(String(data.touchType || "1"));
+      setSenderName(data.senderName || "");
+      setSenderIcon(data.senderIcon || "");
+      setReplyDatas(data.replyDatas?.length ? data.replyDatas.map((r) => r.reply || "") : [""]);
+    } else {
+      setOrder("");
+      setTouchType("1");
+      setSenderName("");
+      setSenderIcon("");
+      setReplyDatas([""]);
     }
-  }, [orderDatas, open]);
+  }, [data, open]);
 
-  const handleClose = () => {
-    onClose();
-    setState(initialState);
+  const handleReplyChange = (index, value) => {
+    setReplyDatas((prev) => prev.map((r, i) => (i === index ? value : r)));
   };
 
-  const handleSave = () => {
-    exec(state);
-    handleClose();
+  const handleAddReply = () => {
+    if (replyDatas.length < MAX_REPLIES) setReplyDatas((prev) => [...prev, ""]);
   };
 
-  const handleOrder = event => {
-    setState({
-      ...state,
-      order: event.target.value,
-    });
+  const handleRemoveReply = (index) => {
+    setReplyDatas((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleReply = (event, index) => {
-    var replyDatas = state.replyDatas;
-
-    replyDatas[index] = {
-      no: index,
-      messageType: getReplyType(event.target.value),
-      reply: event.target.value,
-    };
-
-    setState({
-      ...state,
-      replyDatas: replyDatas,
-    });
-  };
-
-  const addReply = index => {
-    if (index >= 5) return;
-
-    var replyDatas = state.replyDatas;
-
-    replyDatas[index] = {
-      no: index,
-      messageType: "text",
-      reply: "",
-    };
-
-    setState({
-      ...state,
-      replyDatas: replyDatas,
-    });
-  };
-
-  const removeReply = index => {
-    var replyDatas = state.replyDatas
-      .filter((data, idx) => idx !== index)
-      .map((data, idx) => ({ ...data, no: idx }));
-
-    setState({
-      ...state,
-      replyDatas: replyDatas,
-    });
-  };
-
-  const handleTouchType = event => {
-    setState({
-      ...state,
-      touchType: event.target.value,
-    });
-  };
-
-  const handleSenderName = event => {
-    setState({
-      ...state,
-      senderName: event.target.value,
-    });
-  };
-
-  const handleSenderIcon = event => {
-    setState({
-      ...state,
-      senderIcon: event.target.value,
+  const handleSubmit = () => {
+    onSave({
+      orderKey: data?.orderKey,
+      order,
+      touchType,
+      senderName,
+      senderIcon,
+      replyDatas: replyDatas.filter((r) => r.trim()).map((reply) => ({ reply })),
     });
   };
 
   return (
-    <Dialog onClose={handleClose} open={open}>
-      <DialogTitle>指令編輯</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>{data?.orderKey ? "編輯指令" : "新增指令"}</DialogTitle>
       <DialogContent>
         <TextField
-          autoFocus
-          margin="dense"
-          id="order"
-          label="指令"
-          type="text"
-          value={state.order}
-          onChange={handleOrder}
           fullWidth
+          label="指令"
+          value={order}
+          onChange={(e) => setOrder(e.target.value)}
+          sx={{ mt: 1, mb: 2 }}
+          size="small"
         />
-        <ReplyField
-          replyDatas={state.replyDatas}
-          handleReply={handleReply}
-          handleAddReply={addReply}
-          handleRemoveReply={removeReply}
-        />
-        <FormControl fullWidth>
-          <InputLabel id="Trigger-label">觸發方式</InputLabel>
-          <Select labelId="Trigger-label" value={state.touchType} onChange={handleTouchType}>
+        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+          <InputLabel>觸發方式</InputLabel>
+          <Select
+            value={touchType}
+            label="觸發方式"
+            onChange={(e) => setTouchType(e.target.value)}
+          >
             <MenuItem value="1">全符合</MenuItem>
             <MenuItem value="2">關鍵字符合</MenuItem>
           </Select>
         </FormControl>
-        <TextField
-          margin="dense"
-          id="senderName"
-          label="發送人"
-          type="text"
-          value={state.senderName || ""}
-          onChange={handleSenderName}
-          fullWidth
-        />
-        <TextField
-          margin="dense"
-          id="senderIcon"
-          label="發送人圖像"
-          type="text"
-          value={state.senderIcon || ""}
-          onChange={handleSenderIcon}
-          fullWidth
-        />
+        <Grid container spacing={1} sx={{ mb: 2 }}>
+          <Grid size={{ xs: 6 }}>
+            <TextField
+              fullWidth
+              label="發送名"
+              value={senderName}
+              onChange={(e) => setSenderName(e.target.value)}
+              size="small"
+            />
+          </Grid>
+          <Grid size={{ xs: 6 }}>
+            <TextField
+              fullWidth
+              label="發送頭像"
+              value={senderIcon}
+              onChange={(e) => setSenderIcon(e.target.value)}
+              size="small"
+            />
+          </Grid>
+        </Grid>
+        {replyDatas.map((val, i) => (
+          <ReplyField
+            key={i}
+            index={i}
+            value={val}
+            onChange={handleReplyChange}
+            onRemove={handleRemoveReply}
+            canRemove={replyDatas.length > 1}
+          />
+        ))}
+        {replyDatas.length < MAX_REPLIES && (
+          <Button startIcon={<AddCircleOutlineIcon />} onClick={handleAddReply} size="small">
+            新增回覆
+          </Button>
+        )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} color="primary">
-          取消
-        </Button>
-        <Button onClick={handleSave} color="primary">
-          保存
+        <Button onClick={onClose}>取消</Button>
+        <Button onClick={handleSubmit} variant="contained">
+          儲存
         </Button>
       </DialogActions>
     </Dialog>
   );
-};
-
-const ReplyField = props => {
-  const { replyDatas, handleReply, handleAddReply, handleRemoveReply } = props;
-
-  return replyDatas.map((data, index) => (
-    <Grid container spacing={1} alignItems="flex-end" key={data.no}>
-      <Grid item>
-        <TextField
-          margin="dense"
-          label="回覆內容"
-          type="text"
-          value={data.reply}
-          onChange={event => handleReply(event, index)}
-          fullWidth
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                {data.messageType === "image" ? <ImageIcon /> : <MessageIcon />}
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Grid>
-      <Grid item>
-        {index === 0 ? (
-          <AddCircleOutlineIcon onClick={() => handleAddReply(replyDatas.length)} />
-        ) : (
-          <RemoveCircleOutlineIcon onClick={() => handleRemoveReply(index)} />
-        )}
-      </Grid>
-    </Grid>
-  ));
-};
-
-ReplyField.propTypes = {
-  replyDatas: PropTypes.array.isRequired,
-  handleReply: PropTypes.func.isRequired,
-  handleAddReply: PropTypes.func.isRequired,
-  handleRemoveReply: PropTypes.func.isRequired,
-};
-
-function getReplyType(reply) {
-  return /^https:.*?(jpg|jpeg|tiff|png)$/i.test(reply) ? "image" : "text";
 }
-
-DialogForm.propTypes = {
-  exec: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired,
-  open: PropTypes.bool.isRequired,
-  orderDatas: PropTypes.object.isRequired,
-};
-
-export default DialogForm;

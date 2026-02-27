@@ -69,3 +69,10 @@ database
 data
 
 .vscode
+
+# Vite cache
+.vite/
+
+# Screenshots
+*.png
+!frontend/public/banner.png

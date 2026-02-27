@@ -1,68 +1,41 @@
 {
-  "name": "bottender_view",
-  "version": "0.1.0",
+  "name": "frontend",
   "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
   "dependencies": {
-    "@devexpress/dx-react-chart": "^3.0.6",
-    "@devexpress/dx-react-chart-material-ui": "^3.0.6",
-    "@devexpress/dx-react-core": "^3.0.6",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@material-table/core": "^4.3.46",
-    "@material-ui/core": "^4.12.4",
-    "@material-ui/icons": "^4.11.3",
-    "@material-ui/lab": "^4.11.3-deprecations.1",
-    "@mui/material": "^5.18.0",
-    "@mui/x-data-grid": "^5.17.26",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^12.1.5",
-    "@testing-library/user-event": "^13.5.0",
-    "add": "^2.0.6",
-    "axios": "^1.13.5",
-    "axios-hooks": "^3.1.5",
-    "d3-scale-chromatic": "^3.1.0",
-    "eslint-plugin-react": "^7.37.5",
-    "fontsource-roboto": "^4.0.0",
+    "@line/liff": "^2.27.3",
+    "@mui/icons-material": "^7",
+    "@mui/lab": "^7.0.1-beta.22",
+    "@mui/material": "^7",
+    "@mui/x-data-grid": "^8",
+    "axios": "^1.13.6",
+    "axios-hooks": "^5.1.1",
     "lodash": "^4.17.23",
-    "material-table": "^1.69.3",
-    "prop-types": "^15.8.1",
-    "react": "^17.0.2",
+    "react": "^19.2.4",
     "react-copy-to-clipboard": "^5.1.0",
-    "react-dom": "^17.0.2",
-    "react-input-mask": "^2.0.4",
-    "react-router-dom": "^5.3.4",
-    "react-scripts": "5.0.1",
-    "react-window": "^1.8.11",
-    "socket.io-client": "^4.8.3",
-    "web-vitals": "^2.1.4"
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7",
+    "recharts": "^3.7.0",
+    "socket.io-client": "^4.8.3"
   },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "final": "set \"GENERATE_SOURCEMAP=false\" && react-scripts build",
-    "macbuild": "GENERATE_SOURCEMAP=false react-scripts build"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "resolutions": {
-    "mini-css-extract-plugin": "2.4.5"
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "eslint": "^10.0.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.3.0",
+    "vite": "^7.3.1"
   }
 }

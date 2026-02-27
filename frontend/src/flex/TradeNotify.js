@@ -1,19 +1,13 @@
+import liff from "@line/liff";
+
 export const genNotify = ({ marketId, name, image, charge }) => ({
   type: "bubble",
   header: {
     type: "box",
     layout: "horizontal",
     contents: [
-      {
-        type: "text",
-        text: "交易通知",
-        weight: "bold",
-      },
-      {
-        type: "text",
-        text: `#${marketId}`,
-        align: "end",
-      },
+      { type: "text", text: "交易通知", weight: "bold" },
+      { type: "text", text: `#${marketId}`, align: "end" },
     ],
     paddingBottom: "none",
   },
@@ -25,20 +19,12 @@ export const genNotify = ({ marketId, name, image, charge }) => ({
         type: "box",
         layout: "horizontal",
         contents: [
-          {
-            type: "image",
-            url: image,
-            size: "full",
-          },
+          { type: "image", url: image, size: "full" },
           {
             type: "box",
             layout: "vertical",
             contents: [
-              {
-                type: "text",
-                text: name,
-                weight: "bold",
-              },
+              { type: "text", text: name, weight: "bold" },
               {
                 type: "text",
                 text: `$${charge}`,
@@ -47,12 +33,7 @@ export const genNotify = ({ marketId, name, image, charge }) => ({
                 align: "end",
                 size: "sm",
               },
-              {
-                type: "text",
-                text: "您的好友向你發出交易請求",
-                size: "xxs",
-                wrap: true,
-              },
+              { type: "text", text: "您的好友向你發出交易請求", size: "xxs", wrap: true },
             ],
             spacing: "sm",
             paddingAll: "md",
@@ -67,37 +48,25 @@ export const genNotify = ({ marketId, name, image, charge }) => ({
           {
             type: "box",
             layout: "vertical",
-            contents: [
-              {
-                type: "text",
-                text: "拒絕",
-                align: "center",
-              },
-            ],
+            contents: [{ type: "text", text: "拒絕", align: "center" }],
             paddingAll: "md",
             backgroundColor: "#FF5656",
             cornerRadius: "md",
             action: {
               type: "uri",
-              uri: `https://liff.line.me/${window.liff.id}?reactRedirectUri=/Trade/${marketId}/Transaction?action=deny`,
+              uri: `https://liff.line.me/${liff.id}?reactRedirectUri=/trade/${marketId}/transaction?action=deny`,
             },
           },
           {
             type: "box",
             layout: "vertical",
-            contents: [
-              {
-                type: "text",
-                text: "接受",
-                align: "center",
-              },
-            ],
+            contents: [{ type: "text", text: "接受", align: "center" }],
             paddingAll: "md",
             cornerRadius: "md",
             backgroundColor: "#56FF56",
             action: {
               type: "uri",
-              uri: `https://liff.line.me/${window.liff.id}?reactRedirectUri=/Trade/${marketId}/Transaction?action=transaction`,
+              uri: `https://liff.line.me/${liff.id}?reactRedirectUri=/trade/${marketId}/transaction?action=transaction`,
             },
           },
         ],
