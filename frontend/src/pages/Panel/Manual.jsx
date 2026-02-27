@@ -1,30 +1,34 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import {
-  AppBar,
-  Tabs,
-  Tab,
   Typography,
   Box,
   Grid,
-  List,
-  ListItem,
-  ListItemSecondaryAction,
-  ListItemText,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
   IconButton,
+  Divider,
+  Stack,
+  Tooltip,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import GroupsIcon from "@mui/icons-material/Groups";
+import TuneIcon from "@mui/icons-material/Tune";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { useSendMessage } from "../../hooks/useLiff";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 import useLiff from "../../context/useLiff";
 
-function a11yProps(index) {
-  return {
-    id: `scrollable-auto-tab-${index}`,
-    "aria-controls": `scrollable-auto-tabpanel-${index}`,
-  };
-}
+const CategoryIcons = {
+  Bot: SmartToyIcon,
+  ChatLevel: EmojiEventsIcon,
+  Group: GroupsIcon,
+  CustomerOrder: TuneIcon,
+};
 
 const TabDatas = [
   {
@@ -82,23 +86,97 @@ const TabDatas = [
   },
 ];
 
-function ManualBar() {
+function CommandCard({ item, sendable, onSend }) {
+  return (
+    <Card
+      variant="outlined"
+      sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        transition: "box-shadow 0.2s, border-color 0.2s",
+        "&:hover": {
+          boxShadow: 2,
+          borderColor: "primary.light",
+        },
+      }}
+    >
+      <CardContent sx={{ flexGrow: 1, pb: 0 }}>
+        <Typography variant="subtitle1" fontWeight={600}>
+          {item.title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          {item.description}
+        </Typography>
+      </CardContent>
+      <CardActions sx={{ justifyContent: "space-between", px: 2, pb: 1.5 }}>
+        <Chip label={item.text} size="small" variant="outlined" sx={{ fontFamily: "monospace" }} />
+        <CopyToClipboard text={item.text}>
+          <Tooltip title="發送指令">
+            <span>
+              <IconButton
+                color="primary"
+                disabled={!sendable}
+                onClick={() => onSend(item.text)}
+                size="small"
+              >
+                <SendIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </CopyToClipboard>
+      </CardActions>
+    </Card>
+  );
+}
+
+function CategorySection({ category, sendable, onSend }) {
+  const Icon = CategoryIcons[category.key];
+
+  return (
+    <Box>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+        {Icon && <Icon color="primary" fontSize="small" />}
+        <Typography variant="h6" fontWeight={700}>
+          {category.title}
+        </Typography>
+      </Stack>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        {category.description}
+      </Typography>
+      <Grid container spacing={2}>
+        {category.buttons.map((item, index) => (
+          <Grid key={index} size={{ xs: 12, sm: 6 }}>
+            <CommandCard item={item} sendable={sendable} onSend={onSend} />
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+}
+
+export default function Manual() {
   const { liffContext } = useLiff();
-  const [value, setValue] = useState(0);
   const [{ isSending, isError }, send] = useSendMessage();
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
   const [sendable, setSendable] = useState(true);
 
-  // Filter tabs based on LIFF context type
-  const EnableTabDatas = useMemo(() => {
+  const filteredCategories = useMemo(() => {
     const screenType = liffContext?.type;
     if (!screenType) return TabDatas;
-    return TabDatas.filter((data) => data.enableScreen.indexOf(screenType) !== -1);
+    return TabDatas.filter((data) => data.enableScreen.includes(screenType));
   }, [liffContext]);
 
-  const handleChange = (event, newValue) => {
-    setValue(newValue);
-  };
+  const handleSend = useCallback(
+    (text) => {
+      send(text);
+    },
+    [send],
+  );
+
+  useEffect(() => {
+    window.document.title = "使用手冊";
+  }, []);
 
   useEffect(() => {
     if (isError) {
@@ -106,7 +184,6 @@ function ManualBar() {
     }
   }, [isError, showHint]);
 
-  // Disable button after sending to prevent duplicate sends
   useEffect(() => {
     if (isSending) setSendable(false);
 
@@ -117,71 +194,29 @@ function ManualBar() {
     return () => clearTimeout(timer);
   }, [isSending]);
 
-  const items = useMemo(
-    () =>
-      EnableTabDatas[value].buttons.map((item, index) => (
-        <ListItem divider key={index}>
-          <ListItemText primary={item.title} secondary={item.description} />
-          <ListItemSecondaryAction>
-            <CopyToClipboard text={item.text}>
-              <IconButton disabled={!sendable} edge="end" onClick={() => send(item.text)}>
-                <SendIcon />
-              </IconButton>
-            </CopyToClipboard>
-          </ListItemSecondaryAction>
-        </ListItem>
-      )),
-    [EnableTabDatas, value, sendable, send],
-  );
-
   return (
-    <Box sx={{ flexGrow: 1, width: "100%", bgcolor: "background.paper" }}>
+    <Box sx={{ maxWidth: 800, mx: "auto", px: 2, py: 3 }}>
       <HintSnackBar {...hintState} onClose={closeHint} />
-      <AppBar position="static" color="default">
-        <Tabs
-          value={value}
-          onChange={handleChange}
-          indicatorColor="primary"
-          textColor="primary"
-          variant="scrollable"
-          scrollButtons="auto"
-          aria-label="scrollable auto tabs"
-        >
-          {EnableTabDatas.map((data, index) => (
-            <Tab key={index} label={data.title} {...a11yProps(index)} />
-          ))}
-        </Tabs>
-      </AppBar>
-      <Grid container sx={{ p: 1 }} justifyContent="center">
-        <Grid size={{ xs: 12 }}>
-          <Typography variant="h6" component="h2">
-            {EnableTabDatas[value].description}
-          </Typography>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <List sx={{ width: "100%" }}>{items}</List>
-        </Grid>
-      </Grid>
+
+      <Typography variant="h5" fontWeight={700} gutterBottom>
+        指令手冊
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        快速發送指令到 LINE 聊天室
+      </Typography>
+
+      <Divider sx={{ mb: 3 }} />
+
+      <Stack spacing={4}>
+        {filteredCategories.map((category) => (
+          <CategorySection
+            key={category.key}
+            category={category}
+            sendable={sendable}
+            onSend={handleSend}
+          />
+        ))}
+      </Stack>
     </Box>
-  );
-}
-
-export default function Manual() {
-  useEffect(() => {
-    window.document.title = "使用手冊";
-  }, []);
-
-  return (
-    <Grid container>
-      <Grid size={{ xs: 12 }} sx={{ p: 1 }}>
-        <Typography variant="h4">機器人使用手冊</Typography>
-        <Typography variant="caption" color="text.secondary">
-          幫助你快速上手本機器人所有指令
-        </Typography>
-      </Grid>
-      <Grid size={{ xs: 12 }}>
-        <ManualBar />
-      </Grid>
-    </Grid>
   );
 }
