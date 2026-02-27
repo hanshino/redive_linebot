@@ -367,6 +367,12 @@ const PersonalDrawer = () => {
             </ListItemIcon>
             <ListItemText primary={"轉蛋包包"} />
           </ListItem>
+          <ListItem button component={Link} to="/Equipment">
+            <ListItemIcon>
+              <FitnessCenterIcon />
+            </ListItemIcon>
+            <ListItemText primary={"裝備管理"} />
+          </ListItem>
           <ListItem button component={Link} to="/ScratchCard/Exchange">
             <ListItemIcon>
               <MoneyIcon />

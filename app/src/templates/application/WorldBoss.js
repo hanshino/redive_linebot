@@ -3,6 +3,7 @@ const i18n = require("../../util/i18n");
 const humanNumber = require("human-number");
 const config = require("config");
 const RPGCharacter = require("../../model/application/RPGCharacter");
+const { getLiffUri } = require("../common");
 
 const makeAttackPayload = (worldBossEventId, jobKey, skill) => ({
   action: "worldBossAttack",
@@ -736,115 +737,98 @@ exports.generateAdventureCard = ({
     layout: "vertical",
     contents: [
       {
-        type: "image",
-        url: "https://i.imgur.com/FD0TWBR.png",
-        aspectMode: "cover",
-        size: "full",
-        aspectRatio: "15:9",
+        type: "text",
+        text: "冒險者小卡",
+        weight: "bold",
       },
       {
         type: "box",
         layout: "vertical",
-        contents: [
-          {
-            type: "image",
-            url: `${image}`,
-            size: "full",
-          },
-        ],
-        borderWidth: "none",
-        width: "30%",
-        position: "absolute",
-        offsetEnd: "10%",
-        offsetTop: "15%",
-        cornerRadius: "100px",
-        paddingAll: "none",
+        contents: [{ type: "separator", color: "#808080" }],
+        paddingTop: "lg",
+        paddingBottom: "lg",
       },
       {
         type: "box",
-        layout: "vertical",
+        layout: "horizontal",
         contents: [
           {
-            type: "text",
-            size: "sm",
+            type: "box",
+            layout: "vertical",
             contents: [
               {
-                type: "span",
-                text: "職稱：",
+                type: "image",
+                url: `${image}`,
+                size: "full",
+                aspectMode: "cover",
+                aspectRatio: "1:1",
+              },
+            ],
+            cornerRadius: "100px",
+            width: "64px",
+            height: "64px",
+            flex: 0,
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: `${name}`,
+                weight: "bold",
+                size: "md",
               },
               {
-                type: "span",
-                text: `${jobName}`,
+                type: "text",
+                contents: [
+                  { type: "span", text: `${jobName}` },
+                  { type: "span", text: ` C${jobAdvancement}`, size: "xxs", color: "#808080" },
+                ],
+                size: "sm",
               },
               {
-                type: "span",
-                text: ` C${jobAdvancement}`,
-                size: "xxs",
+                type: "text",
+                text: `Lv.${level}`,
+                size: "sm",
                 color: "#808080",
               },
             ],
-          },
-          {
-            type: "text",
-            size: "sm",
-            contents: [
-              {
-                type: "span",
-                text: "姓名：",
-              },
-              {
-                type: "span",
-                text: `${name}`,
-              },
-            ],
-          },
-          {
-            type: "text",
-            size: "sm",
-            contents: [
-              {
-                type: "span",
-                text: "等級：",
-              },
-              {
-                type: "span",
-                text: `${level}`,
-              },
-            ],
-          },
-          {
-            type: "text",
-            size: "sm",
-            contents: [
-              {
-                type: "span",
-                text: "經驗：",
-              },
-              {
-                type: "span",
-                text: `${exp}`,
-              },
-            ],
-          },
-          {
-            type: "text",
-            size: "sm",
-            contents: [
-              {
-                type: "span",
-                text: "cost：",
-              },
-              {
-                type: "span",
-                text: `${totalCost}/${config.get("worldboss.daily_limit")}`,
-              },
-            ],
+            paddingStart: "lg",
+            spacing: "xs",
           },
         ],
-        position: "absolute",
-        offsetStart: "7%",
-        offsetTop: "15%",
-        paddingAll: "md",
+        alignItems: "center",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [{ type: "separator", color: "#808080" }],
+        paddingTop: "lg",
+        paddingBottom: "lg",
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            contents: [
+              { type: "span", text: "經驗：" },
+              { type: "span", text: `${exp}` },
+            ],
+            size: "sm",
+          },
+          {
+            type: "text",
+            contents: [
+              { type: "span", text: "cost：" },
+              { type: "span", text: `${totalCost}/${config.get("worldboss.daily_limit")}` },
+            ],
+            size: "sm",
+          },
+        ],
+        spacing: "sm",
       },
       {
         type: "box",
@@ -860,9 +844,11 @@ exports.generateAdventureCard = ({
           },
         ],
         backgroundColor: "#9FD8E3CF",
+        cornerRadius: "md",
+        margin: "md",
       },
     ],
-    paddingAll: "none",
+    backgroundColor: "#EDDFC4",
   },
 });
 
@@ -1002,100 +988,145 @@ exports.generateDamageResumeBubble = rows => {
   };
 };
 
-exports.generateCardStatusBubble = ({ maxDamage, attendTimes, standardDamage }) => ({
-  type: "bubble",
-  body: {
-    type: "box",
-    layout: "vertical",
-    contents: [
-      {
-        type: "text",
-        text: "狀態列",
-        weight: "bold",
-      },
-      {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "separator",
-            color: "#808080",
-          },
-        ],
-        paddingTop: "lg",
-        paddingBottom: "lg",
-      },
-      {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            contents: [
-              {
-                type: "span",
-                text: i18n.__("template.damage"),
-              },
-              {
-                type: "span",
-                text: "：",
-              },
-              {
-                type: "span",
-                text: standardDamage,
-              },
-            ],
-            size: "sm",
-          },
-          {
-            type: "text",
-            contents: [
-              {
-                type: "span",
-                text: i18n.__("template.used_max_damage"),
-              },
-              {
-                type: "span",
-                text: "：",
-              },
-              {
-                type: "span",
-                text: maxDamage,
-              },
-            ],
-            size: "sm",
-          },
-          {
-            type: "text",
-            contents: [
-              {
-                type: "span",
-                text: i18n.__("template.attend_times"),
-              },
-              {
-                type: "span",
-                text: "：",
-              },
-              {
-                type: "span",
-                text: `${attendTimes}`,
-              },
-              {
-                type: "span",
-                text: " 次",
-              },
-            ],
-            size: "sm",
-          },
-        ],
-        paddingTop: "sm",
-        paddingBottom: "sm",
-        spacing: "sm",
-      },
-    ],
-    backgroundColor: "#EDDFC4",
-  },
-});
+exports.generateCardStatusBubble = ({
+  maxDamage,
+  attendTimes,
+  standardDamage,
+  equipped,
+  equipBonuses,
+}) => {
+  const liffUrl = getLiffUri("compact", "/Equipment");
+
+  const equipRows = ["weapon", "armor", "accessory"].map(slot => {
+    const item = equipped ? equipped[slot] : null;
+    const label = SLOT_LABELS[slot];
+    return {
+      type: "text",
+      contents: [
+        { type: "span", text: `${label}：` },
+        {
+          type: "span",
+          text: item ? item.name : "未裝備",
+          weight: item ? "bold" : "regular",
+          color: item ? RARITY_COLORS[item.rarity] || "#808080" : "#AAAAAA",
+        },
+      ],
+      size: "sm",
+    };
+  });
+
+  const bonusParts = [];
+  if (equipBonuses) {
+    if (equipBonuses.atk_percent) bonusParts.push(`ATK+${equipBonuses.atk_percent}%`);
+    if (equipBonuses.crit_rate) bonusParts.push(`CRT+${equipBonuses.crit_rate}%`);
+    if (equipBonuses.cost_reduction) bonusParts.push(`Cost-${equipBonuses.cost_reduction}`);
+    if (equipBonuses.exp_bonus) bonusParts.push(`EXP+${equipBonuses.exp_bonus}`);
+    if (equipBonuses.gold_bonus) bonusParts.push(`Gold+${equipBonuses.gold_bonus}`);
+  }
+
+  const equipSection = [
+    {
+      type: "box",
+      layout: "vertical",
+      contents: [{ type: "separator", color: "#808080" }],
+      paddingTop: "lg",
+      paddingBottom: "lg",
+    },
+    {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        ...equipRows,
+        ...(bonusParts.length > 0
+          ? [{ type: "text", text: bonusParts.join("  "), size: "xxs", color: "#2E7D32" }]
+          : []),
+      ],
+      paddingTop: "sm",
+      paddingBottom: "sm",
+      spacing: "sm",
+    },
+    {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: "裝備管理",
+          align: "center",
+          color: "#FFFFFF",
+          weight: "bold",
+          size: "sm",
+        },
+      ],
+      backgroundColor: "#5D4037",
+      paddingAll: "sm",
+      cornerRadius: "md",
+      margin: "lg",
+      action: { type: "uri", label: "裝備管理", uri: liffUrl },
+    },
+  ];
+
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: "狀態列",
+          weight: "bold",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [{ type: "separator", color: "#808080" }],
+          paddingTop: "lg",
+          paddingBottom: "lg",
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              contents: [
+                { type: "span", text: i18n.__("template.damage") },
+                { type: "span", text: "：" },
+                { type: "span", text: standardDamage },
+              ],
+              size: "sm",
+            },
+            {
+              type: "text",
+              contents: [
+                { type: "span", text: i18n.__("template.used_max_damage") },
+                { type: "span", text: "：" },
+                { type: "span", text: maxDamage },
+              ],
+              size: "sm",
+            },
+            {
+              type: "text",
+              contents: [
+                { type: "span", text: i18n.__("template.attend_times") },
+                { type: "span", text: "：" },
+                { type: "span", text: `${attendTimes}` },
+                { type: "span", text: " 次" },
+              ],
+              size: "sm",
+            },
+          ],
+          paddingTop: "sm",
+          paddingBottom: "sm",
+          spacing: "sm",
+        },
+        ...equipSection,
+      ],
+      backgroundColor: "#EDDFC4",
+    },
+  };
+};
 
 /**
  * 產出近期紀錄的 bubble
@@ -1190,3 +1221,153 @@ exports.generateRecentlyEventRow = ({ bossName, totalDamage }) => ({
     },
   ],
 });
+
+const RARITY_COLORS = {
+  common: "#808080",
+  rare: "#3478FF",
+  epic: "#A834FF",
+  legendary: "#FF8C00",
+};
+
+const SLOT_LABELS = { weapon: "武器", armor: "防具", accessory: "飾品" };
+
+/**
+ * 產出裝備概覽 bubble（用於 #裝備 和 #冒險小卡）
+ * @param {Object} equipped - { weapon, armor, accessory } 各 slot 物件或 null
+ * @param {Object} bonuses - { atk_percent, crit_rate, cost_reduction, exp_bonus, gold_bonus }
+ */
+exports.generateEquipmentBubble = (equipped, bonuses) => {
+  const liffUrl = getLiffUri("compact", "/Equipment");
+
+  const slotRows = ["weapon", "armor", "accessory"].map(slot => {
+    const item = equipped[slot];
+    const label = SLOT_LABELS[slot];
+
+    if (!item) {
+      return {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "text",
+            text: label,
+            size: "sm",
+            color: "#5D4037",
+            flex: 2,
+          },
+          {
+            type: "text",
+            text: "- 未裝備 -",
+            size: "sm",
+            color: "#AAAAAA",
+            flex: 5,
+          },
+        ],
+        paddingAll: "xs",
+      };
+    }
+
+    return {
+      type: "box",
+      layout: "horizontal",
+      contents: [
+        {
+          type: "text",
+          text: label,
+          size: "sm",
+          color: "#5D4037",
+          flex: 2,
+        },
+        {
+          type: "text",
+          text: item.name,
+          size: "sm",
+          weight: "bold",
+          color: RARITY_COLORS[item.rarity] || "#808080",
+          flex: 5,
+        },
+      ],
+      paddingAll: "xs",
+    };
+  });
+
+  // 加成摘要
+  const bonusParts = [];
+  if (bonuses.atk_percent) bonusParts.push(`ATK+${bonuses.atk_percent}%`);
+  if (bonuses.crit_rate) bonusParts.push(`CRT+${bonuses.crit_rate}%`);
+  if (bonuses.cost_reduction) bonusParts.push(`Cost-${bonuses.cost_reduction}`);
+  if (bonuses.exp_bonus) bonusParts.push(`EXP+${bonuses.exp_bonus}`);
+  if (bonuses.gold_bonus) bonusParts.push(`Gold+${bonuses.gold_bonus}`);
+
+  const contents = [
+    {
+      type: "text",
+      text: "裝備一覽",
+      weight: "bold",
+    },
+    {
+      type: "separator",
+      margin: "md",
+      color: "#808080",
+    },
+    {
+      type: "box",
+      layout: "vertical",
+      contents: slotRows,
+      margin: "md",
+      spacing: "xs",
+    },
+  ];
+
+  if (bonusParts.length > 0) {
+    contents.push(
+      {
+        type: "separator",
+        margin: "md",
+        color: "#808080",
+      },
+      {
+        type: "text",
+        text: bonusParts.join("  "),
+        size: "xs",
+        color: "#2E7D32",
+        margin: "sm",
+        wrap: true,
+      }
+    );
+  }
+
+  contents.push({
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "text",
+        text: "裝備管理",
+        align: "center",
+        color: "#FFFFFF",
+        weight: "bold",
+        size: "sm",
+      },
+    ],
+    backgroundColor: "#5D4037",
+    paddingAll: "sm",
+    cornerRadius: "md",
+    margin: "md",
+    action: {
+      type: "uri",
+      label: "裝備管理",
+      uri: liffUrl,
+    },
+  });
+
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents,
+      backgroundColor: "#EDDFC4",
+    },
+  };
+};

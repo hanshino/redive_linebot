@@ -43,6 +43,7 @@ import ScratchCard from "./components/ScratchCard";
 import AdminScratchCard from "./components/Admin/ScratchCard";
 import ScratchCardDetail from "./components/ScratchCard/ScratchCardDetail";
 import ScratchCardExchange from "./components/ScratchCard/ScratchCardExchange";
+import Equipment from "./components/Equipment";
 
 const theme = createTheme({
   palette: {
@@ -138,6 +139,7 @@ function MainLayout() {
         <Route path="/Trade" component={TradeLayout} />
         <Route path="/Gacha/Exchange" component={GodStoneShop} />
         <Route path="/Bag" component={Bag} />
+        <Route path="/Equipment" component={Equipment} />
         <Route path="/ScratchCard/Exchange" component={ScratchCardExchange} />
         <Route path="/ScratchCard/:id" component={ScratchCardDetail} />
         <Route path="/ScratchCard" component={ScratchCard} />
