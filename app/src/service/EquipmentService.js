@@ -8,6 +8,7 @@ const CACHE_TTL = 60 * 60; // 1 hour
 // --- Admin CRUD ---
 exports.all = options => EquipmentModel.all(options);
 exports.find = id => EquipmentModel.find(id);
+exports.findAvailableForJob = jobId => EquipmentModel.findAvailableForJob(jobId);
 exports.create = attributes => EquipmentModel.create(attributes);
 
 exports.update = async (id, attributes) => {

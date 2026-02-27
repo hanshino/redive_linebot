@@ -10,6 +10,7 @@ AdminRouter.put("/Equipment/:id", adminHandler.updateEquipment);
 AdminRouter.delete("/Equipment/:id", adminHandler.deleteEquipment);
 
 PlayerRouter.get("/Equipment/me", playerHandler.getMyEquipment);
+PlayerRouter.get("/Equipment/available", playerHandler.getAvailableEquipment);
 PlayerRouter.post("/Equipment/equip", playerHandler.equip);
 PlayerRouter.post("/Equipment/unequip", playerHandler.unequip);
 

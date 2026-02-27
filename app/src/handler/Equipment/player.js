@@ -1,6 +1,18 @@
 const EquipmentService = require("../../service/EquipmentService");
 const MinigameService = require("../../service/MinigameService");
 
+exports.getAvailableEquipment = async (req, res) => {
+  try {
+    const userId = req.profile.userId;
+    const levelData = await MinigameService.findByUserId(userId);
+    const jobId = levelData ? levelData.job_id : null;
+    const equipment = await EquipmentService.findAvailableForJob(jobId);
+    res.json(equipment);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
 exports.getMyEquipment = async (req, res) => {
   try {
     const userId = req.profile.userId;
