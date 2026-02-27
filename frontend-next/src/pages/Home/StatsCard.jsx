@@ -18,7 +18,7 @@ export default function StatsCard({ icon: Icon, label, value, loading }) {
             width: 48,
             height: 48,
             borderRadius: 2,
-            bgcolor: "rgba(108, 99, 255, 0.1)",
+            bgcolor: (theme) => `${theme.palette.primary.main}15`,
             color: "primary.main",
             flexShrink: 0,
           }}

@@ -4,13 +4,16 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 export default function HeroBanner() {
   return (
     <Box
-      sx={{
+      sx={(theme) => ({
         position: "relative",
         borderRadius: 3,
         p: { xs: 3, md: 5 },
         mb: 3,
-        background: "linear-gradient(135deg, rgba(108, 99, 255, 0.15) 0%, rgba(255, 184, 48, 0.08) 100%)",
-        border: "1px solid rgba(108, 99, 255, 0.2)",
+        background:
+          theme.palette.mode === "dark"
+            ? "linear-gradient(135deg, rgba(38, 198, 218, 0.12) 0%, rgba(251, 191, 36, 0.06) 100%)"
+            : "linear-gradient(135deg, rgba(0, 172, 193, 0.08) 0%, rgba(245, 158, 11, 0.05) 100%)",
+        border: `1px solid ${theme.palette.divider}`,
         overflow: "hidden",
         "&::before": {
           content: '""',
@@ -19,10 +22,13 @@ export default function HeroBanner() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: "radial-gradient(ellipse at 20% 50%, rgba(108, 99, 255, 0.1) 0%, transparent 70%)",
+          background:
+            theme.palette.mode === "dark"
+              ? "radial-gradient(ellipse at 20% 50%, rgba(38, 198, 218, 0.08) 0%, transparent 70%)"
+              : "radial-gradient(ellipse at 20% 50%, rgba(0, 172, 193, 0.06) 0%, transparent 70%)",
           pointerEvents: "none",
         },
-      }}
+      })}
     >
       <Box sx={{ position: "relative", zIndex: 1 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>

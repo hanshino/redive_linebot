@@ -1,55 +1,12 @@
 import { createTheme } from "@mui/material/styles";
 
-// Princess Connect RE:Dive inspired color palette
-const palette = {
-  primary: {
-    main: "#6C63FF",
-    light: "#8B83FF",
-    dark: "#4A42D9",
-    contrastText: "#FFFFFF",
-  },
-  secondary: {
-    main: "#FFB830",
-    light: "#FFCF6B",
-    dark: "#D99A1A",
-    contrastText: "#1A1A2E",
-  },
-  background: {
-    default: "#0F0F1A",
-    paper: "#1A1A2E",
-  },
-  text: {
-    primary: "#E8E8F0",
-    secondary: "#A0A0B8",
-  },
-  error: {
-    main: "#FF5C6C",
-    light: "#FF8A95",
-    dark: "#D93D4C",
-  },
-  warning: {
-    main: "#FFB830",
-    light: "#FFCF6B",
-    dark: "#D99A1A",
-  },
-  success: {
-    main: "#4ADE80",
-    light: "#86EFAC",
-    dark: "#22C55E",
-  },
-  info: {
-    main: "#60A5FA",
-    light: "#93C5FD",
-    dark: "#3B82F6",
-  },
-  divider: "rgba(108, 99, 255, 0.12)",
-};
+// Miyako (宮子) inspired color palette
+// Primary: Cyan/light blue — her hair color
+// Secondary: Amber/caramel — pudding (布丁)
+// Accent: Red — her eyes
+// Decorative: Purple (scarf), Orange (skirt)
 
-const theme = createTheme({
-  palette: {
-    mode: "dark",
-    ...palette,
-  },
+const shared = {
   typography: {
     fontFamily: [
       "Roboto",
@@ -58,30 +15,54 @@ const theme = createTheme({
       "Arial",
       "sans-serif",
     ].join(","),
-    h4: {
-      fontWeight: 700,
-    },
-    h5: {
-      fontWeight: 600,
-    },
-    h6: {
-      fontWeight: 600,
-    },
+    h4: { fontWeight: 700 },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
   },
   shape: {
     borderRadius: 12,
+  },
+};
+
+export const lightTheme = createTheme({
+  ...shared,
+  palette: {
+    mode: "light",
+    primary: {
+      main: "#00ACC1",
+      light: "#26C6DA",
+      dark: "#00838F",
+      contrastText: "#FFFFFF",
+    },
+    secondary: {
+      main: "#F59E0B",
+      light: "#FBBF24",
+      dark: "#D97706",
+      contrastText: "#FFFFFF",
+    },
+    background: {
+      default: "#F5F7FA",
+      paper: "#FFFFFF",
+    },
+    text: {
+      primary: "#1A2332",
+      secondary: "#5A6B7F",
+    },
+    error: { main: "#EF4444" },
+    warning: { main: "#F59E0B" },
+    success: { main: "#22C55E" },
+    info: { main: "#00ACC1" },
+    divider: "rgba(0, 172, 193, 0.12)",
   },
   components: {
     MuiCard: {
       styleOverrides: {
         root: {
-          backgroundImage: "none",
-          backgroundColor: palette.background.paper,
-          border: "1px solid rgba(108, 99, 255, 0.15)",
-          transition: "border-color 0.25s ease, box-shadow 0.25s ease",
+          border: "1px solid rgba(0, 172, 193, 0.12)",
+          transition: "border-color 0.2s ease-out, box-shadow 0.2s ease-out",
           "&:hover": {
-            borderColor: "rgba(108, 99, 255, 0.4)",
-            boxShadow: "0 0 20px rgba(108, 99, 255, 0.15)",
+            borderColor: "rgba(0, 172, 193, 0.3)",
+            boxShadow: "0 4px 20px rgba(0, 172, 193, 0.1)",
           },
         },
       },
@@ -91,24 +72,87 @@ const theme = createTheme({
         root: {
           textTransform: "none",
           fontWeight: 600,
-          transition:
-            "background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease",
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "rgba(255, 255, 255, 0.85)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(0, 172, 193, 0.12)",
+          color: "#1A2332",
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          borderRight: "1px solid rgba(0, 172, 193, 0.12)",
+        },
+      },
+    },
+  },
+});
+
+export const darkTheme = createTheme({
+  ...shared,
+  palette: {
+    mode: "dark",
+    primary: {
+      main: "#26C6DA",
+      light: "#4DD0E1",
+      dark: "#00ACC1",
+      contrastText: "#0A1A2A",
+    },
+    secondary: {
+      main: "#FBBF24",
+      light: "#FCD34D",
+      dark: "#F59E0B",
+      contrastText: "#1A1A2E",
+    },
+    background: {
+      default: "#0A1A2A",
+      paper: "#12243A",
+    },
+    text: {
+      primary: "#E8EEF4",
+      secondary: "#8DA4BE",
+    },
+    error: { main: "#F87171" },
+    warning: { main: "#FBBF24" },
+    success: { main: "#4ADE80" },
+    info: { main: "#4DD0E1" },
+    divider: "rgba(38, 198, 218, 0.12)",
+  },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundImage: "none",
+          border: "1px solid rgba(38, 198, 218, 0.15)",
+          transition: "border-color 0.2s ease-out, box-shadow 0.2s ease-out",
+          "&:hover": {
+            borderColor: "rgba(38, 198, 218, 0.35)",
+            boxShadow: "0 0 20px rgba(38, 198, 218, 0.1)",
+          },
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          fontWeight: 600,
         },
         containedPrimary: {
           "&:hover": {
-            boxShadow: "0 0 16px rgba(108, 99, 255, 0.4)",
+            boxShadow: "0 0 16px rgba(38, 198, 218, 0.35)",
           },
         },
         containedSecondary: {
           "&:hover": {
-            boxShadow: "0 0 16px rgba(255, 184, 48, 0.4)",
-          },
-        },
-        outlinedPrimary: {
-          borderColor: "rgba(108, 99, 255, 0.5)",
-          "&:hover": {
-            borderColor: "#6C63FF",
-            boxShadow: "0 0 12px rgba(108, 99, 255, 0.25)",
+            boxShadow: "0 0 16px rgba(251, 191, 36, 0.35)",
           },
         },
       },
@@ -117,18 +161,18 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: "none",
-          backgroundColor: "rgba(15, 15, 26, 0.8)",
+          backgroundColor: "rgba(10, 26, 42, 0.85)",
           backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(108, 99, 255, 0.12)",
+          borderBottom: "1px solid rgba(38, 198, 218, 0.12)",
         },
       },
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: "#12121F",
           backgroundImage: "none",
-          borderRight: "1px solid rgba(108, 99, 255, 0.12)",
+          backgroundColor: "#0E1E30",
+          borderRight: "1px solid rgba(38, 198, 218, 0.12)",
         },
       },
     },
@@ -141,5 +185,3 @@ const theme = createTheme({
     },
   },
 });
-
-export default theme;
