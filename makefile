@@ -33,6 +33,9 @@ bash-redis: ## 執行 redis container 的 bash
 	@echo "Opening bash..."
 	@docker compose exec -t redis redis-cli
 
+ngrok-url: ## 查詢 ngrok 公開網址
+	@curl -s http://localhost:4040/api/tunnels | python3 -c "import sys,json;print(json.load(sys.stdin)['tunnels'][0]['public_url'])" 2>/dev/null || echo "ngrok is not running"
+
 help: ## 顯示所有可用指令
 	@sed \
 		-e '/^[a-zA-Z0-9_\-]*:.*##/!d' \
