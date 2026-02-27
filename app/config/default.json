@@ -185,5 +185,8 @@
     "number": {
       "daily_limit": 100
     }
+  },
+  "liff": {
+    "equipmentUrl": "https://liff.line.me/placeholder-equipment"
   }
 }

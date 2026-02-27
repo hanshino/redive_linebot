@@ -8,6 +8,7 @@ const worldBossEventService = require("../../service/WorldBossEventService");
 const worldBossEventLogService = require("../../service/WorldBossEventLogService");
 const minigameService = require("../../service/MinigameService");
 const worldBossUserAttackMessageService = require("../../service/WorldBossUserAttackMessageService");
+const EquipmentService = require("../../service/EquipmentService");
 const worldBossTemplate = require("../../templates/application/WorldBoss");
 const { model: worldBossLogModel } = require("../../model/application/WorldBossLog");
 const UserModel = require("../../model/application/UserModel");
@@ -34,6 +35,7 @@ exports.router = [
   text("#夢幻回歸", revokeAttack),
   text(/^[#]傷害[紀記]錄/, todayLogs),
   text(config.get("worldboss.revoke_charm"), revokeCharm),
+  text(/^[#＃]裝備$/, showEquipment),
 ];
 
 /**
@@ -417,6 +419,42 @@ async function bossEvent(context) {
 }
 
 /**
+ * 顯示裝備管理連結
+ * @param {import ("bottender").LineContext} context
+ */
+async function showEquipment(context) {
+  const liffUrl = config.get("liff.equipmentUrl");
+  await context.replyFlex("裝備管理", {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        { type: "text", text: "裝備管理", weight: "bold", size: "lg" },
+        {
+          type: "text",
+          text: "點擊下方按鈕管理你的裝備",
+          size: "sm",
+          color: "#999999",
+          margin: "md",
+        },
+      ],
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "button",
+          action: { type: "uri", label: "開啟裝備頁面", uri: liffUrl },
+          style: "primary",
+        },
+      ],
+    },
+  });
+}
+
+/**
  * @param {import ("bottender").LineContext} context
  * @param {import("bottender").Props} props
  */
@@ -490,6 +528,7 @@ const attackOnBoss = async (context, props) => {
   }
   const { level, job_key: jobKey } = levelData;
   const rpgCharacter = makeCharacter(jobKey, { level });
+  const equipBonuses = await EquipmentService.getEquipmentBonuses(userId);
 
   // 新增對 boss 攻擊紀錄
   let damage = rpgCharacter.getStandardDamage(); // 預設使用基礎攻擊
@@ -504,6 +543,16 @@ const attackOnBoss = async (context, props) => {
   if (attackSkill === enumSkills.SKILL_ONE) {
     damage = rpgCharacter.getSkillOneDamage();
     cost = rpgCharacter.skillOne.cost;
+  }
+
+  // 裝備加成：攻擊力百分比
+  if (equipBonuses.atk_percent > 0) {
+    damage = Math.floor(damage * (1 + equipBonuses.atk_percent));
+  }
+
+  // 裝備加成：cost 減少
+  if (equipBonuses.cost_reduction > 0) {
+    cost = Math.max(1, cost - equipBonuses.cost_reduction);
   }
 
   let attributes = {
@@ -530,6 +579,10 @@ const attackOnBoss = async (context, props) => {
   if (penaltyInfo.isPenalty) {
     earnedExp = Math.round(earnedExp * penaltyInfo.expRate);
   }
+
+  // 裝備加成：額外經驗值
+  earnedExp += equipBonuses.exp_bonus || 0;
+
   // 計算獲得經驗後的等級狀況
   let newLevelData = await decideLevelResult({ ...levelData, earnedExp });
   // 將計算後的結果更新至資料庫
@@ -557,7 +610,14 @@ const attackOnBoss = async (context, props) => {
         display_name: displayName,
         boss_name: eventBoss.name,
       })
-      .trim() + `\n_目前 cost: ${todayCost}/${dailyLimit}_`,
+      .trim() + `\n_目前 cost: ${todayCost}/${dailyLimit}_` +
+      (function () {
+        const parts = [];
+        if (equipBonuses.atk_percent > 0) parts.push(`ATK+${Math.round(equipBonuses.atk_percent * 100)}%`);
+        if (equipBonuses.cost_reduction > 0) parts.push(`Cost-${equipBonuses.cost_reduction}`);
+        if (equipBonuses.exp_bonus > 0) parts.push(`EXP+${equipBonuses.exp_bonus}`);
+        return parts.length > 0 ? `\n_裝備加成: ${parts.join(", ")}_` : "";
+      })(),
   ];
   let sender = { name: displayName.substr(0, 20), iconUrl };
 
