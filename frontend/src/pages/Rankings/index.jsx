@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, Grid, Tabs, Tab, Paper, Skeleton } from "@mui/material";
+import { EmojiEvents, Casino, Diamond } from "@mui/icons-material";
 import OverviewCard, { RANK_COLORS } from "./OverviewCard";
 import ChatLevelChart, { useChatLevelData } from "./ChatLevelChart";
 import GachaRankChart, { useGachaRankData } from "./GachaRankChart";
@@ -21,8 +22,8 @@ export default function Rankings() {
 
   const cards = [
     {
-      icon: "👑",
-      title: "等級王",
+      icon: <EmojiEvents sx={{ fontSize: 28, color: RANK_COLORS.level }} />,
+      title: "聽說他沒在睡覺",
       topName: level.topEntry?.displayName,
       topValue: level.topEntry ? `Lv.${level.topEntry.level}` : undefined,
       count: level.count,
@@ -30,8 +31,8 @@ export default function Rankings() {
       loading: level.loading,
     },
     {
-      icon: "🎰",
-      title: "蒐集王",
+      icon: <Casino sx={{ fontSize: 28, color: RANK_COLORS.gacha }} />,
+      title: "氣運好到不行",
       topName: gacha.topEntry?.displayName,
       topValue: gacha.topEntry?.value?.toLocaleString(),
       count: gacha.count,
@@ -39,8 +40,8 @@ export default function Rankings() {
       loading: gacha.loading,
     },
     {
-      icon: "💎",
-      title: "女神石王",
+      icon: <Diamond sx={{ fontSize: 28, color: RANK_COLORS.godStone }} />,
+      title: "什麼都賣了",
       topName: godStone.topEntry?.displayName,
       topValue: godStone.topEntry?.value?.toLocaleString(),
       count: godStone.count,

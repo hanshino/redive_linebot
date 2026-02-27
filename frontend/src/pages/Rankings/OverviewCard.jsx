@@ -19,7 +19,7 @@ export default function OverviewCard({ icon, title, topName, topValue, count, co
       <CardActionArea onClick={onClick} sx={{ p: 2 }}>
         <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-            <Typography variant="h5" component="span">{icon}</Typography>
+            {icon}
             <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
               {title}
             </Typography>
