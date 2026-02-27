@@ -10,6 +10,7 @@ import {
   Divider,
 } from "@mui/material";
 import { useState } from "react";
+import useLiff from "../context/useLiff";
 import HomeIcon from "@mui/icons-material/Home";
 import EqualizerIcon from "@mui/icons-material/Equalizer";
 import MoneyIcon from "@mui/icons-material/Money";
@@ -102,6 +103,7 @@ function NavSection({ title, items, open, onToggle, onNavigate, currentPath }) {
 }
 
 export default function NavDrawer({ onClose }) {
+  const { loggedIn } = useLiff();
   const location = useLocation();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState({
@@ -165,14 +167,16 @@ export default function NavDrawer({ onClose }) {
         onNavigate={handleNavigate}
         currentPath={location.pathname}
       />
-      <NavSection
-        title="管理員"
-        items={adminItems}
-        open={openSections.admin}
-        onToggle={() => toggleSection("admin")}
-        onNavigate={handleNavigate}
-        currentPath={location.pathname}
-      />
+      {loggedIn && (
+        <NavSection
+          title="管理員"
+          items={adminItems}
+          open={openSections.admin}
+          onToggle={() => toggleSection("admin")}
+          onNavigate={handleNavigate}
+          currentPath={location.pathname}
+        />
+      )}
 
       <Divider sx={{ my: 1 }} />
 
