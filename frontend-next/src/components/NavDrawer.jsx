@@ -8,7 +8,6 @@ import {
   ListItemText,
   Collapse,
   Divider,
-  Typography,
 } from "@mui/material";
 import { useState } from "react";
 import HomeIcon from "@mui/icons-material/Home";
@@ -76,7 +75,7 @@ function NavSection({ title, items, open, onToggle, onNavigate, currentPath }) {
       <ListItemButton onClick={onToggle}>
         <ListItemText
           primary={title}
-          primaryTypographyProps={{ variant: "caption", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: 1 }}
+          slotProps={{ primary: { variant: "caption", sx: { fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: 1 } } }}
         />
         {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
       </ListItemButton>
@@ -92,7 +91,7 @@ function NavSection({ title, items, open, onToggle, onNavigate, currentPath }) {
                 <ListItemIcon sx={{ minWidth: 36 }}>
                   <Icon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText primary={label} primaryTypographyProps={{ variant: "body2" }} />
+                <ListItemText primary={label} slotProps={{ primary: { variant: "body2" } }} />
               </ListItemButton>
             </ListItem>
           ))}
@@ -124,16 +123,6 @@ export default function NavDrawer({ onClose }) {
 
   return (
     <Box sx={{ width: 260, pt: 1 }}>
-      <Box sx={{ px: 2, py: 1.5 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          布丁機器人
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Princess Connect Bot
-        </Typography>
-      </Box>
-      <Divider />
-
       <List>
         {mainItems.map(({ label, path, icon: Icon }) => (
           <ListItem key={label} disablePadding>
@@ -144,7 +133,7 @@ export default function NavDrawer({ onClose }) {
               <ListItemIcon sx={{ minWidth: 36 }}>
                 <Icon fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary={label} primaryTypographyProps={{ variant: "body2" }} />
+              <ListItemText primary={label} slotProps={{ primary: { variant: "body2" } }} />
             </ListItemButton>
           </ListItem>
         ))}

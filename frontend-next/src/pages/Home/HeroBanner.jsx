@@ -34,11 +34,11 @@ export default function HeroBanner() {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
           <SmartToyIcon sx={{ fontSize: 32, color: "secondary.main" }} />
           <Typography variant="h4" component="h1">
-            布丁機器人
+            歡迎回來
           </Typography>
         </Box>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 2, maxWidth: 600 }}>
-          Princess Connect RE:Dive LINE Bot Dashboard
+          Princess Connect RE:Dive LINE Bot 管理面板
         </Typography>
         <Chip
           label="Bot Online"
