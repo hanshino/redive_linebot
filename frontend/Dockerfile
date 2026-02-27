@@ -1,5 +1,5 @@
 # build environment
-FROM node:lts AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 ENV PATH=/app/node_modules/.bin:$PATH
 COPY package.json yarn.lock ./
@@ -8,7 +8,8 @@ COPY . .
 RUN yarn build
 
 # production environment
-FROM nginx:1-alpine
+FROM nginx:stable-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
+USER nginx
 CMD ["nginx", "-g", "daemon off;"]
