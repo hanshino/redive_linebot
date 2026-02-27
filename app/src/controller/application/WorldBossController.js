@@ -556,7 +556,8 @@ const attackOnBoss = async (context, props) => {
   // 先抽取 tag
   const tag = sample(tags);
   // 再根據 tag 抽取訊息樣板
-  const templateData = sample(messageTemplates.filter(data => data.tag === tag));
+  const templateData = sample(messageTemplates.filter(data => data.tag === tag)) ||
+    sample(messageTemplates) || { template: "{display_name} 對 {boss_name} 造成了 {damage} 傷害！" };
 
   let causedDamagePercent = calculateDamagePercentage(eventBoss.hp, damage);
   let earnedExp = (eventBoss.exp * causedDamagePercent) / 100;
