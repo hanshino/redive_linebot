@@ -17,8 +17,12 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // limit each IP to 1000 requests per windowMs
   keyGenerator: req => {
-    const [ip] = req.headers["x-forwarded-for"].split(",");
-    return ip;
+    const forwarded = req.headers["x-forwarded-for"];
+    if (forwarded) {
+      const [ip] = forwarded.split(",");
+      return ip;
+    }
+    return req.ip;
   },
 });
 
