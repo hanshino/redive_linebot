@@ -7,8 +7,6 @@ const LineClient = getClient("line");
 const GachaModel = require("../../model/princess/gacha");
 const GachaRecord = require("../../model/princess/GachaRecord");
 const GachaTemplate = require("../../templates/princess/gacha").line;
-const uidModel = require("../../model/princess/uid");
-const ProfileTemplate = require("../../templates/application/Profile");
 const MinigameTemplate = require("../../templates/application/Minigame");
 const DailyTemplate = require("../../templates/application/DailyQuest");
 const SubscribeTemplate = require("../../templates/application/Subscribe");
@@ -60,7 +58,6 @@ exports.showStatus = async (context, props) => {
       current = 0,
       total = 0,
       godStone = 0,
-      bindInfo,
       jankenResult,
       signinInfo,
       questInfo,
@@ -73,7 +70,6 @@ exports.showStatus = async (context, props) => {
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
       GachaModel.getUserGodStoneCount(userId),
-      uidModel.getData(userId),
       JankenResult.findUserGrade(userId),
       SigninModel.first({ filter: { user_id: userId } }),
       getQuestInfo(userId),
@@ -148,9 +144,6 @@ exports.showStatus = async (context, props) => {
       gachaStarProgress: gachaProgress.progress,
     });
 
-    // ---------- 整理其他雜項數據 ----------
-    const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo });
-
     // ---------- 整理猜拳數據 ----------
     let winCount = get(
       jankenResult.find(data => data.result === JankenResult.resultMap.win),
@@ -180,7 +173,7 @@ exports.showStatus = async (context, props) => {
       sumDays: get(signinInfo, "sum_days", 0),
     });
 
-    bubbles.push(chatlevelBubble, dailyBubble, gachaBubble, jankenGradeBubble, otherBubble);
+    bubbles.push(chatlevelBubble, dailyBubble, gachaBubble, jankenGradeBubble);
     const subscribeBubbles = [];
 
     if (monthBubble) {
