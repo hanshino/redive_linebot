@@ -17,7 +17,7 @@ import AlertLogin from "../../components/AlertLogin";
 import { FullPageLoading } from "../../components/Loading";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 const columns = [
   { field: "reward", headerName: "獎金", width: 130 },
@@ -26,7 +26,7 @@ const columns = [
 ];
 
 export default function ScratchCardDetail() {
-  const isLoggedIn = isLiffLoggedIn();
+  const { loggedIn: isLoggedIn } = useLiff();
   const { id } = useParams();
   const [{ data: card, loading }, fetchCard] = useAxios(`/api/ScratchCard/${id}`, {
     manual: true,

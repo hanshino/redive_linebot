@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { get } from "lodash";
 import AlertLogin from "../../components/AlertLogin";
 import { FullPageLoading } from "../../components/Loading";
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 function genStatusCell(params) {
   const status = params.value;
@@ -104,6 +104,7 @@ const columns = [
 ];
 
 export default function TradeManage() {
+  const { loggedIn: isLoggedIn } = useLiff();
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
   const [{ data: marketList = [], loading }, fetchMarketList] = useAxios(
     {
@@ -115,7 +116,6 @@ export default function TradeManage() {
     },
     { manual: true }
   );
-  const isLoggedIn = isLiffLoggedIn();
 
   useEffect(() => {
     if (!isLoggedIn) return;

@@ -67,7 +67,7 @@ const formatAttrValue = (key, value) => {
   return `${value}`;
 };
 
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 function EquipSlotCard({ slot, item, onClick }) {
   const isEmpty = !item;
@@ -364,7 +364,7 @@ function EquipDialog({
 }
 
 export default function Equipment() {
-  const isLoggedIn = useMemo(() => isLiffLoggedIn(), []);
+  const { loggedIn: isLoggedIn } = useLiff();
   const [snackbar, { handleOpen: showSnack, handleClose: closeSnack }] = useHintBar();
 
   const [{ data: myData, loading: myLoading }, fetchMyEquipment] = useAxios(

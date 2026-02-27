@@ -15,7 +15,7 @@ import { CopyToClipboard } from "react-copy-to-clipboard";
 import { useSendMessage } from "../../hooks/useLiff";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
-import { liffCloseWindow } from "../../utils/liff";
+import liff from "@line/liff";
 
 const SaberTypes = [
   { title: "正式刀", value: "1" },
@@ -86,7 +86,7 @@ export default function BattleSign() {
 
   useEffect(() => {
     if (!isSuccess) return;
-    liffCloseWindow();
+    liff.closeWindow();
   }, [isSuccess]);
 
   useEffect(() => {

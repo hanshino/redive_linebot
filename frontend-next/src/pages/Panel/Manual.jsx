@@ -17,7 +17,7 @@ import { CopyToClipboard } from "react-copy-to-clipboard";
 import { useSendMessage } from "../../hooks/useLiff";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
-import { getLiffContext } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 function a11yProps(index) {
   return {
@@ -83,21 +83,18 @@ const TabDatas = [
 ];
 
 function ManualBar() {
+  const { liffContext } = useLiff();
   const [value, setValue] = useState(0);
   const [{ isSending, isError }, send] = useSendMessage();
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
   const [sendable, setSendable] = useState(true);
 
   // Filter tabs based on LIFF context type
-  const [EnableTabDatas] = useState(() => {
-    try {
-      const { type: screenType } = getLiffContext();
-      return TabDatas.filter((data) => data.enableScreen.indexOf(screenType) !== -1);
-    } catch {
-      // Fallback: show all tabs when not in LIFF context
-      return TabDatas;
-    }
-  });
+  const EnableTabDatas = useMemo(() => {
+    const screenType = liffContext?.type;
+    if (!screenType) return TabDatas;
+    return TabDatas.filter((data) => data.enableScreen.indexOf(screenType) !== -1);
+  }, [liffContext]);
 
   const handleChange = (event, newValue) => {
     setValue(newValue);

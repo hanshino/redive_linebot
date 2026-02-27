@@ -16,7 +16,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { green } from "@mui/material/colors";
 import { Link, useNavigate } from "react-router-dom";
 import AlertLogin from "../../components/AlertLogin";
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 function ControlButtons({ onDeleteComplete, value }) {
   const navigate = useNavigate();
@@ -105,11 +105,10 @@ function DataList() {
   }
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ width: "100%", minHeight: 300 }}>
       <DataGrid
         columns={columns}
         rows={messageData}
-        autoHeight
         disableColumnMenu
         disableColumnFilter
         disableColumnSelector
@@ -119,11 +118,13 @@ function DataList() {
 }
 
 export default function AdminWorldbossMessage() {
+  const { loggedIn } = useLiff();
+
   useEffect(() => {
     document.title = "管理員用－世界王訊息管理";
   }, []);
 
-  if (!isLiffLoggedIn()) {
+  if (!loggedIn) {
     return <AlertLogin />;
   }
 

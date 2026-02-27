@@ -4,15 +4,16 @@ import {
   Button,
 } from "@mui/material";
 import { FullPageLoading } from "../../components/Loading";
-import { isLiffLoggedIn, getLiffContext, liffLogin } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
+import liff from "@line/liff";
 
 export default function Binding() {
-  const isLoggedIn = isLiffLoggedIn();
-  return isLoggedIn ? <RedirectToBinding /> : <LoginAlert />;
+  const { loggedIn, liffContext } = useLiff();
+  return loggedIn ? <RedirectToBinding liffContext={liffContext} /> : <LoginAlert />;
 }
 
-function RedirectToBinding() {
-  const { userId } = getLiffContext();
+function RedirectToBinding({ liffContext }) {
+  const { userId } = liffContext;
   const params = new URLSearchParams();
   params.set("response_type", "code");
   params.set("client_id", "CQZhxtEo0NeSgGRQ2LNeEp");
@@ -42,7 +43,7 @@ function LoginAlert() {
         </Button>
         <Button color="primary" variant="outlined" onClick={() => {
           window.localStorage.setItem("reactRedirectUri", "/bot/notify");
-          liffLogin();
+          liff.login();
         }}>
           登入
         </Button>

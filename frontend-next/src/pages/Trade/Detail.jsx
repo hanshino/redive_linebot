@@ -5,9 +5,11 @@ import { Grid, Typography, Paper, Button } from "@mui/material";
 import { get } from "lodash";
 import { FullPageLoading } from "../../components/Loading";
 import { genNotify } from "../../flex/TradeNotify";
-import { isLiffLoggedIn, liffShareTargetPicker } from "../../utils/liff";
+import liff from "@line/liff";
+import useLiff from "../../context/useLiff";
 
 export default function TradeDetail() {
+  const { loggedIn: isLoggedIn } = useLiff();
   const { marketId } = useParams();
   const navigate = useNavigate();
   const [{ data = [], loading }, fetchDetail] = useAxios(`/api/Market/${marketId}`, {
@@ -20,7 +22,6 @@ export default function TradeDetail() {
     },
     { manual: true }
   );
-  const isLoggedIn = isLiffLoggedIn();
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -36,7 +37,7 @@ export default function TradeDetail() {
   }, [cancelError, cancelRes]);
 
   const handleNotify = () => {
-    liffShareTargetPicker([
+    liff.shareTargetPicker([
       {
         type: "flex",
         altText: "交易邀請",

@@ -20,7 +20,7 @@ import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 import OrderDialog from "../../components/OrderDialog";
 import * as CustomerOrderAPI from "../../services/customerOrder";
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 const TOUCH_TYPE_MAP = { 1: "全符合", 2: "關鍵字符合" };
 const STATUS_MAP = { 1: "啟用", 0: "關閉" };
@@ -57,8 +57,8 @@ function arrangeOrderDatas(orderDatas) {
 }
 
 export default function CustomerOrder() {
+  const { loggedIn: isLoggedIn } = useLiff();
   const { sourceId } = useParams();
-  const isLoggedIn = useMemo(() => isLiffLoggedIn(), []);
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);

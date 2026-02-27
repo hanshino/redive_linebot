@@ -1,14 +1,17 @@
-import { useParams } from "react-router-dom";
-import { Box, Typography } from "@mui/material";
+import { useEffect } from "react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { FullPageLoading } from "../components/Loading";
 
 export default function LiffLayout() {
   const { size } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-  return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="body2" color="text.secondary">
-        LIFF Size: {size}
-      </Typography>
-    </Box>
-  );
+  useEffect(() => {
+    window.localStorage.setItem("liff_size", size);
+    const redirectUri = searchParams.get("reactRedirectUri") || "/";
+    navigate(redirectUri, { replace: true });
+  }, [size, searchParams, navigate]);
+
+  return <FullPageLoading />;
 }

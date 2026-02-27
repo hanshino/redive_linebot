@@ -6,7 +6,7 @@ import { get } from "lodash";
 import AlertLogin from "../../components/AlertLogin";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 const columns = [
   { field: "name", headerName: "名稱", width: 130 },
@@ -15,7 +15,7 @@ const columns = [
 ];
 
 export default function ScratchCardExchange() {
-  const isLoggedIn = isLiffLoggedIn();
+  const { loggedIn: isLoggedIn } = useLiff();
   const [{ data = [], loading }, refetch] = useAxios("/api/ScratchCard/MyCards", {
     manual: true,
   });

@@ -10,15 +10,15 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import CloseIcon from "@mui/icons-material/Close";
 import { FullPageLoading } from "../../components/Loading";
 import * as NotifyAPI from "../../services/notify";
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 function useOption() {
+  const { loggedIn: isLoggedIn } = useLiff();
   const [loading, setLoading] = useState(false);
   const [isBinding, setBinding] = useState(false);
   const [reload, setReload] = useState(0);
   const [option, setOption] = useState({});
   const [open, setOpen] = useState(false);
-  const isLoggedIn = isLiffLoggedIn();
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);

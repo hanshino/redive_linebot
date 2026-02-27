@@ -5,10 +5,10 @@ import { get } from "lodash";
 import AlertLogin from "../../components/AlertLogin";
 import { FullPageLoading } from "../../components/Loading";
 import CharacterCard from "../../components/CharacterCard";
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 export default function ScratchCard() {
-  const isLoggedIn = isLiffLoggedIn();
+  const { loggedIn: isLoggedIn } = useLiff();
   const [{ data = [], loading }, fetchData] = useAxios("/api/ScratchCard", {
     manual: true,
   });

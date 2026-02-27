@@ -1,4 +1,5 @@
 import { useReducer } from "react";
+import liff from "@line/liff";
 
 const sendMsgReducer = (state, action) => {
   switch (action.type) {
@@ -23,7 +24,7 @@ export const useSendMessage = () => {
   const handleSend = async (text) => {
     dispatch({ type: "SEND_INIT" });
     try {
-      await window.liff?.sendMessages?.([{ type: "text", text }]);
+      await liff.sendMessages([{ type: "text", text }]);
       dispatch({ type: "SEND_SUCCESS" });
     } catch {
       dispatch({ type: "SEND_FAIL" });

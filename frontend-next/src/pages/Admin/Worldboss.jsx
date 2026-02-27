@@ -25,7 +25,7 @@ import useHintBar from "../../hooks/useHintBar";
 import AlertDialog from "../../components/AlertDialog";
 import useAlertDialog from "../../hooks/useAlertDialog";
 import AlertLogin from "../../components/AlertLogin";
-import { isLiffLoggedIn } from "../../utils/liff";
+import useLiff from "../../context/useLiff";
 
 function CustomLoadingOverlay() {
   return (
@@ -255,7 +255,7 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
 }
 
 export default function AdminWorldboss() {
-  const isLoggedIn = isLiffLoggedIn();
+  const { loggedIn: isLoggedIn } = useLiff();
   const [dialogState, { handleOpen: openDialog, handleClose: closeDialog }] =
     useAlertDialog();
   const [{ data = [], loading }, fetchData] = useAxios(

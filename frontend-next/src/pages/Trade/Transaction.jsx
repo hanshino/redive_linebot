@@ -10,9 +10,11 @@ import useHintBar from "../../hooks/useHintBar";
 import AlertDialog from "../../components/AlertDialog";
 import useAlertDialog from "../../hooks/useAlertDialog";
 import useQuery from "../../hooks/useQuery";
-import { isLiffLoggedIn, isLiffInClient, liffCloseWindow, getLiffContext } from "../../utils/liff";
+import liff from "@line/liff";
+import useLiff from "../../context/useLiff";
 
 export default function TradeTransaction() {
+  const { loggedIn: isLoggedIn, liffContext } = useLiff();
   const [{ data: marketData, loading, error: marketError }, fetchTrade] = useAxios(
     {},
     { manual: true }
@@ -30,7 +32,6 @@ export default function TradeTransaction() {
     useAlertDialog();
   const { open: alertOpen, title, description, submitText, cancelText, onSubmit, onCancel } =
     alertState;
-  const isLoggedIn = isLiffLoggedIn();
   const { marketId } = useParams();
   const query = useQuery();
   const action = query.get("action");
@@ -38,8 +39,8 @@ export default function TradeTransaction() {
 
   const handleFinish = () => {
     setTimeout(() => {
-      if (isLiffInClient()) {
-        liffCloseWindow();
+      if (liff.isInClient()) {
+        liff.closeWindow();
       } else {
         navigate("/");
       }
@@ -66,7 +67,7 @@ export default function TradeTransaction() {
     if (!marketData) return;
 
     const sellerId = get(marketData, "seller_id");
-    const { userId } = getLiffContext();
+    const { userId } = liffContext;
 
     if (sellerId === userId) {
       handleOpen("此為您自己開設的交易，請等候對方完成交易，3秒後自動關閉視窗", "warning");

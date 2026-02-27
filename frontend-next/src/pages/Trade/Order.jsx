@@ -8,10 +8,11 @@ import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 import useQuery from "../../hooks/useQuery";
 import { genNotify } from "../../flex/TradeNotify";
-import { isLiffLoggedIn, getLiffContext, isLiffInClient, liffCloseWindow, liffShareTargetPicker } from "../../utils/liff";
+import liff from "@line/liff";
+import useLiff from "../../context/useLiff";
 
 export default function TradeOrder() {
-  const isLoggedIn = isLiffLoggedIn();
+  const { loggedIn: isLoggedIn, liffContext } = useLiff();
   const selectEl = useRef(null);
   const chargeEl = useRef(null);
   const [{ data = [], loading }, fetchItems] = useAxios("/api/Inventory", { manual: true });
@@ -22,7 +23,7 @@ export default function TradeOrder() {
   const [{ open, message, severity }, { handleOpen, handleClose }] = useHintBar();
   const query = useQuery();
   const targetId = query.get("target_id");
-  const { userId } = getLiffContext();
+  const { userId } = liffContext;
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -47,8 +48,8 @@ export default function TradeOrder() {
   }
 
   const handleCancel = () => {
-    if (isLiffInClient()) {
-      liffCloseWindow();
+    if (liff.isInClient()) {
+      liff.closeWindow();
     } else {
       window.location.href = "/";
     }
@@ -163,7 +164,7 @@ function TradeCreateResult({ marketId }) {
   const [{ data: marketData, loading }] = useAxios(`/api/Market/${marketId}`);
 
   const handleShare = () => {
-    liffShareTargetPicker([
+    liff.shareTargetPicker([
       {
         type: "flex",
         altText: "交易邀請",
