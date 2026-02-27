@@ -17,7 +17,6 @@ import MoneyIcon from "@mui/icons-material/Money";
 import LoopIcon from "@mui/icons-material/Loop";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
-import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
@@ -43,7 +42,6 @@ const princessItems = [
 
 const botItems = [
   { label: "使用手冊", path: "/panel/manual", icon: LibraryBooksIcon },
-  { label: "訂閱通知", path: "/bot/notify", icon: NotificationsActiveIcon },
 ];
 
 const personalItems = [

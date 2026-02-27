@@ -5,9 +5,8 @@ const i18n = require("../../util/i18n");
  * @param {Object} param.bindInfo
  * @param {String} param.bindInfo.uid
  * @param {Number} param.bindInfo.server
- * @param {Array<Object>} param.subInfo
  */
-exports.genOtherInformations = ({ bindInfo, subInfo }) => {
+exports.genOtherInformations = ({ bindInfo }) => {
   return {
     type: "bubble",
     header: {
@@ -38,24 +37,6 @@ exports.genOtherInformations = ({ bindInfo, subInfo }) => {
               weight: "bold",
             },
             genBindComponent(bindInfo),
-          ],
-          paddingAll: "sm",
-        },
-        {
-          type: "box",
-          layout: "vertical",
-          contents: [
-            {
-              type: "text",
-              text: "訂閱通知",
-              size: "sm",
-              weight: "bold",
-            },
-            {
-              type: "box",
-              layout: "horizontal",
-              contents: [...subInfo.map(info => genSubComponent(info.status === 1, info.title))],
-            },
           ],
           paddingAll: "sm",
         },
@@ -97,26 +78,4 @@ function genBindComponent({ uid = null, server = null }) {
   }
 
   return result;
-}
-
-function genSubComponent(status = false, text) {
-  let icon = status ? "✔️" : "❌";
-  return {
-    type: "text",
-    contents: [
-      {
-        type: "span",
-        text: icon,
-      },
-      {
-        type: "span",
-        text: " ",
-      },
-      {
-        type: "span",
-        text: text,
-      },
-    ],
-    size: "xs",
-  };
 }

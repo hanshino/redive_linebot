@@ -7,7 +7,6 @@ const LineClient = getClient("line");
 const GachaModel = require("../../model/princess/gacha");
 const GachaRecord = require("../../model/princess/GachaRecord");
 const GachaTemplate = require("../../templates/princess/gacha").line;
-const NotifyController = require("./NotifyController");
 const uidModel = require("../../model/princess/uid");
 const ProfileTemplate = require("../../templates/application/Profile");
 const MinigameTemplate = require("../../templates/application/Minigame");
@@ -61,7 +60,6 @@ exports.showStatus = async (context, props) => {
       current = 0,
       total = 0,
       godStone = 0,
-      subData,
       bindInfo,
       jankenResult,
       signinInfo,
@@ -75,7 +73,6 @@ exports.showStatus = async (context, props) => {
       GachaModel.getUserCollectedCharacterCount(userId),
       GachaModel.getPrincessCharacterCount(),
       GachaModel.getUserGodStoneCount(userId),
-      NotifyController.getData(userId),
       uidModel.getData(userId),
       JankenResult.findUserGrade(userId),
       SigninModel.first({ filter: { user_id: userId } }),
@@ -86,13 +83,6 @@ exports.showStatus = async (context, props) => {
       getGachaHistory(userId),
       getGachaCollectProgress(userId),
     ]);
-
-    let subInfo;
-    if (subData) {
-      subInfo = NotifyController.getSubData(subData.subType);
-    } else {
-      subInfo = NotifyController.getSubData(0);
-    }
 
     const bubbles = [];
 
@@ -159,7 +149,7 @@ exports.showStatus = async (context, props) => {
     });
 
     // ---------- 整理其他雜項數據 ----------
-    const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo, subInfo });
+    const otherBubble = ProfileTemplate.genOtherInformations({ bindInfo });
 
     // ---------- 整理猜拳數據 ----------
     let winCount = get(

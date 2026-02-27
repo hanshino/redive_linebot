@@ -15,8 +15,6 @@ import TradeOrder from "./pages/Trade/Order";
 import TradeManage from "./pages/Trade/Manage";
 import TradeDetail from "./pages/Trade/Detail";
 import TradeTransaction from "./pages/Trade/Transaction";
-import BotNotify from "./pages/Bot/Notify";
-import BotBinding from "./pages/Bot/Binding";
 import GroupRecord from "./pages/Group/Record";
 import GroupConfig from "./pages/Group/Config";
 import GroupBattle from "./pages/Group/Battle";
@@ -65,10 +63,6 @@ export default function App() {
           <Route path="trade/manage" element={<TradeManage />} />
           <Route path="trade/:marketId/detail" element={<TradeDetail />} />
           <Route path="trade/:marketId/transaction" element={<TradeTransaction />} />
-
-          {/* Bot */}
-          <Route path="bot/notify" element={<BotNotify />} />
-          <Route path="bot/notify/binding" element={<BotBinding />} />
 
           {/* Group */}
           <Route path="group/:groupId/record" element={<GroupRecord />} />

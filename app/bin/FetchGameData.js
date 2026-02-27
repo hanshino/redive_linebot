@@ -5,7 +5,6 @@ const domain = process.env.PRINCESS_DB_REMOTE_HOST;
 const gameDataModel = require("../src/model/princess/GameData");
 const path = require("path");
 const { DefaultLogger } = require("../src/util/Logger");
-const Notify = require("../src/util/LineNotify");
 const { get } = require("lodash");
 
 module.exports = async () => {
@@ -69,10 +68,5 @@ async function downloadGameData({ uri, filename }) {
 }
 
 function writeLog(message) {
-  Notify.pushMessage({
-    message,
-    token: process.env.LINE_NOTIFY_TOKEN,
-  }).catch(err => DefaultLogger.error(err));
-
   DefaultLogger.info(message);
 }

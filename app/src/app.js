@@ -43,7 +43,6 @@ const redis = require("./util/redis");
 const i18n = require("./util/i18n");
 const traffic = require("./util/traffic");
 const { showManagePlace } = require("./templates/application/Admin");
-const { pushMessage } = require("./util/LineNotify");
 const AdminModel = require("./model/application/Admin");
 const axios = require("axios");
 const pConfig = require("config");
@@ -248,11 +247,6 @@ async function OrderBased(context, { next }) {
             "green"
           ),
           commonTemplate.genLinkBubble(
-            "📢訂閱系統",
-            `${liffUri}?reactRedirectUri=/Bot/Notify`,
-            "green"
-          ),
-          commonTemplate.genLinkBubble(
             "巴哈更新",
             pConfig.get("links.bahamut"),
             pConfig.get("color.bahamut"),
@@ -273,7 +267,7 @@ async function OrderBased(context, { next }) {
 
       context.replyFlex("實用連結", carousel);
     }),
-    text(".test", () => pushMessage({ message: "test", token: process.env.LINE_NOTIFY_TOKEN })),
+    text(".test", () => console.log("test")),
     text("/resetsession", OpenaiController.resetSession),
     route("*", next),
   ]);
