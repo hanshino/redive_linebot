@@ -32,7 +32,7 @@ export default function StatsGrid() {
   return (
     <Grid container spacing={2} sx={{ mb: 3 }}>
       {statsConfig.map(({ key, label, icon }) => (
-        <Grid size={{ xs: 6, sm: 4, md: 2 }} key={key}>
+        <Grid size={{ xs: 6, sm: 4, md: 4, xl: 2 }} key={key}>
           <StatsCard icon={icon} label={label} value={data[key]} loading={loading} />
         </Grid>
       ))}

@@ -32,7 +32,7 @@ export default function StatsCard({ icon: Icon, label, value, loading }) {
           {loading ? (
             <Skeleton width={80} height={32} />
           ) : (
-            <Typography variant="h5" sx={{ fontVariantNumeric: "tabular-nums" }}>
+            <Typography variant="h5" noWrap sx={{ fontVariantNumeric: "tabular-nums" }}>
               {typeof value === "number" ? value.toLocaleString() : value ?? "—"}
             </Typography>
           )}
