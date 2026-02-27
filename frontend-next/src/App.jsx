@@ -46,60 +46,57 @@ export default function App() {
         {/* Main routes */}
         <Route element={<MainLayout />}>
           <Route index element={<Home />} />
-          <Route path="Rankings" element={<Rankings />} />
+          <Route path="rankings" element={<Rankings />} />
 
           {/* Gacha */}
-          <Route path="Gacha/Exchange" element={<GachaExchange />} />
+          <Route path="gacha/exchange" element={<GachaExchange />} />
 
           {/* ScratchCard */}
-          <Route path="ScratchCard" element={<ScratchCard />} />
-          <Route path="ScratchCard/Exchange" element={<ScratchCardExchange />} />
-          <Route path="ScratchCard/:id" element={<ScratchCardDetail />} />
+          <Route path="scratch-card" element={<ScratchCard />} />
+          <Route path="scratch-card/exchange" element={<ScratchCardExchange />} />
+          <Route path="scratch-card/:id" element={<ScratchCardDetail />} />
 
           {/* Inventory */}
-          <Route path="Bag" element={<Bag />} />
-          <Route path="Equipment" element={<Equipment />} />
+          <Route path="bag" element={<Bag />} />
+          <Route path="equipment" element={<Equipment />} />
 
           {/* Trade */}
-          <Route path="Trade/Order" element={<TradeOrder />} />
-          <Route path="Trade/Manage" element={<TradeManage />} />
-          <Route path="Trade/:marketId/Detail" element={<TradeDetail />} />
-          <Route path="Trade/:marketId/Transaction" element={<TradeTransaction />} />
+          <Route path="trade/order" element={<TradeOrder />} />
+          <Route path="trade/manage" element={<TradeManage />} />
+          <Route path="trade/:marketId/detail" element={<TradeDetail />} />
+          <Route path="trade/:marketId/transaction" element={<TradeTransaction />} />
 
           {/* Bot */}
-          <Route path="Bot/Notify" element={<BotNotify />} />
-          <Route path="Bot/Notify/Binding" element={<BotBinding />} />
+          <Route path="bot/notify" element={<BotNotify />} />
+          <Route path="bot/notify/binding" element={<BotBinding />} />
 
           {/* Group */}
-          <Route path="Group/:groupId/Record" element={<GroupRecord />} />
-          <Route path="Group/:groupId/Config" element={<GroupConfig />} />
-          <Route path="Group/:groupId/Battle" element={<GroupBattle />} />
+          <Route path="group/:groupId/record" element={<GroupRecord />} />
+          <Route path="group/:groupId/config" element={<GroupConfig />} />
+          <Route path="group/:groupId/battle" element={<GroupBattle />} />
 
           {/* Panel */}
-          <Route path="Panel/Manual" element={<PanelManual />} />
-          <Route path="Panel/Group/Battle/Control" element={<BattleControl />} />
-          <Route path="Panel/Group/Battle/:week?/:boss?" element={<BattleSign />} />
+          <Route path="panel/manual" element={<PanelManual />} />
+          <Route path="panel/group/battle/control" element={<BattleControl />} />
+          <Route path="panel/group/battle/:week?/:boss?" element={<BattleSign />} />
 
           {/* Customer Order */}
-          <Route path="Source/:sourceId/Customer/Orders" element={<CustomerOrder />} />
+          <Route path="source/:sourceId/customer/orders" element={<CustomerOrder />} />
 
           {/* Admin */}
-          <Route path="Admin/GachaPool" element={<AdminGachaPool />} />
-          <Route path="Admin/GachaShop" element={<AdminGachaShop />} />
-          <Route path="Admin/GlobalOrder" element={<AdminGlobalOrder />} />
-          <Route path="Admin/Messages" element={<AdminMessages />} />
-          <Route path="Admin/Worldboss" element={<AdminWorldboss />} />
-          <Route path="Admin/WorldbossEvent" element={<AdminWorldbossEvent />} />
-          <Route path="Admin/WorldbossMessage" element={<AdminWorldbossMessage />} />
-          <Route path="Admin/WorldbossMessage/Create" element={<AdminWorldbossMessageCreate />} />
-          <Route
-            path="Admin/WorldbossMessage/Update/:id"
-            element={<AdminWorldbossMessageUpdate />}
-          />
-          <Route path="Admin/ScratchCard" element={<AdminScratchCard />} />
+          <Route path="admin/gacha-pool" element={<AdminGachaPool />} />
+          <Route path="admin/gacha-shop" element={<AdminGachaShop />} />
+          <Route path="admin/global-order" element={<AdminGlobalOrder />} />
+          <Route path="admin/messages" element={<AdminMessages />} />
+          <Route path="admin/worldboss" element={<AdminWorldboss />} />
+          <Route path="admin/worldboss-event" element={<AdminWorldbossEvent />} />
+          <Route path="admin/worldboss-message" element={<AdminWorldbossMessage />} />
+          <Route path="admin/worldboss-message/create" element={<AdminWorldbossMessageCreate />} />
+          <Route path="admin/worldboss-message/update/:id" element={<AdminWorldbossMessageUpdate />} />
+          <Route path="admin/scratch-card" element={<AdminScratchCard />} />
 
           {/* Tools */}
-          <Route path="Tools/BattleTime" element={<ToolsBattleTime />} />
+          <Route path="tools/battle-time" element={<ToolsBattleTime />} />
         </Route>
       </Routes>
     </BrowserRouter>
