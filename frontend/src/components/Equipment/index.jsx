@@ -223,12 +223,13 @@ const Equipment = () => {
         setSnackbar({ open: true, message: "裝備成功！", severity: "success" });
         setSelectedSlot(null);
         fetchMyEquipment();
+        fetchAvailable();
       } catch (e) {
         const msg = get(e, "response.data.message", "裝備失敗");
         setSnackbar({ open: true, message: msg, severity: "error" });
       }
     },
-    [doEquip, fetchMyEquipment]
+    [doEquip, fetchMyEquipment, fetchAvailable]
   );
 
   const handleUnequip = useCallback(
@@ -238,12 +239,13 @@ const Equipment = () => {
         setSnackbar({ open: true, message: "已卸下裝備", severity: "success" });
         setSelectedSlot(null);
         fetchMyEquipment();
+        fetchAvailable();
       } catch (e) {
         const msg = get(e, "response.data.message", "卸下失敗");
         setSnackbar({ open: true, message: msg, severity: "error" });
       }
     },
-    [doUnequip, fetchMyEquipment]
+    [doUnequip, fetchMyEquipment, fetchAvailable]
   );
 
   const handleCloseSnackbar = () => setSnackbar(prev => ({ ...prev, open: false }));
@@ -444,14 +446,15 @@ const EquipDialog = ({
                 typeof item.attributes === "string"
                   ? JSON.parse(item.attributes)
                   : item.attributes;
-              const isEquipped = equippedItem && equippedItem.id === item.id;
+              const eqId = item.equipment_id || item.id;
+              const isEquipped = equippedItem && equippedItem.id === eqId;
 
               return (
                 <ListItem
-                  key={item.id}
+                  key={eqId}
                   className={classes.dialogEquipItem}
                   button
-                  onClick={() => !isEquipped && onEquip(item.id)}
+                  onClick={() => !isEquipped && onEquip(eqId)}
                   disabled={isEquipped || loading}
                 >
                   <ListItemAvatar>
@@ -498,7 +501,7 @@ const EquipDialog = ({
                       <IconButton
                         edge="end"
                         size="small"
-                        onClick={() => onEquip(item.id)}
+                        onClick={() => onEquip(eqId)}
                         disabled={loading}
                       >
                         <Typography variant="caption" color="primary" style={{ fontWeight: 600 }}>

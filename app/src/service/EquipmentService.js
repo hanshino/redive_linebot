@@ -51,19 +51,17 @@ exports.getPlayerEquipment = async userId => {
 };
 
 /**
- * Equip an item. Validates slot and job restriction.
+ * Equip an item from player's inventory. Validates ownership.
  */
-exports.equip = async (userId, equipmentId, jobId) => {
+exports.equip = async (userId, equipmentId) => {
   const equipment = await EquipmentModel.find(equipmentId);
   if (!equipment) throw new Error("裝備不存在");
 
   const slot = equipment.slot;
   if (!VALID_SLOTS.includes(slot)) throw new Error("無效的裝備欄位");
 
-  // Job restriction check
-  if (equipment.job_id !== null && equipment.job_id !== jobId) {
-    throw new Error("此裝備僅限特定職業使用");
-  }
+  // Unequip current item in the same slot first
+  await PlayerEquipmentModel.unequipSlot(userId, slot);
 
   await PlayerEquipmentModel.equipItem(userId, equipmentId, slot);
   await redis.del(`playerEquipment:${userId}`);
@@ -72,13 +70,34 @@ exports.equip = async (userId, equipmentId, jobId) => {
 };
 
 /**
- * Unequip a slot.
+ * Unequip a slot. Item goes back to inventory.
  */
 exports.unequip = async (userId, slot) => {
   if (!VALID_SLOTS.includes(slot)) throw new Error("無效的裝備欄位");
 
   await PlayerEquipmentModel.unequipSlot(userId, slot);
   await redis.del(`playerEquipment:${userId}`);
+};
+
+/**
+ * Get player's unequipped inventory items.
+ */
+exports.getInventory = async userId => {
+  return await PlayerEquipmentModel.getInventory(userId);
+};
+
+/**
+ * Add an equipment item to player's inventory.
+ */
+exports.addToInventory = async (userId, equipmentId) => {
+  const equipment = await EquipmentModel.find(equipmentId);
+  if (!equipment) throw new Error("裝備不存在");
+
+  const hasItem = await PlayerEquipmentModel.hasItem(userId, equipmentId);
+  if (hasItem) throw new Error("已擁有此裝備");
+
+  await PlayerEquipmentModel.addToInventory(userId, equipmentId);
+  return equipment;
 };
 
 /**
