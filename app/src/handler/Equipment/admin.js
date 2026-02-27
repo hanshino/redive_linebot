@@ -26,6 +26,7 @@ exports.updateEquipment = async (req, res) => {
   try {
     await EquipmentService.update(req.params.id, req.body);
     res.json({});
+    // eslint-disable-next-line no-unused-vars
   } catch (e) {
     res.status(500).json({ message: i18n.t("api.error.unknown") });
   }
@@ -35,6 +36,7 @@ exports.deleteEquipment = async (req, res) => {
   try {
     await EquipmentService.destroy(req.params.id);
     res.json({});
+    // eslint-disable-next-line no-unused-vars
   } catch (e) {
     res.status(500).json({ message: i18n.t("api.error.unknown") });
   }

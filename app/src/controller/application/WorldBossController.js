@@ -610,10 +610,12 @@ const attackOnBoss = async (context, props) => {
         display_name: displayName,
         boss_name: eventBoss.name,
       })
-      .trim() + `\n_目前 cost: ${todayCost}/${dailyLimit}_` +
+      .trim() +
+      `\n_目前 cost: ${todayCost}/${dailyLimit}_` +
       (function () {
         const parts = [];
-        if (equipBonuses.atk_percent > 0) parts.push(`ATK+${Math.round(equipBonuses.atk_percent * 100)}%`);
+        if (equipBonuses.atk_percent > 0)
+          parts.push(`ATK+${Math.round(equipBonuses.atk_percent * 100)}%`);
         if (equipBonuses.cost_reduction > 0) parts.push(`Cost-${equipBonuses.cost_reduction}`);
         if (equipBonuses.exp_bonus > 0) parts.push(`EXP+${equipBonuses.exp_bonus}`);
         return parts.length > 0 ? `\n_裝備加成: ${parts.join(", ")}_` : "";

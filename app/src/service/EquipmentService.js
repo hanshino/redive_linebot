@@ -1,7 +1,6 @@
 const EquipmentModel = require("../model/application/Equipment");
 const PlayerEquipmentModel = require("../model/application/PlayerEquipment");
 const redis = require("../util/redis");
-const get = require("lodash/get");
 
 const VALID_SLOTS = ["weapon", "armor", "accessory"];
 const CACHE_TTL = 60 * 60; // 1 hour

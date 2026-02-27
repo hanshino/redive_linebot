@@ -12,10 +12,7 @@ class Equipment extends Base {
   }
 
   async findAvailableForJob(jobId) {
-    return await this.knex
-      .select("*")
-      .where({ job_id: jobId })
-      .orWhereNull("job_id");
+    return await this.knex.select("*").where({ job_id: jobId }).orWhereNull("job_id");
   }
 }
 
