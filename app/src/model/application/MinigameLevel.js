@@ -32,6 +32,7 @@ exports.findByUserId = async userId => {
       user_id: "minigame_level.user_id",
       level: "minigame_level.level",
       exp: "minigame_level.exp",
+      job_id: "minigame_level.job_id",
       job_key: "minigame_job.key",
       job_name: "minigame_job.name",
       job_description: "minigame_job.description",
