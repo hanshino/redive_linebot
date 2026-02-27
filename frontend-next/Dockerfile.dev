@@ -1,5 +1,0 @@
-FROM node:lts
-WORKDIR /app
-ENV PATH=/app/node_modules/.bin:$PATH
-CMD ["yarn", "dev", "--host"]
-EXPOSE 3001

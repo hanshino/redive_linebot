@@ -1,63 +1,35 @@
-import React from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import Card from "@material-ui/core/Card";
-import CardActions from "@material-ui/core/CardActions";
-import CardContent from "@material-ui/core/CardContent";
-import Typography from "@material-ui/core/Typography";
-import Switch from "@material-ui/core/Switch";
-import PropTypes from "prop-types";
+import { useState } from "react";
+import {
+  Card, CardContent, CardActions, Typography, Switch,
+} from "@mui/material";
 
-const useStyles = makeStyles(() => ({
-  card: {
-    minWeight: 275,
-    display: "grid",
-    height: "100%",
-  },
-  footer: {
-    marginTop: "auto",
-    marginLeft: "auto",
-  },
-}));
-
-export default function ConfigCard(props) {
-  const classes = useStyles();
-  const [status, setStatus] = React.useState(props.status === "Y");
-  const { name, handle, isLoggedIn } = props;
+export default function ConfigCard({ title, description, status, name, handle, isLoggedIn }) {
+  const [checked, setChecked] = useState(status === "Y");
 
   const handleChange = () => {
-    handle(name, !status);
-    setStatus(!status);
+    handle(name, !checked);
+    setChecked(!checked);
   };
 
   return (
-    <Card className={classes.card}>
+    <Card sx={{ display: "grid", height: "100%", minWidth: 200 }}>
       <CardContent>
-        <Typography variant="h5" component="h2">
-          {props.title}
+        <Typography variant="h6" component="h2">
+          {title}
         </Typography>
-        <Typography variant="body2" component="p">
-          {props.description}
+        <Typography variant="body2" color="text.secondary">
+          {description}
         </Typography>
       </CardContent>
-      <CardActions className={classes.footer}>
+      <CardActions sx={{ mt: "auto", ml: "auto" }}>
         <Switch
-          checked={status}
-          onChange={isLoggedIn ? handleChange : function () {}}
+          checked={checked}
+          onChange={isLoggedIn ? handleChange : undefined}
           color="primary"
-          name="checkedB"
-          inputProps={{ "aria-label": "primary checkbox" }}
           disabled={!isLoggedIn}
+          inputProps={{ "aria-label": `toggle ${name}` }}
         />
       </CardActions>
     </Card>
   );
 }
-
-ConfigCard.propTypes = {
-  title: PropTypes.string.isRequired,
-  description: PropTypes.string.isRequired,
-  status: PropTypes.string.isRequired,
-  name: PropTypes.string.isRequired,
-  handle: PropTypes.func,
-  isLoggedIn: PropTypes.bool.isRequired,
-};
