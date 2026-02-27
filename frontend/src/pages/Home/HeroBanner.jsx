@@ -1,51 +1,62 @@
-import { Box, Typography, Chip } from "@mui/material";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
+import { Box, Typography } from "@mui/material";
 
 export default function HeroBanner() {
   return (
     <Box
-      sx={(theme) => ({
+      sx={{
         position: "relative",
         borderRadius: 3,
-        p: { xs: 3, md: 5 },
         mb: 3,
-        background:
-          theme.palette.mode === "dark"
-            ? "linear-gradient(135deg, rgba(38, 198, 218, 0.12) 0%, rgba(251, 191, 36, 0.06) 100%)"
-            : "linear-gradient(135deg, rgba(0, 172, 193, 0.08) 0%, rgba(245, 158, 11, 0.05) 100%)",
-        border: `1px solid ${theme.palette.divider}`,
         overflow: "hidden",
-        "&::before": {
-          content: '""',
+        lineHeight: 0,
+      }}
+    >
+      <Box
+        component="img"
+        src="/banner.png"
+        alt="Princess Connect RE:Dive"
+        sx={{
+          width: "100%",
+          height: "auto",
+          display: "block",
+        }}
+      />
+      <Box
+        sx={{
           position: "absolute",
           top: 0,
           left: 0,
-          right: 0,
           bottom: 0,
-          background:
-            theme.palette.mode === "dark"
-              ? "radial-gradient(ellipse at 20% 50%, rgba(38, 198, 218, 0.08) 0%, transparent 70%)"
-              : "radial-gradient(ellipse at 20% 50%, rgba(0, 172, 193, 0.06) 0%, transparent 70%)",
-          pointerEvents: "none",
-        },
-      })}
-    >
-      <Box sx={{ position: "relative", zIndex: 1 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-          <SmartToyIcon sx={{ fontSize: 32, color: "secondary.main" }} />
-          <Typography variant="h4" component="h1">
-            歡迎回來
-          </Typography>
-        </Box>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2, maxWidth: 600 }}>
-          Princess Connect RE:Dive LINE Bot 管理面板
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          px: { xs: 3, md: 5 },
+          lineHeight: "normal",
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          sx={{
+            fontWeight: 700,
+            color: "#fff",
+            textShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            fontSize: { xs: "1.25rem", md: "2rem" },
+          }}
+        >
+          歡迎回來
         </Typography>
-        <Chip
-          label="Bot Online"
-          color="success"
-          size="small"
-          sx={{ fontWeight: 600 }}
-        />
+        <Typography
+          variant="body1"
+          sx={{
+            color: "rgba(255,255,255,0.85)",
+            textShadow: "0 1px 4px rgba(0,0,0,0.3)",
+            mt: 0.5,
+            fontSize: { xs: "0.75rem", md: "1rem" },
+          }}
+        >
+          公主連結 Line 布丁機器人
+        </Typography>
       </Box>
     </Box>
   );

@@ -87,6 +87,7 @@ export default function MainLayout() {
             },
           }}
         >
+          <Toolbar />
           <NavDrawer onClose={() => setMobileOpen(false)} />
         </Drawer>
       )}
