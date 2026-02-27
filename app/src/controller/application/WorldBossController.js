@@ -423,33 +423,168 @@ async function bossEvent(context) {
  * @param {import ("bottender").LineContext} context
  */
 async function showEquipment(context) {
+  const { userId } = context.event.source;
   const liffUrl = config.get("liff.equipmentUrl");
+  const EquipmentService = require("../../service/EquipmentService");
+  const equipped = await EquipmentService.getPlayerEquipment(userId);
+
+  const slotLabels = { weapon: "武器", armor: "防具", accessory: "飾品" };
+  const slotIcons = {
+    weapon: "https://i.imgur.com/oqS9wAU.jpeg",
+    armor: "https://i.imgur.com/jzA0Pp9.jpeg",
+    accessory: "https://i.imgur.com/uZdWvhO.jpeg",
+  };
+  const rarityColors = {
+    common: "#808080",
+    rare: "#3478FF",
+    epic: "#A834FF",
+    legendary: "#FF8C00",
+  };
+
+  const slotRows = ["weapon", "armor", "accessory"].map(slot => {
+    const item = equipped[slot];
+    const label = slotLabels[slot];
+
+    if (!item) {
+      return {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "image",
+            url: slotIcons[slot],
+            size: "xxs",
+            flex: 1,
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: label,
+                size: "xs",
+                color: "#808080",
+              },
+              {
+                type: "text",
+                text: "- 未裝備 -",
+                size: "sm",
+                color: "#AAAAAA",
+              },
+            ],
+            flex: 5,
+            paddingStart: "md",
+          },
+        ],
+        paddingAll: "sm",
+      };
+    }
+
+    const attrs = item.attributes || {};
+    const bonusParts = [];
+    if (attrs.atk_percent) bonusParts.push(`ATK+${Math.round(attrs.atk_percent * 100)}%`);
+    if (attrs.crit_rate) bonusParts.push(`CRT+${Math.round(attrs.crit_rate * 100)}%`);
+    if (attrs.cost_reduction) bonusParts.push(`Cost-${attrs.cost_reduction}`);
+    if (attrs.exp_bonus) bonusParts.push(`EXP+${attrs.exp_bonus}`);
+    if (attrs.gold_bonus) bonusParts.push(`Gold+${attrs.gold_bonus}`);
+
+    return {
+      type: "box",
+      layout: "horizontal",
+      contents: [
+        {
+          type: "image",
+          url: item.image_url || slotIcons[slot],
+          size: "xxs",
+          flex: 1,
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: label,
+              size: "xs",
+              color: "#808080",
+            },
+            {
+              type: "text",
+              text: item.name,
+              size: "sm",
+              weight: "bold",
+              color: rarityColors[item.rarity] || "#808080",
+            },
+            {
+              type: "text",
+              text: bonusParts.join("  "),
+              size: "xxs",
+              color: "#5656FA",
+            },
+          ],
+          flex: 5,
+          paddingStart: "md",
+        },
+      ],
+      paddingAll: "sm",
+    };
+  });
+
   await context.replyFlex("裝備管理", {
     type: "bubble",
     body: {
       type: "box",
       layout: "vertical",
       contents: [
-        { type: "text", text: "裝備管理", weight: "bold", size: "lg" },
         {
           type: "text",
-          text: "點擊下方按鈕管理你的裝備",
-          size: "sm",
-          color: "#999999",
-          margin: "md",
+          text: "裝備一覽",
+          weight: "bold",
+          size: "lg",
         },
+        {
+          type: "box",
+          layout: "vertical",
+          contents: [{ type: "separator", color: "#808080" }],
+          paddingTop: "md",
+          paddingBottom: "md",
+        },
+        ...slotRows.flatMap((row, i) =>
+          i < slotRows.length - 1
+            ? [row, { type: "separator", margin: "sm", color: "#E8E8E8" }]
+            : [row]
+        ),
       ],
+      backgroundColor: "#EDDFC4",
     },
     footer: {
       type: "box",
       layout: "vertical",
       contents: [
         {
-          type: "button",
-          action: { type: "uri", label: "開啟裝備頁面", uri: liffUrl },
-          style: "primary",
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "裝備管理",
+              align: "center",
+              color: "#FFFFFF",
+              weight: "bold",
+            },
+          ],
+          backgroundColor: "#5656FA",
+          paddingAll: "md",
+          cornerRadius: "md",
+          action: {
+            type: "uri",
+            label: "裝備管理",
+            uri: liffUrl,
+          },
         },
       ],
+      backgroundColor: "#EDDFC4",
     },
   });
 }
