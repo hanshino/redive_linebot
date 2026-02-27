@@ -1,5 +1,5 @@
 # build environment
-FROM node:24-alpine AS build
+FROM node:24 AS build
 WORKDIR /app
 ENV PATH=/app/node_modules/.bin:$PATH
 COPY package.json yarn.lock ./
