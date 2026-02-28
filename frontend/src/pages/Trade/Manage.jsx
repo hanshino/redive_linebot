@@ -108,7 +108,7 @@ export default function TradeManage() {
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
   const [{ data: marketList = [], loading }, fetchMarketList] = useAxios(
     {
-      url: "/api/Trade",
+      url: "/api/trades",
       params: {
         page: paginationModel.page + 1,
         per_page: paginationModel.pageSize,

@@ -26,16 +26,16 @@ export default function GachaExchange() {
   });
   const [dialog, { handleOpen: openDialog, handleClose: closeDialog }] = useAlertDialog();
 
-  const [{ data, loading }, fetchData] = useAxios("/api/GodStoneShop", {
+  const [{ data, loading }, fetchData] = useAxios("/api/god-stone-shop", {
     manual: true,
   });
   const [{ data: history, loading: historyLoading }, fetchHistory] = useAxios(
-    "/api/GodStoneShop/history",
+    "/api/god-stone-shop/history",
     { manual: true }
   );
   const [{ data: purchaseResponse, loading: purchaseLoading, error: purchaseError }, doPurchase] =
     useAxios(
-      { url: "/api/GodStoneShop/purchase", method: "POST" },
+      { url: "/api/god-stone-shop/purchase", method: "POST" },
       { manual: true }
     );
 

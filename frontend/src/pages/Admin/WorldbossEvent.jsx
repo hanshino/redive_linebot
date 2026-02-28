@@ -28,7 +28,7 @@ import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
 
 function EditDialog({ open, onClose, onSubmit, loading: parentLoading }) {
-  const [{ data: bossData = [], loading }] = useAxios("/api/Admin/WorldBoss");
+  const [{ data: bossData = [], loading }] = useAxios("/api/admin/world-bosses");
   const bossEl = useRef(null);
   const announceEl = useRef(null);
   const startTimeEl = useRef(null);
@@ -121,14 +121,14 @@ export default function AdminWorldbossEvent() {
   const { loggedIn: isLoggedIn } = useLiff();
   const [hintState, { handleOpen, handleClose }] = useHintBar();
   const [{ data, loading, error }, fetchData] = useAxios(
-    "/api/Admin/WorldBossEvent",
+    "/api/admin/world-boss-events",
     { manual: true }
   );
   const [
     { data: createdResponse, loading: createdLoading, error: createdError },
     createData,
   ] = useAxios(
-    { url: "/api/Admin/WorldBossEvent", method: "POST" },
+    { url: "/api/admin/world-boss-events", method: "POST" },
     { manual: true }
   );
   const [
@@ -181,7 +181,7 @@ export default function AdminWorldbossEvent() {
         <IconButton
           size="small"
           onClick={() =>
-            deleteData({ url: `/api/Admin/WorldBossEvent/${params.row.id}` })
+            deleteData({ url: `/api/admin/world-boss-events/${params.row.id}` })
           }
         >
           <DeleteIcon sx={{ color: red[500] }} />
@@ -242,7 +242,7 @@ export default function AdminWorldbossEvent() {
 
   const handleProcessRowUpdate = (newRow, oldRow) => {
     updateData({
-      url: `/api/Admin/WorldBossEvent/${oldRow.id}`,
+      url: `/api/admin/world-boss-events/${oldRow.id}`,
       data: newRow,
     });
     return newRow;

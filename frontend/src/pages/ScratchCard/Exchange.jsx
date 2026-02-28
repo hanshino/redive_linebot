@@ -16,15 +16,15 @@ const columns = [
 
 export default function ScratchCardExchange() {
   const { loggedIn: isLoggedIn } = useLiff();
-  const [{ data = [], loading }, refetch] = useAxios("/api/ScratchCard/MyCards", {
+  const [{ data = [], loading }, refetch] = useAxios("/api/scratch-cards/my-cards", {
     manual: true,
   });
   const [{ data: cardCountData, loading: cardCountLoading }, fetchCount] = useAxios(
-    "/api/ScratchCard/MyCards/Count",
+    "/api/scratch-cards/my-cards/count",
     { manual: true }
   );
   const [{ data: exchangeData, loading: exchangeLoading, error }, exchange] = useAxios(
-    { url: "/api/ScratchCard/Exchange", method: "PUT" },
+    { url: "/api/scratch-cards/exchange", method: "PUT" },
     { manual: true }
   );
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });

@@ -6,7 +6,7 @@ const client = new ImgurClient({
   clientId: process.env.IMGUR_CLIENT_ID,
 });
 
-router.post("/image", async (req, res) => {
+router.post("/images", async (req, res) => {
   try {
     const { image } = req.body;
     const data = await client.upload({

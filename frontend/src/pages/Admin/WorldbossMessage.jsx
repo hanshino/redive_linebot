@@ -22,7 +22,7 @@ function ControlButtons({ onDeleteComplete, value }) {
   const navigate = useNavigate();
   const [{ data = {}, loading }, doDelete] = useAxios(
     {
-      url: `/api/Game/World/Boss/Feature/Message/${value}`,
+      url: `/api/game/world-boss/feature-messages/${value}`,
       method: "DELETE",
     },
     { manual: true }
@@ -71,7 +71,7 @@ function genAvatar({ value }) {
 
 function DataList() {
   const [{ data = {}, error, loading }, refetch] = useAxios(
-    "/api/Game/World/Boss/Feature/Message"
+    "/api/game/world-boss/feature-messages"
   );
   const { data: messageData = [] } = data;
   const columns = [

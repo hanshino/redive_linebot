@@ -4,7 +4,7 @@ import RankingBarChart from "./RankingBarChart";
 import { RANK_COLORS } from "./OverviewCard";
 
 export function useChatLevelData() {
-  const [{ data, loading }] = useAxios("/api/Chat/Level/Rank");
+  const [{ data, loading }] = useAxios("/api/chat-levels/rankings");
 
   const rows = useMemo(() => {
     if (!data) return [];

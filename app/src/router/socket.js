@@ -2,7 +2,7 @@ const { io } = require("../util/connection");
 const { socketSetProfile, socketVerifyAdmin } = require("../middleware/validation");
 var onlineCounter = 0;
 
-io.of("/Admin/Messages")
+io.of("/admin/messages")
   .use(socketSetProfile)
   .use(socketVerifyAdmin)
   .on("connection", () => {

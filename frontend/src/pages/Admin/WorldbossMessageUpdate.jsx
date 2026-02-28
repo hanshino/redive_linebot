@@ -203,14 +203,14 @@ export default function AdminWorldbossMessageUpdate() {
   const navigate = useNavigate();
   const [errorControl, setError] = useState({ show: false, message: "" });
   const [{ data, loading }] = useAxios(
-    `/api/Game/World/Boss/Feature/Message/${id}`
+    `/api/game/world-boss/feature-messages/${id}`
   );
   const [
     { data: updateData, loading: updateLoading, error: updateError },
     update,
   ] = useAxios(
     {
-      url: `/api/Game/World/Boss/Feature/Message/${id}`,
+      url: `/api/game/world-boss/feature-messages/${id}`,
       method: "PUT",
     },
     { manual: true }

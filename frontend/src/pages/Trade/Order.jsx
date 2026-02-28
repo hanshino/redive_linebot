@@ -15,9 +15,9 @@ export default function TradeOrder() {
   const { loggedIn: isLoggedIn, liffContext } = useLiff();
   const selectEl = useRef(null);
   const chargeEl = useRef(null);
-  const [{ data = [], loading }, fetchItems] = useAxios("/api/Inventory", { manual: true });
+  const [{ data = [], loading }, fetchItems] = useAxios("/api/inventory", { manual: true });
   const [{ data: createResponse, loading: createLoading, error }, createOrder] = useAxios(
-    { url: "/api/Trade", method: "POST" },
+    { url: "/api/trades", method: "POST" },
     { manual: true }
   );
   const [{ open, message, severity }, { handleOpen, handleClose }] = useHintBar();
@@ -161,7 +161,7 @@ export default function TradeOrder() {
 }
 
 function TradeCreateResult({ marketId }) {
-  const [{ data: marketData, loading }] = useAxios(`/api/Market/${marketId}`);
+  const [{ data: marketData, loading }] = useAxios(`/api/market/${marketId}`);
 
   const handleShare = () => {
     liff.shareTargetPicker([

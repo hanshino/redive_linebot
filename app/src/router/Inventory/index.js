@@ -4,11 +4,11 @@ const createRouter = require("express").Router;
 const router = createRouter();
 
 // 取得所有物品
-router.get("/Inventory", verifyToken, all);
+router.get("/inventory", verifyToken, all);
 
 // 取得角色池
-router.get("/Inventory/Pool", getPool);
+router.get("/inventory/pool", getPool);
 
-router.get("/Inventory/TotalGodStone", verifyToken, totalGodStone);
+router.get("/inventory/total-god-stone", verifyToken, totalGodStone);
 
 exports.router = router;

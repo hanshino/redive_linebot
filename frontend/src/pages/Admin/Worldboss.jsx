@@ -44,12 +44,12 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
   const goldEl = useRef(null);
   const descEl = useRef(null);
   const [{ data = {}, loading }, fetchData] = useAxios(
-    `/api/Admin/Worldboss/${id}`,
+    `/api/admin/world-bosses/${id}`,
     { manual: true }
   );
   const [image, setImage] = useState(null);
   const [{ data: uploadResult = {}, loading: uploading }, doUpload] = useAxios(
-    { url: "/api/image", method: "POST" },
+    { url: "/api/images", method: "POST" },
     { manual: true }
   );
 
@@ -259,7 +259,7 @@ export default function AdminWorldboss() {
   const [dialogState, { handleOpen: openDialog, handleClose: closeDialog }] =
     useAlertDialog();
   const [{ data = [], loading }, fetchData] = useAxios(
-    "/api/Admin/Worldboss",
+    "/api/admin/world-bosses",
     { manual: true }
   );
   const [
@@ -301,7 +301,7 @@ export default function AdminWorldboss() {
                 onCancel: () => closeDialog(),
                 onSubmit: () => {
                   deleteDataRequest({
-                    url: `/api/Admin/Worldboss/${rawData.value}`,
+                    url: `/api/admin/world-bosses/${rawData.value}`,
                   });
                   closeDialog();
                 },
@@ -360,12 +360,12 @@ export default function AdminWorldboss() {
     const id = get(formData, "id");
     if (id) {
       updateDataRequest({
-        url: `/api/Admin/Worldboss/${id}`,
+        url: `/api/admin/world-bosses/${id}`,
         data: formData,
       });
     } else {
       createDataRequest({
-        url: `/api/Admin/Worldboss`,
+        url: `/api/admin/world-bosses`,
         data: formData,
       });
     }

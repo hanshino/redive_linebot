@@ -173,11 +173,11 @@ export default function GroupRecord() {
   const isLoggedIn = window.liff?.isLoggedIn?.() ?? false;
 
   const [{ data: rankData, loading: rankLoading }, fetchRank] = useAxios(
-    { url: `/api/Group/${groupId}/Speak/Rank` },
+    { url: `/api/groups/${groupId}/speak-rank` },
     { manual: true },
   );
   const [{ data: groupData, loading: groupLoading }, fetchGroup] = useAxios(
-    { url: `/api/Guild/${groupId}/Summary` },
+    { url: `/api/guilds/${groupId}` },
     { manual: true },
   );
 

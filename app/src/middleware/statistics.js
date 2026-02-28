@@ -1,6 +1,6 @@
 const { io } = require("../util/connection");
 const redis = require("../util/redis");
-const MessageIO = io.of("/Admin/Messages");
+const MessageIO = io.of("/admin/messages");
 
 /**
  * 數據紀錄

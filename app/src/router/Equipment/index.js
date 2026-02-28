@@ -3,16 +3,16 @@ const AdminRouter = createRouter();
 const PlayerRouter = createRouter();
 const { admin: adminHandler, player: playerHandler } = require("../../handler/Equipment");
 
-AdminRouter.get("/Equipment", adminHandler.getAllEquipment);
-AdminRouter.get("/Equipment/:id", adminHandler.getEquipmentById);
-AdminRouter.post("/Equipment", adminHandler.storeEquipment);
-AdminRouter.put("/Equipment/:id", adminHandler.updateEquipment);
-AdminRouter.delete("/Equipment/:id", adminHandler.deleteEquipment);
+AdminRouter.get("/equipment", adminHandler.getAllEquipment);
+AdminRouter.get("/equipment/:id", adminHandler.getEquipmentById);
+AdminRouter.post("/equipment", adminHandler.storeEquipment);
+AdminRouter.put("/equipment/:id", adminHandler.updateEquipment);
+AdminRouter.delete("/equipment/:id", adminHandler.deleteEquipment);
 
-PlayerRouter.get("/Equipment/me", playerHandler.getMyEquipment);
-PlayerRouter.get("/Equipment/available", playerHandler.getAvailableEquipment);
-PlayerRouter.post("/Equipment/equip", playerHandler.equip);
-PlayerRouter.post("/Equipment/unequip", playerHandler.unequip);
+PlayerRouter.get("/equipment/me", playerHandler.getMyEquipment);
+PlayerRouter.get("/equipment/available", playerHandler.getAvailableEquipment);
+PlayerRouter.post("/equipment/equip", playerHandler.equip);
+PlayerRouter.post("/equipment/unequip", playerHandler.unequip);
 
 exports.admin = AdminRouter;
 exports.player = PlayerRouter;
