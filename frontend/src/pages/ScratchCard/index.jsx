@@ -9,11 +9,11 @@ import useLiff from "../../context/useLiff";
 
 export default function ScratchCard() {
   const { loggedIn: isLoggedIn } = useLiff();
-  const [{ data = [], loading }, fetchData] = useAxios("/api/ScratchCard", {
+  const [{ data = [], loading }, fetchData] = useAxios("/api/scratch-cards", {
     manual: true,
   });
   const [{ data: totalData = 0, loading: totalLoading }, fetchTotal] = useAxios(
-    "/api/Inventory/TotalGodStone",
+    "/api/inventory/total-god-stone",
     { manual: true }
   );
 

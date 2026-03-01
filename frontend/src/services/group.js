@@ -1,30 +1,30 @@
 import api from "./api";
 
 export const fetchGroupSpeakRank = (groupId) =>
-  api.get(`/api/Group/${groupId}/Speak/Rank`).then(r => r.data);
+  api.get(`/api/groups/${groupId}/speak-rank`).then(r => r.data);
 export const fetchGroupConfig = (groupId) =>
-  api.get(`/api/Group/${groupId}/Config`).then(r => r.data);
+  api.get(`/api/groups/${groupId}/config`).then(r => r.data);
 export const fetchGroupConfigData = () =>
-  api.get("/api/GroupConfig").then(r => r.data);
+  api.get("/api/group-config").then(r => r.data);
 export const switchGroupConfig = (groupId, name, status) =>
-  api.put(`/api/Group/${groupId}/Name/${name}/${status}`).then(r => r.data);
+  api.put(`/api/groups/${groupId}/features/${name}/${status}`).then(r => r.data);
 export const setDiscordWebhook = (groupId, webhook) =>
-  api.post(`/api/Group/${groupId}/Discord/Webhook`, { webhook }).then(r => r.data);
+  api.post(`/api/groups/${groupId}/discord-webhook`, { webhook }).then(r => r.data);
 export const removeDiscordWebhook = (groupId) =>
-  api.delete(`/api/Group/${groupId}/Discord/Webhook`).then(r => r.data);
+  api.delete(`/api/groups/${groupId}/discord-webhook`).then(r => r.data);
 export const testDiscordWebhook = (webhook) =>
-  api.post("/api/Discord/Webhook", { webhook }).then(r => r.data);
+  api.post("/api/discord/webhook-test", { webhook }).then(r => r.data);
 export const setWelcomeMessage = (groupId, message) =>
-  api.post(`/api/Group/${groupId}/WelcomeMessage`, { message }).then(r => r.data);
+  api.post(`/api/groups/${groupId}/welcome-message`, { message }).then(r => r.data);
 export const fetchGroupSummarys = () =>
-  api.get("/api/Guild/Summarys").then(r => r.data);
+  api.get("/api/guilds").then(r => r.data);
 export const getGroupInfo = (groupId) =>
-  api.get(`/api/Guild/${groupId}/Summary`).then(r => r.data);
+  api.get(`/api/guilds/${groupId}`).then(r => r.data);
 export const setSender = (groupId, sender) =>
-  api.put(`/api/Group/${groupId}/Sender`, { sender }).then(r => r.data);
+  api.put(`/api/groups/${groupId}/sender`, { sender }).then(r => r.data);
 export const getSignList = (groupId, month) =>
-  api.get(`/api/Guild/${groupId}/Battle/Sign/List/Month/${month}`).then(r => r.data);
+  api.get(`/api/guilds/${groupId}/battle-signs/months/${month}`).then(r => r.data);
 export const getBattleConfig = (groupId) =>
-  api.get(`/api/Guild/${groupId}/Battle/Config`).then(r => r.data);
+  api.get(`/api/guilds/${groupId}/battle-config`).then(r => r.data);
 export const updateBattleConfig = (groupId, data) =>
-  api.put(`/api/Guild/${groupId}/Battle/Config`, data).then(r => r.data);
+  api.put(`/api/guilds/${groupId}/battle-config`, data).then(r => r.data);

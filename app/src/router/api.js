@@ -36,15 +36,15 @@ router.use(MarketRouter);
 router.use(InventoryRouter);
 router.use(TradeRouter);
 router.use(ImgurRouter);
-router.use("/ScratchCard", ScratchCardRouter);
-router.use("/Admin", verifyToken, verifyAdmin, verifyPrivilege(5));
+router.use("/scratch-cards", ScratchCardRouter);
+router.use("/admin", verifyToken, verifyAdmin, verifyPrivilege(5));
 
-router.use("/Admin", AdminWorldBossRouter);
-router.use("/Admin", AdminWorldBossEventRouter);
-router.use("/Admin", AdminEquipmentRouter);
+router.use("/admin", AdminWorldBossRouter);
+router.use("/admin", AdminWorldBossEventRouter);
+router.use("/admin", AdminEquipmentRouter);
 
 router.use(GodStoneShopRouter);
-router.use("/Game", verifyToken, PlayerEquipmentRouter);
+router.use("/game", verifyToken, PlayerEquipmentRouter);
 
 router.get("/me", verifyToken, async (req, res) => {
   const { userId } = req.profile;
@@ -56,7 +56,7 @@ router.get("/me", verifyToken, async (req, res) => {
   });
 });
 
-router.get("/send-id", (req, res) => {
+router.get("/liff-ids", (req, res) => {
   const { size } = req.query || "full";
   let liffId = "";
 
@@ -77,16 +77,16 @@ router.get("/send-id", (req, res) => {
   res.json({ id: liffId });
 });
 
-router.get("/Group/:groupId/Speak/Rank", GroupRecordController.getRankDatas);
+router.get("/groups/:groupId/speak-rank", GroupRecordController.getRankDatas);
 
 /** Customer Orders */
 router.get(
-  "/Source/:sourceId/Customer/Orders",
+  "/sources/:sourceId/custom-orders",
   (req, res, next) => verifyId(req.params.sourceId, res, next),
   CustomerOrderController.api.fetchCustomerOrders
 );
 router.post(
-  "/Source/:sourceId/Customer/Orders",
+  "/sources/:sourceId/custom-orders",
   (req, res, next) => verifyId(req.params.sourceId, res, next),
   verifyToken,
   CustomerOrderController.api.insertOrder
@@ -96,7 +96,7 @@ router.post(
  * 更新指令內容
  */
 router.put(
-  "/Source/:sourceId/Customer/Orders",
+  "/sources/:sourceId/custom-orders",
   (req, res, next) => verifyId(req.params.sourceId, res, next),
   verifyToken,
   CustomerOrderController.api.updateOrder
@@ -106,7 +106,7 @@ router.put(
  * 修改指令狀態
  */
 router.put(
-  "/Source/:sourceId/Customer/Orders/:orderKey/:status",
+  "/sources/:sourceId/custom-orders/:orderKey/status",
   (req, res, next) => verifyId(req.params.sourceId, res, next),
   verifyToken,
   CustomerOrderController.api.setCustomerOrderStatus
@@ -117,7 +117,7 @@ router.put(
  * 設定群組發送人
  */
 router.put(
-  "/Group/:groupId/Sender",
+  "/groups/:groupId/sender",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
   verifyToken,
   GroupConfigController.api.setSender
@@ -127,7 +127,7 @@ router.put(
  * 群組功能開關切換
  */
 router.put(
-  "/Group/:groupId/Name/:name/:status",
+  "/groups/:groupId/features/:name/:status",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
   verifyToken,
   GroupConfigController.api.switchConfig
@@ -137,7 +137,7 @@ router.put(
  * 群組 Discord Webhook 連動設定
  */
 router.post(
-  "/Group/:groupId/Discord/Webhook",
+  "/groups/:groupId/discord-webhook",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
   verifyToken,
   GroupConfigController.api.setDiscordWebhook
@@ -147,7 +147,7 @@ router.post(
  * 群組加入新成員歡迎語句設定
  */
 router.post(
-  "/Group/:groupId/WelcomeMessage",
+  "/groups/:groupId/welcome-message",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
   verifyToken,
   GroupConfigController.api.setWelcomeMessage
@@ -157,7 +157,7 @@ router.post(
  * 群組 Discord Webhook 解除設定
  */
 router.delete(
-  "/Group/:groupId/Discord/Webhook",
+  "/groups/:groupId/discord-webhook",
   (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
   verifyToken,
   GroupConfigController.api.removeDiscordWebhook
@@ -166,7 +166,7 @@ router.delete(
 /**
  * 綁定群組 Discord Webhook
  */
-router.post("/Discord/Webhook", (req, res) => {
+router.post("/discord/webhook-test", (req, res) => {
   webhook
     .test(req.body.webhook)
     .then(isSuccess => res.status(isSuccess ? 200 : 403).send(""))
@@ -179,38 +179,38 @@ router.post("/Discord/Webhook", (req, res) => {
 /**
  * 取得群組設定
  */
-router.get("/Group/:groupId/Config", GroupConfigController.api.fetchConfig);
+router.get("/groups/:groupId/config", GroupConfigController.api.fetchConfig);
 
 /**
  * 群組設定檔
  */
-router.get("/GroupConfig", (req, res) => res.json(GroupConfig));
+router.get("/group-config", (req, res) => res.json(GroupConfig));
 
 /**
  * 管理員轉蛋資料
  */
-router.get("/Admin/GachaPool/Data", verifyPrivilege(1), gacha.api.showGachaPool);
+router.get("/admin/gacha-pool", verifyPrivilege(1), gacha.api.showGachaPool);
 
 /**
  * 編輯管理員轉蛋資料
  */
-router.put("/Admin/GachaPool/Data", verifyPrivilege(9), gacha.api.updateCharacter);
+router.put("/admin/gacha-pool", verifyPrivilege(9), gacha.api.updateCharacter);
 
 /**
  * 新增管理員轉蛋資料
  */
-router.post("/Admin/GachaPool/Data", verifyPrivilege(9), gacha.api.insertCharacter);
+router.post("/admin/gacha-pool", verifyPrivilege(9), gacha.api.insertCharacter);
 
 /**
  * 刪除管理員轉蛋資料
  */
-router.delete("/Admin/GachaPool/Data/:id", verifyPrivilege(9), gacha.api.deleteCharacter);
+router.delete("/admin/gacha-pool/:id", verifyPrivilege(9), gacha.api.deleteCharacter);
 
 /**
  * 取得管理員全群指令
  */
 router.get(
-  "/Admin/GlobalOrders/Data",
+  "/admin/global-orders",
   verifyPrivilege(1),
   GlobalOrdersController.api.showGlobalOrders
 );
@@ -219,7 +219,7 @@ router.get(
  * 新增管理員全群指令
  */
 router.post(
-  "/Admin/GlobalOrders/Data",
+  "/admin/global-orders",
   verifyPrivilege(9),
   GlobalOrdersController.api.insertGlobalOrders
 );
@@ -228,7 +228,7 @@ router.post(
  * 編輯管理員全群指令
  */
 router.put(
-  "/Admin/GlobalOrders/Data",
+  "/admin/global-orders",
   verifyPrivilege(9),
   GlobalOrdersController.api.updateGlobalOrders
 );
@@ -237,7 +237,7 @@ router.put(
  * 刪除管理員全群指令
  */
 router.delete(
-  "/Admin/GlobalOrders/Data/:orderKey",
+  "/admin/global-orders/:orderKey",
   verifyPrivilege(9),
   GlobalOrdersController.api.deleteGlobalOrders
 );
@@ -245,33 +245,33 @@ router.delete(
 /**
  * 取得轉蛋排行
  */
-router.get("/Gacha/Rank/:type", gacha.api.showGachaRank);
+router.get("/gacha/rankings/:type", gacha.api.showGachaRank);
 
 /**
  * 取得女神石排行榜
  */
-router.get("/God-Stone/Rank", gacha.api.showGodStoneRank);
+router.get("/god-stone/rankings", gacha.api.showGodStoneRank);
 
 /**
  * 取得布丁使用數據
  */
-router.get("/Pudding/Statistics", showStatistics);
+router.get("/statistics", showStatistics);
 
 /**
  * 取得個人用戶使用數據
  */
-router.get("/My/Statistics", verifyToken, showUserStatistics);
+router.get("/users/me/statistics", verifyToken, showUserStatistics);
 
 /**
  * 取得個人群組資料
  */
-router.get("/Guild/Summarys", verifyToken, GuildController.api.getGuildSummarys);
+router.get("/guilds", verifyToken, GuildController.api.getGuildSummarys);
 
 /**
  * 取得特定群組資訊
  */
 router.get(
-  "/Guild/:guildId/Summary",
+  "/guilds/:guildId",
   (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
   verifyToken,
   GuildController.api.getGuildSummary
@@ -281,7 +281,7 @@ router.get(
  * 取得群組三刀簽到表
  */
 router.get(
-  "/Guild/:guildId/Battle/Sign/List/Month/:month",
+  "/guilds/:guildId/battle-signs/months/:month",
   (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
   GuildBattleController.api.showSigninList
 );
@@ -290,31 +290,31 @@ router.get(
  * 群組戰隊設定資訊
  */
 router.get(
-  "/Guild/:guildId/Battle/Config",
+  "/guilds/:guildId/battle-config",
   (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
   verifyToken,
   GuildBattleController.api.getGuildBattleConfig
 );
 
 router.put(
-  "/Guild/:guildId/Battle/Config",
+  "/guilds/:guildId/battle-config",
   (req, res, next) => verifyLineGroupId(req.params.guildId, res, next),
   verifyToken,
   GuildBattleController.api.updateGuildBattleConfig
 );
 
-router.get("/Princess/Character/Images", PrincessCharacterController.api.getCharacterImages);
+router.get("/characters/images", PrincessCharacterController.api.getCharacterImages);
 
-router.get("/Chat/Level/Rank", ChatLevelController.api.queryRank);
+router.get("/chat-levels/rankings", ChatLevelController.api.queryRank);
 
-router.get("/Announcement/:page", AnnounceController.api.queryData);
+router.get("/announcements/:page", AnnounceController.api.queryData);
 
 /**
  * 小遊戲 - 世界王
  */
 // 新增世界王傷害特色訊息
 router.post(
-  "/Game/World/Boss/Feature/Message",
+  "/game/world-boss/feature-messages",
   verifyToken,
   verifyAdmin,
   verifyPrivilege(3),
@@ -322,7 +322,7 @@ router.post(
 );
 // 取得世界王傷害特色訊息
 router.get(
-  "/Game/World/Boss/Feature/Message",
+  "/game/world-boss/feature-messages",
   verifyToken,
   verifyAdmin,
   verifyPrivilege(1),
@@ -330,7 +330,7 @@ router.get(
 );
 // 取得世界王傷害特色訊息 - 單筆
 router.get(
-  "/Game/World/Boss/Feature/Message/:id",
+  "/game/world-boss/feature-messages/:id",
   verifyToken,
   verifyAdmin,
   verifyPrivilege(1),
@@ -338,7 +338,7 @@ router.get(
 );
 // 編輯世界王傷害特色訊息
 router.put(
-  "/Game/World/Boss/Feature/Message/:id",
+  "/game/world-boss/feature-messages/:id",
   verifyToken,
   verifyAdmin,
   verifyPrivilege(3),
@@ -346,7 +346,7 @@ router.put(
 );
 // 刪除世界王傷害特色訊息
 router.delete(
-  "/Game/World/Boss/Feature/Message/:id",
+  "/game/world-boss/feature-messages/:id",
   verifyToken,
   verifyAdmin,
   verifyPrivilege(3),

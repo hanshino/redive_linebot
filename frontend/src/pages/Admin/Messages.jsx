@@ -236,7 +236,7 @@ export default function AdminMessages() {
   useEffect(() => {
     if (!isLoggedIn) return;
     document.title = "管理員後台訊息管理";
-    const socket = io("/Admin/Messages", {
+    const socket = io("/admin/messages", {
       auth: {
         token: liff.getAccessToken(),
       },

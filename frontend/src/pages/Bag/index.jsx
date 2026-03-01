@@ -7,10 +7,10 @@ import useLiff from "../../context/useLiff";
 
 export default function Bag() {
   const { loggedIn: isLoggedIn } = useLiff();
-  const [{ data: items = [], loading: itemLoading }] = useAxios("/api/Inventory", {
+  const [{ data: items = [], loading: itemLoading }] = useAxios("/api/inventory", {
     manual: !isLoggedIn,
   });
-  const [{ data: pool = [], loading: poolLoading }] = useAxios("/api/Inventory/Pool", {
+  const [{ data: pool = [], loading: poolLoading }] = useAxios("/api/inventory/pool", {
     manual: !isLoggedIn,
   });
 

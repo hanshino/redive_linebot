@@ -28,15 +28,15 @@ const columns = [
 export default function ScratchCardDetail() {
   const { loggedIn: isLoggedIn } = useLiff();
   const { id } = useParams();
-  const [{ data: card, loading }, fetchCard] = useAxios(`/api/ScratchCard/${id}`, {
+  const [{ data: card, loading }, fetchCard] = useAxios(`/api/scratch-cards/${id}`, {
     manual: true,
   });
   const [{ data: characters, loading: charactersLoading }, fetchCharacters] = useAxios(
-    "/api/Princess/Character/Images",
+    "/api/characters/images",
     { manual: true }
   );
   const [{ data: purchaseResult, loading: purchaseLoading, error }, doPurchase] = useAxios(
-    { url: `/api/ScratchCard/${id}/Purchase`, method: "POST" },
+    { url: `/api/scratch-cards/${id}/purchase`, method: "POST" },
     { manual: true }
   );
   const [chooseList, setChooseList] = useState([]);

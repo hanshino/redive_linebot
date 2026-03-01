@@ -201,7 +201,7 @@ export default function AdminWorldbossMessageCreate() {
   const navigate = useNavigate();
   const [{ data, loading, error }, sendRequest] = useAxios(
     {
-      url: "/api/Game/World/Boss/Feature/Message",
+      url: "/api/game/world-boss/feature-messages",
       method: "POST",
     },
     { manual: true }

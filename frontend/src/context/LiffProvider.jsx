@@ -20,7 +20,7 @@ export default function LiffProvider({ children }) {
     const size = window.localStorage.getItem("liff_size") || "full";
 
     api
-      .get(`/api/send-id?size=${size}`)
+      .get(`/api/liff-ids?size=${size}`)
       .then((res) => res.data)
       .then((data) => liff.init({ liffId: data.id }))
       .then(() => {

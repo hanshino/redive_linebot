@@ -4,7 +4,7 @@ import RankingBarChart from "./RankingBarChart";
 import { RANK_COLORS } from "./OverviewCard";
 
 export function useGachaRankData() {
-  const [{ data, loading }] = useAxios("/api/Gacha/Rank/0");
+  const [{ data, loading }] = useAxios("/api/gacha/rankings/0");
 
   const rows = useMemo(() => {
     if (!data) return [];

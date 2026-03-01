@@ -368,19 +368,19 @@ export default function Equipment() {
   const [snackbar, { handleOpen: showSnack, handleClose: closeSnack }] = useHintBar();
 
   const [{ data: myData, loading: myLoading }, fetchMyEquipment] = useAxios(
-    "/api/Game/Equipment/me",
+    "/api/game/equipment/me",
     { manual: true }
   );
   const [{ data: availableList = [], loading: availableLoading }, fetchAvailable] = useAxios(
-    "/api/Game/Equipment/available",
+    "/api/game/equipment/available",
     { manual: true }
   );
   const [{ loading: equipLoading }, doEquip] = useAxios(
-    { url: "/api/Game/Equipment/equip", method: "POST" },
+    { url: "/api/game/equipment/equip", method: "POST" },
     { manual: true }
   );
   const [{ loading: unequipLoading }, doUnequip] = useAxios(
-    { url: "/api/Game/Equipment/unequip", method: "POST" },
+    { url: "/api/game/equipment/unequip", method: "POST" },
     { manual: true }
   );
 

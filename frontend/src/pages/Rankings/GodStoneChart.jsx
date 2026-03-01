@@ -4,7 +4,7 @@ import RankingBarChart from "./RankingBarChart";
 import { RANK_COLORS } from "./OverviewCard";
 
 export function useGodStoneData() {
-  const [{ data, loading }] = useAxios("/api/God-Stone/Rank");
+  const [{ data, loading }] = useAxios("/api/god-stone/rankings");
 
   const rows = useMemo(() => {
     if (!data) return [];

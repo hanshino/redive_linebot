@@ -21,11 +21,11 @@ ShopRouter.post("/purchase", verifyToken, exchangeItem);
 
 ShopRouter.get("/history", verifyToken, history);
 
-AdminRouter.post("/item", addGodStoneShopItem);
-AdminRouter.delete("/item/:id", destroyGodStoneShopItem);
-AdminRouter.put("/item/:id", updateGodStoneShopItem);
+AdminRouter.post("/items", addGodStoneShopItem);
+AdminRouter.delete("/items/:id", destroyGodStoneShopItem);
+AdminRouter.put("/items/:id", updateGodStoneShopItem);
 
-router.use("/GodStoneShop", ShopRouter);
-router.use("/Admin/GodStoneShop", AdminRouter);
+router.use("/god-stone-shop", ShopRouter);
+router.use("/admin/god-stone-shop", AdminRouter);
 
 module.exports = router;

@@ -20,7 +20,7 @@ export default function AnnouncementBoard() {
 
   useEffect(() => {
     api
-      .get("/api/Announcement/1")
+      .get("/api/announcements/1")
       .then((r) => setAnnouncements(r.data || []))
       .catch(() => setAnnouncements([]))
       .finally(() => setLoading(false));

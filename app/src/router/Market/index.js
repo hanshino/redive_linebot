@@ -3,8 +3,8 @@ const { verifyToken } = require("../../middleware/validation");
 const createRouter = require("express").Router;
 const router = createRouter();
 
-router.get("/Market/:id", verifyToken, show);
-router.post("/Market/:id/Transaction", verifyToken, transaction);
-router.delete("/Market/:id/Transaction", verifyToken, cancel);
+router.get("/market/:id", verifyToken, show);
+router.post("/market/:id/transactions", verifyToken, transaction);
+router.delete("/market/:id/transactions", verifyToken, cancel);
 
 exports.router = router;

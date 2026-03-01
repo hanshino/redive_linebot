@@ -51,7 +51,7 @@ export default function TradeTransaction() {
     if (!isLoggedIn) return;
 
     fetchTrade({
-      url: `/api/Market/${marketId}`,
+      url: `/api/market/${marketId}`,
     });
   }, [isLoggedIn, marketId, fetchTrade]);
 
@@ -84,7 +84,7 @@ export default function TradeTransaction() {
         onSubmit: () => {
           alertHandleClose();
           doTransaction({
-            url: `/api/Market/${marketId}/Transaction`,
+            url: `/api/market/${marketId}/transactions`,
             method: "POST",
           });
         },
@@ -103,7 +103,7 @@ export default function TradeTransaction() {
         onSubmit: () => {
           alertHandleClose();
           denyTransaction({
-            url: `/api/Market/${marketId}/Transaction`,
+            url: `/api/market/${marketId}/transactions`,
             method: "DELETE",
           });
         },

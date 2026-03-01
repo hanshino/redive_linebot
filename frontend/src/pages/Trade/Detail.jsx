@@ -12,12 +12,12 @@ export default function TradeDetail() {
   const { loggedIn: isLoggedIn } = useLiff();
   const { marketId } = useParams();
   const navigate = useNavigate();
-  const [{ data = [], loading }, fetchDetail] = useAxios(`/api/Market/${marketId}`, {
+  const [{ data = [], loading }, fetchDetail] = useAxios(`/api/market/${marketId}`, {
     manual: true,
   });
   const [{ data: cancelRes, loading: cancelLoading, error: cancelError }, cancelOrder] = useAxios(
     {
-      url: `/api/Market/${marketId}/Transaction`,
+      url: `/api/market/${marketId}/transactions`,
       method: "DELETE",
     },
     { manual: true }

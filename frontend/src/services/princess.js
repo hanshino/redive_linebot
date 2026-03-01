@@ -1,4 +1,4 @@
 import api from "./api";
 
 export const getCharacterImages = () =>
-  api.get("/api/Princess/Character/Images").then(r => r.data);
+  api.get("/api/characters/images").then(r => r.data);
