@@ -307,7 +307,7 @@ export default function GachaPoolForm() {
         sx={{
           position: "fixed",
           bottom: 0,
-          left: 0,
+          left: { xs: 0, md: 260 },
           right: 0,
           p: 2,
           bgcolor: "background.paper",

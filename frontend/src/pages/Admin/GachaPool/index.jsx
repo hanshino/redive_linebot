@@ -16,6 +16,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
+import { zhTW } from "@mui/x-data-grid/locales";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -344,6 +345,13 @@ export default function AdminGachaPool() {
           loading={loading}
           pageSizeOptions={[10, 25, 50]}
           initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+          localeText={zhTW.components.MuiDataGrid.defaultProps.localeText}
+          slotProps={{
+            basePagination: {
+              showFirstButton: true,
+              showLastButton: true,
+            },
+          }}
           disableRowSelectionOnClick
           rowHeight={56}
           sx={{
