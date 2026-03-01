@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useMemo } from "react";
+import { createContext, useEffect, useState, useMemo, useCallback } from "react";
 import liff from "@line/liff";
 import api from "../services/api";
 import { FullPageLoading } from "../components/Loading";
@@ -8,6 +8,8 @@ export const LiffContext = createContext({
   initialized: false,
   loggedIn: false,
   liffContext: {},
+  login: () => {},
+  logout: () => {},
 });
 
 export default function LiffProvider({ children }) {
@@ -44,9 +46,22 @@ export default function LiffProvider({ children }) {
       });
   }, []);
 
+  const login = useCallback(() => {
+    if (initialized) {
+      liff.login();
+    }
+  }, [initialized]);
+
+  const logout = useCallback(() => {
+    if (initialized) {
+      liff.logout();
+      window.location.reload();
+    }
+  }, [initialized]);
+
   const value = useMemo(
-    () => ({ ready, initialized, loggedIn, liffContext: liffCtx }),
-    [ready, initialized, loggedIn, liffCtx]
+    () => ({ ready, initialized, loggedIn, liffContext: liffCtx, login, logout }),
+    [ready, initialized, loggedIn, liffCtx, login, logout]
   );
 
   if (!ready) {

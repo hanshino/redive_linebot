@@ -6,6 +6,7 @@ import {
   Toolbar,
   Typography,
   IconButton,
+  Button,
   Drawer,
   useMediaQuery,
   useTheme,
@@ -13,8 +14,11 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
+import LoginIcon from "@mui/icons-material/Login";
+import LogoutIcon from "@mui/icons-material/Logout";
 import NavDrawer from "../components/NavDrawer";
 import { useColorMode } from "../theme/ColorModeContext";
+import useLiff from "../context/useLiff";
 
 const DRAWER_WIDTH = 260;
 
@@ -23,6 +27,7 @@ export default function MainLayout() {
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const { mode, toggleColorMode } = useColorMode();
+  const { loggedIn, initialized, login, logout } = useLiff();
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -51,6 +56,26 @@ export default function MainLayout() {
           <IconButton onClick={toggleColorMode} color="inherit" aria-label="toggle theme">
             {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
           </IconButton>
+          {initialized &&
+            (loggedIn ? (
+              <Button
+                color="inherit"
+                onClick={logout}
+                startIcon={<LogoutIcon />}
+                aria-label="logout"
+              >
+                登出
+              </Button>
+            ) : (
+              <Button
+                color="inherit"
+                onClick={login}
+                startIcon={<LoginIcon />}
+                aria-label="login"
+              >
+                登入
+              </Button>
+            ))}
         </Toolbar>
       </AppBar>
 
