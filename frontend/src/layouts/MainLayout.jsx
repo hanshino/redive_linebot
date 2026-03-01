@@ -6,8 +6,9 @@ import {
   Toolbar,
   Typography,
   IconButton,
-  Button,
+  Divider,
   Drawer,
+  Tooltip,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -53,29 +54,25 @@ export default function MainLayout() {
           <Typography variant="h6" noWrap sx={{ flexGrow: 1, fontWeight: 700 }}>
             布丁機器人
           </Typography>
-          <IconButton onClick={toggleColorMode} color="inherit" aria-label="toggle theme">
-            {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-          </IconButton>
-          {initialized &&
-            (loggedIn ? (
-              <Button
-                color="inherit"
-                onClick={logout}
-                startIcon={<LogoutIcon />}
-                aria-label="logout"
-              >
-                登出
-              </Button>
-            ) : (
-              <Button
-                color="inherit"
-                onClick={login}
-                startIcon={<LoginIcon />}
-                aria-label="login"
-              >
-                登入
-              </Button>
-            ))}
+          <Tooltip title={mode === "dark" ? "淺色模式" : "深色模式"}>
+            <IconButton onClick={toggleColorMode} color="inherit" aria-label="toggle theme">
+              {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+            </IconButton>
+          </Tooltip>
+          {initialized && (
+            <>
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: "rgba(255,255,255,0.3)" }} />
+              <Tooltip title={loggedIn ? "登出" : "登入"}>
+                <IconButton
+                  color="inherit"
+                  onClick={loggedIn ? logout : login}
+                  aria-label={loggedIn ? "logout" : "login"}
+                >
+                  {loggedIn ? <LogoutIcon /> : <LoginIcon />}
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
         </Toolbar>
       </AppBar>
 
