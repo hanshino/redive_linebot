@@ -76,3 +76,6 @@ data
 # Screenshots
 *.png
 !frontend/public/banner.png
+
+# Git worktrees
+.worktrees/
