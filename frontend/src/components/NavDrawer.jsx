@@ -20,6 +20,7 @@ import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import GroupsIcon from "@mui/icons-material/Groups";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import MessageIcon from "@mui/icons-material/Message";
 import PetsIcon from "@mui/icons-material/Pets";
@@ -45,6 +46,7 @@ const botItems = [
 ];
 
 const personalItems = [
+  { label: "我的群組", path: "/groups", icon: GroupsIcon },
   { label: "交易管理", path: "/trade/manage", icon: ShoppingBasketIcon },
   { label: "轉蛋包包", path: "/bag", icon: LocalMallIcon },
   { label: "裝備管理", path: "/equipment", icon: FitnessCenterIcon },

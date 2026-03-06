@@ -37,6 +37,8 @@ exports.api.getGuildSummary = async (req, res) => {
 async function getGuildListByUser(userId) {
   var GuildInfo = await GuildModel.fetchGuildInfoByUser(userId);
   var groupIds = GuildInfo.map(info => info.groupId);
-  var groupSummarys = await Promise.all(groupIds.map(line.getGroupSummary));
-  return groupSummarys.filter(summary => summary.message === undefined);
+  var results = await Promise.allSettled(groupIds.map(line.getGroupSummary));
+  return results
+    .filter(r => r.status === "fulfilled" && r.value.message === undefined)
+    .map(r => r.value);
 }

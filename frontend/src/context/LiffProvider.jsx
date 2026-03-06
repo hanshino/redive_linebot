@@ -1,4 +1,5 @@
 import { createContext, useEffect, useState, useMemo, useCallback } from "react";
+import axios from "axios";
 import liff from "@line/liff";
 import api from "../services/api";
 import { FullPageLoading } from "../components/Loading";
@@ -30,6 +31,7 @@ export default function LiffProvider({ children }) {
         if (liff.isLoggedIn()) {
           const token = liff.getAccessToken();
           api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
           setLoggedIn(true);
           try {
             setLiffCtx(liff.getContext() || {});
