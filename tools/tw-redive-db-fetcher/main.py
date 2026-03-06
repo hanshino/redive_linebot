@@ -184,6 +184,9 @@ def main():
 
     if db_bytes:
         save_db(db_bytes, new_version, bundle_hash)
+        print("Deobfuscating database...")
+        from deobfuscate import deobfuscate
+        deobfuscate(config.OUTPUT_DB)
         print("Done!")
     else:
         print("All download methods failed")
