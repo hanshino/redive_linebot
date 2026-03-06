@@ -151,6 +151,5 @@
 
 ## 注意事項
 
-- 要使用戰隊功能，需先跟 [Ian 戰隊系統作者](https://discord.gg/cwFc4qh)申請 Accesss Token
 - `Windows` 作業系統使用 `Docker` 需注意開啟 `hyper-v` 是否會影響自己遊玩手機模擬器。
 - 初次啟動時需耗時一段時間進行環境建置，此屬正常情況！

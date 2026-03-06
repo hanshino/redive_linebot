@@ -30,9 +30,6 @@ module.exports = {
     let id = process.env.LINE_LIFF_ID;
     let typeId;
     switch (type.toLowerCase()) {
-      case "ian":
-        typeId = process.env.LINE_LIFF_IAN_ID;
-        break;
       case "compact":
         typeId = process.env.LINE_LIFF_COMPACT_ID;
         break;

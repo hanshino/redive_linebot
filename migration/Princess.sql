@@ -471,21 +471,6 @@ CREATE TABLE IF NOT EXISTS `Guild` (
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `GuildBattle`
---
-
-CREATE TABLE IF NOT EXISTS `GuildBattle` (
-  `ID` int NOT NULL AUTO_INCREMENT,
-  `GuildId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `FormId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Month` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `Status` int NOT NULL DEFAULT '1',
-  PRIMARY KEY (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `GuildBattleConfig`
 --
 
@@ -548,37 +533,6 @@ CREATE TABLE IF NOT EXISTS `GuildMembers` (
   `LastSpeakDTM` datetime DEFAULT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `GM_Unique` (`GuildId`,`UserId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `GuildWeek`
---
-
-CREATE TABLE IF NOT EXISTS `GuildWeek` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `guildId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `month` varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `week` varchar(4) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `modifyDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `IanUser`
---
-
-CREATE TABLE IF NOT EXISTS `IanUser` (
-  `ID` int NOT NULL AUTO_INCREMENT,
-  `platform` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `userId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `ianUserId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `createDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`ID`),
-  UNIQUE KEY `userId_UNIQUE` (`userId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

@@ -2,7 +2,6 @@ const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
 const axios = require("axios").default;
 const nicknameAPI = "https://www.pay.so-net.tw/exchange/checkUser";
-const profileAPI = `${process.env.IAN_API_URL}/profile`;
 
 exports.table = "PrincessUID";
 
@@ -97,25 +96,3 @@ async function getPrincessNickName(uid, server) {
 
 exports.getPrincessNickName = getPrincessNickName;
 
-exports.getIanProfileData = async userId => {
-  const uidData = await this.getBindingData(userId);
-  if (!uidData) return {};
-
-  const { uid, server } = uidData;
-
-  let result = await axios.get(profileAPI, {
-    headers: {
-      "x-token": process.env.IAN_PROFILE_TOKEN,
-    },
-    params: {
-      uid,
-      server,
-      cache: true,
-    },
-  });
-
-  return {
-    ...result.data,
-    ...uidData,
-  };
-};

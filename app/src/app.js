@@ -106,8 +106,6 @@ async function HandlePostback(context, { next }) {
     if (!isExist && action !== "adminBossAttack") return;
 
     return router([
-      route(() => action === "battleSignUp", withProps(battle.BattlePostSignUp, { payload })),
-      route(() => action === "battleCancel", withProps(battle.BattlePostCancel, { payload })),
       route(
         () => action === "worldBossAttack",
         withProps(WorldBossController.attackOnBoss, { payload })
@@ -317,23 +315,9 @@ function BattleOrder(context) {
   if (context.state.guildConfig.Battle === "N") return [];
 
   return [
-    text(/^[#.]gbs/, battle.BattleSignUp),
-    text(/^[#.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
-    text(
-      /^[#.](gb|刀表)(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/,
-      battle.BattleList
-    ),
-    text(/^[#.](檢視下一?[周週][回次]|shownextweek)$/, battle.NextBattleList),
-    text(/^[#.](檢視上一?[周週][回次]|showlastweek)$/, battle.PreBattleList),
-    text(/^[#.]((前往)?(下一?[周週][回次])|nextweek)$/, battle.IncWeek),
-    text(/^[#.]((回去)?(上一?[周週][回次])|lastweek)$/, battle.DecWeek),
-    text(/^[#.]([五5]王倒了|finishweek)$/, battle.FinishWeek),
-    text(/^[#.](設定[周週][回次]|setweek)(\s(?<week>\d+))?$/, battle.SetWeek),
-    text(/^[#.](當[周週][回次]報名表|nowweek)$/, battle.CurrentBattle),
     text(/^[#.](三刀出完|出完三刀|done)$/, battle.reportFinish),
     text(/^[#.](三刀重置|重置三刀|reset)$/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
-    text(/^[#.](signtest)$/, battle.SignMessageTest),
     text(["#刀軸轉換", ".bt", "/bt"], context => {
       let bubble = commonTemplate.genLinkBubble(
         "⏱️刀軸轉換",
