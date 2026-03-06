@@ -79,3 +79,6 @@ data
 
 # Git worktrees
 .worktrees/
+
+# oh-my-claudecode
+.omc/
