@@ -71,7 +71,7 @@ export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
         )}
       </CardContent>
 
-      <CardActions sx={{ flexWrap: "wrap", gap: 0.5, px: 2, pb: 2, mt: "auto" }}>
+      <CardActions sx={{ flexWrap: "wrap", gap: 0.75, px: 2.5, pb: 2.5, mt: "auto" }}>
         {actions.map(({ label, icon: Icon, path }) => (
           <Button
             key={label}
