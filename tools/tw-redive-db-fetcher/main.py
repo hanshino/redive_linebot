@@ -1,9 +1,16 @@
 """TW Redive Master DB Fetcher"""
+import argparse
 import json
 import hashlib
+import os
 import requests
 import UnityPy
+import UnityPy.config
 import config
+
+# Set Unity fallback version for TW asset bundles
+UnityPy.config.FALLBACK_UNITY_VERSION = config.UNITY_VERSION
+UnityPy.config.FALLBACK_VERSION_WARNED = True
 
 
 def load_version() -> dict:
@@ -34,6 +41,12 @@ def _check_version(session: requests.Session, version: int) -> bool:
 
 
 def guess_truth_version(last_version: dict) -> int | None:
+    """Guess latest TruthVersion by probing CDN manifest endpoints.
+
+    Uses decreasing deltas (1M, 100K, 10K, 1K, 100, 10, 1) to narrow down.
+    For each delta, keeps incrementing until failure, then tries +1..+4
+    offsets (version resets don't always land on round numbers).
+    """
     session = requests.Session()
     session.headers["User-Agent"] = config.USER_AGENT
 
@@ -43,17 +56,20 @@ def guess_truth_version(last_version: dict) -> int | None:
     deltas = [1000000, 100000, 10000, 1000, 100, 10, 1]
 
     for delta in deltas:
-        for i in range(1, 10):
-            guess = latest + delta * i
+        while True:
+            guess = latest + delta
             if _check_version(session, guess):
                 latest = guess
                 continue
-            # When major version increments, minor resets to 1 (not 0).
-            # e.g. 00180025 -> 00190001 (00190000 doesn't exist)
-            if i == 1 and delta >= 10:
-                alt = guess + 1
-                if _check_version(session, alt):
-                    latest = alt
+            # Try offsets +1..+4 for version resets
+            if delta > 1:
+                found_alt = False
+                for offset in range(1, 5):
+                    if _check_version(session, guess + offset):
+                        latest = guess + offset
+                        found_alt = True
+                        break
+                if found_alt:
                     continue
             break
 
@@ -97,10 +113,6 @@ def download_bundle(bundle_hash: str, expected_size: int, session: requests.Sess
         if len(resp.content) != expected_size:
             print(f"Size mismatch: got {len(resp.content)}, expected {expected_size}")
             return None
-        actual_hash = hashlib.md5(resp.content).hexdigest()
-        if actual_hash != bundle_hash:
-            print(f"Hash mismatch: got {actual_hash}, expected {bundle_hash}")
-            return None
         return resp.content
     except requests.RequestException as e:
         print(f"Download error: {e}")
@@ -113,7 +125,14 @@ def extract_db_from_bundle(bundle_data: bytes) -> bytes | None:
         if obj.type.name == "TextAsset":
             data = obj.read()
             if data.m_Name == "master":
-                return data.m_Script
+                raw = obj.get_raw_data()
+                # Raw format: name_len(4) + name + padding + script_len(4) + script_bytes
+                # Find SQLite header to extract the DB reliably
+                idx = raw.find(b"SQLite format 3")
+                if idx >= 0:
+                    return raw[idx:]
+                print("SQLite header not found in TextAsset raw data")
+                return None
     print("TextAsset 'master' not found in bundle")
     return None
 
@@ -131,7 +150,8 @@ def download_from_github() -> bytes | None:
         return None
 
 
-def save_db(db_bytes: bytes, version: int, bundle_hash: str = ""):
+def save_db(db_bytes: bytes, truth_version: int = 0, bundle_hash: str = ""):
+    os.makedirs(os.path.dirname(config.OUTPUT_DB), exist_ok=True)
     with open(config.OUTPUT_DB, "wb") as f:
         f.write(db_bytes)
     print(f"Saved {config.OUTPUT_DB} ({len(db_bytes)} bytes)")
@@ -145,7 +165,7 @@ def save_db(db_bytes: bytes, version: int, bundle_hash: str = ""):
     except ImportError:
         pass
 
-    save_version(version, bundle_hash)
+    save_version(truth_version, bundle_hash)
 
 
 def download_and_extract(version: int) -> tuple[bytes | None, str]:
@@ -166,12 +186,37 @@ def download_and_extract(version: int) -> tuple[bytes | None, str]:
     return db_bytes, bundle_hash
 
 
-def main():
+def github_update(force: bool = False) -> bool:
+    """Download DB from GitHub, skip if unchanged (by comparing MD5)."""
+    last = load_version()
+    last_hash = last.get("hash", "")
+
+    print("Checking GitHub for updates...")
+    db_bytes = download_from_github()
+    if db_bytes is None:
+        return False
+
+    new_hash = hashlib.md5(db_bytes).hexdigest()
+    if new_hash == last_hash and not force:
+        print(f"Database unchanged (hash: {new_hash[:12]}...)")
+        return False
+
+    print(f"Database updated: {last_hash[:12] or 'none'}... -> {new_hash[:12]}...")
+    save_db(db_bytes, truth_version=0, bundle_hash=new_hash)
+
+    print("Deobfuscating database...")
+    from deobfuscate import deobfuscate
+    deobfuscate(config.OUTPUT_DB)
+    return True
+
+
+def cdn_update() -> bool:
+    """Full CDN flow: guess version -> download bundle -> extract -> deobfuscate."""
     last_version = load_version()
     new_version = guess_truth_version(last_version)
     if new_version is None:
         print("No update found")
-        return
+        return False
 
     version_str = str(new_version).zfill(8)
     print(f"Found new version: {version_str}")
@@ -180,16 +225,45 @@ def main():
     if db_bytes is None:
         print("CDN download failed, trying GitHub fallback...")
         db_bytes = download_from_github()
-        bundle_hash = ""
+        bundle_hash = hashlib.md5(db_bytes).hexdigest() if db_bytes else ""
 
-    if db_bytes:
-        save_db(db_bytes, new_version, bundle_hash)
-        print("Deobfuscating database...")
-        from deobfuscate import deobfuscate
-        deobfuscate(config.OUTPUT_DB)
+    if not db_bytes:
+        print("All download methods failed")
+        return False
+
+    save_db(db_bytes, truth_version=new_version, bundle_hash=bundle_hash)
+
+    print("Deobfuscating database...")
+    from deobfuscate import deobfuscate
+    deobfuscate(config.OUTPUT_DB)
+    return True
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="TW Redive Master DB Fetcher")
+    parser.add_argument(
+        "--github-only", action="store_true",
+        help="Only download from GitHub (skip CDN version guessing)",
+    )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Force re-download even if hash unchanged",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    if args.github_only:
+        success = github_update(force=args.force)
+    else:
+        success = cdn_update()
+
+    if success:
         print("Done!")
     else:
-        print("All download methods failed")
+        print("No changes.")
 
 
 if __name__ == "__main__":
