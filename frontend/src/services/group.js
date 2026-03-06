@@ -24,7 +24,3 @@ export const setSender = (groupId, sender) =>
   api.put(`/api/groups/${groupId}/sender`, { sender }).then(r => r.data);
 export const getSignList = (groupId, month) =>
   api.get(`/api/guilds/${groupId}/battle-signs/months/${month}`).then(r => r.data);
-export const getBattleConfig = (groupId) =>
-  api.get(`/api/guilds/${groupId}/battle-config`).then(r => r.data);
-export const updateBattleConfig = (groupId, data) =>
-  api.put(`/api/guilds/${groupId}/battle-config`, data).then(r => r.data);

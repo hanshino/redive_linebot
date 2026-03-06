@@ -68,12 +68,12 @@ export default function GroupList() {
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <Box>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
           我的群組
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           管理你所屬的 LINE 群組
         </Typography>
       </Box>
@@ -99,7 +99,7 @@ export default function GroupList() {
         </Alert>
       )}
 
-      <Grid container spacing={2}>
+      <Grid container spacing={2.5}>
         {loading
           ? [1, 2, 3].map((i) => (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>

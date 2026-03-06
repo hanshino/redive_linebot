@@ -71,7 +71,7 @@ function GroupBanner({ group, rank }) {
           }}
         />
       )}
-      <Box sx={{ position: "relative", p: 3, display: "flex", alignItems: "center", gap: 2.5 }}>
+      <Box sx={{ position: "relative", p: { xs: 3, sm: 4 }, display: "flex", alignItems: "center", gap: 2.5 }}>
         <Avatar
           src={group?.pictureUrl}
           alt={group?.groupName}
@@ -231,7 +231,7 @@ function MemberRow({ member, maxTotal }) {
   const pct = maxTotal > 0 ? (memberTotal / maxTotal) * 100 : 0;
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 1.5 }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 2, py: 2 }}>
       <Typography
         variant="body2"
         sx={{ width: 28, textAlign: "right", fontWeight: 600, color: "text.secondary", flexShrink: 0 }}
@@ -283,15 +283,15 @@ function MemberRow({ member, maxTotal }) {
 function MemberList({ rank, maxTotal }) {
   if (rank.length === 0) {
     return (
-      <Paper sx={{ p: 4, textAlign: "center" }}>
+      <Paper sx={{ p: { xs: 4, sm: 5 }, textAlign: "center" }}>
         <Typography color="text.secondary">尚無成員數據</Typography>
       </Paper>
     );
   }
 
   return (
-    <Paper sx={{ px: 2, py: 1 }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, py: 1.5 }}>
+    <Paper sx={{ px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, pb: 1.5 }}>
         全員活躍度排行
       </Typography>
       {rank.map((member, i) => (
@@ -368,7 +368,7 @@ export default function GroupRecord() {
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <GroupBanner group={groupData} rank={rank} />
       <TopContributors rank={rank} />
       <MyStats rank={rank} maxTotal={maxTotal} />
