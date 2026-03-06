@@ -1,40 +1,35 @@
 import { useEffect, useState, useRef } from "react";
 import useAxios from "axios-hooks";
-import { DataGrid } from "@mui/x-data-grid";
 import {
-  Grid,
+  Box,
   Paper,
   Typography,
   TextField,
   IconButton,
   Button,
-  Fab,
+  Avatar,
+  Chip,
+  Divider,
+  Skeleton,
   Alert,
   AlertTitle,
-  LinearProgress,
+  Tooltip,
+  Stack,
 } from "@mui/material";
-import { green, red } from "@mui/material/colors";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import ImageIcon from "@mui/icons-material/Image";
+import PetsIcon from "@mui/icons-material/Pets";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import BrokenImageIcon from "@mui/icons-material/BrokenImage";
 import get from "lodash/get";
-import { FullPageLoading } from "../../components/Loading";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 import AlertDialog from "../../components/AlertDialog";
 import useAlertDialog from "../../hooks/useAlertDialog";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
-
-function CustomLoadingOverlay() {
-  return (
-    <LinearProgress
-      color="secondary"
-      sx={{ position: "absolute", top: 0, width: "100%" }}
-    />
-  );
-}
 
 function DataForm({ id, onSubmit, onCancel, submitting }) {
   const nameEl = useRef(null);
@@ -69,8 +64,6 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
       setImage(dataImg);
     }
   }, [data]);
-
-  if (loading) return <FullPageLoading />;
 
   const { name, level, hp, exp, gold, description } = data;
 
@@ -107,150 +100,228 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
   };
 
   return (
-    <Grid container direction="column">
-      {(submitting || uploading) && <FullPageLoading />}
-      <Grid size={{ xs: 12 }}>
-        <Typography variant="h5" sx={{ mb: "5px" }}>
-          世界王資料
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Header */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <IconButton onClick={onCancel}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          {id ? "世界王資料" : "新增世界王"}
         </Typography>
-      </Grid>
-      <Grid>
-        <Alert severity="warning">
-          <AlertTitle>注意！</AlertTitle>
-          <strong>經驗與女神石</strong>
-          設定需配合血量比例，建議比例為 1血量:1經驗，女神石則視情況而定
-        </Alert>
-      </Grid>
-      <Grid
-        container
-        size={{ xs: 12 }}
-        component={Paper}
-        sx={{ p: 2 }}
-        direction="column"
-        alignItems="center"
+      </Box>
+
+      {/* Warning Alert */}
+      <Alert severity="warning">
+        <AlertTitle>注意！</AlertTitle>
+        <strong>經驗與女神石</strong>
+        設定需配合血量比例，建議比例為 1血量:1經驗，女神石則視情況而定
+      </Alert>
+
+      {/* Image Preview Card */}
+      <Paper
+        elevation={0}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          p: { xs: 3, sm: 4 },
+          borderRadius: 3,
+          border: 1,
+          borderColor: "divider",
+        }}
       >
-        {image && (
-          <Grid>
-            <img
-              src={image}
-              alt="世界王圖片"
-              style={{ width: "100%", maxWidth: "200px" }}
-            />
-          </Grid>
+        {loading ? (
+          <Skeleton variant="circular" width={120} height={120} />
+        ) : image ? (
+          <Avatar
+            src={image}
+            alt="世界王圖片"
+            sx={{ width: 120, height: 120 }}
+          />
+        ) : (
+          <Box
+            sx={{
+              width: 120,
+              height: 120,
+              borderRadius: "50%",
+              border: 2,
+              borderStyle: "dashed",
+              borderColor: "divider",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "rgba(0,0,0,0.02)",
+            }}
+          >
+            <BrokenImageIcon sx={{ fontSize: 40, color: "text.disabled" }} />
+          </Box>
         )}
-        <Grid container spacing={1}>
-          <Grid size={{ xs: 6 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              label="名稱"
-              defaultValue={name}
-              margin="normal"
-              inputRef={nameEl}
-            />
-          </Grid>
-          <Grid size={{ xs: 6 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              label="等級"
-              defaultValue={level}
-              margin="normal"
-              inputRef={levelEl}
-            />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
+        {loading ? (
+          <Skeleton variant="text" width={100} sx={{ mt: 1.5 }} />
+        ) : (
+          name && (
+            <Typography variant="h6" sx={{ mt: 1.5, fontWeight: 600 }}>
+              {name}
+            </Typography>
+          )
+        )}
+      </Paper>
+
+      {/* Form Card */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2.5, sm: 3 },
+          borderRadius: 3,
+          border: 1,
+          borderColor: "divider",
+        }}
+      >
+        {loading ? (
+          <Stack spacing={2.5}>
+            <Skeleton variant="rounded" height={56} />
+            <Skeleton variant="rounded" height={56} />
+            <Skeleton variant="rounded" height={80} />
+            <Skeleton variant="rounded" height={56} />
+            <Skeleton variant="rounded" height={56} />
+          </Stack>
+        ) : (
+          <Stack spacing={2.5}>
+            <Typography
+              variant="overline"
+              sx={{ color: "text.secondary", fontWeight: 700 }}
+            >
+              基本資訊
+            </Typography>
+
+            <Stack direction="row" spacing={2}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="名稱"
+                defaultValue={name}
+                inputRef={nameEl}
+              />
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="等級"
+                defaultValue={level}
+                inputRef={levelEl}
+              />
+            </Stack>
+
             <TextField
               fullWidth
               multiline
               variant="outlined"
               label="王的個人資料"
               defaultValue={description}
-              margin="normal"
               inputRef={descEl}
             />
-          </Grid>
-          <Grid size={{ xs: 6 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              label="血量"
-              defaultValue={hp}
-              margin="normal"
-              inputRef={hpEl}
-            />
-          </Grid>
-          <Grid size={{ xs: 6 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              label="經驗"
-              defaultValue={exp}
-              margin="normal"
-              inputRef={expEl}
-            />
-          </Grid>
-          <Grid size={{ xs: 6 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              label="女神石"
-              defaultValue={gold}
-              margin="normal"
-              inputRef={goldEl}
-            />
-          </Grid>
-          <Grid size={{ xs: 6 }}>
-            <TextField
-              fullWidth
-              label="圖片"
-              variant="outlined"
-              margin="normal"
-              value={image || ""}
-              onChange={(event) => setImage(event.target.value)}
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <IconButton component="label">
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        onChange={handleUploadImage}
-                      />
-                      <ImageIcon />
-                    </IconButton>
-                  ),
-                },
-              }}
-            />
-          </Grid>
-        </Grid>
 
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 6 }}>
-            <Button
-              fullWidth
-              variant="contained"
-              color="secondary"
-              onClick={onCancel}
+            <Typography
+              variant="overline"
+              sx={{ color: "text.secondary", fontWeight: 700 }}
             >
-              取消
-            </Button>
-          </Grid>
-          <Grid size={{ xs: 6 }}>
-            <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              onClick={handleSubmit}
-            >
-              確認
-            </Button>
-          </Grid>
-        </Grid>
-      </Grid>
-    </Grid>
+              數值設定
+            </Typography>
+
+            <Stack direction="row" spacing={2}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="血量"
+                defaultValue={hp}
+                inputRef={hpEl}
+              />
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="經驗"
+                defaultValue={exp}
+                inputRef={expEl}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={2}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                label="女神石"
+                defaultValue={gold}
+                inputRef={goldEl}
+              />
+              <TextField
+                fullWidth
+                label="圖片"
+                variant="outlined"
+                value={image || ""}
+                onChange={(event) => setImage(event.target.value)}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <IconButton component="label">
+                        <input
+                          type="file"
+                          hidden
+                          accept="image/*"
+                          onChange={handleUploadImage}
+                        />
+                        <ImageIcon />
+                      </IconButton>
+                    ),
+                  },
+                }}
+              />
+            </Stack>
+
+            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+              <Button variant="outlined" onClick={onCancel} disabled={submitting || uploading}>
+                取消
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSubmit}
+                disabled={submitting || uploading}
+              >
+                {submitting ? "儲存中..." : "儲存"}
+              </Button>
+            </Box>
+          </Stack>
+        )}
+      </Paper>
+    </Box>
+  );
+}
+
+function BossListSkeleton() {
+  return (
+    <Paper sx={{ borderRadius: 3 }}>
+      {[0, 1, 2].map((i) => (
+        <Box key={i}>
+          {i > 0 && <Divider />}
+          <Box
+            sx={{
+              px: { xs: 2.5, sm: 3 },
+              py: { xs: 2, sm: 2.5 },
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <Skeleton variant="rounded" width={40} height={40} />
+            <Box sx={{ flex: 1 }}>
+              <Skeleton variant="rounded" width="40%" height={20} sx={{ mb: 0.5 }} />
+              <Skeleton variant="rounded" width="70%" height={16} />
+            </Box>
+            <Skeleton variant="rounded" width={64} height={32} />
+          </Box>
+        </Box>
+      ))}
+    </Paper>
   );
 }
 
@@ -275,50 +346,9 @@ export default function AdminWorldboss() {
   const [editState, setEditState] = useState({ id: null, isActive: false });
   const [hintState, { handleOpen, handleClose }] = useHintBar();
 
-  const columns = [
-    {
-      field: "id",
-      headerName: "#",
-      renderCell: (rawData) => (
-        <>
-          <IconButton
-            size="small"
-            onClick={() =>
-              setEditState({ id: rawData.value, isActive: true })
-            }
-          >
-            <EditIcon sx={{ color: green[500] }} />
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={() =>
-              openDialog({
-                title: "刪除此世界王",
-                description:
-                  "刪除之後，將會連帶影響活動中的世界王，確定要刪除嗎？",
-                submitText: "刪除",
-                cancelText: "取消",
-                onCancel: () => closeDialog(),
-                onSubmit: () => {
-                  deleteDataRequest({
-                    url: `/api/admin/world-bosses/${rawData.value}`,
-                  });
-                  closeDialog();
-                },
-              })
-            }
-          >
-            <DeleteIcon sx={{ color: red[500] }} />
-          </IconButton>
-        </>
-      ),
-    },
-    { headerName: "名稱", field: "name", width: 150 },
-    { headerName: "等級", field: "level", width: 150 },
-    { headerName: "血量", field: "hp", width: 150 },
-    { headerName: "經驗", field: "exp", width: 150 },
-    { headerName: "女神石", field: "gold", width: 150 },
-  ];
+  useEffect(() => {
+    document.title = "世界王列表";
+  }, []);
 
   useEffect(() => {
     if (createdLoading) return;
@@ -399,41 +429,137 @@ export default function AdminWorldboss() {
   }
 
   return (
-    <Grid container spacing={2} direction="column">
-      <Grid size={{ xs: 12 }}>
-        <Typography variant="h5" sx={{ mb: "5px" }}>
-          世界王列表
-        </Typography>
-      </Grid>
-      <Grid size={{ xs: 12 }}>
-        <Paper sx={{ width: "100%", height: 500 }}>
-          <DataGrid
-            columns={columns}
-            rows={data}
-            disableColumnFilter
-            disableColumnSelector
-            disableColumnMenu
-            loading={loading}
-            slots={{
-              loadingOverlay: CustomLoadingOverlay,
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Gradient Banner */}
+      <Paper sx={{ position: "relative", overflow: "hidden", borderRadius: 3 }}>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: (theme) =>
+              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          }}
+        />
+        <Box
+          sx={{
+            position: "relative",
+            p: { xs: 3, sm: 4 },
+            display: "flex",
+            alignItems: "center",
+            gap: 2.5,
+            flexWrap: "wrap",
+          }}
+        >
+          <PetsIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.8)" }} />
+          <Box sx={{ color: "#fff", minWidth: 0, flex: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              世界王列表
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
+              <Chip
+                label={`${data.length} 隻世界王`}
+                size="small"
+                sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+              />
+            </Box>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setEditState({ id: null, isActive: true })}
+            sx={{
+              bgcolor: "rgba(255,255,255,0.2)",
+              color: "#fff",
+              "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+              backdropFilter: "blur(4px)",
             }}
-          />
+          >
+            新增世界王
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Boss List */}
+      {loading ? (
+        <BossListSkeleton />
+      ) : (
+        <Paper sx={{ borderRadius: 3 }}>
+          {data.length === 0 && (
+            <Box sx={{ px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+              <Typography variant="body2" color="text.secondary">
+                尚無世界王資料
+              </Typography>
+            </Box>
+          )}
+          {data.map((boss, index) => (
+            <Box key={boss.id}>
+              {index > 0 && <Divider />}
+              <Box
+                sx={{
+                  px: { xs: 2.5, sm: 3 },
+                  py: { xs: 2, sm: 2.5 },
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                }}
+              >
+                <Avatar
+                  src={boss.image}
+                  alt={boss.name}
+                  sx={{ width: 44, height: 44, bgcolor: "primary.light" }}
+                >
+                  <PetsIcon />
+                </Avatar>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    {boss.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Lv.{boss.level} &nbsp;|&nbsp; HP {boss.hp?.toLocaleString()} &nbsp;|&nbsp; EXP{" "}
+                    {boss.exp?.toLocaleString()} &nbsp;|&nbsp; 女神石 {boss.gold?.toLocaleString()}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", gap: 0.5 }}>
+                  <Tooltip title="編輯">
+                    <IconButton
+                      size="small"
+                      onClick={() => setEditState({ id: boss.id, isActive: true })}
+                      sx={{ color: "primary.main" }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="刪除">
+                    <IconButton
+                      size="small"
+                      onClick={() =>
+                        openDialog({
+                          title: "刪除此世界王",
+                          description:
+                            "刪除之後，將會連帶影響活動中的世界王，確定要刪除嗎？",
+                          submitText: "刪除",
+                          cancelText: "取消",
+                          onCancel: () => closeDialog(),
+                          onSubmit: () => {
+                            deleteDataRequest({
+                              url: `/api/admin/world-bosses/${boss.id}`,
+                            });
+                            closeDialog();
+                          },
+                        })
+                      }
+                      sx={{ color: "error.main" }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Box>
+            </Box>
+          ))}
         </Paper>
-      </Grid>
-      <Fab
-        aria-label="add"
-        onClick={() => setEditState({ id: null, isActive: true })}
-        sx={{
-          backgroundColor: "#ff6d00",
-          color: "#fff",
-          "&:hover": { backgroundColor: "#ff6d00", color: "#fff" },
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-        }}
-      >
-        <AddIcon />
-      </Fab>
+      )}
+
       <HintSnackBar
         open={hintState.open}
         message={hintState.message}
@@ -450,6 +576,6 @@ export default function AdminWorldboss() {
         onSubmit={dialogState.onSubmit}
         onCancel={dialogState.onCancel}
       />
-    </Grid>
+    </Box>
   );
 }

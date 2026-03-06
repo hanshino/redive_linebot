@@ -2,21 +2,25 @@ import { useState, useEffect } from "react";
 import useAxios from "axios-hooks";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Grid,
-  Snackbar,
   Alert,
-  FormControl,
-  TextField,
-  Typography,
-  Button,
   Avatar,
-  Paper,
-  CircularProgress,
   Box,
+  Button,
+  Chip,
+  Divider,
+  FormControl,
+  IconButton,
+  Paper,
+  Skeleton,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
 } from "@mui/material";
-import { green } from "@mui/material/colors";
-import { FullPageLoading } from "../../components/Loading";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AlertLogin from "../../components/AlertLogin";
+import HintSnackBar from "../../components/HintSnackBar";
+import useHintBar from "../../hooks/useHintBar";
 import useLiff from "../../context/useLiff";
 
 function DemoArea({ imageUrl = "", template = "" }) {
@@ -31,30 +35,23 @@ function DemoArea({ imageUrl = "", template = "" }) {
   const validUrl = isValidImage ? imageUrl : "";
 
   return (
-    <Grid
-      container
-      component={Paper}
+    <Paper
       variant="outlined"
-      sx={{ p: 2, "& > *": { mb: 1 } }}
-      direction="column"
+      sx={{ p: 2, borderRadius: 2, bgcolor: "background.default" }}
     >
-      <Grid>
-        <Typography variant="h6">效果預覽</Typography>
-      </Grid>
-      <Grid container alignItems="center" spacing={1}>
-        <Grid>
-          <Avatar src={validUrl} alt="頭像" />
-        </Grid>
-        <Grid>
-          <Typography variant="subtitle2">
-            {template.replace(/{{.*?}}/gm, (match) => {
-              const key = match.replace(/[{}]/g, "").trim();
-              return demoData[key] || "";
-            })}
-          </Typography>
-        </Grid>
-      </Grid>
-    </Grid>
+      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
+        效果預覽
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+        <Avatar src={validUrl} alt="頭像" />
+        <Typography variant="body2">
+          {template.replace(/{{.*?}}/gm, (match) => {
+            const key = match.replace(/[{}]/g, "").trim();
+            return demoData[key] || "";
+          })}
+        </Typography>
+      </Box>
+    </Paper>
   );
 }
 
@@ -64,6 +61,7 @@ function MessageForm({
   onSubmit = () => {},
   loading = false,
 }) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     imageUrl: defaultImageUrl,
     template: defaultTemplate,
@@ -78,95 +76,72 @@ function MessageForm({
   const isValidImage = !formData.imageUrl || imageRegex.test(formData.imageUrl);
   const isValidTemplate = formData.template.length > 0;
 
+  const templateTags = [
+    { label: "傷害資訊", value: " {{ damage }}" },
+    { label: "玩家名稱", value: " {{{ display_name }}}" },
+    { label: "怪物名稱", value: " {{ boss_name }}" },
+  ];
+
   return (
-    <FormControl fullWidth>
-      <Grid container direction="column" sx={{ "& > *": { mb: 1 } }}>
-        <Grid>
+    <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+      <FormControl fullWidth>
+        <Stack spacing={2.5}>
           <TextField
             fullWidth
             label="樣板訊息"
             multiline
+            rows={3}
             variant="outlined"
             value={formData.template}
             error={!isValidTemplate}
+            helperText={!isValidTemplate ? "請輸入樣板訊息" : ""}
             onChange={(event) => handleChange("template", event.target.value)}
           />
-        </Grid>
-        <Grid>
+
           <TextField
             fullWidth
-            label="頭像"
+            label="頭像網址"
             variant="outlined"
             value={formData.imageUrl}
             error={!isValidImage}
+            helperText={!isValidImage ? "請輸入有效的圖片網址 (jpg/png)" : ""}
             onChange={(event) => handleChange("imageUrl", event.target.value)}
           />
-        </Grid>
-        <Grid>
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() =>
-                handleChange("template", `${formData.template} {{ damage }}`)
-              }
-            >
-              傷害資訊
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() =>
-                handleChange(
-                  "template",
-                  `${formData.template} {{{ display_name }}}`
-                )
-              }
-            >
-              玩家名稱
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() =>
-                handleChange(
-                  "template",
-                  `${formData.template} {{ boss_name }}`
-                )
-              }
-            >
-              怪物名稱
-            </Button>
+
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+              點擊插入樣板標籤：
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              {templateTags.map((tag) => (
+                <Tooltip key={tag.label} title={`插入 ${tag.value.trim()}`} arrow>
+                  <Chip
+                    label={tag.label}
+                    variant="outlined"
+                    clickable
+                    onClick={() =>
+                      handleChange("template", `${formData.template}${tag.value}`)
+                    }
+                    size="small"
+                  />
+                </Tooltip>
+              ))}
+            </Box>
           </Box>
-        </Grid>
-        <Grid>
-          <Typography variant="caption">
-            樣板訊息可使用以下標籤：
-            <br />
-            <code>{`{{ damage }}`}</code> - 傷害資訊
-            <br />
-            <code>{`{{ display_name }}`}</code> - 玩家名稱
-            <br />
-            <code>{`{{ boss_name }}`}</code> - 怪物名稱
-          </Typography>
-        </Grid>
-        <Grid>
+
           <DemoArea imageUrl={formData.imageUrl} template={formData.template} />
-        </Grid>
-        <Grid container justifyContent="flex-end">
-          <Box sx={{ position: "relative", m: 1 }}>
+
+          <Divider />
+
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
             <Button
-              variant="contained"
-              color="error"
-              component="a"
-              href="/admin/worldboss-message"
+              variant="outlined"
+              color="inherit"
+              onClick={() => navigate("/admin/worldboss-message")}
               disabled={loading}
-              sx={{ mr: 1 }}
             >
               取消
             </Button>
-          </Box>
-          <Box sx={{ position: "relative", m: 1 }}>
             <Button
               variant="contained"
               color="primary"
@@ -175,25 +150,12 @@ function MessageForm({
                 onSubmit({ data: formData, isValidImage, isValidTemplate })
               }
             >
-              送出
+              {loading ? "更新中..." : "更新"}
             </Button>
-            {loading && (
-              <CircularProgress
-                size={24}
-                sx={{
-                  color: green[500],
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  mt: "-12px",
-                  ml: "-12px",
-                }}
-              />
-            )}
           </Box>
-        </Grid>
-      </Grid>
-    </FormControl>
+        </Stack>
+      </FormControl>
+    </Paper>
   );
 }
 
@@ -201,7 +163,7 @@ export default function AdminWorldbossMessageUpdate() {
   const { loggedIn: isLoggedIn } = useLiff();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [errorControl, setError] = useState({ show: false, message: "" });
+  const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
   const [{ data, loading }] = useAxios(
     `/api/game/world-boss/feature-messages/${id}`
   );
@@ -217,8 +179,12 @@ export default function AdminWorldbossMessageUpdate() {
   );
 
   useEffect(() => {
+    document.title = "管理員用－編輯世界王訊息";
+  }, []);
+
+  useEffect(() => {
     if (updateError) {
-      setError({ show: true, message: updateError.message });
+      showHint(updateError.message, "error");
     }
   }, [updateError]);
 
@@ -232,7 +198,24 @@ export default function AdminWorldbossMessageUpdate() {
     return <AlertLogin />;
   }
 
-  if (loading) return <FullPageLoading />;
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Skeleton variant="circular" width={40} height={40} />
+          <Skeleton variant="rounded" width={200} height={32} />
+        </Box>
+        <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+          <Stack spacing={2.5}>
+            <Skeleton variant="rounded" height={96} />
+            <Skeleton variant="rounded" height={56} />
+            <Skeleton variant="rounded" height={40} />
+            <Skeleton variant="rounded" height={80} />
+          </Stack>
+        </Paper>
+      </Box>
+    );
+  }
 
   const message = data?.data;
   if (!message) return null;
@@ -253,34 +236,37 @@ export default function AdminWorldbossMessageUpdate() {
       }
       update({ data: payload });
     } else {
-      setError({ show: true, message: "Invalid form data" });
+      showHint("Invalid form data", "error");
     }
   };
 
   return (
-    <Grid container direction="column" spacing={1}>
-      <Grid>
-        <MessageForm
-          defaultImageUrl={icon_url}
-          defaultTemplate={template}
-          onSubmit={onSubmit}
-          loading={updateLoading || loading}
-        />
-      </Grid>
-      <Snackbar
-        open={errorControl.show}
-        autoHideDuration={6000}
-        onClose={() => setError({ ...errorControl, show: false })}
-      >
-        <Alert
-          elevation={6}
-          variant="filled"
-          severity="error"
-          sx={{ width: "100%" }}
-        >
-          {errorControl.message}
-        </Alert>
-      </Snackbar>
-    </Grid>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Header */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Tooltip title="返回列表" arrow>
+          <IconButton onClick={() => navigate("/admin/worldboss-message")}>
+            <ArrowBackIcon />
+          </IconButton>
+        </Tooltip>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          編輯世界王訊息
+        </Typography>
+      </Box>
+
+      <MessageForm
+        defaultImageUrl={icon_url}
+        defaultTemplate={template}
+        onSubmit={onSubmit}
+        loading={updateLoading || loading}
+      />
+
+      <HintSnackBar
+        open={hintState.open}
+        message={hintState.message}
+        severity={hintState.severity}
+        onClose={closeHint}
+      />
+    </Box>
   );
 }

@@ -8,20 +8,15 @@ import {
   Paper,
   Grid,
   IconButton,
+  Chip,
+  Skeleton,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { FullPageLoading } from "../../components/Loading";
+import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 import * as scratchCardService from "../../services/scratchCard";
-
-const previewColumns = [
-  { field: "reward", headerName: "獎勵", flex: 1 },
-  { field: "count", headerName: "數量", width: 120 },
-  { field: "rate", headerName: "中獎率", width: 120 },
-];
 
 export default function AdminScratchCard() {
   const [cardList, setCardList] = useState([]);
@@ -98,8 +93,18 @@ export default function AdminScratchCard() {
 
   const pageLoading = loading || generateLoading;
 
+  // Skeleton loading state
   if (loading && !selected) {
-    return <FullPageLoading />;
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        <Skeleton variant="rounded" height={140} />
+        <Skeleton variant="rounded" height={60} />
+        <Skeleton variant="rounded" height={160} />
+        <Skeleton variant="rounded" height={180} />
+        <Skeleton variant="rounded" height={100} />
+        <Skeleton variant="rounded" height={48} />
+      </Box>
+    );
   }
 
   if (!selected) {
@@ -128,124 +133,232 @@ export default function AdminScratchCard() {
     rate: Math.round((opt.count / effectiveGenerateCount) * 10000) / 100 + "%",
   }));
 
+  const summaryItems = [
+    { label: "單張售價", value: selected.price },
+    { label: "數量", value: effectiveGenerateCount },
+    { label: "總價", value: selected.price * effectiveGenerateCount },
+    { label: "總獎勵", value: totalReward },
+    { label: "利潤", value: selected.price * effectiveGenerateCount - totalReward },
+  ];
+
   return (
-    <Box sx={{ width: "100%" }}>
-      <Typography variant="h4" sx={{ mb: 2 }}>
-        庫存生成
-      </Typography>
-
-      {/* Card selector */}
-      <TextField
-        fullWidth
-        variant="outlined"
-        select
-        value={selected.id}
-        onChange={handleCardChange}
-        sx={{ mb: 2 }}
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Gradient Banner */}
+      <Paper
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 3,
+          px: { xs: 2.5, sm: 3 },
+          py: { xs: 2, sm: 2.5 },
+          minHeight: 120,
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+        }}
       >
-        {cardList.map((card) => (
-          <MenuItem key={card.id} value={card.id}>
-            {card.name}
-          </MenuItem>
-        ))}
-      </TextField>
-
-      {/* Summary */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>
-          小計
-        </Typography>
-        <Typography variant="body1">單張售價：{selected.price}</Typography>
-        <Typography variant="body1">數量：{effectiveGenerateCount}</Typography>
-        <Typography variant="body1">總價：{selected.price * effectiveGenerateCount}</Typography>
-        <Typography variant="body1">總獎勵：{totalReward}</Typography>
-        <Typography variant="body1">
-          利潤：{selected.price * effectiveGenerateCount - totalReward}
-        </Typography>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: (theme) =>
+              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          }}
+        />
+        <ConfirmationNumberIcon
+          sx={{ position: "relative", fontSize: 48, color: "rgba(255,255,255,0.8)" }}
+        />
+        <Box sx={{ position: "relative", flex: 1 }}>
+          <Typography variant="h5" fontWeight={700} color="#fff">
+            刮刮卡管理
+          </Typography>
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.75)", mt: 0.5 }}>
+            庫存生成
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+            <Chip
+              label={`共 ${cardList.length} 種卡片`}
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+            />
+            <Chip
+              label={`選取：${selected.name}`}
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+            />
+          </Box>
+        </Box>
       </Paper>
 
-      {/* Preview DataGrid */}
-      <Box sx={{ height: 300, width: "100%", mb: 2 }}>
-        <DataGrid
-          rows={rows}
-          columns={previewColumns}
-          hideFooter
-          disableColumnFilter
-          disableColumnMenu
-          disableColumnSelector
-          disableRowSelectionOnClick
+      {/* Card Selector */}
+      <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+          選擇卡片
+        </Typography>
+        <TextField
+          fullWidth
+          variant="outlined"
+          select
+          value={selected.id}
+          onChange={handleCardChange}
+        >
+          {cardList.map((card) => (
+            <MenuItem key={card.id} value={card.id}>
+              {card.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Paper>
+
+      {/* Summary */}
+      <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+          小計
+        </Typography>
+        <Grid container spacing={2}>
+          {summaryItems.map(({ label, value }) => (
+            <Grid key={label} size={{ xs: 6, sm: 4 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  {label}
+                </Typography>
+                <Typography variant="body1" fontWeight={700}>
+                  {value}
+                </Typography>
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      </Paper>
+
+      {/* Preview Table */}
+      <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+          獎勵預覽
+        </Typography>
+        <Box>
+          {/* Header */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              pb: 1,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
+              獎勵
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ width: 80 }}>
+              數量
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ width: 80 }}>
+              中獎率
+            </Typography>
+          </Box>
+          {/* Rows */}
+          {rows.map((row, index) => (
+            <Box
+              key={index}
+              sx={{
+                display: "flex",
+                gap: 1,
+                py: 1,
+                borderBottom: index < rows.length - 1 ? "1px solid" : "none",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="body2" sx={{ flex: 1 }}>
+                {row.reward}
+              </Typography>
+              <Typography variant="body2" sx={{ width: 80 }}>
+                {row.count}
+              </Typography>
+              <Typography variant="body2" sx={{ width: 80 }}>
+                {row.rate}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Paper>
+
+      {/* Generate Count */}
+      <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+          生成數量
+        </Typography>
+        <TextField
+          variant="outlined"
+          fullWidth
+          label="數量"
+          type="number"
+          value={effectiveGenerateCount}
+          onChange={(e) => {
+            const val = parseInt(e.target.value);
+            if (!isNaN(val) && val > 0) setGenerateCount(val);
+          }}
         />
-      </Box>
+      </Paper>
 
-      {/* Generate count */}
-      <TextField
-        variant="outlined"
-        fullWidth
-        label="數量"
-        type="number"
-        value={effectiveGenerateCount}
-        onChange={(e) => {
-          const val = parseInt(e.target.value);
-          if (!isNaN(val) && val > 0) setGenerateCount(val);
-        }}
-        sx={{ mb: 2 }}
-      />
-
-      {/* Options */}
-      {options.map((option, index) => {
-        const isLast = index === options.length - 1;
-        return (
-          <Grid container spacing={1} key={index} sx={{ mb: 1 }} alignItems="center">
-            <Grid size={{ xs: 4 }}>
-              <TextField
-                fullWidth
-                variant="outlined"
-                label="獎勵"
-                type="number"
-                value={option.reward}
-                onChange={(e) => handleOptionChange(index, "reward", e.target.value)}
-              />
+      {/* Options Builder */}
+      <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
+          獎勵選項
+        </Typography>
+        {options.map((option, index) => {
+          const isLast = index === options.length - 1;
+          return (
+            <Grid container spacing={1} key={index} sx={{ mb: 1 }} alignItems="center">
+              <Grid size={{ xs: 4 }}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  label="獎勵"
+                  type="number"
+                  value={option.reward}
+                  onChange={(e) => handleOptionChange(index, "reward", e.target.value)}
+                />
+              </Grid>
+              <Grid size={{ xs: 4 }}>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  label="數量"
+                  type="number"
+                  value={option.count}
+                  onChange={(e) => handleOptionChange(index, "count", e.target.value)}
+                />
+              </Grid>
+              <Grid size={{ xs: 2 }}>
+                <IconButton
+                  onClick={() => (isLast ? handleAddOption() : handleRemoveOption(index))}
+                >
+                  {isLast ? <AddIcon /> : <RemoveIcon />}
+                </IconButton>
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 4 }}>
-              <TextField
-                fullWidth
-                variant="outlined"
-                label="數量"
-                type="number"
-                value={option.count}
-                onChange={(e) => handleOptionChange(index, "count", e.target.value)}
-              />
-            </Grid>
-            <Grid size={{ xs: 2 }}>
-              <IconButton
-                onClick={() => (isLast ? handleAddOption() : handleRemoveOption(index))}
-              >
-                {isLast ? <AddIcon /> : <RemoveIcon />}
-              </IconButton>
-            </Grid>
-          </Grid>
-        );
-      })}
+          );
+        })}
+        {options.length === 0 && (
+          <Button startIcon={<AddIcon />} onClick={handleAddOption}>
+            新增獎勵選項
+          </Button>
+        )}
+      </Paper>
 
-      {options.length === 0 && (
-        <Button startIcon={<AddIcon />} onClick={handleAddOption} sx={{ mb: 2 }}>
-          新增獎勵選項
-        </Button>
-      )}
-
-      {/* Generate button */}
+      {/* Generate Button */}
       <Button
         variant="contained"
         fullWidth
         color="primary"
         onClick={handleSubmit}
         disabled={pageLoading}
-        sx={{ mt: 2 }}
+        sx={{ borderRadius: 3, py: 1.5 }}
       >
         產生
       </Button>
 
-      {/* Snackbar */}
       <HintSnackBar
         open={hintState.open}
         message={hintState.message}

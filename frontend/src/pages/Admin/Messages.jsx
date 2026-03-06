@@ -3,7 +3,6 @@ import { io } from "socket.io-client";
 import {
   Grid,
   Card,
-  CardHeader,
   CardActions,
   Button,
   Avatar,
@@ -16,8 +15,12 @@ import {
   ListItemText,
   ListItemAvatar,
   Box,
+  Paper,
+  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import ForumIcon from "@mui/icons-material/Forum";
+import InboxIcon from "@mui/icons-material/Inbox";
 import AlertLogin from "../../components/AlertLogin";
 import liff from "@line/liff";
 import useLiff from "../../context/useLiff";
@@ -138,17 +141,34 @@ function SourceCard({ source, action }) {
       avatar = "預設";
   }
 
+  const chipColor =
+    source.type === "group" ? "primary" : source.type === "user" ? "success" : "default";
+
   return (
-    <Card variant="outlined" sx={{ minWidth: 200 }}>
-      <CardHeader
-        avatar={
-          <Avatar src={avatar} alt={source.type} sx={{ width: 56, height: 56 }} />
-        }
-        title={title}
-        subheader={from}
-      />
-      <CardActions>
-        <Button size="small" onClick={() => action(id)}>
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 3,
+        transition: "box-shadow 0.2s",
+        "&:hover": { boxShadow: 3 },
+      }}
+    >
+      <Box sx={{ px: 2, pt: 2, pb: 1, display: "flex", alignItems: "center", gap: 1.5 }}>
+        <Avatar src={avatar} alt={source.type} sx={{ width: 48, height: 48 }} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            variant="subtitle2"
+            fontWeight={700}
+            noWrap
+            title={title}
+          >
+            {title}
+          </Typography>
+          <Chip label={from} size="small" color={chipColor} sx={{ mt: 0.5 }} />
+        </Box>
+      </Box>
+      <CardActions sx={{ px: 2, pb: 1.5 }}>
+        <Button size="small" variant="outlined" onClick={() => action(id)}>
           詳細
         </Button>
       </CardActions>
@@ -158,11 +178,33 @@ function SourceCard({ source, action }) {
 
 function SourceList({ events, handleOpen }) {
   const sourceDatas = genSourceDatas(events);
+  const keys = Object.keys(sourceDatas);
+
+  if (keys.length === 0) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          py: 8,
+          gap: 1.5,
+          color: "text.secondary",
+        }}
+      >
+        <InboxIcon sx={{ fontSize: 56, opacity: 0.3 }} />
+        <Typography variant="body1" color="text.secondary">
+          尚無訊息來源，等待即時事件中…
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
-    <Grid container spacing={2} sx={{ m: 2 }}>
-      {Object.keys(sourceDatas).map((key, index) => (
-        <Grid key={index}>
+    <Grid container spacing={2}>
+      {keys.map((key, index) => (
+        <Grid key={index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
           <SourceCard source={sourceDatas[key]} action={handleOpen} />
         </Grid>
       ))}
@@ -175,8 +217,17 @@ function ContentDialog({ open, handleClose, datas }) {
 
   return (
     <Dialog onClose={handleClose} open={open} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ m: 0, p: 2, display: "flex", alignItems: "center" }}>
-        <Typography variant="h6" sx={{ flex: 1 }}>
+      <DialogTitle
+        sx={{
+          m: 0,
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>
           {title}
         </Typography>
         <IconButton
@@ -235,7 +286,7 @@ export default function AdminMessages() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    document.title = "管理員後台訊息管理";
+    document.title = "訊息實況";
     const socket = io("/admin/messages", {
       auth: {
         token: liff.getAccessToken(),
@@ -301,14 +352,68 @@ export default function AdminMessages() {
     return <AlertLogin />;
   }
 
+  const sourceDatas = genSourceDatas(events);
+  const sourceCount = Object.keys(sourceDatas).length;
+
   return (
-    <>
-      <SourceList events={events} handleOpen={handleOpen} />
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Gradient Banner */}
+      <Paper
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 3,
+          px: { xs: 2.5, sm: 3 },
+          py: { xs: 2, sm: 2.5 },
+          minHeight: 120,
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: (theme) =>
+              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          }}
+        />
+        <ForumIcon
+          sx={{ position: "relative", fontSize: 48, color: "rgba(255,255,255,0.8)" }}
+        />
+        <Box sx={{ position: "relative", flex: 1 }}>
+          <Typography variant="h5" fontWeight={700} color="#fff">
+            訊息實況
+          </Typography>
+          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.75)", mt: 0.5 }}>
+            即時訊息監控
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+            <Chip
+              label={`${sourceCount} 個來源`}
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+            />
+            <Chip
+              label={`${events.length} 則事件`}
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+            />
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Source List */}
+      <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+        <SourceList events={events} handleOpen={handleOpen} />
+      </Paper>
+
       <ContentDialog
         open={dialogState.open}
         datas={dialogState.data}
         handleClose={handleClose}
       />
-    </>
+    </Box>
   );
 }
