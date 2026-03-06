@@ -15,6 +15,7 @@ import TradeOrder from "./pages/Trade/Order";
 import TradeManage from "./pages/Trade/Manage";
 import TradeDetail from "./pages/Trade/Detail";
 import TradeTransaction from "./pages/Trade/Transaction";
+import GroupList from "./pages/Group";
 import GroupRecord from "./pages/Group/Record";
 import GroupConfig from "./pages/Group/Config";
 import GroupBattle from "./pages/Group/Battle";
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="trade/:marketId/transaction" element={<TradeTransaction />} />
 
           {/* Group */}
+          <Route path="groups" element={<GroupList />} />
           <Route path="group/:groupId/record" element={<GroupRecord />} />
           <Route path="group/:groupId/config" element={<GroupConfig />} />
           <Route path="group/:groupId/battle" element={<GroupBattle />} />
