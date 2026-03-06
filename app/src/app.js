@@ -26,12 +26,10 @@ const AdvancementController = require("./controller/application/AdvancementContr
 const DonateListController = require("./controller/application/DonateListController");
 const GambleController = require("./controller/application/GambleController");
 const AliasController = require("./controller/application/AliasController");
-const VoteController = require("./controller/application/VoteController");
 const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const StatusController = require("./controller/application/StatusController");
-const LotteryController = require("./controller/application/LotteryController");
 const BullshitController = require("./controller/application/BullshitController");
 const SubscribeController = require("./controller/application/SubscribeController");
 const ScratchCardController = require("./controller/application/ScratchCardController");
@@ -46,7 +44,6 @@ const { showManagePlace } = require("./templates/application/Admin");
 const AdminModel = require("./model/application/Admin");
 const axios = require("axios");
 const pConfig = require("config");
-const FetchGameData = require("../bin/FetchGameData");
 const { get, sample } = require("lodash");
 
 axios.defaults.timeout = 5000;
@@ -106,20 +103,16 @@ async function HandlePostback(context, { next }) {
     if (!isExist && action !== "adminBossAttack") return;
 
     return router([
-      route(() => action === "battleSignUp", withProps(battle.BattlePostSignUp, { payload })),
-      route(() => action === "battleCancel", withProps(battle.BattlePostCancel, { payload })),
       route(
         () => action === "worldBossAttack",
         withProps(WorldBossController.attackOnBoss, { payload })
       ),
       route(() => action === "janken", withProps(JankenController.decide, { payload })),
       route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
-      route(() => action === "vote", withProps(VoteController.decide, { payload })),
       route(
         () => action === "confirmTransfer",
         withProps(MarketController.doTransfer, { payload })
       ),
-      route(() => action === "lottery_auto_buy", withProps(LotteryController.autoBuy, { payload })),
       route(
         () => action === "exchangeScratchCard",
         withProps(ScratchCardController.exchange, { payload })
@@ -176,13 +169,11 @@ async function OrderBased(context, { next }) {
     ...GodStoneShopController.router,
     ...JankenController.router,
     ...AdvancementController.router,
-    ...VoteController.router,
     ...GambleController.router,
     ...MarketController.router,
     ...CouponController.router,
     ...ImageController.router,
     ...StatusController.router,
-    ...LotteryController.router,
     ...BullshitController.router,
     ...SubscribeController.router,
     ...ScratchCardController.router,
@@ -278,7 +269,6 @@ function AdminOrder() {
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
-    text("!download", FetchGameData),
     ...GambleController.adminRouter,
     ...AdvancementController.adminRouter,
     ...DonateListController.adminRouter,
@@ -317,23 +307,9 @@ function BattleOrder(context) {
   if (context.state.guildConfig.Battle === "N") return [];
 
   return [
-    text(/^[#.]gbs/, battle.BattleSignUp),
-    text(/^[#.]gbc(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/, battle.BattleCancel),
-    text(
-      /^[#.](gb|刀表)(\s(?<week>[1-9]{1}(\d{0,2})?))?(\s(?<boss>[1-5]{1}))?$/,
-      battle.BattleList
-    ),
-    text(/^[#.](檢視下一?[周週][回次]|shownextweek)$/, battle.NextBattleList),
-    text(/^[#.](檢視上一?[周週][回次]|showlastweek)$/, battle.PreBattleList),
-    text(/^[#.]((前往)?(下一?[周週][回次])|nextweek)$/, battle.IncWeek),
-    text(/^[#.]((回去)?(上一?[周週][回次])|lastweek)$/, battle.DecWeek),
-    text(/^[#.]([五5]王倒了|finishweek)$/, battle.FinishWeek),
-    text(/^[#.](設定[周週][回次]|setweek)(\s(?<week>\d+))?$/, battle.SetWeek),
-    text(/^[#.](當[周週][回次]報名表|nowweek)$/, battle.CurrentBattle),
     text(/^[#.](三刀出完|出完三刀|done)$/, battle.reportFinish),
     text(/^[#.](三刀重置|重置三刀|reset)$/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
-    text(/^[#.](signtest)$/, battle.SignMessageTest),
     text(["#刀軸轉換", ".bt", "/bt"], context => {
       let bubble = commonTemplate.genLinkBubble(
         "⏱️刀軸轉換",
