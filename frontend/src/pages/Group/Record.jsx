@@ -1,170 +1,327 @@
 import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { get } from "lodash";
 import useAxios from "axios-hooks";
 import {
-  Box, Grid, Typography, Paper, Card, CardHeader, CardContent, LinearProgress,
+  Box, Grid, Typography, Paper, Card, CardContent,
+  Avatar, Chip, LinearProgress, Skeleton, Divider,
 } from "@mui/material";
-import {
-  Flag, Forum, GroupSharp, Image, InsertEmoticon,
-} from "@mui/icons-material";
-import { DataGrid, GridOverlay } from "@mui/x-data-grid";
-import {
-  PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer,
-} from "recharts";
+import ForumIcon from "@mui/icons-material/Forum";
+import ImageIcon from "@mui/icons-material/Image";
+import InsertEmoticonIcon from "@mui/icons-material/InsertEmoticon";
+import ReplayIcon from "@mui/icons-material/Replay";
+import PeopleIcon from "@mui/icons-material/People";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AlertLogin from "../../components/AlertLogin";
-import { FullPageLoading } from "../../components/Loading";
 
-/* ---------- constants ---------- */
-const PIE_COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042"];
-
-const genDate = (timestamp) => {
-  const d = new Date(timestamp);
-  return [d.getFullYear(), d.getMonth() + 1, d.getDate()].join("/");
+/* ---------- helpers ---------- */
+const sum = (arr, key) => arr.reduce((acc, cur) => acc + (cur[key] || 0), 0);
+const total = (m) => (m.textCnt || 0) + (m.imageCnt || 0) + (m.stickerCnt || 0);
+const fmtDate = (ts) => {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 };
 
-const columns = [
-  { field: "rank", headerName: "#", type: "number", width: 70 },
-  { field: "displayName", headerName: "暱稱", flex: 1, minWidth: 120 },
-  { field: "textCnt", headerName: "文字", type: "number", width: 100 },
-  { field: "imageCnt", headerName: "圖片", type: "number", width: 100 },
-  { field: "stickerCnt", headerName: "貼圖", type: "number", width: 100 },
-  { field: "unsendCnt", headerName: "收回", type: "number", width: 100 },
-  {
-    field: "lastSpeakTS",
-    headerName: "最後發言時間",
-    width: 150,
-    renderCell: (params) => genDate(params.value),
-  },
-  {
-    field: "joinedTS",
-    headerName: "加入時間",
-    width: 150,
-    renderCell: (params) => genDate(params.value),
-  },
-];
+const MEDAL_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
 
-function CustomLoadingOverlay() {
+/* ---------- StatChip ---------- */
+function StatChip({ icon, label, value }) {
   return (
-    <GridOverlay>
-      <LinearProgress color="secondary" sx={{ position: "absolute", top: 0, width: "100%" }} />
-    </GridOverlay>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+      {icon}
+      <Typography variant="caption" color="text.secondary">{label}</Typography>
+      <Typography variant="caption" sx={{ fontWeight: 700 }}>{value.toLocaleString()}</Typography>
+    </Box>
   );
 }
 
-/* ---------- helpers ---------- */
-const sumData = (rank = [], field) => rank.reduce((acc, cur) => acc + get(cur, field, 0), 0);
-
-function genPieData({ text = 0, image = 0, sticker = 0, unsend = 0 }) {
-  return [
-    { name: "文字", value: text },
-    { name: "圖片", value: image },
-    { name: "貼圖", value: sticker },
-    { name: "收回", value: unsend },
-  ];
-}
-
-/* ---------- PieCard ---------- */
-function PieCard({ title, subtitle, data }) {
-  const hasData = data.some((d) => d.value > 0);
+/* ---------- GroupBanner ---------- */
+function GroupBanner({ group, rank }) {
+  const memberCount = rank.length;
+  const groupCount = group?.count || 0;
+  const totalMessages = sum(rank, "textCnt") + sum(rank, "imageCnt") + sum(rank, "stickerCnt");
 
   return (
-    <Card sx={{ minWidth: 160, height: 330, p: 1 }}>
-      <CardHeader title={title} subheader={subtitle} />
-      <CardContent>
-        {hasData ? (
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={40}
-                outerRadius={70}
-                label
-              >
-                {data.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Legend />
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        ) : (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", mt: 4 }}>
-            暫無數據
+    <Paper
+      sx={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 3,
+      }}
+    >
+      {group?.pictureUrl && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${group.pictureUrl})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(20px) brightness(0.4)",
+          }}
+        />
+      )}
+      {!group?.pictureUrl && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: (theme) =>
+              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          }}
+        />
+      )}
+      <Box sx={{ position: "relative", p: 3, display: "flex", alignItems: "center", gap: 2.5 }}>
+        <Avatar
+          src={group?.pictureUrl}
+          alt={group?.groupName}
+          sx={{ width: 72, height: 72, border: "3px solid rgba(255,255,255,0.3)" }}
+        >
+          {group?.groupName?.charAt(0)}
+        </Avatar>
+        <Box sx={{ color: "#fff", minWidth: 0 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }} noWrap>
+            {group?.groupName}
           </Typography>
-        )}
+          <Box sx={{ display: "flex", gap: 2, mt: 0.5, flexWrap: "wrap" }}>
+            <Chip
+              icon={<PeopleIcon sx={{ color: "inherit !important" }} />}
+              label={`${memberCount} / ${groupCount} 人`}
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+            />
+            <Chip
+              icon={<ForumIcon sx={{ color: "inherit !important" }} />}
+              label={`${totalMessages.toLocaleString()} 則訊息`}
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+            />
+          </Box>
+        </Box>
+      </Box>
+    </Paper>
+  );
+}
+
+/* ---------- TopContributors ---------- */
+function TopContributors({ rank }) {
+  const top3 = rank.slice(0, 3);
+  if (top3.length === 0) return null;
+
+  return (
+    <Box>
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+        <EmojiEventsIcon sx={{ fontSize: 20, verticalAlign: "text-bottom", mr: 0.5 }} />
+        Top 活躍成員
+      </Typography>
+      <Grid container spacing={2}>
+        {top3.map((member, i) => (
+          <Grid size={{ xs: 12, sm: 4 }} key={member.userId}>
+            <Card
+              sx={{
+                borderTop: `3px solid ${MEDAL_COLORS[i]}`,
+                height: "100%",
+              }}
+            >
+              <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, py: 2.5 }}>
+                <Box sx={{ position: "relative" }}>
+                  <Avatar
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      bgcolor: MEDAL_COLORS[i],
+                      fontSize: 24,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {member.displayName?.charAt(0)}
+                  </Avatar>
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      bottom: -4,
+                      right: -4,
+                      bgcolor: MEDAL_COLORS[i],
+                      color: i === 0 ? "#000" : "#fff",
+                      borderRadius: "50%",
+                      width: 22,
+                      height: 22,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      border: "2px solid",
+                      borderColor: "background.paper",
+                    }}
+                  >
+                    {i + 1}
+                  </Box>
+                </Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
+                  {member.displayName}
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700 }} color="primary">
+                  {total(member).toLocaleString()}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  則互動
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", justifyContent: "center" }}>
+                  <StatChip icon={<ForumIcon sx={{ fontSize: 14 }} color="action" />} label="文字" value={member.textCnt || 0} />
+                  <StatChip icon={<ImageIcon sx={{ fontSize: 14 }} color="action" />} label="圖片" value={member.imageCnt || 0} />
+                  <StatChip icon={<InsertEmoticonIcon sx={{ fontSize: 14 }} color="action" />} label="貼圖" value={member.stickerCnt || 0} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+}
+
+/* ---------- MyStats ---------- */
+function MyStats({ rank, maxTotal }) {
+  const userId = window.liff?.getContext?.()?.userId;
+  const me = rank.find((m) => m.userId === userId);
+  if (!me) return null;
+
+  const myTotal = total(me);
+  const pct = maxTotal > 0 ? (myTotal / maxTotal) * 100 : 0;
+
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+          我的數據
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Avatar sx={{ width: 48, height: 48, bgcolor: "primary.main" }}>
+            {me.displayName?.charAt(0)}
+          </Avatar>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }} noWrap>
+                {me.displayName}
+              </Typography>
+              <Chip label={`#${me.rank}`} size="small" color="primary" variant="outlined" />
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={pct}
+              sx={{ height: 8, borderRadius: 4, mt: 0.5, mb: 1 }}
+            />
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+              <StatChip icon={<ForumIcon sx={{ fontSize: 14 }} color="action" />} label="文字" value={me.textCnt || 0} />
+              <StatChip icon={<ImageIcon sx={{ fontSize: 14 }} color="action" />} label="圖片" value={me.imageCnt || 0} />
+              <StatChip icon={<InsertEmoticonIcon sx={{ fontSize: 14 }} color="action" />} label="貼圖" value={me.stickerCnt || 0} />
+              <StatChip icon={<ReplayIcon sx={{ fontSize: 14 }} color="action" />} label="收回" value={me.unsendCnt || 0} />
+            </Box>
+          </Box>
+        </Box>
       </CardContent>
     </Card>
   );
 }
 
-/* ---------- GroupRecordSummary ---------- */
-function GroupRecordSummary({ group, rank }) {
-  const data = rank || [];
-  const textCount = sumData(data, "textCnt");
-  const stickerCount = sumData(data, "stickerCnt");
-  const imageCount = sumData(data, "imageCnt");
-  const factCount = data.length;
-  const groupCount = get(group, "count", 0);
-
-  const summaryItems = [
-    { Icon: Flag, title: "群組類別", content: "聊天群" },
-    { Icon: GroupSharp, title: "紀錄/群組 人數", content: `${factCount}/${groupCount}` },
-    { Icon: Forum, title: "訊息次數", content: textCount },
-    { Icon: Image, title: "圖片次數", content: imageCount },
-    { Icon: InsertEmoticon, title: "貼圖次數", content: stickerCount },
-  ];
+/* ---------- MemberRow ---------- */
+function MemberRow({ member, maxTotal }) {
+  const memberTotal = total(member);
+  const pct = maxTotal > 0 ? (memberTotal / maxTotal) * 100 : 0;
 
   return (
-    <Grid container spacing={2} justifyContent="center">
-      {summaryItems.map((item, index) => (
-        <Grid size={{ xs: 6, sm: 2 }} key={index}>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <item.Icon color="action" />
-            <Box>
-              <Typography variant="subtitle2" color="text.secondary">
-                {item.title}
-              </Typography>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                {item.content}
-              </Typography>
-            </Box>
-          </Box>
-        </Grid>
-      ))}
-    </Grid>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 1.5 }}>
+      <Typography
+        variant="body2"
+        sx={{ width: 28, textAlign: "right", fontWeight: 600, color: "text.secondary", flexShrink: 0 }}
+      >
+        {member.rank}
+      </Typography>
+      <Avatar sx={{ width: 36, height: 36, fontSize: 14 }}>
+        {member.displayName?.charAt(0)}
+      </Avatar>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 0.25 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+            {member.displayName}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, ml: 1 }}>
+            {memberTotal.toLocaleString()} 則
+          </Typography>
+        </Box>
+        <LinearProgress
+          variant="determinate"
+          value={pct}
+          sx={{ height: 6, borderRadius: 3 }}
+        />
+        <Box sx={{ display: "flex", gap: 1.5, mt: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            文字 {member.textCnt || 0}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            圖片 {member.imageCnt || 0}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            貼圖 {member.stickerCnt || 0}
+          </Typography>
+          {(member.unsendCnt || 0) > 0 && (
+            <Typography variant="caption" color="text.secondary">
+              收回 {member.unsendCnt}
+            </Typography>
+          )}
+          <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
+            {fmtDate(member.lastSpeakTS)}
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 
-/* ---------- MyPieCard ---------- */
-function MyPieCard({ rank = [] }) {
-  const userId = window.liff?.getContext?.()?.userId;
-  const data = rank.find((item) => item.userId === userId);
-  const pieData = genPieData({
-    text: get(data, "textCnt", 0),
-    image: get(data, "imageCnt", 0),
-    sticker: get(data, "stickerCnt", 0),
-    unsend: get(data, "unsendCnt", 0),
-  });
+/* ---------- MemberList ---------- */
+function MemberList({ rank, maxTotal }) {
+  if (rank.length === 0) {
+    return (
+      <Paper sx={{ p: 4, textAlign: "center" }}>
+        <Typography color="text.secondary">尚無成員數據</Typography>
+      </Paper>
+    );
+  }
 
-  return <PieCard title={get(data, "displayName", "-")} subtitle="個人數據分析" data={pieData} />;
+  return (
+    <Paper sx={{ px: 2, py: 1 }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, py: 1.5 }}>
+        全員活躍度排行
+      </Typography>
+      {rank.map((member, i) => (
+        <Box key={member.userId}>
+          {i > 0 && <Divider />}
+          <MemberRow member={member} maxTotal={maxTotal} />
+        </Box>
+      ))}
+    </Paper>
+  );
 }
 
-/* ---------- GroupPieCard ---------- */
-function GroupPieCard({ rank = [] }) {
-  const pieData = genPieData({
-    text: sumData(rank, "textCnt"),
-    image: sumData(rank, "imageCnt"),
-    sticker: sumData(rank, "stickerCnt"),
-    unsend: sumData(rank, "unsendCnt"),
-  });
-
-  return <PieCard title="全員" subtitle="群組數據分析" data={pieData} />;
+/* ---------- Loading skeleton ---------- */
+function RecordSkeleton() {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <Skeleton variant="rounded" height={120} animation="wave" />
+      <Grid container spacing={2}>
+        {[1, 2, 3].map((i) => (
+          <Grid size={{ xs: 12, sm: 4 }} key={i}>
+            <Skeleton variant="rounded" height={200} animation="wave" />
+          </Grid>
+        ))}
+      </Grid>
+      <Skeleton variant="rounded" height={60} animation="wave" />
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Skeleton key={i} variant="rounded" height={48} animation="wave" />
+      ))}
+    </Box>
+  );
 }
 
 /* ---------- GroupRecord (main export) ---------- */
@@ -182,7 +339,7 @@ export default function GroupRecord() {
   );
 
   useEffect(() => {
-    document.title = "群組數據管理";
+    document.title = "群組數據";
   }, []);
 
   useEffect(() => {
@@ -194,53 +351,28 @@ export default function GroupRecord() {
     return (rankData || []).map((data, index) => ({
       ...data,
       rank: index + 1,
-      id: index,
     }));
   }, [rankData]);
+
+  const maxTotal = useMemo(() => {
+    if (rank.length === 0) return 0;
+    return total(rank[0]);
+  }, [rank]);
 
   if (!isLoggedIn) {
     return <AlertLogin />;
   }
 
-  const pageLoading = rankLoading || groupLoading || !rankData || !groupData;
-
-  if (pageLoading) {
-    return <FullPageLoading />;
+  if (rankLoading || groupLoading || !rankData || !groupData) {
+    return <RecordSkeleton />;
   }
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <Box>
-        <Typography variant="h6">群組數據 - {get(groupData, "groupName")}</Typography>
-        <Typography variant="subtitle2" color="text.secondary">
-          提供群組進行數據管理
-        </Typography>
-      </Box>
-
-      <GroupRecordSummary group={groupData} rank={rank} />
-
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <MyPieCard rank={rank} />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <GroupPieCard rank={rank} />
-        </Grid>
-      </Grid>
-
-      <Paper sx={{ width: "100%", height: 500 }}>
-        <DataGrid
-          columns={columns}
-          rows={rank}
-          disableColumnFilter
-          disableColumnSelector
-          disableColumnMenu
-          disableRowSelectionOnClick
-          loading={pageLoading}
-          slots={{ loadingOverlay: CustomLoadingOverlay }}
-          sx={{ border: 0 }}
-        />
-      </Paper>
+      <GroupBanner group={groupData} rank={rank} />
+      <TopContributors rank={rank} />
+      <MyStats rank={rank} maxTotal={maxTotal} />
+      <MemberList rank={rank} maxTotal={maxTotal} />
     </Box>
   );
 }
