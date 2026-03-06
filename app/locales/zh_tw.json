@@ -93,12 +93,6 @@
     "alias": {
       "add_usage": "請輸入參數，例如：!alias foo=指令"
     },
-    "vote": {
-      "notFound": "沒有找到指定的投票活動",
-      "notHolding": "這個投票活動沒有開始或已經結束",
-      "decided": "{{{ displayName }}} 已參加完 {{ title }}，舉辦期間仍可以改變決定\n註：改變決定後將不進行二次通知",
-      "help": "使用方式：/vote list --ids=投票活動ID，例如：/vote list --ids=1,2,3"
-    },
     "service": {
       "already_exists": "服務名稱 {{ serviceName }} 已存在於 {{ groupId }}",
       "add_success": "成功新增服務 {{ serviceName }} 到 {{ groupId }}",

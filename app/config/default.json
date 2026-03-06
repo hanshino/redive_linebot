@@ -20,7 +20,6 @@
     },
     "prefix": {
       "alias": "alias",
-      "vote": "vote",
       "atm": "atm",
       "command_attack": "command_attack"
     }
@@ -80,13 +79,6 @@
     "discord": "#5865F2",
     "github": "#171515",
     "bahamut": "#117e96"
-  },
-  "vote": {
-    "default": {
-      "color": {
-        "option": "#808080"
-      }
-    }
   },
   "message": {
     "yes": [

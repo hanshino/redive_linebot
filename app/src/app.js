@@ -26,7 +26,6 @@ const AdvancementController = require("./controller/application/AdvancementContr
 const DonateListController = require("./controller/application/DonateListController");
 const GambleController = require("./controller/application/GambleController");
 const AliasController = require("./controller/application/AliasController");
-const VoteController = require("./controller/application/VoteController");
 const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
@@ -110,7 +109,6 @@ async function HandlePostback(context, { next }) {
       ),
       route(() => action === "janken", withProps(JankenController.decide, { payload })),
       route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
-      route(() => action === "vote", withProps(VoteController.decide, { payload })),
       route(
         () => action === "confirmTransfer",
         withProps(MarketController.doTransfer, { payload })
@@ -171,7 +169,6 @@ async function OrderBased(context, { next }) {
     ...GodStoneShopController.router,
     ...JankenController.router,
     ...AdvancementController.router,
-    ...VoteController.router,
     ...GambleController.router,
     ...MarketController.router,
     ...CouponController.router,
