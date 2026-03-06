@@ -43,18 +43,8 @@
     "gacha": "抽卡",
     "weekly": "每週任務",
     "time": "時間",
-    "max_level": "最高等級",
-    "max_favorability": "最高好感度",
-    "max_stamina": "最高耐力值",
-    "max_satiety": "最高飽足度",
-    "favorability": "好感度",
-    "stamina": "耐力值",
-    "satiety": "飽足度",
-    "experience": "經驗值",
     "yes": "是",
-    "no": "否",
-    "okashiya": "點心區",
-    "use": "使用"
+    "no": "否"
   },
   "message": {
     "whos_problem": [
