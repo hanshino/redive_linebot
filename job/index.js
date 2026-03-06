@@ -4,7 +4,6 @@ if (process.env.NODE_ENV !== "production") {
 
 const CronJob = require("cron").CronJob;
 const script = require("./bin");
-require("./bin/WorldBoss");
 require("./bin/Advancement");
 require("./bin/EventCenter");
 

@@ -13,7 +13,7 @@ RUN yarn install --production=true
 
 #### Build Time Finished ####
 
-FROM node:lts-bullseye-slim
+FROM node:lts-bookworm-slim
 
 LABEL Name="redive機器人核心"
 LABEL description="機器人語言組，分析所有訊息，進行功能響應"
@@ -21,7 +21,7 @@ LABEL version="1.0"
 LABEL maintainer="hanshino@github"
 
 USER node
-ENV NODE_ENV production
+ENV NODE_ENV=production
 WORKDIR /usr/src/app
 
 COPY --from=build /usr/bin/dumb-init /usr/bin/dumb-init
