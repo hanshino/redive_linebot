@@ -1,10 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
-import { Box, Button, Avatar, Typography } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import {
+  Box,
+  Button,
+  Avatar,
+  Chip,
+  Typography,
+  Paper,
+  IconButton,
+  Tooltip,
+  Divider,
+  Skeleton,
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { FullPageLoading } from "../../components/Loading";
+import TerminalIcon from "@mui/icons-material/Terminal";
 import HintSnackBar from "../../components/HintSnackBar";
 import AlertDialog from "../../components/AlertDialog";
 import OrderDialog from "../../components/OrderDialog";
@@ -21,6 +31,69 @@ const NEW_ORDER_TEMPLATE = {
   replyDatas: [{ no: 0, messageType: "text", reply: "回覆內容" }],
 };
 
+const TOUCH_TYPE_MAP = { 1: "全符合", 2: "關鍵字符合" };
+
+/* ---------- Loading Skeleton ---------- */
+function GlobalOrderSkeleton() {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <Skeleton variant="rounded" height={140} animation="wave" />
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Skeleton key={i} variant="rounded" height={72} animation="wave" />
+      ))}
+    </Box>
+  );
+}
+
+/* ---------- Order Row ---------- */
+function OrderRow({ row, onEdit, onDelete }) {
+  const touchLabel = TOUCH_TYPE_MAP[row.touchType] || String(row.touchType);
+  const isKeyword = String(row.touchType) === "2";
+
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 2, py: 2 }}>
+      <Avatar
+        alt={row.senderName || "預設"}
+        src={row.senderIcon || ""}
+        sx={{ width: 48, height: 48, flexShrink: 0 }}
+      >
+        {(row.senderName || "預").charAt(0)}
+      </Avatar>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }} noWrap>
+          {row.order}
+        </Typography>
+        <Box sx={{ display: "flex", gap: 0.75, mt: 0.5, flexWrap: "wrap", alignItems: "center" }}>
+          <Chip
+            label={touchLabel}
+            size="small"
+            color={isKeyword ? "warning" : "primary"}
+            variant="outlined"
+          />
+          {row.senderName && (
+            <Typography variant="caption" color="text.secondary">
+              {row.senderName}
+            </Typography>
+          )}
+        </Box>
+      </Box>
+      <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>
+        <Tooltip title="編輯">
+          <IconButton size="small" onClick={() => onEdit(row)}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="刪除">
+          <IconButton size="small" color="error" onClick={() => onDelete(row)}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </Box>
+  );
+}
+
+/* ---------- Main Component ---------- */
 export default function AdminGlobalOrder() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +116,7 @@ export default function AdminGlobalOrder() {
   }, [showHint]);
 
   useEffect(() => {
-    document.title = "指令管理頁面";
+    document.title = "全群指令管理";
     fetchData();
   }, [fetchData]);
 
@@ -106,79 +179,77 @@ export default function AdminGlobalOrder() {
     });
   };
 
-  const touchTypeMap = { 1: "全符合", 2: "關鍵字符合" };
-
-  const columns = [
-    { field: "order", headerName: "指令", flex: 1, minWidth: 150 },
-    {
-      field: "touchType",
-      headerName: "觸發方式",
-      width: 130,
-      valueFormatter: (value) => touchTypeMap[value] || value,
-    },
-    {
-      field: "senderName",
-      headerName: "發送名",
-      width: 130,
-      valueFormatter: (value) => value || "預設",
-    },
-    {
-      field: "senderIcon",
-      headerName: "發送頭像",
-      width: 80,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Avatar
-          alt={params.row.senderName || "預設"}
-          src={params.value || ""}
-          sx={{ width: 36, height: 36 }}
-        />
-      ),
-    },
-    {
-      field: "actions",
-      headerName: "操作",
-      width: 120,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Box sx={{ display: "flex", gap: 0.5 }}>
-          <Button size="small" onClick={() => handleOpenEdit(params.row)}>
-            <EditIcon fontSize="small" />
-          </Button>
-          <Button size="small" color="error" onClick={() => handleDeleteClick(params.row)}>
-            <DeleteIcon fontSize="small" />
-          </Button>
-        </Box>
-      ),
-    },
-  ];
-
   if (loading && rows.length === 0) {
-    return <FullPageLoading />;
+    return <GlobalOrderSkeleton />;
   }
 
   return (
-    <Box sx={{ width: "100%" }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h5">全群指令管理</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
-          新增指令
-        </Button>
-      </Box>
-
-      <Box sx={{ height: 600, width: "100%" }}>
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          loading={loading}
-          getRowId={(row) => row.orderKey}
-          pageSizeOptions={[10, 25, 50]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          disableRowSelectionOnClick
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Gradient Banner */}
+      <Paper sx={{ position: "relative", overflow: "hidden", borderRadius: 3 }}>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: (theme) =>
+              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          }}
         />
-      </Box>
+        <Box
+          sx={{
+            position: "relative",
+            px: { xs: 2.5, sm: 3 },
+            py: { xs: 2.5, sm: 3 },
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <TerminalIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.8)", flexShrink: 0 }} />
+          <Box sx={{ color: "#fff", flex: 1, minWidth: 0 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              全群指令管理
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
+              <Chip
+                label={`${rows.length} 個指令`}
+                size="small"
+                sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+              />
+            </Box>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAdd}
+            sx={{
+              bgcolor: "rgba(255,255,255,0.2)",
+              color: "#fff",
+              flexShrink: 0,
+              "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+            }}
+          >
+            新增指令
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Command List */}
+      {rows.length === 0 ? (
+        <Paper sx={{ py: 6, textAlign: "center", borderRadius: 3 }}>
+          <TerminalIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+          <Typography color="text.secondary">尚無指令資料</Typography>
+        </Paper>
+      ) : (
+        <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+          {rows.map((row, i) => (
+            <Box key={row.orderKey}>
+              {i > 0 && <Divider />}
+              <OrderRow row={row} onEdit={handleOpenEdit} onDelete={handleDeleteClick} />
+            </Box>
+          ))}
+        </Paper>
+      )}
 
       {/* Order Add/Edit Dialog */}
       <OrderDialog

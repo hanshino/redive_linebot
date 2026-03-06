@@ -1,19 +1,22 @@
 import { useEffect } from "react";
-import { DataGrid } from "@mui/x-data-grid";
 import useAxios from "axios-hooks";
 import {
   Avatar,
-  ButtonGroup,
-  Grid,
-  Button,
-  Alert,
-  Fab,
-  CircularProgress,
-  Skeleton,
   Box,
+  Button,
+  Chip,
+  Divider,
+  IconButton,
+  Paper,
+  Skeleton,
+  Alert,
+  Tooltip,
+  Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import { green } from "@mui/material/colors";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import { Link, useNavigate } from "react-router-dom";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
@@ -39,34 +42,37 @@ function ControlButtons({ onDeleteComplete, value }) {
   }, [data]);
 
   return (
-    <Box sx={{ position: "relative", m: 1 }}>
-      <ButtonGroup color="primary" variant="outlined" disabled={loading}>
-        <Button onClick={() => navigate(`/admin/worldboss-message/update/${value}`)}>
-          更新
-        </Button>
-        <Button color="primary" variant="outlined" onClick={handleDelete}>
-          刪除
-        </Button>
-      </ButtonGroup>
-      {loading && (
-        <CircularProgress
-          size={24}
+    <Box sx={{ display: "flex", gap: 0.5 }}>
+      <Tooltip title="編輯" arrow>
+        <IconButton
+          size="small"
+          disabled={loading}
+          onClick={() => navigate(`/admin/worldboss-message/update/${value}`)}
           sx={{
-            color: green[500],
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            mt: "-12px",
-            ml: "-12px",
+            color: "primary.main",
+            "&:hover": { bgcolor: "primary.main", color: "primary.contrastText" },
+            transition: "all 0.15s",
           }}
-        />
-      )}
+        >
+          <EditIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="刪除" arrow>
+        <IconButton
+          size="small"
+          disabled={loading}
+          onClick={handleDelete}
+          sx={{
+            color: "error.main",
+            "&:hover": { bgcolor: "error.main", color: "error.contrastText" },
+            transition: "all 0.15s",
+          }}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
     </Box>
   );
-}
-
-function genAvatar({ value }) {
-  return <Avatar alt="頭像" src={value} />;
 }
 
 function DataList() {
@@ -74,46 +80,68 @@ function DataList() {
     "/api/game/world-boss/feature-messages"
   );
   const { data: messageData = [] } = data;
-  const columns = [
-    {
-      headerName: "頭像",
-      field: "icon_url",
-      flex: 0.5,
-      renderCell: genAvatar,
-    },
-    { headerName: "訊息樣板", field: "template", flex: 2 },
-    {
-      headerName: "操作",
-      field: "id",
-      flex: 1.4,
-      renderCell: (rawData) => (
-        <ControlButtons value={rawData.value} onDeleteComplete={refetch} />
-      ),
-    },
-  ];
 
   useEffect(() => {
     refetch();
   }, [window.location.pathname]);
 
   if (loading) {
-    return <Skeleton animation="wave" variant="rectangular" width="100%" height={300} />;
+    return (
+      <Paper sx={{ borderRadius: 3 }}>
+        {[1, 2, 3].map((i) => (
+          <Box key={i} sx={{ px: { xs: 2.5, sm: 3 }, py: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Skeleton variant="circular" width={40} height={40} />
+              <Box sx={{ flex: 1 }}>
+                <Skeleton variant="rounded" width="60%" height={20} />
+              </Box>
+              <Skeleton variant="rounded" width={80} height={32} />
+            </Box>
+          </Box>
+        ))}
+      </Paper>
+    );
   }
 
   if (error) {
     return <Alert severity="error">發生錯誤，請確認是否有管理權限！</Alert>;
   }
 
+  if (messageData.length === 0) {
+    return (
+      <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: 4, textAlign: "center" }}>
+        <Typography variant="body2" color="text.secondary">
+          尚無訊息樣板，點擊右上角「新增」按鈕新增
+        </Typography>
+      </Paper>
+    );
+  }
+
   return (
-    <Box sx={{ width: "100%", minHeight: 300 }}>
-      <DataGrid
-        columns={columns}
-        rows={messageData}
-        disableColumnMenu
-        disableColumnFilter
-        disableColumnSelector
-      />
-    </Box>
+    <Paper sx={{ borderRadius: 3 }}>
+      {messageData.map((row, index) => (
+        <Box key={row.id}>
+          <Box
+            sx={{
+              px: { xs: 2.5, sm: 3 },
+              py: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <Avatar alt="頭像" src={row.icon_url} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
+                {row.template}
+              </Typography>
+            </Box>
+            <ControlButtons value={row.id} onDeleteComplete={refetch} />
+          </Box>
+          {index < messageData.length - 1 && <Divider />}
+        </Box>
+      ))}
+    </Paper>
   );
 }
 
@@ -129,28 +157,56 @@ export default function AdminWorldbossMessage() {
   }
 
   return (
-    <Grid container direction="column" spacing={1}>
-      <Grid>
-        <Alert severity="warning">所有紀錄都會記錄作者資訊，請謹慎操作</Alert>
-      </Grid>
-      <Grid>
-        <DataList />
-      </Grid>
-      <Fab
-        aria-label="add"
-        component={Link}
-        to="/admin/worldboss-message/create"
-        sx={{
-          backgroundColor: "#ff6d00",
-          color: "#fff",
-          "&:hover": { backgroundColor: "#ff6d00", color: "#fff" },
-          position: "fixed",
-          bottom: "10px",
-          right: "10px",
-        }}
-      >
-        <AddIcon />
-      </Fab>
-    </Grid>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Gradient Banner */}
+      <Paper sx={{ position: "relative", overflow: "hidden", borderRadius: 3 }}>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: (theme) =>
+              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          }}
+        />
+        <Box
+          sx={{
+            position: "relative",
+            p: { xs: 3, sm: 4 },
+            display: "flex",
+            alignItems: "center",
+            gap: 2.5,
+          }}
+        >
+          <FitnessCenterIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.8)" }} />
+          <Box sx={{ flex: 1, color: "#fff", minWidth: 0 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              世界王訊息管理
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap", alignItems: "center" }}>
+              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)" }}>
+                所有紀錄都會記錄作者資訊，請謹慎操作
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            component={Link}
+            to="/admin/worldboss-message/create"
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{
+              bgcolor: "rgba(255,255,255,0.2)",
+              color: "#fff",
+              "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+              borderRadius: 2,
+              flexShrink: 0,
+            }}
+          >
+            新增
+          </Button>
+        </Box>
+      </Paper>
+
+      <DataList />
+    </Box>
   );
 }

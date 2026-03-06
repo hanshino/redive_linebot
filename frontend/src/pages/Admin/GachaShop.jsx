@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Avatar,
+  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -12,23 +13,82 @@ import {
   Typography,
   Grid,
   Paper,
+  Stack,
+  IconButton,
+  Tooltip,
+  Divider,
+  Skeleton,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { FullPageLoading } from "../../components/Loading";
+import StorefrontIcon from "@mui/icons-material/Storefront";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import HintSnackBar from "../../components/HintSnackBar";
 import AlertDialog from "../../components/AlertDialog";
 import useHintBar from "../../hooks/useHintBar";
 import useAlertDialog from "../../hooks/useAlertDialog";
 import * as gachaShopService from "../../services/gachaShop";
 
+/* ---------- Loading Skeleton ---------- */
+function GachaShopSkeleton() {
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <Skeleton variant="rounded" height={140} animation="wave" />
+      <Skeleton variant="rounded" height={56} animation="wave" />
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Skeleton key={i} variant="rounded" height={72} animation="wave" />
+      ))}
+    </Box>
+  );
+}
+
+/* ---------- Shop Item Row ---------- */
+function ShopItemRow({ row, onEdit, onDelete }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 2, py: 2 }}>
+      <Avatar
+        alt={row.name}
+        src={row.headImage}
+        sx={{ width: 48, height: 48, flexShrink: 0 }}
+      >
+        {row.name?.charAt(0)}
+      </Avatar>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }} noWrap>
+          {row.name}
+        </Typography>
+        <Chip
+          icon={<ShoppingCartIcon sx={{ fontSize: "14px !important" }} />}
+          label={`${row.price} 石`}
+          size="small"
+          color="primary"
+          variant="outlined"
+          sx={{ mt: 0.5 }}
+        />
+      </Box>
+      <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>
+        <Tooltip title="編輯">
+          <IconButton size="small" onClick={() => onEdit(row)}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="刪除">
+          <IconButton size="small" color="error" onClick={() => onDelete(row)}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </Box>
+  );
+}
+
+/* ---------- Main Component ---------- */
 export default function AdminGachaShop() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState("list"); // "list" | "create" | "edit"
+  const [mode, setMode] = useState("list"); // "list" | "create"
   const [editingRow, setEditingRow] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
@@ -110,41 +170,8 @@ export default function AdminGachaShop() {
     });
   };
 
-  const columns = [
-    {
-      field: "headImage",
-      headerName: "頭像",
-      width: 80,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Avatar alt={params.row.name} src={params.value} sx={{ width: 40, height: 40 }} />
-      ),
-    },
-    { field: "name", headerName: "名稱", flex: 1, minWidth: 120 },
-    { field: "price", headerName: "價格", width: 120 },
-    { field: "itemImage", headerName: "大圖", flex: 1, minWidth: 200 },
-    {
-      field: "actions",
-      headerName: "操作",
-      width: 120,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Box sx={{ display: "flex", gap: 0.5 }}>
-          <Button size="small" onClick={() => handleOpenEdit(params.row)}>
-            <EditIcon fontSize="small" />
-          </Button>
-          <Button size="small" color="error" onClick={() => handleDeleteClick(params.row)}>
-            <DeleteIcon fontSize="small" />
-          </Button>
-        </Box>
-      ),
-    },
-  ];
-
   if (loading && rows.length === 0 && mode === "list") {
-    return <FullPageLoading />;
+    return <GachaShopSkeleton />;
   }
 
   if (mode === "create") {
@@ -167,24 +194,72 @@ export default function AdminGachaShop() {
   }
 
   return (
-    <Box sx={{ width: "100%" }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h5">女神石商店管理</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setMode("create")}>
-          新增商品
-        </Button>
-      </Box>
-
-      <Box sx={{ height: 600, width: "100%" }}>
-        <DataGrid
-          rows={rows}
-          columns={columns}
-          loading={loading}
-          pageSizeOptions={[10, 25, 50]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          disableRowSelectionOnClick
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Gradient Banner */}
+      <Paper sx={{ position: "relative", overflow: "hidden", borderRadius: 3 }}>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background: (theme) =>
+              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          }}
         />
-      </Box>
+        <Box
+          sx={{
+            position: "relative",
+            px: { xs: 2.5, sm: 3 },
+            py: { xs: 2.5, sm: 3 },
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <StorefrontIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.8)", flexShrink: 0 }} />
+          <Box sx={{ color: "#fff", flex: 1, minWidth: 0 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              女神石商店管理
+            </Typography>
+            <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
+              <Chip
+                label={`${rows.length} 件商品`}
+                size="small"
+                sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+              />
+            </Box>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setMode("create")}
+            sx={{
+              bgcolor: "rgba(255,255,255,0.2)",
+              color: "#fff",
+              flexShrink: 0,
+              "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+            }}
+          >
+            新增商品
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Item List */}
+      {rows.length === 0 ? (
+        <Paper sx={{ py: 6, textAlign: "center", borderRadius: 3 }}>
+          <StorefrontIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+          <Typography color="text.secondary">尚無商品資料</Typography>
+        </Paper>
+      ) : (
+        <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
+          {rows.map((row, i) => (
+            <Box key={row.id}>
+              {i > 0 && <Divider />}
+              <ShopItemRow row={row} onEdit={handleOpenEdit} onDelete={handleDeleteClick} />
+            </Box>
+          ))}
+        </Paper>
+      )}
 
       {/* Edit Dialog */}
       <Dialog
@@ -192,14 +267,15 @@ export default function AdminGachaShop() {
         onClose={() => setEditDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
       >
-        <DialogTitle>編輯商品</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>編輯商品</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
             label="名稱"
             value={editingRow?.name || ""}
-            sx={{ mt: 1, mb: 2 }}
+            sx={{ mt: 2, mb: 2 }}
             size="small"
             disabled
           />
@@ -207,9 +283,7 @@ export default function AdminGachaShop() {
             fullWidth
             label="價格"
             value={editingRow?.price ?? ""}
-            onChange={(e) =>
-              setEditingRow((prev) => ({ ...prev, price: e.target.value }))
-            }
+            onChange={(e) => setEditingRow((prev) => ({ ...prev, price: e.target.value }))}
             sx={{ mb: 2 }}
             size="small"
             type="number"
@@ -218,13 +292,11 @@ export default function AdminGachaShop() {
             fullWidth
             label="大圖"
             value={editingRow?.itemImage || ""}
-            onChange={(e) =>
-              setEditingRow((prev) => ({ ...prev, itemImage: e.target.value }))
-            }
+            onChange={(e) => setEditingRow((prev) => ({ ...prev, itemImage: e.target.value }))}
             size="small"
           />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setEditDialogOpen(false)}>取消</Button>
           <Button onClick={handleEditSave} variant="contained">
             儲存
@@ -309,20 +381,30 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
   };
 
   return (
-    <Box sx={{ width: "100%" }}>
-      <Grid container direction="column" spacing={1} component={Paper} sx={{ p: 2 }}>
-        <Grid>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-            <Button startIcon={<ArrowBackIcon />} onClick={onCancel}>
-              返回
-            </Button>
-            <Typography variant="h6">新增商品</Typography>
-          </Box>
-        </Grid>
-        <Grid>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      {/* Header */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <IconButton onClick={onCancel}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          新增商品
+        </Typography>
+      </Box>
+
+      {/* Form Card */}
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: 1,
+          borderColor: "divider",
+          p: { xs: 2.5, sm: 3 },
+        }}
+      >
+        <Stack spacing={2.5}>
           <TextField
             fullWidth
-            color="primary"
             label="名稱"
             variant="outlined"
             required
@@ -336,11 +418,9 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
               </MenuItem>
             ))}
           </TextField>
-        </Grid>
-        <Grid>
+
           <TextField
             fullWidth
-            color="primary"
             label="價格"
             variant="outlined"
             required
@@ -348,50 +428,37 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
           />
-        </Grid>
-        <Grid>
+
           <TextField
             fullWidth
-            color="primary"
             label="大圖"
             variant="outlined"
             required
             value={itemImage}
             onChange={(e) => setItemImage(e.target.value)}
           />
-        </Grid>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 6 }}>
-            <Button
-              onClick={onCancel}
-              fullWidth
-              color="secondary"
-              variant="contained"
-              size="large"
-              disabled={loading}
-            >
+
+          {preview && (
+            <Paper variant="outlined" sx={{ borderRadius: 2, p: 1 }}>
+              <Box
+                component="img"
+                src={preview}
+                sx={{ maxWidth: "100%", borderRadius: 1, display: "block" }}
+              />
+            </Paper>
+          )}
+
+          {/* Buttons */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+            <Button variant="outlined" color="inherit" onClick={onCancel} disabled={loading}>
               取消
             </Button>
-          </Grid>
-          <Grid size={{ xs: 6 }}>
-            <Button
-              onClick={handleSubmit}
-              fullWidth
-              color="primary"
-              variant="contained"
-              size="large"
-              disabled={loading}
-            >
+            <Button variant="contained" onClick={handleSubmit} disabled={loading}>
               新增
             </Button>
-          </Grid>
-        </Grid>
-        {preview && (
-          <Grid>
-            <Box component="img" src={preview} sx={{ maxWidth: "100%", mt: 1 }} />
-          </Grid>
-        )}
-      </Grid>
+          </Box>
+        </Stack>
+      </Paper>
     </Box>
   );
 }
