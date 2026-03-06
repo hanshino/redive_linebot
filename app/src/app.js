@@ -31,7 +31,6 @@ const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const StatusController = require("./controller/application/StatusController");
-const LotteryController = require("./controller/application/LotteryController");
 const BullshitController = require("./controller/application/BullshitController");
 const SubscribeController = require("./controller/application/SubscribeController");
 const ScratchCardController = require("./controller/application/ScratchCardController");
@@ -117,7 +116,6 @@ async function HandlePostback(context, { next }) {
         () => action === "confirmTransfer",
         withProps(MarketController.doTransfer, { payload })
       ),
-      route(() => action === "lottery_auto_buy", withProps(LotteryController.autoBuy, { payload })),
       route(
         () => action === "exchangeScratchCard",
         withProps(ScratchCardController.exchange, { payload })
@@ -180,7 +178,6 @@ async function OrderBased(context, { next }) {
     ...CouponController.router,
     ...ImageController.router,
     ...StatusController.router,
-    ...LotteryController.router,
     ...BullshitController.router,
     ...SubscribeController.router,
     ...ScratchCardController.router,
