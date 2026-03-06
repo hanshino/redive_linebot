@@ -22,7 +22,7 @@ const fmtDate = (ts) => {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 };
 
-const MEDAL_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
+const MEDAL_COLORS = ["#FFD700", "#A0A0A0", "#CD7F32"];
 
 /* ---------- StatChip ---------- */
 function StatChip({ icon, label, value }) {
@@ -57,7 +57,7 @@ function GroupBanner({ group, rank }) {
             backgroundImage: `url(${group.pictureUrl})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            filter: "blur(20px) brightness(0.4)",
+            filter: "blur(20px) brightness(0.3)",
           }}
         />
       )}
@@ -142,7 +142,7 @@ function TopContributors({ rank }) {
                       bottom: -4,
                       right: -4,
                       bgcolor: MEDAL_COLORS[i],
-                      color: i === 0 ? "#000" : "#fff",
+                      color: "#fff",
                       borderRadius: "50%",
                       width: 22,
                       height: 22,

@@ -28,6 +28,7 @@ export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
           height="140"
           image={pictureUrl}
           alt={groupName}
+          loading="lazy"
           sx={{ objectFit: "cover" }}
         />
       ) : (
@@ -78,7 +79,7 @@ export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
             variant="outlined"
             startIcon={<Icon />}
             onClick={() => navigate(path(groupId))}
-            sx={{ textTransform: "none", cursor: "pointer" }}
+            sx={{ textTransform: "none", cursor: "pointer", minHeight: 36 }}
           >
             {label}
           </Button>
