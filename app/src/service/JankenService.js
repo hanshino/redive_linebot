@@ -225,6 +225,18 @@ exports.resolveMatch = async function ({
   return { p1Result, p2Result, p1Choice, p2Choice, betFee };
 };
 
+exports.calculateExpectedWinRate = function (myElo, opponentElo) {
+  return 1 / (1 + Math.pow(10, (opponentElo - myElo) / 400));
+};
+
+exports.calculateEloChange = function (myElo, opponentElo, result, betAmount) {
+  if (result === "draw") return 0;
+  const K = JankenRating.getKFactor(betAmount);
+  const expected = exports.calculateExpectedWinRate(myElo, opponentElo);
+  const actual = result === "win" ? 1 : 0;
+  return Math.round(K * (actual - expected));
+};
+
 exports.submitArenaChallenge = async function (groupId, holderUserId, challengerUserId, choice) {
   if (choice === "random") {
     choice = exports.randomChoice();
