@@ -5,6 +5,7 @@ const JankenResult = require("../model/application/JankenResult");
 const { inventory } = require("../model/application/Inventory");
 const EventCenterService = require("./EventCenterService");
 const { DefaultLogger } = require("../util/Logger");
+const JankenRating = require("../model/application/JankenRating");
 
 const REDIS_PREFIX = config.get("redis.keys.jankenDecide");
 const CHALLENGE_PREFIX = config.get("redis.keys.jankenChallenge");
@@ -70,6 +71,35 @@ exports.calculateBounty = function (streak) {
   }
 
   return Math.min(bounty, STREAK_MAX_BOUNTY);
+};
+
+exports.updateStreaks = async function (p1UserId, p2UserId, p1Result) {
+  if (p1Result === "draw") {
+    return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
+  }
+
+  const winnerId = p1Result === "win" ? p1UserId : p2UserId;
+  const loserId = p1Result === "win" ? p2UserId : p1UserId;
+
+  const [winnerRating, loserRating] = await Promise.all([
+    JankenRating.findOrCreate(winnerId),
+    JankenRating.findOrCreate(loserId),
+  ]);
+
+  const newStreak = winnerRating.streak + 1;
+  const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
+  const loserBounty = exports.calculateBounty(loserRating.streak);
+
+  await Promise.all([
+    JankenRating.update(winnerId, { streak: newStreak, max_streak: newMaxStreak }),
+    JankenRating.update(loserId, { streak: 0, max_streak: loserRating.max_streak }),
+  ]);
+
+  return {
+    winnerStreak: newStreak,
+    loserPreviousStreak: loserRating.streak,
+    loserBounty,
+  };
 };
 
 exports.submitChoice = async function (matchId, userId, choice, { p1UserId, p2UserId } = {}) {

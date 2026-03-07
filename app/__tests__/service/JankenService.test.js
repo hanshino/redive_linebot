@@ -11,8 +11,16 @@ jest.mock("../../src/model/application/Inventory", () => ({
   },
 }));
 
+jest.mock("../../src/model/application/JankenRating", () => ({
+  findOrCreate: jest.fn(),
+  update: jest.fn().mockResolvedValue(undefined),
+  getRankTier: jest.fn(),
+  getMaxBet: jest.fn(),
+}));
+
 const JankenService = require("../../src/service/JankenService");
 const redis = require("../../src/util/redis");
+const JankenRating = require("../../src/model/application/JankenRating");
 
 describe("JankenService", () => {
   beforeEach(() => {
@@ -145,6 +153,72 @@ describe("JankenService", () => {
 
     it("caps at maxBounty", () => {
       expect(JankenService.calculateBounty(100)).toBe(10000);
+    });
+  });
+
+  describe("updateStreaks", () => {
+    it("increments winner streak and resets loser streak", async () => {
+      JankenRating.findOrCreate
+        .mockResolvedValueOnce({ user_id: "winner", streak: 2, max_streak: 5 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4 });
+
+      const result = await JankenService.updateStreaks("winner", "loser", "win");
+
+      expect(JankenRating.update).toHaveBeenCalledWith("winner", {
+        streak: 3,
+        max_streak: 5,
+      });
+      expect(JankenRating.update).toHaveBeenCalledWith("loser", {
+        streak: 0,
+        max_streak: 4,
+      });
+      expect(result).toEqual({
+        winnerStreak: 3,
+        loserPreviousStreak: 3,
+        loserBounty: expect.any(Number),
+      });
+    });
+
+    it("updates max_streak when new record", async () => {
+      JankenRating.findOrCreate
+        .mockResolvedValueOnce({ user_id: "winner", streak: 5, max_streak: 5 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2 });
+
+      await JankenService.updateStreaks("winner", "loser", "win");
+
+      expect(JankenRating.update).toHaveBeenCalledWith("winner", {
+        streak: 6,
+        max_streak: 6,
+      });
+    });
+
+    it("does not change streaks on draw", async () => {
+      const result = await JankenService.updateStreaks("p1", "p2", "draw");
+
+      expect(JankenRating.update).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        winnerStreak: 0,
+        loserPreviousStreak: 0,
+        loserBounty: 0,
+      });
+    });
+
+    it("handles p2 winning (p1Result is lose)", async () => {
+      JankenRating.findOrCreate
+        .mockResolvedValueOnce({ user_id: "p2", streak: 0, max_streak: 1 })
+        .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7 });
+
+      const result = await JankenService.updateStreaks("p1", "p2", "lose");
+
+      expect(JankenRating.update).toHaveBeenCalledWith("p2", {
+        streak: 1,
+        max_streak: 1,
+      });
+      expect(JankenRating.update).toHaveBeenCalledWith("p1", {
+        streak: 0,
+        max_streak: 7,
+      });
+      expect(result.loserPreviousStreak).toBe(4);
     });
   });
 });
