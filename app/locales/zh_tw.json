@@ -148,7 +148,9 @@
       "self_duel": "不能跟自己猜拳啦！",
       "holding_manual": "{{{ displayName }}} 正在舉辦猜拳擂台，任何人都可以向他挑戰！",
       "streak_continue": "{{{ displayName }}} 已經連勝 {{ streak }} 場！目前懸賞金：{{ bounty }} 女神石，快來終結他！",
-      "streak_broken": "{{{ breakerName }}} 終結了 {{{ holderName }}} 的 {{ streak }} 連勝！獲得懸賞金 {{ bounty }} 女神石！"
+      "streak_broken": "{{{ breakerName }}} 終結了 {{{ holderName }}} 的 {{ streak }} 連勝！獲得懸賞金 {{ bounty }} 女神石！",
+      "rank_query_not_found": "你還沒有猜拳記錄，快去挑戰吧！",
+      "elo_change": "ELO: {{ before }} → {{ after }} ({{ change }})"
     },
     "trade": {
       "no_mention": "請標記要交易的對象",
