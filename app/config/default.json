@@ -45,6 +45,26 @@
       "scissors": "✌️"
     }
   },
+  "chat_level": {
+    "exp": {
+      "rate": {
+        "default": 90
+      }
+    }
+  },
+  "event_center": {
+    "daily_quest": "event_center:daily_quest"
+  },
+  "daily_quest": {
+    "reward": {
+      "itemId": 999,
+      "itemAmount": 150
+    },
+    "weekly_reward": {
+      "itemId": 999,
+      "itemAmount": 500
+    }
+  },
   "advancement": {
     "rarity_color": {
       "0": "#1134A499",
@@ -62,7 +82,32 @@
     "manual": [
       "只要你不再符合資格，稱號就會被拔掉",
       "目前稱號就只是拿來炫耀用的..."
-    ]
+    ],
+    "chat_king": [
+      "話語霸權",
+      "話術小丑",
+      "話語大師"
+    ],
+    "gacha_king": [
+      "轉蛋蒐藏家",
+      "轉蛋藝術家",
+      "轉蛋家"
+    ],
+    "gacha_rich": [
+      "女神富豪",
+      "女神貴族",
+      "女神騎士"
+    ],
+    "world_boss": {
+      "progressors": {
+        "key": "progressors",
+        "limit": 1
+      },
+      "leechers": {
+        "key": "leechers",
+        "limit": 1
+      }
+    }
   },
   "event": {
     "expire": 86400,
