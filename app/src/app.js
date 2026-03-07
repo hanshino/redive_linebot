@@ -30,7 +30,6 @@ const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const StatusController = require("./controller/application/StatusController");
-const BullshitController = require("./controller/application/BullshitController");
 const SubscribeController = require("./controller/application/SubscribeController");
 const ScratchCardController = require("./controller/application/ScratchCardController");
 const NumberController = require("./controller/application/NumberController");
@@ -174,7 +173,6 @@ async function OrderBased(context, { next }) {
     ...CouponController.router,
     ...ImageController.router,
     ...StatusController.router,
-    ...BullshitController.router,
     ...SubscribeController.router,
     ...ScratchCardController.router,
     ...CharacterController.router,
