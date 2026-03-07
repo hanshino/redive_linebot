@@ -222,7 +222,85 @@ exports.resolveMatch = async function ({
     EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId: p2UserId }),
   ]);
 
-  return { p1Result, p2Result, p1Choice, p2Choice, betFee };
+  const eloResult = await exports.updateElo(p1UserId, p2UserId, p1Result, betAmount);
+  return { p1Result, p2Result, p1Choice, p2Choice, betFee, ...eloResult };
+};
+
+exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
+  if (p1Result === "draw") {
+    if (betAmount > 0) {
+      const mysql = require("../util/mysql");
+      await mysql.transaction(async trx => {
+        await Promise.all([
+          JankenRating.findOrCreate(p1UserId, trx),
+          JankenRating.findOrCreate(p2UserId, trx),
+        ]);
+        await Promise.all([
+          trx("janken_rating")
+            .where({ user_id: p1UserId })
+            .update({ draw_count: trx.raw("draw_count + 1") }),
+          trx("janken_rating")
+            .where({ user_id: p2UserId })
+            .update({ draw_count: trx.raw("draw_count + 1") }),
+        ]);
+      });
+    }
+    return { p1EloChange: 0, p2EloChange: 0, p1NewElo: null, p2NewElo: null };
+  }
+
+  if (!betAmount || betAmount <= 0) {
+    return { p1EloChange: 0, p2EloChange: 0, p1NewElo: null, p2NewElo: null };
+  }
+
+  const mysql = require("../util/mysql");
+
+  return mysql.transaction(async trx => {
+    await Promise.all([
+      JankenRating.findOrCreate(p1UserId, trx),
+      JankenRating.findOrCreate(p2UserId, trx),
+    ]);
+
+    const [p1Rating, p2Rating] = await Promise.all([
+      trx("janken_rating").where({ user_id: p1UserId }).forUpdate().first(),
+      trx("janken_rating").where({ user_id: p2UserId }).forUpdate().first(),
+    ]);
+
+    const p1EloChange = exports.calculateEloChange(p1Rating.elo, p2Rating.elo, p1Result, betAmount);
+    const p2Result = p1Result === "win" ? "lose" : "win";
+    const p2EloChange = exports.calculateEloChange(p2Rating.elo, p1Rating.elo, p2Result, betAmount);
+
+    const p1NewElo = Math.max(0, p1Rating.elo + p1EloChange);
+    const p2NewElo = Math.max(0, p2Rating.elo + p2EloChange);
+
+    const p1WinKey = p1Result === "win" ? "win_count" : "lose_count";
+    const p2WinKey = p1Result === "win" ? "lose_count" : "win_count";
+
+    await Promise.all([
+      trx("janken_rating")
+        .where({ user_id: p1UserId })
+        .update({
+          elo: p1NewElo,
+          rank_tier: JankenRating.getRankTier(p1NewElo),
+          [p1WinKey]: trx.raw(`${p1WinKey} + 1`),
+        }),
+      trx("janken_rating")
+        .where({ user_id: p2UserId })
+        .update({
+          elo: p2NewElo,
+          rank_tier: JankenRating.getRankTier(p2NewElo),
+          [p2WinKey]: trx.raw(`${p2WinKey} + 1`),
+        }),
+    ]);
+
+    return {
+      p1EloChange,
+      p2EloChange,
+      p1NewElo,
+      p2NewElo,
+      p1RankLabel: JankenRating.getRankLabel(p1NewElo),
+      p2RankLabel: JankenRating.getRankLabel(p2NewElo),
+    };
+  });
 };
 
 exports.calculateExpectedWinRate = function (myElo, opponentElo) {
