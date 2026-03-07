@@ -94,7 +94,7 @@ exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmoun
 
     const newStreak = winnerRating.streak + 1;
     const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
-    const bountyIncrement = exports.calculateBountyIncrement(betAmount);
+    const bountyIncrement = newStreak >= 2 ? exports.calculateBountyIncrement(betAmount) : 0;
     const newBounty = Math.min(winnerRating.bounty + bountyIncrement, STREAK_MAX_BOUNTY);
     const loserBounty = loserRating.bounty;
 
