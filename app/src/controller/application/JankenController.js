@@ -109,9 +109,16 @@ async function duel(context) {
   }
 
   if (betAmount > 0) {
-    const rating = await JankenRating.findOrCreate(userId);
-    const rankTier = JankenRating.getRankTier(rating.elo);
-    const maxBet = JankenRating.getMaxBet(rankTier);
+    const [initiatorRating, targetRating] = await Promise.all([
+      JankenRating.findOrCreate(userId),
+      JankenRating.findOrCreate(targetUserId),
+    ]);
+    const initiatorTier = JankenRating.getRankTier(initiatorRating.elo);
+    const targetTier = JankenRating.getRankTier(targetRating.elo);
+    const maxBet = Math.min(
+      JankenRating.getMaxBet(initiatorTier),
+      JankenRating.getMaxBet(targetTier)
+    );
 
     const validation = JankenService.validateBet(betAmount, maxBet);
     if (!validation.valid) {
