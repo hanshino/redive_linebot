@@ -3,7 +3,7 @@ const { pick } = require("lodash");
 const config = require("config");
 
 const TABLE = "janken_rating";
-const fillable = ["user_id", "elo", "rank_tier", "win_count", "lose_count", "draw_count", "streak", "max_streak"];
+const fillable = ["user_id", "elo", "rank_tier", "win_count", "lose_count", "draw_count", "streak", "max_streak", "bounty"];
 
 const RANK_TIERS = [
   { name: "beginner", minElo: 0 },

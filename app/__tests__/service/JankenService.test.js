@@ -136,36 +136,18 @@ describe("JankenService", () => {
     });
   });
 
-  describe("calculateBounty", () => {
-    it("returns 0 for streak 0", () => {
-      expect(JankenService.calculateBounty(0)).toBe(0);
+  describe("calculateBountyIncrement", () => {
+    it("returns 0 for bet 0", () => {
+      expect(JankenService.calculateBountyIncrement(0)).toBe(0);
     });
 
-    it("returns base reward for streak 1", () => {
-      expect(JankenService.calculateBounty(1)).toBe(50);
+    it("returns 50% of bet amount", () => {
+      expect(JankenService.calculateBountyIncrement(100)).toBe(50);
+      expect(JankenService.calculateBountyIncrement(1000)).toBe(500);
     });
 
-    it("returns cumulative base for streak 2", () => {
-      expect(JankenService.calculateBounty(2)).toBe(100);
-    });
-
-    it("adds milestone bonus at streak 3", () => {
-      // 3*50 + 100 = 250
-      expect(JankenService.calculateBounty(3)).toBe(250);
-    });
-
-    it("adds milestone bonus at streak 5", () => {
-      // 5*50 + 100 + 300 = 650
-      expect(JankenService.calculateBounty(5)).toBe(650);
-    });
-
-    it("adds milestone bonus at streak 10", () => {
-      // 10*50 + 100 + 300 + 500 + 1000 = 2400
-      expect(JankenService.calculateBounty(10)).toBe(2400);
-    });
-
-    it("caps at maxBounty", () => {
-      expect(JankenService.calculateBounty(100)).toBe(10000);
+    it("floors fractional results", () => {
+      expect(JankenService.calculateBountyIncrement(11)).toBe(5);
     });
   });
 
@@ -187,27 +169,29 @@ describe("JankenService", () => {
     it("increments winner streak and resets loser streak", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "winner", streak: 2, max_streak: 5 })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4 });
+        .mockResolvedValueOnce({ user_id: "winner", streak: 2, max_streak: 5, bounty: 100 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4, bounty: 300 });
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", { betAmount: 100 });
 
       expect(result).toEqual({
         winnerStreak: 3,
+        winnerBounty: 150,
         loserPreviousStreak: 3,
-        loserBounty: 250,
+        loserBounty: 300,
       });
     });
 
     it("updates max_streak when new record", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "winner", streak: 5, max_streak: 5 })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2 });
+        .mockResolvedValueOnce({ user_id: "winner", streak: 5, max_streak: 5, bounty: 200 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", { betAmount: 100 });
 
       expect(result.winnerStreak).toBe(6);
+      expect(result.winnerBounty).toBe(250);
     });
 
     it("does not change streaks on draw", async () => {
@@ -235,8 +219,8 @@ describe("JankenService", () => {
     it("handles p2 winning (p1Result is lose)", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "p2", streak: 0, max_streak: 1 })
-        .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7 });
+        .mockResolvedValueOnce({ user_id: "p2", streak: 0, max_streak: 1, bounty: 0 })
+        .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7, bounty: 500 });
 
       const result = await JankenService.updateStreaks("p1", "p2", "lose", { betAmount: 100 });
 

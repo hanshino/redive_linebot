@@ -11,8 +11,7 @@ const REDIS_PREFIX = config.get("redis.keys.jankenDecide");
 const CHALLENGE_PREFIX = config.get("redis.keys.jankenChallenge");
 const FEE_RATE = config.get("minigame.janken.bet.feeRate");
 const MIN_BET = config.get("minigame.janken.bet.minAmount");
-const STREAK_BASE_REWARD = config.get("minigame.janken.streak.baseReward");
-const STREAK_MILESTONES = config.get("minigame.janken.streak.milestones");
+const BOUNTY_RATE = config.get("minigame.janken.streak.bountyRate");
 const STREAK_MAX_BOUNTY = config.get("minigame.janken.streak.maxBounty");
 
 const RESULT_MAP = {
@@ -69,18 +68,8 @@ exports.tryEscrowOnce = async function (matchId, userId, amount) {
   return result;
 };
 
-exports.calculateBounty = function (streak) {
-  if (streak <= 0) return 0;
-
-  let bounty = streak * STREAK_BASE_REWARD;
-
-  for (const [milestone, bonus] of Object.entries(STREAK_MILESTONES)) {
-    if (streak >= parseInt(milestone, 10)) {
-      bounty += bonus;
-    }
-  }
-
-  return Math.min(bounty, STREAK_MAX_BOUNTY);
+exports.calculateBountyIncrement = function (betAmount) {
+  return Math.floor(betAmount * BOUNTY_RATE);
 };
 
 exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmount = 0 } = {}) {
@@ -105,15 +94,19 @@ exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmoun
 
     const newStreak = winnerRating.streak + 1;
     const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
-    const loserBounty = exports.calculateBounty(loserRating.streak);
+    const bountyIncrement = exports.calculateBountyIncrement(betAmount);
+    const newBounty = Math.min(winnerRating.bounty + bountyIncrement, STREAK_MAX_BOUNTY);
+    const loserBounty = loserRating.bounty;
 
     await Promise.all([
       trx("janken_rating").where({ user_id: winnerId }).update({
         streak: newStreak,
         max_streak: newMaxStreak,
+        bounty: newBounty,
       }),
       trx("janken_rating").where({ user_id: loserId }).update({
         streak: 0,
+        bounty: 0,
       }),
     ]);
 
@@ -127,6 +120,7 @@ exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmoun
 
     return {
       winnerStreak: newStreak,
+      winnerBounty: newBounty,
       loserPreviousStreak: loserRating.streak,
       loserBounty,
     };

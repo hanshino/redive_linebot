@@ -64,15 +64,7 @@
         "vs": "/assets/janken/vs.png"
       },
       "streak": {
-        "baseReward": 50,
-        "milestones": {
-          "3": 100,
-          "5": 300,
-          "7": 500,
-          "10": 1000,
-          "15": 2000,
-          "20": 3000
-        },
+        "bountyRate": 0.5,
         "maxBounty": 10000
       }
     }

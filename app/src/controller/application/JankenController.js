@@ -181,12 +181,8 @@ exports.decide = async (context, { payload }) => {
   const winnerName = p1Result === "win" ? p1Name : p2Name;
   const betWinAmount = betAmount > 0 ? betAmount * 2 - betFee : 0;
 
-  const { winnerStreak, loserPreviousStreak, loserBounty } = await JankenService.updateStreaks(
-    userId,
-    targetUserId,
-    p1Result,
-    { betAmount }
-  );
+  const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
+    await JankenService.updateStreaks(userId, targetUserId, p1Result, { betAmount });
 
   const resultBubble = jankenTemplate.generateResultCard({
     p1Name,
@@ -218,13 +214,12 @@ exports.decide = async (context, { payload }) => {
       );
     }
 
-    const currentBounty = JankenService.calculateBounty(winnerStreak);
-    if (winnerStreak >= 2) {
+    if (winnerBounty > 0 && winnerStreak >= 2) {
       await context.replyText(
         i18n.__("message.duel.streak_continue", {
           displayName: winnerName,
           streak: winnerStreak,
-          bounty: currentBounty,
+          bounty: winnerBounty,
         }),
         { sender: BountySender }
       );
@@ -338,11 +333,8 @@ exports.challenge = async (context, { payload }) => {
       betAmount: 0,
     });
 
-    const { winnerStreak, loserPreviousStreak, loserBounty } = await JankenService.updateStreaks(
-      holderUserId,
-      challengerUserId,
-      p1Result
-    );
+    const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
+      await JankenService.updateStreaks(holderUserId, challengerUserId, p1Result);
 
     const p1Name = get(holderProfile, "displayName", "未知玩家");
     const p2Name = get(challengerProfile, "displayName", "未知挑戰者");
@@ -378,13 +370,12 @@ exports.challenge = async (context, { payload }) => {
         );
       }
 
-      const currentBounty = JankenService.calculateBounty(winnerStreak);
-      if (winnerStreak >= 2) {
+      if (winnerBounty > 0 && winnerStreak >= 2) {
         await context.replyText(
           i18n.__("message.duel.streak_continue", {
             displayName: winnerName,
             streak: winnerStreak,
-            bounty: currentBounty,
+            bounty: winnerBounty,
           }),
           { sender: BountySender }
         );
