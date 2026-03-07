@@ -59,6 +59,16 @@ exports.escrowBet = async function (userId, amount) {
   return { success: true };
 };
 
+exports.tryEscrowOnce = async function (matchId, userId, amount) {
+  const escrowKey = `${REDIS_PREFIX}:escrow:${matchId}:${userId}`;
+  const locked = await redis.set(escrowKey, "1", { EX: 3600, NX: true });
+  if (!locked) {
+    return { alreadyEscrowed: true };
+  }
+  const result = await exports.escrowBet(userId, amount);
+  return result;
+};
+
 exports.calculateBounty = function (streak) {
   if (streak <= 0) return 0;
 
@@ -78,28 +88,49 @@ exports.updateStreaks = async function (p1UserId, p2UserId, p1Result) {
     return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
   }
 
+  const mysql = require("../util/mysql");
   const winnerId = p1Result === "win" ? p1UserId : p2UserId;
   const loserId = p1Result === "win" ? p2UserId : p1UserId;
 
-  const [winnerRating, loserRating] = await Promise.all([
-    JankenRating.findOrCreate(winnerId),
-    JankenRating.findOrCreate(loserId),
-  ]);
+  return mysql.transaction(async trx => {
+    await Promise.all([
+      JankenRating.findOrCreate(winnerId, trx),
+      JankenRating.findOrCreate(loserId, trx),
+    ]);
 
-  const newStreak = winnerRating.streak + 1;
-  const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
-  const loserBounty = exports.calculateBounty(loserRating.streak);
+    const [winnerRating, loserRating] = await Promise.all([
+      trx("janken_rating").where({ user_id: winnerId }).forUpdate().first(),
+      trx("janken_rating").where({ user_id: loserId }).forUpdate().first(),
+    ]);
 
-  await Promise.all([
-    JankenRating.update(winnerId, { streak: newStreak, max_streak: newMaxStreak }),
-    JankenRating.update(loserId, { streak: 0, max_streak: loserRating.max_streak }),
-  ]);
+    const newStreak = winnerRating.streak + 1;
+    const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
+    const loserBounty = exports.calculateBounty(loserRating.streak);
 
-  return {
-    winnerStreak: newStreak,
-    loserPreviousStreak: loserRating.streak,
-    loserBounty,
-  };
+    await Promise.all([
+      trx("janken_rating").where({ user_id: winnerId }).update({
+        streak: newStreak,
+        max_streak: newMaxStreak,
+      }),
+      trx("janken_rating").where({ user_id: loserId }).update({
+        streak: 0,
+      }),
+    ]);
+
+    if (loserBounty > 0) {
+      await inventory.increaseGodStone({
+        userId: winnerId,
+        amount: loserBounty,
+        note: "janken_bounty_claim",
+      });
+    }
+
+    return {
+      winnerStreak: newStreak,
+      loserPreviousStreak: loserRating.streak,
+      loserBounty,
+    };
+  });
 };
 
 exports.submitChoice = async function (matchId, userId, choice, { p1UserId, p2UserId } = {}) {

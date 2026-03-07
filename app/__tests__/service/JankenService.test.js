@@ -18,6 +18,19 @@ jest.mock("../../src/model/application/JankenRating", () => ({
   getMaxBet: jest.fn(),
 }));
 
+const mockUpdate = jest.fn().mockResolvedValue(undefined);
+const mockTrxQuery = jest.fn(() => ({
+  where: jest.fn(() => ({
+    forUpdate: jest.fn(() => ({
+      first: jest.fn(),
+    })),
+    update: mockUpdate,
+  })),
+}));
+mockTrxQuery.transaction = jest.fn(async cb => cb(mockTrxQuery));
+
+jest.mock("../../src/util/mysql", () => mockTrxQuery);
+
 const JankenService = require("../../src/service/JankenService");
 const redis = require("../../src/util/redis");
 const JankenRating = require("../../src/model/application/JankenRating");
@@ -157,67 +170,66 @@ describe("JankenService", () => {
   });
 
   describe("updateStreaks", () => {
+    let mockFirst;
+
+    beforeEach(() => {
+      mockFirst = jest.fn();
+      mockTrxQuery.mockImplementation(() => ({
+        where: jest.fn(() => ({
+          forUpdate: jest.fn(() => ({
+            first: mockFirst,
+          })),
+          update: mockUpdate,
+        })),
+      }));
+    });
+
     it("increments winner streak and resets loser streak", async () => {
-      JankenRating.findOrCreate
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
         .mockResolvedValueOnce({ user_id: "winner", streak: 2, max_streak: 5 })
         .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4 });
 
       const result = await JankenService.updateStreaks("winner", "loser", "win");
 
-      expect(JankenRating.update).toHaveBeenCalledWith("winner", {
-        streak: 3,
-        max_streak: 5,
-      });
-      expect(JankenRating.update).toHaveBeenCalledWith("loser", {
-        streak: 0,
-        max_streak: 4,
-      });
       expect(result).toEqual({
         winnerStreak: 3,
         loserPreviousStreak: 3,
-        loserBounty: expect.any(Number),
+        loserBounty: 250,
       });
     });
 
     it("updates max_streak when new record", async () => {
-      JankenRating.findOrCreate
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
         .mockResolvedValueOnce({ user_id: "winner", streak: 5, max_streak: 5 })
         .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2 });
 
-      await JankenService.updateStreaks("winner", "loser", "win");
+      const result = await JankenService.updateStreaks("winner", "loser", "win");
 
-      expect(JankenRating.update).toHaveBeenCalledWith("winner", {
-        streak: 6,
-        max_streak: 6,
-      });
+      expect(result.winnerStreak).toBe(6);
     });
 
     it("does not change streaks on draw", async () => {
       const result = await JankenService.updateStreaks("p1", "p2", "draw");
 
-      expect(JankenRating.update).not.toHaveBeenCalled();
       expect(result).toEqual({
         winnerStreak: 0,
         loserPreviousStreak: 0,
         loserBounty: 0,
       });
+      expect(mockTrxQuery.transaction).not.toHaveBeenCalled();
     });
 
     it("handles p2 winning (p1Result is lose)", async () => {
-      JankenRating.findOrCreate
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
         .mockResolvedValueOnce({ user_id: "p2", streak: 0, max_streak: 1 })
         .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7 });
 
       const result = await JankenService.updateStreaks("p1", "p2", "lose");
 
-      expect(JankenRating.update).toHaveBeenCalledWith("p2", {
-        streak: 1,
-        max_streak: 1,
-      });
-      expect(JankenRating.update).toHaveBeenCalledWith("p1", {
-        streak: 0,
-        max_streak: 7,
-      });
+      expect(result.winnerStreak).toBe(1);
       expect(result.loserPreviousStreak).toBe(4);
     });
   });

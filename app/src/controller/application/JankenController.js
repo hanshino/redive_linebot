@@ -8,7 +8,6 @@ const jankenTemplate = require("../../templates/application/Janken");
 const JankenRating = require("../../model/application/JankenRating");
 const JankenService = require("../../service/JankenService");
 const uuid = require("uuid-random");
-const { inventory } = require("../../model/application/Inventory");
 const { DefaultLogger } = require("../../util/Logger");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
@@ -49,6 +48,11 @@ async function duel(context) {
 
   if (!targetUserId) {
     await context.replyText(i18n.__("message.duel.failed_to_get_target_user_id"));
+    return;
+  }
+
+  if (userId === targetUserId) {
+    await context.replyText(i18n.__("message.duel.self_duel"));
     return;
   }
 
@@ -129,11 +133,13 @@ exports.decide = async (context, { payload }) => {
 
   // Escrow opponent's bet when they first submit (if bet > 0 and they are not the initiator)
   if (betAmount > 0 && sourceUserId === targetUserId) {
-    const escrow = await JankenService.escrowBet(sourceUserId, betAmount);
-    if (!escrow.success) {
+    const escrowGuard = await JankenService.tryEscrowOnce(matchId, sourceUserId, betAmount);
+    if (escrowGuard.alreadyEscrowed) {
+      // Already processed, skip
+    } else if (!escrowGuard.success) {
       await context.replyText(
         i18n.__("message.duel.insufficient_funds", {
-          balance: escrow.balance,
+          balance: escrowGuard.balance,
         })
       );
       return;
@@ -180,15 +186,6 @@ exports.decide = async (context, { payload }) => {
     targetUserId,
     p1Result
   );
-
-  if (loserBounty > 0) {
-    const bountyWinnerId = p1Result === "win" ? userId : targetUserId;
-    await inventory.increaseGodStone({
-      userId: bountyWinnerId,
-      amount: loserBounty,
-      note: "janken_bounty_claim",
-    });
-  }
 
   const resultBubble = jankenTemplate.generateResultCard({
     p1Name,
@@ -345,15 +342,6 @@ exports.challenge = async (context, { payload }) => {
       challengerUserId,
       p1Result
     );
-
-    if (loserBounty > 0) {
-      const bountyWinnerId = p1Result === "win" ? holderUserId : challengerUserId;
-      await inventory.increaseGodStone({
-        userId: bountyWinnerId,
-        amount: loserBounty,
-        note: "janken_bounty_claim",
-      });
-    }
 
     const p1Name = get(holderProfile, "displayName", "未知玩家");
     const p2Name = get(challengerProfile, "displayName", "未知挑戰者");
