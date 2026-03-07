@@ -6,7 +6,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 const express = require("express");
-const rateLimit = require("express-rate-limit");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const { bottender } = require("bottender");
 const apiRouter = require("./src/router/api");
 const cors = require("cors");
@@ -22,7 +22,7 @@ const limiter = rateLimit({
       const [ip] = forwarded.split(",");
       return ip;
     }
-    return req.ip;
+    return ipKeyGenerator(req);
   },
 });
 
