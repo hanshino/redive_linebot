@@ -77,7 +77,8 @@ exports.getServerRank = async function (userId) {
     `SELECT COUNT(*) + 1 AS rank_position FROM ${TABLE} WHERE elo > (SELECT elo FROM ${TABLE} WHERE user_id = ?)`,
     [userId]
   );
-  return result[0]?.[0]?.rank_position || 1;
+  const rows = result[0] || [];
+  return (rows[0] && rows[0].rank_position) || 1;
 };
 
 exports.getMaxBet = function (rankTier) {
