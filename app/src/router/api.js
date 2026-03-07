@@ -30,13 +30,11 @@ const { admin: AdminEquipmentRouter, player: PlayerEquipmentRouter } = require("
 const { router: InventoryRouter } = require("./Inventory");
 const { router: TradeRouter } = require("./Trade");
 const { router: MarketRouter } = require("./Market");
-const ScratchCardRouter = require("./ScratchCard");
 
 router.use(MarketRouter);
 router.use(InventoryRouter);
 router.use(TradeRouter);
 router.use(ImgurRouter);
-router.use("/scratch-cards", ScratchCardRouter);
 router.use("/admin", verifyToken, verifyAdmin, verifyPrivilege(5));
 
 router.use("/admin", AdminWorldBossRouter);

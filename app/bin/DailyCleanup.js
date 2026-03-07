@@ -56,12 +56,6 @@ async function clearClosed() {
     let r4 = await trx.from("CustomerOrder").whereIn("SourceId", delGuilds).delete();
     records.push(`刪除了 ${r4} 個群組自訂指令`);
 
-    let guildIds = await trx.from("Guild").select("id").whereIn("GuildId", delGuilds);
-    let ids = guildIds.map(g => g.id);
-    if (ids.length > 0) {
-      let r5 = await trx.from("guild_service").whereIn("guild_id", ids).delete();
-      records.push(`刪除了 ${r5} 個群組服務設定`);
-    }
   });
 
   CustomLogger.info({ message: records.join("\n"), alert: true });
