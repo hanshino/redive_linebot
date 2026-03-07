@@ -2,7 +2,7 @@ const mysql = require("../../util/mysql");
 const TABLE = "janken_records";
 const { pick, get } = require("lodash");
 
-const fillable = ["id", "user_id", "target_user_id"];
+const fillable = ["id", "user_id", "target_user_id", "group_id", "bet_amount", "bet_fee"];
 
 exports.find = async id => {
   return await mysql(TABLE).where({ id }).first();
