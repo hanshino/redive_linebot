@@ -1,0 +1,13 @@
+{
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.2"
+  },
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "app/**/*.js": "app/node_modules/.bin/prettier --write --config app/.prettierrc",
+    "frontend/**/*.{js,jsx}": "app/node_modules/.bin/prettier --write --config app/.prettierrc"
+  }
+}
