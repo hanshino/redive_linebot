@@ -194,6 +194,7 @@ exports.generateDuelCard = ({ p1IconUrl, p2IconUrl, p1Uid, p2Uid, uuid, betAmoun
       backgroundColor: "#1a1a2e",
       contents: bodyContents,
       paddingAll: "lg",
+      spacing: "lg",
     },
   };
 
@@ -346,6 +347,7 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
       backgroundColor: "#1a1a2e",
       contents: bodyContents,
       paddingAll: "lg",
+      spacing: "lg",
     },
   };
 
@@ -402,12 +404,28 @@ exports.generateResultCard = ({
     draw: "#4FC3F7",
   };
 
-  const resultImage = `${baseUrl}/assets/janken/${resultType}.png`;
   const p1Image = `${baseUrl}/assets/janken/${p1Choice}.png`;
   const p2Image = `${baseUrl}/assets/janken/${p2Choice}.png`;
+  const winImage = `${baseUrl}/assets/janken/win.png`;
+  const loseImage = `${baseUrl}/assets/janken/lose.png`;
+  const drawImage = `${baseUrl}/assets/janken/draw.png`;
   const resultColor = resultColorMap[resultType] || "#ffffff";
 
   const winnerText = resultType === "draw" ? "平手！" : `${winnerName} 贏了！`;
+
+  // Determine which badge goes above each player
+  // p1 is the initiator; resultType is from p1's perspective
+  let p1Badge, p2Badge;
+  if (resultType === "draw") {
+    p1Badge = drawImage;
+    p2Badge = drawImage;
+  } else if (resultType === "win") {
+    p1Badge = winImage;
+    p2Badge = loseImage;
+  } else {
+    p1Badge = loseImage;
+    p2Badge = winImage;
+  }
 
   const bodyContents = [
     {
@@ -418,6 +436,12 @@ exports.generateResultCard = ({
           type: "box",
           layout: "vertical",
           contents: [
+            {
+              type: "image",
+              url: p1Badge,
+              size: "60px",
+              aspectMode: "fit",
+            },
             {
               type: "text",
               text: p1Name,
@@ -435,6 +459,7 @@ exports.generateResultCard = ({
           ],
           flex: 1,
           alignItems: "center",
+          spacing: "sm",
         },
         {
           type: "text",
@@ -450,6 +475,12 @@ exports.generateResultCard = ({
           type: "box",
           layout: "vertical",
           contents: [
+            {
+              type: "image",
+              url: p2Badge,
+              size: "60px",
+              aspectMode: "fit",
+            },
             {
               type: "text",
               text: p2Name,
@@ -467,6 +498,7 @@ exports.generateResultCard = ({
           ],
           flex: 1,
           alignItems: "center",
+          spacing: "sm",
         },
       ],
       spacing: "md",
@@ -479,7 +511,7 @@ exports.generateResultCard = ({
       color: resultColor,
       weight: "bold",
       size: "xl",
-      margin: "md",
+      margin: "lg",
     },
   ];
 
@@ -501,28 +533,13 @@ exports.generateResultCard = ({
 
   return {
     type: "bubble",
-    header: {
-      type: "box",
-      layout: "vertical",
-      backgroundColor: "#1a1a2e",
-      contents: [
-        {
-          type: "image",
-          url: resultImage,
-          size: "120px",
-          aspectMode: "fit",
-          align: "center",
-        },
-      ],
-      paddingAll: "lg",
-      alignItems: "center",
-    },
     body: {
       type: "box",
       layout: "vertical",
       backgroundColor: "#1a1a2e",
       contents: bodyContents,
       paddingAll: "lg",
+      spacing: "lg",
     },
   };
 };
