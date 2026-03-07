@@ -898,21 +898,25 @@ exports.generateRankCard = ({
             },
           ],
         },
-        {
-          type: "box",
-          layout: "horizontal",
-          contents: [
-            { type: "text", text: "全服排名", color: "#B0B0B0", size: "xs", flex: 1 },
-            {
-              type: "text",
-              text: `第 ${serverRank} 名`,
-              color: "#ffffff",
-              size: "xs",
-              align: "end",
-              flex: 2,
-            },
-          ],
-        },
+        ...(serverRank !== null
+          ? [
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  { type: "text", text: "全服排名", color: "#B0B0B0", size: "xs", flex: 1 },
+                  {
+                    type: "text",
+                    text: `第 ${serverRank} 名`,
+                    color: "#ffffff",
+                    size: "xs",
+                    align: "end",
+                    flex: 2,
+                  },
+                ],
+              },
+            ]
+          : []),
         ...(eloToNext !== null
           ? [
               {

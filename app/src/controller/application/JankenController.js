@@ -38,9 +38,8 @@ async function queryRank(context) {
   const maxBet = JankenRating.getMaxBet(rankTier);
   const nextTierElo = JankenRating.getNextTierElo(rating.elo);
   const eloToNext = nextTierElo !== null ? nextTierElo - rating.elo : null;
-  const serverRank = await JankenRating.getServerRank(userId);
-
   const totalGames = rating.win_count + rating.lose_count + rating.draw_count;
+  const serverRank = totalGames > 0 ? await JankenRating.getServerRank(userId) : null;
   const winRate = totalGames > 0 ? Math.round((rating.win_count / totalGames) * 100) : 0;
 
   const rankCard = jankenTemplate.generateRankCard({
