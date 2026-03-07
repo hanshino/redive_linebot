@@ -186,6 +186,17 @@ exports.generateDuelCard = ({ p1IconUrl, p2IconUrl, p1Uid, p2Uid, uuid, betAmoun
   bodyContents.push(handButtons);
   bodyContents.push(randomButton);
 
+  if (!betAmount) {
+    bodyContents.push({
+      type: "text",
+      text: "試試 /決鬥 @對手 金額 來下注對決！",
+      align: "center",
+      color: "#888888",
+      size: "xxs",
+      margin: "md",
+    });
+  }
+
   const bubble = {
     type: "bubble",
     body: {
