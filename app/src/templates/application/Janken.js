@@ -752,3 +752,201 @@ exports.generateJankenGrade = ({ winCount = 0, loseCount = 0, drawCount = 0, rat
     },
   };
 };
+
+exports.generateRankCard = ({
+  rankLabel,
+  rankImageKey,
+  elo,
+  winCount,
+  loseCount,
+  drawCount,
+  winRate,
+  streak,
+  maxStreak,
+  bounty,
+  eloToNext,
+  serverRank,
+  maxBet,
+  baseUrl,
+}) => {
+  const bodyContents = [
+    {
+      type: "box",
+      layout: "horizontal",
+      contents: [
+        { type: "filler" },
+        {
+          type: "image",
+          url: `${baseUrl}/assets/janken/${rankImageKey}.png`,
+          size: "100px",
+          aspectMode: "fit",
+          flex: 0,
+        },
+        { type: "filler" },
+      ],
+    },
+    {
+      type: "text",
+      text: rankLabel,
+      align: "center",
+      color: "#FFD700",
+      weight: "bold",
+      size: "xl",
+    },
+    {
+      type: "text",
+      text: `ELO: ${elo}`,
+      align: "center",
+      color: "#B0B0B0",
+      size: "sm",
+    },
+    { type: "separator", color: "#3d3d6e", margin: "lg" },
+    {
+      type: "box",
+      layout: "horizontal",
+      contents: [
+        {
+          type: "text",
+          text: `${winCount} 勝`,
+          align: "center",
+          color: "#4CAF50",
+          size: "sm",
+          flex: 1,
+        },
+        {
+          type: "text",
+          text: `${loseCount} 敗`,
+          align: "center",
+          color: "#F44336",
+          size: "sm",
+          flex: 1,
+        },
+        {
+          type: "text",
+          text: `${drawCount} 平`,
+          align: "center",
+          color: "#4FC3F7",
+          size: "sm",
+          flex: 1,
+        },
+      ],
+      margin: "lg",
+    },
+    {
+      type: "text",
+      text: `勝率：${winRate}%`,
+      align: "center",
+      color: "#ffffff",
+      size: "sm",
+      margin: "sm",
+    },
+    {
+      type: "box",
+      layout: "horizontal",
+      contents: [
+        {
+          type: "text",
+          text: `連勝：${streak}`,
+          align: "center",
+          color: "#FF6B35",
+          size: "sm",
+          flex: 1,
+        },
+        {
+          type: "text",
+          text: `最高：${maxStreak}`,
+          align: "center",
+          color: "#FF6B35",
+          size: "sm",
+          flex: 1,
+        },
+      ],
+      margin: "sm",
+    },
+    { type: "separator", color: "#3d3d6e", margin: "lg" },
+    {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            { type: "text", text: "懸賞金", color: "#B0B0B0", size: "xs", flex: 1 },
+            {
+              type: "text",
+              text: `${bounty} 女神石`,
+              color: "#ffffff",
+              size: "xs",
+              align: "end",
+              flex: 2,
+            },
+          ],
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            { type: "text", text: "最大下注", color: "#B0B0B0", size: "xs", flex: 1 },
+            {
+              type: "text",
+              text: `${maxBet} 女神石`,
+              color: "#ffffff",
+              size: "xs",
+              align: "end",
+              flex: 2,
+            },
+          ],
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            { type: "text", text: "全服排名", color: "#B0B0B0", size: "xs", flex: 1 },
+            {
+              type: "text",
+              text: `第 ${serverRank} 名`,
+              color: "#ffffff",
+              size: "xs",
+              align: "end",
+              flex: 2,
+            },
+          ],
+        },
+        ...(eloToNext !== null
+          ? [
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  { type: "text", text: "距下一段位", color: "#B0B0B0", size: "xs", flex: 1 },
+                  {
+                    type: "text",
+                    text: `還差 ${eloToNext} 分`,
+                    color: "#FFD700",
+                    size: "xs",
+                    align: "end",
+                    flex: 2,
+                  },
+                ],
+              },
+            ]
+          : []),
+      ],
+      margin: "lg",
+      spacing: "sm",
+    },
+  ];
+
+  return {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#1a1a2e",
+      contents: bodyContents,
+      paddingAll: "lg",
+      spacing: "sm",
+    },
+  };
+};
