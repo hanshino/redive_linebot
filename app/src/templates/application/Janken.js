@@ -795,7 +795,7 @@ exports.generateRankCard = ({
     },
     {
       type: "text",
-      text: `ELO: ${elo}`,
+      text: `積分：${elo}`,
       align: "center",
       color: "#B0B0B0",
       size: "sm",
@@ -922,7 +922,7 @@ exports.generateRankCard = ({
                   { type: "text", text: "距下一段位", color: "#B0B0B0", size: "xs", flex: 1 },
                   {
                     type: "text",
-                    text: `還差 ${eloToNext} 分`,
+                    text: `還差 ${eloToNext} 積分`,
                     color: "#FFD700",
                     size: "xs",
                     align: "end",

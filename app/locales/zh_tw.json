@@ -151,7 +151,7 @@
       "streak_broken": "{{{ breakerName }}} 終結了 {{{ holderName }}} 的 {{ streak }} 連勝！獲得懸賞金 {{ bounty }} 女神石！",
       "insufficient_funds": "餘額不足！目前餘額：{{ balance }} 女神石",
       "rank_query_not_found": "你還沒有猜拳記錄，快去挑戰吧！",
-      "elo_change": "ELO: {{ before }} → {{ after }} ({{ change }})"
+      "elo_change": "積分：{{ before }} → {{ after }} ({{ change }})"
     },
     "trade": {
       "no_mention": "請標記要交易的對象",
