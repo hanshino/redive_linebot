@@ -72,6 +72,14 @@ exports.getRankImageKey = function (elo) {
   return `rank_${exports.getRankTier(elo)}`;
 };
 
+exports.getServerRank = async function (userId) {
+  const result = await mysql.raw(
+    `SELECT COUNT(*) + 1 AS rank_position FROM ${TABLE} WHERE elo > (SELECT elo FROM ${TABLE} WHERE user_id = ?)`,
+    [userId]
+  );
+  return result[0]?.[0]?.rank_position || 1;
+};
+
 exports.getMaxBet = function (rankTier) {
   const maxByRank = config.get("minigame.janken.bet.maxAmountByRank");
   return maxByRank[rankTier] || maxByRank.beginner;
