@@ -24,14 +24,12 @@ const CharacterController = require("./controller/princess/character");
 const JankenController = require("./controller/application/JankenController");
 const AdvancementController = require("./controller/application/AdvancementController");
 const DonateListController = require("./controller/application/DonateListController");
-const GambleController = require("./controller/application/GambleController");
 const AliasController = require("./controller/application/AliasController");
 const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const StatusController = require("./controller/application/StatusController");
 const SubscribeController = require("./controller/application/SubscribeController");
-const NumberController = require("./controller/application/NumberController");
 const OpenaiController = require("./controller/application/OpenaiController");
 const JobController = require("./controller/application/JobController");
 const { transfer } = require("./middleware/dcWebhook");
@@ -111,7 +109,6 @@ async function HandlePostback(context, { next }) {
         () => action === "confirmTransfer",
         withProps(MarketController.doTransfer, { payload })
       ),
-      route(() => action === "sicBoGuess", withProps(NumberController.postbackDecide, { payload })),
       route(
         () => action === "startSwordmanChangeJobMission",
         withProps(JobController.startSwordmanJobMission, { payload })
@@ -163,14 +160,12 @@ async function OrderBased(context, { next }) {
     ...GodStoneShopController.router,
     ...JankenController.router,
     ...AdvancementController.router,
-    ...GambleController.router,
     ...MarketController.router,
     ...CouponController.router,
     ...ImageController.router,
     ...StatusController.router,
     ...SubscribeController.router,
     ...CharacterController.router,
-    ...(type === "user" ? NumberController.router : []),
     ...(type === "user" ? JobController.router : []),
     ...(type === "user" ? SubscribeController.privateRouter : []),
     text(/^[/#.](使用說明|help)$/, welcome),
@@ -261,7 +256,6 @@ function AdminOrder() {
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
-    ...GambleController.adminRouter,
     ...AdvancementController.adminRouter,
     ...DonateListController.adminRouter,
     ...AliasController.adminRouter,

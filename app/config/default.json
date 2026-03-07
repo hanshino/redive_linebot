@@ -195,10 +195,5 @@
         }
       ]
     }
-  },
-  "gamble": {
-    "number": {
-      "daily_limit": 100
-    }
   }
 }
