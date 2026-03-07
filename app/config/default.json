@@ -42,7 +42,27 @@
     "janken": {
       "paper": "🖐️",
       "rock": "✊",
-      "scissors": "✌️"
+      "scissors": "✌️",
+      "bet": {
+        "minAmount": 10,
+        "maxAmountByRank": {
+          "beginner": 1000,
+          "challenger": 5000,
+          "fighter": 10000,
+          "master": 30000,
+          "legend": 50000
+        },
+        "feeRate": 0.1
+      },
+      "images": {
+        "rock": "/assets/janken/rock.png",
+        "scissors": "/assets/janken/scissors.png",
+        "paper": "/assets/janken/paper.png",
+        "win": "/assets/janken/win.png",
+        "lose": "/assets/janken/lose.png",
+        "draw": "/assets/janken/draw.png",
+        "vs": "/assets/janken/vs.png"
+      }
     }
   },
   "chat_level": {

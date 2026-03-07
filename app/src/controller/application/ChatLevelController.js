@@ -7,7 +7,7 @@ const LineClient = getClient("line");
 const GachaModel = require("../../model/princess/gacha");
 const GachaRecord = require("../../model/princess/GachaRecord");
 const GachaTemplate = require("../../templates/princess/gacha").line;
-const MinigameTemplate = require("../../templates/application/Minigame");
+const JankenTemplate = require("../../templates/application/Janken");
 const DailyTemplate = require("../../templates/application/DailyQuest");
 const SubscribeTemplate = require("../../templates/application/Subscribe");
 const JankenResult = require("../../model/application/JankenResult");
@@ -161,7 +161,7 @@ exports.showStatus = async (context, props) => {
       0
     );
     let rate = Math.floor((winCount / (winCount + loseCount)) * 100) || 0;
-    const jankenGradeBubble = MinigameTemplate.generateJankenGrade({
+    const jankenGradeBubble = JankenTemplate.generateJankenGrade({
       winCount,
       loseCount,
       drawCount,
