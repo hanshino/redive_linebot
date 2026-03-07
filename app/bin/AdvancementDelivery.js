@@ -1,31 +1,24 @@
-const mysql = require("../lib/mysql");
+const mysql = require("../src/util/mysql");
 const config = require("config");
-const { DefaultLogger } = require("../lib/Logger");
+const { DefaultLogger } = require("../src/util/Logger");
 
-exports.delivery = async () => {
+module.exports = main;
+
+async function main() {
   DefaultLogger.info("Start delivery advancement");
   await deliveryChatSystem();
   DefaultLogger.info("Delivery advancement chat system");
   await deliveryGachaSystem();
   DefaultLogger.info("Delivery advancement gacha system");
-  // await deliveryJankenSystem();
-  // DefaultLogger.info("Delivery advancement janken system");
   await deliveryWorldbossSystem();
   DefaultLogger.info("Delivery advancement worldboss system");
   DefaultLogger.info("End delivery advancement");
-};
+}
 
-/**
- * 派送聊天系統稱號
- */
 async function deliveryChatSystem() {
   const chatKing = config.get("advancement.chat_king") || [];
+  if (chatKing.length === 0) return;
 
-  if (chatKing.length === 0) {
-    return;
-  }
-
-  // 取得前三名的玩家
   const users = await mysql
     .select("id")
     .from("chat_user_data")
@@ -34,35 +27,23 @@ async function deliveryChatSystem() {
     .orderBy("rank", "asc")
     .limit(3);
 
-  // 取得設定的稱號
   const trx = await mysql.transaction();
-
   try {
     await deleteExistAdvancement(trx, chatKing);
-
     await Promise.all(users.map((user, index) => insertAdvancement(trx, user.id, chatKing[index])));
   } catch (e) {
     await trx.rollback();
     DefaultLogger.error(e);
     throw e;
   }
-
   await trx.commit();
 }
 
-/**
- * 派發轉蛋系統稱號
- * @returns {Promise<void>}
- */
 async function deliveryGachaSystem() {
   const gachaKing = config.get("advancement.gacha_king") || [];
   const gachaRich = config.get("advancement.gacha_rich") || [];
+  if (gachaKing.length === 0 && gachaRich.length === 0) return;
 
-  if (gachaKing.length === 0 && gachaRich.length === 0) {
-    return;
-  }
-
-  // 取得蒐集前三名的玩家
   const collectUsers = await mysql
     .select("userId")
     .from("Inventory")
@@ -81,7 +62,6 @@ async function deliveryGachaSystem() {
     .groupBy("userId")
     .limit(3);
 
-  // 將會員編號轉換成資料庫編號
   const userIdMap = {};
   const ids = [...collectUsers, ...richUsers].map(user => user.userId);
   const users = await mysql
@@ -96,87 +76,21 @@ async function deliveryGachaSystem() {
   const trx = await mysql.transaction();
   try {
     await deleteExistAdvancement(trx, [...gachaKing, ...gachaRich]);
-
     await Promise.all(
-      collectUsers.map(async (user, index) =>
-        insertAdvancement(trx, userIdMap[user.userId], gachaKing[index])
-      )
+      collectUsers.map((user, index) => insertAdvancement(trx, userIdMap[user.userId], gachaKing[index]))
     );
-
     await Promise.all(
-      richUsers.map((user, index) =>
-        insertAdvancement(trx, userIdMap[user.userId], gachaRich[index])
-      )
+      richUsers.map((user, index) => insertAdvancement(trx, userIdMap[user.userId], gachaRich[index]))
     );
   } catch (e) {
     await trx.rollback();
     DefaultLogger.error(e);
     throw e;
   }
-
-  await trx.commit();
-}
-
-async function deliveryJankenSystem() {
-  const jankenKing = config.get("advancement.janken_king") || [];
-  const jankenLoser = config.get("advancement.janken_loser") || [];
-  const jankenDrawer = config.get("advancement.janken_drawer") || [];
-
-  if (jankenKing.length === 0) {
-    return;
-  }
-
-  const findJakenKing = function (type) {
-    return mysql
-      .select("user_id")
-      .count({ count: "result" })
-      .from("janken_result")
-      .where("result", type)
-      .orderBy("count", "desc")
-      .groupBy("user_id")
-      .limit(1);
-  };
-
-  // 取得勝場最多的玩家
-  const winKing = await findJakenKing(1);
-  // 取得敗場最多的玩家
-  const loseKing = await findJakenKing(2);
-  // 取得平手最多的玩家
-  const drawKing = await findJakenKing(0);
-
-  // 將會員編號轉換成資料庫編號
-  const userIdMap = {};
-  const ids = [...winKing, ...loseKing, ...drawKing].map(user => user.user_id);
-  const users = await mysql
-    .select([{ id: "No" }, "platformId"])
-    .from("User")
-    .whereIn("platformId", ids);
-
-  users.forEach(user => {
-    userIdMap[user.platformId] = user.id;
-  });
-
-  // 取得設定的稱號
-  const trx = await mysql.transaction();
-
-  try {
-    await deleteExistAdvancement(trx, [...jankenKing, ...jankenLoser, ...jankenDrawer]);
-
-    await Promise.all([
-      insertAdvancement(trx, userIdMap[winKing[0].user_id], jankenKing[0]),
-      insertAdvancement(trx, userIdMap[loseKing[0].user_id], jankenLoser[0]),
-      insertAdvancement(trx, userIdMap[drawKing[0].user_id], jankenDrawer[0]),
-    ]);
-  } catch (e) {
-    await trx.rollback();
-    throw e;
-  }
-
   await trx.commit();
 }
 
 async function deliveryWorldbossSystem() {
-  // 取得世界王系統的所有玩家數量
   const { count: userCount } = await mysql.count({ count: "*" }).from("minigame_level").first();
 
   const progressorsLimit = config.get("advancement.world_boss.progressors.limit") || 1;
@@ -188,7 +102,6 @@ async function deliveryWorldbossSystem() {
   const leechersKey = config.get("advancement.world_boss.leechers.key");
 
   const trx = await mysql.transaction();
-
   try {
     await deleteExistAdvancement(trx, [progressorsKey, leechersKey]);
 
@@ -199,11 +112,8 @@ async function deliveryWorldbossSystem() {
 
     const writeAdvancement = async (count, advancement) => {
       let target = advancementIds.find(ad => ad.name === advancement);
-      if (!target) {
-        return;
-      }
+      if (!target) return;
       const { id: adId } = target;
-
       const order = advancement === progressorsKey ? "desc" : "asc";
 
       return trx
@@ -228,15 +138,9 @@ async function deliveryWorldbossSystem() {
     DefaultLogger.error(e);
     throw e;
   }
-
   await trx.commit();
 }
 
-/**
- * 刪除過期的稱號
- * @param {*} trx Passing trx for transaction
- * @returns {Promise<void>}
- */
 function deleteExistAdvancement(trx, names) {
   return trx
     .delete()
@@ -244,19 +148,14 @@ function deleteExistAdvancement(trx, names) {
     .whereIn("advancement_id", trx.select("id").from("advancement").whereIn("name", names));
 }
 
-/**
- * 新增稱號
- * @param {*} trx Passing trx for transaction
- * @param {Number} userId 玩家編號
- * @param {String} name 稱號名稱
- * @returns {Promise<void>}
- */
 function insertAdvancement(trx, userId, name) {
   return trx
     .insert(function () {
-      this.select([trx.raw(userId), "id"])
-        .from("advancement")
-        .where("name", name);
+      this.select([trx.raw(userId), "id"]).from("advancement").where("name", name);
     })
     .into(trx.raw("?? (??, ??)", ["user_has_advancements", "user_id", "advancement_id"]));
+}
+
+if (require.main === module) {
+  main().then(() => process.exit(0));
 }

@@ -1,57 +1,54 @@
-const redis = require("../lib/redis");
-const mysql = require("../lib/mysql");
+const mysql = require("../src/util/mysql");
+const redis = require("../src/util/redis");
 const moment = require("moment");
 const config = require("config");
-const redis_key = config.get("event_center.daily_quest");
-const { DefaultLogger } = require("../lib/Logger");
+const { DefaultLogger } = require("../src/util/Logger");
 
-exports.run = async () => {
-  const handleCount = 0;
+module.exports = main;
+
+let running = false;
+
+async function main() {
+  if (running) return;
+  running = true;
+  try {
+    await run();
+  } catch (err) {
+    console.error(err);
+  }
+  running = false;
+}
+
+async function run() {
+  const handleCount = { value: 0 };
   const handleUsers = [];
-  const handleResult = [];
 
   DefaultLogger.info(`[DailyQuest] Start`);
 
-  while (handleCount < 1000) {
-    const strPayload = await redis.dequeue(redis_key);
-    if (!strPayload) {
-      break;
-    }
+  while (handleCount.value < 1000) {
+    const strPayload = await redis.rPop(config.get("event_center.daily_quest"));
+    if (!strPayload) break;
     try {
       const payload = JSON.parse(strPayload);
       if (!payload.userId) continue;
-
       if (handleUsers.includes(payload.userId)) continue;
       handleUsers.push(payload.userId);
 
-      let result = await handle(payload);
-      if (result) {
-        handleResult.push(result);
-      }
+      await handle(payload);
+      handleCount.value++;
     } catch (e) {
       DefaultLogger.error(e);
       continue;
     }
   }
 
-  DefaultLogger.info(`[DailyQuest] handle ${handleCount}`);
+  DefaultLogger.info(`[DailyQuest] handle ${handleCount.value}`);
   DefaultLogger.info(`[DailyQuest] End`);
-};
+}
 
-/**
- * 處理每日任務
- * @param {Object} payload 內容
- * @param {String} payload.userId 用戶ID
- */
 async function handle(payload) {
   const { userId } = payload;
   const { gacha, janken } = await getTodayRecord(userId);
-  const result = {
-    // 是否派發了每日任務完成獎勵
-    daily_reward: false,
-    // 是否派發了每週任務完成獎勵
-    weekly_reward: false,
-  };
 
   if (!gacha || !janken) {
     DefaultLogger.info(`[DailyQuest] ${userId} not complete`);
@@ -66,11 +63,10 @@ async function handle(payload) {
 
   if (dailyRecord) {
     DefaultLogger.info(`[DailyQuest] ${userId} already complete. Gaven Reward`);
-    return result;
+    return;
   }
 
   const trx = await mysql.transaction();
-
   try {
     DefaultLogger.info(`[DailyQuest] ${userId} complete. Give reward`);
     await trx("daily_quest").insert({ user_id: userId });
@@ -79,19 +75,12 @@ async function handle(payload) {
       itemId: config.get("daily_quest.reward.itemId"),
       itemAmount: config.get("daily_quest.reward.itemAmount"),
     });
-
-    result.daily_reward = true;
   } catch (e) {
     DefaultLogger.error(e);
     await trx.rollback();
     return;
   }
-
   await trx.commit();
-
-  if (!result.daily_reward) {
-    return result;
-  }
 
   const weeklyRecords = await mysql("daily_quest")
     .where("created_at", ">=", moment().startOf("week").toDate())
@@ -104,11 +93,7 @@ async function handle(payload) {
       itemId: config.get("daily_quest.weekly_reward.itemId"),
       itemAmount: config.get("daily_quest.weekly_reward.itemAmount"),
     });
-
-    result.weekly_reward = true;
   }
-
-  return result;
 }
 
 async function getTodayRecord(userId) {
@@ -128,8 +113,9 @@ async function getTodayRecord(userId) {
       .first(),
   ]);
 
-  return {
-    gacha: !!gacha,
-    janken: !!janken,
-  };
+  return { gacha: !!gacha, janken: !!janken };
+}
+
+if (require.main === module) {
+  main().then(() => process.exit(0));
 }

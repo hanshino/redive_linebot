@@ -96,21 +96,6 @@ services:
     expose:
       - "${REDIS_PORT}"
 
-  crontab:
-    build: ./job
-    restart: always
-    networks:
-      - bot_network
-    depends_on:
-      - mysql
-      - redis
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "1k"
-        max-file: "3"
-    env_file: ./.env
-
   phpmyadmin:
     depends_on:
       - mysql
