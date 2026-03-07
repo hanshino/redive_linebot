@@ -408,6 +408,7 @@ exports.generateResultCard = ({
   betAmount = 0,
   betWinAmount = 0,
   baseUrl,
+  winnerStreak = 0,
 }) => {
   const resultColorMap = {
     win: "#FFD700",
@@ -538,6 +539,18 @@ exports.generateResultCard = ({
       align: "center",
       color: "#FFD700",
       size: "sm",
+      margin: "md",
+    });
+  }
+
+  if (winnerStreak >= 2) {
+    bodyContents.push({
+      type: "text",
+      text: `${winnerName} ${winnerStreak} 連勝中！`,
+      align: "center",
+      color: "#FF6B35",
+      size: "sm",
+      weight: "bold",
       margin: "md",
     });
   }
