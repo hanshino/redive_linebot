@@ -11,6 +11,7 @@ const uuid = require("uuid-random");
 const { DefaultLogger } = require("../../util/Logger");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
+const BountySender = { name: "懸賞官", iconUrl: `${baseUrl}/assets/janken/bounty.png` };
 
 exports.router = [
   text(/^[.#/](猜拳)/, duel),
@@ -47,6 +48,11 @@ async function duel(context) {
 
   if (!targetUserId) {
     await context.replyText(i18n.__("message.duel.failed_to_get_target_user_id"));
+    return;
+  }
+
+  if (userId === targetUserId) {
+    await context.replyText(i18n.__("message.duel.self_duel"));
     return;
   }
 
@@ -127,11 +133,13 @@ exports.decide = async (context, { payload }) => {
 
   // Escrow opponent's bet when they first submit (if bet > 0 and they are not the initiator)
   if (betAmount > 0 && sourceUserId === targetUserId) {
-    const escrow = await JankenService.escrowBet(sourceUserId, betAmount);
-    if (!escrow.success) {
+    const escrowGuard = await JankenService.tryEscrowOnce(matchId, sourceUserId, betAmount);
+    if (escrowGuard.alreadyEscrowed) {
+      // Already processed, skip
+    } else if (!escrowGuard.success) {
       await context.replyText(
         i18n.__("message.duel.insufficient_funds", {
-          balance: escrow.balance,
+          balance: escrowGuard.balance,
         })
       );
       return;
@@ -158,7 +166,7 @@ exports.decide = async (context, { payload }) => {
     LineClient.getGroupMemberProfile(groupId, targetUserId),
   ]);
 
-  const { p1Result, betFee } = await JankenService.resolveMatch({
+  const matchResult = await JankenService.resolveMatch({
     matchId,
     groupId,
     p1UserId: userId,
@@ -168,10 +176,19 @@ exports.decide = async (context, { payload }) => {
     betAmount,
   });
 
+  if (!matchResult) {
+    return;
+  }
+
+  const { p1Result, betFee } = matchResult;
+
   const p1Name = get(profile, "displayName", "未知玩家");
   const p2Name = get(targetProfile, "displayName", "未知挑戰者");
   const winnerName = p1Result === "win" ? p1Name : p2Name;
   const betWinAmount = betAmount > 0 ? betAmount * 2 - betFee : 0;
+
+  const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
+    await JankenService.updateStreaks(userId, targetUserId, p1Result, { betAmount });
 
   const resultBubble = jankenTemplate.generateResultCard({
     p1Name,
@@ -183,9 +200,37 @@ exports.decide = async (context, { payload }) => {
     betAmount,
     betWinAmount,
     baseUrl,
+    winnerStreak,
   });
 
   await context.replyFlex("猜拳結果", resultBubble);
+
+  if (p1Result !== "draw") {
+    if (loserBounty > 0) {
+      const breakerName = p1Result === "win" ? p1Name : p2Name;
+      const holderName = p1Result === "win" ? p2Name : p1Name;
+      await context.replyText(
+        i18n.__("message.duel.streak_broken", {
+          breakerName,
+          holderName,
+          streak: loserPreviousStreak,
+          bounty: loserBounty,
+        }),
+        { sender: BountySender }
+      );
+    }
+
+    if (winnerBounty > 0 && winnerStreak >= 2) {
+      await context.replyText(
+        i18n.__("message.duel.streak_continue", {
+          displayName: winnerName,
+          streak: winnerStreak,
+          bounty: winnerBounty,
+        }),
+        { sender: BountySender }
+      );
+    }
+  }
 };
 
 /**
@@ -284,7 +329,7 @@ exports.challenge = async (context, { payload }) => {
       LineClient.getGroupMemberProfile(context.event.source.groupId, challengerUserId),
     ]);
 
-    const { p1Result } = await JankenService.resolveMatch({
+    const arenaMatchResult = await JankenService.resolveMatch({
       matchId,
       groupId,
       p1UserId: holderUserId,
@@ -293,6 +338,15 @@ exports.challenge = async (context, { payload }) => {
       p2Choice: challengerChoice,
       betAmount: 0,
     });
+
+    if (!arenaMatchResult) {
+      return;
+    }
+
+    const { p1Result } = arenaMatchResult;
+
+    const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
+      await JankenService.updateStreaks(holderUserId, challengerUserId, p1Result);
 
     const p1Name = get(holderProfile, "displayName", "未知玩家");
     const p2Name = get(challengerProfile, "displayName", "未知挑戰者");
@@ -308,8 +362,36 @@ exports.challenge = async (context, { payload }) => {
       betAmount: 0,
       betWinAmount: 0,
       baseUrl,
+      winnerStreak,
     });
 
     await context.replyFlex("猜拳結果", resultBubble);
+
+    if (p1Result !== "draw") {
+      if (loserBounty > 0) {
+        const breakerName = p1Result === "win" ? p1Name : p2Name;
+        const holderName = p1Result === "win" ? p2Name : p1Name;
+        await context.replyText(
+          i18n.__("message.duel.streak_broken", {
+            breakerName,
+            holderName,
+            streak: loserPreviousStreak,
+            bounty: loserBounty,
+          }),
+          { sender: BountySender }
+        );
+      }
+
+      if (winnerBounty > 0 && winnerStreak >= 2) {
+        await context.replyText(
+          i18n.__("message.duel.streak_continue", {
+            displayName: winnerName,
+            streak: winnerStreak,
+            bounty: winnerBounty,
+          }),
+          { sender: BountySender }
+        );
+      }
+    }
   }
 };

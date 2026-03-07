@@ -11,8 +11,29 @@ jest.mock("../../src/model/application/Inventory", () => ({
   },
 }));
 
+jest.mock("../../src/model/application/JankenRating", () => ({
+  findOrCreate: jest.fn(),
+  update: jest.fn().mockResolvedValue(undefined),
+  getRankTier: jest.fn(),
+  getMaxBet: jest.fn(),
+}));
+
+const mockUpdate = jest.fn().mockResolvedValue(undefined);
+const mockTrxQuery = jest.fn(() => ({
+  where: jest.fn(() => ({
+    forUpdate: jest.fn(() => ({
+      first: jest.fn(),
+    })),
+    update: mockUpdate,
+  })),
+}));
+mockTrxQuery.transaction = jest.fn(async cb => cb(mockTrxQuery));
+
+jest.mock("../../src/util/mysql", () => mockTrxQuery);
+
 const JankenService = require("../../src/service/JankenService");
 const redis = require("../../src/util/redis");
+const JankenRating = require("../../src/model/application/JankenRating");
 
 describe("JankenService", () => {
   beforeEach(() => {
@@ -112,6 +133,99 @@ describe("JankenService", () => {
       });
 
       expect(result).toEqual({ ready: false });
+    });
+  });
+
+  describe("calculateBountyIncrement", () => {
+    it("returns 0 for bet 0", () => {
+      expect(JankenService.calculateBountyIncrement(0)).toBe(0);
+    });
+
+    it("returns 50% of bet amount", () => {
+      expect(JankenService.calculateBountyIncrement(100)).toBe(50);
+      expect(JankenService.calculateBountyIncrement(1000)).toBe(500);
+    });
+
+    it("floors fractional results", () => {
+      expect(JankenService.calculateBountyIncrement(11)).toBe(5);
+    });
+  });
+
+  describe("updateStreaks", () => {
+    let mockFirst;
+
+    beforeEach(() => {
+      mockFirst = jest.fn();
+      mockTrxQuery.mockImplementation(() => ({
+        where: jest.fn(() => ({
+          forUpdate: jest.fn(() => ({
+            first: mockFirst,
+          })),
+          update: mockUpdate,
+        })),
+      }));
+    });
+
+    it("increments winner streak and resets loser streak", async () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
+        .mockResolvedValueOnce({ user_id: "winner", streak: 2, max_streak: 5, bounty: 100 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4, bounty: 300 });
+
+      const result = await JankenService.updateStreaks("winner", "loser", "win", { betAmount: 100 });
+
+      expect(result).toEqual({
+        winnerStreak: 3,
+        winnerBounty: 150,
+        loserPreviousStreak: 3,
+        loserBounty: 300,
+      });
+    });
+
+    it("updates max_streak when new record", async () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
+        .mockResolvedValueOnce({ user_id: "winner", streak: 5, max_streak: 5, bounty: 200 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
+
+      const result = await JankenService.updateStreaks("winner", "loser", "win", { betAmount: 100 });
+
+      expect(result.winnerStreak).toBe(6);
+      expect(result.winnerBounty).toBe(250);
+    });
+
+    it("does not change streaks on draw", async () => {
+      const result = await JankenService.updateStreaks("p1", "p2", "draw", { betAmount: 100 });
+
+      expect(result).toEqual({
+        winnerStreak: 0,
+        loserPreviousStreak: 0,
+        loserBounty: 0,
+      });
+      expect(mockTrxQuery.transaction).not.toHaveBeenCalled();
+    });
+
+    it("does not change streaks when no bet", async () => {
+      const result = await JankenService.updateStreaks("p1", "p2", "win");
+
+      expect(result).toEqual({
+        winnerStreak: 0,
+        loserPreviousStreak: 0,
+        loserBounty: 0,
+      });
+      expect(mockTrxQuery.transaction).not.toHaveBeenCalled();
+    });
+
+    it("handles p2 winning (p1Result is lose)", async () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
+        .mockResolvedValueOnce({ user_id: "p2", streak: 0, max_streak: 1, bounty: 0 })
+        .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7, bounty: 500 });
+
+      const result = await JankenService.updateStreaks("p1", "p2", "lose", { betAmount: 100 });
+
+      expect(result.winnerStreak).toBe(1);
+      expect(result.loserPreviousStreak).toBe(4);
     });
   });
 });

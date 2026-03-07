@@ -3,7 +3,7 @@ const { pick } = require("lodash");
 const config = require("config");
 
 const TABLE = "janken_rating";
-const fillable = ["user_id", "elo", "rank_tier", "win_count", "lose_count", "draw_count", "streak", "max_streak"];
+const fillable = ["user_id", "elo", "rank_tier", "win_count", "lose_count", "draw_count", "streak", "max_streak", "bounty"];
 
 const RANK_TIERS = [
   { name: "beginner", minElo: 0 },
@@ -31,11 +31,15 @@ exports.find = async function (userId) {
   return mysql(TABLE).where({ user_id: userId }).first();
 };
 
-exports.findOrCreate = async function (userId) {
-  let rating = await exports.find(userId);
+exports.findOrCreate = async function (userId, trx) {
+  const db = trx || mysql;
+  let rating = await db(TABLE).where({ user_id: userId }).first();
   if (!rating) {
-    await mysql(TABLE).insert({ user_id: userId });
-    rating = await exports.find(userId);
+    await db.raw(
+      `INSERT INTO \`${TABLE}\` (user_id) VALUES (?) ON DUPLICATE KEY UPDATE user_id = user_id`,
+      [userId]
+    );
+    rating = await db(TABLE).where({ user_id: userId }).first();
   }
   return rating;
 };

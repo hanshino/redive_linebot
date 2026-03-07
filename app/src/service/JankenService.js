@@ -5,11 +5,14 @@ const JankenResult = require("../model/application/JankenResult");
 const { inventory } = require("../model/application/Inventory");
 const EventCenterService = require("./EventCenterService");
 const { DefaultLogger } = require("../util/Logger");
+const JankenRating = require("../model/application/JankenRating");
 
 const REDIS_PREFIX = config.get("redis.keys.jankenDecide");
 const CHALLENGE_PREFIX = config.get("redis.keys.jankenChallenge");
 const FEE_RATE = config.get("minigame.janken.bet.feeRate");
 const MIN_BET = config.get("minigame.janken.bet.minAmount");
+const BOUNTY_RATE = config.get("minigame.janken.streak.bountyRate");
+const STREAK_MAX_BOUNTY = config.get("minigame.janken.streak.maxBounty");
 
 const RESULT_MAP = {
   rock: { rock: "draw", paper: "lose", scissors: "win" },
@@ -55,6 +58,75 @@ exports.escrowBet = async function (userId, amount) {
   return { success: true };
 };
 
+exports.tryEscrowOnce = async function (matchId, userId, amount) {
+  const escrowKey = `${REDIS_PREFIX}:escrow:${matchId}:${userId}`;
+  const locked = await redis.set(escrowKey, "1", { EX: 3600, NX: true });
+  if (!locked) {
+    return { alreadyEscrowed: true };
+  }
+  const result = await exports.escrowBet(userId, amount);
+  return result;
+};
+
+exports.calculateBountyIncrement = function (betAmount) {
+  return Math.floor(betAmount * BOUNTY_RATE);
+};
+
+exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmount = 0 } = {}) {
+  if (p1Result === "draw" || !betAmount || betAmount <= 0) {
+    return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
+  }
+
+  const mysql = require("../util/mysql");
+  const winnerId = p1Result === "win" ? p1UserId : p2UserId;
+  const loserId = p1Result === "win" ? p2UserId : p1UserId;
+
+  return mysql.transaction(async trx => {
+    await Promise.all([
+      JankenRating.findOrCreate(winnerId, trx),
+      JankenRating.findOrCreate(loserId, trx),
+    ]);
+
+    const [winnerRating, loserRating] = await Promise.all([
+      trx("janken_rating").where({ user_id: winnerId }).forUpdate().first(),
+      trx("janken_rating").where({ user_id: loserId }).forUpdate().first(),
+    ]);
+
+    const newStreak = winnerRating.streak + 1;
+    const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
+    const bountyIncrement = exports.calculateBountyIncrement(betAmount);
+    const newBounty = Math.min(winnerRating.bounty + bountyIncrement, STREAK_MAX_BOUNTY);
+    const loserBounty = loserRating.bounty;
+
+    await Promise.all([
+      trx("janken_rating").where({ user_id: winnerId }).update({
+        streak: newStreak,
+        max_streak: newMaxStreak,
+        bounty: newBounty,
+      }),
+      trx("janken_rating").where({ user_id: loserId }).update({
+        streak: 0,
+        bounty: 0,
+      }),
+    ]);
+
+    if (loserBounty > 0) {
+      await inventory.increaseGodStone({
+        userId: winnerId,
+        amount: loserBounty,
+        note: "janken_bounty_claim",
+      });
+    }
+
+    return {
+      winnerStreak: newStreak,
+      winnerBounty: newBounty,
+      loserPreviousStreak: loserRating.streak,
+      loserBounty,
+    };
+  });
+};
+
 exports.submitChoice = async function (matchId, userId, choice, { p1UserId, p2UserId } = {}) {
   if (choice === "random") {
     choice = exports.randomChoice();
@@ -90,20 +162,39 @@ exports.resolveMatch = async function ({
   p2Choice,
   betAmount = 0,
 }) {
+  const resolveKey = `${REDIS_PREFIX}:resolve:${matchId}`;
+  const locked = await redis.set(resolveKey, "1", { EX: 60, NX: true });
+  if (!locked) {
+    DefaultLogger.info(`[Janken] Match ${matchId} already being resolved, skipping`);
+    return null;
+  }
+
   const [p1Result, p2Result] = exports.determineWinner(p1Choice, p2Choice);
 
   let betFee = 0;
   if (betAmount > 0) {
     if (p1Result === "draw") {
       await Promise.all([
-        inventory.increaseGodStone({ userId: p1UserId, amount: betAmount, note: "janken_bet_refund" }),
-        inventory.increaseGodStone({ userId: p2UserId, amount: betAmount, note: "janken_bet_refund" }),
+        inventory.increaseGodStone({
+          userId: p1UserId,
+          amount: betAmount,
+          note: "janken_bet_refund",
+        }),
+        inventory.increaseGodStone({
+          userId: p2UserId,
+          amount: betAmount,
+          note: "janken_bet_refund",
+        }),
       ]);
     } else {
       const { winnerGets, fee } = exports.calculateBetSettlement(betAmount, "win");
       betFee = fee;
       const winnerId = p1Result === "win" ? p1UserId : p2UserId;
-      await inventory.increaseGodStone({ userId: winnerId, amount: winnerGets, note: "janken_bet_win" });
+      await inventory.increaseGodStone({
+        userId: winnerId,
+        amount: winnerGets,
+        note: "janken_bet_win",
+      });
     }
   }
 
@@ -141,11 +232,10 @@ exports.submitArenaChallenge = async function (groupId, holderUserId, challenger
 
   const redisKey = `${CHALLENGE_PREFIX}:${groupId}:${holderUserId}`;
 
-  const hasSet = await redis.set(
-    redisKey,
-    JSON.stringify({ challengerUserId, choice }),
-    { EX: 10 * 60, NX: true }
-  );
+  const hasSet = await redis.set(redisKey, JSON.stringify({ challengerUserId, choice }), {
+    EX: 10 * 60,
+    NX: true,
+  });
 
   if (!hasSet) {
     const existing = await redis.get(redisKey);

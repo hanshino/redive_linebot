@@ -62,6 +62,10 @@
         "lose": "/assets/janken/lose.png",
         "draw": "/assets/janken/draw.png",
         "vs": "/assets/janken/vs.png"
+      },
+      "streak": {
+        "bountyRate": 0.5,
+        "maxBounty": 10000
       }
     }
   },
