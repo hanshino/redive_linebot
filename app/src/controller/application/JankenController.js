@@ -180,7 +180,7 @@ exports.decide = async (context, { payload }) => {
     return;
   }
 
-  const { p1Result, betFee } = matchResult;
+  const { p1Result, betFee, p1EloChange, p2EloChange, p1NewElo, p2NewElo } = matchResult;
 
   const p1Name = get(profile, "displayName", "未知玩家");
   const p2Name = get(targetProfile, "displayName", "未知挑戰者");
@@ -201,6 +201,10 @@ exports.decide = async (context, { payload }) => {
     betWinAmount,
     baseUrl,
     winnerStreak,
+    p1EloChange,
+    p2EloChange,
+    p1NewElo,
+    p2NewElo,
   });
 
   await context.replyFlex("猜拳結果", resultBubble);
@@ -343,7 +347,7 @@ exports.challenge = async (context, { payload }) => {
       return;
     }
 
-    const { p1Result } = arenaMatchResult;
+    const { p1Result, p1EloChange, p2EloChange, p1NewElo, p2NewElo } = arenaMatchResult;
 
     const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
       await JankenService.updateStreaks(holderUserId, challengerUserId, p1Result);
@@ -363,6 +367,10 @@ exports.challenge = async (context, { payload }) => {
       betWinAmount: 0,
       baseUrl,
       winnerStreak,
+      p1EloChange,
+      p2EloChange,
+      p1NewElo,
+      p2NewElo,
     });
 
     await context.replyFlex("猜拳結果", resultBubble);
