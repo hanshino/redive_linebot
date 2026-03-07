@@ -17,7 +17,6 @@ const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const ChatLevelController = require("./controller/application/ChatLevelController");
 const WorldBossController = require("./controller/application/WorldBossController");
-const GuildServiceController = require("./controller/application/GuildServiceController");
 const AdvertisementController = require("./controller/application/AdvertisementController");
 const GodStoneShopController = require("./controller/princess/GodStoneShop");
 const CharacterController = require("./controller/princess/character");
@@ -155,7 +154,6 @@ async function OrderBased(context, { next }) {
     ...CustomerOrder(context),
     ...GroupOrder(context),
     ...WorldBossController.router,
-    ...GuildServiceController.router,
     ...AdvertisementController.router,
     ...GodStoneShopController.router,
     ...JankenController.router,

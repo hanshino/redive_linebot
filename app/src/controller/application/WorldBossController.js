@@ -417,8 +417,7 @@ async function bossEvent(context) {
   const contents = [ruleBubble, attackBubble, mainBubble, infoBubble, rankBubble];
 
   const isGroup = context.event.source.type === "group";
-  const hasService = (context.state.services || []).includes("world_boss");
-  if (isGroup && !hasService) {
+  if (isGroup) {
     contents.unshift(worldBossTemplate.generateOshirase());
   }
 
@@ -448,10 +447,9 @@ const attackOnBoss = async (context, props) => {
   const { worldBossEventId, attackType = "standard" } = props.payload;
   // 從事件的 source 取得用戶資料
   const { displayName, id, userId, pictureUrl } = context.event.source;
-  const hasService = (context.state.services || []).includes("world_boss");
   const isGroup = context.event.source.type === "group";
   // 決定要不要把訊息儲存起來，等待一段時間才一次發送
-  const keepMessage = isGroup && !hasService;
+  const keepMessage = isGroup;
 
   // 沒有會員id，跳過不處理
   if (!id) {

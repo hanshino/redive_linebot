@@ -1,6 +1,5 @@
 const GuildConfigModel = require("../model/application/GuildConfig");
 const AdminModel = require("../model/application/Admin");
-const GuildServiceModel = require("../model/application/GuildService");
 
 /**
  * 將群組設定檔寫入Session
@@ -21,21 +20,19 @@ module.exports = async (context, props) => {
 
   if (type !== "group") return props.next;
   // 如果已經設定過就不再設定
-  let isSet = context.state.sender && context.state.guildConfig && context.state.services;
+  let isSet = context.state.sender && context.state.guildConfig;
   if (isSet) return props.next;
 
   const { groupId } = context.event.source;
 
-  const [sender, guildConfig, services] = await Promise.all([
+  const [sender, guildConfig] = await Promise.all([
     GuildConfigModel.getSender(groupId),
     GuildConfigModel.fetchConfig(groupId),
-    GuildServiceModel.findByGroupId(groupId),
   ]);
 
   context.setState({
     sender,
     guildConfig,
-    services,
   });
 
   return props.next;
