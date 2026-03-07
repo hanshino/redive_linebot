@@ -190,7 +190,7 @@ describe("JankenService", () => {
         .mockResolvedValueOnce({ user_id: "winner", streak: 2, max_streak: 5 })
         .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4 });
 
-      const result = await JankenService.updateStreaks("winner", "loser", "win");
+      const result = await JankenService.updateStreaks("winner", "loser", "win", { betAmount: 100 });
 
       expect(result).toEqual({
         winnerStreak: 3,
@@ -205,13 +205,24 @@ describe("JankenService", () => {
         .mockResolvedValueOnce({ user_id: "winner", streak: 5, max_streak: 5 })
         .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2 });
 
-      const result = await JankenService.updateStreaks("winner", "loser", "win");
+      const result = await JankenService.updateStreaks("winner", "loser", "win", { betAmount: 100 });
 
       expect(result.winnerStreak).toBe(6);
     });
 
     it("does not change streaks on draw", async () => {
-      const result = await JankenService.updateStreaks("p1", "p2", "draw");
+      const result = await JankenService.updateStreaks("p1", "p2", "draw", { betAmount: 100 });
+
+      expect(result).toEqual({
+        winnerStreak: 0,
+        loserPreviousStreak: 0,
+        loserBounty: 0,
+      });
+      expect(mockTrxQuery.transaction).not.toHaveBeenCalled();
+    });
+
+    it("does not change streaks when no bet", async () => {
+      const result = await JankenService.updateStreaks("p1", "p2", "win");
 
       expect(result).toEqual({
         winnerStreak: 0,
@@ -227,7 +238,7 @@ describe("JankenService", () => {
         .mockResolvedValueOnce({ user_id: "p2", streak: 0, max_streak: 1 })
         .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7 });
 
-      const result = await JankenService.updateStreaks("p1", "p2", "lose");
+      const result = await JankenService.updateStreaks("p1", "p2", "lose", { betAmount: 100 });
 
       expect(result.winnerStreak).toBe(1);
       expect(result.loserPreviousStreak).toBe(4);

@@ -83,8 +83,8 @@ exports.calculateBounty = function (streak) {
   return Math.min(bounty, STREAK_MAX_BOUNTY);
 };
 
-exports.updateStreaks = async function (p1UserId, p2UserId, p1Result) {
-  if (p1Result === "draw") {
+exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmount = 0 } = {}) {
+  if (p1Result === "draw" || betAmount <= 0) {
     return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
   }
 

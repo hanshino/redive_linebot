@@ -184,7 +184,8 @@ exports.decide = async (context, { payload }) => {
   const { winnerStreak, loserPreviousStreak, loserBounty } = await JankenService.updateStreaks(
     userId,
     targetUserId,
-    p1Result
+    p1Result,
+    { betAmount }
   );
 
   const resultBubble = jankenTemplate.generateResultCard({
