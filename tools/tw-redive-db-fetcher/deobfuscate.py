@@ -1,189 +1,175 @@
-"""Deobfuscate TW Redive master DB by creating views with original table/column names.
+"""Deobfuscate TW Redive master DB using a static mapping file.
 
-The DB has obfuscated table and column names (v1_<hash> format).
-This script identifies tables by data patterns and creates SQL VIEWs
-so existing code can query using original names like unit_profile, unit_data, etc.
+The downloaded DB has obfuscated table and column names (v1_<hash> format).
+TW hashes are stable across versions, so we maintain a one-time mapping
+in mapping.json (clean_name -> {table: v1_hash, column: {clean: hash}}).
+
+For each mapped table:
+1. Create a new table with clean name and column names
+2. Copy all data from the obfuscated table
+3. Drop the obfuscated table
+
+Unmapped v1_ tables are kept as-is (new tables added by game updates).
+Run with --report to see unmapped tables for manual naming.
 """
+import json
+import os
 import sqlite3
+import sys
 
 
-# Known first unit: 日和 (unit_id=100101)
-KNOWN_UNIT_ID = 100101
-KNOWN_UNIT_NAME = "日和"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MAPPING_FILE = os.path.join(SCRIPT_DIR, "mapping.json")
 
 
-def find_tables_with_value(conn, value):
-    """Find all tables that contain a specific value in any column."""
-    results = []
-    tables = conn.execute(
-        'SELECT name FROM sqlite_master WHERE type="table"'
-    ).fetchall()
-    for (table_name,) in tables:
-        cols = conn.execute(f'PRAGMA table_info("{table_name}")').fetchall()
-        for col in cols:
-            col_name = col[1]
-            try:
-                row = conn.execute(
-                    f'SELECT * FROM "{table_name}" WHERE "{col_name}" = ? LIMIT 1',
-                    (value,),
-                ).fetchone()
-                if row:
-                    results.append((table_name, col_name, cols))
-                    break
-            except Exception:
-                continue
-    return results
-
-
-def identify_unit_profile(conn, candidates):
-    """unit_profile: has unit_id (100101) and unit_name ('日和') as short text, ~16 cols."""
-    for table_name, uid_col, cols in candidates:
-        if len(cols) < 10 or len(cols) > 20:
-            continue
-        row = conn.execute(
-            f'SELECT * FROM "{table_name}" WHERE "{uid_col}" = ? LIMIT 1',
-            (KNOWN_UNIT_ID,),
-        ).fetchone()
-        if not row:
-            continue
-        col_names = [c[1] for c in cols]
-        uid_idx = col_names.index(uid_col)
-        # Find column with unit_name
-        name_idx = None
-        for i, val in enumerate(row):
-            if val == KNOWN_UNIT_NAME and i != uid_idx:
-                name_idx = i
-                break
-        if name_idx is None:
-            continue
-        # unit_profile should have text columns (voice, guild, race, etc.)
-        text_count = sum(1 for v in row if isinstance(v, str))
-        if text_count >= 8:
-            return table_name, {
-                "unit_id": col_names[uid_idx],
-                "unit_name": col_names[name_idx],
-            }
-    return None, None
-
-
-def identify_unit_data(conn, candidates):
-    """unit_data: has unit_id, unit_name, and description text, ~25 cols."""
-    for table_name, uid_col, cols in candidates:
-        if len(cols) < 20 or len(cols) > 30:
-            continue
-        row = conn.execute(
-            f'SELECT * FROM "{table_name}" WHERE "{uid_col}" = ? LIMIT 1',
-            (KNOWN_UNIT_ID,),
-        ).fetchone()
-        if not row:
-            continue
-        col_names = [c[1] for c in cols]
-        uid_idx = col_names.index(uid_col)
-        # Find unit_name column
-        name_idx = None
-        for i, val in enumerate(row):
-            if val == KNOWN_UNIT_NAME and i != uid_idx:
-                name_idx = i
-                break
-        if name_idx is None:
-            continue
-        # unit_data should have a description column (long text with 【物理】or 【魔法】)
-        has_desc = any(
-            isinstance(v, str) and ("【物理】" in v or "【魔法】" in v)
-            for v in row
-        )
-        if has_desc:
-            return table_name, {
-                "unit_id": col_names[uid_idx],
-                "unit_name": col_names[name_idx],
-            }
-    return None, None
-
-
-def identify_unit_rarity(conn, candidates):
-    """unit_rarity: has unit_id, rarity (1-6), many float growth columns, ~39 cols."""
-    for table_name, uid_col, cols in candidates:
-        if len(cols) < 30:
-            continue
-        rows = conn.execute(
-            f'SELECT * FROM "{table_name}" WHERE "{uid_col}" = ? ORDER BY rowid LIMIT 6',
-            (KNOWN_UNIT_ID,),
-        ).fetchall()
-        if len(rows) < 3:
-            continue
-        col_names = [c[1] for c in cols]
-        uid_idx = col_names.index(uid_col)
-        # Find rarity column: sequential integers 1,2,3... across rows for same unit_id
-        rarity_idx = None
-        for i in range(len(col_names)):
-            if i == uid_idx:
-                continue
-            vals = [r[i] for r in rows[:3]]
-            if vals == [1, 2, 3]:
-                rarity_idx = i
-                break
-        if rarity_idx is None:
-            continue
-        # Verify: many float columns (growth stats)
-        float_count = sum(1 for v in rows[0] if isinstance(v, float))
-        if float_count >= 15:
-            return table_name, {
-                "unit_id": col_names[uid_idx],
-                "rarity": col_names[rarity_idx],
-            }
-    return None, None
-
-
-def create_views(conn, mappings):
-    """Create SQL VIEWs for each identified table."""
-    for view_name, (table_name, col_map) in mappings.items():
-        if table_name is None:
-            print(f"WARNING: Could not identify {view_name}")
-            continue
-        # Drop existing view
-        conn.execute(f'DROP VIEW IF EXISTS "{view_name}"')
-        # Build column aliases
-        aliases = ", ".join(
-            f'"{obf_col}" AS "{orig_col}"'
-            for orig_col, obf_col in col_map.items()
-        )
-        # Also include all other columns with their original (obfuscated) names
-        all_cols = conn.execute(f'PRAGMA table_info("{table_name}")').fetchall()
-        mapped_obf = set(col_map.values())
-        for col in all_cols:
-            if col[1] not in mapped_obf:
-                aliases += f', "{col[1]}"'
-        sql = f'CREATE VIEW "{view_name}" AS SELECT {aliases} FROM "{table_name}"'
-        conn.execute(sql)
-        print(f"Created view: {view_name} -> {table_name[:50]}... ({len(col_map)} named columns)")
+def load_mapping():
+    """Load the static mapping file."""
+    with open(MAPPING_FILE) as f:
+        return json.load(f)
 
 
 def deobfuscate(db_path):
-    """Main deobfuscation entry point."""
+    """Translate obfuscated tables to clean names using mapping.json."""
+    mapping = load_mapping()
     conn = sqlite3.connect(db_path)
 
-    print("Searching for tables containing known unit data...")
-    candidates = find_tables_with_value(conn, KNOWN_UNIT_ID)
-    print(f"Found {len(candidates)} tables with unit_id {KNOWN_UNIT_ID}")
+    # Drop any pre-existing views (from previous runs)
+    views = conn.execute("SELECT name FROM sqlite_master WHERE type='view'").fetchall()
+    for (name,) in views:
+        conn.execute(f'DROP VIEW IF EXISTS "{name}"')
 
-    print("Identifying tables...")
-    profile_table, profile_cols = identify_unit_profile(conn, candidates)
-    data_table, data_cols = identify_unit_data(conn, candidates)
-    rarity_table, rarity_cols = identify_unit_rarity(conn, candidates)
+    # Get existing obfuscated tables
+    obf_tables = set(
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'v1_%'"
+        ).fetchall()
+    )
 
-    mappings = {
-        "unit_profile": (profile_table, profile_cols or {}),
-        "unit_data": (data_table, data_cols or {}),
-        "unit_rarity": (rarity_table, rarity_cols or {}),
-    }
+    translated = 0
+    skipped = 0
+    errors = 0
+    translated_obf = set()
 
-    print("Creating views...")
-    create_views(conn, mappings)
+    for clean_name, info in mapping.items():
+        obf_table = info["table"]
+        col_map = info["column"]  # {clean_col: obf_col}
+
+        if obf_table not in obf_tables:
+            skipped += 1
+            continue
+
+        try:
+            _translate_table(conn, clean_name, obf_table, col_map)
+            translated_obf.add(obf_table)
+            translated += 1
+        except Exception as e:
+            print(f"ERROR {clean_name}: {e}")
+            errors += 1
+
+    # Drop unmapped v1_ tables so output only contains clean tables
+    unmapped = obf_tables - translated_obf
+    for table in unmapped:
+        conn.execute(f'DROP TABLE IF EXISTS "{table}"')
+    dropped = len(unmapped)
+
     conn.commit()
+    conn.execute("VACUUM")
     conn.close()
+
+    # Summary
+    print(f"Translated: {translated}, Skipped: {skipped}, Errors: {errors}, Dropped unmapped: {dropped}")
     print("Deobfuscation complete!")
+
+
+def _translate_table(conn, clean_name, obf_table, col_map):
+    """Create a clean-named table from an obfuscated one, then drop the original."""
+    obf_col_info = conn.execute(f'PRAGMA table_info("{obf_table}")').fetchall()
+    obf_col_names = [c[1] for c in obf_col_info]
+
+    # Build reverse lookup: obf_col -> clean_col
+    reverse_map = {v: k for k, v in col_map.items()}
+
+    # Map each obf column to a clean name (use obf name if not in mapping)
+    clean_col_names = []
+    for obf_col in obf_col_names:
+        clean_col_names.append(reverse_map.get(obf_col, obf_col))
+
+    # Build column definitions preserving types and constraints
+    pk_cols = [clean_col_names[c[0]] for c in obf_col_info if c[5]]
+
+    col_defs = []
+    for i, col_info in enumerate(obf_col_info):
+        col_type = col_info[2] or ""
+        notnull = " NOT NULL" if col_info[3] else ""
+        default = f" DEFAULT {col_info[4]}" if col_info[4] is not None else ""
+        pk = " PRIMARY KEY" if col_info[5] and len(pk_cols) == 1 else ""
+        col_defs.append(f'"{clean_col_names[i]}" {col_type}{notnull}{default}{pk}')
+
+    if len(pk_cols) > 1:
+        pk_list = ", ".join(f'"{c}"' for c in pk_cols)
+        col_defs.append(f"PRIMARY KEY ({pk_list})")
+
+    # Drop existing clean table/view, create new, copy data, drop old
+    conn.execute(f'DROP VIEW IF EXISTS "{clean_name}"')
+    conn.execute(f'DROP TABLE IF EXISTS "{clean_name}"')
+    conn.execute(f'CREATE TABLE "{clean_name}" ({", ".join(col_defs)})')
+
+    obf_select = ", ".join(f'"{c}"' for c in obf_col_names)
+    conn.execute(f'INSERT INTO "{clean_name}" SELECT {obf_select} FROM "{obf_table}"')
+
+    # Recreate indexes with clean names
+    indexes = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name=? AND sql IS NOT NULL",
+        (obf_table,),
+    ).fetchall()
+    for (idx_sql,) in indexes:
+        new_sql = idx_sql.replace(f'"{obf_table}"', f'"{clean_name}"')
+        for obf_col, clean_col in reverse_map.items():
+            new_sql = new_sql.replace(f'"{obf_col}"', f'"{clean_col}"')
+        new_sql = new_sql.replace("v1_", "idx_", 1)
+        try:
+            conn.execute(new_sql)
+        except Exception:
+            pass
+
+    conn.execute(f'DROP TABLE "{obf_table}"')
+
+
+def report(db_path):
+    """Report unmapped v1_ tables in the DB for manual naming."""
+    mapping = load_mapping()
+    conn = sqlite3.connect(db_path)
+
+    mapped_obf = set(v["table"] for v in mapping.values())
+    obf_tables = [
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'v1_%'"
+        ).fetchall()
+    ]
+
+    unmapped = [t for t in obf_tables if t not in mapped_obf]
+    if not unmapped:
+        print("All v1_ tables are mapped!")
+        return
+
+    print(f"Unmapped v1_ tables: {len(unmapped)}\n")
+    for table in sorted(unmapped):
+        cols = conn.execute(f'PRAGMA table_info("{table}")').fetchall()
+        rc = conn.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
+        row = conn.execute(f'SELECT * FROM "{table}" ORDER BY rowid LIMIT 1').fetchone()
+        first_val = repr(row[0])[:40] if row else "empty"
+        print(f"  {table}")
+        print(f"    cols={len(cols)}, rows={rc}, first_val={first_val}")
+
+    conn.close()
 
 
 if __name__ == "__main__":
     import config
-    deobfuscate(config.OUTPUT_DB)
+
+    if "--report" in sys.argv:
+        report(config.OUTPUT_DB)
+    else:
+        deobfuscate(config.OUTPUT_DB)
