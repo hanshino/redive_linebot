@@ -8,9 +8,11 @@ const jankenTemplate = require("../../templates/application/Janken");
 const JankenRating = require("../../model/application/JankenRating");
 const JankenService = require("../../service/JankenService");
 const uuid = require("uuid-random");
+const { inventory } = require("../../model/application/Inventory");
 const { DefaultLogger } = require("../../util/Logger");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
+const BountySender = { name: "懸賞官", iconUrl: `${baseUrl}/assets/janken/bounty.png` };
 
 exports.router = [
   text(/^[.#/](猜拳)/, duel),
@@ -173,6 +175,21 @@ exports.decide = async (context, { payload }) => {
   const winnerName = p1Result === "win" ? p1Name : p2Name;
   const betWinAmount = betAmount > 0 ? betAmount * 2 - betFee : 0;
 
+  const { winnerStreak, loserPreviousStreak, loserBounty } = await JankenService.updateStreaks(
+    userId,
+    targetUserId,
+    p1Result
+  );
+
+  if (loserBounty > 0) {
+    const bountyWinnerId = p1Result === "win" ? userId : targetUserId;
+    await inventory.increaseGodStone({
+      userId: bountyWinnerId,
+      amount: loserBounty,
+      note: "janken_bounty_claim",
+    });
+  }
+
   const resultBubble = jankenTemplate.generateResultCard({
     p1Name,
     p2Name,
@@ -183,9 +200,38 @@ exports.decide = async (context, { payload }) => {
     betAmount,
     betWinAmount,
     baseUrl,
+    winnerStreak,
   });
 
   await context.replyFlex("猜拳結果", resultBubble);
+
+  if (p1Result !== "draw") {
+    if (loserBounty > 0) {
+      const breakerName = p1Result === "win" ? p1Name : p2Name;
+      const holderName = p1Result === "win" ? p2Name : p1Name;
+      await context.replyText(
+        i18n.__("message.duel.streak_broken", {
+          breakerName,
+          holderName,
+          streak: loserPreviousStreak,
+          bounty: loserBounty,
+        }),
+        { sender: BountySender }
+      );
+    }
+
+    const currentBounty = JankenService.calculateBounty(winnerStreak);
+    if (winnerStreak >= 2) {
+      await context.replyText(
+        i18n.__("message.duel.streak_continue", {
+          displayName: winnerName,
+          streak: winnerStreak,
+          bounty: currentBounty,
+        }),
+        { sender: BountySender }
+      );
+    }
+  }
 };
 
 /**
@@ -294,6 +340,21 @@ exports.challenge = async (context, { payload }) => {
       betAmount: 0,
     });
 
+    const { winnerStreak, loserPreviousStreak, loserBounty } = await JankenService.updateStreaks(
+      holderUserId,
+      challengerUserId,
+      p1Result
+    );
+
+    if (loserBounty > 0) {
+      const bountyWinnerId = p1Result === "win" ? holderUserId : challengerUserId;
+      await inventory.increaseGodStone({
+        userId: bountyWinnerId,
+        amount: loserBounty,
+        note: "janken_bounty_claim",
+      });
+    }
+
     const p1Name = get(holderProfile, "displayName", "未知玩家");
     const p2Name = get(challengerProfile, "displayName", "未知挑戰者");
     const winnerName = p1Result === "win" ? p1Name : p2Name;
@@ -308,8 +369,37 @@ exports.challenge = async (context, { payload }) => {
       betAmount: 0,
       betWinAmount: 0,
       baseUrl,
+      winnerStreak,
     });
 
     await context.replyFlex("猜拳結果", resultBubble);
+
+    if (p1Result !== "draw") {
+      if (loserBounty > 0) {
+        const breakerName = p1Result === "win" ? p1Name : p2Name;
+        const holderName = p1Result === "win" ? p2Name : p1Name;
+        await context.replyText(
+          i18n.__("message.duel.streak_broken", {
+            breakerName,
+            holderName,
+            streak: loserPreviousStreak,
+            bounty: loserBounty,
+          }),
+          { sender: BountySender }
+        );
+      }
+
+      const currentBounty = JankenService.calculateBounty(winnerStreak);
+      if (winnerStreak >= 2) {
+        await context.replyText(
+          i18n.__("message.duel.streak_continue", {
+            displayName: winnerName,
+            streak: winnerStreak,
+            bounty: currentBounty,
+          }),
+          { sender: BountySender }
+        );
+      }
+    }
   }
 };
