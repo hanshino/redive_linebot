@@ -14,10 +14,54 @@ const baseUrl = `https://${process.env.APP_DOMAIN}`;
 const BountySender = { name: "懸賞官", iconUrl: `${baseUrl}/assets/janken/bounty.png` };
 
 exports.router = [
+  text(/^[.#/](猜拳段位|猜拳rank)/, queryRank),
   text(/^[.#/](猜拳)/, duel),
   text(/^[.#/](決鬥|duel)/, duel),
   text(/^[.#/](猜拳(擂台|(大|比)賽)|hold)/, holdingChallenge),
 ];
+
+/**
+ * 查詢猜拳段位
+ * @param {Context} context
+ */
+async function queryRank(context) {
+  const { userId } = context.event.source;
+
+  if (!userId) {
+    return;
+  }
+
+  const rating = await JankenRating.findOrCreate(userId);
+  const rankLabel = JankenRating.getRankLabel(rating.elo);
+  const rankImageKey = JankenRating.getRankImageKey(rating.elo);
+  const rankTier = JankenRating.getRankTier(rating.elo);
+  const maxBet = JankenRating.getMaxBet(rankTier);
+  const nextTierElo = JankenRating.getNextTierElo(rating.elo);
+  const eloToNext = nextTierElo !== null ? nextTierElo - rating.elo : null;
+  const serverRank = await JankenRating.getServerRank(userId);
+
+  const totalGames = rating.win_count + rating.lose_count + rating.draw_count;
+  const winRate = totalGames > 0 ? Math.round((rating.win_count / totalGames) * 100) : 0;
+
+  const rankCard = jankenTemplate.generateRankCard({
+    rankLabel,
+    rankImageKey,
+    elo: rating.elo,
+    winCount: rating.win_count,
+    loseCount: rating.lose_count,
+    drawCount: rating.draw_count,
+    winRate,
+    streak: rating.streak,
+    maxStreak: rating.max_streak,
+    bounty: rating.bounty,
+    eloToNext,
+    serverRank,
+    maxBet,
+    baseUrl,
+  });
+
+  await context.replyFlex("猜拳段位", rankCard);
+}
 
 /**
  * 實現決鬥功能，可以與其他人決鬥
