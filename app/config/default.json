@@ -66,6 +66,15 @@
       "streak": {
         "bountyRate": 0.5,
         "maxBounty": 10000
+      },
+      "elo": {
+        "initial": 1000,
+        "kFactorTiers": [
+          { "minBet": 10000, "k": 32 },
+          { "minBet": 3000, "k": 16 },
+          { "minBet": 500, "k": 8 },
+          { "minBet": 0, "k": 2 }
+        ]
       }
     }
   },

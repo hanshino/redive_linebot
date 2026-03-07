@@ -14,10 +14,53 @@ const baseUrl = `https://${process.env.APP_DOMAIN}`;
 const BountySender = { name: "懸賞官", iconUrl: `${baseUrl}/assets/janken/bounty.png` };
 
 exports.router = [
+  text(/^[.#/](猜拳段位|猜拳rank)/, queryRank),
   text(/^[.#/](猜拳)/, duel),
   text(/^[.#/](決鬥|duel)/, duel),
   text(/^[.#/](猜拳(擂台|(大|比)賽)|hold)/, holdingChallenge),
 ];
+
+/**
+ * 查詢猜拳段位
+ * @param {Context} context
+ */
+async function queryRank(context) {
+  const { userId } = context.event.source;
+
+  if (!userId) {
+    return;
+  }
+
+  const rating = await JankenRating.findOrCreate(userId);
+  const rankLabel = JankenRating.getRankLabel(rating.elo);
+  const rankImageKey = JankenRating.getRankImageKey(rating.elo);
+  const rankTier = JankenRating.getRankTier(rating.elo);
+  const maxBet = JankenRating.getMaxBet(rankTier);
+  const nextTierElo = JankenRating.getNextTierElo(rating.elo);
+  const eloToNext = nextTierElo !== null ? nextTierElo - rating.elo : null;
+  const totalGames = rating.win_count + rating.lose_count + rating.draw_count;
+  const serverRank = totalGames > 0 ? await JankenRating.getServerRank(userId) : null;
+  const winRate = totalGames > 0 ? Math.round((rating.win_count / totalGames) * 100) : 0;
+
+  const rankCard = jankenTemplate.generateRankCard({
+    rankLabel,
+    rankImageKey,
+    elo: rating.elo,
+    winCount: rating.win_count,
+    loseCount: rating.lose_count,
+    drawCount: rating.draw_count,
+    winRate,
+    streak: rating.streak,
+    maxStreak: rating.max_streak,
+    bounty: rating.bounty,
+    eloToNext,
+    serverRank,
+    maxBet,
+    baseUrl,
+  });
+
+  await context.replyFlex("猜拳段位", rankCard);
+}
 
 /**
  * 實現決鬥功能，可以與其他人決鬥
@@ -66,9 +109,16 @@ async function duel(context) {
   }
 
   if (betAmount > 0) {
-    const rating = await JankenRating.findOrCreate(userId);
-    const rankTier = JankenRating.getRankTier(rating.elo);
-    const maxBet = JankenRating.getMaxBet(rankTier);
+    const [initiatorRating, targetRating] = await Promise.all([
+      JankenRating.findOrCreate(userId),
+      JankenRating.findOrCreate(targetUserId),
+    ]);
+    const initiatorTier = JankenRating.getRankTier(initiatorRating.elo);
+    const targetTier = JankenRating.getRankTier(targetRating.elo);
+    const maxBet = Math.min(
+      JankenRating.getMaxBet(initiatorTier),
+      JankenRating.getMaxBet(targetTier)
+    );
 
     const validation = JankenService.validateBet(betAmount, maxBet);
     if (!validation.valid) {
@@ -180,7 +230,7 @@ exports.decide = async (context, { payload }) => {
     return;
   }
 
-  const { p1Result, betFee } = matchResult;
+  const { p1Result, betFee, p1EloChange, p2EloChange, p1NewElo, p2NewElo } = matchResult;
 
   const p1Name = get(profile, "displayName", "未知玩家");
   const p2Name = get(targetProfile, "displayName", "未知挑戰者");
@@ -201,6 +251,10 @@ exports.decide = async (context, { payload }) => {
     betWinAmount,
     baseUrl,
     winnerStreak,
+    p1EloChange,
+    p2EloChange,
+    p1NewElo,
+    p2NewElo,
   });
 
   await context.replyFlex("猜拳結果", resultBubble);
@@ -343,7 +397,7 @@ exports.challenge = async (context, { payload }) => {
       return;
     }
 
-    const { p1Result } = arenaMatchResult;
+    const { p1Result, p1EloChange, p2EloChange, p1NewElo, p2NewElo } = arenaMatchResult;
 
     const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
       await JankenService.updateStreaks(holderUserId, challengerUserId, p1Result);
@@ -363,6 +417,10 @@ exports.challenge = async (context, { payload }) => {
       betWinAmount: 0,
       baseUrl,
       winnerStreak,
+      p1EloChange,
+      p2EloChange,
+      p1NewElo,
+      p2NewElo,
     });
 
     await context.replyFlex("猜拳結果", resultBubble);
