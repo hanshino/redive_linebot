@@ -18,8 +18,8 @@ const fillable = [
 const RANK_TIERS = [
   { key: "beginner", name: "見習者", minElo: 0 },
   { key: "challenger", name: "挑戰者", minElo: 1200 },
-  { key: "fighter", name: "鬥士", minElo: 1400 },
-  { key: "master", name: "大師", minElo: 1600 },
+  { key: "fighter", name: "強者", minElo: 1400 },
+  { key: "master", name: "達人", minElo: 1600 },
   { key: "legend", name: "傳說", minElo: 1800 },
 ];
 
