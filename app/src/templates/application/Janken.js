@@ -1,3 +1,5 @@
+const JankenRating = require("../../model/application/JankenRating");
+
 const genAction = function (type, { uuid, p1Uid, p2Uid, betAmount }) {
   return {
     type: "postback",
@@ -39,7 +41,16 @@ const genChallengeAction = function (type, { userId, groupId }) {
  * @param {String} param0.baseUrl
  * @returns {Object} LINE Flex Message bubble
  */
-exports.generateDuelCard = ({ p1IconUrl, p2IconUrl, p1Uid, p2Uid, uuid, betAmount = 0, title = "", baseUrl }) => {
+exports.generateDuelCard = ({
+  p1IconUrl,
+  p2IconUrl,
+  p1Uid,
+  p2Uid,
+  uuid,
+  betAmount = 0,
+  title = "",
+  baseUrl,
+}) => {
   const actionParams = { uuid, p1Uid, p2Uid, betAmount };
 
   const handButtons = {
@@ -409,6 +420,10 @@ exports.generateResultCard = ({
   betWinAmount = 0,
   baseUrl,
   winnerStreak = 0,
+  p1EloChange,
+  p2EloChange,
+  p1NewElo,
+  p2NewElo,
 }) => {
   const resultColorMap = {
     win: "#FFD700",
@@ -468,6 +483,23 @@ exports.generateResultCard = ({
               size: "80px",
               aspectMode: "fit",
             },
+            ...(p1NewElo != null
+              ? [
+                  {
+                    type: "image",
+                    url: `${baseUrl}/assets/janken/${JankenRating.getRankImageKey(p1NewElo)}.png`,
+                    size: "30px",
+                    aspectMode: "fit",
+                  },
+                  {
+                    type: "text",
+                    text: JankenRating.getRankLabel(p1NewElo),
+                    align: "center",
+                    color: "#B0B0B0",
+                    size: "xxs",
+                  },
+                ]
+              : []),
           ],
           flex: 1,
           alignItems: "center",
@@ -507,6 +539,23 @@ exports.generateResultCard = ({
               size: "80px",
               aspectMode: "fit",
             },
+            ...(p2NewElo != null
+              ? [
+                  {
+                    type: "image",
+                    url: `${baseUrl}/assets/janken/${JankenRating.getRankImageKey(p2NewElo)}.png`,
+                    size: "30px",
+                    aspectMode: "fit",
+                  },
+                  {
+                    type: "text",
+                    text: JankenRating.getRankLabel(p2NewElo),
+                    align: "center",
+                    color: "#B0B0B0",
+                    size: "xxs",
+                  },
+                ]
+              : []),
           ],
           flex: 1,
           alignItems: "center",
@@ -529,9 +578,7 @@ exports.generateResultCard = ({
 
   if (betAmount > 0) {
     const betText =
-      resultType === "draw"
-        ? "賭注已退回雙方"
-        : `${winnerName} 贏得了 ${betWinAmount} 女神石！`;
+      resultType === "draw" ? "賭注已退回雙方" : `${winnerName} 贏得了 ${betWinAmount} 女神石！`;
 
     bodyContents.push({
       type: "text",
@@ -551,6 +598,34 @@ exports.generateResultCard = ({
       color: "#FF6B35",
       size: "sm",
       weight: "bold",
+      margin: "md",
+    });
+  }
+
+  if (p1NewElo != null) {
+    const p1Sign = p1EloChange >= 0 ? "+" : "";
+    const p2Sign = p2EloChange >= 0 ? "+" : "";
+    bodyContents.push({
+      type: "box",
+      layout: "horizontal",
+      contents: [
+        {
+          type: "text",
+          text: `${p1Name}: ${p1Sign}${p1EloChange}`,
+          align: "center",
+          color: p1EloChange >= 0 ? "#4CAF50" : "#F44336",
+          size: "xs",
+          flex: 1,
+        },
+        {
+          type: "text",
+          text: `${p2Name}: ${p2Sign}${p2EloChange}`,
+          align: "center",
+          color: p2EloChange >= 0 ? "#4CAF50" : "#F44336",
+          size: "xs",
+          flex: 1,
+        },
+      ],
       margin: "md",
     });
   }
