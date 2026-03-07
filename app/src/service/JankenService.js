@@ -73,7 +73,7 @@ exports.calculateBountyIncrement = function (betAmount) {
 };
 
 exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmount = 0 } = {}) {
-  if (p1Result === "draw" || betAmount <= 0) {
+  if (p1Result === "draw" || !betAmount || betAmount <= 0) {
     return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
   }
 
@@ -162,20 +162,39 @@ exports.resolveMatch = async function ({
   p2Choice,
   betAmount = 0,
 }) {
+  const resolveKey = `${REDIS_PREFIX}:resolve:${matchId}`;
+  const locked = await redis.set(resolveKey, "1", { EX: 60, NX: true });
+  if (!locked) {
+    DefaultLogger.info(`[Janken] Match ${matchId} already being resolved, skipping`);
+    return null;
+  }
+
   const [p1Result, p2Result] = exports.determineWinner(p1Choice, p2Choice);
 
   let betFee = 0;
   if (betAmount > 0) {
     if (p1Result === "draw") {
       await Promise.all([
-        inventory.increaseGodStone({ userId: p1UserId, amount: betAmount, note: "janken_bet_refund" }),
-        inventory.increaseGodStone({ userId: p2UserId, amount: betAmount, note: "janken_bet_refund" }),
+        inventory.increaseGodStone({
+          userId: p1UserId,
+          amount: betAmount,
+          note: "janken_bet_refund",
+        }),
+        inventory.increaseGodStone({
+          userId: p2UserId,
+          amount: betAmount,
+          note: "janken_bet_refund",
+        }),
       ]);
     } else {
       const { winnerGets, fee } = exports.calculateBetSettlement(betAmount, "win");
       betFee = fee;
       const winnerId = p1Result === "win" ? p1UserId : p2UserId;
-      await inventory.increaseGodStone({ userId: winnerId, amount: winnerGets, note: "janken_bet_win" });
+      await inventory.increaseGodStone({
+        userId: winnerId,
+        amount: winnerGets,
+        note: "janken_bet_win",
+      });
     }
   }
 
@@ -213,11 +232,10 @@ exports.submitArenaChallenge = async function (groupId, holderUserId, challenger
 
   const redisKey = `${CHALLENGE_PREFIX}:${groupId}:${holderUserId}`;
 
-  const hasSet = await redis.set(
-    redisKey,
-    JSON.stringify({ challengerUserId, choice }),
-    { EX: 10 * 60, NX: true }
-  );
+  const hasSet = await redis.set(redisKey, JSON.stringify({ challengerUserId, choice }), {
+    EX: 10 * 60,
+    NX: true,
+  });
 
   if (!hasSet) {
     const existing = await redis.get(redisKey);

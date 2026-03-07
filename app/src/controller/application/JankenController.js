@@ -166,7 +166,7 @@ exports.decide = async (context, { payload }) => {
     LineClient.getGroupMemberProfile(groupId, targetUserId),
   ]);
 
-  const { p1Result, betFee } = await JankenService.resolveMatch({
+  const matchResult = await JankenService.resolveMatch({
     matchId,
     groupId,
     p1UserId: userId,
@@ -175,6 +175,12 @@ exports.decide = async (context, { payload }) => {
     p2Choice,
     betAmount,
   });
+
+  if (!matchResult) {
+    return;
+  }
+
+  const { p1Result, betFee } = matchResult;
 
   const p1Name = get(profile, "displayName", "未知玩家");
   const p2Name = get(targetProfile, "displayName", "未知挑戰者");
@@ -323,7 +329,7 @@ exports.challenge = async (context, { payload }) => {
       LineClient.getGroupMemberProfile(context.event.source.groupId, challengerUserId),
     ]);
 
-    const { p1Result } = await JankenService.resolveMatch({
+    const arenaMatchResult = await JankenService.resolveMatch({
       matchId,
       groupId,
       p1UserId: holderUserId,
@@ -332,6 +338,12 @@ exports.challenge = async (context, { payload }) => {
       p2Choice: challengerChoice,
       betAmount: 0,
     });
+
+    if (!arenaMatchResult) {
+      return;
+    }
+
+    const { p1Result } = arenaMatchResult;
 
     const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
       await JankenService.updateStreaks(holderUserId, challengerUserId, p1Result);
