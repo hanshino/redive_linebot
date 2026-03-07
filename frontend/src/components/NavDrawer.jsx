@@ -13,7 +13,6 @@ import { useState } from "react";
 import useLiff from "../context/useLiff";
 import HomeIcon from "@mui/icons-material/Home";
 import EqualizerIcon from "@mui/icons-material/Equalizer";
-import MoneyIcon from "@mui/icons-material/Money";
 import LoopIcon from "@mui/icons-material/Loop";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
@@ -33,7 +32,6 @@ import LinkIcon from "@mui/icons-material/Link";
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
   { label: "排行榜", path: "/rankings", icon: EqualizerIcon },
-  { label: "刮刮卡", path: "/scratch-card", icon: MoneyIcon },
 ];
 
 const princessItems = [
@@ -50,7 +48,6 @@ const personalItems = [
   { label: "交易管理", path: "/trade/manage", icon: ShoppingBasketIcon },
   { label: "轉蛋包包", path: "/bag", icon: LocalMallIcon },
   { label: "裝備管理", path: "/equipment", icon: FitnessCenterIcon },
-  { label: "刮刮卡兌獎", path: "/scratch-card/exchange", icon: MoneyIcon },
 ];
 
 const adminItems = [
@@ -61,7 +58,6 @@ const adminItems = [
   { label: "世界王設定", path: "/admin/worldboss", icon: PetsIcon },
   { label: "世界王活動", path: "/admin/worldboss-event", icon: SportsHandballIcon },
   { label: "世界王訊息", path: "/admin/worldboss-message", icon: FitnessCenterIcon },
-  { label: "刮刮卡管理", path: "/admin/scratch-card", icon: MoneyIcon },
 ];
 
 const linkItems = [

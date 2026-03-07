@@ -31,7 +31,6 @@ const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const StatusController = require("./controller/application/StatusController");
 const SubscribeController = require("./controller/application/SubscribeController");
-const ScratchCardController = require("./controller/application/ScratchCardController");
 const NumberController = require("./controller/application/NumberController");
 const OpenaiController = require("./controller/application/OpenaiController");
 const JobController = require("./controller/application/JobController");
@@ -112,10 +111,6 @@ async function HandlePostback(context, { next }) {
         () => action === "confirmTransfer",
         withProps(MarketController.doTransfer, { payload })
       ),
-      route(
-        () => action === "exchangeScratchCard",
-        withProps(ScratchCardController.exchange, { payload })
-      ),
       route(() => action === "sicBoGuess", withProps(NumberController.postbackDecide, { payload })),
       route(
         () => action === "startSwordmanChangeJobMission",
@@ -174,7 +169,6 @@ async function OrderBased(context, { next }) {
     ...ImageController.router,
     ...StatusController.router,
     ...SubscribeController.router,
-    ...ScratchCardController.router,
     ...CharacterController.router,
     ...(type === "user" ? NumberController.router : []),
     ...(type === "user" ? JobController.router : []),

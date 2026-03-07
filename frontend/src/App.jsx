@@ -6,9 +6,6 @@ import LiffLayout from "./layouts/LiffLayout";
 import Home from "./pages/Home";
 import Rankings from "./pages/Rankings";
 import GachaExchange from "./pages/Gacha/Exchange";
-import ScratchCard from "./pages/ScratchCard";
-import ScratchCardDetail from "./pages/ScratchCard/Detail";
-import ScratchCardExchange from "./pages/ScratchCard/Exchange";
 import Bag from "./pages/Bag";
 import Equipment from "./pages/Equipment";
 import TradeOrder from "./pages/Trade/Order";
@@ -33,7 +30,6 @@ import AdminWorldbossEvent from "./pages/Admin/WorldbossEvent";
 import AdminWorldbossMessage from "./pages/Admin/WorldbossMessage";
 import AdminWorldbossMessageCreate from "./pages/Admin/WorldbossMessageCreate";
 import AdminWorldbossMessageUpdate from "./pages/Admin/WorldbossMessageUpdate";
-import AdminScratchCard from "./pages/Admin/ScratchCard";
 import ToolsBattleTime from "./pages/Tools/BattleTime";
 
 export default function App() {
@@ -50,11 +46,6 @@ export default function App() {
 
           {/* Gacha */}
           <Route path="gacha/exchange" element={<GachaExchange />} />
-
-          {/* ScratchCard */}
-          <Route path="scratch-card" element={<ScratchCard />} />
-          <Route path="scratch-card/exchange" element={<ScratchCardExchange />} />
-          <Route path="scratch-card/:id" element={<ScratchCardDetail />} />
 
           {/* Inventory */}
           <Route path="bag" element={<Bag />} />
@@ -92,7 +83,6 @@ export default function App() {
           <Route path="admin/worldboss-message" element={<AdminWorldbossMessage />} />
           <Route path="admin/worldboss-message/create" element={<AdminWorldbossMessageCreate />} />
           <Route path="admin/worldboss-message/update/:id" element={<AdminWorldbossMessageUpdate />} />
-          <Route path="admin/scratch-card" element={<AdminScratchCard />} />
 
           {/* Tools */}
           <Route path="tools/battle-time" element={<ToolsBattleTime />} />

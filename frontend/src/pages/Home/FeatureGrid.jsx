@@ -6,7 +6,6 @@ import GroupIcon from "@mui/icons-material/Group";
 import LocalLibraryIcon from "@mui/icons-material/LocalLibrary";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import StorefrontIcon from "@mui/icons-material/Storefront";
-import CasinoIcon from "@mui/icons-material/Casino";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 
 const features = [
@@ -16,7 +15,6 @@ const features = [
   { icon: LocalLibraryIcon, label: "遊戲查詢", description: "角色與裝備資訊", path: null, color: "#74C0FC" },
   { icon: EmojiEventsIcon, label: "公會戰", description: "報刀與戰績", path: null, color: "#FF6B6B" },
   { icon: StorefrontIcon, label: "轉蛋商店", description: "女神石兌換", path: "/gacha/exchange", color: "#E599F7" },
-  { icon: CasinoIcon, label: "刮刮卡", description: "試試手氣", path: "/scratch-card", color: "#FFB830" },
   { icon: FitnessCenterIcon, label: "裝備管理", description: "查看我的裝備", path: "/equipment", color: "#FF6B6B" },
 ];
 

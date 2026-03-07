@@ -14,16 +14,13 @@ import { Link } from "react-router-dom";
 /**
  * Reusable character card component.
  *
- * ScratchCard variant  -- pass `to` for a router Link button.
  * GodStoneShop variant -- pass `onClick`, `holding`, `isEnable`, and `star`.
  */
 export default function CharacterCard({
   name,
   image,
   price,
-  // ScratchCard props
   to,
-  // GodStoneShop props
   onClick,
   holding,
   isEnable,
