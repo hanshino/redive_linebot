@@ -114,4 +114,37 @@ describe("JankenService", () => {
       expect(result).toEqual({ ready: false });
     });
   });
+
+  describe("calculateBounty", () => {
+    it("returns 0 for streak 0", () => {
+      expect(JankenService.calculateBounty(0)).toBe(0);
+    });
+
+    it("returns base reward for streak 1", () => {
+      expect(JankenService.calculateBounty(1)).toBe(50);
+    });
+
+    it("returns cumulative base for streak 2", () => {
+      expect(JankenService.calculateBounty(2)).toBe(100);
+    });
+
+    it("adds milestone bonus at streak 3", () => {
+      // 3*50 + 100 = 250
+      expect(JankenService.calculateBounty(3)).toBe(250);
+    });
+
+    it("adds milestone bonus at streak 5", () => {
+      // 5*50 + 100 + 300 = 650
+      expect(JankenService.calculateBounty(5)).toBe(650);
+    });
+
+    it("adds milestone bonus at streak 10", () => {
+      // 10*50 + 100 + 300 + 500 + 1000 = 2400
+      expect(JankenService.calculateBounty(10)).toBe(2400);
+    });
+
+    it("caps at maxBounty", () => {
+      expect(JankenService.calculateBounty(100)).toBe(10000);
+    });
+  });
 });

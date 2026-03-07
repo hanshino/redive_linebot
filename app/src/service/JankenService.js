@@ -10,6 +10,9 @@ const REDIS_PREFIX = config.get("redis.keys.jankenDecide");
 const CHALLENGE_PREFIX = config.get("redis.keys.jankenChallenge");
 const FEE_RATE = config.get("minigame.janken.bet.feeRate");
 const MIN_BET = config.get("minigame.janken.bet.minAmount");
+const STREAK_BASE_REWARD = config.get("minigame.janken.streak.baseReward");
+const STREAK_MILESTONES = config.get("minigame.janken.streak.milestones");
+const STREAK_MAX_BOUNTY = config.get("minigame.janken.streak.maxBounty");
 
 const RESULT_MAP = {
   rock: { rock: "draw", paper: "lose", scissors: "win" },
@@ -53,6 +56,20 @@ exports.escrowBet = async function (userId, amount) {
   }
   await inventory.decreaseGodStone({ userId, amount, note: "janken_bet_escrow" });
   return { success: true };
+};
+
+exports.calculateBounty = function (streak) {
+  if (streak <= 0) return 0;
+
+  let bounty = streak * STREAK_BASE_REWARD;
+
+  for (const [milestone, bonus] of Object.entries(STREAK_MILESTONES)) {
+    if (streak >= parseInt(milestone, 10)) {
+      bounty += bonus;
+    }
+  }
+
+  return Math.min(bounty, STREAK_MAX_BOUNTY);
 };
 
 exports.submitChoice = async function (matchId, userId, choice, { p1UserId, p2UserId } = {}) {
