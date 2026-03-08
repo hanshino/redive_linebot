@@ -111,11 +111,7 @@ exports.update = async function (userId, attributes) {
 exports.getTopRankings = async function (limit = 20) {
   return mysql(TABLE)
     .select(`${TABLE}.*`, "User.display_name")
-    .join("User", function () {
-      this.on(
-        mysql.raw("`User`.`platformId` COLLATE utf8mb4_0900_ai_ci = `janken_rating`.`user_id`")
-      );
-    })
+    .join("User", "User.platformId", "=", `${TABLE}.user_id`)
     .orderBy("elo", "desc")
     .limit(limit);
 };
