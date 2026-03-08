@@ -9,14 +9,15 @@ Task.init();
 
 crontab.forEach(job => {
   const { name, description, period, immediate, require_path } = job;
-  const task = new cron({
-    cronTime: period.join(" "),
-    onTick: async () => {
+  const task = new cron(
+    period.join(" "),
+    async () => {
       await require(require_path)();
       await Task.write({ name, description }, moment().toDate());
     },
-    start: immediate,
-  });
+    null,
+    immediate
+  );
 
   jobs.push({
     name,
