@@ -12,7 +12,9 @@ const uuid = require("uuid-random");
 const { DefaultLogger } = require("../../util/Logger");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
-const BountySender = { name: "懸賞官", iconUrl: `${baseUrl}/assets/janken/bounty.png` };
+const ASSET_VERSION = Date.now();
+const jankenAsset = name => `${baseUrl}/bot-assets/janken/${name}?v=${ASSET_VERSION}`;
+const BountySender = { name: "懸賞官", iconUrl: jankenAsset("bounty.png") };
 
 exports.router = [
   text(/^[.#/](猜拳段位|猜拳rank)/, queryRank),
@@ -468,7 +470,7 @@ exports.api.rankings = async (req, res) => {
         displayName: r.display_name || `玩家${index + 1}`,
         rankLabel: JankenRating.getRankLabel(r.elo),
         rankTier: r.rank_tier,
-        rankImage: `/assets/janken/${JankenRating.getRankImageKey(r.elo)}.png`,
+        rankImage: jankenAsset(`${JankenRating.getRankImageKey(r.elo)}.png`),
         elo: r.elo,
         winCount: r.win_count,
         loseCount: r.lose_count,

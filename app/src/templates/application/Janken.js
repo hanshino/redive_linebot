@@ -1,6 +1,9 @@
 const JankenRating = require("../../model/application/JankenRating");
 const { getLiffUri } = require("../common");
 
+const ASSET_VERSION = Date.now();
+const jankenAsset = (baseUrl, name) => `${baseUrl}/bot-assets/janken/${name}?v=${ASSET_VERSION}`;
+
 const genAction = function (type, { uuid, p1Uid, p2Uid, betAmount }) {
   return {
     type: "postback",
@@ -64,7 +67,7 @@ exports.generateDuelCard = ({
         contents: [
           {
             type: "image",
-            url: `${baseUrl}/assets/janken/rock.png`,
+            url: jankenAsset(baseUrl, "rock.png"),
             size: "80px",
             aspectMode: "fit",
           },
@@ -81,7 +84,7 @@ exports.generateDuelCard = ({
         contents: [
           {
             type: "image",
-            url: `${baseUrl}/assets/janken/scissors.png`,
+            url: jankenAsset(baseUrl, "scissors.png"),
             size: "80px",
             aspectMode: "fit",
           },
@@ -98,7 +101,7 @@ exports.generateDuelCard = ({
         contents: [
           {
             type: "image",
-            url: `${baseUrl}/assets/janken/paper.png`,
+            url: jankenAsset(baseUrl, "paper.png"),
             size: "80px",
             aspectMode: "fit",
           },
@@ -152,7 +155,7 @@ exports.generateDuelCard = ({
       },
       {
         type: "image",
-        url: `${baseUrl}/assets/janken/vs.png`,
+        url: jankenAsset(baseUrl, "vs.png"),
         size: "60px",
         aspectMode: "fit",
         flex: 0,
@@ -266,7 +269,7 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
         contents: [
           {
             type: "image",
-            url: `${baseUrl}/assets/janken/rock.png`,
+            url: jankenAsset(baseUrl, "rock.png"),
             size: "80px",
             aspectMode: "fit",
           },
@@ -283,7 +286,7 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
         contents: [
           {
             type: "image",
-            url: `${baseUrl}/assets/janken/scissors.png`,
+            url: jankenAsset(baseUrl, "scissors.png"),
             size: "80px",
             aspectMode: "fit",
           },
@@ -300,7 +303,7 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
         contents: [
           {
             type: "image",
-            url: `${baseUrl}/assets/janken/paper.png`,
+            url: jankenAsset(baseUrl, "paper.png"),
             size: "80px",
             aspectMode: "fit",
           },
@@ -432,11 +435,11 @@ exports.generateResultCard = ({
     draw: "#4FC3F7",
   };
 
-  const p1Image = `${baseUrl}/assets/janken/${p1Choice}.png`;
-  const p2Image = `${baseUrl}/assets/janken/${p2Choice}.png`;
-  const winImage = `${baseUrl}/assets/janken/win.png`;
-  const loseImage = `${baseUrl}/assets/janken/lose.png`;
-  const drawImage = `${baseUrl}/assets/janken/draw.png`;
+  const p1Image = jankenAsset(baseUrl, `${p1Choice}.png`);
+  const p2Image = jankenAsset(baseUrl, `${p2Choice}.png`);
+  const winImage = jankenAsset(baseUrl, "win.png");
+  const loseImage = jankenAsset(baseUrl, "lose.png");
+  const drawImage = jankenAsset(baseUrl, "draw.png");
   const resultColor = resultColorMap[resultType] || "#ffffff";
 
   const winnerText = resultType === "draw" ? "平手！" : `${winnerName} 贏了！`;
@@ -488,7 +491,7 @@ exports.generateResultCard = ({
               ? [
                   {
                     type: "image",
-                    url: `${baseUrl}/assets/janken/${JankenRating.getRankImageKey(p1NewElo)}.png`,
+                    url: jankenAsset(baseUrl, `${JankenRating.getRankImageKey(p1NewElo)}.png`),
                     size: "30px",
                     aspectMode: "fit",
                   },
@@ -544,7 +547,7 @@ exports.generateResultCard = ({
               ? [
                   {
                     type: "image",
-                    url: `${baseUrl}/assets/janken/${JankenRating.getRankImageKey(p2NewElo)}.png`,
+                    url: jankenAsset(baseUrl, `${JankenRating.getRankImageKey(p2NewElo)}.png`),
                     size: "30px",
                     aspectMode: "fit",
                   },
@@ -797,7 +800,7 @@ exports.generateRankCard = ({
         { type: "filler" },
         {
           type: "image",
-          url: `${baseUrl}/assets/janken/${rankImageKey}.png`,
+          url: jankenAsset(baseUrl, `${rankImageKey}.png`),
           size: "100px",
           aspectMode: "fit",
           flex: 0,

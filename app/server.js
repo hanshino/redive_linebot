@@ -44,7 +44,7 @@ app.prepare().then(() => {
   server.use(express.json({ verify, limit: "3mb" }));
   server.use(express.urlencoded({ extended: false, verify }));
 
-  server.use("/assets", express.static(path.join(__dirname, "assets")));
+  server.use("/bot-assets", express.static(path.join(__dirname, "assets")));
 
   // api group router
   server.use("/api", limiter, apiRouter);
