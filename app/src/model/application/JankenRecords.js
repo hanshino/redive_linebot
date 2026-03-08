@@ -75,18 +75,8 @@ exports.getRecentMatches = async (limit = 20) => {
         `${TABLE}.target_user_id`
       );
     })
-    .join("User as u1", function () {
-      this.on(
-        mysql.raw("`u1`.`platformId` COLLATE utf8mb4_0900_ai_ci = `janken_records`.`user_id`")
-      );
-    })
-    .join("User as u2", function () {
-      this.on(
-        mysql.raw(
-          "`u2`.`platformId` COLLATE utf8mb4_0900_ai_ci = `janken_records`.`target_user_id`"
-        )
-      );
-    })
+    .join("User as u1", "u1.platformId", "=", `${TABLE}.user_id`)
+    .join("User as u2", "u2.platformId", "=", `${TABLE}.target_user_id`)
     .whereNotNull(`${TABLE}.p1_choice`)
     .orderBy(`${TABLE}.created_at`, "desc")
     .limit(limit);
