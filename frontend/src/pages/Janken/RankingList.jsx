@@ -69,6 +69,15 @@ export default function RankingList({ rankings, loading }) {
                 {player.rank}
               </Typography>
 
+              {player.rankImage && (
+                <Box
+                  component="img"
+                  src={player.rankImage}
+                  alt={player.rankLabel}
+                  sx={{ width: 28, height: 28, objectFit: "contain", flexShrink: 0 }}
+                />
+              )}
+
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <Typography

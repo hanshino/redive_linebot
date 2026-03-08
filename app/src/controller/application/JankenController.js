@@ -468,6 +468,7 @@ exports.api.rankings = async (req, res) => {
         displayName: r.display_name || `玩家${index + 1}`,
         rankLabel: JankenRating.getRankLabel(r.elo),
         rankTier: r.rank_tier,
+        rankImage: `/assets/janken/${JankenRating.getRankImageKey(r.elo)}.png`,
         elo: r.elo,
         winCount: r.win_count,
         loseCount: r.lose_count,
