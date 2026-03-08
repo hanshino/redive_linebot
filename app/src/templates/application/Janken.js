@@ -1,4 +1,5 @@
 const JankenRating = require("../../model/application/JankenRating");
+const { getLiffUri } = require("../common");
 
 const genAction = function (type, { uuid, p1Uid, p2Uid, betAmount }) {
   return {
@@ -640,6 +641,25 @@ exports.generateResultCard = ({
       paddingAll: "lg",
       spacing: "lg",
     },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#1a1a2e",
+      contents: [
+        {
+          type: "button",
+          action: {
+            type: "uri",
+            label: "查看競技場排行",
+            uri: getLiffUri("full", "/janken"),
+          },
+          style: "link",
+          color: "#4FC3F7",
+          height: "sm",
+        },
+      ],
+      paddingAll: "sm",
+    },
   };
 };
 
@@ -951,6 +971,25 @@ exports.generateRankCard = ({
       contents: bodyContents,
       paddingAll: "lg",
       spacing: "sm",
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#1a1a2e",
+      contents: [
+        {
+          type: "button",
+          action: {
+            type: "uri",
+            label: "查看完整排行",
+            uri: getLiffUri("full", "/janken"),
+          },
+          style: "link",
+          color: "#4FC3F7",
+          height: "sm",
+        },
+      ],
+      paddingAll: "sm",
     },
   };
 };

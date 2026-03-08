@@ -19,6 +19,7 @@
     "@mui/x-data-grid": "^8",
     "axios": "^1.13.6",
     "axios-hooks": "^5.1.1",
+    "framer-motion": "^12.35.1",
     "lodash": "^4.17.23",
     "react": "^19.2.4",
     "react-copy-to-clipboard": "^5.1.0",

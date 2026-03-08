@@ -18,3 +18,7 @@ exports.getId = async platformId => {
 exports.getPlatformIds = ids => {
   return mysql.select({ userId: "platformId", id: "No" }).whereIn("No", ids).from(USER_TABLE);
 };
+
+exports.updateDisplayName = async (platformId, displayName) => {
+  return mysql(USER_TABLE).where({ platformId }).update({ display_name: displayName });
+};

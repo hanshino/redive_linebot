@@ -205,6 +205,8 @@ exports.resolveMatch = async function ({
     group_id: groupId,
     bet_amount: betAmount,
     bet_fee: betFee,
+    p1_choice: p1Choice,
+    p2_choice: p2Choice,
   });
 
   await JankenResult.insert([
@@ -223,7 +225,24 @@ exports.resolveMatch = async function ({
   ]);
 
   const eloResult = await exports.updateElo(p1UserId, p2UserId, p1Result, betAmount);
-  return { p1Result, p2Result, p1Choice, p2Choice, betFee, ...eloResult };
+  const streakResult = await exports.updateStreaks(p1UserId, p2UserId, p1Result, { betAmount });
+
+  // Persist match details for frontend leaderboard
+  const matchDetails = {};
+  if (p1Result !== "draw") {
+    matchDetails.elo_change = p1Result === "win" ? eloResult.p1EloChange : eloResult.p2EloChange;
+  }
+  if (streakResult.loserPreviousStreak > 0) {
+    matchDetails.streak_broken = streakResult.loserPreviousStreak;
+  }
+  if (streakResult.loserBounty > 0) {
+    matchDetails.bounty_won = streakResult.loserBounty;
+  }
+  if (Object.keys(matchDetails).length > 0) {
+    await JankenRecords.update(matchId, matchDetails);
+  }
+
+  return { p1Result, p2Result, p1Choice, p2Choice, betFee, ...eloResult, ...streakResult };
 };
 
 exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {

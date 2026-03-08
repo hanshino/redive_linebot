@@ -6,6 +6,7 @@ const i18n = require("../../util/i18n");
 const LineClient = getClient("line");
 const jankenTemplate = require("../../templates/application/Janken");
 const JankenRating = require("../../model/application/JankenRating");
+const JankenRecords = require("../../model/application/JankenRecords");
 const JankenService = require("../../service/JankenService");
 const uuid = require("uuid-random");
 const { DefaultLogger } = require("../../util/Logger");
@@ -237,8 +238,7 @@ exports.decide = async (context, { payload }) => {
   const winnerName = p1Result === "win" ? p1Name : p2Name;
   const betWinAmount = betAmount > 0 ? betAmount * 2 - betFee : 0;
 
-  const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
-    await JankenService.updateStreaks(userId, targetUserId, p1Result, { betAmount });
+  const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } = matchResult;
 
   const resultBubble = jankenTemplate.generateResultCard({
     p1Name,
@@ -399,8 +399,7 @@ exports.challenge = async (context, { payload }) => {
 
     const { p1Result, p1EloChange, p2EloChange, p1NewElo, p2NewElo } = arenaMatchResult;
 
-    const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } =
-      await JankenService.updateStreaks(holderUserId, challengerUserId, p1Result);
+    const { winnerStreak, winnerBounty, loserPreviousStreak, loserBounty } = arenaMatchResult;
 
     const p1Name = get(holderProfile, "displayName", "未知玩家");
     const p2Name = get(challengerProfile, "displayName", "未知挑戰者");
@@ -451,5 +450,69 @@ exports.challenge = async (context, { payload }) => {
         );
       }
     }
+  }
+};
+
+exports.api = {};
+
+exports.api.rankings = async (req, res) => {
+  try {
+    const ratings = await JankenRating.getTopRankings(20);
+
+    const result = ratings.map((r, index) => {
+      const total = r.win_count + r.lose_count + r.draw_count;
+      const winRate = total > 0 ? Math.round((r.win_count / total) * 1000) / 10 : 0;
+
+      return {
+        rank: index + 1,
+        displayName: r.display_name || `玩家${index + 1}`,
+        rankLabel: JankenRating.getRankLabel(r.elo),
+        rankTier: r.rank_tier,
+        rankImage: `/assets/janken/${JankenRating.getRankImageKey(r.elo)}.png`,
+        elo: r.elo,
+        winCount: r.win_count,
+        loseCount: r.lose_count,
+        drawCount: r.draw_count,
+        winRate,
+        streak: r.streak,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error("[Janken Rankings API]", err);
+    res.status(500).json({ message: "Failed to fetch rankings" });
+  }
+};
+
+exports.api.recentMatches = async (req, res) => {
+  try {
+    const matches = await JankenRecords.getRecentMatches(20);
+    const resultMap = { 1: "win", 2: "lose", 0: "draw" };
+    const choiceMap = { rock: "石頭", paper: "布", scissors: "剪刀" };
+
+    const result = matches.map(m => ({
+      id: m.id,
+      player1: {
+        displayName: m.p1_display_name || "未知玩家",
+        choice: choiceMap[m.p1_choice] || m.p1_choice,
+        result: resultMap[m.p1_result] || "draw",
+      },
+      player2: {
+        displayName: m.p2_display_name || "未知玩家",
+        choice: choiceMap[m.p2_choice] || m.p2_choice,
+        result: resultMap[m.p2_result] || "draw",
+      },
+      betAmount: m.bet_amount || 0,
+      eloChange: m.elo_change || 0,
+      streakBroken: m.streak_broken || null,
+      bountyWon: m.bounty_won || null,
+      createdAt: m.created_at,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("[Janken Recent Matches API]", err);
+    res.status(500).json({ message: "Failed to fetch recent matches" });
   }
 };

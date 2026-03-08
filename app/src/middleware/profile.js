@@ -41,6 +41,11 @@ function setLineProfile(context) {
     context.setState({
       userDatas: temp,
     });
+
+    // Best-effort update display_name in DB
+    if (profile.displayName) {
+      UserModel.updateDisplayName(userId, profile.displayName).catch(() => {});
+    }
   });
 }
 

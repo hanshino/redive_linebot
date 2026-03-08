@@ -207,11 +207,7 @@ router.delete("/admin/gacha-pool/:id", verifyPrivilege(9), gacha.api.deleteChara
 /**
  * 取得管理員全群指令
  */
-router.get(
-  "/admin/global-orders",
-  verifyPrivilege(1),
-  GlobalOrdersController.api.showGlobalOrders
-);
+router.get("/admin/global-orders", verifyPrivilege(1), GlobalOrdersController.api.showGlobalOrders);
 
 /**
  * 新增管理員全群指令
@@ -350,6 +346,11 @@ router.delete(
   verifyPrivilege(3),
   WorldBossController.api.deleteAttackMessage
 );
+
+const JankenController = require("../controller/application/JankenController");
+
+router.get("/janken/rankings", JankenController.api.rankings);
+router.get("/janken/recent-matches", JankenController.api.recentMatches);
 
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });

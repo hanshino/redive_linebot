@@ -24,6 +24,7 @@ import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import MessageIcon from "@mui/icons-material/Message";
 import PetsIcon from "@mui/icons-material/Pets";
 import SportsHandballIcon from "@mui/icons-material/SportsHandball";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -32,6 +33,7 @@ import LinkIcon from "@mui/icons-material/Link";
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
   { label: "排行榜", path: "/rankings", icon: EqualizerIcon },
+  { label: "猜拳競技場", path: "/janken", icon: EmojiEventsIcon },
 ];
 
 const princessItems = [
@@ -39,9 +41,7 @@ const princessItems = [
   { label: "轉蛋商店", path: "/gacha/exchange", icon: StorefrontIcon },
 ];
 
-const botItems = [
-  { label: "使用手冊", path: "/panel/manual", icon: LibraryBooksIcon },
-];
+const botItems = [{ label: "使用手冊", path: "/panel/manual", icon: LibraryBooksIcon }];
 
 const personalItems = [
   { label: "我的群組", path: "/groups", icon: GroupsIcon },
@@ -61,8 +61,16 @@ const adminItems = [
 ];
 
 const linkItems = [
-  { label: "巴哈更新串", url: "https://forum.gamer.com.tw/C.php?bsn=30861&snA=12030", icon: LinkIcon },
-  { label: "FB 粉絲團", url: "https://www.facebook.com/LINE%E5%B8%83%E4%B8%81%E6%A9%9F%E5%99%A8%E4%BA%BA-107652374176498", icon: LinkIcon },
+  {
+    label: "巴哈更新串",
+    url: "https://forum.gamer.com.tw/C.php?bsn=30861&snA=12030",
+    icon: LinkIcon,
+  },
+  {
+    label: "FB 粉絲團",
+    url: "https://www.facebook.com/LINE%E5%B8%83%E4%B8%81%E6%A9%9F%E5%99%A8%E4%BA%BA-107652374176498",
+    icon: LinkIcon,
+  },
   { label: "GitHub 原始碼", url: "https://github.com/hanshino/redive_linebot", icon: GitHubIcon },
 ];
 
@@ -72,7 +80,17 @@ function NavSection({ title, items, open, onToggle, onNavigate, currentPath }) {
       <ListItemButton onClick={onToggle}>
         <ListItemText
           primary={title}
-          slotProps={{ primary: { variant: "caption", sx: { fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: 1 } } }}
+          slotProps={{
+            primary: {
+              variant: "caption",
+              sx: {
+                fontWeight: 700,
+                color: "text.secondary",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+              },
+            },
+          }}
         />
         {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
       </ListItemButton>
@@ -110,11 +128,11 @@ export default function NavDrawer({ onClose }) {
     links: false,
   });
 
-  const toggleSection = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleSection = key => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleNavigate = (path) => {
+  const handleNavigate = path => {
     navigate(path);
     onClose?.();
   };

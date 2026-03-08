@@ -107,3 +107,15 @@ exports.update = async function (userId, attributes) {
   const data = pick(attributes, fillable);
   return mysql(TABLE).where({ user_id: userId }).update(data);
 };
+
+exports.getTopRankings = async function (limit = 20) {
+  return mysql(TABLE)
+    .select(`${TABLE}.*`, "User.display_name")
+    .join("User", function () {
+      this.on(
+        mysql.raw("`User`.`platformId` COLLATE utf8mb4_0900_ai_ci = `janken_rating`.`user_id`")
+      );
+    })
+    .orderBy("elo", "desc")
+    .limit(limit);
+};
