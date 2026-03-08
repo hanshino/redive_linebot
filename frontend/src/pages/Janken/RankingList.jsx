@@ -38,7 +38,7 @@ export default function RankingList({ rankings, loading }) {
   return (
     <Box>
       <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-        ELO 排行榜
+        段位排行榜
       </Typography>
       <Stack spacing={1}>
         {rankings.map(player => {

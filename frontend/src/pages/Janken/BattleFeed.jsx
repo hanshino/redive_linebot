@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Box, Card, Typography, Skeleton, useMediaQuery } from "@mui/material";
+import { AnimatePresence, motion } from "framer-motion";
 
 const BORDER_COLORS = {
   normal: "primary.main",
@@ -45,29 +46,45 @@ function getSubText(match) {
   return null;
 }
 
+const rollVariants = {
+  enter: {
+    rotateX: 90,
+    opacity: 0,
+    y: -20,
+    transition: { duration: 0.4, ease: "easeOut" },
+  },
+  center: {
+    rotateX: 0,
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: "easeOut" },
+  },
+  exit: {
+    rotateX: -90,
+    opacity: 0,
+    y: 20,
+    transition: { duration: 0.3, ease: "easeIn" },
+  },
+};
+
+const MotionCard = motion.create(Card);
+
 export default function BattleFeed({ matches, loading }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
   const timerRef = useRef(null);
   const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   // Reset index when matches data changes
   useEffect(() => {
     setCurrentIndex(0);
-    setVisible(true);
   }, [matches]);
 
   useEffect(() => {
     if (!matches || matches.length === 0) return;
-    // Respect prefers-reduced-motion: no auto-rotation
     if (prefersReducedMotion) return;
 
     timerRef.current = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setCurrentIndex(prev => (prev + 1) % matches.length);
-        setVisible(true);
-      }, 400);
+      setCurrentIndex(prev => (prev + 1) % matches.length);
     }, 3500);
 
     return () => clearInterval(timerRef.current);
@@ -97,41 +114,49 @@ export default function BattleFeed({ matches, loading }) {
       <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
         戰況播報
       </Typography>
-      <Card
-        aria-live="polite"
-        aria-atomic="true"
-        sx={{
-          p: 2,
-          borderLeft: 4,
-          borderColor: BORDER_COLORS[cardType],
-          opacity: prefersReducedMotion ? 1 : visible ? 1 : 0,
-          transition: prefersReducedMotion ? "none" : "opacity 0.4s ease-in-out",
-          minHeight: 72,
-        }}
-      >
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: cardType === "draw" ? 400 : 600,
-            color: cardType === "draw" ? "text.secondary" : "text.primary",
-          }}
-        >
-          {getResultText(match)}
-        </Typography>
-        {subText && (
-          <Typography
-            variant="caption"
+      <Box sx={{ perspective: 600, minHeight: 72 }}>
+        <AnimatePresence mode="wait">
+          <MotionCard
+            key={safeIndex}
+            variants={prefersReducedMotion ? undefined : rollVariants}
+            initial={prefersReducedMotion ? undefined : "enter"}
+            animate={prefersReducedMotion ? undefined : "center"}
+            exit={prefersReducedMotion ? undefined : "exit"}
+            aria-live="polite"
+            aria-atomic="true"
             sx={{
-              color: cardType === "streakBroken" ? "error.main" : "text.secondary",
-              fontWeight: cardType === "streakBroken" ? 600 : 400,
-              mt: 0.5,
-              display: "block",
+              p: 2,
+              borderLeft: 4,
+              borderColor: BORDER_COLORS[cardType],
+              transformOrigin: "center bottom",
+              backfaceVisibility: "hidden",
             }}
           >
-            {subText}
-          </Typography>
-        )}
-      </Card>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: cardType === "draw" ? 400 : 600,
+                color: cardType === "draw" ? "text.secondary" : "text.primary",
+              }}
+            >
+              {getResultText(match)}
+            </Typography>
+            {subText && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: cardType === "streakBroken" ? "error.main" : "text.secondary",
+                  fontWeight: cardType === "streakBroken" ? 600 : 400,
+                  mt: 0.5,
+                  display: "block",
+                }}
+              >
+                {subText}
+              </Typography>
+            )}
+          </MotionCard>
+        </AnimatePresence>
+      </Box>
     </Box>
   );
 }
