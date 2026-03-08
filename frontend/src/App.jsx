@@ -5,6 +5,7 @@ import LiffLayout from "./layouts/LiffLayout";
 // Pages
 import Home from "./pages/Home";
 import Rankings from "./pages/Rankings";
+import Janken from "./pages/Janken";
 import GachaExchange from "./pages/Gacha/Exchange";
 import Bag from "./pages/Bag";
 import Equipment from "./pages/Equipment";
@@ -43,6 +44,7 @@ export default function App() {
         <Route element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="rankings" element={<Rankings />} />
+          <Route path="janken" element={<Janken />} />
 
           {/* Gacha */}
           <Route path="gacha/exchange" element={<GachaExchange />} />
@@ -82,7 +84,10 @@ export default function App() {
           <Route path="admin/worldboss-event" element={<AdminWorldbossEvent />} />
           <Route path="admin/worldboss-message" element={<AdminWorldbossMessage />} />
           <Route path="admin/worldboss-message/create" element={<AdminWorldbossMessageCreate />} />
-          <Route path="admin/worldboss-message/update/:id" element={<AdminWorldbossMessageUpdate />} />
+          <Route
+            path="admin/worldboss-message/update/:id"
+            element={<AdminWorldbossMessageUpdate />}
+          />
 
           {/* Tools */}
           <Route path="tools/battle-time" element={<ToolsBattleTime />} />

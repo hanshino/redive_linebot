@@ -107,3 +107,11 @@ exports.update = async function (userId, attributes) {
   const data = pick(attributes, fillable);
   return mysql(TABLE).where({ user_id: userId }).update(data);
 };
+
+exports.getTopRankings = async function (limit = 20) {
+  return mysql(TABLE)
+    .select(`${TABLE}.*`, "User.display_name")
+    .join("User", "User.platformId", `${TABLE}.user_id`)
+    .orderBy("elo", "desc")
+    .limit(limit);
+};
