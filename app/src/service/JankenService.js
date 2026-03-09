@@ -13,6 +13,8 @@ const FEE_RATE = config.get("minigame.janken.bet.feeRate");
 const MIN_BET = config.get("minigame.janken.bet.minAmount");
 const BOUNTY_RATE = config.get("minigame.janken.streak.bountyRate");
 const STREAK_MAX_BOUNTY = config.get("minigame.janken.streak.maxBounty");
+const PAIR_ABUSE_MIN_MATCHES = config.get("minigame.janken.pairAbuse.minMatches");
+const PAIR_ABUSE_MAX_WIN_RATE = config.get("minigame.janken.pairAbuse.maxWinRate");
 
 const RESULT_MAP = {
   rock: { rock: "draw", paper: "lose", scissors: "win" },
@@ -49,6 +51,47 @@ exports.validateBet = function (amount, maxBet) {
   return { valid: true };
 };
 
+exports.checkPairAbuse = async function (userId, targetUserId) {
+  const mysql = require("../util/mysql");
+  const rows = await mysql("janken_records")
+    .join("janken_result", "janken_records.id", "janken_result.record_id")
+    .where(function () {
+      this.where({
+        "janken_records.user_id": userId,
+        "janken_records.target_user_id": targetUserId,
+      }).orWhere({
+        "janken_records.user_id": targetUserId,
+        "janken_records.target_user_id": userId,
+      });
+    })
+    .where("janken_records.bet_amount", ">", 0)
+    .whereRaw("DATE(janken_records.created_at) = CURDATE()")
+    .select("janken_result.user_id", "janken_result.result");
+
+  const totalMatches = rows.length / 2; // each match has 2 result rows
+  if (totalMatches < PAIR_ABUSE_MIN_MATCHES) {
+    return { allowed: true };
+  }
+
+  const wins = {};
+  for (const row of rows) {
+    if (row.result === 1) {
+      wins[row.user_id] = (wins[row.user_id] || 0) + 1;
+    }
+  }
+
+  const p1Wins = wins[userId] || 0;
+  const p2Wins = wins[targetUserId] || 0;
+  const maxWins = Math.max(p1Wins, p2Wins);
+  const winRate = maxWins / totalMatches;
+
+  if (winRate >= PAIR_ABUSE_MAX_WIN_RATE) {
+    return { allowed: false, winRate: Math.round(winRate * 100) };
+  }
+
+  return { allowed: true };
+};
+
 exports.escrowBet = async function (userId, amount) {
   const { amount: balance } = (await inventory.getUserMoney(userId)) || { amount: 0 };
   if (balance < amount) {
@@ -72,6 +115,20 @@ exports.calculateBountyIncrement = function (betAmount) {
   return Math.floor(betAmount * BOUNTY_RATE);
 };
 
+exports.getLastBetOpponent = async function (userId) {
+  const mysql = require("../util/mysql");
+  const lastRecord = await mysql("janken_records")
+    .where(function () {
+      this.where("user_id", userId).orWhere("target_user_id", userId);
+    })
+    .where("bet_amount", ">", 0)
+    .orderBy("created_at", "desc")
+    .select("user_id", "target_user_id")
+    .first();
+  if (!lastRecord) return null;
+  return lastRecord.user_id === userId ? lastRecord.target_user_id : lastRecord.user_id;
+};
+
 exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmount = 0 } = {}) {
   if (p1Result === "draw" || !betAmount || betAmount <= 0) {
     return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
@@ -80,6 +137,10 @@ exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmoun
   const mysql = require("../util/mysql");
   const winnerId = p1Result === "win" ? p1UserId : p2UserId;
   const loserId = p1Result === "win" ? p2UserId : p1UserId;
+
+  // Check last opponent before transaction (current match is already recorded)
+  const lastOpponent = await exports.getLastBetOpponent(winnerId);
+  const isSameOpponent = lastOpponent === loserId;
 
   return mysql.transaction(async trx => {
     await Promise.all([
@@ -92,7 +153,7 @@ exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmoun
       trx("janken_rating").where({ user_id: loserId }).forUpdate().first(),
     ]);
 
-    const newStreak = winnerRating.streak + 1;
+    const newStreak = isSameOpponent ? winnerRating.streak : winnerRating.streak + 1;
     const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
     const bountyIncrement = newStreak >= 2 ? exports.calculateBountyIncrement(betAmount) : 0;
     const newBounty = Math.min(winnerRating.bounty + bountyIncrement, STREAK_MAX_BOUNTY);

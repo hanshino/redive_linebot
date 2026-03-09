@@ -28,8 +28,8 @@ describe("JankenRating", () => {
 
   describe("getMaxBet", () => {
     it("returns max bet for rank tier", () => {
-      expect(JankenRating.getMaxBet("beginner")).toBe(1000);
-      expect(JankenRating.getMaxBet("legend")).toBe(50000);
+      expect(JankenRating.getMaxBet("beginner")).toBe(20000);
+      expect(JankenRating.getMaxBet("legend")).toBe(500000);
     });
   });
 

@@ -63,6 +63,10 @@
         "draw": "/assets/janken/draw.png",
         "vs": "/assets/janken/vs.png"
       },
+      "pairAbuse": {
+        "minMatches": 10,
+        "maxWinRate": 0.8
+      },
       "streak": {
         "bountyRate": 0.5,
         "maxBounty": 10000
