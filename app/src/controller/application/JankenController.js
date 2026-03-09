@@ -112,6 +112,12 @@ async function duel(context) {
   }
 
   if (betAmount > 0) {
+    const abuseCheck = await JankenService.checkPairAbuse(userId, targetUserId);
+    if (!abuseCheck.allowed) {
+      await context.replyText(i18n.__("message.duel.pair_abuse_detected"));
+      return;
+    }
+
     const [initiatorRating, targetRating] = await Promise.all([
       JankenRating.findOrCreate(userId),
       JankenRating.findOrCreate(targetUserId),

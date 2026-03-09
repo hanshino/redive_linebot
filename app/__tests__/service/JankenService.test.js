@@ -161,6 +161,8 @@ describe("JankenService", () => {
           update: mockUpdate,
         })),
       }));
+      // Default: last opponent is different, so streak increments normally
+      jest.spyOn(JankenService, "getLastBetOpponent").mockResolvedValue(null);
     });
 
     it("increments winner streak and resets loser streak", async () => {
@@ -227,6 +229,34 @@ describe("JankenService", () => {
 
       expect(result.winnerStreak).toBe(1);
       expect(result.loserPreviousStreak).toBe(4);
+    });
+
+    it("does not increment streak when same opponent as last win", async () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      JankenService.getLastBetOpponent.mockResolvedValue("loser");
+      mockFirst
+        .mockResolvedValueOnce({ user_id: "winner", streak: 3, max_streak: 5, bounty: 100 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
+
+      const result = await JankenService.updateStreaks("winner", "loser", "win", {
+        betAmount: 100,
+      });
+
+      expect(result.winnerStreak).toBe(3);
+    });
+
+    it("increments streak when different opponent from last win", async () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      JankenService.getLastBetOpponent.mockResolvedValue("someone_else");
+      mockFirst
+        .mockResolvedValueOnce({ user_id: "winner", streak: 3, max_streak: 5, bounty: 100 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
+
+      const result = await JankenService.updateStreaks("winner", "loser", "win", {
+        betAmount: 100,
+      });
+
+      expect(result.winnerStreak).toBe(4);
     });
   });
 
