@@ -46,11 +46,11 @@
       "bet": {
         "minAmount": 10,
         "maxAmountByRank": {
-          "beginner": 1000,
-          "challenger": 5000,
-          "fighter": 10000,
-          "master": 30000,
-          "legend": 50000
+          "beginner": 20000,
+          "challenger": 50000,
+          "fighter": 100000,
+          "master": 200000,
+          "legend": 500000
         },
         "feeRate": 0.1
       },
