@@ -63,13 +63,11 @@
         "draw": "/assets/janken/draw.png",
         "vs": "/assets/janken/vs.png"
       },
-      "pairAbuse": {
-        "minMatches": 10,
-        "maxWinRate": 0.8
-      },
       "streak": {
         "bountyRate": 0.5,
-        "maxBounty": 10000
+        "maxBounty": 10000,
+        "bountyMinBet": 1000,
+        "bountyClaimMultiplier": 5
       },
       "elo": {
         "initial": 1000,
@@ -78,7 +76,8 @@
           { "minBet": 3000, "k": 16 },
           { "minBet": 500, "k": 8 },
           { "minBet": 0, "k": 2 }
-        ]
+        ],
+        "lossFactor": 0.5
       }
     }
   },

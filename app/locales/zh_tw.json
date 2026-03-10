@@ -150,7 +150,6 @@
       "streak_continue": "{{{ displayName }}} 已經連勝 {{ streak }} 場！目前懸賞金：{{ bounty }} 女神石，快來終結他！",
       "streak_broken": "{{{ breakerName }}} 終結了 {{{ holderName }}} 的 {{ streak }} 連勝！獲得懸賞金 {{ bounty }} 女神石！",
       "insufficient_funds": "餘額不足！目前餘額：{{ balance }} 女神石",
-      "pair_abuse_detected": "偵測到與該對手的對戰勝負比異常，今日無法再與該對手進行押注對戰。",
       "rank_query_not_found": "你還沒有猜拳記錄，快去挑戰吧！",
       "elo_change": "積分：{{ before }} → {{ after }} ({{ change }})"
     },

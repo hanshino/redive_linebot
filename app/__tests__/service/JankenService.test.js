@@ -161,8 +161,6 @@ describe("JankenService", () => {
           update: mockUpdate,
         })),
       }));
-      // Default: last opponent is different, so streak increments normally
-      jest.spyOn(JankenService, "getLastBetOpponent").mockResolvedValue(null);
     });
 
     it("increments winner streak and resets loser streak", async () => {
@@ -172,12 +170,12 @@ describe("JankenService", () => {
         .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4, bounty: 300 });
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
-        betAmount: 100,
+        betAmount: 1000,
       });
 
       expect(result).toEqual({
         winnerStreak: 3,
-        winnerBounty: 150,
+        winnerBounty: 600,
         loserPreviousStreak: 3,
         loserBounty: 300,
       });
@@ -190,15 +188,15 @@ describe("JankenService", () => {
         .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
-        betAmount: 100,
+        betAmount: 1000,
       });
 
       expect(result.winnerStreak).toBe(6);
-      expect(result.winnerBounty).toBe(250);
+      expect(result.winnerBounty).toBe(700);
     });
 
     it("does not change streaks on draw", async () => {
-      const result = await JankenService.updateStreaks("p1", "p2", "draw", { betAmount: 100 });
+      const result = await JankenService.updateStreaks("p1", "p2", "draw", { betAmount: 1000 });
 
       expect(result).toEqual({
         winnerStreak: 0,
@@ -225,29 +223,14 @@ describe("JankenService", () => {
         .mockResolvedValueOnce({ user_id: "p2", streak: 0, max_streak: 1, bounty: 0 })
         .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7, bounty: 500 });
 
-      const result = await JankenService.updateStreaks("p1", "p2", "lose", { betAmount: 100 });
+      const result = await JankenService.updateStreaks("p1", "p2", "lose", { betAmount: 1000 });
 
       expect(result.winnerStreak).toBe(1);
       expect(result.loserPreviousStreak).toBe(4);
     });
 
-    it("does not increment streak when same opponent as last win", async () => {
+    it("does not accumulate bounty when bet below minimum threshold", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      JankenService.getLastBetOpponent.mockResolvedValue("loser");
-      mockFirst
-        .mockResolvedValueOnce({ user_id: "winner", streak: 3, max_streak: 5, bounty: 100 })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
-
-      const result = await JankenService.updateStreaks("winner", "loser", "win", {
-        betAmount: 100,
-      });
-
-      expect(result.winnerStreak).toBe(3);
-    });
-
-    it("increments streak when different opponent from last win", async () => {
-      JankenRating.findOrCreate.mockResolvedValue(undefined);
-      JankenService.getLastBetOpponent.mockResolvedValue("someone_else");
       mockFirst
         .mockResolvedValueOnce({ user_id: "winner", streak: 3, max_streak: 5, bounty: 100 })
         .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
@@ -257,6 +240,35 @@ describe("JankenService", () => {
       });
 
       expect(result.winnerStreak).toBe(4);
+      expect(result.winnerBounty).toBe(100); // bounty unchanged
+    });
+
+    it("caps bounty claim by bet multiplier", async () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
+        .mockResolvedValueOnce({ user_id: "winner", streak: 0, max_streak: 1, bounty: 0 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 5, max_streak: 5, bounty: 10000 });
+
+      // Bet 100 -> max claim = 100 * 5 = 500
+      const result = await JankenService.updateStreaks("winner", "loser", "win", {
+        betAmount: 100,
+      });
+
+      expect(result.loserBounty).toBe(500);
+    });
+
+    it("claims full bounty when bet is large enough", async () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
+        .mockResolvedValueOnce({ user_id: "winner", streak: 0, max_streak: 1, bounty: 0 })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 5, max_streak: 5, bounty: 5000 });
+
+      // Bet 5000 -> max claim = 5000 * 5 = 25000, bounty is 5000 so full claim
+      const result = await JankenService.updateStreaks("winner", "loser", "win", {
+        betAmount: 5000,
+      });
+
+      expect(result.loserBounty).toBe(5000);
     });
   });
 
@@ -287,25 +299,28 @@ describe("JankenService", () => {
     });
 
     it("returns positive change for winner with equal elo", () => {
+      // K=8, floor(8 * 0.5) = 4
       const change = JankenService.calculateEloChange(1000, 1000, "win", 1000);
       expect(change).toBe(4);
     });
-    it("returns negative change for loser with equal elo", () => {
+    it("returns reduced negative change for loser with equal elo (lossFactor=0.5)", () => {
+      // K=8, raw = 8 * -0.5 = -4, ceil(-4 * 0.5) = ceil(-2) = -2
       const change = JankenService.calculateEloChange(1000, 1000, "lose", 1000);
-      expect(change).toBe(-4);
+      expect(change).toBe(-2);
     });
     it("returns 0 for draw", () => {
       const change = JankenService.calculateEloChange(1000, 1000, "draw", 1000);
       expect(change).toBe(0);
     });
-    it("winner gains less when much higher rated", () => {
+    it("winner gains 0 when much higher rated (floor truncates small gains)", () => {
+      // K=8, expected=0.909, floor(8 * 0.091) = 0
       const change = JankenService.calculateEloChange(1400, 1000, "win", 1000);
-      expect(change).toBeLessThan(4);
-      expect(change).toBeGreaterThan(0);
+      expect(change).toBe(0);
     });
-    it("loser loses more when much higher rated", () => {
+    it("loser loses less with lossFactor applied", () => {
+      // K=8, expected=0.909, raw=8*(0-0.909)=-7.27, ceil(-7.27*0.5) = ceil(-3.636) = -3
       const change = JankenService.calculateEloChange(1400, 1000, "lose", 1000);
-      expect(change).toBeLessThan(-4);
+      expect(change).toBe(-3);
     });
     it("scales with bet amount K-factor", () => {
       const lowBet = JankenService.calculateEloChange(1000, 1000, "win", 100);
