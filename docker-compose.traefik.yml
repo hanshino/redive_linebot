@@ -1,23 +1,17 @@
 services:
   frontend:
     image: hanshino/redive_frontend
-    env_file: ./.env
     restart: always
     networks:
       - traefik
-      - bot_network
-    volumes:
-      - ./docker/config:/etc/nginx/conf.d/templates
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${PROJECT_NAME}_frontend-secure.rule=Host(`${APP_DOMAIN}`)"
       - "traefik.http.routers.${PROJECT_NAME}_frontend-secure.entrypoints=websecure"
       - "traefik.http.routers.${PROJECT_NAME}_frontend-secure.tls=true"
       - "traefik.http.routers.${PROJECT_NAME}_frontend-secure.tls.certresolver=leresolver"
+      - "traefik.http.routers.${PROJECT_NAME}_frontend-secure.priority=1"
       - "traefik.docker.network=traefik"
-    command: /bin/sh -c "envsubst '$$APP_DOMAIN' < /etc/nginx/conf.d/templates/redive.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
-    depends_on:
-      - bot
 
   bot:
     image: hanshino/redive_backend
@@ -26,12 +20,24 @@ services:
     expose:
       - 5000
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - bot_network
+      - traefik
     volumes:
       - ./app/assets:/usr/src/app/assets
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.rule=Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/webhooks`) || PathPrefix(`/bot-assets`) || PathPrefix(`/socket.io`))"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.entrypoints=websecure"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.tls=true"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.tls.certresolver=leresolver"
+      - "traefik.http.routers.${PROJECT_NAME}_bot-secure.priority=100"
+      - "traefik.http.services.${PROJECT_NAME}_bot.loadbalancer.server.port=5000"
+      - "traefik.docker.network=traefik"
     logging:
       driver: "json-file"
       options:
@@ -43,8 +49,10 @@ services:
     env_file: ./.env
     restart: always
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - bot_network
     volumes:
@@ -73,7 +81,7 @@ services:
         max-size: "1k"
         max-file: "3"
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u $$DB_USER", "-p$$DB_PASSWORD" ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "$$DB_USER", "-p$$DB_PASSWORD" ]
       timeout: 20s
       retries: 10
     environment:
@@ -120,7 +128,6 @@ networks:
     external: true
     name: traefik
   bot_network:
-
 
 volumes:
   mysql_data:
