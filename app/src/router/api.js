@@ -352,6 +352,9 @@ const JankenController = require("../controller/application/JankenController");
 router.get("/janken/rankings", JankenController.api.rankings);
 router.get("/janken/recent-matches", JankenController.api.recentMatches);
 
+const RaceRouter = require("./race");
+router.use("/race", RaceRouter);
+
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });
 });

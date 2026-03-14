@@ -28,6 +28,7 @@ const MarketController = require("./controller/application/MarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const StatusController = require("./controller/application/StatusController");
+const RaceController = require("./controller/application/RaceController");
 const SubscribeController = require("./controller/application/SubscribeController");
 const OpenaiController = require("./controller/application/OpenaiController");
 const JobController = require("./controller/application/JobController");
@@ -157,6 +158,7 @@ async function OrderBased(context, { next }) {
     ...AdvertisementController.router,
     ...GodStoneShopController.router,
     ...JankenController.router,
+    ...RaceController.router,
     ...AdvancementController.router,
     ...MarketController.router,
     ...CouponController.router,

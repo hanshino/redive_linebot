@@ -76,4 +76,11 @@ module.exports = [
     immediate: true,
     require_path: "./bin/DailyQuestProcess",
   },
+  {
+    name: "Race Advance",
+    description: "manage race lifecycle: create, advance rounds, settle bets",
+    period: ["0", "*", "*", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/RaceAdvance",
+  },
 ];
