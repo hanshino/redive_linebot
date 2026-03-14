@@ -39,6 +39,33 @@
     ]
   },
   "minigame": {
+    "race": {
+      "trackLength": 10,
+      "runnerCount": 5,
+      "bettingDurationMinutes": 15,
+      "advanceIntervalMinutes": 10,
+      "stamina": {
+        "initial": 100,
+        "minCost": 8,
+        "maxCost": 15,
+        "recovery": 5
+      },
+      "movement": {
+        "baseMin": 0,
+        "baseMax": 2
+      },
+      "event": {
+        "triggerChance": 0.3
+      },
+      "bet": {
+        "minAmount": 10,
+        "maxAmount": 50000,
+        "feeRate": 0.1
+      },
+      "schedule": {
+        "startHours": [8, 10, 12, 14, 16, 18, 20, 22]
+      }
+    },
     "janken": {
       "paper": "🖐️",
       "rock": "✊",
