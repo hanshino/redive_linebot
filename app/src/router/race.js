@@ -9,16 +9,22 @@ const { verifyToken } = require("../middleware/validation");
 
 // Public: get current race status
 router.get("/current", async (req, res) => {
-  const activeRace = await race.getActive();
-  if (!activeRace) {
+  let targetRace = await race.getActive();
+
+  // No active race — show the most recently finished one
+  if (!targetRace) {
+    targetRace = await race.knex.where("status", "finished").orderBy("finished_at", "desc").first();
+  }
+
+  if (!targetRace) {
     return res.json({ race: null });
   }
 
-  const runners = await raceRunner.getByRace(activeRace.id);
-  const events = await raceEvent.getByRace(activeRace.id);
-  const odds = await RaceService.getOdds(activeRace.id);
+  const runners = await raceRunner.getByRace(targetRace.id);
+  const events = await raceEvent.getByRace(targetRace.id);
+  const odds = await RaceService.getOdds(targetRace.id);
 
-  res.json({ race: activeRace, runners, events, odds });
+  res.json({ race: targetRace, runners, events, odds });
 });
 
 // Auth: get my bets for current race (must be before /:raceId)

@@ -60,6 +60,11 @@ exports.placeBet = async function (userId, raceId, runnerId, amount) {
     return { success: false, error: "目前沒有開放下注的比賽" };
   }
 
+  // Check if betting period has expired (cron may not have transitioned yet)
+  if (activeRace.betting_end_at && new Date(activeRace.betting_end_at) <= new Date()) {
+    return { success: false, error: "下注時間已截止，比賽即將開始" };
+  }
+
   if (amount < raceConfig.bet.minAmount || amount > raceConfig.bet.maxAmount) {
     return {
       success: false,
