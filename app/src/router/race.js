@@ -1,0 +1,59 @@
+const express = require("express");
+const router = express.Router();
+const { race } = require("../model/application/Race");
+const { raceRunner } = require("../model/application/RaceRunner");
+const { raceBet } = require("../model/application/RaceBet");
+const { raceEvent } = require("../model/application/RaceEvent");
+const RaceService = require("../service/RaceService");
+const { verifyToken } = require("../middleware/validation");
+
+// Public: get current race status
+router.get("/current", async (req, res) => {
+  const activeRace = await race.getActive();
+  if (!activeRace) {
+    return res.json({ race: null });
+  }
+
+  const runners = await raceRunner.getByRace(activeRace.id);
+  const events = await raceEvent.getByRace(activeRace.id);
+  const odds = await RaceService.getOdds(activeRace.id);
+
+  res.json({ race: activeRace, runners, events, odds });
+});
+
+// Public: get finished race result
+router.get("/:raceId", async (req, res) => {
+  const { raceId } = req.params;
+  const raceData = await race.find(raceId);
+  if (!raceData) return res.status(404).json({ error: "Race not found" });
+
+  const runners = await raceRunner.getByRace(raceId);
+  const events = await raceEvent.getByRace(raceId);
+
+  res.json({ race: raceData, runners, events });
+});
+
+// Auth: place bet
+router.post("/bet", verifyToken, async (req, res) => {
+  const { userId } = req.profile;
+  const { raceId, runnerId, amount } = req.body;
+
+  if (!raceId || !runnerId || !amount) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const result = await RaceService.placeBet(userId, raceId, runnerId, parseInt(amount, 10));
+  res.json(result);
+});
+
+// Auth: get my bets for current race
+router.get("/current/my-bets", verifyToken, async (req, res) => {
+  const { userId } = req.profile;
+  const activeRace = await race.getActive();
+  if (!activeRace) return res.json({ bets: [] });
+
+  const bets = await raceBet.getUserBets(activeRace.id, userId);
+  res.json({ bets });
+});
+
+module.exports = router;
