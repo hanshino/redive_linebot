@@ -8,13 +8,11 @@ import {
   Chip,
   Card,
   CardContent,
-  TextField,
-  Button,
   Stack,
   Divider,
   Skeleton,
 } from "@mui/material";
-import { getCurrentRace } from "../../api/race";
+import { getCurrentRace, getRecentFinished } from "../../api/race";
 
 const POLL_INTERVAL = 10000;
 
@@ -32,6 +30,7 @@ const STATUS_COLORS = {
 
 export default function Race() {
   const [raceData, setRaceData] = useState(null);
+  const [finishedData, setFinishedData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const timerRef = useRef(null);
@@ -43,6 +42,15 @@ export default function Race() {
       setRaceData(data);
       hasDataRef.current = true;
       setError(null);
+
+      // When there's an active (non-finished) race, also fetch the last finished race
+      if (data.race && data.race.status !== "finished") {
+        getRecentFinished()
+          .then(finished => setFinishedData(finished))
+          .catch(() => setFinishedData(null));
+      } else {
+        setFinishedData(null);
+      }
     } catch (err) {
       console.error("Failed to fetch race", err);
       if (!hasDataRef.current) setError("無法載入比賽資料");
@@ -105,6 +113,18 @@ export default function Race() {
             <OddsDisplay odds={raceData.odds} runners={raceData.runners} />
           )}
           {raceData.events?.length > 0 && <EventLog events={raceData.events} />}
+        </>
+      )}
+
+      {finishedData?.race && (
+        <>
+          <Divider sx={{ my: 3 }} />
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+            上場比賽結果
+          </Typography>
+          <RaceHeader race={finishedData.race} />
+          <RaceTrack runners={finishedData.runners} />
+          {finishedData.events?.length > 0 && <EventLog events={finishedData.events} />}
         </>
       )}
     </Container>
