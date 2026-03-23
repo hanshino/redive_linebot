@@ -3,6 +3,8 @@ const RaceService = require("../../service/RaceService");
 const { race } = require("../../model/application/Race");
 const { raceRunner } = require("../../model/application/RaceRunner");
 const { raceBet } = require("../../model/application/RaceBet");
+const { raceEvent } = require("../../model/application/RaceEvent");
+const { generateRaceCarousel } = require("../../templates/application/Race");
 const config = require("config");
 
 const raceConfig = config.get("minigame.race");
@@ -27,34 +29,17 @@ async function showRaceStatus(context) {
   }
 
   const runners = await raceRunner.getByRace(targetRace.id);
-  const trackLen = raceConfig.trackLength;
+  const events = await raceEvent.getByRace(targetRace.id);
+  const odds = await RaceService.getOdds(targetRace.id);
 
-  let statusText = "";
-  const bettingExpired =
-    targetRace.status === "betting" &&
-    targetRace.betting_end_at &&
-    new Date(targetRace.betting_end_at) <= new Date();
+  const flexMessage = generateRaceCarousel({
+    raceData: targetRace,
+    runners,
+    events,
+    odds,
+  });
 
-  if (targetRace.status === "betting" && !bettingExpired) {
-    const endTime = new Date(targetRace.betting_end_at);
-    statusText = `🏇 下注中！截止時間: ${endTime.toLocaleTimeString("zh-TW")}\n\n`;
-  } else if (bettingExpired) {
-    statusText = `🏇 下注已截止，比賽即將開始！\n\n`;
-  } else if (targetRace.status === "finished") {
-    const winner = runners.find(r => r.position >= trackLen);
-    const winnerName = winner ? winner.character_name : "???";
-    statusText = `🏇 上一場結果（共 ${targetRace.round} 回合）\n🏆 冠軍: ${winnerName}\n\n`;
-  } else {
-    statusText = `🏇 比賽進行中！第 ${targetRace.round} 回合\n\n`;
-  }
-
-  for (const runner of runners) {
-    const progress = "▓".repeat(runner.position) + "░".repeat(trackLen - runner.position);
-    const trophy = runner.position >= trackLen ? " 🏆" : "";
-    statusText += `${runner.lane}. ${runner.character_name}${trophy} [${progress}] ${runner.position}/${trackLen}\n`;
-  }
-
-  await context.replyText(statusText);
+  await context.replyFlex(flexMessage.altText, flexMessage.contents);
 }
 
 async function placeBet(context, { match }) {
