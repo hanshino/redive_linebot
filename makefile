@@ -1,36 +1,22 @@
-build-images: ## 打包所有 Docker images
-	@echo "Building images..."
-	@docker compose build
+infra: ## 啟動基礎設施（MySQL、Redis）
+	@docker compose up -d mysql redis
 
-build-project: ## 專案環境建置
-	@echo "Installing nodejs dependencies..."
-	@echo "Backend dependencies..."
-	@docker compose run --rm --no-deps bot yarn install
-	@echo "Frontend dependencies..."
-	@docker compose run --rm --no-deps frontend yarn install
-	@echo "Crontab dependencies..."
-	@docker compose run --rm --no-deps crontab yarn install
+infra-stop: ## 停止基礎設施
+	@docker compose down
 
-pull-images: ## 拉取所有 Docker images 至最新版本
-	@echo "Pulling images..."
-	@docker compose pull
+dev: infra ## 啟動開發環境（基礎設施 + app + frontend）
+	@echo "基礎設施已啟動"
+	@echo "請在各自目錄執行 yarn dev："
+	@echo "  cd app && yarn dev"
+	@echo "  cd frontend && yarn dev"
 
-build: pull-images build-images build-project ## 拉取所有 Docker images 至最新版本，並打包所有 Docker images
+migrate: ## 執行資料庫 migration
+	@cd app && yarn migrate
 
-run: ## 啟動專案
-	@echo "Running the project..."
-	@docker compose up -d
-
-bash: ## 執行 app container 的 bash
-	@echo "Opening bash..."
-	@docker compose exec -t bot bash
-
-logs: ## 顯示所有 container 的 log
-	@echo "Showing logs..."
+logs: ## 查看基礎設施日誌
 	@docker compose logs -f
 
-bash-redis: ## 執行 redis container 的 bash
-	@echo "Opening bash..."
+bash-redis: ## 開啟 Redis CLI
 	@docker compose exec -t redis redis-cli
 
 ngrok-url: ## 查詢 ngrok 公開網址

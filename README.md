@@ -1,155 +1,126 @@
-# 公主連結聊天機器人
+# 布丁機器人 — 公主連結 LINE Bot
 
-本專案是基於框架[bottender](https://bottender.js.org/)進行實作，此框架特色
+公主連結 Re:Dive 的 LINE 聊天機器人，用 [Bottender](https://bottender.js.org/) 寫的。除了遊戲相關功能之外，也有不少群組互動的玩法，還附了一個 Web 管理後台。
 
-- 適用於多種臺灣常用聊天 app ~~雖然我都沒有好友，只好寫機器人陪我聊天~~
-- 框架已處理好不同平台的規則，無須因應各平台進行適應
-- 開發過程協助分析每一動作的耗時，進行效能優化
-- 因為他真的超好用 der
+## 功能
 
-## 目錄
+### 轉蛋系統
 
-- [公主連結聊天機器人](#公主連結聊天機器人)
-  - [目錄](#目錄)
-  - [使用須知](#使用須知)
-  - [機器配置](#機器配置)
-    - [Production](#production)
-    - [Developement](#developement)
-  - [目前適用聊天軟體](#目前適用聊天軟體)
-  - [此專案特色](#此專案特色)
-    - [各大遊戲性功能 - 管理員用](#各大遊戲性功能---管理員用)
-    - [群組功能性 - 使用者用](#群組功能性---使用者用)
-    - [公主連結資訊查詢 - 使用者](#公主連結資訊查詢---使用者)
-  - [部分截圖](#部分截圖)
-  - [事前準備](#事前準備)
-  - [安裝方式](#安裝方式)
-    - [前置作業](#前置作業)
-    - [正式用](#正式用)
-    - [開發用](#開發用)
-    - [額外教學 (ngrok)](#額外教學-ngrok)
-    - [Line 後臺設定](#line後臺設定)
-  - [注意事項](#注意事項)
+模擬遊戲抽卡，有機率計算和抽卡紀錄。管理員可以在後台設定卡池，玩家可以用女神石在兌換商店換角色。
 
-## 使用須知
+### 聊天等級 & 排行榜
 
-本專案已配置好所有程式所需之環境，只需跟著[安裝方式](#安裝方式)，進行操作即可。
+在群組裡聊天就會累積經驗值升等。每天簽到、連續簽到有額外獎勵。排行榜有好幾種，看誰最會聊。
 
-## 機器配置
+### 猜拳競技場
 
-此專案結合了 `docker-compose` 一鍵佈署的特性，以下為使用到的服務
+跟其他玩家猜拳對戰，有段位系統。可以單挑，也可以開擂台賽讓人來挑戰。
 
-### Production
+### 世界王
 
-| container  | image                                                                                  | expose | 說明                                  |
-| ---------- | -------------------------------------------------------------------------------------- | ------ | ------------------------------------- |
-| nginx      | [nginx](https://hub.docker.com/_/nginx)                                                | 80     | `webserver`                           |
-| frontend   | [frontend](https://github.com/hanshino/redive_linebot/blob/master/frontend/Dockerfile) | 80     | `react-frontend`                      |
-| bot        | [app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)           | 5000   | `node:lts-bullseye-slim` 包含主程式   |
-| mysql      | [mysql](https://hub.docker.com/_/mysql)                                                | 3306   | 資料庫                                |
-| redis      | [redis](https://hub.docker.com/_/redis)                                                | 6379   | 記憶體快取資料庫                      |
-| crontab    | [crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)       |        | `node:lts-bullseye-slim` 定時排程執行 |
-| phpmyadmin | [phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)                          | 80     | `phpmyadmin` 資料庫管理               |
+多人一起打的 Raid Boss。可以記錄攻擊傷害、搭配裝備，打的時候會即時通知事件進度。
 
-可使用`docker-compose`指令水平擴展主程式，端看於個人硬體強度來做提升。
+### 交易市場
 
-### Developement
+玩家之間可以交易物品、互相轉帳，操作介面走 LINE LIFF。
 
-開發用，將可編輯的程式掛載至容器，編輯則馬上生效
+### 背包 & 裝備
 
-- `frontend` 採用 `react-scripts` 的 開發環境建置
-- `bot` 以及 `crontab` 採用 `nodemon`
+收集到的角色和裝備都在這裡管理，跟轉蛋、世界王的掉落物連動。
 
-| container  | image                                                                                  | expose | 說明                             |
-| ---------- | -------------------------------------------------------------------------------------- | ------ | -------------------------------- |
-| nginx      | [nginx](https://hub.docker.com/_/nginx)                                                | 5000   | `webserver`                      |
-| frontend   | [frontend](https://github.com/hanshino/redive_linebot/blob/master/frontend/Dockerfile) | 3000   | `react-frontend`                 |
-| bot        | [app](https://github.com/hanshino/redive_linebot/blob/master/app/Dockerfile)           | 5000   | `node.js:12-alpine` 包含主程式   |
-| mysql      | [mysql](https://hub.docker.com/_/mysql)                                                | 3306   | 資料庫                           |
-| redis      | [redis](https://hub.docker.com/_/redis)                                                | 6379   | 記憶體快取資料庫                 |
-| crontab    | [crontab](https://github.com/hanshino/redive_linebot/blob/master/job/Dockerfile)       |        | `node.js:12-alpine` 定時排程執行 |
-| phpmyadmin | [phpmyadmin](https://hub.docker.com/r/phpmyadmin/phpmyadmin/)                          | 8080   | `phpmyadmin` 資料庫管理          |
+### 公會戰
 
-## 目前適用聊天軟體
+報刀、看戰績、算補償刀，有 Web 介面可以用。
 
-- [Line](https://line.me/zh-hant/)
+### 群組管理
 
-## 此專案特色
+管理員可以自訂群組指令、開關特定功能。後台有全群指令的統一管理頁面。
 
-### 各大遊戲性功能 - 管理員用
+### AI 對話
 
-- 抽卡模擬
-- 資訊查詢（管理員自主設定指令）
+接了 Google Gemini。訊息沒有匹配到任何指令的話，機器人會用「布丁」的角色個性回你。
 
-### 群組功能性 - 使用者用
+### Web 管理後台
 
-- 群組排行
-- 群組設定（自定義功能開關）
-- 等級系統
+React + MUI 做的後台，有深色模式，手機也能用。可以管理卡池、設定世界王、看即時訊息。登入走 LINE LIFF。
 
-### 公主連結資訊查詢 - 使用者
+## 技術架構
 
-- 角色資訊查詢
-- 戰隊報名管理
-- 官方活動查詢
+三個服務跑在 Docker Compose 上：
 
-## 部分截圖
+| 服務 | 說明 |
+| --- | --- |
+| **app** | Bottender Bot + Express API（port 5000） |
+| **frontend** | React 19 + MUI 7 + Vite 管理後台（port 3000） |
+| **job** | Node.js 定時排程 |
 
-![首頁](readmepic/home.png)
-![全群指令管理](readmepic/GlobalOrder.png)
-![轉蛋卡池](readmepic/GachaPool.png)
+資料庫用 MySQL，快取用 Redis，前面擋一層 nginx。
 
-## 事前準備
+後端是 Node.js + Express + Knex，前端是 React 19 + MUI 7 + Vite + React Router v7，圖表用 Recharts，動畫用 Framer Motion，即時更新靠 Socket.IO。AI 的部分接 Google Gemini。部署用 Docker Compose，開發環境可以搭 ngrok。
+
+## 快速開始
+
+### 事前準備
 
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/)
-- [Line 機器人申請](https://manager.line.biz/)，記下 Access Token & Client Secret
+- 去 [LINE Official Account Manager](https://manager.line.biz/) 申請機器人，拿到 Access Token 跟 Channel Secret
 
-## 安裝方式
+### 安裝與啟動
 
-### 前置作業
+```bash
+# 下載專案
+git clone https://github.com/hanshino/redive_linebot.git
+cd redive_linebot
 
-1. 打開你的 CLI 跟著我一起輸入(終端機、命令提示字元、命令介面)
-2. 將專案下載到你的電腦
+# 設定環境變數
+cp .env.example .env
+# 編輯 .env，填入 LINE_ACCESS_TOKEN、LINE_CHANNEL_SECRET、DB_PASSWORD 等
 
-`git clone https://github.com/hanshino/redive_linebot.git`
+# 安裝套件
+cd app && yarn install && cd ..
+cd frontend && yarn install && cd ..
 
-3. 進入專案資料夾
+# 啟動基礎設施
+make infra
 
-`cd redive_linebot`
+# 跑 migration
+make migrate
 
-4. 複製環境變數範本
+# 開發模式（分別在兩個終端跑）
+cd app && yarn dev
+cd frontend && yarn dev
+```
 
-`cp .env.example .env`
+app 預設跑在 port 5000，frontend 跑在 port 3000。
 
-5. 配置環境變數
+### LINE Webhook 設定
 
-編輯 `.env` ，請務必填上所有資訊並存檔！
+把 `https://{your_domain}/webhooks/line` 填到 LINE 後台的 Webhook URL。
 
-6. 建立 `docker` 環境
+### 開發環境
 
-`make build-images`
+沒有固定 IP 的話，用 [ngrok](https://ngrok.com/) 把本地服務公開：
 
-7. 安裝專案所需套件
+```bash
+ngrok http 80 --region ap
+# 拿到的 https 網址加上 /webhooks/line，貼到 LINE 後台
+```
 
-`make build-project`
+`make logs` 看日誌，`make bash` 進 bot 容器。
 
-### 啟動專案
+## 常用指令
 
-1. `docker-compose up -d`
-2. 此時電腦的 **5000 port** 將會開啟服務，如無固定 ip 可用，可使用[ngrok](https://ngrok.com/)進行服務公開。
+```bash
+make infra             # 啟動 MySQL + Redis
+make infra-stop        # 停掉基礎設施
+make dev               # 啟動基礎設施，提示你去跑 yarn dev
+make migrate           # 跑資料庫 migration
+make logs              # 看基礎設施日誌
+make bash-redis        # 開 Redis CLI
+make ngrok-url         # 查 ngrok 公開網址
+```
 
-### 額外教學 (ngrok)
+## 授權
 
-1. 下載[ngrok](https://ngrok.com/)
-2. 請在有`ngrok`的目錄下輸入 `ngrok http 80 --region ap` or `ngrok http 5000 --region ap`
-3. 請將網址 ex: https://xxxxxxxxxx.ap.ngrok.io/webhooks/line 複製，繼續後續動作
-
-### Line 後臺設定
-
-1. 網址預設為 `https://{your_domain}/webhooks/line`
-2. 將網址填進 [Line Account Manager](https://manager.line.biz/)
-
-## 注意事項
-
-- `Windows` 作業系統使用 `Docker` 需注意開啟 `hyper-v` 是否會影響自己遊玩手機模擬器。
-- 初次啟動時需耗時一段時間進行環境建置，此屬正常情況！
+開源專案，歡迎貢獻跟回報問題。
