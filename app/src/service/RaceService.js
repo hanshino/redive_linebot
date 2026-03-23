@@ -79,13 +79,6 @@ exports.placeBet = async function (userId, raceId, runnerId, amount) {
     return { success: false, error: "找不到指定的參賽角色" };
   }
 
-  // Check duplicate bet on same runner
-  const existingBets = await raceBet.getUserBets(raceId, userId);
-  const alreadyBetOnRunner = existingBets.find(b => b.runner_id === runnerId);
-  if (alreadyBetOnRunner) {
-    return { success: false, error: `你已經對「${runner.character_name}」下注了` };
-  }
-
   // Check balance and deduct
   const { amount: balance } = (await inventory.getUserMoney(userId)) || { amount: 0 };
   if (balance < amount) {

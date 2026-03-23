@@ -50,6 +50,22 @@ router.post("/bet", verifyToken, async (req, res) => {
   res.json(result);
 });
 
+// Public: get most recently finished race
+router.get("/recent-finished", async (req, res) => {
+  const lastFinished = await race.knex
+    .where("status", "finished")
+    .orderBy("finished_at", "desc")
+    .first();
+
+  if (!lastFinished) return res.json({ race: null });
+
+  const runners = await raceRunner.getByRace(lastFinished.id);
+  const events = await raceEvent.getByRace(lastFinished.id);
+  const odds = await RaceService.getOdds(lastFinished.id);
+
+  res.json({ race: lastFinished, runners, events, odds });
+});
+
 // Public: get finished race result (must be last — catches /:raceId)
 router.get("/:raceId", async (req, res) => {
   const { raceId } = req.params;

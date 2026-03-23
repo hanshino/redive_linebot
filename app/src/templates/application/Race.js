@@ -21,19 +21,28 @@ const RANK_MEDALS = ["🥇", "🥈", "🥉", "4", "5"];
 /**
  * Generate race Flex Message carousel
  */
-exports.generateRaceCarousel = ({ raceData, runners, events, odds }) => {
-  // Sort runners by position descending for ranking
-  const rankedRunners = [...runners].sort((a, b) => b.position - a.position);
+exports.generateRaceCarousel = races => {
+  // Support both single object and array
+  const raceList = Array.isArray(races) ? races : [races];
+  const allBubbles = [];
 
-  const bubbles = [
-    generateTrackBubble(raceData, rankedRunners),
-    generateDetailBubble(raceData, runners, odds),
-    generateEventBubble(raceData, events || [], runners),
-  ];
+  for (const { raceData, runners, events, odds } of raceList) {
+    const rankedRunners = [...runners].sort((a, b) => b.position - a.position);
+    const footer = generateFooter(raceData);
+    allBubbles.push(
+      generateTrackBubble(raceData, rankedRunners),
+      generateDetailBubble(raceData, runners, odds),
+      generateEventBubble(raceData, events || [], runners, footer)
+    );
+  }
+
+  // LINE carousel max 12 bubbles
+  const bubbles = allBubbles.slice(0, 12);
+  const firstRace = raceList[0].raceData;
 
   return {
     type: "flex",
-    altText: `🏇 賽馬競技場 - ${STATUS_LABEL[raceData.status]}`,
+    altText: `🏇 賽馬競技場 - ${STATUS_LABEL[firstRace.status]}`,
     contents: {
       type: "carousel",
       contents: bubbles,
@@ -237,15 +246,19 @@ function generateTrackRow(runner, rankIndex) {
         type: "box",
         layout: "horizontal",
         contents: [
-          {
-            type: "box",
-            layout: "vertical",
-            contents: [],
-            backgroundColor: barColor,
-            height: "6px",
-            cornerRadius: "sm",
-            flex: filledFlex || 1,
-          },
+          ...(filledFlex > 0
+            ? [
+                {
+                  type: "box",
+                  layout: "vertical",
+                  contents: [],
+                  backgroundColor: barColor,
+                  height: "6px",
+                  cornerRadius: "sm",
+                  flex: filledFlex,
+                },
+              ]
+            : []),
           ...(remainingFlex > 0
             ? [
                 {
@@ -436,7 +449,7 @@ function generateDetailBubble(raceData, runners, odds) {
 
 // ─── Page 3: Event Log ───────────────────────────────────────
 
-function generateEventBubble(raceData, events, runners) {
+function generateEventBubble(raceData, events, runners, footer) {
   const runnerMap = {};
   runners.forEach(r => {
     runnerMap[r.id] = r;
@@ -538,14 +551,15 @@ function generateEventBubble(raceData, events, runners) {
       paddingAll: "lg",
       spacing: "none",
     },
-    footer: generateFooter(raceData),
+    footer,
   };
 }
 
 // ─── Shared Footer ───────────────────────────────────────────
 
 function generateFooter(raceData) {
-  const liffUrl = getLiffUri("full", "/race");
+  const isBetting = raceData.status === "betting";
+  const liffUrl = isBetting ? getLiffUri("tall", "/race/bet") : getLiffUri("full", "/race");
 
   return {
     type: "box",
@@ -555,11 +569,11 @@ function generateFooter(raceData) {
         type: "button",
         action: {
           type: "uri",
-          label: "📱 查看完整資訊",
+          label: isBetting ? "🎰 前往下注" : "📱 查看完整資訊",
           uri: liffUrl,
         },
         style: "primary",
-        color: "#3B82F6",
+        color: isBetting ? "#E67E22" : "#3B82F6",
         height: "sm",
       },
     ],

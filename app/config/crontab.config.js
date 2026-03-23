@@ -80,7 +80,7 @@ module.exports = [
     name: "Race Advance",
     description: "manage race lifecycle: create, advance rounds, settle bets",
     period: ["0", "*", "*", "*", "*", "*"],
-    immediate: false,
+    immediate: true,
     require_path: "./bin/RaceAdvance",
   },
 ];

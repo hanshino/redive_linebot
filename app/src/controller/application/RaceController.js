@@ -16,29 +16,36 @@ exports.router = [
 ];
 
 async function showRaceStatus(context) {
-  let targetRace = await race.getActive();
+  const activeRace = await race.getActive();
+  const lastFinished = await race.knex
+    .where("status", "finished")
+    .orderBy("finished_at", "desc")
+    .first();
 
-  // No active race — show the most recently finished one
-  if (!targetRace) {
-    targetRace = await race.knex.where("status", "finished").orderBy("finished_at", "desc").first();
-  }
-
-  if (!targetRace) {
+  if (!activeRace && !lastFinished) {
     await context.replyText("目前沒有進行中的比賽，請等待下一場開賽！");
     return;
   }
 
-  const runners = await raceRunner.getByRace(targetRace.id);
-  const events = await raceEvent.getByRace(targetRace.id);
-  const odds = await RaceService.getOdds(targetRace.id);
+  const races = [];
 
-  const flexMessage = generateRaceCarousel({
-    raceData: targetRace,
-    runners,
-    events,
-    odds,
-  });
+  // Add active race bubbles
+  if (activeRace) {
+    const runners = await raceRunner.getByRace(activeRace.id);
+    const events = await raceEvent.getByRace(activeRace.id);
+    const odds = await RaceService.getOdds(activeRace.id);
+    races.push({ raceData: activeRace, runners, events, odds });
+  }
 
+  // Add last finished race (if different from active)
+  if (lastFinished && (!activeRace || lastFinished.id !== activeRace.id)) {
+    const runners = await raceRunner.getByRace(lastFinished.id);
+    const events = await raceEvent.getByRace(lastFinished.id);
+    const odds = await RaceService.getOdds(lastFinished.id);
+    races.push({ raceData: lastFinished, runners, events, odds });
+  }
+
+  const flexMessage = generateRaceCarousel(races);
   await context.replyFlex(flexMessage.altText, flexMessage.contents);
 }
 
