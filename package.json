@@ -4,7 +4,15 @@
     "lint-staged": "^16.3.2"
   },
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev": "yarn dev:app & yarn dev:frontend & wait",
+    "dev:app": "yarn --cwd app dev",
+    "dev:frontend": "yarn --cwd frontend dev",
+    "build:frontend": "yarn --cwd frontend build",
+    "test:app": "yarn --cwd app test",
+    "lint:app": "yarn --cwd app lint",
+    "lint:frontend": "yarn --cwd frontend lint",
+    "migrate": "yarn --cwd app migrate"
   },
   "lint-staged": {
     "app/**/*.js": "app/node_modules/.bin/prettier --write --config app/.prettierrc",
