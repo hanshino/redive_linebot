@@ -21,16 +21,14 @@ router.get("/current", async (req, res) => {
   res.json({ race: activeRace, runners, events, odds });
 });
 
-// Public: get finished race result
-router.get("/:raceId", async (req, res) => {
-  const { raceId } = req.params;
-  const raceData = await race.find(raceId);
-  if (!raceData) return res.status(404).json({ error: "Race not found" });
+// Auth: get my bets for current race (must be before /:raceId)
+router.get("/current/my-bets", verifyToken, async (req, res) => {
+  const { userId } = req.profile;
+  const activeRace = await race.getActive();
+  if (!activeRace) return res.json({ bets: [] });
 
-  const runners = await raceRunner.getByRace(raceId);
-  const events = await raceEvent.getByRace(raceId);
-
-  res.json({ race: raceData, runners, events });
+  const bets = await raceBet.getUserBets(activeRace.id, userId);
+  res.json({ bets });
 });
 
 // Auth: place bet
@@ -46,14 +44,16 @@ router.post("/bet", verifyToken, async (req, res) => {
   res.json(result);
 });
 
-// Auth: get my bets for current race
-router.get("/current/my-bets", verifyToken, async (req, res) => {
-  const { userId } = req.profile;
-  const activeRace = await race.getActive();
-  if (!activeRace) return res.json({ bets: [] });
+// Public: get finished race result (must be last — catches /:raceId)
+router.get("/:raceId", async (req, res) => {
+  const { raceId } = req.params;
+  const raceData = await race.find(raceId);
+  if (!raceData) return res.status(404).json({ error: "Race not found" });
 
-  const bets = await raceBet.getUserBets(activeRace.id, userId);
-  res.json({ bets });
+  const runners = await raceRunner.getByRace(raceId);
+  const events = await raceEvent.getByRace(raceId);
+
+  res.json({ race: raceData, runners, events });
 });
 
 module.exports = router;

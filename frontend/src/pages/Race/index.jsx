@@ -35,15 +35,17 @@ export default function Race() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const timerRef = useRef(null);
+  const hasDataRef = useRef(false);
 
   const fetchRace = useCallback(async () => {
     try {
       const data = await getCurrentRace();
       setRaceData(data);
+      hasDataRef.current = true;
       setError(null);
     } catch (err) {
       console.error("Failed to fetch race", err);
-      if (!raceData) setError("無法載入比賽資料");
+      if (!hasDataRef.current) setError("無法載入比賽資料");
     } finally {
       setLoading(false);
     }
