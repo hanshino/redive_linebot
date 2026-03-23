@@ -140,6 +140,11 @@ function RaceHeader({ race }) {
           第 {race.round} 回合
         </Typography>
       )}
+      {race.status === "finished" && (
+        <Typography variant="body2" color="text.secondary">
+          共 {race.round} 回合 | {new Date(race.finished_at).toLocaleString("zh-TW")}
+        </Typography>
+      )}
     </Box>
   );
 }
@@ -164,6 +169,7 @@ function RaceTrack({ runners }) {
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
                     {runner.lane}. {runner.character_name}
+                    {runner.position >= trackLength && " \uD83C\uDFC6"}
                     {statusLabel && (
                       <Typography component="span" variant="caption" color="error.main">
                         {statusLabel}

@@ -14,27 +14,44 @@ exports.router = [
 ];
 
 async function showRaceStatus(context) {
-  const activeRace = await race.getActive();
+  let targetRace = await race.getActive();
 
-  if (!activeRace) {
+  // No active race — show the most recently finished one
+  if (!targetRace) {
+    targetRace = await race.knex.where("status", "finished").orderBy("finished_at", "desc").first();
+  }
+
+  if (!targetRace) {
     await context.replyText("目前沒有進行中的比賽，請等待下一場開賽！");
     return;
   }
 
-  const runners = await raceRunner.getByRace(activeRace.id);
+  const runners = await raceRunner.getByRace(targetRace.id);
   const trackLen = raceConfig.trackLength;
 
   let statusText = "";
-  if (activeRace.status === "betting") {
-    const endTime = new Date(activeRace.betting_end_at);
+  const bettingExpired =
+    targetRace.status === "betting" &&
+    targetRace.betting_end_at &&
+    new Date(targetRace.betting_end_at) <= new Date();
+
+  if (targetRace.status === "betting" && !bettingExpired) {
+    const endTime = new Date(targetRace.betting_end_at);
     statusText = `🏇 下注中！截止時間: ${endTime.toLocaleTimeString("zh-TW")}\n\n`;
+  } else if (bettingExpired) {
+    statusText = `🏇 下注已截止，比賽即將開始！\n\n`;
+  } else if (targetRace.status === "finished") {
+    const winner = runners.find(r => r.position >= trackLen);
+    const winnerName = winner ? winner.character_name : "???";
+    statusText = `🏇 上一場結果（共 ${targetRace.round} 回合）\n🏆 冠軍: ${winnerName}\n\n`;
   } else {
-    statusText = `🏇 比賽進行中！第 ${activeRace.round} 回合\n\n`;
+    statusText = `🏇 比賽進行中！第 ${targetRace.round} 回合\n\n`;
   }
 
   for (const runner of runners) {
     const progress = "▓".repeat(runner.position) + "░".repeat(trackLen - runner.position);
-    statusText += `${runner.lane}. ${runner.character_name} [${progress}] ${runner.position}/${trackLen}\n`;
+    const trophy = runner.position >= trackLen ? " 🏆" : "";
+    statusText += `${runner.lane}. ${runner.character_name}${trophy} [${progress}] ${runner.position}/${trackLen}\n`;
   }
 
   await context.replyText(statusText);
