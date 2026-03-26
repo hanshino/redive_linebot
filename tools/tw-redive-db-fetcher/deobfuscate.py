@@ -67,18 +67,16 @@ def deobfuscate(db_path):
             print(f"ERROR {clean_name}: {e}")
             errors += 1
 
-    # Drop unmapped v1_ tables so output only contains clean tables
+    # Keep unmapped v1_ tables as-is for future manual naming
     unmapped = obf_tables - translated_obf
-    for table in unmapped:
-        conn.execute(f'DROP TABLE IF EXISTS "{table}"')
-    dropped = len(unmapped)
+    kept = len(unmapped)
 
     conn.commit()
     conn.execute("VACUUM")
     conn.close()
 
     # Summary
-    print(f"Translated: {translated}, Skipped: {skipped}, Errors: {errors}, Dropped unmapped: {dropped}")
+    print(f"Translated: {translated}, Skipped: {skipped}, Errors: {errors}, Kept unmapped: {kept}")
     print("Deobfuscation complete!")
 
 
