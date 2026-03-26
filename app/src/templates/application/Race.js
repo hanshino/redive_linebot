@@ -16,7 +16,7 @@ const STATUS_COLOR = {
   finished: "#9E9E9E",
 };
 
-const RANK_MEDALS = ["🥇", "🥈", "🥉", "4", "5"];
+const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32", "#555555", "#555555"];
 
 /**
  * Generate race Flex Message carousel
@@ -28,12 +28,19 @@ exports.generateRaceCarousel = races => {
 
   for (const { raceData, runners, events, odds } of raceList) {
     const rankedRunners = [...runners].sort((a, b) => b.position - a.position);
-    const footer = generateFooter(raceData);
-    allBubbles.push(
-      generateTrackBubble(raceData, rankedRunners),
-      generateDetailBubble(raceData, runners, odds),
-      generateEventBubble(raceData, events || [], runners, footer)
-    );
+
+    if (raceData.status === "finished") {
+      // Finished races: compact summary only
+      allBubbles.push(generateResultSummaryBubble(raceData, rankedRunners));
+    } else {
+      // Active races: full detail
+      const footer = generateFooter(raceData);
+      allBubbles.push(
+        generateTrackBubble(raceData, rankedRunners),
+        generateDetailBubble(raceData, runners, odds),
+        generateEventBubble(raceData, events || [], runners, footer)
+      );
+    }
   }
 
   // LINE carousel max 12 bubbles
@@ -186,7 +193,8 @@ function generateTrackRow(runner, rankIndex) {
   const remainingFlex = Math.max(trackLength - runner.position, 0);
 
   const statusIcon = isStunned ? " 💫" : isSlowed ? " 🐌" : "";
-  const medal = RANK_MEDALS[rankIndex] || `${rankIndex + 1}`;
+  const rankNum = `${rankIndex + 1}`;
+  const rankBgColor = RANK_COLORS[rankIndex] || "#555555";
   const nameColor = isWinner ? "#FFD700" : rankIndex < 3 ? "#FFFFFF" : "#999999";
   const barColor = isWinner
     ? "#FFD700"
@@ -205,12 +213,24 @@ function generateTrackRow(runner, rankIndex) {
         layout: "horizontal",
         contents: [
           {
-            type: "text",
-            text: medal,
-            size: "sm",
-            color: nameColor,
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: rankNum,
+                size: "xxs",
+                color: "#FFFFFF",
+                align: "center",
+                weight: "bold",
+              },
+            ],
+            width: "20px",
+            height: "20px",
+            backgroundColor: rankBgColor,
+            cornerRadius: "sm",
+            justifyContent: "center",
             flex: 0,
-            gravity: "center",
           },
           {
             type: "image",
@@ -244,39 +264,149 @@ function generateTrackRow(runner, rankIndex) {
       },
       {
         type: "box",
-        layout: "horizontal",
+        layout: "vertical",
         contents: [
-          ...(filledFlex > 0
-            ? [
-                {
-                  type: "box",
-                  layout: "vertical",
-                  contents: [],
-                  backgroundColor: barColor,
-                  height: "6px",
-                  cornerRadius: "sm",
-                  flex: filledFlex,
-                },
-              ]
-            : []),
-          ...(remainingFlex > 0
-            ? [
-                {
-                  type: "box",
-                  layout: "vertical",
-                  contents: [],
-                  backgroundColor: "#333333",
-                  height: "6px",
-                  cornerRadius: "sm",
-                  flex: remainingFlex,
-                },
-              ]
-            : []),
+          {
+            type: "box",
+            layout: "vertical",
+            contents: [],
+            backgroundColor: barColor,
+            height: "6px",
+            cornerRadius: "sm",
+            width: `${Math.round((runner.position / trackLength) * 100)}%`,
+          },
         ],
-        margin: "xs",
-        spacing: "xs",
+        backgroundColor: "#333333",
+        height: "6px",
+        cornerRadius: "sm",
+        margin: "md",
       },
     ],
+  };
+}
+
+// ─── Compact: Finished Race Summary ──────────────────────────
+
+function generateResultSummaryBubble(raceData, rankedRunners) {
+  const winner = rankedRunners[0];
+  const top3 = rankedRunners.slice(0, 3);
+  const finishedAt = new Date(raceData.finished_at).toLocaleString("zh-TW", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const podiumRows = top3.map((runner, i) => ({
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: `${i + 1}`,
+            size: "xxs",
+            color: "#FFFFFF",
+            align: "center",
+            weight: "bold",
+          },
+        ],
+        width: "20px",
+        height: "20px",
+        backgroundColor: RANK_COLORS[i],
+        cornerRadius: "sm",
+        justifyContent: "center",
+        flex: 0,
+      },
+      {
+        type: "image",
+        url: runner.avatar_url || "https://i.imgur.com/SGDoCtd.png",
+        size: "xxs",
+        aspectMode: "cover",
+        aspectRatio: "1:1",
+        flex: 0,
+      },
+      {
+        type: "text",
+        text: runner.character_name,
+        size: "sm",
+        color: i === 0 ? "#FFD700" : "#FFFFFF",
+        weight: i === 0 ? "bold" : "regular",
+        flex: 1,
+        margin: "sm",
+        gravity: "center",
+      },
+    ],
+    alignItems: "center",
+    spacing: "sm",
+  }));
+
+  const liffUrl = getLiffUri("full", "/race");
+
+  return {
+    type: "bubble",
+    size: "mega",
+    header: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "text",
+              text: "🏁 上場結果",
+              weight: "bold",
+              size: "lg",
+              color: "#FFFFFF",
+              flex: 1,
+            },
+            {
+              type: "text",
+              text: finishedAt,
+              size: "xs",
+              color: "#B0B0B0",
+              align: "end",
+              gravity: "center",
+            },
+          ],
+          alignItems: "center",
+        },
+      ],
+      backgroundColor: "#1a1a2e",
+      paddingAll: "lg",
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: podiumRows,
+      backgroundColor: "#16213e",
+      paddingAll: "lg",
+      spacing: "md",
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "button",
+          action: {
+            type: "uri",
+            label: "查看完整賽況",
+            uri: liffUrl,
+          },
+          style: "primary",
+          color: "#3B82F6",
+          height: "sm",
+        },
+      ],
+      backgroundColor: "#1a1a2e",
+      paddingAll: "md",
+    },
   };
 }
 
