@@ -143,6 +143,7 @@ exports.advanceRound = async function (raceId) {
 
     return {
       id: runner.id,
+      lane: runner.lane,
       position: newPosition,
       stamina: newStamina,
       status: "normal",
@@ -176,9 +177,11 @@ exports.advanceRound = async function (raceId) {
 
     await trx("race").where("id", raceId).update({ round: newRound });
 
-    // Check for winner
-    const winner = updates.find(u => u.position >= raceConfig.trackLength);
-    if (winner) {
+    // Check for winner — tiebreak: stamina (desc) → lane (asc)
+    const finishers = updates.filter(u => u.position >= raceConfig.trackLength);
+    if (finishers.length > 0) {
+      finishers.sort((a, b) => b.stamina - a.stamina || a.lane - b.lane);
+      const winner = finishers[0];
       await trx("race").where("id", raceId).update({
         status: "finished",
         winner_runner_id: winner.id,
