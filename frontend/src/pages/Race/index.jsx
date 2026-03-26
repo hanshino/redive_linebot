@@ -24,7 +24,7 @@ import FlagIcon from "@mui/icons-material/Flag";
 import { getCurrentRace, getRaceHistory } from "../../api/race";
 
 const POLL_INTERVAL = 10000;
-const TRACK_LENGTH = 10;
+const DEFAULT_TRACK_LENGTH = 10;
 
 const STATUS_META = {
   betting: { label: "下注中", color: "warning", Icon: TimerIcon },
@@ -153,7 +153,7 @@ export default function Race() {
           <Grid container spacing={2} sx={{ mt: 0 }}>
             {/* left: race track */}
             <Grid size={{ xs: 12, md: 7 }}>
-              <RaceTrack runners={sortedRunners} status={raceData.race.status} />
+              <RaceTrack runners={sortedRunners} status={raceData.race.status} trackLength={raceData.trackLength ?? DEFAULT_TRACK_LENGTH} />
             </Grid>
 
             {/* right: event log + history */}
@@ -250,7 +250,7 @@ function RaceHeader({ race }) {
 
 // ─── RaceTrack ────────────────────────────────────────────────────────────────
 
-function RaceTrack({ runners, status }) {
+function RaceTrack({ runners, status, trackLength = DEFAULT_TRACK_LENGTH }) {
   return (
     <Card variant="outlined" sx={{ height: "100%" }}>
       <CardContent sx={{ p: "20px !important" }}>
@@ -263,6 +263,7 @@ function RaceTrack({ runners, status }) {
               key={runner.id}
               runner={runner}
               raceFinished={status === "finished"}
+              trackLength={trackLength}
             />
           ))}
         </Stack>
@@ -271,9 +272,9 @@ function RaceTrack({ runners, status }) {
   );
 }
 
-function RunnerRow({ runner, raceFinished }) {
-  const progress = Math.min((runner.position / TRACK_LENGTH) * 100, 100);
-  const isWinner = runner.position >= TRACK_LENGTH;
+function RunnerRow({ runner, raceFinished, trackLength }) {
+  const progress = Math.min((runner.position / trackLength) * 100, 100);
+  const isWinner = runner.position >= trackLength;
   const rankStyle = RANK_STYLES[runner.rank];
 
   // progress bar color
@@ -395,7 +396,7 @@ function RunnerRow({ runner, raceFinished }) {
       <LinearProgress
         variant="determinate"
         value={progress}
-        aria-label={`${runner.character_name} 進度 ${runner.position}/${TRACK_LENGTH}`}
+        aria-label={`${runner.character_name} 進度 ${runner.position}/${trackLength}`}
         sx={{
           height: 10,
           borderRadius: 5,
@@ -411,7 +412,7 @@ function RunnerRow({ runner, raceFinished }) {
 
       {/* position label */}
       <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, display: "block" }}>
-        {runner.position} / {TRACK_LENGTH}
+        {runner.position} / {trackLength}
       </Typography>
     </Box>
   );

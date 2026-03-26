@@ -6,6 +6,8 @@ const { raceBet } = require("../model/application/RaceBet");
 const { raceCharacter } = require("../model/application/RaceCharacter");
 const { inventory } = require("../model/application/Inventory");
 
+const _ = require("lodash");
+
 const raceConfig = config.get("minigame.race");
 
 /**
@@ -118,35 +120,30 @@ exports.advanceRound = async function (raceId) {
   const newRound = currentRace.round + 1;
   const events = [];
 
-  // Random event (30% chance)
   let globalEvent = null;
   if (Math.random() < raceConfig.event.triggerChance) {
     globalEvent = pickRandomEvent(runners);
     if (globalEvent) events.push(globalEvent);
   }
 
-  // Move each runner
   const updates = runners.map(runner => {
     let move = calcMovement(runner);
 
-    // Apply global slowdown event
     if (globalEvent && globalEvent.type === "global_slow") {
       move = Math.min(move, 1);
     }
 
-    // Apply stunned status
     if (runner.status === "stunned") {
       move = 0;
     }
 
-    // Apply slowed status
     if (runner.status === "slowed") {
       move = Math.max(0, move - 1);
     }
 
     const newPosition = Math.min(runner.position + move, raceConfig.trackLength);
-    const staminaCost = randomInt(raceConfig.stamina.minCost, raceConfig.stamina.maxCost);
-    const newStamina = clamp(runner.stamina - staminaCost + raceConfig.stamina.recovery, 0, 100);
+    const staminaCost = _.random(raceConfig.stamina.minCost, raceConfig.stamina.maxCost);
+    const newStamina = _.clamp(runner.stamina - staminaCost + raceConfig.stamina.recovery, 0, 100);
 
     return {
       id: runner.id,
@@ -157,7 +154,6 @@ exports.advanceRound = async function (raceId) {
     };
   });
 
-  // Apply individual events (trip, swap, boost, trip_wire)
   if (globalEvent && globalEvent.type !== "global_slow") {
     applyEventEffect(globalEvent, updates);
   }
@@ -291,17 +287,9 @@ exports.getRaceDetails = async function (raceId) {
 // --- Helpers ---
 
 function calcMovement(runner) {
-  const base = randomInt(raceConfig.movement.baseMin, raceConfig.movement.baseMax);
+  const base = _.random(raceConfig.movement.baseMin, raceConfig.movement.baseMax);
   const factor = runner.stamina / 100;
   return Math.round(base * factor);
-}
-
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function clamp(val, min, max) {
-  return Math.max(min, Math.min(max, val));
 }
 
 const EVENT_TYPES = [
@@ -324,9 +312,9 @@ function pickRandomEvent(runners) {
     }
   }
 
-  const a = runners[randomInt(0, runners.length - 1)];
+  const a = runners[_.random(0, runners.length - 1)];
   let others = runners.filter(r => r.id !== a.id);
-  const b = others.length > 0 ? others[randomInt(0, others.length - 1)] : null;
+  const b = others.length > 0 ? others[_.random(0, others.length - 1)] : null;
 
   const desc = selected.template
     .replace("{A}", a.character_name)

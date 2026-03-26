@@ -4,6 +4,9 @@ const { race } = require("../model/application/Race");
 const { raceBet } = require("../model/application/RaceBet");
 const RaceService = require("../service/RaceService");
 const { verifyToken } = require("../middleware/validation");
+const config = require("config");
+
+const trackLength = config.get("minigame.race.trackLength");
 
 function asyncHandler(fn) {
   return (req, res, next) => fn(req, res, next).catch(next);
@@ -24,7 +27,7 @@ router.get(
     }
 
     const details = await RaceService.getRaceDetails(targetRace.id);
-    res.json({ race: targetRace, ...details });
+    res.json({ race: targetRace, trackLength, ...details });
   })
 );
 
