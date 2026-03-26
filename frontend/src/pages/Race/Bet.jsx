@@ -87,15 +87,19 @@ function CountdownBanner({ bettingEndAt }) {
 
 function RunnerCard({ runner, existingBet, selected, onToggle, betAmount, onAmountChange }) {
   const alreadyBet = Boolean(existingBet);
+  const [customValue, setCustomValue] = useState("");
 
   const handleQuick = (e, amount) => {
     e.stopPropagation();
+    setCustomValue("");
     onAmountChange(amount);
   };
 
   const handleCustom = e => {
     e.stopPropagation();
-    const val = parseInt(e.target.value, 10);
+    const raw = e.target.value;
+    setCustomValue(raw);
+    const val = parseInt(raw, 10);
     onAmountChange(isNaN(val) ? "" : val);
   };
 
@@ -196,7 +200,7 @@ function RunnerCard({ runner, existingBet, selected, onToggle, betAmount, onAmou
               {QUICK_AMOUNTS.map(amt => (
                 <Button
                   key={amt}
-                  variant={betAmount === amt ? "contained" : "outlined"}
+                  variant={betAmount === amt && !customValue ? "contained" : "outlined"}
                   color="primary"
                   size="small"
                   onClick={e => handleQuick(e, amt)}
@@ -213,7 +217,7 @@ function RunnerCard({ runner, existingBet, selected, onToggle, betAmount, onAmou
               size="small"
               placeholder="自訂金額"
               type="number"
-              value={betAmount === "" || QUICK_AMOUNTS.includes(betAmount) ? "" : betAmount}
+              value={customValue}
               onChange={handleCustom}
               slotProps={{ htmlInput: { min: 1 } }}
               sx={{ width: "100%" }}
@@ -438,7 +442,7 @@ export default function Bet() {
           }}
         >
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            賽馬下注
+            蘭德索爾盃 下注
           </Typography>
           <BalanceChip balance={balance} loading={balLoading} />
         </Box>
