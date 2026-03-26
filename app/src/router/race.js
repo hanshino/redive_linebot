@@ -66,6 +66,13 @@ router.get("/recent-finished", async (req, res) => {
   res.json({ race: lastFinished, runners, events, odds });
 });
 
+// Public: get recent finished races history (winner summary)
+router.get("/history", async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 5, 20);
+  const history = await race.getRecentFinished(limit);
+  res.json({ history });
+});
+
 // Public: get finished race result (must be last — catches /:raceId)
 router.get("/:raceId", async (req, res) => {
   const { raceId } = req.params;

@@ -33,6 +33,24 @@ class Race extends Base {
   getReadyToStart() {
     return this.knex.where("status", "betting").where("betting_end_at", "<=", mysql.raw("NOW()"));
   }
+
+  /** Get recent finished races with winner info */
+  getRecentFinished(limit = 5) {
+    return mysql("race")
+      .where("race.status", "finished")
+      .whereNotNull("race.winner_runner_id")
+      .join("race_runner", "race.winner_runner_id", "race_runner.id")
+      .join("race_character", "race_runner.character_id", "race_character.id")
+      .select(
+        "race.id",
+        "race.round",
+        "race.finished_at",
+        "race_character.name as winner_name",
+        "race_character.avatar_url as winner_avatar"
+      )
+      .orderBy("race.finished_at", "desc")
+      .limit(limit);
+  }
 }
 
 const race = new Race();

@@ -21,7 +21,7 @@ const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32", "#555555", "#555555"];
 /**
  * Generate race Flex Message carousel
  */
-exports.generateRaceCarousel = races => {
+exports.generateRaceCarousel = (races, recentFinished = []) => {
   // Support both single object and array
   const raceList = Array.isArray(races) ? races : [races];
   const allBubbles = [];
@@ -29,27 +29,27 @@ exports.generateRaceCarousel = races => {
   for (const { raceData, runners, events, odds } of raceList) {
     const rankedRunners = [...runners].sort((a, b) => b.position - a.position);
 
-    if (raceData.status === "finished") {
-      // Finished races: compact summary only
-      allBubbles.push(generateResultSummaryBubble(raceData, rankedRunners));
-    } else {
-      // Active races: full detail
-      const footer = generateFooter(raceData);
-      allBubbles.push(
-        generateTrackBubble(raceData, rankedRunners),
-        generateDetailBubble(raceData, runners, odds),
-        generateEventBubble(raceData, events || [], runners, footer)
-      );
-    }
+    // Active races: track (with stamina + odds) + events
+    const footer = generateFooter(raceData);
+    allBubbles.push(
+      generateTrackBubble(raceData, rankedRunners, odds),
+      generateEventBubble(raceData, events || [], runners, footer)
+    );
+  }
+
+  // Append history bubble if there are finished races
+  if (recentFinished.length > 0) {
+    allBubbles.push(generateHistoryBubble(recentFinished));
   }
 
   // LINE carousel max 12 bubbles
   const bubbles = allBubbles.slice(0, 12);
-  const firstRace = raceList[0].raceData;
+
+  const altStatus = raceList.length > 0 ? STATUS_LABEL[raceList[0].raceData.status] : "歷史戰績";
 
   return {
     type: "flex",
-    altText: `🏇 賽馬競技場 - ${STATUS_LABEL[firstRace.status]}`,
+    altText: `🏆 蘭德索爾盃 - ${altStatus}`,
     contents: {
       type: "carousel",
       contents: bubbles,
@@ -59,7 +59,7 @@ exports.generateRaceCarousel = races => {
 
 // ─── Page 1: Race Track ──────────────────────────────────────
 
-function generateTrackBubble(raceData, rankedRunners) {
+function generateTrackBubble(raceData, rankedRunners, odds) {
   const statusLabel = STATUS_LABEL[raceData.status];
   const statusColor = STATUS_COLOR[raceData.status];
   const winner = rankedRunners.find(r => r.position >= trackLength);
@@ -121,7 +121,16 @@ function generateTrackBubble(raceData, rankedRunners) {
         ]
       : [];
 
-  const trackRows = rankedRunners.map((runner, index) => generateTrackRow(runner, index));
+  const oddsMap = {};
+  if (odds) {
+    odds.forEach(o => {
+      oddsMap[o.runnerId] = o;
+    });
+  }
+
+  const trackRows = rankedRunners.map((runner, index) =>
+    generateTrackRow(runner, index, oddsMap[runner.id])
+  );
 
   return {
     type: "bubble",
@@ -136,7 +145,7 @@ function generateTrackBubble(raceData, rankedRunners) {
           contents: [
             {
               type: "text",
-              text: "🏇 賽馬競技場",
+              text: "🏆 蘭德索爾盃",
               weight: "bold",
               size: "lg",
               color: "#FFFFFF",
@@ -184,13 +193,10 @@ function generateTrackBubble(raceData, rankedRunners) {
   };
 }
 
-function generateTrackRow(runner, rankIndex) {
+function generateTrackRow(runner, rankIndex, oddsInfo) {
   const isWinner = runner.position >= trackLength;
   const isStunned = runner.status === "stunned";
   const isSlowed = runner.status === "slowed";
-
-  const filledFlex = Math.max(runner.position, 0);
-  const remainingFlex = Math.max(trackLength - runner.position, 0);
 
   const statusIcon = isStunned ? " 💫" : isSlowed ? " 🐌" : "";
   const rankNum = `${rankIndex + 1}`;
@@ -203,6 +209,29 @@ function generateTrackRow(runner, rankIndex) {
       : rankIndex < 3
         ? "#2196F3"
         : "#666666";
+
+  // Right side: odds + stamina
+  const rightContents = [];
+  if (oddsInfo) {
+    rightContents.push({
+      type: "text",
+      text: `${oddsInfo.odds}x`,
+      size: "xxs",
+      color: "#FFD700",
+      align: "end",
+      gravity: "center",
+      flex: 0,
+    });
+  }
+  rightContents.push({
+    type: "text",
+    text: `⚡${runner.stamina}`,
+    size: "xxs",
+    color: "#B0B0B0",
+    align: "end",
+    gravity: "center",
+    flex: 0,
+  });
 
   return {
     type: "box",
@@ -250,14 +279,7 @@ function generateTrackRow(runner, rankIndex) {
             margin: "sm",
             gravity: "center",
           },
-          {
-            type: "text",
-            text: `${runner.position}/${trackLength}`,
-            size: "xxs",
-            color: "#B0B0B0",
-            align: "end",
-            gravity: "center",
-          },
+          ...rightContents,
         ],
         alignItems: "center",
         spacing: "sm",
@@ -285,162 +307,41 @@ function generateTrackRow(runner, rankIndex) {
   };
 }
 
-// ─── Compact: Finished Race Summary ──────────────────────────
+// ─── History: Recent Finished Races ──────────────────────────
 
-function generateResultSummaryBubble(raceData, rankedRunners) {
-  const winner = rankedRunners[0];
-  const top3 = rankedRunners.slice(0, 3);
-  const finishedAt = new Date(raceData.finished_at).toLocaleString("zh-TW", {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  const podiumRows = top3.map((runner, i) => ({
-    type: "box",
-    layout: "horizontal",
-    contents: [
-      {
-        type: "box",
-        layout: "vertical",
-        contents: [
-          {
-            type: "text",
-            text: `${i + 1}`,
-            size: "xxs",
-            color: "#FFFFFF",
-            align: "center",
-            weight: "bold",
-          },
-        ],
-        width: "20px",
-        height: "20px",
-        backgroundColor: RANK_COLORS[i],
-        cornerRadius: "sm",
-        justifyContent: "center",
-        flex: 0,
-      },
-      {
-        type: "image",
-        url: runner.avatar_url || "https://i.imgur.com/SGDoCtd.png",
-        size: "xxs",
-        aspectMode: "cover",
-        aspectRatio: "1:1",
-        flex: 0,
-      },
-      {
-        type: "text",
-        text: runner.character_name,
-        size: "sm",
-        color: i === 0 ? "#FFD700" : "#FFFFFF",
-        weight: i === 0 ? "bold" : "regular",
-        flex: 1,
-        margin: "sm",
-        gravity: "center",
-      },
-    ],
-    alignItems: "center",
-    spacing: "sm",
-  }));
-
-  const liffUrl = getLiffUri("full", "/race");
-
-  return {
-    type: "bubble",
-    size: "mega",
-    header: {
-      type: "box",
-      layout: "vertical",
-      contents: [
-        {
-          type: "box",
-          layout: "horizontal",
-          contents: [
-            {
-              type: "text",
-              text: "🏁 上場結果",
-              weight: "bold",
-              size: "lg",
-              color: "#FFFFFF",
-              flex: 1,
-            },
-            {
-              type: "text",
-              text: finishedAt,
-              size: "xs",
-              color: "#B0B0B0",
-              align: "end",
-              gravity: "center",
-            },
-          ],
-          alignItems: "center",
-        },
-      ],
-      backgroundColor: "#1a1a2e",
-      paddingAll: "lg",
-    },
-    body: {
-      type: "box",
-      layout: "vertical",
-      contents: podiumRows,
-      backgroundColor: "#16213e",
-      paddingAll: "lg",
-      spacing: "md",
-    },
-    footer: {
-      type: "box",
-      layout: "vertical",
-      contents: [
-        {
-          type: "button",
-          action: {
-            type: "uri",
-            label: "查看完整賽況",
-            uri: liffUrl,
-          },
-          style: "primary",
-          color: "#3B82F6",
-          height: "sm",
-        },
-      ],
-      backgroundColor: "#1a1a2e",
-      paddingAll: "md",
-    },
-  };
-}
-
-// ─── Page 2: Character Details + Odds ────────────────────────
-
-function generateDetailBubble(raceData, runners, odds) {
-  const oddsMap = {};
-  if (odds) {
-    odds.forEach(o => {
-      oddsMap[o.runnerId] = o;
+function generateHistoryBubble(recentFinished) {
+  const rows = recentFinished.map((r, i) => {
+    const finishedAt = new Date(r.finished_at).toLocaleString("zh-TW", {
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
-  }
-
-  const rows = runners.map((runner, index) => {
-    const staminaPercent = runner.stamina / 100;
-    const staminaColor =
-      staminaPercent > 0.6 ? "#4CAF50" : staminaPercent > 0.3 ? "#FF9800" : "#F44336";
-    const staminaFlex = Math.max(Math.round(staminaPercent * 10), 1);
-    const staminaRemaining = Math.max(10 - staminaFlex, 0);
-
-    const statusText =
-      runner.status === "stunned" ? "💫 暈眩" : runner.status === "slowed" ? "🐌 減速" : "";
-
-    const oddsInfo = oddsMap[runner.id];
-    const oddsText = oddsInfo ? `${oddsInfo.odds}x` : "-";
 
     return {
       type: "box",
       layout: "horizontal",
       contents: [
         {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: `#${i + 1}`,
+              size: "xxs",
+              color: "#B0B0B0",
+              align: "center",
+            },
+          ],
+          width: "24px",
+          justifyContent: "center",
+          flex: 0,
+        },
+        {
           type: "image",
-          url: runner.avatar_url || "https://i.imgur.com/SGDoCtd.png",
-          size: "xxs",
+          url: r.winner_avatar || "https://i.imgur.com/SGDoCtd.png",
+          size: "xs",
           aspectMode: "cover",
           aspectRatio: "1:1",
           flex: 0,
@@ -450,96 +351,39 @@ function generateDetailBubble(raceData, runners, odds) {
           layout: "vertical",
           contents: [
             {
-              type: "box",
-              layout: "horizontal",
-              contents: [
-                {
-                  type: "text",
-                  text: runner.character_name + (statusText ? ` ${statusText}` : ""),
-                  size: "xs",
-                  color: "#FFFFFF",
-                  weight: "bold",
-                  flex: 1,
-                },
-                {
-                  type: "text",
-                  text: oddsText,
-                  size: "xs",
-                  color: "#FFD700",
-                  align: "end",
-                },
-              ],
+              type: "text",
+              text: `🏆 ${r.winner_name}`,
+              size: "sm",
+              color: i === 0 ? "#FFD700" : "#FFFFFF",
+              weight: i === 0 ? "bold" : "regular",
             },
             {
-              type: "box",
-              layout: "horizontal",
-              contents: [
-                {
-                  type: "text",
-                  text: `體力`,
-                  size: "xxs",
-                  color: "#888888",
-                  flex: 0,
-                  gravity: "center",
-                },
-                {
-                  type: "box",
-                  layout: "horizontal",
-                  contents: [
-                    {
-                      type: "box",
-                      layout: "vertical",
-                      contents: [],
-                      backgroundColor: staminaColor,
-                      height: "4px",
-                      cornerRadius: "sm",
-                      flex: staminaFlex,
-                    },
-                    ...(staminaRemaining > 0
-                      ? [
-                          {
-                            type: "box",
-                            layout: "vertical",
-                            contents: [],
-                            backgroundColor: "#333333",
-                            height: "4px",
-                            cornerRadius: "sm",
-                            flex: staminaRemaining,
-                          },
-                        ]
-                      : []),
-                  ],
-                  flex: 1,
-                  margin: "sm",
-                  spacing: "xs",
-                },
-                {
-                  type: "text",
-                  text: `${runner.stamina}`,
-                  size: "xxs",
-                  color: "#888888",
-                  flex: 0,
-                  margin: "sm",
-                },
-              ],
-              margin: "sm",
-              alignItems: "center",
+              type: "text",
+              text: `${finishedAt} · ${r.round} 回合`,
+              size: "xxs",
+              color: "#888888",
+              margin: "xs",
             },
           ],
           flex: 1,
-          margin: "sm",
+          margin: "md",
+          justifyContent: "center",
         },
       ],
       alignItems: "center",
       spacing: "sm",
+      paddingAll: "sm",
     };
   });
 
-  // Subtitle based on status
-  let subtitleText = "即時體力與賠率";
-  if (raceData.status === "betting") {
-    subtitleText = "選擇你看好的角色下注！";
-  }
+  // Add separators between rows
+  const bodyContents = [];
+  rows.forEach((row, i) => {
+    bodyContents.push(row);
+    if (i < rows.length - 1) {
+      bodyContents.push({ type: "separator", color: "#2a2a4a" });
+    }
+  });
 
   return {
     type: "bubble",
@@ -550,14 +394,14 @@ function generateDetailBubble(raceData, runners, odds) {
       contents: [
         {
           type: "text",
-          text: "角色詳情",
+          text: "🏆 歷史戰績",
           weight: "bold",
           size: "lg",
           color: "#FFFFFF",
         },
         {
           type: "text",
-          text: subtitleText,
+          text: `最近 ${recentFinished.length} 場`,
           size: "sm",
           color: "#B0B0B0",
           margin: "sm",
@@ -569,15 +413,15 @@ function generateDetailBubble(raceData, runners, odds) {
     body: {
       type: "box",
       layout: "vertical",
-      contents: rows,
+      contents: bodyContents,
       backgroundColor: "#16213e",
-      paddingAll: "lg",
-      spacing: "lg",
+      paddingAll: "md",
+      spacing: "none",
     },
   };
 }
 
-// ─── Page 3: Event Log ───────────────────────────────────────
+// ─── Page 2: Event Log ───────────────────────────────────────
 
 function generateEventBubble(raceData, events, runners, footer) {
   const runnerMap = {};

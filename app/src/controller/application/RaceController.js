@@ -10,19 +10,16 @@ const config = require("config");
 const raceConfig = config.get("minigame.race");
 
 exports.router = [
-  text(/^[.#/](賽馬)$/i, showRaceStatus),
+  text(/^[.#/](賽跑)$/i, showRaceStatus),
   text(/^[.#/]下注\s*(.+)\s+(\d+)$/i, placeBet),
-  text(/^[.#/](賽馬紀錄)$/i, showBetHistory),
+  text(/^[.#/](賽跑紀錄)$/i, showBetHistory),
 ];
 
 async function showRaceStatus(context) {
   const activeRace = await race.getActive();
-  const lastFinished = await race.knex
-    .where("status", "finished")
-    .orderBy("finished_at", "desc")
-    .first();
+  const recentFinished = await race.getRecentFinished(5);
 
-  if (!activeRace && !lastFinished) {
+  if (!activeRace && recentFinished.length === 0) {
     await context.replyText("目前沒有進行中的比賽，請等待下一場開賽！");
     return;
   }
@@ -37,15 +34,7 @@ async function showRaceStatus(context) {
     races.push({ raceData: activeRace, runners, events, odds });
   }
 
-  // Add last finished race (if different from active)
-  if (lastFinished && (!activeRace || lastFinished.id !== activeRace.id)) {
-    const runners = await raceRunner.getByRace(lastFinished.id);
-    const events = await raceEvent.getByRace(lastFinished.id);
-    const odds = await RaceService.getOdds(lastFinished.id);
-    races.push({ raceData: lastFinished, runners, events, odds });
-  }
-
-  const flexMessage = generateRaceCarousel(races);
+  const flexMessage = generateRaceCarousel(races, recentFinished);
   await context.replyFlex(flexMessage.altText, flexMessage.contents);
 }
 
