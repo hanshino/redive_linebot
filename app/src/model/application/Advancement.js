@@ -43,9 +43,9 @@ exports.attachManyByPlatformId = async (advancementId, users) => {
     for (let i = 0; i < piece.length; i++) {
       await trx(PIVOT_TABLE)
         .insert(function () {
-          this.select(["No", trx.raw(advancementId)])
-            .from("User")
-            .whereIn("platformId", piece[i]);
+          this.select(["id", trx.raw(advancementId)])
+            .from("user")
+            .whereIn("platform_id", piece[i]);
         })
         .into(trx.raw("?? (??, ??)", ["user_has_advancements", "user_id", "advancement_id"]));
     }
@@ -84,7 +84,7 @@ exports.findUserAdvancementsByPlatformId = async (platformId, options = {}) => {
  * @param {String} userId Line user id
  */
 function platformSubquey(userId) {
-  return mysql.first("No").from("User").where({ platformId: userId });
+  return mysql.first("id").from("user").where({ platform_id: userId });
 }
 
 exports.model = new Advancement({

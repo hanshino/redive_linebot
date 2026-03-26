@@ -6,7 +6,7 @@ const mysql = require("../../util/mysql");
  * @param {String} guildId
  */
 exports.insertGroup = guildId => {
-  return mysql.insert({ guildId, createDTM: new Date() }).into(this.table.Guild);
+  return mysql.insert({ guildId, created_at: new Date() }).into(this.table.Guild);
 };
 
 /**
@@ -27,7 +27,7 @@ exports.closeGroup = groupId => {
     this.table.Guild,
     {
       status: 0,
-      closeDTM: new Date(),
+      closed_at: new Date(),
     },
     {
       status: 1,
@@ -46,7 +46,7 @@ exports.openGroup = groupId => {
     this.table.Guild,
     {
       status: 1,
-      closeDTM: null,
+      closed_at: null,
     },
     {
       status: 0,
@@ -64,8 +64,8 @@ exports.insertUser = (userId, platform) => {
   return mysql
     .insert({
       platform: platform,
-      platformId: userId,
-      createDTM: new Date(),
+      platform_id: userId,
+      created_at: new Date(),
     })
     .into(this.table.User);
 };
@@ -75,7 +75,7 @@ exports.insertUser = (userId, platform) => {
  * @param {String} userId
  */
 exports.getUser = userId => {
-  return mysql.select("*").from(this.table.User).where({ platformId: userId });
+  return mysql.select("*").from(this.table.User).where({ platform_id: userId });
 };
 
 /**
@@ -87,11 +87,11 @@ exports.closeUser = userId => {
     this.table.User,
     {
       status: 0,
-      closeDTM: null,
+      closed_at: null,
     },
     {
       status: 1,
-      platformId: userId,
+      platform_id: userId,
     }
   );
 };
@@ -105,11 +105,11 @@ exports.openUser = userId => {
     this.table.User,
     {
       status: 1,
-      closeDTM: null,
+      closed_at: null,
     },
     {
       status: 0,
-      platformId: userId,
+      platform_id: userId,
     }
   );
 };
@@ -190,7 +190,7 @@ exports.setMemberStatus = (userId, groupId, status) => {
 exports.table = {
   Guild: "Guild",
   GuildMembers: "GuildMembers",
-  User: "User",
+  User: "user",
 };
 
 exports.increaseSpeakTimes = (userId, guildId) => {

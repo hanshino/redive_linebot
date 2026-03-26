@@ -42,10 +42,8 @@ function setLineProfile(context) {
       userDatas: temp,
     });
 
-    // Best-effort update display_name in DB
-    if (profile.displayName) {
-      UserModel.updateDisplayName(userId, profile.displayName).catch(() => {});
-    }
+    // Best-effort update profile in DB
+    UserModel.updateProfile(userId, profile).catch(() => {});
   });
 }
 
@@ -65,19 +63,19 @@ async function setLineGroupSummary(context) {
 }
 
 async function setUserId(context) {
-  // 優先使用 redis 的 userId
-  const userId = await redis.get(`user:${context.event.source.userId}`);
+  const platformId = context.event.source.userId;
 
-  if (userId) {
-    context.event._rawEvent.source = { ...context.event.source, id: userId };
+  // 優先使用 redis 的 userId
+  const cached = await redis.get(`user:${platformId}`);
+
+  if (cached) {
+    context.event._rawEvent.source = { ...context.event.source, id: cached };
     return;
   }
 
-  // 如果 redis 沒有 userId，則查詢資料庫
-  const id = await UserModel.getId(context.event.source.userId);
+  // 查詢資料庫，不存在則自動建立
+  const id = await UserModel.ensureUser(platformId);
 
-  if (id) {
-    await redis.set(`user:${context.event.source.userId}`, id);
-    context.event._rawEvent.source = { ...context.event.source, id };
-  }
+  await redis.set(`user:${platformId}`, id);
+  context.event._rawEvent.source = { ...context.event.source, id };
 }

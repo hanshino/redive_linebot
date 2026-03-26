@@ -1,5 +1,4 @@
 import { createContext, useEffect, useState, useMemo, useCallback } from "react";
-import axios from "axios";
 import liff from "@line/liff";
 import api from "../services/api";
 import { FullPageLoading } from "../components/Loading";
@@ -24,14 +23,13 @@ export default function LiffProvider({ children }) {
 
     api
       .get(`/api/liff-ids?size=${size}`)
-      .then((res) => res.data)
-      .then((data) => liff.init({ liffId: data.id }))
+      .then(res => res.data)
+      .then(data => liff.init({ liffId: data.id }))
       .then(() => {
         setInitialized(true);
         if (liff.isLoggedIn()) {
           const token = liff.getAccessToken();
           api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
           setLoggedIn(true);
           try {
             setLiffCtx(liff.getContext() || {});
@@ -40,7 +38,7 @@ export default function LiffProvider({ children }) {
           }
         }
       })
-      .catch((err) => {
+      .catch(err => {
         console.warn("LIFF init failed:", err);
       })
       .finally(() => {

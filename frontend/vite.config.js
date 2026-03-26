@@ -6,10 +6,14 @@ export default defineConfig({
   server: {
     host: true,
     port: 3000,
-    allowedHosts: ["host.docker.internal"],
+    allowedHosts: ["host.docker.internal", ".ngrok-free.app"],
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://localhost:9000",
+        changeOrigin: true,
+      },
+      "/webhooks": {
+        target: "http://localhost:9000",
         changeOrigin: true,
       },
       "/socket.io": {

@@ -77,5 +77,5 @@ exports.changeUserJob = async (userId, jobKey) => {
  * @param {String} userId Line user id
  */
 function getWhere(userId) {
-  return mysql.first("No").from("User").where({ platformId: userId });
+  return mysql.first("id").from("user").where({ platform_id: userId });
 }

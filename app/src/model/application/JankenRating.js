@@ -109,15 +109,15 @@ exports.update = async function (userId, attributes) {
 };
 
 exports.getTopRankings = async function (limit = 20) {
-  const subquery = mysql("User")
-    .select("platformId")
+  const subquery = mysql("user")
+    .select("platform_id")
     .max("display_name as display_name")
-    .groupBy("platformId")
+    .groupBy("platform_id")
     .as("u");
 
   return mysql(TABLE)
     .select(`${TABLE}.*`, "u.display_name")
-    .leftJoin(subquery, "u.platformId", "=", `${TABLE}.user_id`)
+    .leftJoin(subquery, "u.platform_id", "=", `${TABLE}.user_id`)
     .orderBy("elo", "desc")
     .limit(limit);
 };
