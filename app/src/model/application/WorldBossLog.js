@@ -154,10 +154,9 @@ exports.getTotalDamageByEventId = async event_id => {
  * 取得某個活動排名
  */
 exports.getTopRank = async ({ eventId, limit }) => {
-  // SELECT sum(`damage`) as `total_damage`, `User`.`platformId` FROM `world_boss_event_log` JOIN `User` ON `world_boss_event_log`.`user_id` = `User`.`No` WHERE `world_boss_event_id` = 1 GROUP BY `user_id`
   return await mysql(TABLE)
-    .select(mysql.raw("sum(`damage`) as `total_damage`, `User`.`platformId` as `userId`"))
-    .join("User", "world_boss_event_log.user_id", "User.No")
+    .select(mysql.raw("sum(`damage`) as `total_damage`, `user`.`platform_id` as `userId`"))
+    .join("user", "world_boss_event_log.user_id", "user.id")
     .where("world_boss_event_id", eventId)
     .groupBy("user_id")
     .orderBy("total_damage", "desc")

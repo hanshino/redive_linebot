@@ -32,7 +32,7 @@ exports.getUserCount = async () => {
 
   count = await mysql
     .select()
-    .from("User")
+    .from("user")
     .count({ cnt: "*" })
     .then(data => data[0].cnt);
 

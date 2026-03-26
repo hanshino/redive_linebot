@@ -39,11 +39,11 @@ exports.setExperience = async (userId, experience) => {
 exports.getUserDatas = async userIds => {
   let rows = await mysql
     .select([
-      { id: "cud.id", exp: "cud.experience", userId: "User.platformId", ranking: "cud.rank" },
+      { id: "cud.id", exp: "cud.experience", userId: "user.platform_id", ranking: "cud.rank" },
     ])
     .from(`${USER_DATA_TABLE} as cud`)
-    .join("User", "User.No", "cud.id")
-    .whereIn("User.platformId", userIds)
+    .join("user", "user.id", "cud.id")
+    .whereIn("user.platform_id", userIds)
     .orderBy("cud.rank");
 
   let userDatas = await Promise.all(
@@ -62,11 +62,11 @@ exports.getUserDatas = async userIds => {
 exports.getUserData = async userId => {
   let rows = await mysql
     .select([
-      { id: "cud.id", exp: "cud.experience", userId: "User.platformId", ranking: "cud.rank" },
+      { id: "cud.id", exp: "cud.experience", userId: "user.platform_id", ranking: "cud.rank" },
     ])
     .from(`${USER_DATA_TABLE} as cud`)
-    .join("User", "User.No", "cud.id")
-    .where("User.platformId", userId);
+    .join("user", "user.id", "cud.id")
+    .where("user.platform_id", userId);
 
   let userData = rows[0] || { userId, id: 0, exp: 0, level: 0, ranking: "?" };
 
