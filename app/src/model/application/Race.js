@@ -26,7 +26,7 @@ class Race extends Base {
   getNeedAdvance(intervalMinutes = 10) {
     return this.knex
       .where("status", "running")
-      .where("updated_at", "<=", mysql.raw(`NOW() - INTERVAL ${intervalMinutes} MINUTE`));
+      .where("updated_at", "<=", mysql.raw("NOW() - INTERVAL ? MINUTE", [intervalMinutes]));
   }
 
   /** Get races where betting period has ended but status is still betting */

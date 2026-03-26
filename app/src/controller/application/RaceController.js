@@ -3,11 +3,7 @@ const RaceService = require("../../service/RaceService");
 const { race } = require("../../model/application/Race");
 const { raceRunner } = require("../../model/application/RaceRunner");
 const { raceBet } = require("../../model/application/RaceBet");
-const { raceEvent } = require("../../model/application/RaceEvent");
 const { generateRaceCarousel } = require("../../templates/application/Race");
-const config = require("config");
-
-const raceConfig = config.get("minigame.race");
 
 exports.router = [
   text(/^[.#/](賽跑)$/i, showRaceStatus),
@@ -16,8 +12,10 @@ exports.router = [
 ];
 
 async function showRaceStatus(context) {
-  const activeRace = await race.getActive();
-  const recentFinished = await race.getRecentFinished(5);
+  const [activeRace, recentFinished] = await Promise.all([
+    race.getActive(),
+    race.getRecentFinished(5),
+  ]);
 
   if (!activeRace && recentFinished.length === 0) {
     await context.replyText("目前沒有進行中的比賽，請等待下一場開賽！");
@@ -26,12 +24,9 @@ async function showRaceStatus(context) {
 
   const races = [];
 
-  // Add active race bubbles
   if (activeRace) {
-    const runners = await raceRunner.getByRace(activeRace.id);
-    const events = await raceEvent.getByRace(activeRace.id);
-    const odds = await RaceService.getOdds(activeRace.id);
-    races.push({ raceData: activeRace, runners, events, odds });
+    const details = await RaceService.getRaceDetails(activeRace.id);
+    races.push({ raceData: activeRace, ...details });
   }
 
   const flexMessage = generateRaceCarousel(races, recentFinished);

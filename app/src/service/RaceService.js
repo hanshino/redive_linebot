@@ -73,31 +73,38 @@ exports.placeBet = async function (userId, raceId, runnerId, amount) {
   }
 
   // Verify runner exists in this race
-  const runners = await raceRunner.getByRace(raceId);
-  const runner = runners.find(r => r.id === runnerId);
+  const runner = await mysql("race_runner").where({ id: runnerId, race_id: raceId }).first();
   if (!runner) {
     return { success: false, error: "找不到指定的參賽角色" };
   }
 
-  // Check balance and deduct
-  const { amount: balance } = (await inventory.getUserMoney(userId)) || { amount: 0 };
-  if (balance < amount) {
-    return { success: false, error: `女神石不足，目前餘額: ${balance}` };
-  }
+  // Atomic balance check + deduction inside transaction
+  return mysql.transaction(async trx => {
+    const balRow = await trx("Inventory")
+      .where({ userId, itemId: 999 })
+      .sum("itemAmount as total")
+      .first();
+    const balance = balRow?.total || 0;
 
-  await mysql.transaction(async trx => {
+    if (balance < amount) {
+      return { success: false, error: `女神石不足，目前餘額: ${balance}` };
+    }
+
     await trx("race_bet").insert({
       race_id: raceId,
       user_id: userId,
       runner_id: runnerId,
       amount,
     });
-    await trx("Inventory").insert([
-      { userId, itemId: 999, itemAmount: `${-amount}`, note: "race_bet" },
-    ]);
-  });
+    await trx("Inventory").insert({
+      userId,
+      itemId: 999,
+      itemAmount: -amount,
+      note: "race_bet",
+    });
 
-  return { success: true };
+    return { success: true };
+  });
 };
 
 /**
@@ -157,22 +164,26 @@ exports.advanceRound = async function (raceId) {
 
   // Write to DB in transaction
   return mysql.transaction(async trx => {
-    for (const u of updates) {
-      await trx("race_runner").where("id", u.id).update({
-        position: u.position,
-        stamina: u.stamina,
-        status: u.status,
-      });
-    }
+    await Promise.all(
+      updates.map(u =>
+        trx("race_runner").where("id", u.id).update({
+          position: u.position,
+          stamina: u.stamina,
+          status: u.status,
+        })
+      )
+    );
 
-    for (const evt of events) {
-      await trx("race_event").insert({
-        race_id: raceId,
-        round: newRound,
-        event_type: evt.type,
-        target_runners: JSON.stringify(evt.targets),
-        description: evt.description,
-      });
+    if (events.length > 0) {
+      await trx("race_event").insert(
+        events.map(evt => ({
+          race_id: raceId,
+          round: newRound,
+          event_type: evt.type,
+          target_runners: JSON.stringify(evt.targets),
+          description: evt.description,
+        }))
+      );
     }
 
     await trx("race").where("id", raceId).update({ round: newRound });
@@ -200,6 +211,13 @@ exports.advanceRound = async function (raceId) {
 exports.settleBets = async function (raceId) {
   const currentRace = await race.find(raceId);
   if (!currentRace || currentRace.status !== "finished" || !currentRace.winner_runner_id) return;
+
+  // Idempotency: skip if any bet already has payout set
+  const alreadySettled = await raceBet.knex
+    .where("race_id", raceId)
+    .whereNotNull("payout")
+    .first();
+  if (alreadySettled) return;
 
   const totalPool = await raceBet.getTotalPool(raceId);
   if (totalPool === 0) return;
@@ -248,14 +266,26 @@ exports.settleBets = async function (raceId) {
  * Get current odds for display
  */
 exports.getOdds = async function (raceId) {
-  const totalPool = await raceBet.getTotalPool(raceId);
   const poolByRunner = await raceBet.getPoolByRunner(raceId);
+  const totalPool = poolByRunner.reduce((sum, r) => sum + (r.total || 0), 0);
 
   return poolByRunner.map(r => ({
     runnerId: r.runner_id,
     pool: r.total,
     odds: r.total > 0 ? (totalPool / r.total).toFixed(2) : "∞",
   }));
+};
+
+/**
+ * Load full race details (runners, events, odds) in parallel
+ */
+exports.getRaceDetails = async function (raceId) {
+  const [runners, events, odds] = await Promise.all([
+    raceRunner.getByRace(raceId),
+    raceEvent.getByRace(raceId),
+    exports.getOdds(raceId),
+  ]);
+  return { runners, events, odds };
 };
 
 // --- Helpers ---
