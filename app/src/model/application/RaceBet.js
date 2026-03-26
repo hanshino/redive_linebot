@@ -11,7 +11,7 @@ class RaceBet extends Base {
   /** Get total pool amount for a race */
   async getTotalPool(raceId) {
     const result = await this.knex.where("race_id", raceId).sum({ total: "amount" }).first();
-    return result.total || 0;
+    return Number(result.total) || 0;
   }
 
   /** Get pool amount per runner */

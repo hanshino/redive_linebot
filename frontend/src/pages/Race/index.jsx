@@ -227,7 +227,7 @@ function RaceHeader({ race }) {
 
         {race.status === "betting" && race.betting_end_at && (
           <Typography variant="body2" color="text.secondary">
-            下注截止：{new Date(race.betting_end_at).toLocaleTimeString("zh-TW")}
+            下注截止：{new Date(race.betting_end_at).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
           </Typography>
         )}
         {race.status === "running" && (

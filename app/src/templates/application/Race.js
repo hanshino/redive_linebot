@@ -27,7 +27,9 @@ exports.generateRaceCarousel = (races, recentFinished = []) => {
   const allBubbles = [];
 
   for (const { raceData, runners, events, odds } of raceList) {
-    const rankedRunners = [...runners].sort((a, b) => b.position - a.position);
+    const rankedRunners = [...runners].sort((a, b) =>
+      raceData.status === "betting" ? a.lane - b.lane : b.position - a.position
+    );
 
     // Active races: track (with stamina + odds) + events
     const footer = generateFooter(raceData);
@@ -128,8 +130,9 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
     });
   }
 
+  const isBetting = raceData.status === "betting";
   const trackRows = rankedRunners.map((runner, index) =>
-    generateTrackRow(runner, index, oddsMap[runner.id])
+    generateTrackRow(runner, index, oddsMap[runner.id], isBetting)
   );
 
   return {
@@ -193,14 +196,15 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
   };
 }
 
-function generateTrackRow(runner, rankIndex, oddsInfo) {
+function generateTrackRow(runner, rankIndex, oddsInfo, isBetting = false) {
   const isWinner = runner.position >= trackLength;
   const isStunned = runner.status === "stunned";
   const isSlowed = runner.status === "slowed";
 
   const statusIcon = isStunned ? " 💫" : isSlowed ? " 🐌" : "";
-  const rankNum = `${rankIndex + 1}`;
-  const rankBgColor = RANK_COLORS[rankIndex] || "#555555";
+  // Betting phase: show character number so users can type .賽跑下注 {number} {amount}
+  const rankNum = isBetting ? `${runner.lane}` : `${rankIndex + 1}`;
+  const rankBgColor = isBetting ? "#3B82F6" : (RANK_COLORS[rankIndex] || "#555555");
   const nameColor = isWinner ? "#FFD700" : rankIndex < 3 ? "#FFFFFF" : "#999999";
   const barColor = isWinner
     ? "#FFD700"

@@ -7,7 +7,8 @@ const { generateRaceCarousel } = require("../../templates/application/Race");
 
 exports.router = [
   text(/^[.#/](賽跑)$/i, showRaceStatus),
-  text(/^[.#/]下注\s*(.+)\s+(\d+)$/i, placeBet),
+  text(/^[.#/]賽跑下注\s*(\d+)\s+(\d+)$/i, placeBet),
+  text(/^[.#/]賽跑下注\s*$/i, placeBetHelp),
   text(/^[.#/](賽跑紀錄)$/i, showBetHistory),
 ];
 
@@ -35,7 +36,7 @@ async function showRaceStatus(context) {
 
 async function placeBet(context, { match }) {
   const { userId } = context.event.source;
-  const characterName = match[1].trim();
+  const lane = parseInt(match[1], 10);
   const amount = parseInt(match[2], 10);
 
   const activeRace = await race.getActive();
@@ -45,10 +46,10 @@ async function placeBet(context, { match }) {
   }
 
   const runners = await raceRunner.getByRace(activeRace.id);
-  const target = runners.find(r => r.character_name === characterName);
+  const target = runners.find(r => r.lane === lane);
   if (!target) {
     const names = runners.map(r => `${r.lane}. ${r.character_name}`).join("\n");
-    await context.replyText(`找不到角色「${characterName}」，本場參賽角色:\n${names}`);
+    await context.replyText(`找不到角色編號 ${lane}，本場參賽角色:\n${names}`);
     return;
   }
 
@@ -61,8 +62,17 @@ async function placeBet(context, { match }) {
   const odds = await RaceService.getOdds(activeRace.id);
   const targetOdd = odds.find(o => o.runnerId === target.id);
   await context.replyText(
-    `✅ 成功下注 ${amount} 女神石在「${characterName}」！\n` +
+    `✅ 成功下注 ${amount} 女神石在 ${target.lane}號「${target.character_name}」！\n` +
       `目前賠率: ${targetOdd ? targetOdd.odds : "-"}x`
+  );
+}
+
+async function placeBetHelp(context) {
+  await context.replyText(
+    "📋 下注指令說明\n" +
+      "格式：.賽跑下注 {角色編號} {金額}\n" +
+      "範例：.賽跑下注 1 500\n\n" +
+      "輸入 .賽跑 查看目前比賽及角色編號"
   );
 }
 

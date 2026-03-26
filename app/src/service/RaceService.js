@@ -87,7 +87,7 @@ exports.placeBet = async function (userId, raceId, runnerId, amount) {
       .where({ userId, itemId: 999 })
       .sum("itemAmount as total")
       .first();
-    const balance = balRow?.total || 0;
+    const balance = Number(balRow?.total) || 0;
 
     if (balance < amount) {
       return { success: false, error: `女神石不足，目前餘額: ${balance}` };
@@ -238,7 +238,7 @@ exports.settleBets = async function (raceId) {
   // Parimutuel settlement
   const fee = Math.floor(totalPool * raceConfig.bet.feeRate);
   const prizePool = totalPool - fee;
-  const winnerTotal = winnerBets.reduce((sum, b) => sum + b.amount, 0);
+  const winnerTotal = winnerBets.reduce((sum, b) => sum + Number(b.amount), 0);
 
   await mysql.transaction(async trx => {
     for (const bet of winnerBets) {
@@ -264,12 +264,12 @@ exports.settleBets = async function (raceId) {
  */
 exports.getOdds = async function (raceId) {
   const poolByRunner = await raceBet.getPoolByRunner(raceId);
-  const totalPool = poolByRunner.reduce((sum, r) => sum + (r.total || 0), 0);
+  const totalPool = poolByRunner.reduce((sum, r) => sum + Number(r.total || 0), 0);
 
   return poolByRunner.map(r => ({
     runnerId: r.runner_id,
     pool: r.total,
-    odds: r.total > 0 ? (totalPool / r.total).toFixed(2) : "∞",
+    odds: Number(r.total) > 0 ? (totalPool / Number(r.total)).toFixed(2) : "∞",
   }));
 };
 

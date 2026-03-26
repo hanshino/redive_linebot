@@ -59,7 +59,7 @@
       },
       "bet": {
         "minAmount": 10,
-        "maxAmount": 50000,
+        "maxAmount": 1000000,
         "feeRate": 0.1
       },
       "schedule": {
