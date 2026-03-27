@@ -2,7 +2,11 @@ const cron = require("cron").CronJob;
 const crontab = require("./config/crontab.config");
 const Task = require("./src/model/application/Task");
 const moment = require("moment");
-require("dotenv").config({ path: "../.env" });
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config({
+    path: require("path").resolve(__dirname, "../.env"),
+  });
+}
 
 const jobs = [];
 
