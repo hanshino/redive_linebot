@@ -44,7 +44,7 @@ module.exports = {
     id = typeId || id;
 
     const liffurl = `${host}${id}`;
-    return path ? `${liffurl}?reactRedirectUri=${path}` : liffurl;
+    return path ? `${liffurl}${path}` : liffurl;
   },
 
   /**

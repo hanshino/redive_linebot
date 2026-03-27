@@ -78,11 +78,7 @@ function genPuddingStatus() {
         },
         genRowButtons([
           genLinkButton("首頁", "#00bcd488", `${getLiffUri("full")}`),
-          genLinkButton(
-            "使用手冊",
-            "#00bcd488",
-            `${getLiffUri("tall")}?reactRedirectUri=/Panel/Manual`
-          ),
+          genLinkButton("使用手冊", "#00bcd488", `${getLiffUri("tall")}/panel/manual`),
         ]),
         genRowButtons([
           genLinkButton("GitHub", config.get("color.github"), config.get("links.github")),

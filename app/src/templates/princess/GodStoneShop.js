@@ -125,9 +125,7 @@ exports.genShopItem = function ({ itemId, image, name, price, star }) {
           ],
           action: {
             type: "uri",
-            uri: `${common.getLiffUri(
-              "full"
-            )}?reactRedirectUri=/Gacha/Exchange?exchangeId=${itemId}`,
+            uri: `${common.getLiffUri("full")}/gacha/exchange?exchangeId=${itemId}`,
           },
           paddingTop: "lg",
         },

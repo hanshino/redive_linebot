@@ -1,67 +1,106 @@
-import { createContext, useEffect, useState, useMemo, useCallback } from "react";
+import { createContext, useEffect, useRef, useState, useMemo, useCallback } from "react";
 import liff from "@line/liff";
-import api from "../services/api";
+import api, { setAuthToken, clearAuthToken } from "../services/api";
 import { FullPageLoading } from "../components/Loading";
+
+const TOKEN_KEY = "liff_access_token";
+const SIZE_KEY = "liff_size";
+const DEFAULT_SIZE = "full";
 
 export const LiffContext = createContext({
   ready: false,
-  initialized: false,
   loggedIn: false,
   liffContext: {},
   login: () => {},
   logout: () => {},
 });
 
+function getLiffSize() {
+  return window.localStorage.getItem(SIZE_KEY) || DEFAULT_SIZE;
+}
+
+/**
+ * Fetch LIFF ID and call liff.init().
+ */
+async function initLiffSdk() {
+  const { data } = await api.get(`/api/liff-ids?size=${getLiffSize()}`);
+  await liff.init({ liffId: data.id });
+  return data.id;
+}
+
 export default function LiffProvider({ children }) {
   const [ready, setReady] = useState(false);
-  const [initialized, setInitialized] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [liffCtx, setLiffCtx] = useState({});
+  const initPromiseRef = useRef(null);
 
   useEffect(() => {
-    const size = window.localStorage.getItem("liff_size") || "full";
+    const isLiffRoute = window.location.pathname.startsWith("/liff/");
+    const storedToken = window.localStorage.getItem(TOKEN_KEY);
 
-    api
-      .get(`/api/liff-ids?size=${size}`)
-      .then(res => res.data)
-      .then(data => liff.init({ liffId: data.id }))
-      .then(() => {
-        setInitialized(true);
-        if (liff.isLoggedIn()) {
-          const token = liff.getAccessToken();
-          api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          setLoggedIn(true);
-          try {
-            setLiffCtx(liff.getContext() || {});
-          } catch {
-            /* ignore */
+    // Fast path: not a LIFF route and we have a stored token
+    if (!isLiffRoute && storedToken) {
+      setAuthToken(storedToken);
+      setLoggedIn(true);
+      setReady(true);
+      return;
+    }
+
+    // LIFF route: full SDK init to process OAuth code
+    if (isLiffRoute) {
+      initPromiseRef.current = initLiffSdk()
+        .then(() => {
+          if (liff.isLoggedIn()) {
+            const token = liff.getAccessToken();
+            window.localStorage.setItem(TOKEN_KEY, token);
+            setAuthToken(token);
+            setLoggedIn(true);
+            try {
+              setLiffCtx(liff.getContext() || {});
+            } catch (err) {
+              console.warn("Failed to get LIFF context:", err);
+            }
           }
-        }
-      })
-      .catch(err => {
-        console.warn("LIFF init failed:", err);
-      })
-      .finally(() => {
-        setReady(true);
-      });
+        })
+        .catch(err => console.warn("LIFF init failed:", err))
+        .finally(() => setReady(true));
+      return;
+    }
+
+    // Non-LIFF route, no stored token: just mark ready (not logged in)
+    setReady(true);
   }, []);
 
-  const login = useCallback(() => {
-    if (initialized) {
-      liff.login();
+  const login = useCallback(async () => {
+    // Reuse in-flight init or start a new one
+    if (!initPromiseRef.current) {
+      initPromiseRef.current = initLiffSdk();
     }
-  }, [initialized]);
+    try {
+      await initPromiseRef.current;
+    } catch (err) {
+      console.warn("LIFF init failed:", err);
+      return;
+    }
+    const { pathname, search } = window.location;
+    const redirectUri = `${window.location.origin}/liff/${getLiffSize()}${pathname}${search}`;
+    liff.login({ redirectUri });
+  }, []);
 
   const logout = useCallback(() => {
-    if (initialized) {
+    window.localStorage.removeItem(TOKEN_KEY);
+    clearAuthToken();
+    try {
       liff.logout();
-      window.location.reload();
+    } catch {
+      // SDK not initialized, nothing to clean up
     }
-  }, [initialized]);
+    window.location.reload();
+  }, []);
 
   const value = useMemo(
-    () => ({ ready, initialized, loggedIn, liffContext: liffCtx, login, logout }),
-    [ready, initialized, loggedIn, liffCtx, login, logout]
+    () => ({ ready, loggedIn, liffContext: liffCtx, login, logout }),
+    [ready, loggedIn, liffCtx, login, logout]
   );
 
   if (!ready) {

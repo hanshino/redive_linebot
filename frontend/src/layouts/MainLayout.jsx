@@ -28,7 +28,7 @@ export default function MainLayout() {
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [mobileOpen, setMobileOpen] = useState(false);
   const { mode, toggleColorMode } = useColorMode();
-  const { loggedIn, initialized, login, logout } = useLiff();
+  const { loggedIn, ready, login, logout } = useLiff();
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -59,7 +59,7 @@ export default function MainLayout() {
               {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
             </IconButton>
           </Tooltip>
-          {initialized && (
+          {ready && (
             <>
               <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: "rgba(255,255,255,0.3)" }} />
               <Tooltip title={loggedIn ? "登出" : "登入"}>
