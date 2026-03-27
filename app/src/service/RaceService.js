@@ -183,7 +183,7 @@ exports.advanceRound = async function (raceId) {
       );
     }
 
-    await trx("race").where("id", raceId).update({ round: newRound });
+    await trx("race").where("id", raceId).update({ round: newRound, updated_at: new Date() });
 
     // Check for winner — tiebreak: stamina (desc) → lane (asc)
     const finishers = updates.filter(u => u.position >= raceConfig.trackLength);
