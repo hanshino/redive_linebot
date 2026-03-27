@@ -62,21 +62,21 @@ describe("JankenRating", () => {
   });
 
   describe("getKFactor", () => {
-    it("returns 2 for bet < 500", () => {
-      expect(JankenRating.getKFactor(10)).toBe(2);
-      expect(JankenRating.getKFactor(499)).toBe(2);
+    it("returns 8 for bet < 500", () => {
+      expect(JankenRating.getKFactor(10)).toBe(8);
+      expect(JankenRating.getKFactor(499)).toBe(8);
     });
-    it("returns 8 for bet 500-2999", () => {
-      expect(JankenRating.getKFactor(500)).toBe(8);
-      expect(JankenRating.getKFactor(2999)).toBe(8);
+    it("returns 16 for bet 500-2999", () => {
+      expect(JankenRating.getKFactor(500)).toBe(16);
+      expect(JankenRating.getKFactor(2999)).toBe(16);
     });
-    it("returns 16 for bet 3000-9999", () => {
-      expect(JankenRating.getKFactor(3000)).toBe(16);
-      expect(JankenRating.getKFactor(9999)).toBe(16);
+    it("returns 24 for bet 3000-9999", () => {
+      expect(JankenRating.getKFactor(3000)).toBe(24);
+      expect(JankenRating.getKFactor(9999)).toBe(24);
     });
-    it("returns 32 for bet >= 10000", () => {
-      expect(JankenRating.getKFactor(10000)).toBe(32);
-      expect(JankenRating.getKFactor(50000)).toBe(32);
+    it("returns 40 for bet >= 10000", () => {
+      expect(JankenRating.getKFactor(10000)).toBe(40);
+      expect(JankenRating.getKFactor(50000)).toBe(40);
     });
   });
 

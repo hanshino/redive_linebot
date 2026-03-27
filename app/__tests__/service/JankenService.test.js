@@ -16,6 +16,7 @@ jest.mock("../../src/model/application/JankenRating", () => ({
   update: jest.fn().mockResolvedValue(undefined),
   getRankTier: jest.fn(),
   getMaxBet: jest.fn(),
+  getMaxBounty: jest.fn().mockReturnValue(10000),
   getKFactor: jest.fn(),
 }));
 
@@ -134,17 +135,13 @@ describe("JankenService", () => {
   });
 
   describe("calculateBountyIncrement", () => {
-    it("returns 0 for bet 0", () => {
+    it("returns 0 for fee 0", () => {
       expect(JankenService.calculateBountyIncrement(0)).toBe(0);
     });
 
-    it("returns 50% of bet amount", () => {
-      expect(JankenService.calculateBountyIncrement(100)).toBe(50);
-      expect(JankenService.calculateBountyIncrement(1000)).toBe(500);
-    });
-
-    it("floors fractional results", () => {
-      expect(JankenService.calculateBountyIncrement(11)).toBe(5);
+    it("returns the fee amount directly", () => {
+      expect(JankenService.calculateBountyIncrement(100)).toBe(100);
+      expect(JankenService.calculateBountyIncrement(200)).toBe(200);
     });
   });
 
@@ -166,16 +163,23 @@ describe("JankenService", () => {
     it("increments winner streak and resets loser streak", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "winner", streak: 2, max_streak: 5, bounty: 100 })
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 2,
+          max_streak: 5,
+          bounty: 100,
+          rank_tier: "beginner",
+        })
         .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4, bounty: 300 });
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 1000,
+        fee: 200,
       });
 
       expect(result).toEqual({
         winnerStreak: 3,
-        winnerBounty: 600,
+        winnerBounty: 300,
         loserPreviousStreak: 3,
         loserBounty: 300,
       });
@@ -184,15 +188,22 @@ describe("JankenService", () => {
     it("updates max_streak when new record", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "winner", streak: 5, max_streak: 5, bounty: 200 })
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 5,
+          max_streak: 5,
+          bounty: 200,
+          rank_tier: "beginner",
+        })
         .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 1000,
+        fee: 200,
       });
 
       expect(result.winnerStreak).toBe(6);
-      expect(result.winnerBounty).toBe(700);
+      expect(result.winnerBounty).toBe(400);
     });
 
     it("does not change streaks on draw", async () => {
@@ -220,10 +231,19 @@ describe("JankenService", () => {
     it("handles p2 winning (p1Result is lose)", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "p2", streak: 0, max_streak: 1, bounty: 0 })
+        .mockResolvedValueOnce({
+          user_id: "p2",
+          streak: 0,
+          max_streak: 1,
+          bounty: 0,
+          rank_tier: "beginner",
+        })
         .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7, bounty: 500 });
 
-      const result = await JankenService.updateStreaks("p1", "p2", "lose", { betAmount: 1000 });
+      const result = await JankenService.updateStreaks("p1", "p2", "lose", {
+        betAmount: 1000,
+        fee: 200,
+      });
 
       expect(result.winnerStreak).toBe(1);
       expect(result.loserPreviousStreak).toBe(4);
@@ -232,11 +252,18 @@ describe("JankenService", () => {
     it("does not accumulate bounty when bet below minimum threshold", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "winner", streak: 3, max_streak: 5, bounty: 100 })
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 3,
+          max_streak: 5,
+          bounty: 100,
+          rank_tier: "beginner",
+        })
         .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 100,
+        fee: 20,
       });
 
       expect(result.winnerStreak).toBe(4);
@@ -246,12 +273,19 @@ describe("JankenService", () => {
     it("caps bounty claim by bet multiplier", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "winner", streak: 0, max_streak: 1, bounty: 0 })
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 0,
+          max_streak: 1,
+          bounty: 0,
+          rank_tier: "beginner",
+        })
         .mockResolvedValueOnce({ user_id: "loser", streak: 5, max_streak: 5, bounty: 10000 });
 
       // Bet 100 -> max claim = 100 * 5 = 500
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 100,
+        fee: 20,
       });
 
       expect(result.loserBounty).toBe(500);
@@ -260,12 +294,19 @@ describe("JankenService", () => {
     it("claims full bounty when bet is large enough", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       mockFirst
-        .mockResolvedValueOnce({ user_id: "winner", streak: 0, max_streak: 1, bounty: 0 })
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 0,
+          max_streak: 1,
+          bounty: 0,
+          rank_tier: "beginner",
+        })
         .mockResolvedValueOnce({ user_id: "loser", streak: 5, max_streak: 5, bounty: 5000 });
 
       // Bet 5000 -> max claim = 5000 * 5 = 25000, bounty is 5000 so full claim
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 5000,
+        fee: 1000,
       });
 
       expect(result.loserBounty).toBe(5000);
