@@ -213,17 +213,9 @@ async function OrderBased(context, { next }) {
         type: "carousel",
         contents: [
           commonTemplate.genLinkBubble("🏠首頁", `${liffUri}`, "red"),
-          commonTemplate.genLinkBubble("🏆排行榜", `${liffUri}?reactRedirectUri=/Rankings`, "red"),
-          commonTemplate.genLinkBubble(
-            "📑指令集",
-            `${liffUri}?reactRedirectUri=/Panel/Manual`,
-            "red"
-          ),
-          commonTemplate.genLinkBubble(
-            "⏱️刀軸轉換",
-            `${liffUri}?reactRedirectUri=/Tools/BattleTime`,
-            "green"
-          ),
+          commonTemplate.genLinkBubble("🏆排行榜", `${liffUri}/rankings`, "red"),
+          commonTemplate.genLinkBubble("📑指令集", `${liffUri}/panel/manual`, "red"),
+          commonTemplate.genLinkBubble("⏱️刀軸轉換", `${liffUri}/tools/battle-time`, "green"),
           commonTemplate.genLinkBubble(
             "巴哈更新",
             pConfig.get("links.bahamut"),
@@ -299,7 +291,7 @@ function BattleOrder(context) {
     text(["#刀軸轉換", ".bt", "/bt"], context => {
       let bubble = commonTemplate.genLinkBubble(
         "⏱️刀軸轉換",
-        `${commonTemplate.getLiffUri("full")}?reactRedirectUri=/Tools/BattleTime`,
+        `${commonTemplate.getLiffUri("full")}/tools/battle-time`,
         "green"
       );
 

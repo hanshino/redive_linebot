@@ -22,7 +22,7 @@ exports.router = [
 ];
 
 function showManage(context) {
-  const link = `${getLiffUri("full")}?reactRedirectUri=/Trade/Manage`;
+  const link = `${getLiffUri("full")}/trade/manage`;
   const bubble = genLinkBubble("交易管理", link, "#e0f7fa");
   return context.replyFlex("交易管理", bubble);
 }
@@ -40,7 +40,7 @@ async function trade(context) {
   }
 
   const targetUserId = get(mentionees, "[0].userId");
-  const link = `${getLiffUri("full")}?reactRedirectUri=/Trade/Order?target_id=${targetUserId}`;
+  const link = `${getLiffUri("full")}/trade/order?target_id=${targetUserId}`;
   const bubble = genLinkBubble("交易申請", link, "#e0f7fa");
 
   const { displayName } = await getProfile(context, targetUserId);

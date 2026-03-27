@@ -40,7 +40,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* LIFF routes */}
-        <Route path="/liff/:size" element={<LiffLayout />} />
+        <Route path="/liff/:size/*" element={<LiffLayout />} />
 
         {/* Main routes */}
         <Route element={<MainLayout />}>
