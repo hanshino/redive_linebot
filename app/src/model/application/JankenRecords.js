@@ -75,8 +75,8 @@ exports.getRecentMatches = async (limit = 20) => {
         `${TABLE}.target_user_id`
       );
     })
-    .join("User as u1", "u1.platformId", "=", `${TABLE}.user_id`)
-    .join("User as u2", "u2.platformId", "=", `${TABLE}.target_user_id`)
+    .join("user as u1", "u1.platform_id", "=", `${TABLE}.user_id`)
+    .join("user as u2", "u2.platform_id", "=", `${TABLE}.target_user_id`)
     .whereNotNull(`${TABLE}.p1_choice`)
     .orderBy(`${TABLE}.created_at`, "desc")
     .limit(limit);

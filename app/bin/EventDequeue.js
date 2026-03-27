@@ -199,9 +199,9 @@ async function getUserData(userId) {
 
   let result = { userId, status: -1, groupList: [] };
   let userData = await mysql
-    .select([{ userId: "platformId" }, "status"])
-    .from("User")
-    .where({ platformId: userId });
+    .select([{ userId: "platform_id" }, "status"])
+    .from("user")
+    .where({ platform_id: userId });
 
   if (userData.length !== 0) {
     result = { ...result, ...userData[0] };
@@ -226,10 +226,10 @@ async function userRecord(userId) {
   let userData = await getUserData(userId);
 
   if (userData.status === -1) {
-    await mysql.insert({ platform, platformId: userId, createDTM: new Date() }).into("User");
+    await mysql.insert({ platform, platform_id: userId, created_at: new Date() }).into("user");
     clearUserCache(userId);
   } else if (userData.status === 0) {
-    await mysql.update({ status: 1, closeDTM: null }).from("User").where({ status: 0, platformId: userId });
+    await mysql.update({ status: 1, closed_at: null }).from("user").where({ status: 0, platform_id: userId });
   }
 }
 
@@ -246,7 +246,7 @@ async function groupRecord(groupId) {
 
 function closeUser(userId) {
   clearUserCache(userId);
-  return mysql.update({ status: 0, closeDTM: null }).from("User").where({ status: 1, platformId: userId });
+  return mysql.update({ status: 0, closed_at: null }).from("user").where({ status: 1, platform_id: userId });
 }
 
 async function setMemberStatus(userId, groupId, status) {

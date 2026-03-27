@@ -65,12 +65,12 @@ async function deliveryGachaSystem() {
   const userIdMap = {};
   const ids = [...collectUsers, ...richUsers].map(user => user.userId);
   const users = await mysql
-    .select([{ id: "No" }, "platformId"])
-    .from("User")
-    .whereIn("platformId", ids);
+    .select([{ id: "id" }, "platform_id"])
+    .from("user")
+    .whereIn("platform_id", ids);
 
   users.forEach(user => {
-    userIdMap[user.platformId] = user.id;
+    userIdMap[user.platform_id] = user.id;
   });
 
   const trx = await mysql.transaction();

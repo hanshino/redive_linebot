@@ -70,10 +70,10 @@ async function getUserByUserId(userId) {
   if (data !== null) return JSON.parse(data);
 
   let rows = await mysql
-    .select([{ id: "cud.id", exp: "cud.experience", userId: "User.platformId" }])
+    .select([{ id: "cud.id", exp: "cud.experience", userId: "user.platform_id" }])
     .from("chat_user_data as cud")
-    .join("User", "User.No", "cud.id")
-    .where("User.platformId", userId);
+    .join("user", "user.id", "cud.id")
+    .where("user.platform_id", userId);
 
   data = rows[0] || {};
   await redis.set(userKey, JSON.stringify(data), { EX: 600 });
@@ -82,7 +82,7 @@ async function getUserByUserId(userId) {
 
 function genInsertUser(userId) {
   return mysql.from(mysql.raw("?? (??)", ["chat_user_data", "id"])).insert(function () {
-    this.from("User as u").where("u.platformId", userId).select({ id: "No" });
+    this.from("user as u").where("u.platform_id", userId).select({ id: "id" });
   });
 }
 
