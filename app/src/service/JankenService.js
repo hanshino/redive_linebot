@@ -11,8 +11,6 @@ const REDIS_PREFIX = config.get("redis.keys.jankenDecide");
 const CHALLENGE_PREFIX = config.get("redis.keys.jankenChallenge");
 const FEE_RATE = config.get("minigame.janken.bet.feeRate");
 const MIN_BET = config.get("minigame.janken.bet.minAmount");
-const BOUNTY_RATE = config.get("minigame.janken.streak.bountyRate");
-const STREAK_MAX_BOUNTY = config.get("minigame.janken.streak.maxBounty");
 const BOUNTY_MIN_BET = config.get("minigame.janken.streak.bountyMinBet");
 const BOUNTY_CLAIM_MULTIPLIER = config.get("minigame.janken.streak.bountyClaimMultiplier");
 
@@ -70,11 +68,16 @@ exports.tryEscrowOnce = async function (matchId, userId, amount) {
   return result;
 };
 
-exports.calculateBountyIncrement = function (betAmount) {
-  return Math.floor(betAmount * BOUNTY_RATE);
+exports.calculateBountyIncrement = function (fee) {
+  return fee;
 };
 
-exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmount = 0 } = {}) {
+exports.updateStreaks = async function (
+  p1UserId,
+  p2UserId,
+  p1Result,
+  { betAmount = 0, fee = 0 } = {}
+) {
   if (p1Result === "draw" || !betAmount || betAmount <= 0) {
     return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
   }
@@ -96,12 +99,13 @@ exports.updateStreaks = async function (p1UserId, p2UserId, p1Result, { betAmoun
 
     const newStreak = winnerRating.streak + 1;
     const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
-    // Bounty only accumulates when bet meets minimum threshold
+    // Bounty funded from match fee — no new money created
     const bountyIncrement =
       newStreak >= 2 && betAmount >= BOUNTY_MIN_BET
-        ? exports.calculateBountyIncrement(betAmount)
+        ? exports.calculateBountyIncrement(fee)
         : 0;
-    const newBounty = Math.min(winnerRating.bounty + bountyIncrement, STREAK_MAX_BOUNTY);
+    const maxBounty = JankenRating.getMaxBounty(winnerRating.rank_tier);
+    const newBounty = Math.min(winnerRating.bounty + bountyIncrement, maxBounty);
     // Bounty claim capped by claimer's bet amount
     const loserBounty = Math.min(loserRating.bounty, betAmount * BOUNTY_CLAIM_MULTIPLIER);
 
@@ -232,7 +236,10 @@ exports.resolveMatch = async function ({
   ]);
 
   const eloResult = await exports.updateElo(p1UserId, p2UserId, p1Result, betAmount);
-  const streakResult = await exports.updateStreaks(p1UserId, p2UserId, p1Result, { betAmount });
+  const streakResult = await exports.updateStreaks(p1UserId, p2UserId, p1Result, {
+    betAmount,
+    fee: betFee,
+  });
 
   // Persist match details for frontend leaderboard
   const matchDetails = {};
@@ -291,9 +298,15 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
       trx("janken_rating").where({ user_id: p2UserId }).forUpdate().first(),
     ]);
 
-    const p1EloChange = exports.calculateEloChange(p1Rating.elo, p2Rating.elo, p1Result, betAmount);
+    const p1Streak = p1Rating.streak || 0;
+    const p2Streak = p2Rating.streak || 0;
+    const p1EloChange = exports.calculateEloChange(p1Rating.elo, p2Rating.elo, p1Result, betAmount, {
+      streak: p1Streak,
+    });
     const p2Result = p1Result === "win" ? "lose" : "win";
-    const p2EloChange = exports.calculateEloChange(p2Rating.elo, p1Rating.elo, p2Result, betAmount);
+    const p2EloChange = exports.calculateEloChange(p2Rating.elo, p1Rating.elo, p2Result, betAmount, {
+      streak: p2Streak,
+    });
 
     const p1NewElo = Math.max(0, p1Rating.elo + p1EloChange);
     const p2NewElo = Math.max(0, p2Rating.elo + p2EloChange);
@@ -333,14 +346,23 @@ exports.calculateExpectedWinRate = function (myElo, opponentElo) {
   return 1 / (1 + Math.pow(10, (opponentElo - myElo) / 400));
 };
 
-exports.calculateEloChange = function (myElo, opponentElo, result, betAmount) {
+exports.getStreakMultiplier = function (streak) {
+  const tiers = config.get("minigame.janken.elo.streakBonus");
+  for (const tier of tiers) {
+    if (streak >= tier.minStreak) return tier.multiplier;
+  }
+  return 1;
+};
+
+exports.calculateEloChange = function (myElo, opponentElo, result, betAmount, { streak = 0 } = {}) {
   if (result === "draw") return 0;
   const K = JankenRating.getKFactor(betAmount);
   const expected = exports.calculateExpectedWinRate(myElo, opponentElo);
   const actual = result === "win" ? 1 : 0;
   const raw = K * (actual - expected);
   if (raw >= 0) {
-    return Math.floor(raw);
+    const multiplier = result === "win" ? exports.getStreakMultiplier(streak) : 1;
+    return Math.floor(raw * multiplier);
   }
   const lossFactor = config.get("minigame.janken.elo.lossFactor");
   return Math.ceil(raw * lossFactor);

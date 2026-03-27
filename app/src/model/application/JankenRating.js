@@ -86,6 +86,11 @@ exports.getMaxBet = function (rankTier) {
   return maxByRank[rankTier] || maxByRank.beginner;
 };
 
+exports.getMaxBounty = function (rankTier) {
+  const maxByRank = config.get("minigame.janken.streak.maxBountyByRank");
+  return maxByRank[rankTier] || maxByRank.beginner;
+};
+
 exports.find = async function (userId) {
   return mysql(TABLE).where({ user_id: userId }).first();
 };

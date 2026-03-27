@@ -91,20 +91,30 @@
         "vs": "/assets/janken/vs.png"
       },
       "streak": {
-        "bountyRate": 0.5,
-        "maxBounty": 10000,
+        "maxBountyByRank": {
+          "beginner": 10000,
+          "challenger": 25000,
+          "fighter": 50000,
+          "master": 80000,
+          "legend": 120000
+        },
         "bountyMinBet": 1000,
         "bountyClaimMultiplier": 5
       },
       "elo": {
         "initial": 1000,
         "kFactorTiers": [
-          { "minBet": 10000, "k": 32 },
-          { "minBet": 3000, "k": 16 },
-          { "minBet": 500, "k": 8 },
-          { "minBet": 0, "k": 2 }
+          { "minBet": 10000, "k": 40 },
+          { "minBet": 3000, "k": 24 },
+          { "minBet": 500, "k": 16 },
+          { "minBet": 0, "k": 8 }
         ],
-        "lossFactor": 0.5
+        "lossFactor": 0.5,
+        "streakBonus": [
+          { "minStreak": 7, "multiplier": 2.0 },
+          { "minStreak": 5, "multiplier": 1.5 },
+          { "minStreak": 3, "multiplier": 1.25 }
+        ]
       }
     }
   },
