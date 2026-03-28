@@ -74,7 +74,7 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
     subtitle = `截止時間: ${endTime}`;
   } else if (raceData.status === "running") {
     subtitle = `第 ${raceData.round} 回合`;
-  } else if (winner) {
+  } else {
     subtitle = `共 ${raceData.round} 回合`;
   }
 
