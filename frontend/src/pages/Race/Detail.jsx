@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -22,6 +22,7 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import BoltIcon from "@mui/icons-material/Bolt";
 import { getRaceById } from "../../api/race";
+import StatItem from "./StatItem";
 
 const RANK_STYLES = {
   1: { bg: "#F59E0B", text: "#fff" },
@@ -42,6 +43,11 @@ export default function RaceDetail() {
       .catch(() => setError("無法載入賽事資料"))
       .finally(() => setLoading(false));
   }, [raceId]);
+
+  const reversedEvents = useMemo(
+    () => (data?.events ? [...data.events].reverse() : []),
+    [data?.events]
+  );
 
   if (loading) {
     return (
@@ -313,7 +319,7 @@ export default function RaceDetail() {
                   divider={<Divider sx={{ my: 0.5 }} />}
                   sx={{ maxHeight: 500, overflowY: "auto" }}
                 >
-                  {[...events].reverse().map(event => (
+                  {reversedEvents.map(event => (
                     <Box
                       key={event.id}
                       sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.75 }}
@@ -352,18 +358,3 @@ export default function RaceDetail() {
   );
 }
 
-function StatItem({ label, value, highlight }) {
-  return (
-    <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.2 }}>
-        {label}
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 700, color: highlight ? "warning.main" : "text.primary" }}
-      >
-        {value}
-      </Typography>
-    </Box>
-  );
-}

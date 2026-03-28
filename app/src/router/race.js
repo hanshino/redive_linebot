@@ -113,10 +113,26 @@ router.get(
 
     // Add settlement summary for finished races
     if (raceData.status === "finished" && raceData.winner_runner_id) {
-      const allBets = await raceBet.knex.where("race_id", raceId);
-      const totalPool = allBets.reduce((sum, b) => sum + Number(b.amount), 0);
-      const winnerBets = allBets.filter(b => b.runner_id === raceData.winner_runner_id);
-      const winnerPool = winnerBets.reduce((sum, b) => sum + Number(b.amount), 0);
+      const [totalPool, winnerPool, betStats] = await Promise.all([
+        raceBet.getTotalPool(raceId),
+        raceBet.knex
+          .where({ race_id: raceId, runner_id: raceData.winner_runner_id })
+          .sum({ total: "amount" })
+          .first()
+          .then(r => Number(r?.total) || 0),
+        raceBet.knex
+          .where("race_id", raceId)
+          .select(
+            raceBet.connection.raw("COUNT(*) as totalBets"),
+            raceBet.connection.raw("COUNT(DISTINCT user_id) as totalBettors"),
+            raceBet.connection.raw(
+              "SUM(CASE WHEN runner_id = ? THEN 1 ELSE 0 END) as winnerBets",
+              [raceData.winner_runner_id]
+            )
+          )
+          .first(),
+      ]);
+
       const feeRate = config.get("minigame.race.bet.feeRate");
       const prizePool = Math.floor(totalPool * (1 - feeRate));
 
@@ -128,9 +144,9 @@ router.get(
         multiplier: winnerPool > 0 ? (prizePool / winnerPool).toFixed(2) : null,
       };
       result.betStats = {
-        totalBets: allBets.length,
-        totalBettors: new Set(allBets.map(b => b.user_id)).size,
-        winnerBets: winnerBets.length,
+        totalBets: Number(betStats.totalBets),
+        totalBettors: Number(betStats.totalBettors),
+        winnerBets: Number(betStats.winnerBets),
       };
     }
 

@@ -18,13 +18,15 @@ const STATUS_COLOR = {
 
 const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32", "#555555", "#555555"];
 
+const RULES_BUBBLE = generateRulesBubble();
+
 /**
  * Generate race Flex Message carousel
  */
 exports.generateRaceCarousel = (races, recentFinished = []) => {
   // Support both single object and array
   const raceList = Array.isArray(races) ? races : [races];
-  const allBubbles = [generateRulesBubble()];
+  const allBubbles = [RULES_BUBBLE];
 
   for (const { raceData, runners, events, odds } of raceList) {
     const rankedRunners = [...runners].sort((a, b) =>

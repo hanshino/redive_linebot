@@ -86,14 +86,14 @@ describe("Race simulation parameter validation", () => {
     expect(unfinished.length).toBe(0);
   });
 
-  test("average race duration is between 60 and 150 rounds", () => {
+  test("average race duration is between 30 and 100 rounds", () => {
     const avgRounds = results.reduce((s, r) => s + r.round, 0) / results.length;
-    expect(avgRounds).toBeGreaterThanOrEqual(60);
-    expect(avgRounds).toBeLessThanOrEqual(150);
+    expect(avgRounds).toBeGreaterThanOrEqual(30);
+    expect(avgRounds).toBeLessThanOrEqual(100);
   });
 
-  test("no race finishes in fewer than 30 rounds", () => {
-    const tooShort = results.filter(r => r.round < 30);
+  test("no race finishes in fewer than 15 rounds", () => {
+    const tooShort = results.filter(r => r.round < 15);
     expect(tooShort.length).toBe(0);
   });
 

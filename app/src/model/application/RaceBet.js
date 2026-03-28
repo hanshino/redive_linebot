@@ -1,4 +1,5 @@
 const Base = require("../base");
+const config = require("config");
 
 class RaceBet extends Base {
   constructor() {
@@ -61,28 +62,30 @@ class RaceBet extends Base {
 
     if (bets.length === 0) return { bets: [], settlements: {} };
 
-    // Collect unique race IDs to fetch settlement summaries
-    const raceIds = [...new Set(bets.map(b => b.race_id))];
+    // Collect finished race IDs that need settlement summaries
+    const finishedRaceIds = [
+      ...new Set(bets.filter(b => b.race_status === "finished").map(b => b.race_id)),
+    ];
 
-    // For each finished race, compute settlement summary
+    if (finishedRaceIds.length === 0) return { bets, settlements: {} };
+
+    // Single grouped query: total pool + winner pool per race
+    const poolRows = await this.knex
+      .where("race_id", "in", finishedRaceIds)
+      .groupBy("race_id", "runner_id")
+      .select("race_id", "runner_id")
+      .sum({ total: "amount" });
+
+    const feeRate = config.get("minigame.race.bet.feeRate");
     const settlements = {};
-    for (const raceId of raceIds) {
+
+    for (const raceId of finishedRaceIds) {
       const bet = bets.find(b => b.race_id === raceId);
-      if (bet.race_status !== "finished") continue;
-
-      const poolResult = await this.knex
-        .where("race_id", raceId)
-        .sum({ total: "amount" })
-        .first();
-      const totalPool = Number(poolResult.total) || 0;
-
-      const winnerPoolResult = await this.knex
-        .where({ race_id: raceId, runner_id: bet.winner_runner_id })
-        .sum({ total: "amount" })
-        .first();
-      const winnerPool = Number(winnerPoolResult?.total) || 0;
-
-      const feeRate = 0.1;
+      const raceRows = poolRows.filter(r => r.race_id === raceId);
+      const totalPool = raceRows.reduce((sum, r) => sum + Number(r.total), 0);
+      const winnerPool = Number(
+        raceRows.find(r => r.runner_id === bet.winner_runner_id)?.total ?? 0
+      );
       const prizePool = Math.floor(totalPool * (1 - feeRate));
 
       settlements[raceId] = {

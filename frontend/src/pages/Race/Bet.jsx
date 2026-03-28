@@ -32,6 +32,7 @@ import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
 import api from "../../services/api";
 import { getCurrentRace, placeBet, getMyBets, getMyBetHistory } from "../../api/race";
+import StatItem from "./StatItem";
 
 const QUICK_AMOUNTS = [100, 500, 1000];
 
@@ -280,7 +281,6 @@ function BetHistory({ isLoggedIn }) {
     );
   }
 
-  // Group bets by race_id
   const grouped = data.bets.reduce((acc, bet) => {
     if (!acc[bet.race_id]) acc[bet.race_id] = [];
     acc[bet.race_id].push(bet);
@@ -376,11 +376,11 @@ function BetHistory({ isLoggedIn }) {
                   }}
                 >
                   <Stack direction="row" spacing={2} flexWrap="wrap">
-                    <SettlementStat label="總注額" value={`${settlement.totalPool.toLocaleString()} 石`} />
-                    <SettlementStat label="系統抽成" value={`${(settlement.feeRate * 100).toFixed(0)}%`} />
-                    <SettlementStat label="中獎總注額" value={`${settlement.winnerPool.toLocaleString()} 石`} />
+                    <StatItem label="總注額" value={`${settlement.totalPool.toLocaleString()} 石`} />
+                    <StatItem label="系統抽成" value={`${(settlement.feeRate * 100).toFixed(0)}%`} />
+                    <StatItem label="中獎總注額" value={`${settlement.winnerPool.toLocaleString()} 石`} />
                     {settlement.multiplier && (
-                      <SettlementStat label="中獎倍數" value={`${settlement.multiplier}x`} highlight />
+                      <StatItem label="中獎倍數" value={`${settlement.multiplier}x`} highlight />
                     )}
                   </Stack>
                 </Box>
@@ -393,24 +393,6 @@ function BetHistory({ isLoggedIn }) {
   );
 }
 
-function SettlementStat({ label, value, highlight }) {
-  return (
-    <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.2 }}>
-        {label}
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{
-          fontWeight: 700,
-          color: highlight ? "warning.main" : "text.primary",
-        }}
-      >
-        {value}
-      </Typography>
-    </Box>
-  );
-}
 
 function EmptyState({ message, sub }) {
   return (

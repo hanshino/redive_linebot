@@ -18,18 +18,18 @@ const _ = {
 // ─── Config (mirrors app/config/default.json with proposed changes) ──────────
 
 const BASE_CONFIG = {
-  trackLength: 80,
+  trackLength: 50,
   runnerCount: 5,
   stamina: {
     initial: 100,
     minCost: 8,
     maxCost: 15,
-    recovery: 5,
+    recovery: 10,
   },
   movement: {
     baseMin: 0,
     baseMax: 2,
-    guaranteedMin: 0, // minimum move even at 0 stamina (0 = original behavior)
+    guaranteedMin: 1,
   },
   event: {
     triggerChance: 0.15,
