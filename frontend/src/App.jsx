@@ -8,6 +8,7 @@ import Rankings from "./pages/Rankings";
 import Janken from "./pages/Janken";
 import Race from "./pages/Race";
 import RaceBet from "./pages/Race/Bet";
+import RaceDetail from "./pages/Race/Detail";
 import GachaExchange from "./pages/Gacha/Exchange";
 import Bag from "./pages/Bag";
 import Equipment from "./pages/Equipment";
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="janken" element={<Janken />} />
           <Route path="race" element={<Race />} />
           <Route path="race/bet" element={<RaceBet />} />
+          <Route path="race/:raceId" element={<RaceDetail />} />
 
           {/* Gacha */}
           <Route path="gacha/exchange" element={<GachaExchange />} />

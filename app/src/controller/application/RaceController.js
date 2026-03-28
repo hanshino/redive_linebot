@@ -28,6 +28,16 @@ async function showRaceStatus(context) {
   if (activeRace) {
     const details = await RaceService.getRaceDetails(activeRace.id);
     races.push({ raceData: activeRace, ...details });
+  } else if (recentFinished.length > 0) {
+    // No active race — show the most recently finished race's track + events
+    const lastRaceId = recentFinished[0].id;
+    const [lastRace, details] = await Promise.all([
+      race.find(lastRaceId),
+      RaceService.getRaceDetails(lastRaceId),
+    ]);
+    if (lastRace) {
+      races.push({ raceData: lastRace, ...details });
+    }
   }
 
   const flexMessage = generateRaceCarousel(races, recentFinished);

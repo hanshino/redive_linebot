@@ -45,6 +45,18 @@ router.get(
   })
 );
 
+// Auth: get user's bet history with settlement details
+router.get(
+  "/my-history",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { userId } = req.profile;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+    const result = await raceBet.getUserBetHistory(userId, limit);
+    res.json(result);
+  })
+);
+
 // Auth: place bet
 router.post(
   "/bet",
@@ -97,7 +109,32 @@ router.get(
     if (!raceData) return res.status(404).json({ error: "Race not found" });
 
     const details = await RaceService.getRaceDetails(raceId);
-    res.json({ race: raceData, ...details });
+    const result = { race: raceData, trackLength, ...details };
+
+    // Add settlement summary for finished races
+    if (raceData.status === "finished" && raceData.winner_runner_id) {
+      const allBets = await raceBet.knex.where("race_id", raceId);
+      const totalPool = allBets.reduce((sum, b) => sum + Number(b.amount), 0);
+      const winnerBets = allBets.filter(b => b.runner_id === raceData.winner_runner_id);
+      const winnerPool = winnerBets.reduce((sum, b) => sum + Number(b.amount), 0);
+      const feeRate = config.get("minigame.race.bet.feeRate");
+      const prizePool = Math.floor(totalPool * (1 - feeRate));
+
+      result.settlement = {
+        totalPool,
+        prizePool,
+        winnerPool,
+        feeRate,
+        multiplier: winnerPool > 0 ? (prizePool / winnerPool).toFixed(2) : null,
+      };
+      result.betStats = {
+        totalBets: allBets.length,
+        totalBettors: new Set(allBets.map(b => b.user_id)).size,
+        winnerBets: winnerBets.length,
+      };
+    }
+
+    res.json(result);
   })
 );
 

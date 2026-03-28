@@ -40,22 +40,23 @@
   },
   "minigame": {
     "race": {
-      "trackLength": 10,
+      "trackLength": 50,
       "runnerCount": 5,
       "bettingDurationMinutes": 240,
-      "advanceIntervalMinutes": 10,
+      "advanceIntervalMinutes": 1,
       "stamina": {
         "initial": 100,
         "minCost": 8,
         "maxCost": 15,
-        "recovery": 5
+        "recovery": 10
       },
       "movement": {
         "baseMin": 0,
-        "baseMax": 2
+        "baseMax": 2,
+        "guaranteedMin": 1
       },
       "event": {
-        "triggerChance": 0.3
+        "triggerChance": 0.15
       },
       "bet": {
         "minAmount": 10,

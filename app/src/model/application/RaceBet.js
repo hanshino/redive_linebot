@@ -30,6 +30,72 @@ class RaceBet extends Base {
   getUserBets(raceId, userId) {
     return this.knex.where({ race_id: raceId, user_id: userId });
   }
+
+  /**
+   * Get user's bet history across races with settlement details.
+   * Returns bets joined with runner/character/race info + per-race settlement summary.
+   */
+  async getUserBetHistory(userId, limit = 20) {
+    const bets = await this.knex
+      .where("race_bet.user_id", userId)
+      .join("race_runner", "race_bet.runner_id", "race_runner.id")
+      .join("race_character", "race_runner.character_id", "race_character.id")
+      .join("race", "race_bet.race_id", "race.id")
+      .select(
+        "race_bet.id",
+        "race_bet.race_id",
+        "race_bet.runner_id",
+        "race_bet.amount",
+        "race_bet.payout",
+        "race_bet.created_at",
+        "race_character.name as character_name",
+        "race_character.avatar_url",
+        "race_runner.lane",
+        "race.status as race_status",
+        "race.round as race_round",
+        "race.winner_runner_id",
+        "race.finished_at"
+      )
+      .orderBy("race_bet.created_at", "desc")
+      .limit(limit);
+
+    if (bets.length === 0) return { bets: [], settlements: {} };
+
+    // Collect unique race IDs to fetch settlement summaries
+    const raceIds = [...new Set(bets.map(b => b.race_id))];
+
+    // For each finished race, compute settlement summary
+    const settlements = {};
+    for (const raceId of raceIds) {
+      const bet = bets.find(b => b.race_id === raceId);
+      if (bet.race_status !== "finished") continue;
+
+      const poolResult = await this.knex
+        .where("race_id", raceId)
+        .sum({ total: "amount" })
+        .first();
+      const totalPool = Number(poolResult.total) || 0;
+
+      const winnerPoolResult = await this.knex
+        .where({ race_id: raceId, runner_id: bet.winner_runner_id })
+        .sum({ total: "amount" })
+        .first();
+      const winnerPool = Number(winnerPoolResult?.total) || 0;
+
+      const feeRate = 0.1;
+      const prizePool = Math.floor(totalPool * (1 - feeRate));
+
+      settlements[raceId] = {
+        totalPool,
+        prizePool,
+        winnerPool,
+        feeRate,
+        multiplier: winnerPool > 0 ? (prizePool / winnerPool).toFixed(2) : null,
+      };
+    }
+
+    return { bets, settlements };
+  }
 }
 
 const raceBet = new RaceBet();
