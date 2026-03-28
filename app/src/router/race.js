@@ -45,6 +45,18 @@ router.get(
   })
 );
 
+// Auth: get user's bet history with settlement details
+router.get(
+  "/my-history",
+  verifyToken,
+  asyncHandler(async (req, res) => {
+    const { userId } = req.profile;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+    const result = await raceBet.getUserBetHistory(userId, limit);
+    res.json(result);
+  })
+);
+
 // Auth: place bet
 router.post(
   "/bet",
@@ -97,7 +109,48 @@ router.get(
     if (!raceData) return res.status(404).json({ error: "Race not found" });
 
     const details = await RaceService.getRaceDetails(raceId);
-    res.json({ race: raceData, ...details });
+    const result = { race: raceData, trackLength, ...details };
+
+    // Add settlement summary for finished races
+    if (raceData.status === "finished" && raceData.winner_runner_id) {
+      const [totalPool, winnerPool, betStats] = await Promise.all([
+        raceBet.getTotalPool(raceId),
+        raceBet.knex
+          .where({ race_id: raceId, runner_id: raceData.winner_runner_id })
+          .sum({ total: "amount" })
+          .first()
+          .then(r => Number(r?.total) || 0),
+        raceBet.knex
+          .where("race_id", raceId)
+          .select(
+            raceBet.connection.raw("COUNT(*) as totalBets"),
+            raceBet.connection.raw("COUNT(DISTINCT user_id) as totalBettors"),
+            raceBet.connection.raw(
+              "SUM(CASE WHEN runner_id = ? THEN 1 ELSE 0 END) as winnerBets",
+              [raceData.winner_runner_id]
+            )
+          )
+          .first(),
+      ]);
+
+      const feeRate = config.get("minigame.race.bet.feeRate");
+      const prizePool = Math.floor(totalPool * (1 - feeRate));
+
+      result.settlement = {
+        totalPool,
+        prizePool,
+        winnerPool,
+        feeRate,
+        multiplier: winnerPool > 0 ? (prizePool / winnerPool).toFixed(2) : null,
+      };
+      result.betStats = {
+        totalBets: Number(betStats.totalBets),
+        totalBettors: Number(betStats.totalBettors),
+        winnerBets: Number(betStats.winnerBets),
+      };
+    }
+
+    res.json(result);
   })
 );
 

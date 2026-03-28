@@ -13,3 +13,6 @@ export const getRaceHistory = (limit = 5) =>
   api.get(`/api/race/history?limit=${limit}`).then(r => r.data);
 
 export const getRaceById = raceId => api.get(`/api/race/${raceId}`).then(r => r.data);
+
+export const getMyBetHistory = (limit = 20) =>
+  api.get(`/api/race/my-history?limit=${limit}`).then(r => r.data);

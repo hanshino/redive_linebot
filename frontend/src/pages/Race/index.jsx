@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -14,6 +15,7 @@ import {
   Grid,
   Avatar,
   Paper,
+  Button,
 } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import BoltIcon from "@mui/icons-material/Bolt";
@@ -24,7 +26,7 @@ import FlagIcon from "@mui/icons-material/Flag";
 import { getCurrentRace, getRaceHistory } from "../../api/race";
 
 const POLL_INTERVAL = 10000;
-const DEFAULT_TRACK_LENGTH = 10;
+const DEFAULT_TRACK_LENGTH = 50;
 
 const STATUS_META = {
   betting: { label: "下注中", color: "warning", Icon: TimerIcon },
@@ -52,6 +54,7 @@ const STATUS_CHIP_LABELS = {
 // ─── data fetch (unchanged) ───────────────────────────────────────────────────
 
 export default function Race() {
+  const navigate = useNavigate();
   const [raceData, setRaceData] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,13 +132,26 @@ export default function Race() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
-      {/* page title */}
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        蘭德索爾盃
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-        每 10 秒自動更新
-      </Typography>
+      {/* page title + bet link */}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2.5 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+            蘭德索爾盃
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            每 10 秒自動更新
+          </Typography>
+        </Box>
+        <Button
+          variant={raceData?.race?.status === "betting" ? "contained" : "outlined"}
+          color={raceData?.race?.status === "betting" ? "warning" : "primary"}
+          size="small"
+          onClick={() => navigate("/race/bet")}
+          sx={{ fontWeight: 700, minWidth: 100, borderRadius: 2 }}
+        >
+          {raceData?.race?.status === "betting" ? "前往下注" : "下注 / 紀錄"}
+        </Button>
+      </Box>
 
       {error && (
         <Alert severity="warning" sx={{ mb: 2 }}>
@@ -162,7 +178,7 @@ export default function Race() {
                 {raceData.events?.length > 0 && (
                   <EventLog events={raceData.events} />
                 )}
-                {history.length > 0 && <RaceHistory history={history} />}
+                {history.length > 0 && <RaceHistory history={history} onRaceClick={id => navigate(`/race/${id}`)} />}
               </Stack>
             </Grid>
           </Grid>
@@ -172,7 +188,7 @@ export default function Race() {
       {/* history only when no active race */}
       {!raceData?.race && history.length > 0 && (
         <Box sx={{ mt: 3 }}>
-          <RaceHistory history={history} />
+          <RaceHistory history={history} onRaceClick={id => navigate(`/race/${id}`)} />
         </Box>
       )}
     </Container>
@@ -476,7 +492,7 @@ function EventLog({ events }) {
 
 const HISTORY_BORDER = ["#F59E0B", "#94A3B8", "#92400E", "divider", "divider"];
 
-function RaceHistory({ history }) {
+function RaceHistory({ history, onRaceClick }) {
   return (
     <Card variant="outlined">
       <CardContent sx={{ p: "16px !important" }}>
@@ -500,7 +516,18 @@ function RaceHistory({ history }) {
             return (
               <Box
                 key={r.id}
-                sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 1.25 }}
+                onClick={() => onRaceClick && onRaceClick(r.id)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  py: 1.25,
+                  cursor: "pointer",
+                  borderRadius: 1,
+                  transition: "background-color 150ms ease",
+                  "&:hover": { bgcolor: "action.hover" },
+                  "&:active": { bgcolor: "action.selected" },
+                }}
               >
                 {/* position number */}
                 <Typography

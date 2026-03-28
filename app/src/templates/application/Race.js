@@ -18,13 +18,15 @@ const STATUS_COLOR = {
 
 const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32", "#555555", "#555555"];
 
+const RULES_BUBBLE = generateRulesBubble();
+
 /**
  * Generate race Flex Message carousel
  */
 exports.generateRaceCarousel = (races, recentFinished = []) => {
   // Support both single object and array
   const raceList = Array.isArray(races) ? races : [races];
-  const allBubbles = [];
+  const allBubbles = [RULES_BUBBLE];
 
   for (const { raceData, runners, events, odds } of raceList) {
     const rankedRunners = [...runners].sort((a, b) =>
@@ -459,11 +461,12 @@ function generateEventBubble(raceData, events, runners, footer) {
               weight: "bold",
             },
           ],
-          width: "28px",
+          width: "36px",
           justifyContent: "center",
           backgroundColor: "#2a2a4a",
           cornerRadius: "sm",
           paddingAll: "xs",
+          flex: 0,
         },
         ...(firstTarget && firstTarget.avatar_url
           ? [
@@ -530,6 +533,98 @@ function generateEventBubble(raceData, events, runners, footer) {
       spacing: "none",
     },
     footer,
+  };
+}
+
+// ─── Rules: Game Explanation ─────────────────────────────────
+
+function generateRulesBubble() {
+  return {
+    type: "bubble",
+    size: "mega",
+    header: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: "遊戲說明",
+          weight: "bold",
+          size: "lg",
+          color: "#FFFFFF",
+        },
+        {
+          type: "text",
+          text: "蘭德索爾盃 玩法介紹",
+          size: "sm",
+          color: "#B0B0B0",
+          margin: "sm",
+        },
+      ],
+      backgroundColor: "#1a1a2e",
+      paddingAll: "lg",
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        ruleSection("基本玩法", [
+          "每場比賽 5 位角色參賽",
+          "下注期間 4 小時，選角色押注",
+          "開跑後每 1 分鐘推進一回合",
+          "先到終點的角色獲勝",
+        ]),
+        { type: "separator", color: "#333333", margin: "lg" },
+        ruleSection("下注方式", [
+          "指令：.賽跑下注 {編號} {金額}",
+          "範例：.賽跑下注 1 500",
+          "可對多位角色分別下注",
+        ]),
+        { type: "separator", color: "#333333", margin: "lg" },
+        ruleSection("獎金計算", [
+          "同池分帳制（Parimutuel）",
+          "總注額扣除 10% 系統抽成",
+          "依押注比例分配給中獎者",
+          "若無人押中，全額退還",
+        ]),
+        { type: "separator", color: "#333333", margin: "lg" },
+        ruleSection("比賽事件", [
+          "絆倒 — 後退 1 格",
+          "加速道具 — 前進 2 格",
+          "互換位置 — 兩角色交換",
+          "大雨 — 全員減速",
+          "絆腳索 — 目標暈眩一回合",
+        ]),
+      ],
+      backgroundColor: "#16213e",
+      paddingAll: "lg",
+      spacing: "md",
+    },
+  };
+}
+
+function ruleSection(title, items) {
+  return {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "text",
+        text: title,
+        size: "sm",
+        color: "#FFD700",
+        weight: "bold",
+        margin: "md",
+      },
+      ...items.map(item => ({
+        type: "text",
+        text: `· ${item}`,
+        size: "xs",
+        color: "#CCCCCC",
+        wrap: true,
+        margin: "sm",
+      })),
+    ],
   };
 }
 

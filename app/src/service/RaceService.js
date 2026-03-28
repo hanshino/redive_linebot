@@ -290,7 +290,13 @@ exports.getRaceDetails = async function (raceId) {
 function calcMovement(runner) {
   const base = _.random(raceConfig.movement.baseMin, raceConfig.movement.baseMax);
   const factor = runner.stamina / 100;
-  return Math.round(base * factor);
+  const move = Math.round(base * factor);
+  // Guaranteed minimum: even at 0 stamina, runner can still crawl forward
+  const guaranteedMin = raceConfig.movement.guaranteedMin || 0;
+  if (guaranteedMin > 0 && move < guaranteedMin) {
+    return _.random(0, 1) === 1 ? guaranteedMin : 0;
+  }
+  return move;
 }
 
 const EVENT_TYPES = [

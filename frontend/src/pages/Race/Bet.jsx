@@ -15,14 +15,24 @@ import {
   CardContent,
   Stack,
   Divider,
+  Tab,
+  Tabs,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import TimerIcon from "@mui/icons-material/Timer";
+import HistoryIcon from "@mui/icons-material/History";
+import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
+import CancelIcon from "@mui/icons-material/Cancel";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import { useNavigate } from "react-router-dom";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
 import api from "../../services/api";
-import { getCurrentRace, placeBet, getMyBets } from "../../api/race";
+import { getCurrentRace, placeBet, getMyBets, getMyBetHistory } from "../../api/race";
+import StatItem from "./StatItem";
 
 const QUICK_AMOUNTS = [100, 500, 1000];
 
@@ -231,6 +241,159 @@ function RunnerCard({ runner, existingBet, selected, onToggle, betAmount, onAmou
   );
 }
 
+// ─── bet history with settlement details ──────────────────────────────────────
+
+function BetHistory({ isLoggedIn }) {
+  const [data, setData] = useState({ bets: [], settlements: {} });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    getMyBetHistory(20)
+      .then(setData)
+      .catch(() => setData({ bets: [], settlements: {} }))
+      .finally(() => setLoading(false));
+  }, [isLoggedIn]);
+
+  if (loading) {
+    return (
+      <Stack spacing={1.5} sx={{ mt: 2 }}>
+        {[1, 2, 3].map(i => (
+          <Skeleton key={i} variant="rounded" height={80} sx={{ borderRadius: 2 }} />
+        ))}
+      </Stack>
+    );
+  }
+
+  if (data.bets.length === 0) {
+    return (
+      <Card variant="outlined" sx={{ textAlign: "center", py: 6, mt: 2 }}>
+        <CardContent>
+          <HistoryIcon sx={{ fontSize: 48, color: "text.disabled", mb: 1.5 }} />
+          <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
+            還沒有下注紀錄
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            在下注期間選擇角色押注，結果將顯示在這裡
+          </Typography>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const grouped = data.bets.reduce((acc, bet) => {
+    if (!acc[bet.race_id]) acc[bet.race_id] = [];
+    acc[bet.race_id].push(bet);
+    return acc;
+  }, {});
+
+  return (
+    <Stack spacing={2} sx={{ mt: 2 }}>
+      {Object.entries(grouped).map(([raceId, bets]) => {
+        const settlement = data.settlements[raceId];
+        const firstBet = bets[0];
+        const isFinished = firstBet.race_status === "finished";
+
+        return (
+          <Card key={raceId} variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent sx={{ p: "16px !important" }}>
+              {/* Race header */}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+                <Chip
+                  label={isFinished ? "已結束" : "進行中"}
+                  size="small"
+                  color={isFinished ? "default" : "success"}
+                  sx={{ fontWeight: 700, fontSize: "0.7rem" }}
+                />
+                {isFinished && firstBet.finished_at && (
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(firstBet.finished_at).toLocaleString("zh-TW", {
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    {firstBet.race_round && <> &middot; {firstBet.race_round} 回合</>}
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Bets list */}
+              <Stack spacing={1} divider={<Divider />}>
+                {bets.map(bet => {
+                  const isWin = bet.payout > 0;
+                  const isLose = bet.payout === 0;
+                  const isPending = bet.payout == null;
+
+                  return (
+                    <Box key={bet.id} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                      <Avatar
+                        src={bet.avatar_url}
+                        alt={bet.character_name}
+                        sx={{ width: 36, height: 36, flexShrink: 0 }}
+                      />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: isWin ? "success.main" : "text.primary",
+                          }}
+                        >
+                          {isWin ? <EmojiEventsIcon sx={{ fontSize: 16, color: "warning.main", mr: 0.5, verticalAlign: "text-bottom" }} />
+                            : isLose ? <CancelIcon sx={{ fontSize: 16, color: "error.main", mr: 0.5, verticalAlign: "text-bottom" }} />
+                            : <HourglassEmptyIcon sx={{ fontSize: 16, color: "text.disabled", mr: 0.5, verticalAlign: "text-bottom" }} />}
+                          {bet.character_name}
+                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                            {bet.lane}號道
+                          </Typography>
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          押 {bet.amount.toLocaleString()} 石
+                          {isWin && (
+                            <Typography component="span" variant="caption" sx={{ color: "success.main", fontWeight: 700 }}>
+                              {" "}→ +{bet.payout.toLocaleString()} 石
+                            </Typography>
+                          )}
+                          {isLose && <> → 未中獎</>}
+                          {isPending && <> (待開獎)</>}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Stack>
+
+              {/* Settlement summary — only for finished races */}
+              {isFinished && settlement && (
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    p: 1.5,
+                    bgcolor: theme =>
+                      theme.palette.mode === "dark" ? "rgba(255,255,255,0.04)" : "grey.50",
+                    borderRadius: 1.5,
+                  }}
+                >
+                  <Stack direction="row" spacing={2} flexWrap="wrap">
+                    <StatItem label="總注額" value={`${settlement.totalPool.toLocaleString()} 石`} />
+                    <StatItem label="系統抽成" value={`${(settlement.feeRate * 100).toFixed(0)}%`} />
+                    <StatItem label="中獎總注額" value={`${settlement.winnerPool.toLocaleString()} 石`} />
+                    {settlement.multiplier && (
+                      <StatItem label="中獎倍數" value={`${settlement.multiplier}x`} highlight />
+                    )}
+                  </Stack>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </Stack>
+  );
+}
+
+
 function EmptyState({ message, sub }) {
   return (
     <Card variant="outlined" sx={{ textAlign: "center", py: 6 }}>
@@ -266,6 +429,7 @@ function PageSkeleton() {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function Bet() {
+  const navigate = useNavigate();
   const { loggedIn: isLoggedIn } = useLiff();
 
   const [raceData, setRaceData] = useState(null);
@@ -279,6 +443,7 @@ export default function Bet() {
 
   const [godStoneData, setGodStoneData] = useState(null);
   const [balLoading, setBalLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState(0);
 
   const isMounted = useRef(true);
   useEffect(() => {
@@ -443,47 +608,75 @@ export default function Bet() {
             mb: 2,
           }}
         >
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            蘭德索爾盃 下注
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              蘭德索爾盃
+            </Typography>
+            <Button
+              startIcon={<VisibilityIcon sx={{ fontSize: 16 }} />}
+              size="small"
+              onClick={() => navigate("/race")}
+              sx={{ fontWeight: 600, minHeight: 32 }}
+            >
+              賽況
+            </Button>
+          </Box>
           <BalanceChip balance={balance} loading={balLoading} />
         </Box>
 
-        {/* countdown */}
-        {isBettingOpen && race?.betting_end_at && (
-          <CountdownBanner bettingEndAt={race.betting_end_at} />
+        {/* tabs */}
+        <Tabs
+          value={activeTab}
+          onChange={(_, v) => setActiveTab(v)}
+          sx={{ mb: 2, minHeight: 40, "& .MuiTab-root": { minHeight: 40, fontWeight: 700 } }}
+        >
+          <Tab icon={<MonetizationOnIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="下注" />
+          <Tab icon={<HistoryIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="我的紀錄" />
+        </Tabs>
+
+        {/* Tab 0: Betting (existing content) */}
+        {activeTab === 0 && (
+          <>
+            {/* countdown */}
+            {isBettingOpen && race?.betting_end_at && (
+              <CountdownBanner bettingEndAt={race.betting_end_at} />
+            )}
+
+            {/* status banner for non-betting states */}
+            {!isBettingOpen && race && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {race.status === "running" && "比賽進行中，下注已截止"}
+                {race.status === "finished" && "比賽已結束"}
+              </Alert>
+            )}
+
+            {/* runner list */}
+            {!race ? (
+              <EmptyState message="目前沒有進行中的比賽" sub="下一場比賽將在整點自動開賽" />
+            ) : runnersWithOdds.length === 0 ? (
+              <EmptyState message="尚無參賽者資訊" />
+            ) : (
+              runnersWithOdds.map(runner => (
+                <RunnerCard
+                  key={runner.id}
+                  runner={runner}
+                  existingBet={betMap[runner.id] ?? null}
+                  selected={runner.id in selections}
+                  onToggle={() => isBettingOpen && handleToggle(runner.id)}
+                  betAmount={selections[runner.id] ?? 0}
+                  onAmountChange={amt => handleAmountChange(runner.id, amt)}
+                />
+              ))
+            )}
+          </>
         )}
 
-        {/* status banner for non-betting states */}
-        {!isBettingOpen && race && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {race.status === "running" && "比賽進行中，下注已截止"}
-            {race.status === "finished" && "比賽已結束"}
-          </Alert>
-        )}
-
-        {/* runner list */}
-        {!race ? (
-          <EmptyState message="目前沒有進行中的比賽" sub="下一場比賽將在整點自動開賽" />
-        ) : runnersWithOdds.length === 0 ? (
-          <EmptyState message="尚無參賽者資訊" />
-        ) : (
-          runnersWithOdds.map(runner => (
-            <RunnerCard
-              key={runner.id}
-              runner={runner}
-              existingBet={betMap[runner.id] ?? null}
-              selected={runner.id in selections}
-              onToggle={() => isBettingOpen && handleToggle(runner.id)}
-              betAmount={selections[runner.id] ?? 0}
-              onAmountChange={amt => handleAmountChange(runner.id, amt)}
-            />
-          ))
-        )}
+        {/* Tab 1: Bet History */}
+        {activeTab === 1 && <BetHistory isLoggedIn={isLoggedIn} />}
       </Container>
 
       {/* sticky bottom bar */}
-      {isBettingOpen && (
+      {isBettingOpen && activeTab === 0 && (
         <Box
           sx={{
             position: "fixed",
