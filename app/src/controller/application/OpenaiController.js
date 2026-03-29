@@ -1,5 +1,6 @@
 const { get, concat } = require("lodash");
 const redis = require("../../util/redis");
+const umami = require("../../util/umami");
 const { format } = require("util");
 const config = require("config");
 const groupSessionKeyTemplate = config.get("redis.keys.groupSession");
@@ -38,6 +39,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   if (!context.event.isText) {
     return next;
   }
+
   const { text, mention } = context.event.message;
   const mentionSelf = get(mention, "mentionees", []).find(mentionee => mentionee.isSelf === true);
 
@@ -45,6 +47,8 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   if (text.length > 200) {
     return next;
   }
+
+  umami.track("ai_conversation", "/bot/application/ai_conversation", umami.getSourceData(context));
 
   const replaceTarget = text.slice(mentionSelf.index, mentionSelf.index + mentionSelf.length);
   const replaceText = text.replace(replaceTarget, "").trim();

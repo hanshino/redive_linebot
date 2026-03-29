@@ -7,6 +7,7 @@ const guildConfig = require("./controller/application/GroupConfig");
 const setProfile = require("./middleware/profile");
 const statistics = require("./middleware/statistics");
 const alias = require("./middleware/alias");
+const umamiTrack = require("./middleware/umamiTrack");
 const rateLimit = require("./middleware/rateLimit");
 const lineEvent = require("./controller/lineEvent");
 const welcome = require("./templates/common/welcome");
@@ -405,6 +406,7 @@ async function App(context) {
     HandlePostback, // 處理postback事件
     rateLimit, // 限制使用者指令速度
     alias,
+    umamiTrack, // Umami 事件追蹤
     GlobalOrderBase, // 全群指令分析
     OrderBased, // 指令分析
     CustomerOrderBased, // 自訂指令分析
