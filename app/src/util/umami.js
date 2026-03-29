@@ -12,14 +12,21 @@ function send(payload) {
   if (!isEnabled()) return;
 
   axios
-    .post(`${UMAMI_URL}/api/send`, {
-      payload: {
-        hostname: HOSTNAME,
-        language: "zh-TW",
-        website: UMAMI_WEBSITE_ID,
-        ...payload,
+    .post(
+      `${UMAMI_URL}/api/send`,
+      {
+        type: "event",
+        payload: {
+          hostname: HOSTNAME,
+          language: "zh-TW",
+          website: UMAMI_WEBSITE_ID,
+          ...payload,
+        },
       },
-    })
+      {
+        headers: { "User-Agent": "RediveLineBot/1.0" },
+      }
+    )
     .catch(err => {
       console.error("[umami] send failed:", err.message);
     });
