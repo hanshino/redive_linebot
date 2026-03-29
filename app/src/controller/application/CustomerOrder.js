@@ -5,6 +5,7 @@ const random = require("math-random");
 const CustomerOrderTemplate = require("../../templates/application/CustomerOrder");
 const { send } = require("../../templates/application/Order");
 const { recordSign } = require("../../util/traffic");
+const umami = require("../../util/umami");
 const { get } = require("lodash");
 
 function CusOrderException(message, code = 0) {
@@ -190,6 +191,11 @@ exports.CustomerOrderDetect = async context => {
 
   if (chosenOrderKey === false) return false;
   recordSign("CustomerOrderDetect");
+  umami.track(
+    "customer_order_hit",
+    "/bot/application/customer_order",
+    umami.getSourceData(context)
+  );
   // 紀錄最近一次觸發時間，用於日後回收無用處之指令。
   CustomerOrderModel.touchOrder(context.event.message.text, sourceId);
 
