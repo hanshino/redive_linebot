@@ -60,23 +60,84 @@ jobs:
           cache-from: type=registry,ref=hanshino/redive_frontend:buildcache
           cache-to: type=registry,ref=hanshino/redive_frontend:buildcache,mode=max
 
-  # Deployment job, dependent on both backend and frontend build completion
+  # Deployment via Portainer API
   deploy:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     steps:
-      - name: Deploy Redive linebot
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd ${{ secrets.DEPLOY_PATH }}
-            git pull
-            docker compose -f docker-compose.traefik.yml pull
-            docker compose -f docker-compose.traefik.yml up -d --wait
-            docker compose -f docker-compose.traefik.yml exec -T bot yarn migrate
+      - name: Redeploy stack via Portainer
+        run: |
+          # Get current stack file content
+          STACK_FILE=$(curl -sf \
+            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
+            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}/file" \
+            | jq -r '.StackFileContent')
+
+          # Get current env vars
+          STACK_ENV=$(curl -sf \
+            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
+            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}" \
+            | jq '.Env')
+
+          # Redeploy stack with pullImage to get latest images
+          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            -X PUT \
+            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}?endpointId=${{ secrets.PORTAINER_ENDPOINT_ID }}" \
+            -d "$(jq -n \
+              --arg stackFile "$STACK_FILE" \
+              --argjson env "$STACK_ENV" \
+              '{stackFileContent: $stackFile, env: $env, prune: true, pullImage: true}')")
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Stack redeploy failed with HTTP $HTTP_STATUS"
+            exit 1
+          fi
+
+          echo "Stack redeployed successfully"
+
+      - name: Wait for containers to be ready
+        run: sleep 15
+
+      - name: Run database migrations
+        run: |
+          # Create exec instance
+          EXEC_ID=$(curl -sf \
+            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            "${{ secrets.PORTAINER_URL }}/api/endpoints/${{ secrets.PORTAINER_ENDPOINT_ID }}/docker/containers/${{ secrets.PORTAINER_BOT_CONTAINER }}/exec" \
+            -d '{"AttachStdout":true,"AttachStderr":true,"Cmd":["yarn","migrate"]}' \
+            | jq -r '.Id')
+
+          if [ -z "$EXEC_ID" ] || [ "$EXEC_ID" = "null" ]; then
+            echo "::error::Failed to create exec instance"
+            exit 1
+          fi
+
+          # Run exec
+          RESULT=$(curl -sf \
+            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -X POST \
+            "${{ secrets.PORTAINER_URL }}/api/endpoints/${{ secrets.PORTAINER_ENDPOINT_ID }}/docker/exec/$EXEC_ID/start" \
+            -d '{"Detach":false,"Tty":false}')
+
+          echo "Migration output: $RESULT"
+
+          # Check exec exit code
+          EXIT_CODE=$(curl -sf \
+            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
+            "${{ secrets.PORTAINER_URL }}/api/endpoints/${{ secrets.PORTAINER_ENDPOINT_ID }}/docker/exec/$EXEC_ID/json" \
+            | jq -r '.ExitCode')
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::Migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+
+          echo "Migration completed successfully"
 
       - name: Discord notification
         env:
