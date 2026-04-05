@@ -3,8 +3,7 @@ const { getClient } = require("bottender");
 const { get } = require("lodash");
 const i18n = require("../../util/i18n");
 const LineClient = getClient("line");
-const imgur = require("../../util/imgur");
-const { isImageUrl } = require("../../util/string");
+const pictshare = require("../../util/pictshare");
 
 exports.router = [text(/^[./#]圖片上傳$/, handleUpload)];
 
@@ -21,28 +20,16 @@ async function handleUpload(context) {
 
   try {
     const buf = await LineClient.getMessageContent(id);
-
-    const result = await imgur.upload({
-      image: buf,
-    });
-
-    const url = get(result, "data.link");
-
-    if (!isImageUrl(url)) {
-      return context.replyText(i18n.__("message.image.upload_failed"));
-    }
-
-    const imageUpload = get(context.state, "imageUpload", []);
-    imageUpload.splice(imageUpload.indexOf(context.event.source.userId), 1);
+    const result = await pictshare.uploadBuffer(buf);
 
     return context.replyText(
       i18n.__("message.image.upload_success", {
-        id: get(result, "data.id"),
-        url,
+        id: result.hash,
+        url: result.url,
       })
     );
   } catch (e) {
-    console.log(e);
+    console.log("[ImageUpload] error:", e.message);
     return context.replyText(i18n.__("message.image.upload_failed"));
   }
 }
