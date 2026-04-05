@@ -1,21 +1,14 @@
 const router = require("express").Router();
-const { ImgurClient } = require("imgur");
 const i18n = require("../../util/i18n");
-const get = require("lodash/get");
-const client = new ImgurClient({
-  clientId: process.env.IMGUR_CLIENT_ID,
-});
+const pictshare = require("../../util/pictshare");
 
 router.post("/images", async (req, res) => {
   try {
     const { image } = req.body;
-    const data = await client.upload({
-      image,
-      type: "base64",
-    });
+    const result = await pictshare.uploadBase64(image);
     res.json({
       success: true,
-      link: get(data, "data.link"),
+      link: result.url,
     });
   } catch (e) {
     res.status(400).json({
