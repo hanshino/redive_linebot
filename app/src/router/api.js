@@ -16,6 +16,7 @@ const {
   verifyLineGroupId,
 } = require("../middleware/validation");
 const gacha = require("../controller/princess/gacha");
+const GachaBannerController = require("../controller/princess/GachaBannerController");
 const { webhook } = require("../util/discord");
 const { showStatistics, showUserStatistics } = require("../controller/application/Statistics");
 const ChatLevelController = require("../controller/application/ChatLevelController");
@@ -203,6 +204,15 @@ router.post("/admin/gacha-pool", verifyPrivilege(9), gacha.api.insertCharacter);
  * 刪除管理員轉蛋資料
  */
 router.delete("/admin/gacha-pool/:id", verifyPrivilege(9), gacha.api.deleteCharacter);
+
+/**
+ * 轉蛋 Banner 管理
+ */
+router.get("/admin/gacha-banners", verifyPrivilege(1), GachaBannerController.listBanners);
+router.get("/admin/gacha-banners/:id", verifyPrivilege(1), GachaBannerController.getBanner);
+router.post("/admin/gacha-banners", verifyPrivilege(9), GachaBannerController.createBanner);
+router.put("/admin/gacha-banners/:id", verifyPrivilege(9), GachaBannerController.updateBanner);
+router.delete("/admin/gacha-banners/:id", verifyPrivilege(9), GachaBannerController.deleteBanner);
 
 /**
  * 取得管理員全群指令
