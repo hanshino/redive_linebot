@@ -199,7 +199,6 @@ async function showGachaBag(context) {
 async function gacha(context, { match, pickup, ensure = false, europe = false }) {
   let { tag, times = 10 } = match.groups;
   const { userId, type, groupId } = context.event.source;
-  const now = moment();
 
   // 歐洲抽：查詢是否有進行中的 europe banner
   let activeEuropeBanner = null;
@@ -263,9 +262,10 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   const userOwnStone = parseInt(await GachaModel.getUserGodStoneCount(userId));
   const pickupCost = config.get("gacha.pick_up_cost");
   const ensureCost = config.get("gacha.ensure_cost");
-  const europeCost = (activeEuropeBanner && activeEuropeBanner.cost > 0)
-    ? activeEuropeBanner.cost
-    : config.get("gacha.europe_cost");
+  const europeCost =
+    activeEuropeBanner && activeEuropeBanner.cost > 0
+      ? activeEuropeBanner.cost
+      : config.get("gacha.europe_cost");
 
   // 檢查是否有足夠的女神石
   if (pickup && userOwnStone < pickupCost) {

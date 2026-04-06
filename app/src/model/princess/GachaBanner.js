@@ -4,15 +4,7 @@ class GachaBanner extends Base {
   constructor() {
     super({
       table: "gacha_banner",
-      fillable: [
-        "name",
-        "type",
-        "rate_boost",
-        "cost",
-        "start_at",
-        "end_at",
-        "is_active",
-      ],
+      fillable: ["name", "type", "rate_boost", "cost", "start_at", "end_at", "is_active"],
     });
   }
 
@@ -54,9 +46,7 @@ class GachaBanner extends Base {
    * @param {Array<Number>} characterIds
    */
   async setBannerCharacters(bannerId, characterIds) {
-    await this.connection("gacha_banner_characters")
-      .where("banner_id", bannerId)
-      .del();
+    await this.connection("gacha_banner_characters").where("banner_id", bannerId).del();
 
     if (characterIds.length > 0) {
       await this.connection("gacha_banner_characters").insert(
