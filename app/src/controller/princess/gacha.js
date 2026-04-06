@@ -13,6 +13,7 @@ const EventCenterService = require("../../service/EventCenterService");
 const signModel = require("../../model/application/SigninDays");
 const { isNull, get, countBy, shuffle, uniqBy, difference, sum, uniq, pullAt } = require("lodash");
 const GachaRecord = require("../../model/princess/GachaRecord");
+const GachaBanner = require("../../model/princess/GachaBanner");
 const SubscribeUser = require("../../model/application/SubscribeUser");
 const SubscribeCard = require("../../model/application/SubscribeCard");
 const config = require("config");
@@ -160,6 +161,23 @@ function makePickup(pool, rate = 100) {
 }
 
 /**
+ * 對 banner 指定的角色套用機率加成
+ * @param {Array} pool 轉蛋池
+ * @param {Array<Number>} characterIds banner 指定角色 ID
+ * @param {Number} rateBoost 加成百分比，如 150 = 1.5 倍
+ * @returns {Array}
+ */
+function applyBannerRateUp(pool, characterIds, rateBoost) {
+  return pool.map(data => {
+    if (!characterIds.includes(data.id)) return data;
+    return {
+      ...data,
+      rate: `${(parseFloat(data.rate) * (100 + rateBoost)) / 100}%`,
+    };
+  });
+}
+
+/**
  * 檢視自己的轉蛋包包
  * @param {import("bottender").LineContext} context
  */
@@ -182,13 +200,15 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   let { tag, times = 10 } = match.groups;
   const { userId, type, groupId } = context.event.source;
   const now = moment();
-  const month = now.month() + 1;
-  const date = now.date();
-  const isEventTime = month === 1 && date >= 27 && date <= 31;
 
-  // 只有 12/31~1/1 這兩天才會開放歐洲轉蛋池
-  if (europe && !isEventTime) {
-    return context.replyText(i18n.__("message.gacha.cross_year_only"));
+  // 歐洲抽：查詢是否有進行中的 europe banner
+  let activeEuropeBanner = null;
+  if (europe) {
+    const europeBanners = await GachaBanner.getActiveBanners({ type: "europe" });
+    if (europeBanners.length === 0) {
+      return context.replyText(i18n.__("message.gacha.cross_year_only"));
+    }
+    activeEuropeBanner = europeBanners[0];
   }
 
   if (type === "group" && context.state.guildConfig.Gacha === "N") {
@@ -243,7 +263,9 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   const userOwnStone = parseInt(await GachaModel.getUserGodStoneCount(userId));
   const pickupCost = config.get("gacha.pick_up_cost");
   const ensureCost = config.get("gacha.ensure_cost");
-  const europeCost = config.get("gacha.europe_cost");
+  const europeCost = (activeEuropeBanner && activeEuropeBanner.cost > 0)
+    ? activeEuropeBanner.cost
+    : config.get("gacha.europe_cost");
 
   // 檢查是否有足夠的女神石
   if (pickup && userOwnStone < pickupCost) {
@@ -262,16 +284,29 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     newCharacters: [],
     repeatReward: 0,
   };
-  // const dailyPool = pickup ? makePickup(filteredPool, 200) : filteredPool;
-  const dailyPool = (() => {
-    if (pickup) {
-      return makePickup(filteredPool, 200);
-    } else if (ensure) {
-      return filteredPool;
-    } else if (europe) {
-      return filteredPool.filter(data => data.star == "3");
+  // 查詢當前有效的 rate_up banner
+  const rateUpBanners = await GachaBanner.getActiveBanners({ type: "rate_up" });
+
+  const dailyPool = await (async () => {
+    let pool = filteredPool;
+
+    // 先套用 banner rate_up（管理員設定，自動生效）
+    for (const banner of rateUpBanners) {
+      const bannerCharIds = await GachaBanner.getBannerCharacterIds(banner.id);
+      if (bannerCharIds.length > 0) {
+        pool = applyBannerRateUp(pool, bannerCharIds, banner.rate_boost);
+      }
     }
-    return filteredPool;
+
+    // 再套用玩家指令效果
+    if (pickup) {
+      return makePickup(pool, 200);
+    } else if (ensure) {
+      return pool;
+    } else if (europe) {
+      return pool.filter(data => data.star == "3");
+    }
+    return pool;
   })();
 
   // 進行特殊費用扣除
