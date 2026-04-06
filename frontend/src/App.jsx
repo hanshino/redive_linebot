@@ -26,6 +26,8 @@ import BattleSign from "./pages/Panel/BattleSign";
 import CustomerOrder from "./pages/CustomerOrder";
 import AdminGachaPool from "./pages/Admin/GachaPool";
 import AdminGachaPoolForm from "./pages/Admin/GachaPool/GachaPoolForm";
+import AdminGachaBanner from "./pages/Admin/GachaBanner";
+import AdminGachaBannerForm from "./pages/Admin/GachaBanner/GachaBannerForm";
 import AdminGachaShop from "./pages/Admin/GachaShop";
 import AdminGlobalOrder from "./pages/Admin/GlobalOrder";
 import AdminMessages from "./pages/Admin/Messages";
@@ -83,6 +85,9 @@ export default function App() {
           <Route path="admin/gacha-pool" element={<AdminGachaPool />} />
           <Route path="admin/gacha-pool/new" element={<AdminGachaPoolForm />} />
           <Route path="admin/gacha-pool/:id/edit" element={<AdminGachaPoolForm />} />
+          <Route path="admin/gacha-banner" element={<AdminGachaBanner />} />
+          <Route path="admin/gacha-banner/new" element={<AdminGachaBannerForm />} />
+          <Route path="admin/gacha-banner/:id/edit" element={<AdminGachaBannerForm />} />
           <Route path="admin/gacha-shop" element={<AdminGachaShop />} />
           <Route path="admin/global-order" element={<AdminGlobalOrder />} />
           <Route path="admin/messages" element={<AdminMessages />} />
