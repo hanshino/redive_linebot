@@ -18,7 +18,7 @@ services:
     env_file: ./.env
     restart: always
     expose:
-      - 5000
+      - 9527
     networks:
       - infra
       - traefik
@@ -31,7 +31,7 @@ services:
       - "traefik.http.routers.${PROJECT_NAME}_bot-secure.tls=true"
       - "traefik.http.routers.${PROJECT_NAME}_bot-secure.tls.certresolver=leresolver"
       - "traefik.http.routers.${PROJECT_NAME}_bot-secure.priority=100"
-      - "traefik.http.services.${PROJECT_NAME}_bot.loadbalancer.server.port=5000"
+      - "traefik.http.services.${PROJECT_NAME}_bot.loadbalancer.server.port=9527"
       - "traefik.docker.network=traefik"
     logging:
       driver: "json-file"
