@@ -59,6 +59,7 @@ export default function GachaPoolForm() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [imageUrlError, setImageUrlError] = useState("");
 
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
 
@@ -96,7 +97,25 @@ export default function GachaPoolForm() {
 
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-    if (field === "imageUrl") setImgError(false);
+    if (field === "imageUrl") {
+      setImgError(false);
+      setImageUrlError("");
+    }
+  };
+
+  const cleanUrl = (url) => url.trim().replace(/^['"]+|['"]+$/g, "").trim();
+
+  const handleImageUrlBlur = () => {
+    const cleaned = cleanUrl(formData.imageUrl);
+    if (cleaned !== formData.imageUrl) {
+      setFormData((prev) => ({ ...prev, imageUrl: cleaned }));
+    }
+  };
+
+  const validateImageUrl = (url) => {
+    if (!url) return "";
+    if (!url.startsWith("https://")) return "圖片網址必須以 https:// 開頭";
+    return "";
   };
 
   const handleSave = async () => {
@@ -105,9 +124,16 @@ export default function GachaPoolForm() {
       return;
     }
 
+    const cleanedImageUrl = cleanUrl(formData.imageUrl);
+    const urlErr = validateImageUrl(cleanedImageUrl);
+    if (urlErr) {
+      setImageUrlError(urlErr);
+      return;
+    }
+
     const payload = {
       name: formData.name,
-      headImage_url: formData.imageUrl,
+      headImage_url: cleanedImageUrl,
       star: formData.star,
       rate: formData.rate,
       is_princess: formData.isPrincess,
@@ -244,7 +270,10 @@ export default function GachaPoolForm() {
             label="圖片網址"
             value={formData.imageUrl}
             onChange={handleChange("imageUrl")}
+            onBlur={handleImageUrlBlur}
             placeholder="https://..."
+            error={Boolean(imageUrlError)}
+            helperText={imageUrlError}
           />
 
           {/* Section: Gacha Settings */}
