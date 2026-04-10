@@ -120,7 +120,7 @@ function NavSection({ title, items, open, onToggle, onNavigate, currentPath }) {
 }
 
 export default function NavDrawer({ onClose }) {
-  const { loggedIn } = useLiff();
+  const { isAdmin } = useLiff();
   const location = useLocation();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState({
@@ -184,7 +184,7 @@ export default function NavDrawer({ onClose }) {
         onNavigate={handleNavigate}
         currentPath={location.pathname}
       />
-      {loggedIn && (
+      {isAdmin && (
         <NavSection
           title="管理員"
           items={adminItems}
