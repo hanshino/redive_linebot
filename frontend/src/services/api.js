@@ -14,14 +14,18 @@ export function clearAuthToken() {
   delete api.defaults.headers.common["Authorization"];
 }
 
-// Clear expired token and reload on 401
+// Clear expired token and redirect on 401; dispatch event and redirect on 403
 api.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status;
+    if (status === 401) {
       window.localStorage.removeItem(TOKEN_KEY);
       clearAuthToken();
-      window.location.reload();
+      window.location.href = "/";
+    } else if (status === 403) {
+      window.dispatchEvent(new CustomEvent("auth:forbidden"));
+      window.location.href = "/";
     }
     return Promise.reject(err);
   }

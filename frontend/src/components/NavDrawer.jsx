@@ -29,6 +29,7 @@ import GitHubIcon from "@mui/icons-material/GitHub";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LinkIcon from "@mui/icons-material/Link";
+import CelebrationIcon from "@mui/icons-material/Celebration";
 
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
@@ -52,7 +53,8 @@ const personalItems = [
 ];
 
 const adminItems = [
-  { label: "轉蛋管理", path: "/admin/gacha-pool", icon: SportsEsportsIcon },
+  { label: "角色卡池", path: "/admin/gacha-pool", icon: SportsEsportsIcon },
+  { label: "轉蛋活動", path: "/admin/gacha-banner", icon: CelebrationIcon },
   { label: "女神石商店", path: "/admin/gacha-shop", icon: StorefrontIcon },
   { label: "全群指令管理", path: "/admin/global-order", icon: MessageIcon },
   { label: "訊息實況", path: "/admin/messages", icon: MessageIcon },
@@ -118,7 +120,7 @@ function NavSection({ title, items, open, onToggle, onNavigate, currentPath }) {
 }
 
 export default function NavDrawer({ onClose }) {
-  const { loggedIn } = useLiff();
+  const { isAdmin } = useLiff();
   const location = useLocation();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState({
@@ -182,7 +184,7 @@ export default function NavDrawer({ onClose }) {
         onNavigate={handleNavigate}
         currentPath={location.pathname}
       />
-      {loggedIn && (
+      {isAdmin && (
         <NavSection
           title="管理員"
           items={adminItems}

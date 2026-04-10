@@ -72,7 +72,7 @@ exports.verifyAdmin = async (req, res, next) => {
 
   const adminList = await AdminModel.getList();
   var adminData = adminList.find(data => data.userId === userId);
-  if (adminData === undefined) return Unauthorized(res);
+  if (adminData === undefined) return Forbidden(res);
 
   req.profile = {
     ...req.profile,
@@ -88,7 +88,7 @@ exports.verifyPrivilege = (allow = 9) => {
     privilege = parseInt(privilege);
 
     if (privilege < allow) {
-      return Unauthorized(res);
+      return Forbidden(res);
     }
 
     next();
@@ -140,4 +140,8 @@ exports.socketVerifyAdmin = async (socket, next) => {
 
 function Unauthorized(res) {
   res.status(401).json({ message: "invalid token." });
+}
+
+function Forbidden(res) {
+  res.status(403).json({ message: "forbidden" });
 }

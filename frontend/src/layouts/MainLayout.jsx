@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import {
   Box,
@@ -9,6 +9,8 @@ import {
   Divider,
   Drawer,
   Tooltip,
+  Snackbar,
+  Alert,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -18,6 +20,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import NavDrawer from "../components/NavDrawer";
+import DebugOverlay from "../components/DebugOverlay";
 import { useColorMode } from "../theme/ColorModeContext";
 import useLiff from "../context/useLiff";
 
@@ -29,6 +32,14 @@ export default function MainLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { mode, toggleColorMode } = useColorMode();
   const { loggedIn, ready, login, logout } = useLiff();
+
+  const [forbiddenOpen, setForbiddenOpen] = useState(false);
+
+  useEffect(() => {
+    const handleForbidden = () => setForbiddenOpen(true);
+    window.addEventListener("auth:forbidden", handleForbidden);
+    return () => window.removeEventListener("auth:forbidden", handleForbidden);
+  }, []);
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
@@ -61,7 +72,11 @@ export default function MainLayout() {
           </Tooltip>
           {ready && (
             <>
-              <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: "rgba(255,255,255,0.3)" }} />
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 0.5, borderColor: "rgba(255,255,255,0.3)" }}
+              />
               <Tooltip title={loggedIn ? "登出" : "登入"}>
                 <IconButton
                   color="inherit"
@@ -125,6 +140,23 @@ export default function MainLayout() {
       >
         <Outlet />
       </Box>
+
+      <Snackbar
+        open={forbiddenOpen}
+        autoHideDuration={3000}
+        onClose={() => setForbiddenOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setForbiddenOpen(false)}
+          severity="warning"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          您沒有權限存取此頁面
+        </Alert>
+      </Snackbar>
+      <DebugOverlay />
     </Box>
   );
 }

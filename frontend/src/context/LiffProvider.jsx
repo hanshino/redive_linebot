@@ -2,6 +2,7 @@ import { createContext, useEffect, useRef, useState, useMemo, useCallback } from
 import liff from "@line/liff";
 import api, { setAuthToken, clearAuthToken } from "../services/api";
 import { FullPageLoading } from "../components/Loading";
+import { debugLog } from "../utils/debugLogger";
 
 const TOKEN_KEY = "liff_access_token";
 const SIZE_KEY = "liff_size";
@@ -10,6 +11,8 @@ const DEFAULT_SIZE = "full";
 export const LiffContext = createContext({
   ready: false,
   loggedIn: false,
+  isAdmin: false,
+  profile: null,
   liffContext: {},
   login: () => {},
   logout: () => {},
@@ -32,26 +35,66 @@ export default function LiffProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [liffCtx, setLiffCtx] = useState({});
+  const [profile, setProfile] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const initPromiseRef = useRef(null);
+  const initStartedRef = useRef(false);
+
+  const fetchProfile = useCallback(async () => {
+    debugLog("FETCH_PROFILE_START");
+    try {
+      const { data } = await api.get("/api/me");
+      setProfile(data);
+      const admin = data.privilege !== undefined;
+      setIsAdmin(admin);
+      debugLog("FETCH_PROFILE_OK", { isAdmin: admin, userId: data.userId?.substring(0, 8) });
+    } catch (err) {
+      debugLog("FETCH_PROFILE_FAIL", { status: err.response?.status, message: err.message });
+      // Token invalid or network error — treat as not logged in
+      window.localStorage.removeItem(TOKEN_KEY);
+      clearAuthToken();
+      setLoggedIn(false);
+      setProfile(null);
+      setIsAdmin(false);
+    }
+  }, []);
 
   useEffect(() => {
+    // Guard against StrictMode double-invoke — ref survives unmount/remount
+    if (initStartedRef.current) return;
+    initStartedRef.current = true;
+
     const isLiffRoute = window.location.pathname.startsWith("/liff/");
     const storedToken = window.localStorage.getItem(TOKEN_KEY);
+    debugLog("INIT_START", {
+      route: window.location.pathname,
+      isLiffRoute,
+      hasStoredToken: !!storedToken,
+    });
 
     // Fast path: not a LIFF route and we have a stored token
     if (!isLiffRoute && storedToken) {
       setAuthToken(storedToken);
       setLoggedIn(true);
-      setReady(true);
+      debugLog("FAST_PATH", { tokenPrefix: storedToken.substring(0, 8) });
+      fetchProfile().finally(() => {
+        debugLog("READY", { path: "fast" });
+        setReady(true);
+      });
       return;
     }
 
     // LIFF route: full SDK init to process OAuth code
     if (isLiffRoute) {
-      initPromiseRef.current = initLiffSdk()
-        .then(() => {
+      if (!initPromiseRef.current) {
+        initPromiseRef.current = initLiffSdk();
+      }
+      initPromiseRef.current
+        .then(async () => {
+          debugLog("LIFF_SDK_INIT", { success: true });
           if (liff.isLoggedIn()) {
             const token = liff.getAccessToken();
+            debugLog("LIFF_LOGGED_IN", { tokenPrefix: token?.substring(0, 8) });
             window.localStorage.setItem(TOKEN_KEY, token);
             setAuthToken(token);
             setLoggedIn(true);
@@ -60,14 +103,24 @@ export default function LiffProvider({ children }) {
             } catch (err) {
               console.warn("Failed to get LIFF context:", err);
             }
+            await fetchProfile();
+          } else {
+            debugLog("LIFF_NOT_LOGGED_IN");
           }
         })
-        .catch(err => console.warn("LIFF init failed:", err))
-        .finally(() => setReady(true));
+        .catch(err => {
+          debugLog("LIFF_SDK_INIT", { success: false, error: err.message });
+          console.warn("LIFF init failed:", err);
+        })
+        .finally(() => {
+          debugLog("READY", { path: "liff" });
+          setReady(true);
+        });
       return;
     }
 
     // Non-LIFF route, no stored token: just mark ready (not logged in)
+    debugLog("READY", { path: "no-token" });
     setReady(true);
   }, []);
 
@@ -90,6 +143,8 @@ export default function LiffProvider({ children }) {
   const logout = useCallback(() => {
     window.localStorage.removeItem(TOKEN_KEY);
     clearAuthToken();
+    setProfile(null);
+    setIsAdmin(false);
     try {
       liff.logout();
     } catch {
@@ -99,8 +154,8 @@ export default function LiffProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ ready, loggedIn, liffContext: liffCtx, login, logout }),
-    [ready, loggedIn, liffCtx, login, logout]
+    () => ({ ready, loggedIn, isAdmin, profile, liffContext: liffCtx, login, logout }),
+    [ready, loggedIn, isAdmin, profile, liffCtx, login, logout]
   );
 
   if (!ready) {

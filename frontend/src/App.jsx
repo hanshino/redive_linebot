@@ -26,6 +26,8 @@ import BattleSign from "./pages/Panel/BattleSign";
 import CustomerOrder from "./pages/CustomerOrder";
 import AdminGachaPool from "./pages/Admin/GachaPool";
 import AdminGachaPoolForm from "./pages/Admin/GachaPool/GachaPoolForm";
+import AdminGachaBanner from "./pages/Admin/GachaBanner";
+import AdminGachaBannerForm from "./pages/Admin/GachaBanner/GachaBannerForm";
 import AdminGachaShop from "./pages/Admin/GachaShop";
 import AdminGlobalOrder from "./pages/Admin/GlobalOrder";
 import AdminMessages from "./pages/Admin/Messages";
@@ -35,6 +37,7 @@ import AdminWorldbossMessage from "./pages/Admin/WorldbossMessage";
 import AdminWorldbossMessageCreate from "./pages/Admin/WorldbossMessageCreate";
 import AdminWorldbossMessageUpdate from "./pages/Admin/WorldbossMessageUpdate";
 import ToolsBattleTime from "./pages/Tools/BattleTime";
+import RequireAdmin from "./components/RequireAdmin";
 
 export default function App() {
   return (
@@ -79,21 +82,29 @@ export default function App() {
           {/* Customer Order */}
           <Route path="source/:sourceId/customer/orders" element={<CustomerOrder />} />
 
-          {/* Admin */}
-          <Route path="admin/gacha-pool" element={<AdminGachaPool />} />
-          <Route path="admin/gacha-pool/new" element={<AdminGachaPoolForm />} />
-          <Route path="admin/gacha-pool/:id/edit" element={<AdminGachaPoolForm />} />
-          <Route path="admin/gacha-shop" element={<AdminGachaShop />} />
-          <Route path="admin/global-order" element={<AdminGlobalOrder />} />
-          <Route path="admin/messages" element={<AdminMessages />} />
-          <Route path="admin/worldboss" element={<AdminWorldboss />} />
-          <Route path="admin/worldboss-event" element={<AdminWorldbossEvent />} />
-          <Route path="admin/worldboss-message" element={<AdminWorldbossMessage />} />
-          <Route path="admin/worldboss-message/create" element={<AdminWorldbossMessageCreate />} />
-          <Route
-            path="admin/worldboss-message/update/:id"
-            element={<AdminWorldbossMessageUpdate />}
-          />
+          {/* Admin — requires admin privilege */}
+          <Route element={<RequireAdmin />}>
+            <Route path="admin/gacha-pool" element={<AdminGachaPool />} />
+            <Route path="admin/gacha-pool/new" element={<AdminGachaPoolForm />} />
+            <Route path="admin/gacha-pool/:id/edit" element={<AdminGachaPoolForm />} />
+            <Route path="admin/gacha-banner" element={<AdminGachaBanner />} />
+            <Route path="admin/gacha-banner/new" element={<AdminGachaBannerForm />} />
+            <Route path="admin/gacha-banner/:id/edit" element={<AdminGachaBannerForm />} />
+            <Route path="admin/gacha-shop" element={<AdminGachaShop />} />
+            <Route path="admin/global-order" element={<AdminGlobalOrder />} />
+            <Route path="admin/messages" element={<AdminMessages />} />
+            <Route path="admin/worldboss" element={<AdminWorldboss />} />
+            <Route path="admin/worldboss-event" element={<AdminWorldbossEvent />} />
+            <Route path="admin/worldboss-message" element={<AdminWorldbossMessage />} />
+            <Route
+              path="admin/worldboss-message/create"
+              element={<AdminWorldbossMessageCreate />}
+            />
+            <Route
+              path="admin/worldboss-message/update/:id"
+              element={<AdminWorldbossMessageUpdate />}
+            />
+          </Route>
 
           {/* Tools */}
           <Route path="tools/battle-time" element={<ToolsBattleTime />} />
