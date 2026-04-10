@@ -20,6 +20,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import NavDrawer from "../components/NavDrawer";
+import DebugOverlay from "../components/DebugOverlay";
 import { useColorMode } from "../theme/ColorModeContext";
 import useLiff from "../context/useLiff";
 
@@ -155,6 +156,7 @@ export default function MainLayout() {
           您沒有權限存取此頁面
         </Alert>
       </Snackbar>
+      <DebugOverlay />
     </Box>
   );
 }
