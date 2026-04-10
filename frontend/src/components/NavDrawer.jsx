@@ -53,8 +53,8 @@ const personalItems = [
 ];
 
 const adminItems = [
-  { label: "轉蛋管理", path: "/admin/gacha-pool", icon: SportsEsportsIcon },
-  { label: "活動 Banner", path: "/admin/gacha-banner", icon: CelebrationIcon },
+  { label: "角色卡池", path: "/admin/gacha-pool", icon: SportsEsportsIcon },
+  { label: "轉蛋活動", path: "/admin/gacha-banner", icon: CelebrationIcon },
   { label: "女神石商店", path: "/admin/gacha-shop", icon: StorefrontIcon },
   { label: "全群指令管理", path: "/admin/global-order", icon: MessageIcon },
   { label: "訊息實況", path: "/admin/messages", icon: MessageIcon },

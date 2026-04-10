@@ -67,8 +67,8 @@ export default function GachaBannerForm() {
       setLoading(true);
       const poolData = await gachaPoolService.fetchData();
       const ssrCharacters = poolData
-        .filter((c) => parseInt(c.star, 10) === 3)
-        .map((c) => ({ id: c.id, name: c.name, imageUrl: c.imageUrl }));
+        .filter(c => parseInt(c.star, 10) === 3)
+        .map(c => ({ id: c.id, name: c.name, imageUrl: c.imageUrl }));
       setCharacters(ssrCharacters);
 
       if (isEdit) {
@@ -92,17 +92,17 @@ export default function GachaBannerForm() {
   }, [id, isEdit, showHint]);
 
   useEffect(() => {
-    document.title = isEdit ? "編輯 Banner" : "新增 Banner";
+    document.title = isEdit ? "編輯轉蛋活動" : "新增轉蛋活動";
     fetchInitialData();
   }, [isEdit, fetchInitialData]);
 
-  const handleChange = (field) => (e) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  const handleChange = field => e => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
   };
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      showHint("請輸入 Banner 名稱", "warning");
+      showHint("請輸入活動名稱", "warning");
       return;
     }
     if (!formData.start_at || !formData.end_at) {
@@ -145,9 +145,7 @@ export default function GachaBannerForm() {
     return <FullPageLoading />;
   }
 
-  const selectedCharacters = characters.filter((c) =>
-    formData.characterIds.includes(c.id)
-  );
+  const selectedCharacters = characters.filter(c => formData.characterIds.includes(c.id));
 
   return (
     <Box sx={{ width: "100%", maxWidth: 640, mx: "auto", pb: 10 }}>
@@ -163,7 +161,7 @@ export default function GachaBannerForm() {
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          {isEdit ? "編輯 Banner" : "新增 Banner"}
+          {isEdit ? "編輯活動" : "新增活動"}
         </Typography>
       </Stack>
 
@@ -179,7 +177,7 @@ export default function GachaBannerForm() {
 
           <TextField
             fullWidth
-            label="Banner 名稱"
+            label="活動名稱"
             value={formData.name}
             onChange={handleChange("name")}
             required
@@ -192,24 +190,12 @@ export default function GachaBannerForm() {
             value={formData.type}
             onChange={handleChange("type")}
           >
-            {TYPE_OPTIONS.map((opt) => (
+            {TYPE_OPTIONS.map(opt => (
               <MenuItem key={opt.value} value={opt.value}>
                 {opt.label}
               </MenuItem>
             ))}
           </TextField>
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={formData.is_active}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, is_active: e.target.checked }))
-                }
-              />
-            }
-            label="啟用"
-          />
 
           {/* 時間設定 */}
           <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 700, mt: 1 }}>
@@ -249,23 +235,23 @@ export default function GachaBannerForm() {
 
               <TextField
                 fullWidth
-                label="機率加成 (%)"
+                label="機率加成基數"
                 value={formData.rate_boost}
                 onChange={handleChange("rate_boost")}
                 type="number"
-                helperText="例如 150 表示指定角色機率變為 (100+150)/100 = 2.5 倍"
-                slotProps={{ htmlInput: { min: 0, step: 10 } }}
+                helperText="輸入 100 → 角色機率 ×2 倍、150 → ×2.5 倍、200 → ×3 倍"
+                slotProps={{ htmlInput: { min: 0, max: 1000, step: 10 } }}
               />
 
               <Autocomplete
                 multiple
                 options={characters}
-                getOptionLabel={(option) => option.name}
+                getOptionLabel={option => option.name}
                 value={selectedCharacters}
                 onChange={(_, newValue) =>
-                  setFormData((prev) => ({
+                  setFormData(prev => ({
                     ...prev,
-                    characterIds: newValue.map((c) => c.id),
+                    characterIds: newValue.map(c => c.id),
                   }))
                 }
                 isOptionEqualToValue={(option, value) => option.id === value.id}
@@ -279,7 +265,7 @@ export default function GachaBannerForm() {
                     />
                   ))
                 }
-                renderInput={(params) => (
+                renderInput={params => (
                   <TextField
                     {...params}
                     label="選擇加成角色（僅 SSR）"
@@ -303,14 +289,27 @@ export default function GachaBannerForm() {
               <TextField
                 fullWidth
                 label="花費女神石"
-                value={formData.cost}
+                value={formData.cost || ""}
                 onChange={handleChange("cost")}
                 type="number"
-                helperText="設為 0 則使用系統預設值 (10,000)"
+                placeholder="10000"
+                helperText="留空則使用系統預設值（每次抽卡花費 10,000 女神石）"
                 slotProps={{ htmlInput: { min: 0, step: 100 } }}
               />
             </>
           )}
+
+          {/* 啟用開關 */}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.is_active}
+                onChange={e => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+              />
+            }
+            label="立即啟用此活動"
+            sx={{ mt: 1 }}
+          />
         </Stack>
       </Paper>
 
@@ -325,7 +324,7 @@ export default function GachaBannerForm() {
           bgcolor: "background.paper",
           borderTop: 1,
           borderColor: "divider",
-          zIndex: (t) => t.zIndex.appBar - 1,
+          zIndex: t => t.zIndex.appBar - 1,
           backdropFilter: "blur(8px)",
           backgroundColor: isDark ? "rgba(10,26,42,0.92)" : "rgba(255,255,255,0.92)",
         }}
@@ -340,7 +339,7 @@ export default function GachaBannerForm() {
             disabled={saving}
             sx={{ py: 1.5, fontWeight: 700, fontSize: "1rem", borderRadius: 2, boxShadow: 3 }}
           >
-            {saving ? "儲存中..." : isEdit ? "儲存變更" : "新增 Banner"}
+            {saving ? "儲存中..." : isEdit ? "儲存變更" : "新增活動"}
           </Button>
         </Box>
       </Box>

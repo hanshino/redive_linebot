@@ -33,10 +33,12 @@ function formatDateTime(value) {
   return new Date(value).toLocaleString("zh-TW");
 }
 
-function isActive(banner) {
-  if (!banner.is_active) return false;
+function getBannerStatus(banner) {
+  if (!banner.is_active) return { label: "已停用", color: "default" };
   const now = new Date();
-  return new Date(banner.start_at) <= now && new Date(banner.end_at) >= now;
+  if (new Date(banner.start_at) > now) return { label: "待開始", color: "info" };
+  if (new Date(banner.end_at) < now) return { label: "已結束", color: "default" };
+  return { label: "進行中", color: "success" };
 }
 
 export default function AdminGachaBanner() {
@@ -53,7 +55,7 @@ export default function AdminGachaBanner() {
     try {
       setLoading(true);
       const data = await gachaBannerService.fetchBanners();
-      setRows(data);
+      setRows(data.sort((a, b) => new Date(b.start_at) - new Date(a.start_at)));
     } catch {
       showHint("載入資料失敗", "error");
     } finally {
@@ -62,14 +64,14 @@ export default function AdminGachaBanner() {
   }, [showHint]);
 
   useEffect(() => {
-    document.title = "活動 Banner 管理";
+    document.title = "轉蛋活動管理";
     fetchData();
   }, [fetchData]);
 
-  const handleDeleteClick = (row) => {
+  const handleDeleteClick = row => {
     showAlert({
       title: "確認刪除",
-      description: `確定要刪除 Banner「${row.name}」嗎？`,
+      description: `確定要刪除活動「${row.name}」嗎？`,
       onSubmit: async () => {
         try {
           await gachaBannerService.deleteBanner(row.id);
@@ -107,10 +109,10 @@ export default function AdminGachaBanner() {
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              活動 Banner 管理
+              轉蛋活動管理
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-              共 {rows.length} 個 Banner
+              共 {rows.length} 個活動
             </Typography>
           </Box>
           <Button
@@ -119,7 +121,7 @@ export default function AdminGachaBanner() {
             onClick={() => navigate("/admin/gacha-banner/new")}
             sx={{ borderRadius: 2, px: 2.5, boxShadow: 2 }}
           >
-            新增 Banner
+            新增活動
           </Button>
         </Stack>
       </Paper>
@@ -127,10 +129,26 @@ export default function AdminGachaBanner() {
       {/* Banner List */}
       <Paper elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: "divider" }}>
         {rows.length === 0 && (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              尚無 Banner 資料
+          <Box
+            sx={{
+              py: 8,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <CelebrationIcon sx={{ fontSize: 48, color: "text.disabled" }} />
+            <Typography variant="body1" color="text.secondary">
+              尚無活動資料
             </Typography>
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={() => navigate("/admin/gacha-banner/new")}
+            >
+              新增第一個活動
+            </Button>
           </Box>
         )}
         {rows.map((banner, index) => (
@@ -148,11 +166,18 @@ export default function AdminGachaBanner() {
               <CelebrationIcon
                 sx={{
                   fontSize: 32,
-                  color: isActive(banner) ? "warning.main" : "text.disabled",
+                  color:
+                    getBannerStatus(banner).color === "success" ? "warning.main" : "text.disabled",
                 }}
               />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  flexWrap="wrap"
+                  sx={{ mb: 0.5 }}
+                >
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     {banner.name}
                   </Typography>
@@ -161,11 +186,12 @@ export default function AdminGachaBanner() {
                     color={TYPE_CONFIG[banner.type]?.color || "default"}
                     size="small"
                   />
-                  {isActive(banner) ? (
-                    <Chip label="進行中" color="success" size="small" variant="outlined" />
-                  ) : (
-                    <Chip label="未啟用" size="small" variant="outlined" />
-                  )}
+                  <Chip
+                    label={getBannerStatus(banner).label}
+                    color={getBannerStatus(banner).color}
+                    size="small"
+                    variant="outlined"
+                  />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
                   {formatDateTime(banner.start_at)} ～ {formatDateTime(banner.end_at)}
@@ -186,7 +212,11 @@ export default function AdminGachaBanner() {
                   <IconButton
                     size="small"
                     onClick={() => navigate(`/admin/gacha-banner/${banner.id}/edit`)}
-                    sx={{ color: "primary.main" }}
+                    sx={{
+                      color: "primary.main",
+                      transition: "all 0.2s",
+                      "&:hover": { bgcolor: "primary.main", color: "primary.contrastText" },
+                    }}
                   >
                     <EditIcon fontSize="small" />
                   </IconButton>
@@ -195,7 +225,11 @@ export default function AdminGachaBanner() {
                   <IconButton
                     size="small"
                     onClick={() => handleDeleteClick(banner)}
-                    sx={{ color: "error.main" }}
+                    sx={{
+                      color: "error.main",
+                      transition: "all 0.2s",
+                      "&:hover": { bgcolor: "error.main", color: "error.contrastText" },
+                    }}
                   >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
