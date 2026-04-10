@@ -553,6 +553,22 @@ function trimParamter(rowData) {
   return objParam;
 }
 
+function sanitizeImageUrl(url) {
+  if (!url) return url;
+  const cleaned = url.trim().replace(/^['"]+|['"]+$/g, "").trim();
+  if (!cleaned.startsWith("https://")) {
+    throw new GachaException("headimage_url must start with https://", 4);
+  }
+  return cleaned;
+}
+
+function applyImageUrlSanitize(objParam) {
+  const urlKey = Object.keys(objParam).find(k => k.toLowerCase() === "headimage_url");
+  if (urlKey && objParam[urlKey]) {
+    objParam[urlKey] = sanitizeImageUrl(objParam[urlKey]);
+  }
+}
+
 async function updateCharacter(req, res) {
   const { id, data } = req.body;
   let result = {};
@@ -562,6 +578,7 @@ async function updateCharacter(req, res) {
     if (data === undefined) throw new GachaException("Parameter data missing", 2);
 
     let objParam = trimParamter(data);
+    applyImageUrlSanitize(objParam);
 
     await GachaModel.updateData(id, objParam);
   } catch (e) {
@@ -583,6 +600,8 @@ async function insertCharacter(req, res) {
     let objParam = trimParamter(data);
 
     if (Object.keys(objParam).length < 5) throw new GachaException("Parameter Leak", 3);
+
+    applyImageUrlSanitize(objParam);
 
     await GachaModel.insertNewData(objParam);
   } catch (e) {
