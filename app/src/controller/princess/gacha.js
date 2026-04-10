@@ -147,34 +147,29 @@ async function userCooldown(userId) {
 }
 
 /**
- * 將轉蛋池3*機率調升
- * @param {Array} pool
+ * 對符合條件的角色套用機率加成
+ * @param {Array} pool 轉蛋池
+ * @param {Function} shouldBoost 判斷是否加成的 predicate
+ * @param {Number} boost 加成百分比，如 150 → (100+150)/100 = 2.5 倍
+ * @returns {Array}
  */
-function makePickup(pool, rate = 100) {
+function boostRate(pool, shouldBoost, boost) {
   return pool.map(data => {
-    if (data.star !== "3") return data;
+    if (!shouldBoost(data)) return data;
     return {
       ...data,
-      rate: `${(parseFloat(data.rate) * (100 + rate)) / 100}%`,
+      rate: `${(parseFloat(data.rate) * (100 + boost)) / 100}%`,
     };
   });
 }
 
-/**
- * 對 banner 指定的角色套用機率加成
- * @param {Array} pool 轉蛋池
- * @param {Array<Number>} characterIds banner 指定角色 ID
- * @param {Number} rateBoost 加成百分比，如 150 = 1.5 倍
- * @returns {Array}
- */
+function makePickup(pool, rate = 100) {
+  return boostRate(pool, data => data.star === "3", rate);
+}
+
 function applyBannerRateUp(pool, characterIds, rateBoost) {
-  return pool.map(data => {
-    if (!characterIds.includes(data.id)) return data;
-    return {
-      ...data,
-      rate: `${(parseFloat(data.rate) * (100 + rateBoost)) / 100}%`,
-    };
-  });
+  const idSet = new Set(characterIds);
+  return boostRate(pool, data => idSet.has(data.id), rateBoost);
 }
 
 /**
@@ -200,10 +195,13 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   let { tag, times = 10 } = match.groups;
   const { userId, type, groupId } = context.event.source;
 
-  // 歐洲抽：查詢是否有進行中的 europe banner
+  // 一次查詢所有進行中的 banner（避免多次 DB round-trip）
+  const allActiveBanners = await GachaBanner.getActiveBannersWithCharacters();
+  const europeBanners = allActiveBanners.filter(b => b.type === "europe");
+  const rateUpBanners = allActiveBanners.filter(b => b.type === "rate_up");
+
   let activeEuropeBanner = null;
   if (europe) {
-    const europeBanners = await GachaBanner.getActiveBanners({ type: "europe" });
     if (europeBanners.length === 0) {
       return context.replyText(i18n.__("message.gacha.cross_year_only"));
     }
@@ -284,21 +282,15 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     newCharacters: [],
     repeatReward: 0,
   };
-  // 查詢當前有效的 rate_up banner
-  const rateUpBanners = await GachaBanner.getActiveBanners({ type: "rate_up" });
-
-  const dailyPool = await (async () => {
+  const dailyPool = (() => {
     let pool = filteredPool;
 
-    // 先套用 banner rate_up（管理員設定，自動生效）
     for (const banner of rateUpBanners) {
-      const bannerCharIds = await GachaBanner.getBannerCharacterIds(banner.id);
-      if (bannerCharIds.length > 0) {
-        pool = applyBannerRateUp(pool, bannerCharIds, banner.rate_boost);
+      if (banner.characterIds.length > 0) {
+        pool = applyBannerRateUp(pool, banner.characterIds, banner.rate_boost);
       }
     }
 
-    // 再套用玩家指令效果
     if (pickup) {
       return makePickup(pool, 200);
     } else if (ensure) {

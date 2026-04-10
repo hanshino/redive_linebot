@@ -55,7 +55,7 @@ export default function AdminGachaBanner() {
     try {
       setLoading(true);
       const data = await gachaBannerService.fetchBanners();
-      setRows(data.sort((a, b) => new Date(b.start_at) - new Date(a.start_at)));
+      setRows(data);
     } catch {
       showHint("載入資料失敗", "error");
     } finally {
@@ -151,93 +151,95 @@ export default function AdminGachaBanner() {
             </Button>
           </Box>
         )}
-        {rows.map((banner, index) => (
-          <Box key={banner.id}>
-            {index > 0 && <Divider />}
-            <Box
-              sx={{
-                px: { xs: 2.5, sm: 3 },
-                py: { xs: 2, sm: 2.5 },
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-            >
-              <CelebrationIcon
+        {rows.map((banner, index) => {
+          const status = getBannerStatus(banner);
+          return (
+            <Box key={banner.id}>
+              {index > 0 && <Divider />}
+              <Box
                 sx={{
-                  fontSize: 32,
-                  color:
-                    getBannerStatus(banner).color === "success" ? "warning.main" : "text.disabled",
+                  px: { xs: 2.5, sm: 3 },
+                  py: { xs: 2, sm: 2.5 },
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
                 }}
-              />
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  flexWrap="wrap"
-                  sx={{ mb: 0.5 }}
-                >
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                    {banner.name}
+              >
+                <CelebrationIcon
+                  sx={{
+                    fontSize: 32,
+                    color: status.color === "success" ? "warning.main" : "text.disabled",
+                  }}
+                />
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    flexWrap="wrap"
+                    sx={{ mb: 0.5 }}
+                  >
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      {banner.name}
+                    </Typography>
+                    <Chip
+                      label={TYPE_CONFIG[banner.type]?.label || banner.type}
+                      color={TYPE_CONFIG[banner.type]?.color || "default"}
+                      size="small"
+                    />
+                    <Chip
+                      label={status.label}
+                      color={status.color}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatDateTime(banner.start_at)} ～ {formatDateTime(banner.end_at)}
                   </Typography>
-                  <Chip
-                    label={TYPE_CONFIG[banner.type]?.label || banner.type}
-                    color={TYPE_CONFIG[banner.type]?.color || "default"}
-                    size="small"
-                  />
-                  <Chip
-                    label={getBannerStatus(banner).label}
-                    color={getBannerStatus(banner).color}
-                    size="small"
-                    variant="outlined"
-                  />
+                  {banner.type === "rate_up" && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                      機率加成: {banner.rate_boost}%
+                    </Typography>
+                  )}
+                  {banner.type === "europe" && banner.cost > 0 && (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                      花費: {banner.cost} 女神石
+                    </Typography>
+                  )}
+                </Box>
+                <Stack direction="row" spacing={0.5}>
+                  <Tooltip title="編輯" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => navigate(`/admin/gacha-banner/${banner.id}/edit`)}
+                      sx={{
+                        color: "primary.main",
+                        transition: "all 0.2s",
+                        "&:hover": { bgcolor: "primary.main", color: "primary.contrastText" },
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="刪除" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteClick(banner)}
+                      sx={{
+                        color: "error.main",
+                        transition: "all 0.2s",
+                        "&:hover": { bgcolor: "error.main", color: "error.contrastText" },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  {formatDateTime(banner.start_at)} ～ {formatDateTime(banner.end_at)}
-                </Typography>
-                {banner.type === "rate_up" && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                    機率加成: {banner.rate_boost}%
-                  </Typography>
-                )}
-                {banner.type === "europe" && banner.cost > 0 && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                    花費: {banner.cost} 女神石
-                  </Typography>
-                )}
               </Box>
-              <Stack direction="row" spacing={0.5}>
-                <Tooltip title="編輯" arrow>
-                  <IconButton
-                    size="small"
-                    onClick={() => navigate(`/admin/gacha-banner/${banner.id}/edit`)}
-                    sx={{
-                      color: "primary.main",
-                      transition: "all 0.2s",
-                      "&:hover": { bgcolor: "primary.main", color: "primary.contrastText" },
-                    }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="刪除" arrow>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteClick(banner)}
-                    sx={{
-                      color: "error.main",
-                      transition: "all 0.2s",
-                      "&:hover": { bgcolor: "error.main", color: "error.contrastText" },
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
             </Box>
-          </Box>
-        ))}
+          );
+        })}
       </Paper>
 
       <AlertDialog

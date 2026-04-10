@@ -16,7 +16,8 @@ export default function DebugOverlay() {
   useEffect(() => {
     if (!isDebugMode()) return;
     const interval = setInterval(() => {
-      setLogs([...getDebugLogs()]);
+      const current = getDebugLogs();
+      setLogs(prev => (prev.length === current.length ? prev : [...current]));
     }, 500);
     return () => clearInterval(interval);
   }, []);

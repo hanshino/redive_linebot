@@ -65,14 +65,17 @@ export default function GachaBannerForm() {
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const poolData = await gachaPoolService.fetchData();
+      const [poolData, banner] = await Promise.all([
+        gachaPoolService.fetchData(),
+        isEdit ? gachaBannerService.fetchBanner(id) : Promise.resolve(null),
+      ]);
+
       const ssrCharacters = poolData
         .filter(c => parseInt(c.star, 10) === 3)
         .map(c => ({ id: c.id, name: c.name, imageUrl: c.imageUrl }));
       setCharacters(ssrCharacters);
 
-      if (isEdit) {
-        const banner = await gachaBannerService.fetchBanner(id);
+      if (banner) {
         setFormData({
           name: banner.name || "",
           type: banner.type || "rate_up",

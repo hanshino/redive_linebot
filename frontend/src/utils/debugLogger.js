@@ -1,4 +1,5 @@
 const STORAGE_KEY = "liff_debug_logs";
+const MAX_LOGS = 200;
 const startTime = Date.now();
 
 function isDebugEnabled() {
@@ -58,6 +59,7 @@ export function debugLog(event, data = {}) {
     .join(" ");
   const entry = { timestamp, event, dataStr, raw: data };
   logs.push(entry);
+  if (logs.length > MAX_LOGS) logs.shift();
   saveLogs(logs);
 
   // Also log to console for desktop debugging

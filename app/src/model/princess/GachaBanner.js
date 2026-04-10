@@ -41,20 +41,48 @@ class GachaBanner extends Base {
   }
 
   /**
-   * 設定 banner 的關聯角色（先刪後插）
+   * 查詢有效 banner 並一次載入所有關聯角色（避免 N+1）
+   * @param {Object} options
+   * @param {String} options.type 活動類型 rate_up | europe
+   * @returns {Promise<Array>} banners with characterIds attached
+   */
+  async getActiveBannersWithCharacters(options = {}) {
+    const banners = await this.getActiveBanners(options);
+    if (banners.length === 0) return [];
+
+    const ids = banners.map(b => b.id);
+    const chars = await this.connection("gacha_banner_characters")
+      .whereIn("banner_id", ids)
+      .select("banner_id", "character_id");
+
+    const charMap = {};
+    for (const c of chars) {
+      (charMap[c.banner_id] ||= []).push(c.character_id);
+    }
+    return banners.map(b => ({ ...b, characterIds: charMap[b.id] || [] }));
+  }
+
+  /**
+   * 設定 banner 的關聯角色（先刪後插，包在 transaction 中）
    * @param {Number} bannerId
    * @param {Array<Number>} characterIds
    */
   async setBannerCharacters(bannerId, characterIds) {
-    await this.connection("gacha_banner_characters").where("banner_id", bannerId).del();
-
-    if (characterIds.length > 0) {
-      await this.connection("gacha_banner_characters").insert(
-        characterIds.map(characterId => ({
-          banner_id: bannerId,
-          character_id: characterId,
-        }))
-      );
+    const trx = await this.connection.transaction();
+    try {
+      await trx("gacha_banner_characters").where("banner_id", bannerId).del();
+      if (characterIds.length > 0) {
+        await trx("gacha_banner_characters").insert(
+          characterIds.map(characterId => ({
+            banner_id: bannerId,
+            character_id: characterId,
+          }))
+        );
+      }
+      await trx.commit();
+    } catch (err) {
+      await trx.rollback();
+      throw err;
     }
   }
 
