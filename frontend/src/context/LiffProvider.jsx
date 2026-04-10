@@ -38,6 +38,7 @@ export default function LiffProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const initPromiseRef = useRef(null);
+  const initStartedRef = useRef(false);
 
   const fetchProfile = useCallback(async () => {
     debugLog("FETCH_PROFILE_START");
@@ -59,6 +60,10 @@ export default function LiffProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    // Guard against StrictMode double-invoke — ref survives unmount/remount
+    if (initStartedRef.current) return;
+    initStartedRef.current = true;
+
     const isLiffRoute = window.location.pathname.startsWith("/liff/");
     const storedToken = window.localStorage.getItem(TOKEN_KEY);
     debugLog("INIT_START", {
@@ -81,7 +86,10 @@ export default function LiffProvider({ children }) {
 
     // LIFF route: full SDK init to process OAuth code
     if (isLiffRoute) {
-      initPromiseRef.current = initLiffSdk()
+      if (!initPromiseRef.current) {
+        initPromiseRef.current = initLiffSdk();
+      }
+      initPromiseRef.current
         .then(async () => {
           debugLog("LIFF_SDK_INIT", { success: true });
           if (liff.isLoggedIn()) {
