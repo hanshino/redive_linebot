@@ -39,6 +39,8 @@ async function getBanner(req, res) {
 async function createBanner(req, res) {
   try {
     const { characterIds = [], ...bannerData } = req.body;
+    if (bannerData.start_at) bannerData.start_at = new Date(bannerData.start_at);
+    if (bannerData.end_at) bannerData.end_at = new Date(bannerData.end_at);
     const id = await GachaBanner.create(bannerData);
 
     if (bannerData.type === "rate_up" && characterIds.length > 0) {
@@ -60,11 +62,10 @@ async function updateBanner(req, res) {
   try {
     const { id } = req.params;
     const { characterIds, ...bannerData } = req.body;
+    if (bannerData.start_at) bannerData.start_at = new Date(bannerData.start_at);
+    if (bannerData.end_at) bannerData.end_at = new Date(bannerData.end_at);
 
-    await GachaBanner.update(parseInt(id), {
-      ...bannerData,
-      updated_at: new Date(),
-    });
+    await GachaBanner.update(parseInt(id), bannerData);
 
     if (characterIds !== undefined) {
       await GachaBanner.setBannerCharacters(parseInt(id), characterIds);
