@@ -4,7 +4,8 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
-import { getDebugLogs, formatDebugLogs, isDebugMode } from "../utils/debugLogger";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { getDebugLogs, formatDebugLogs, isDebugMode, clearDebugLogs } from "../utils/debugLogger";
 
 export default function DebugOverlay() {
   const [expanded, setExpanded] = useState(true);
@@ -82,6 +83,16 @@ export default function DebugOverlay() {
         )}
         <IconButton size="small" onClick={handleCopy} sx={{ color: "#0f0", p: 0.5 }}>
           <ContentCopyIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => {
+            clearDebugLogs();
+            setLogs([]);
+          }}
+          sx={{ color: "#f44336", p: 0.5 }}
+        >
+          <DeleteOutlineIcon sx={{ fontSize: 16 }} />
         </IconButton>
         <IconButton
           size="small"
