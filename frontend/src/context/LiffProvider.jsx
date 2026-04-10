@@ -10,6 +10,8 @@ const DEFAULT_SIZE = "full";
 export const LiffContext = createContext({
   ready: false,
   loggedIn: false,
+  isAdmin: false,
+  profile: null,
   liffContext: {},
   login: () => {},
   logout: () => {},
@@ -32,7 +34,24 @@ export default function LiffProvider({ children }) {
   const [ready, setReady] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [liffCtx, setLiffCtx] = useState({});
+  const [profile, setProfile] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const initPromiseRef = useRef(null);
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const { data } = await api.get("/api/me");
+      setProfile(data);
+      setIsAdmin(data.privilege !== undefined);
+    } catch {
+      // Token invalid or network error — treat as not logged in
+      window.localStorage.removeItem(TOKEN_KEY);
+      clearAuthToken();
+      setLoggedIn(false);
+      setProfile(null);
+      setIsAdmin(false);
+    }
+  }, []);
 
   useEffect(() => {
     const isLiffRoute = window.location.pathname.startsWith("/liff/");
@@ -42,14 +61,14 @@ export default function LiffProvider({ children }) {
     if (!isLiffRoute && storedToken) {
       setAuthToken(storedToken);
       setLoggedIn(true);
-      setReady(true);
+      fetchProfile().finally(() => setReady(true));
       return;
     }
 
     // LIFF route: full SDK init to process OAuth code
     if (isLiffRoute) {
       initPromiseRef.current = initLiffSdk()
-        .then(() => {
+        .then(async () => {
           if (liff.isLoggedIn()) {
             const token = liff.getAccessToken();
             window.localStorage.setItem(TOKEN_KEY, token);
@@ -60,6 +79,7 @@ export default function LiffProvider({ children }) {
             } catch (err) {
               console.warn("Failed to get LIFF context:", err);
             }
+            await fetchProfile();
           }
         })
         .catch(err => console.warn("LIFF init failed:", err))
@@ -90,6 +110,8 @@ export default function LiffProvider({ children }) {
   const logout = useCallback(() => {
     window.localStorage.removeItem(TOKEN_KEY);
     clearAuthToken();
+    setProfile(null);
+    setIsAdmin(false);
     try {
       liff.logout();
     } catch {
@@ -99,8 +121,8 @@ export default function LiffProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ ready, loggedIn, liffContext: liffCtx, login, logout }),
-    [ready, loggedIn, liffCtx, login, logout]
+    () => ({ ready, loggedIn, isAdmin, profile, liffContext: liffCtx, login, logout }),
+    [ready, loggedIn, isAdmin, profile, liffCtx, login, logout]
   );
 
   if (!ready) {
