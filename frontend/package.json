@@ -17,7 +17,7 @@
     "@mui/lab": "^7.0.1-beta.23",
     "@mui/material": "^7",
     "@mui/x-data-grid": "^8",
-    "axios": "^1.13.6",
+    "axios": "^1.15.0",
     "axios-hooks": "^5.1.1",
     "framer-motion": "^12.38.0",
     "lodash": "^4.17.23",
