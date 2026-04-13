@@ -30,8 +30,8 @@ GachaException.prototype = new Error();
 
 function getTotalRate(gachaPool) {
   let result = gachaPool
-    .map(data => parseFloat(data.rate.replace("%", "")))
-    .reduce((pre, curr) => pre + curr);
+    .map(data => parseFloat(data.rate.replace("%", "")) || 0)
+    .reduce((pre, curr) => pre + curr, 0);
   return [Math.round(result * 10000), 10000];
 }
 
