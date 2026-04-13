@@ -580,6 +580,11 @@ function trimParamter(rowData) {
   return objParam;
 }
 
+function validateRate(value) {
+  const rateValue = parseFloat(value);
+  if (isNaN(rateValue) || rateValue < 0) throw new GachaException("rate must be a valid number >= 0", 5);
+}
+
 function sanitizeImageUrl(url) {
   if (!url) return url;
   const cleaned = url.trim().replace(/^['"]+|['"]+$/g, "").trim();
@@ -606,10 +611,7 @@ async function updateCharacter(req, res) {
 
     let objParam = trimParamter(data);
 
-    if (objParam.rate !== undefined) {
-      const rateValue = parseFloat(objParam.rate);
-      if (isNaN(rateValue) || rateValue < 0) throw new GachaException("rate must be a valid number >= 0", 5);
-    }
+    if (objParam.rate !== undefined) validateRate(objParam.rate);
 
     applyImageUrlSanitize(objParam);
 
@@ -634,8 +636,7 @@ async function insertCharacter(req, res) {
 
     if (Object.keys(objParam).length < 5) throw new GachaException("Parameter Leak", 3);
 
-    const rateValue = parseFloat(objParam.rate);
-    if (isNaN(rateValue) || rateValue < 0) throw new GachaException("rate must be a valid number >= 0", 5);
+    validateRate(objParam.rate);
 
     applyImageUrlSanitize(objParam);
 

@@ -79,7 +79,7 @@ export default function GachaPoolForm() {
         imageUrl: character.imageUrl || "",
         star: Number(character.star) || 3,
         rate: isNaN(parsedRate) ? "" : parsedRate,
-        isPrincess: parseInt(character.isPrincess, 10) || 1,
+        isPrincess: parseInt(character.isPrincess, 10) ?? 1,
         tag: character.tag || "",
       });
     } catch {
@@ -125,7 +125,8 @@ export default function GachaPoolForm() {
       return;
     }
 
-    if (formData.rate === "" || isNaN(Number(formData.rate)) || Number(formData.rate) < 0) {
+    const parsedRateValue = parseFloat(formData.rate);
+    if (formData.rate === "" || isNaN(parsedRateValue) || parsedRateValue < 0) {
       showHint("請輸入有效的機率（>= 0）", "warning");
       return;
     }
