@@ -30,8 +30,8 @@ GachaException.prototype = new Error();
 
 function getTotalRate(gachaPool) {
   let result = gachaPool
-    .map(data => parseFloat(data.rate.replace("%", "")))
-    .reduce((pre, curr) => pre + curr);
+    .map(data => parseFloat(data.rate.replace("%", "")) || 0)
+    .reduce((pre, curr) => pre + curr, 0);
   return [Math.round(result * 10000), 10000];
 }
 
@@ -580,6 +580,11 @@ function trimParamter(rowData) {
   return objParam;
 }
 
+function validateRate(value) {
+  const rateValue = parseFloat(value);
+  if (isNaN(rateValue) || rateValue < 0) throw new GachaException("rate must be a valid number >= 0", 5);
+}
+
 function sanitizeImageUrl(url) {
   if (!url) return url;
   const cleaned = url.trim().replace(/^['"]+|['"]+$/g, "").trim();
@@ -605,6 +610,9 @@ async function updateCharacter(req, res) {
     if (data === undefined) throw new GachaException("Parameter data missing", 2);
 
     let objParam = trimParamter(data);
+
+    if (objParam.rate !== undefined) validateRate(objParam.rate);
+
     applyImageUrlSanitize(objParam);
 
     await GachaModel.updateData(id, objParam);
@@ -627,6 +635,8 @@ async function insertCharacter(req, res) {
     let objParam = trimParamter(data);
 
     if (Object.keys(objParam).length < 5) throw new GachaException("Parameter Leak", 3);
+
+    validateRate(objParam.rate);
 
     applyImageUrlSanitize(objParam);
 

@@ -73,12 +73,13 @@ export default function GachaPoolForm() {
         navigate("/admin/gacha-pool");
         return;
       }
+      const parsedRate = parseFloat(character.rate);
       setFormData({
         name: character.name || "",
         imageUrl: character.imageUrl || "",
         star: Number(character.star) || 3,
-        rate: parseFloat(character.rate) || "",
-        isPrincess: parseInt(character.isPrincess, 10) || 1,
+        rate: isNaN(parsedRate) ? "" : parsedRate,
+        isPrincess: parseInt(character.isPrincess, 10) ?? 1,
         tag: character.tag || "",
       });
     } catch {
@@ -121,6 +122,12 @@ export default function GachaPoolForm() {
   const handleSave = async () => {
     if (!formData.name.trim()) {
       showHint("請輸入角色名稱", "warning");
+      return;
+    }
+
+    const parsedRateValue = parseFloat(formData.rate);
+    if (formData.rate === "" || isNaN(parsedRateValue) || parsedRateValue < 0) {
+      showHint("請輸入有效的機率（>= 0）", "warning");
       return;
     }
 
