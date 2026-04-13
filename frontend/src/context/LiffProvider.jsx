@@ -19,6 +19,8 @@ export const LiffContext = createContext({
 });
 
 function getLiffSize() {
+  const match = window.location.pathname.match(/^\/liff\/([^/]+)/);
+  if (match) return match[1];
   return window.localStorage.getItem(SIZE_KEY) || DEFAULT_SIZE;
 }
 
