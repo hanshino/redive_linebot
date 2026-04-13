@@ -605,6 +605,12 @@ async function updateCharacter(req, res) {
     if (data === undefined) throw new GachaException("Parameter data missing", 2);
 
     let objParam = trimParamter(data);
+
+    if (objParam.rate !== undefined) {
+      const rateValue = parseFloat(objParam.rate);
+      if (isNaN(rateValue) || rateValue < 0) throw new GachaException("rate must be a valid number >= 0", 5);
+    }
+
     applyImageUrlSanitize(objParam);
 
     await GachaModel.updateData(id, objParam);
@@ -627,6 +633,9 @@ async function insertCharacter(req, res) {
     let objParam = trimParamter(data);
 
     if (Object.keys(objParam).length < 5) throw new GachaException("Parameter Leak", 3);
+
+    const rateValue = parseFloat(objParam.rate);
+    if (isNaN(rateValue) || rateValue < 0) throw new GachaException("rate must be a valid number >= 0", 5);
 
     applyImageUrlSanitize(objParam);
 
