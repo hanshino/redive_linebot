@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Container,
   Typography,
   Tabs,
   Tab,
@@ -36,6 +35,9 @@ import ShareIcon from "@mui/icons-material/Share";
 import CelebrationIcon from "@mui/icons-material/Celebration";
 import LockIcon from "@mui/icons-material/Lock";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
+import DiamondIcon from "@mui/icons-material/Diamond";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 
 const RARITY_CONFIG = {
   0: { label: "普通", color: "#757575", bg: "#f5f5f5" },
@@ -69,6 +71,11 @@ const ACHIEVEMENT_ICONS = {
   social_veteran_30d: EmojiEventsIcon,
   social_invite_group: ShareIcon,
   social_easter_egg: CelebrationIcon,
+  subscribe_first: CardGiftcardIcon,
+  subscribe_3: CardGiftcardIcon,
+  subscribe_6: DiamondIcon,
+  subscribe_12: AccountBalanceIcon,
+  legacy_pioneer: AccountBalanceIcon,
 };
 
 const CATEGORY_ICONS = {
@@ -77,6 +84,7 @@ const CATEGORY_ICONS = {
   janken: GavelIcon,
   world_boss: ShieldIcon,
   social: PeopleIcon,
+  subscribe: CardGiftcardIcon,
 };
 
 const CARD_HEIGHT = 180;
@@ -130,7 +138,7 @@ export default function Achievement() {
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Box sx={{ py: 1 }}>
         <Skeleton variant="text" width={120} height={48} sx={{ mx: "auto" }} />
         <Skeleton variant="rectangular" height={8} sx={{ borderRadius: 4, my: 1 }} />
         <Box
@@ -145,14 +153,14 @@ export default function Achievement() {
             <Skeleton key={i} variant="rectangular" height={CARD_HEIGHT} sx={{ borderRadius: 2 }} />
           ))}
         </Box>
-      </Container>
+      </Box>
     );
   }
   if (error)
     return (
-      <Container sx={{ py: 4 }}>
+      <Box sx={{ py: 2 }}>
         <Typography color="error">{error}</Typography>
-      </Container>
+      </Box>
     );
   if (!summary) return null;
 
@@ -162,7 +170,7 @@ export default function Achievement() {
   const statsMap = Object.fromEntries(stats.map(s => [s.achievement_id, s]));
 
   return (
-    <Container maxWidth="lg" sx={{ py: 3 }}>
+    <Box sx={{ py: 1 }}>
       <Box sx={{ textAlign: "center", mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
           成就系統
@@ -199,7 +207,7 @@ export default function Achievement() {
         scrollButtons="auto"
         sx={{ mb: 3 }}
       >
-        <Tab label="全部" value="all" />
+        <Tab label="全部" value="all" sx={{ minWidth: 48, px: 1.5 }} />
         {summary.categories.map(cat => {
           const CatIcon = CATEGORY_ICONS[cat.key];
           return (
@@ -207,9 +215,9 @@ export default function Achievement() {
               key={cat.key}
               icon={CatIcon ? <CatIcon sx={{ fontSize: 18 }} /> : undefined}
               iconPosition="start"
-              label={`${cat.name} (${cat.unlocked}/${cat.total})`}
+              label={cat.name}
               value={cat.key}
-              sx={{ minHeight: 48 }}
+              sx={{ minHeight: 48, minWidth: 48, px: 1.5 }}
             />
           );
         })}
@@ -232,7 +240,7 @@ export default function Achievement() {
           ))
         )}
       </Box>
-    </Container>
+    </Box>
   );
 }
 

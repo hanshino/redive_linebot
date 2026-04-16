@@ -1,8 +1,10 @@
+const { getLiffUri } = require("../common");
+
 const RARITY_COLORS = {
-  0: { bg: "#a0a0a0", text: "#ffffff" }, // Common
+  0: { bg: "#757575", text: "#ffffff" }, // Common
   1: { bg: "#6c5ce7", text: "#ffffff" }, // Rare
-  2: { bg: "#ffd700", text: "#333333" }, // Epic
-  3: { bg: "#fd79a8", text: "#ffffff" }, // Legendary
+  2: { bg: "#b8860b", text: "#ffffff" }, // Epic
+  3: { bg: "#d63384", text: "#ffffff" }, // Legendary
 };
 
 const RARITY_NAMES = {
@@ -54,7 +56,7 @@ exports.generateSummaryFlex = ({ total, unlocked, percentage, recentUnlocks, nea
           action: {
             type: "uri",
             label: "查看所有成就 →",
-            uri: `${process.env.FRONTEND_URL || "https://redive.hanshino.dev"}/achievements`,
+            uri: getLiffUri("full", "/achievements"),
           },
           style: "primary",
           color: "#6c5ce7",

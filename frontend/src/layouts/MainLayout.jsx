@@ -135,6 +135,8 @@ export default function MainLayout() {
           flexGrow: 1,
           p: { xs: 2, md: 3 },
           width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          maxWidth: "100vw",
+          overflowX: "hidden",
           mt: "64px",
         }}
       >

@@ -34,6 +34,7 @@ const EVENT_ACHIEVEMENT_MAP = {
   janken_challenge: ["janken_challenged_10"],
   boss_attack: ["boss_first_kill", "boss_level_10", "boss_level_50", "boss_top_damage"],
   command_use: ["social_first_command", "social_all_features"],
+  subscribe: ["subscribe_first", "subscribe_3", "subscribe_6", "subscribe_12"],
 };
 
 // --- Progress calculation strategies by achievement type ---
@@ -79,6 +80,10 @@ const ACHIEVEMENT_STRATEGY = {
   boss_top_damage: (cv, a, ctx) => (ctx.isTopDamage ? a.target_value : cv),
   social_first_command: (cv, a) => STRATEGIES.instant(cv, a),
   social_all_features: "tracked_features",
+  subscribe_first: cv => STRATEGIES.increment(cv),
+  subscribe_3: cv => STRATEGIES.increment(cv),
+  subscribe_6: cv => STRATEGIES.increment(cv),
+  subscribe_12: cv => STRATEGIES.increment(cv),
 };
 
 const REDIS_TTL = 90 * 24 * 60 * 60; // 90 days

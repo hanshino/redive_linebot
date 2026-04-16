@@ -97,7 +97,7 @@ const ACHIEVEMENTS = [
   {
     category: "gacha",
     key: "gacha_500",
-    name: "課金戰士",
+    name: "扭蛋狂人",
     description: "累計抽 500 次",
     icon: "💎",
     type: "milestone",
@@ -297,6 +297,18 @@ const ACHIEVEMENTS = [
     target_value: 1,
     reward_stones: 300,
     order: 5,
+  },
+  {
+    category: "social",
+    key: "legacy_pioneer",
+    name: "創世見證者",
+    description: "參與過舊版成就系統的元老玩家",
+    icon: "🏛️",
+    type: "hidden",
+    rarity: 3,
+    target_value: 1,
+    reward_stones: 500,
+    order: 6,
   },
 ];
 

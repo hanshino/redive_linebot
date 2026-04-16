@@ -53,7 +53,9 @@ exports.findByType = async type => {
 };
 
 exports.getStats = async () => {
-  const totalUsers = await mysql("user").count({ count: "*" }).first();
+  const activeUsers = await mysql("user_achievement_progress")
+    .countDistinct({ count: "user_id" })
+    .first();
   const stats = await mysql("user_achievements")
     .select("achievement_id")
     .count({ unlock_count: "id" })
@@ -62,7 +64,7 @@ exports.getStats = async () => {
   return stats.map(s => ({
     achievement_id: s.achievement_id,
     unlock_count: s.unlock_count,
-    total_users: totalUsers.count,
-    unlock_rate: totalUsers.count > 0 ? (s.unlock_count / totalUsers.count) * 100 : 0,
+    total_users: activeUsers.count,
+    unlock_rate: activeUsers.count > 0 ? (s.unlock_count / activeUsers.count) * 100 : 0,
   }));
 };
