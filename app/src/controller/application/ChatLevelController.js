@@ -14,7 +14,8 @@ const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
-const AdvancementModel = require("../../model/application/Advancement");
+const UserTitleModel = require("../../model/application/UserTitle");
+const AchievementEngine = require("../../service/AchievementEngine");
 const SubscribeUserModel = require("../../model/application/SubscribeUser");
 const SubscribeCardModel = require("../../model/application/SubscribeCard");
 const { get, sample, set } = require("lodash");
@@ -41,6 +42,9 @@ exports.showStatus = async (context, props) => {
       context.replyText("獲取失敗，無法辨識用戶");
       throw "userId or displayName is empty";
     }
+
+    const groupId = context.event.source.groupId;
+    AchievementEngine.evaluate(userId, "chat_message", { groupId }).catch(() => {});
 
     let { rank, range, level, ranking, exp } = await ChatLevelModel.getUserData(userId);
 
@@ -74,7 +78,7 @@ exports.showStatus = async (context, props) => {
       SigninModel.first({ filter: { user_id: userId } }),
       getQuestInfo(userId),
       DonateModel.getUserTotalAmount(userId),
-      AdvancementModel.findUserAdvancementsByPlatformId(userId),
+      UserTitleModel.findByUser(userId),
       getSubscribeInfo(userId),
       getGachaHistory(userId),
       getGachaCollectProgress(userId),
@@ -92,7 +96,13 @@ exports.showStatus = async (context, props) => {
       pictureUrl,
       expRate,
       exp,
-      achievement: get(sample(achievement), "name", "-"),
+      achievement: (() => {
+        const title = sample(achievement);
+        if (!title) return "-";
+        const icon = get(title, "icon", "");
+        const name = get(title, "name", "-");
+        return icon ? `${icon} ${name}` : name;
+      })(),
     });
 
     // ---------- 整理訂閱數據 ----------
