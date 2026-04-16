@@ -58,21 +58,21 @@ const STRATEGIES = {
 };
 
 const ACHIEVEMENT_STRATEGY = {
-  chat_100: (cv, a) => STRATEGIES.increment(cv),
-  chat_1000: (cv, a) => STRATEGIES.increment(cv),
-  chat_5000: (cv, a) => STRATEGIES.increment(cv),
+  chat_100: cv => STRATEGIES.increment(cv),
+  chat_1000: cv => STRATEGIES.increment(cv),
+  chat_5000: cv => STRATEGIES.increment(cv),
   chat_night_owl: (cv, a) => STRATEGIES.timeWindow(cv, a, 3, 4),
   chat_multi_group: "tracked_groups",
   gacha_first: (cv, a) => STRATEGIES.instant(cv, a),
-  gacha_100: (cv, a) => STRATEGIES.increment(cv),
-  gacha_500: (cv, a) => STRATEGIES.increment(cv),
+  gacha_100: cv => STRATEGIES.increment(cv),
+  gacha_500: cv => STRATEGIES.increment(cv),
   gacha_collector_50: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "uniqueCount"),
   gacha_lucky: (cv, a, ctx) => STRATEGIES.threshold(cv, a, ctx, "threeStarCount", 3),
   janken_first_win: (cv, a) => STRATEGIES.instant(cv, a),
-  janken_win_50: (cv, a) => STRATEGIES.increment(cv),
+  janken_win_50: cv => STRATEGIES.increment(cv),
   janken_streak_5: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "streak"),
   janken_streak_10: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "streak"),
-  janken_challenged_10: (cv, a) => STRATEGIES.increment(cv),
+  janken_challenged_10: cv => STRATEGIES.increment(cv),
   boss_first_kill: (cv, a) => STRATEGIES.instant(cv, a),
   boss_level_10: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "level"),
   boss_level_50: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "level"),
@@ -202,7 +202,7 @@ exports.getUserSummary = async userId => {
         ...a,
         isUnlocked: unlockedIds.has(a.id),
         currentValue: progressMap[a.id] || 0,
-        unlockedAt: unlocked.find(u => u.id === a.id)?.unlocked_at || null,
+        unlockedAt: (unlocked.find(u => u.id === a.id) || {}).unlocked_at || null,
       })),
     };
   });
