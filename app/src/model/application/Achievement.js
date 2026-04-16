@@ -53,9 +53,14 @@ exports.findByType = async type => {
 };
 
 exports.getStats = async () => {
-  const activeUsers = await mysql("user_achievement_progress")
-    .countDistinct({ count: "user_id" })
-    .first();
+  const [rows] = await mysql.raw(`
+    SELECT COUNT(DISTINCT user_id) as count FROM (
+      SELECT user_id FROM user_achievement_progress
+      UNION
+      SELECT user_id FROM user_achievements
+    ) as combined
+  `);
+  const activeUsers = rows[0];
   const stats = await mysql("user_achievements")
     .select("achievement_id")
     .count({ unlock_count: "id" })
