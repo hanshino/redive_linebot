@@ -22,7 +22,7 @@ const AdvertisementController = require("./controller/application/AdvertisementC
 const GodStoneShopController = require("./controller/princess/GodStoneShop");
 const CharacterController = require("./controller/princess/character");
 const JankenController = require("./controller/application/JankenController");
-const AdvancementController = require("./controller/application/AdvancementController");
+const AchievementController = require("./controller/application/AchievementController");
 const DonateListController = require("./controller/application/DonateListController");
 const AliasController = require("./controller/application/AliasController");
 const MarketController = require("./controller/application/MarketController");
@@ -160,7 +160,8 @@ async function OrderBased(context, { next }) {
     ...GodStoneShopController.router,
     ...JankenController.router,
     ...RaceController.router,
-    ...AdvancementController.router,
+    ...AchievementController.router,
+    ...AchievementController.titleRouter,
     ...MarketController.router,
     ...CouponController.router,
     ...ImageController.router,
@@ -249,7 +250,7 @@ function AdminOrder() {
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
     text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
-    ...AdvancementController.adminRouter,
+    ...AchievementController.adminRouter,
     ...DonateListController.adminRouter,
     ...AliasController.adminRouter,
     ...CouponController.adminRouter,
