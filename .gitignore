@@ -82,3 +82,9 @@ data
 
 # oh-my-claudecode
 .omc/
+
+# Superpowers
+.superpowers
+
+# Playwright MCP
+.playwright-mcp

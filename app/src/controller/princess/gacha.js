@@ -19,6 +19,7 @@ const SubscribeCard = require("../../model/application/SubscribeCard");
 const config = require("config");
 const i18n = require("../../util/i18n");
 const commonTemplate = require("../../templates/common");
+const AchievementEngine = require("../../service/AchievementEngine");
 
 function GachaException(message, code) {
   this.message = message;
@@ -472,6 +473,11 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     })
   );
 
+  AchievementEngine.evaluate(userId, "gacha_pull", {
+    threeStarCount: rareCount[3] || 0,
+    uniqueCount: dailyResult.ownCharactersCount + dailyResult.newCharacters.length,
+  }).catch(() => {});
+
   return context.replyFlex("每日一抽結果", {
     type: "carousel",
     contents: bubbles,
@@ -582,12 +588,16 @@ function trimParamter(rowData) {
 
 function validateRate(value) {
   const rateValue = parseFloat(value);
-  if (isNaN(rateValue) || rateValue < 0) throw new GachaException("rate must be a valid number >= 0", 5);
+  if (isNaN(rateValue) || rateValue < 0)
+    throw new GachaException("rate must be a valid number >= 0", 5);
 }
 
 function sanitizeImageUrl(url) {
   if (!url) return url;
-  const cleaned = url.trim().replace(/^['"]+|['"]+$/g, "").trim();
+  const cleaned = url
+    .trim()
+    .replace(/^['"]+|['"]+$/g, "")
+    .trim();
   if (!cleaned.startsWith("https://")) {
     throw new GachaException("headimage_url must start with https://", 4);
   }

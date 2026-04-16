@@ -10,6 +10,7 @@ const JankenRecords = require("../../model/application/JankenRecords");
 const JankenService = require("../../service/JankenService");
 const uuid = require("uuid-random");
 const { DefaultLogger } = require("../../util/Logger");
+const AchievementEngine = require("../../service/AchievementEngine");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
 const ASSET_VERSION = Date.now();
@@ -262,6 +263,10 @@ exports.decide = async (context, { payload }) => {
   await context.replyFlex("猜拳結果", resultBubble);
 
   if (p1Result !== "draw") {
+    const winnerId = p1Result === "win" ? userId : targetUserId;
+    AchievementEngine.evaluate(winnerId, "janken_win", { streak: winnerStreak }).catch(() => {});
+    AchievementEngine.evaluate(targetUserId, "janken_challenge", {}).catch(() => {});
+
     if (loserBounty > 0) {
       const breakerName = p1Result === "win" ? p1Name : p2Name;
       const holderName = p1Result === "win" ? p2Name : p1Name;
@@ -427,6 +432,10 @@ exports.challenge = async (context, { payload }) => {
     await context.replyFlex("猜拳結果", resultBubble);
 
     if (p1Result !== "draw") {
+      const winnerId = p1Result === "win" ? holderUserId : challengerUserId;
+      AchievementEngine.evaluate(winnerId, "janken_win", { streak: winnerStreak }).catch(() => {});
+      AchievementEngine.evaluate(challengerUserId, "janken_challenge", {}).catch(() => {});
+
       if (loserBounty > 0) {
         const breakerName = p1Result === "win" ? p1Name : p2Name;
         const holderName = p1Result === "win" ? p2Name : p1Name;

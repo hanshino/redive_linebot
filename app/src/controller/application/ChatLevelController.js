@@ -14,10 +14,17 @@ const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
-const AdvancementModel = require("../../model/application/Advancement");
+const UserTitleModel = require("../../model/application/UserTitle");
 const SubscribeUserModel = require("../../model/application/SubscribeUser");
 const SubscribeCardModel = require("../../model/application/SubscribeCard");
 const { get, sample, set } = require("lodash");
+
+function formatTitle(title) {
+  if (!title) return "-";
+  const icon = title.icon || "";
+  const name = title.name || "-";
+  return icon ? `${icon} ${name}` : name;
+}
 const config = require("config");
 const moment = require("moment");
 const i18n = require("../../util/i18n");
@@ -74,7 +81,7 @@ exports.showStatus = async (context, props) => {
       SigninModel.first({ filter: { user_id: userId } }),
       getQuestInfo(userId),
       DonateModel.getUserTotalAmount(userId),
-      AdvancementModel.findUserAdvancementsByPlatformId(userId),
+      UserTitleModel.findByUser(userId),
       getSubscribeInfo(userId),
       getGachaHistory(userId),
       getGachaCollectProgress(userId),
@@ -92,7 +99,7 @@ exports.showStatus = async (context, props) => {
       pictureUrl,
       expRate,
       exp,
-      achievement: get(sample(achievement), "name", "-"),
+      achievement: formatTitle(sample(achievement)),
     });
 
     // ---------- 整理訂閱數據 ----------

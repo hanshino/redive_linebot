@@ -1,5 +1,6 @@
 const { io } = require("../util/connection");
 const redis = require("../util/redis");
+const AchievementEngine = require("../service/AchievementEngine");
 const MessageIO = io.of("/admin/messages");
 
 /**
@@ -10,6 +11,15 @@ const MessageIO = io.of("/admin/messages");
 const statistics = async (context, props) => {
   eventFire(context);
   await eventEnqueue(context);
+
+  if (context.event.isText) {
+    const userId = context.event.source.userId;
+    const groupId = context.event.source.groupId;
+    if (userId) {
+      AchievementEngine.evaluate(userId, "chat_message", { groupId }).catch(() => {});
+    }
+  }
+
   return props.next;
 };
 

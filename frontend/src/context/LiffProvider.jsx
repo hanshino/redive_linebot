@@ -66,7 +66,8 @@ export default function LiffProvider({ children }) {
     if (initStartedRef.current) return;
     initStartedRef.current = true;
 
-    const isLiffRoute = window.location.pathname.startsWith("/liff/");
+    const params = new URLSearchParams(window.location.search);
+    const isLiffRoute = window.location.pathname.startsWith("/liff/") || params.has("liff.state");
     const storedToken = window.localStorage.getItem(TOKEN_KEY);
     debugLog("INIT_START", {
       route: window.location.pathname,

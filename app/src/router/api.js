@@ -365,6 +365,13 @@ router.get("/janken/recent-matches", JankenController.api.recentMatches);
 const RaceRouter = require("./race");
 router.use("/race", RaceRouter);
 
+const AchievementController = require("../controller/application/AchievementController");
+
+router.get("/achievements", AchievementController.api.getAll);
+router.get("/achievements/user/:userId", AchievementController.api.getUserAchievements);
+router.get("/achievements/stats", AchievementController.api.getStats);
+router.get("/titles/user/:userId", AchievementController.api.getUserTitles);
+
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });
 });

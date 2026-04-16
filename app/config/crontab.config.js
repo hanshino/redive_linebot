@@ -63,11 +63,18 @@ module.exports = [
     require_path: "./bin/MonthlyReset",
   },
   {
-    name: "Advancement Delivery",
-    description: "deliver achievement titles",
+    name: "Achievement Batch Evaluation",
+    description: "batch evaluate milestone achievements for all users",
     period: ["0", "0", "3", "*", "*", "*"],
     immediate: false,
-    require_path: "./bin/AdvancementDelivery",
+    require_path: "./bin/AchievementCron",
+  },
+  {
+    name: "Title Delivery",
+    description: "reassign dynamic titles based on current rankings",
+    period: ["0", "10", "3", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/TitleDelivery",
   },
   {
     name: "Daily Quest Process",
