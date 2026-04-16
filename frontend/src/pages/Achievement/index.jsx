@@ -9,18 +9,82 @@ import {
   CardContent,
   LinearProgress,
   Chip,
-  Grid,
   Skeleton,
+  Avatar,
 } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
+import useLiff from "../../context/useLiff";
 import { getUserAchievements, getAchievementStats } from "../../services/achievement";
 
-// Colors chosen for WCAG 4.5:1 contrast against white backgrounds
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ForumIcon from "@mui/icons-material/Forum";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import GroupsIcon from "@mui/icons-material/Groups";
+import CatchingPokemonIcon from "@mui/icons-material/CatchingPokemon";
+import CollectionsIcon from "@mui/icons-material/Collections";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import GavelIcon from "@mui/icons-material/Gavel";
+import WhatshotIcon from "@mui/icons-material/Whatshot";
+import PeopleIcon from "@mui/icons-material/People";
+import ShieldIcon from "@mui/icons-material/Shield";
+import SecurityIcon from "@mui/icons-material/Security";
+import BoltIcon from "@mui/icons-material/Bolt";
+import TerminalIcon from "@mui/icons-material/Terminal";
+import ExtensionIcon from "@mui/icons-material/Extension";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import ShareIcon from "@mui/icons-material/Share";
+import CelebrationIcon from "@mui/icons-material/Celebration";
+import LockIcon from "@mui/icons-material/Lock";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+
 const RARITY_CONFIG = {
-  0: { label: "普通", color: "#757575" },
-  1: { label: "稀有", color: "#6c5ce7" },
-  2: { label: "史詩", color: "#b8860b" },
-  3: { label: "傳說", color: "#d63384" },
+  0: { label: "普通", color: "#757575", bg: "#f5f5f5" },
+  1: { label: "稀有", color: "#6c5ce7", bg: "#ede7f6" },
+  2: { label: "史詩", color: "#b8860b", bg: "#fff8e1" },
+  3: { label: "傳說", color: "#d63384", bg: "#fce4ec" },
+};
+
+const ACHIEVEMENT_ICONS = {
+  chat_100: ChatBubbleOutlineIcon,
+  chat_1000: ForumIcon,
+  chat_5000: ForumIcon,
+  chat_night_owl: DarkModeIcon,
+  chat_multi_group: GroupsIcon,
+  gacha_first: CatchingPokemonIcon,
+  gacha_100: CatchingPokemonIcon,
+  gacha_500: CatchingPokemonIcon,
+  gacha_collector_50: CollectionsIcon,
+  gacha_lucky: AutoAwesomeIcon,
+  janken_first_win: GavelIcon,
+  janken_win_50: GavelIcon,
+  janken_streak_5: WhatshotIcon,
+  janken_streak_10: WhatshotIcon,
+  janken_challenged_10: PeopleIcon,
+  boss_first_kill: ShieldIcon,
+  boss_level_10: SecurityIcon,
+  boss_level_50: SecurityIcon,
+  boss_top_damage: BoltIcon,
+  social_first_command: TerminalIcon,
+  social_all_features: ExtensionIcon,
+  social_veteran_30d: EmojiEventsIcon,
+  social_invite_group: ShareIcon,
+  social_easter_egg: CelebrationIcon,
+};
+
+const CATEGORY_ICONS = {
+  chat: ChatBubbleOutlineIcon,
+  gacha: CatchingPokemonIcon,
+  janken: GavelIcon,
+  world_boss: ShieldIcon,
+  social: PeopleIcon,
+};
+
+const CARD_HEIGHT = 180;
+
+const GRID_COLUMNS = {
+  xs: "repeat(2, 1fr)",
+  sm: "repeat(3, 1fr)",
+  md: "repeat(4, 1fr)",
 };
 
 export default function Achievement() {
@@ -30,12 +94,17 @@ export default function Achievement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const { profile } = useLiff();
   const [searchParams] = useSearchParams();
-  const userId = searchParams.get("userId") || "";
+  const userId = searchParams.get("userId") || profile?.userId || "";
+
+  useEffect(() => {
+    document.title = "成就";
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!userId) {
-      setError("請提供用戶 ID");
+      setError("請先登入以查看成就");
       setLoading(false);
       return;
     }
@@ -64,13 +133,18 @@ export default function Achievement() {
       <Container maxWidth="lg" sx={{ py: 3 }}>
         <Skeleton variant="text" width={120} height={48} sx={{ mx: "auto" }} />
         <Skeleton variant="rectangular" height={8} sx={{ borderRadius: 4, my: 1 }} />
-        <Grid container spacing={2} sx={{ mt: 3 }}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Grid item xs={12} sm={6} md={4} key={i}>
-              <Skeleton variant="rectangular" height={140} sx={{ borderRadius: 1 }} />
-            </Grid>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: GRID_COLUMNS,
+            gap: 2,
+            mt: 3,
+          }}
+        >
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} variant="rectangular" height={CARD_HEIGHT} sx={{ borderRadius: 2 }} />
           ))}
-        </Grid>
+        </Box>
       </Container>
     );
   }
@@ -85,15 +159,17 @@ export default function Achievement() {
   const filteredCategories =
     activeTab === "all" ? summary.categories : summary.categories.filter(c => c.key === activeTab);
 
-  const statsMap = {};
-  stats.forEach(s => {
-    statsMap[s.achievement_id] = s;
-  });
+  const statsMap = Object.fromEntries(stats.map(s => [s.achievement_id, s]));
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
-      {/* Header */}
       <Box sx={{ textAlign: "center", mb: 3 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          成就系統
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+          探索並解鎖所有成就吧！
+        </Typography>
         <Typography variant="h4" fontWeight="bold">
           {summary.unlocked} / {summary.total}
         </Typography>
@@ -116,7 +192,6 @@ export default function Achievement() {
         </Typography>
       </Box>
 
-      {/* Category Tabs */}
       <Tabs
         value={activeTab}
         onChange={(_, v) => setActiveTab(v)}
@@ -125,26 +200,79 @@ export default function Achievement() {
         sx={{ mb: 3 }}
       >
         <Tab label="全部" value="all" />
-        {summary.categories.map(cat => (
-          <Tab
-            key={cat.key}
-            label={`${cat.icon} ${cat.name} (${cat.unlocked}/${cat.total})`}
-            value={cat.key}
-          />
-        ))}
+        {summary.categories.map(cat => {
+          const CatIcon = CATEGORY_ICONS[cat.key];
+          return (
+            <Tab
+              key={cat.key}
+              icon={CatIcon ? <CatIcon sx={{ fontSize: 18 }} /> : undefined}
+              iconPosition="start"
+              label={`${cat.name} (${cat.unlocked}/${cat.total})`}
+              value={cat.key}
+              sx={{ minHeight: 48 }}
+            />
+          );
+        })}
       </Tabs>
 
-      {/* Achievement Grid */}
-      <Grid container spacing={2}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: GRID_COLUMNS,
+          gap: 2,
+        }}
+      >
         {filteredCategories.flatMap(cat =>
           cat.achievements.map(achievement => (
-            <Grid item xs={12} sm={6} md={4} key={achievement.id}>
-              <AchievementCard achievement={achievement} stats={statsMap[achievement.id]} />
-            </Grid>
+            <AchievementCard
+              key={achievement.id}
+              achievement={achievement}
+              stats={statsMap[achievement.id]}
+            />
           ))
         )}
-      </Grid>
+      </Box>
     </Container>
+  );
+}
+
+function AchievementStatus({ achievement, isHidden, progress, rarity }) {
+  if (achievement.isUnlocked) {
+    return (
+      <Chip
+        label="已解鎖"
+        size="small"
+        sx={{ bgcolor: rarity.color, color: "#fff", fontWeight: "bold", fontSize: "0.7rem" }}
+      />
+    );
+  }
+  if (isHidden) {
+    return (
+      <Typography variant="caption" color="text.disabled">
+        隱藏成就
+      </Typography>
+    );
+  }
+  return (
+    <Box sx={{ width: "100%", px: 1 }}>
+      <LinearProgress
+        variant="determinate"
+        value={progress}
+        sx={{
+          height: 4,
+          borderRadius: 2,
+          bgcolor: "#eee",
+          "& .MuiLinearProgress-bar": { bgcolor: rarity.color },
+        }}
+      />
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: "block", textAlign: "center", mt: 0.5 }}
+      >
+        {achievement.currentValue}/{achievement.target_value}
+      </Typography>
+    </Box>
   );
 }
 
@@ -157,54 +285,79 @@ function AchievementCard({ achievement, stats }) {
       : 0;
   const unlockRate = stats ? `${stats.unlock_rate.toFixed(1)}%` : null;
 
+  const IconComponent = isHidden
+    ? HelpOutlineIcon
+    : ACHIEVEMENT_ICONS[achievement.key] || CATEGORY_ICONS[achievement.category_key] || LockIcon;
+
+  const iconColor = achievement.isUnlocked ? rarity.color : "#bdbdbd";
+  const iconBg = achievement.isUnlocked ? rarity.bg : "#f5f5f5";
+
   return (
     <Card
       sx={{
-        height: "100%",
-        border: `2px solid ${achievement.isUnlocked ? rarity.color : "#e0e0e0"}`,
-        boxShadow: achievement.isUnlocked ? `0 0 12px ${rarity.color}44` : "none",
-        opacity: isHidden ? 0.5 : 1,
+        height: CARD_HEIGHT,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        border: achievement.isUnlocked ? `2px solid ${rarity.color}` : "1px solid #e0e0e0",
+        boxShadow: achievement.isUnlocked ? `0 0 12px ${rarity.color}33` : "none",
+        opacity: isHidden ? 0.6 : 1,
+        borderRadius: 2,
         transition: "all 0.2s",
+        "&:hover": {
+          transform: achievement.isUnlocked ? "translateY(-2px)" : "none",
+          boxShadow: achievement.isUnlocked ? `0 4px 16px ${rarity.color}44` : "none",
+        },
       }}
     >
-      <CardContent sx={{ textAlign: "center", py: 2 }}>
-        <Typography variant="h4" sx={{ mb: 1 }}>
-          {isHidden ? "?" : achievement.icon}
-        </Typography>
-        <Typography variant="body2" fontWeight="bold" noWrap>
+      <CardContent
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "100%",
+          height: "100%",
+          py: 2,
+          px: 1.5,
+          "&:last-child": { pb: 2 },
+        }}
+      >
+        <Avatar
+          sx={{
+            width: 48,
+            height: 48,
+            bgcolor: iconBg,
+            mb: 1,
+          }}
+        >
+          <IconComponent sx={{ fontSize: 26, color: iconColor }} />
+        </Avatar>
+
+        <Typography
+          variant="body2"
+          fontWeight="bold"
+          noWrap
+          sx={{ width: "100%", textAlign: "center", mb: 0.5 }}
+        >
           {isHidden ? "???" : achievement.name}
         </Typography>
 
-        {achievement.isUnlocked ? (
-          <Chip
-            label="已解鎖"
-            size="small"
-            sx={{ mt: 1, bgcolor: rarity.color, color: "#fff", fontWeight: "bold" }}
-          />
-        ) : isHidden ? (
-          <Typography variant="caption" color="text.disabled" sx={{ mt: 1, display: "block" }}>
-            隱藏成就
-          </Typography>
-        ) : (
-          <Box sx={{ mt: 1 }}>
-            <LinearProgress
-              variant="determinate"
-              value={progress}
-              sx={{
-                height: 4,
-                borderRadius: 2,
-                "& .MuiLinearProgress-bar": { bgcolor: rarity.color },
-              }}
-            />
-            <Typography variant="caption" color="text.secondary">
-              {achievement.currentValue}/{achievement.target_value}
-            </Typography>
-          </Box>
-        )}
+        <AchievementStatus
+          achievement={achievement}
+          isHidden={isHidden}
+          progress={progress}
+          rarity={rarity}
+        />
 
         {unlockRate && !isHidden && (
-          <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
-            {unlockRate} 玩家已解鎖
+          <Typography
+            variant="caption"
+            color="text.disabled"
+            sx={{ mt: "auto", fontSize: "0.65rem" }}
+          >
+            {unlockRate} 已解鎖
           </Typography>
         )}
       </CardContent>

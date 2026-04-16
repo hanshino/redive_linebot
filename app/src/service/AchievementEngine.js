@@ -230,7 +230,9 @@ exports.batchEvaluate = async () => {
     ["chat_100", "chat_1000", "chat_5000"].includes(a.key)
   );
   if (chatAchievements.length > 0) {
-    const chatUsers = await mysql("chat_user_data").select("platform_id", "talk_count");
+    const chatUsers = await mysql("chat_user_data")
+      .join("user", "chat_user_data.id", "user.id")
+      .select("user.platform_id", "chat_user_data.experience");
     const chatAchievementIds = chatAchievements.map(a => a.id);
 
     const existingUnlocks = await mysql("user_achievements")
@@ -240,7 +242,7 @@ exports.batchEvaluate = async () => {
 
     for (const user of chatUsers) {
       const userId = user.platform_id;
-      const count = user.talk_count || 0;
+      const count = user.experience || 0;
       for (const achievement of chatAchievements) {
         if (unlockedSet.has(`${userId}:${achievement.id}`)) continue;
         await UserProgressModel.upsert(userId, achievement.id, count);
