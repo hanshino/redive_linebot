@@ -105,20 +105,9 @@
       "add_fail": "新增失敗",
       "add_success": "成功紀錄 {{ amount }} 元斗內金額"
     },
-    "advancement": {
-      "no_data": "沒有任何成就紀錄，請多多加油喔！",
-      "name": "名稱",
-      "id": "ID",
-      "order": "排序",
-      "list_usage": "使用方法： !adv list --name=<成就名稱> --page=<頁數>",
-      "add_usage": "使用方法： !adv add --name|n=<成就名稱> --type|t=<類型> --order|o=<排序> --description|d=<描述> --icon|i=<圖示>",
-      "add_invalid_bad_request": "錯誤的請求，請檢查輸入的參數",
-      "add_success": "成功新增成就： {{ name }}",
-      "add_fail": "新增成就失敗，請檢查輸入的參數",
-      "attach_usage": "使用方法： !adv attach <成就id> ...@玩家",
-      "attach_no_mention": "請至少指定一個玩家",
-      "attach_success": "成功將成就 {{ name }} 附加到 {{ players }} 位玩家",
-      "attach_fail": "附加成就 {{ name }} 失敗"
+    "achievement": {
+      "no_data": "還沒有任何成就，快去探索各種功能吧！",
+      "no_titles": "目前沒有持有任何稱號"
     },
     "minigame_level_not_found": "找不到小遊戲等級，幫你創建角色，初始等級：1",
     "minigame_level_up": "恭喜 {{{ displayName }}} 升級了，現在等級：{{ level }}",
@@ -235,24 +224,6 @@
       "full_rank_up_confirm": "確定要花費 *{{ cost }}* 將 *{{ name }}* 升滿星嗎？\n請改輸入 `!升滿星 {{ name }}`\n手機用戶可直接點擊上面按鈕",
       "full_rank_up_success": "成功將 *{{ name }}* 升滿星"
     }
-  },
-  "advancement": {
-    "system_manager": "至高神",
-    "janken_king": "拳王",
-    "janken_ruki": "猜拳小菜鳥",
-    "janken_loser": "輸到脫褲",
-    "janken_drawer": "平局高手",
-    "chat_king": "話語霸權",
-    "chat_king_2": "話術小丑",
-    "chat_king_3": "話語大師",
-    "gacha_king": "轉蛋蒐藏家",
-    "gacha_king_2": "轉蛋藝術家",
-    "gacha_king_3": "轉蛋家",
-    "gacha_rich": "女神富豪",
-    "gacha_rich_2": "女神貴族",
-    "gacha_rich_3": "女神騎士",
-    "progressors": "攻略組",
-    "leechers": "躺分組"
   },
   "api": {
     "error": {

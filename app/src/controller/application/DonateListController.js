@@ -19,7 +19,7 @@ async function adminList(context) {
   let page = 1;
 
   if (args.help || args.h) {
-    return context.replyText(i18n.__("message.advancement.list_usage"));
+    return context.replyText(i18n.__("message.donate.list_usage"));
   }
 
   if (args.page) {

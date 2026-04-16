@@ -71,7 +71,8 @@ const commandMap = [
   { pattern: /^[./#](交易|trade)/i, name: "market_trade", category: "application" },
 
   // === application: misc ===
-  { pattern: /^[.#/](成就|稱號|adv)$/, name: "advancement", category: "application" },
+  { pattern: /^[.#/](成就|achievement|adv)$/, name: "achievement", category: "application" },
+  { pattern: /^[.#/](稱號|title)$/, name: "title", category: "application" },
   { pattern: /^[/.#]兌換\s/, name: "coupon_use", category: "application" },
   { pattern: /^[./#]圖片上傳$/, name: "image_upload", category: "application" },
   {

@@ -106,8 +106,8 @@ async function deliveryJankenTitles(trx) {
 }
 
 async function deliveryWorldBossTitles(trx) {
-  const progressorsConfig = config.get("advancement.world_boss.progressors");
-  const leechersConfig = config.get("advancement.world_boss.leechers");
+  const progressorsConfig = config.get("title_delivery.world_boss.progressors");
+  const leechersConfig = config.get("title_delivery.world_boss.leechers");
 
   const { count: userCount } = await trx.count({ count: "*" }).from("minigame_level").first();
   if (userCount === 0) return;
