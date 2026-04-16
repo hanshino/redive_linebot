@@ -24,6 +24,7 @@ import PanelManual from "./pages/Panel/Manual";
 import BattleControl from "./pages/Panel/BattleControl";
 import BattleSign from "./pages/Panel/BattleSign";
 import CustomerOrder from "./pages/CustomerOrder";
+import Achievement from "./pages/Achievement";
 import AdminGachaPool from "./pages/Admin/GachaPool";
 import AdminGachaPoolForm from "./pages/Admin/GachaPool/GachaPoolForm";
 import AdminGachaBanner from "./pages/Admin/GachaBanner";
@@ -81,6 +82,9 @@ export default function App() {
 
           {/* Customer Order */}
           <Route path="source/:sourceId/customer/orders" element={<CustomerOrder />} />
+
+          {/* Achievement */}
+          <Route path="achievements" element={<Achievement />} />
 
           {/* Admin — requires admin privilege */}
           <Route element={<RequireAdmin />}>
