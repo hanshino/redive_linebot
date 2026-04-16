@@ -97,6 +97,8 @@ exports.evaluate = async (userId, eventType, context = {}) => {
     const achievementKeys = EVENT_ACHIEVEMENT_MAP[eventType];
     if (!achievementKeys || achievementKeys.length === 0) return;
 
+    DefaultLogger.info(`[Achievement] evaluate: user=${userId} event=${eventType}`);
+
     const cache = await getCache();
 
     for (const key of achievementKeys) {
@@ -109,6 +111,10 @@ exports.evaluate = async (userId, eventType, context = {}) => {
 
         const newValue = await calculateProgress(userId, achievement, context);
         if (newValue === null) continue;
+
+        DefaultLogger.info(
+          `[Achievement] ${key}: progress=${newValue}/${achievement.target_value} user=${userId}`
+        );
 
         await UserProgressModel.upsert(userId, achievement.id, newValue);
 
@@ -177,15 +183,23 @@ async function unlockAchievement(userId, achievement) {
 }
 
 exports.getUserSummary = async userId => {
-  const [allAchievements, categories, unlocked, recentUnlocks, nearCompletion, progressList] =
-    await Promise.all([
-      AchievementModel.allWithCategories(),
-      CategoryModel.all(),
-      UserAchievementModel.findByUser(userId),
-      UserAchievementModel.getRecentByUser(userId, 3),
-      UserProgressModel.getNearCompletion(userId, 2),
-      UserProgressModel.findByUser(userId),
-    ]);
+  const [
+    allAchievements,
+    categories,
+    unlocked,
+    recentUnlocks,
+    nearCompletion,
+    progressList,
+    userProfile,
+  ] = await Promise.all([
+    AchievementModel.allWithCategories(),
+    CategoryModel.all(),
+    UserAchievementModel.findByUser(userId),
+    UserAchievementModel.getRecentByUser(userId, 3),
+    UserProgressModel.getNearCompletion(userId, 2),
+    UserProgressModel.findByUser(userId),
+    mysql("user").where({ platform_id: userId }).select("display_name", "picture_url").first(),
+  ]);
 
   const unlockedIds = new Set(unlocked.map(u => u.id));
   const progressMap = {};
@@ -219,6 +233,9 @@ exports.getUserSummary = async userId => {
     categories: categorySummary,
     recentUnlocks,
     nearCompletion,
+    profile: userProfile
+      ? { displayName: userProfile.display_name, pictureUrl: userProfile.picture_url }
+      : null,
   };
 };
 

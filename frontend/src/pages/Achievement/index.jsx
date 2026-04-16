@@ -172,9 +172,18 @@ export default function Achievement() {
   return (
     <Box sx={{ py: 1 }}>
       <Box sx={{ textAlign: "center", mb: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          成就系統
-        </Typography>
+        {summary.profile && (
+          <Avatar
+            src={summary.profile.pictureUrl}
+            alt={summary.profile.displayName}
+            sx={{ width: 64, height: 64, mx: "auto", mb: 1 }}
+          />
+        )}
+        {summary.profile?.displayName && (
+          <Typography variant="subtitle1" fontWeight="bold">
+            {summary.profile.displayName}
+          </Typography>
+        )}
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
           探索並解鎖所有成就吧！
         </Typography>

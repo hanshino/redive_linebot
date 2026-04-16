@@ -244,9 +244,6 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
       rareCount,
       hasCooldown: type === "group",
     });
-    AchievementEngine.evaluate(userId, "gacha_pull", {
-      threeStarCount: rareCount[3] || 0,
-    }).catch(() => {});
     return context.replyFlex("轉蛋結果", bubble);
   };
   // 非公主轉蛋池，無法進行每日一抽，直接抽完並且發送結果
@@ -478,6 +475,7 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
 
   AchievementEngine.evaluate(userId, "gacha_pull", {
     threeStarCount: rareCount[3] || 0,
+    uniqueCount: dailyResult.ownCharactersCount + dailyResult.newCharacters.length,
   }).catch(() => {});
 
   return context.replyFlex("每日一抽結果", {

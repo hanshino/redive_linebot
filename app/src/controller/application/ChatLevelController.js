@@ -43,9 +43,6 @@ exports.showStatus = async (context, props) => {
       throw "userId or displayName is empty";
     }
 
-    const groupId = context.event.source.groupId;
-    AchievementEngine.evaluate(userId, "chat_message", { groupId }).catch(() => {});
-
     let { rank, range, level, ranking, exp } = await ChatLevelModel.getUserData(userId);
 
     let expDatas = await ChatLevelModel.getExpUnitData();
