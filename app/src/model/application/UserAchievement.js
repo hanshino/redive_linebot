@@ -30,11 +30,19 @@ exports.isUnlocked = async (userId, achievementId) => {
 };
 
 exports.unlock = async (userId, achievementId) => {
-  const existing = await mysql(TABLE)
-    .where({ user_id: userId, achievement_id: achievementId })
-    .first();
-  if (existing) return;
-  return mysql(TABLE).insert({ user_id: userId, achievement_id: achievementId });
+  return mysql.raw(`INSERT IGNORE INTO ${TABLE} (user_id, achievement_id) VALUES (?, ?)`, [
+    userId,
+    achievementId,
+  ]);
+};
+
+exports.getUnlockedIds = async (userId, achievementIds) => {
+  if (achievementIds.length === 0) return new Set();
+  const rows = await mysql(TABLE)
+    .where("user_id", userId)
+    .whereIn("achievement_id", achievementIds)
+    .select("achievement_id");
+  return new Set(rows.map(r => r.achievement_id));
 };
 
 exports.countByUser = async userId => {

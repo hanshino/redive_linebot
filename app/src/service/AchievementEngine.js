@@ -63,7 +63,7 @@ const ACHIEVEMENT_STRATEGY = {
   chat_1000: cv => STRATEGIES.increment(cv),
   chat_5000: cv => STRATEGIES.increment(cv),
   chat_night_owl: (cv, a) => STRATEGIES.timeWindow(cv, a, 3, 4),
-  chat_multi_group: "tracked_groups",
+  chat_multi_group: (cv, a, ctx) => handleTrackedSet(ctx._userId, a.id, ctx.groupId, cv),
   gacha_first: (cv, a) => STRATEGIES.instant(cv, a),
   gacha_100: cv => STRATEGIES.increment(cv),
   gacha_500: cv => STRATEGIES.increment(cv),
@@ -79,13 +79,14 @@ const ACHIEVEMENT_STRATEGY = {
   boss_level_50: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "level"),
   boss_top_damage: (cv, a, ctx) => (ctx.isTopDamage ? a.target_value : cv),
   social_first_command: (cv, a) => STRATEGIES.instant(cv, a),
-  social_all_features: "tracked_features",
+  social_all_features: (cv, a, ctx) => handleTrackedSet(ctx._userId, a.id, ctx.feature, cv),
   subscribe_first: cv => STRATEGIES.increment(cv),
   subscribe_3: cv => STRATEGIES.increment(cv),
   subscribe_6: cv => STRATEGIES.increment(cv),
   subscribe_12: cv => STRATEGIES.increment(cv),
 };
 
+const GODDESS_STONE_ITEM_ID = 999;
 const REDIS_TTL = 90 * 24 * 60 * 60; // 90 days
 
 /**
@@ -97,24 +98,23 @@ exports.evaluate = async (userId, eventType, context = {}) => {
     const achievementKeys = EVENT_ACHIEVEMENT_MAP[eventType];
     if (!achievementKeys || achievementKeys.length === 0) return;
 
-    DefaultLogger.info(`[Achievement] evaluate: user=${userId} event=${eventType}`);
-
     const cache = await getCache();
+    const achievements = achievementKeys.map(key => cache.find(a => a.key === key)).filter(Boolean);
+    if (achievements.length === 0) return;
 
-    for (const key of achievementKeys) {
+    const unlockedIds = await UserAchievementModel.getUnlockedIds(
+      userId,
+      achievements.map(a => a.id)
+    );
+
+    const ctx = { ...context, _userId: userId };
+
+    for (const achievement of achievements) {
       try {
-        const achievement = cache.find(a => a.key === key);
-        if (!achievement) continue;
+        if (unlockedIds.has(achievement.id)) continue;
 
-        const alreadyUnlocked = await UserAchievementModel.isUnlocked(userId, achievement.id);
-        if (alreadyUnlocked) continue;
-
-        const newValue = await calculateProgress(userId, achievement, context);
+        const newValue = await calculateProgress(userId, achievement, ctx);
         if (newValue === null) continue;
-
-        DefaultLogger.info(
-          `[Achievement] ${key}: progress=${newValue}/${achievement.target_value} user=${userId}`
-        );
 
         await UserProgressModel.upsert(userId, achievement.id, newValue);
 
@@ -122,7 +122,10 @@ exports.evaluate = async (userId, eventType, context = {}) => {
           await unlockAchievement(userId, achievement);
         }
       } catch (innerErr) {
-        DefaultLogger.error(`AchievementEngine.evaluate error for key ${key}:`, innerErr);
+        DefaultLogger.error(
+          `AchievementEngine.evaluate error for key ${achievement.key}:`,
+          innerErr
+        );
       }
     }
   } catch (err) {
@@ -136,13 +139,6 @@ async function calculateProgress(userId, achievement, context) {
 
   const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
   if (!strategy) return currentValue;
-
-  if (strategy === "tracked_groups") {
-    return handleTrackedSet(userId, achievement.id, context.groupId, currentValue);
-  }
-  if (strategy === "tracked_features") {
-    return handleTrackedSet(userId, achievement.id, context.feature, currentValue);
-  }
 
   return strategy(currentValue, achievement, context);
 }
@@ -163,15 +159,17 @@ async function unlockAchievement(userId, achievement) {
   await UserProgressModel.delete(userId, achievement.id);
 
   if (achievement.reward_stones > 0) {
-    const existing = await mysql("Inventory").where({ userId, itemId: 999 }).first();
+    const existing = await mysql("Inventory")
+      .where({ userId, itemId: GODDESS_STONE_ITEM_ID })
+      .first();
     if (existing) {
       await mysql("Inventory")
-        .where({ userId, itemId: 999 })
+        .where({ userId, itemId: GODDESS_STONE_ITEM_ID })
         .update({ itemAmount: mysql.raw("itemAmount + ?", [achievement.reward_stones]) });
     } else {
       await mysql("Inventory").insert({
         userId,
-        itemId: 999,
+        itemId: GODDESS_STONE_ITEM_ID,
         itemAmount: achievement.reward_stones,
       });
     }

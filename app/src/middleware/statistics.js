@@ -1,7 +1,6 @@
 const { io } = require("../util/connection");
 const redis = require("../util/redis");
 const AchievementEngine = require("../service/AchievementEngine");
-const { DefaultLogger } = require("../util/Logger");
 const MessageIO = io.of("/admin/messages");
 
 /**
@@ -13,15 +12,11 @@ const statistics = async (context, props) => {
   eventFire(context);
   await eventEnqueue(context);
 
-  // Track chat achievements on every text message
   if (context.event.isText) {
     const userId = context.event.source.userId;
     const groupId = context.event.source.groupId;
     if (userId) {
-      DefaultLogger.info(`[Achievement] statistics middleware: user=${userId} event=chat_message`);
-      AchievementEngine.evaluate(userId, "chat_message", { groupId }).catch(err => {
-        DefaultLogger.error("[Achievement] statistics evaluate error:", err);
-      });
+      AchievementEngine.evaluate(userId, "chat_message", { groupId }).catch(() => {});
     }
   }
 

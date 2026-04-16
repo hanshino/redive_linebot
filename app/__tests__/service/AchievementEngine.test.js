@@ -11,6 +11,7 @@ jest.mock("../../src/model/application/UserAchievement", () => ({
   unlock: jest.fn(),
   countByUser: jest.fn(),
   getRecentByUser: jest.fn(),
+  getUnlockedIds: jest.fn().mockResolvedValue(new Set()),
 }));
 jest.mock("../../src/model/application/UserAchievementProgress", () => ({
   getProgress: jest.fn(),
@@ -67,18 +68,18 @@ describe("AchievementEngine", () => {
 
   describe("evaluate", () => {
     it("should skip if user already unlocked the achievement", async () => {
-      UserAchievementModel.isUnlocked.mockResolvedValue(true);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set([1, 2]));
       UserProgressModel.getProgress.mockResolvedValue(null);
 
       await AchievementEngine.evaluate("user1", "chat_message", {});
 
-      expect(UserAchievementModel.isUnlocked).toHaveBeenCalled();
+      expect(UserAchievementModel.getUnlockedIds).toHaveBeenCalled();
       expect(UserProgressModel.upsert).not.toHaveBeenCalled();
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
     });
 
     it("should update progress and not unlock if below target", async () => {
-      UserAchievementModel.isUnlocked.mockResolvedValue(false);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
       UserProgressModel.getProgress.mockResolvedValue({ current_value: 50 });
       UserProgressModel.upsert.mockResolvedValue();
 
@@ -92,7 +93,7 @@ describe("AchievementEngine", () => {
     });
 
     it("should unlock when progress reaches target", async () => {
-      UserAchievementModel.isUnlocked.mockResolvedValue(false);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
       UserProgressModel.getProgress.mockResolvedValue({ current_value: 99 });
       UserProgressModel.upsert.mockResolvedValue();
       UserAchievementModel.unlock.mockResolvedValue();

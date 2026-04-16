@@ -15,42 +15,21 @@ exports.getProgress = async (userId, achievementId) => {
 };
 
 exports.upsert = async (userId, achievementId, currentValue) => {
-  const existing = await mysql(TABLE)
-    .where({ user_id: userId, achievement_id: achievementId })
-    .first();
-
-  if (existing) {
-    return mysql(TABLE)
-      .where({ user_id: userId, achievement_id: achievementId })
-      .update({ current_value: currentValue, updated_at: mysql.fn.now() });
-  }
-
-  return mysql(TABLE).insert({
-    user_id: userId,
-    achievement_id: achievementId,
-    current_value: currentValue,
-  });
+  return mysql.raw(
+    `INSERT INTO ${TABLE} (user_id, achievement_id, current_value, updated_at)
+     VALUES (?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE current_value = VALUES(current_value), updated_at = NOW()`,
+    [userId, achievementId, currentValue]
+  );
 };
 
 exports.increment = async (userId, achievementId, amount = 1) => {
-  const existing = await mysql(TABLE)
-    .where({ user_id: userId, achievement_id: achievementId })
-    .first();
-
-  if (existing) {
-    return mysql(TABLE)
-      .where({ user_id: userId, achievement_id: achievementId })
-      .update({
-        current_value: mysql.raw("current_value + ?", [amount]),
-        updated_at: mysql.fn.now(),
-      });
-  }
-
-  return mysql(TABLE).insert({
-    user_id: userId,
-    achievement_id: achievementId,
-    current_value: amount,
-  });
+  return mysql.raw(
+    `INSERT INTO ${TABLE} (user_id, achievement_id, current_value, updated_at)
+     VALUES (?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE current_value = current_value + VALUES(current_value), updated_at = NOW()`,
+    [userId, achievementId, amount]
+  );
 };
 
 exports.delete = async (userId, achievementId) => {

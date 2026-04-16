@@ -15,10 +15,16 @@ const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
 const UserTitleModel = require("../../model/application/UserTitle");
-const AchievementEngine = require("../../service/AchievementEngine");
 const SubscribeUserModel = require("../../model/application/SubscribeUser");
 const SubscribeCardModel = require("../../model/application/SubscribeCard");
 const { get, sample, set } = require("lodash");
+
+function formatTitle(title) {
+  if (!title) return "-";
+  const icon = title.icon || "";
+  const name = title.name || "-";
+  return icon ? `${icon} ${name}` : name;
+}
 const config = require("config");
 const moment = require("moment");
 const i18n = require("../../util/i18n");
@@ -93,13 +99,7 @@ exports.showStatus = async (context, props) => {
       pictureUrl,
       expRate,
       exp,
-      achievement: (() => {
-        const title = sample(achievement);
-        if (!title) return "-";
-        const icon = get(title, "icon", "");
-        const name = get(title, "name", "-");
-        return icon ? `${icon} ${name}` : name;
-      })(),
+      achievement: formatTitle(sample(achievement)),
     });
 
     // ---------- 整理訂閱數據 ----------

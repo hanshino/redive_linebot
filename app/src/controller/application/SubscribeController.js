@@ -82,7 +82,7 @@ async function buyMonthCard(context, props) {
 
     trx.commit();
 
-    AchievementEngine.evaluate(userId, "subscribe");
+    AchievementEngine.evaluate(userId, "subscribe").catch(() => {});
   } catch (e) {
     trx.rollback();
     console.error(e);
@@ -252,7 +252,7 @@ async function subscribeCouponExchange(context, props) {
   await context.replyText(messages.join("\n"));
   !isContinue && (await DailyRation());
 
-  AchievementEngine.evaluate(userId, "subscribe");
+  AchievementEngine.evaluate(userId, "subscribe").catch(() => {});
 }
 
 /**
