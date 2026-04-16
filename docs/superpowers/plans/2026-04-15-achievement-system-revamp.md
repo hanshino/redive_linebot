@@ -74,6 +74,7 @@ frontend/src/App.jsx                    — Add /achievements route
 
 ```
 app/src/model/application/Advancement.js
+app/src/templates/application/Advancement.js
 app/bin/AdvancementDelivery.js
 ```
 
@@ -470,10 +471,11 @@ exports.isUnlocked = async (userId, achievementId) => {
 };
 
 exports.unlock = async (userId, achievementId) => {
-  return mysql(TABLE)
-    .insert({ user_id: userId, achievement_id: achievementId })
-    .onConflict(["user_id", "achievement_id"])
-    .ignore();
+  const existing = await mysql(TABLE)
+    .where({ user_id: userId, achievement_id: achievementId })
+    .first();
+  if (existing) return;
+  return mysql(TABLE).insert({ user_id: userId, achievement_id: achievementId });
 };
 
 exports.countByUser = async userId => {
@@ -643,10 +645,9 @@ exports.clearAll = async trx => {
 
 exports.grant = async (userId, titleId, trx) => {
   const db = trx || mysql;
-  return db(TABLE)
-    .insert({ user_id: userId, title_id: titleId })
-    .onConflict(["user_id", "title_id"])
-    .ignore();
+  const existing = await db(TABLE).where({ user_id: userId, title_id: titleId }).first();
+  if (existing) return;
+  return db(TABLE).insert({ user_id: userId, title_id: titleId });
 };
 
 exports.grantByPlatformId = async (platformId, titleId, trx) => {
@@ -712,30 +713,40 @@ jest.mock("../../src/model/application/UserAchievementProgress", () => ({
 jest.mock("../../src/model/application/AchievementCategory", () => ({
   all: jest.fn(),
 }));
+jest.mock("../../src/util/redis", () => ({
+  get: jest.fn(),
+  set: jest.fn(),
+}));
+jest.mock("../../src/util/mysql", () => {
+  const knex = jest.fn(() => ({
+    insert: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    first: jest.fn(),
+    select: jest.fn().mockReturnThis(),
+  }));
+  knex.fn = { now: jest.fn() };
+  knex.raw = jest.fn();
+  return knex;
+});
 
 const AchievementModel = require("../../src/model/application/Achievement");
 const UserAchievementModel = require("../../src/model/application/UserAchievement");
 const UserProgressModel = require("../../src/model/application/UserAchievementProgress");
 const CategoryModel = require("../../src/model/application/AchievementCategory");
 
-// Mock GodStone service - adjust path when you know the actual module
-jest.mock("../../src/util/mysql", () => {
-  const fn = jest.fn(() => ({ insert: jest.fn(), where: jest.fn() }));
-  fn.fn = { now: jest.fn() };
-  fn.raw = jest.fn();
-  return fn;
-});
-
 describe("AchievementEngine", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Populate the in-memory cache for tests
+    AchievementEngine._setCache([
+      { id: 1, key: "chat_100", type: "milestone", target_value: 100, reward_stones: 50 },
+      { id: 2, key: "chat_1000", type: "milestone", target_value: 1000, reward_stones: 200 },
+    ]);
   });
 
   describe("evaluate", () => {
     it("should skip if user already unlocked the achievement", async () => {
-      AchievementModel.allWithCategories.mockResolvedValue([
-        { id: 1, key: "chat_100", type: "milestone", target_value: 100 },
-      ]);
       UserAchievementModel.isUnlocked.mockResolvedValue(true);
 
       await AchievementEngine.evaluate("user1", "chat_message", {});
@@ -743,26 +754,36 @@ describe("AchievementEngine", () => {
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
     });
 
-    it("should increment progress and not unlock if below target", async () => {
-      AchievementModel.allWithCategories.mockResolvedValue([
-        { id: 1, key: "chat_100", type: "milestone", target_value: 100, reward_stones: 50 },
-      ]);
+    it("should update progress and not unlock if below target", async () => {
       UserAchievementModel.isUnlocked.mockResolvedValue(false);
       UserProgressModel.getProgress.mockResolvedValue({ current_value: 50 });
-      UserProgressModel.increment.mockResolvedValue();
+      UserProgressModel.upsert.mockResolvedValue();
 
       await AchievementEngine.evaluate("user1", "chat_message", {});
 
-      expect(UserProgressModel.increment).toHaveBeenCalledWith("user1", 1, 1);
+      expect(UserProgressModel.upsert).toHaveBeenCalledWith("user1", 1, 51);
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+    });
+
+    it("should unlock when progress reaches target", async () => {
+      UserAchievementModel.isUnlocked.mockResolvedValue(false);
+      UserProgressModel.getProgress.mockResolvedValue({ current_value: 99 });
+      UserProgressModel.upsert.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.delete.mockResolvedValue();
+
+      await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 1);
+      expect(UserProgressModel.delete).toHaveBeenCalledWith("user1", 1);
     });
   });
 
   describe("getUserSummary", () => {
     it("should return structured summary", async () => {
       AchievementModel.allWithCategories.mockResolvedValue([
-        { id: 1, key: "chat_100", type: "milestone", name: "話匣子" },
-        { id: 2, key: "chat_night_owl", type: "hidden", name: "夜貓子" },
+        { id: 1, key: "chat_100", type: "milestone", name: "話匣子", category_key: "chat" },
+        { id: 2, key: "chat_night_owl", type: "hidden", name: "夜貓子", category_key: "chat" },
       ]);
       CategoryModel.all.mockResolvedValue([{ id: 1, key: "chat", name: "聊天" }]);
       UserAchievementModel.findByUser.mockResolvedValue([
@@ -775,8 +796,9 @@ describe("AchievementEngine", () => {
 
       const summary = await AchievementEngine.getUserSummary("user1");
 
-      expect(summary).toHaveProperty("total");
-      expect(summary).toHaveProperty("unlocked");
+      expect(summary).toHaveProperty("total", 2);
+      expect(summary).toHaveProperty("unlocked", 1);
+      expect(summary).toHaveProperty("percentage", 50);
       expect(summary).toHaveProperty("categories");
       expect(summary).toHaveProperty("recentUnlocks");
       expect(summary).toHaveProperty("nearCompletion");
@@ -804,8 +826,27 @@ const UserProgressModel = require("../model/application/UserAchievementProgress"
 const CategoryModel = require("../model/application/AchievementCategory");
 const { DefaultLogger } = require("../util/Logger");
 const mysql = require("../util/mysql");
+const redis = require("../util/redis");
 
-// Maps event types to achievement keys that should be checked
+// --- In-memory cache for achievement definitions (24 rows, rarely changes) ---
+let achievementCache = null;
+let cacheExpiry = 0;
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+async function getCache() {
+  if (achievementCache && Date.now() < cacheExpiry) return achievementCache;
+  achievementCache = await AchievementModel.allWithCategories();
+  cacheExpiry = Date.now() + CACHE_TTL_MS;
+  return achievementCache;
+}
+
+// For testing: allow injecting cache directly
+exports._setCache = (data) => {
+  achievementCache = data;
+  cacheExpiry = Date.now() + CACHE_TTL_MS;
+};
+
+// Maps event types to achievement keys
 const EVENT_ACHIEVEMENT_MAP = {
   chat_message: ["chat_100", "chat_1000", "chat_5000", "chat_night_owl", "chat_multi_group"],
   gacha_pull: ["gacha_first", "gacha_100", "gacha_500", "gacha_collector_50", "gacha_lucky"],
@@ -817,127 +858,125 @@ const EVENT_ACHIEVEMENT_MAP = {
   command_use: ["social_first_command", "social_all_features"],
 };
 
+// --- Progress calculation strategies by achievement type ---
+// Returns new progress value, or null to skip.
+
+const STRATEGIES = {
+  // Milestone: simple increment by 1 each event
+  increment(currentValue) {
+    return currentValue + 1;
+  },
+
+  // Instant: unlock immediately on first relevant event
+  instant(currentValue, achievement) {
+    return achievement.target_value;
+  },
+
+  // Context value: take a value directly from event context
+  contextValue(currentValue, achievement, context, contextKey) {
+    return context[contextKey] !== undefined ? context[contextKey] : currentValue;
+  },
+
+  // Threshold check: unlock if context value meets condition
+  threshold(currentValue, achievement, context, contextKey, minValue) {
+    return context[contextKey] >= minValue ? achievement.target_value : currentValue;
+  },
+
+  // Time check: unlock if current time matches condition
+  timeWindow(currentValue, achievement, startHour, endHour) {
+    const hour = new Date(Date.now() + 8 * 60 * 60 * 1000).getUTCHours(); // Asia/Taipei
+    return hour >= startHour && hour < endHour ? achievement.target_value : currentValue;
+  },
+};
+
+// Map each achievement key to its strategy call
+const ACHIEVEMENT_STRATEGY = {
+  chat_100: (cv, a) => STRATEGIES.increment(cv),
+  chat_1000: (cv, a) => STRATEGIES.increment(cv),
+  chat_5000: (cv, a) => STRATEGIES.increment(cv),
+  chat_night_owl: (cv, a) => STRATEGIES.timeWindow(cv, a, 3, 4),
+  chat_multi_group: "tracked_groups", // special: uses Redis tracking
+  gacha_first: (cv, a) => STRATEGIES.instant(cv, a),
+  gacha_100: (cv, a) => STRATEGIES.increment(cv),
+  gacha_500: (cv, a) => STRATEGIES.increment(cv),
+  gacha_collector_50: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "uniqueCount"),
+  gacha_lucky: (cv, a, ctx) => STRATEGIES.threshold(cv, a, ctx, "threeStarCount", 3),
+  janken_first_win: (cv, a) => STRATEGIES.instant(cv, a),
+  janken_win_50: (cv, a) => STRATEGIES.increment(cv),
+  janken_streak_5: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "streak"),
+  janken_streak_10: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "streak"),
+  janken_challenged_10: (cv, a) => STRATEGIES.increment(cv),
+  boss_first_kill: (cv, a) => STRATEGIES.instant(cv, a),
+  boss_level_10: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "level"),
+  boss_level_50: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "level"),
+  boss_top_damage: (cv, a, ctx) => ctx.isTopDamage ? a.target_value : cv,
+  social_first_command: (cv, a) => STRATEGIES.instant(cv, a),
+  social_all_features: "tracked_features", // special: uses Redis tracking
+};
+
+const REDIS_TTL = 90 * 24 * 60 * 60; // 90 days
+
 /**
  * Evaluate achievements for a user after an event.
  * Fire-and-forget — errors are logged, never thrown.
- * @param {string} userId LINE platform user ID
- * @param {string} eventType Event type key
- * @param {Object} context Event context data
  */
 exports.evaluate = async (userId, eventType, context = {}) => {
   try {
     const achievementKeys = EVENT_ACHIEVEMENT_MAP[eventType];
     if (!achievementKeys || achievementKeys.length === 0) return;
 
+    const cache = await getCache();
+
     for (const key of achievementKeys) {
-      await evaluateSingle(userId, key, eventType, context);
+      const achievement = cache.find(a => a.key === key);
+      if (!achievement) continue;
+
+      const alreadyUnlocked = await UserAchievementModel.isUnlocked(userId, achievement.id);
+      if (alreadyUnlocked) continue;
+
+      const newValue = await calculateProgress(userId, achievement, context);
+      if (newValue === null) continue;
+
+      await UserProgressModel.upsert(userId, achievement.id, newValue);
+
+      if (newValue >= achievement.target_value) {
+        await unlockAchievement(userId, achievement);
+      }
     }
   } catch (err) {
     DefaultLogger.error("AchievementEngine.evaluate error:", err);
   }
 };
 
-/**
- * Evaluate a single achievement for a user.
- */
-async function evaluateSingle(userId, achievementKey, eventType, context) {
-  const achievement = await AchievementModel.findByKey(achievementKey);
-  if (!achievement) return;
-
-  const alreadyUnlocked = await UserAchievementModel.isUnlocked(userId, achievement.id);
-  if (alreadyUnlocked) return;
-
-  const newValue = await calculateProgress(userId, achievement, eventType, context);
-  if (newValue === null) return;
-
-  await UserProgressModel.upsert(userId, achievement.id, newValue);
-
-  if (newValue >= achievement.target_value) {
-    await unlockAchievement(userId, achievement);
-  }
-}
-
-/**
- * Calculate the new progress value for an achievement.
- * Returns null if this event is not relevant.
- */
-async function calculateProgress(userId, achievement, eventType, context) {
+async function calculateProgress(userId, achievement, context) {
   const progress = await UserProgressModel.getProgress(userId, achievement.id);
   const currentValue = progress ? progress.current_value : 0;
 
-  switch (achievement.key) {
-    // Chat milestones — increment by 1
-    case "chat_100":
-    case "chat_1000":
-    case "chat_5000":
-      return currentValue + 1;
+  const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
+  if (!strategy) return currentValue;
 
-    // Chat hidden — check time of day (Asia/Taipei: UTC+8)
-    case "chat_night_owl": {
-      const hour = new Date(Date.now() + 8 * 60 * 60 * 1000).getUTCHours();
-      return hour >= 3 && hour < 4 ? achievement.target_value : currentValue;
-    }
-
-    // Chat social — track unique groups
-    case "chat_multi_group": {
-      const groupId = context.groupId;
-      if (!groupId) return currentValue;
-      // Use progress to count unique groups — store count, track groups separately
-      const groups = await getTrackedGroups(userId, achievement.id);
-      if (!groups.includes(groupId)) {
-        await trackGroup(userId, achievement.id, groupId);
-        return currentValue + 1;
-      }
-      return currentValue;
-    }
-
-    // Gacha milestones
-    case "gacha_first":
-      return achievement.target_value; // instant unlock
-    case "gacha_100":
-    case "gacha_500":
-      return currentValue + 1;
-    case "gacha_collector_50":
-      return context.uniqueCount || currentValue;
-    case "gacha_lucky":
-      return context.threeStarCount >= 3 ? achievement.target_value : currentValue;
-
-    // Janken milestones & challenges
-    case "janken_first_win":
-      return achievement.target_value; // instant unlock
-    case "janken_win_50":
-      return currentValue + 1;
-    case "janken_streak_5":
-    case "janken_streak_10":
-      return context.streak || currentValue;
-    case "janken_challenged_10":
-      return currentValue + 1;
-
-    // World boss
-    case "boss_first_kill":
-      return achievement.target_value; // instant unlock
-    case "boss_level_10":
-    case "boss_level_50":
-      return context.level || currentValue;
-    case "boss_top_damage":
-      return context.isTopDamage ? achievement.target_value : currentValue;
-
-    // Social
-    case "social_first_command":
-      return achievement.target_value; // instant unlock
-    case "social_all_features": {
-      // context.feature tells us which feature was used
-      const features = await getTrackedFeatures(userId, achievement.id);
-      if (context.feature && !features.includes(context.feature)) {
-        await trackFeature(userId, achievement.id, context.feature);
-        return currentValue + 1;
-      }
-      return currentValue;
-    }
-
-    default:
-      return currentValue;
+  // Special Redis-tracked achievements
+  if (strategy === "tracked_groups") {
+    return handleTrackedSet(userId, achievement.id, context.groupId, currentValue);
   }
+  if (strategy === "tracked_features") {
+    return handleTrackedSet(userId, achievement.id, context.feature, currentValue);
+  }
+
+  // Standard strategy function
+  return strategy(currentValue, achievement, context);
+}
+
+// Shared handler for Redis-tracked unique sets (groups, features)
+async function handleTrackedSet(userId, achievementId, newItem, currentValue) {
+  if (!newItem) return currentValue;
+  const redisKey = `achievement:tracked:${userId}:${achievementId}`;
+  const data = await redis.get(redisKey);
+  const items = data ? JSON.parse(data) : [];
+  if (items.includes(newItem)) return currentValue;
+  items.push(newItem);
+  await redis.set(redisKey, JSON.stringify(items), { EX: REDIS_TTL });
+  return currentValue + 1;
 }
 
 /**
@@ -948,47 +987,23 @@ async function unlockAchievement(userId, achievement) {
   await UserProgressModel.delete(userId, achievement.id);
 
   if (achievement.reward_stones > 0) {
-    await mysql("Inventory")
-      .insert({ userId, itemId: 999, itemAmount: achievement.reward_stones })
-      .onConflict(["userId", "itemId"])
-      .merge({ itemAmount: mysql.raw("itemAmount + ?", [achievement.reward_stones]) });
+    // MySQL-compatible upsert for goddess stones
+    const existing = await mysql("Inventory")
+      .where({ userId, itemId: 999 })
+      .first();
+    if (existing) {
+      await mysql("Inventory")
+        .where({ userId, itemId: 999 })
+        .update({ itemAmount: mysql.raw("itemAmount + ?", [achievement.reward_stones]) });
+    } else {
+      await mysql("Inventory")
+        .insert({ userId, itemId: 999, itemAmount: achievement.reward_stones });
+    }
   }
 
   DefaultLogger.info(
     `Achievement unlocked: ${achievement.key} for user ${userId} (+${achievement.reward_stones} stones)`
   );
-}
-
-// --- Tracking helpers for multi-value achievements ---
-// Uses Redis or a simple JSON approach via the progress table
-// For simplicity, use a separate tracking table approach via redis
-
-const redis = require("../util/redis");
-
-async function getTrackedGroups(userId, achievementId) {
-  const key = `achievement:groups:${userId}:${achievementId}`;
-  const data = await redis.get(key);
-  return data ? JSON.parse(data) : [];
-}
-
-async function trackGroup(userId, achievementId, groupId) {
-  const key = `achievement:groups:${userId}:${achievementId}`;
-  const groups = await getTrackedGroups(userId, achievementId);
-  groups.push(groupId);
-  await redis.set(key, JSON.stringify(groups));
-}
-
-async function getTrackedFeatures(userId, achievementId) {
-  const key = `achievement:features:${userId}:${achievementId}`;
-  const data = await redis.get(key);
-  return data ? JSON.parse(data) : [];
-}
-
-async function trackFeature(userId, achievementId, feature) {
-  const key = `achievement:features:${userId}:${achievementId}`;
-  const features = await getTrackedFeatures(userId, achievementId);
-  features.push(feature);
-  await redis.set(key, JSON.stringify(features));
 }
 
 // --- Query methods for controller/API ---
@@ -1051,41 +1066,54 @@ exports.getStats = async () => {
 
 /**
  * Batch evaluate milestone achievements for all users (called by cron).
+ * Uses batch queries to avoid N+1 problem.
  */
 exports.batchEvaluate = async () => {
   DefaultLogger.info("AchievementEngine: starting batch evaluation");
+  const cache = await getCache();
 
-  // Chat milestones — query chat_user_data for total message counts
-  const chatUsers = await mysql("chat_user_data").select("platform_id", "talk_count");
-  for (const user of chatUsers) {
-    const userId = user.platform_id;
-    const count = user.talk_count || 0;
-    for (const key of ["chat_100", "chat_1000", "chat_5000"]) {
-      const achievement = await AchievementModel.findByKey(key);
-      if (!achievement) continue;
-      const isUnlocked = await UserAchievementModel.isUnlocked(userId, achievement.id);
-      if (isUnlocked) continue;
-      await UserProgressModel.upsert(userId, achievement.id, count);
-      if (count >= achievement.target_value) {
-        await unlockAchievement(userId, achievement);
+  // --- Chat milestones: batch query all users + all unlocks at once ---
+  const chatAchievements = cache.filter(a =>
+    ["chat_100", "chat_1000", "chat_5000"].includes(a.key)
+  );
+  if (chatAchievements.length > 0) {
+    const chatUsers = await mysql("chat_user_data").select("platform_id", "talk_count");
+    const chatAchievementIds = chatAchievements.map(a => a.id);
+
+    // Batch fetch all existing unlocks for these achievements
+    const existingUnlocks = await mysql("user_achievements")
+      .whereIn("achievement_id", chatAchievementIds)
+      .select("user_id", "achievement_id");
+    const unlockedSet = new Set(existingUnlocks.map(u => `${u.user_id}:${u.achievement_id}`));
+
+    for (const user of chatUsers) {
+      const userId = user.platform_id;
+      const count = user.talk_count || 0;
+      for (const achievement of chatAchievements) {
+        if (unlockedSet.has(`${userId}:${achievement.id}`)) continue;
+        await UserProgressModel.upsert(userId, achievement.id, count);
+        if (count >= achievement.target_value) {
+          await unlockAchievement(userId, achievement);
+        }
       }
     }
   }
 
-  // Veteran achievement — account age > 30 days
-  const veteranAchievement = await AchievementModel.findByKey("social_veteran_30d");
+  // --- Veteran achievement: batch check ---
+  const veteranAchievement = cache.find(a => a.key === "social_veteran_30d");
   if (veteranAchievement) {
+    const existingUnlocks = await mysql("user_achievements")
+      .where("achievement_id", veteranAchievement.id)
+      .select("user_id");
+    const unlockedUserIds = new Set(existingUnlocks.map(u => u.user_id));
+
     const veterans = await mysql("user")
       .select("platform_id")
       .where("created_at", "<=", mysql.raw("DATE_SUB(NOW(), INTERVAL 30 DAY)"));
+
     for (const user of veterans) {
-      const isUnlocked = await UserAchievementModel.isUnlocked(
-        user.platform_id,
-        veteranAchievement.id
-      );
-      if (!isUnlocked) {
-        await unlockAchievement(user.platform_id, veteranAchievement);
-      }
+      if (unlockedUserIds.has(user.platform_id)) continue;
+      await unlockAchievement(user.platform_id, veteranAchievement);
     }
   }
 
@@ -1884,17 +1912,20 @@ async function deliveryWorldBossTitles(trx) {
   const leechersCount = Math.max(1, Math.ceil((userCount * leechersConfig.limit) / 100));
 
   // Progressors — top by level/exp
+  // NOTE: minigame_level.user_id is an internal int ID, NOT a LINE platform_id.
+  // Must join the user table to get platform_id.
   const progressorsTitle = await trx("titles").where("key", "progressors").first();
   if (progressorsTitle) {
     const topUsers = await trx("minigame_level")
-      .select("user_id")
+      .join("user", "minigame_level.user_id", "user.id")
+      .select("user.platform_id")
       .orderBy([
-        { column: "level", order: "desc" },
-        { column: "exp", order: "desc" },
+        { column: "minigame_level.level", order: "desc" },
+        { column: "minigame_level.exp", order: "desc" },
       ])
       .limit(progressorsCount);
     for (const user of topUsers) {
-      await UserTitleModel.grantByPlatformId(user.user_id, progressorsTitle.id, trx);
+      await UserTitleModel.grantByPlatformId(user.platform_id, progressorsTitle.id, trx);
     }
   }
 
@@ -1902,14 +1933,15 @@ async function deliveryWorldBossTitles(trx) {
   const leechersTitle = await trx("titles").where("key", "leechers").first();
   if (leechersTitle) {
     const bottomUsers = await trx("minigame_level")
-      .select("user_id")
+      .join("user", "minigame_level.user_id", "user.id")
+      .select("user.platform_id")
       .orderBy([
-        { column: "level", order: "asc" },
-        { column: "exp", order: "asc" },
+        { column: "minigame_level.level", order: "asc" },
+        { column: "minigame_level.exp", order: "asc" },
       ])
       .limit(leechersCount);
     for (const user of bottomUsers) {
-      await UserTitleModel.grantByPlatformId(user.user_id, leechersTitle.id, trx);
+      await UserTitleModel.grantByPlatformId(user.platform_id, leechersTitle.id, trx);
     }
   }
 }
@@ -2076,14 +2108,17 @@ import {
   LinearProgress,
   Chip,
   Grid,
+  Skeleton,
 } from "@mui/material";
+import { useSearchParams } from "react-router-dom";
 import { getUserAchievements, getAchievementStats } from "../../services/achievement";
 
+// Colors chosen for WCAG 4.5:1 contrast against white backgrounds
 const RARITY_CONFIG = {
-  0: { label: "普通", color: "#a0a0a0" },
+  0: { label: "普通", color: "#757575" },
   1: { label: "稀有", color: "#6c5ce7" },
-  2: { label: "史詩", color: "#ffd700" },
-  3: { label: "傳說", color: "#fd79a8" },
+  2: { label: "史詩", color: "#b8860b" },
+  3: { label: "傳說", color: "#d63384" },
 };
 
 export default function Achievement() {
@@ -2093,8 +2128,9 @@ export default function Achievement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // TODO: Get userId from auth context or URL params
-  const userId = new URLSearchParams(window.location.search).get("userId") || "";
+  // Get userId from URL search params (linked from LINE Flex Message)
+  const [searchParams] = useSearchParams();
+  const userId = searchParams.get("userId") || "";
 
   const fetchData = useCallback(async () => {
     if (!userId) {
@@ -2122,7 +2158,21 @@ export default function Achievement() {
     fetchData();
   }, [fetchData]);
 
-  if (loading) return <LinearProgress />;
+  if (loading) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 3 }}>
+        <Skeleton variant="text" width={120} height={48} sx={{ mx: "auto" }} />
+        <Skeleton variant="rectangular" height={8} sx={{ borderRadius: 4, my: 1 }} />
+        <Grid container spacing={2} sx={{ mt: 3 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Grid item xs={12} sm={6} md={4} key={i}>
+              <Skeleton variant="rectangular" height={140} sx={{ borderRadius: 1 }} />
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+    );
+  }
   if (error) return <Container sx={{ py: 4 }}><Typography color="error">{error}</Typography></Container>;
   if (!summary) return null;
 
@@ -2184,7 +2234,7 @@ export default function Achievement() {
       <Grid container spacing={2}>
         {filteredCategories.flatMap(cat =>
           cat.achievements.map(achievement => (
-            <Grid item xs={6} sm={4} md={4} key={achievement.id}>
+            <Grid item xs={12} sm={6} md={4} key={achievement.id}>
               <AchievementCard achievement={achievement} stats={statsMap[achievement.id]} />
             </Grid>
           ))
@@ -2277,9 +2327,10 @@ cd frontend && yarn start
 ```
 
 Open `http://localhost:3000/achievements?userId=<test_user_id>` and verify:
-- Page loads without errors
-- Category tabs render
-- Grid layout is responsive
+- Page loads without errors, skeleton cards show during loading
+- Category tabs render and filter correctly
+- Grid layout is responsive: single column on mobile (<600px), 2 columns on tablet, 3 on desktop
+- Rarity colors have sufficient contrast against white card backgrounds
 
 - [ ] **Step 5: Commit**
 
