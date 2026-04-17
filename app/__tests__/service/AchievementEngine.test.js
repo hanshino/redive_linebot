@@ -52,6 +52,7 @@ const UserAchievementModel = require("../../src/model/application/UserAchievemen
 const UserProgressModel = require("../../src/model/application/UserAchievementProgress");
 const CategoryModel = require("../../src/model/application/AchievementCategory");
 const { DefaultLogger } = require("../../src/util/Logger");
+const mysql = require("../../src/util/mysql");
 
 const CACHE_DATA = [
   { id: 1, key: "chat_100", type: "milestone", target_value: 100, reward_stones: 50 },
@@ -110,6 +111,78 @@ describe("AchievementEngine", () => {
     it("should not throw on event with no mapped achievements", async () => {
       await AchievementEngine.evaluate("user1", "unknown_event", {});
       expect(DefaultLogger.error).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("evaluate return value", () => {
+    it("returns { unlocked: [] } when no achievement crosses threshold", async () => {
+      AchievementEngine._setCache([
+        {
+          id: 1,
+          key: "chat_100",
+          target_value: 100,
+          reward_stones: 0,
+          notify_on_unlock: false,
+          notify_message: null,
+          condition: null,
+        },
+      ]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgress.mockResolvedValue({ current_value: 1 });
+      UserProgressModel.upsert.mockResolvedValue();
+
+      const result = await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      expect(result).toEqual({ unlocked: [] });
+    });
+
+    it("returns the unlocked achievement row when threshold is crossed", async () => {
+      const achievement = {
+        id: 2,
+        key: "chat_100",
+        target_value: 100,
+        reward_stones: 50,
+        notify_on_unlock: true,
+        notify_message: null,
+        condition: null,
+        icon: "💬",
+        name: "百句達人",
+      };
+      AchievementEngine._setCache([achievement]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgress.mockResolvedValue({ current_value: 99 });
+      UserProgressModel.upsert.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.delete.mockResolvedValue();
+      mysql.mockImplementationOnce(() => ({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(null),
+        insert: jest.fn().mockResolvedValue(),
+      }));
+
+      const result = await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      expect(result.unlocked).toHaveLength(1);
+      expect(result.unlocked[0].key).toBe("chat_100");
+    });
+
+    it("returns { unlocked: [] } when inner error is swallowed", async () => {
+      AchievementEngine._setCache([
+        {
+          id: 3,
+          key: "chat_100",
+          target_value: 100,
+          reward_stones: 0,
+          notify_on_unlock: false,
+          notify_message: null,
+          condition: null,
+        },
+      ]);
+      UserAchievementModel.getUnlockedIds.mockRejectedValue(new Error("db down"));
+
+      const result = await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      expect(result).toEqual({ unlocked: [] });
     });
   });
 

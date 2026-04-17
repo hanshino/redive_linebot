@@ -91,16 +91,18 @@ const REDIS_TTL = 90 * 24 * 60 * 60; // 90 days
 
 /**
  * Evaluate achievements for a user after an event.
- * Fire-and-forget — errors are logged, never thrown.
+ * Errors are logged and swallowed, never thrown.
+ * @returns {Promise<{ unlocked: Array }>} newly unlocked achievement rows (empty if none).
  */
 exports.evaluate = async (userId, eventType, context = {}) => {
+  const unlocked = [];
   try {
     const achievementKeys = EVENT_ACHIEVEMENT_MAP[eventType];
-    if (!achievementKeys || achievementKeys.length === 0) return;
+    if (!achievementKeys || achievementKeys.length === 0) return { unlocked };
 
     const cache = await getCache();
     const achievements = achievementKeys.map(key => cache.find(a => a.key === key)).filter(Boolean);
-    if (achievements.length === 0) return;
+    if (achievements.length === 0) return { unlocked };
 
     const unlockedIds = await UserAchievementModel.getUnlockedIds(
       userId,
@@ -120,6 +122,7 @@ exports.evaluate = async (userId, eventType, context = {}) => {
 
         if (newValue >= achievement.target_value) {
           await unlockAchievement(userId, achievement);
+          unlocked.push(achievement);
         }
       } catch (innerErr) {
         DefaultLogger.error(
@@ -131,6 +134,7 @@ exports.evaluate = async (userId, eventType, context = {}) => {
   } catch (err) {
     DefaultLogger.error("AchievementEngine.evaluate error:", err);
   }
+  return { unlocked };
 };
 
 async function calculateProgress(userId, achievement, context) {
