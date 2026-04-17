@@ -35,7 +35,7 @@ const EVENT_ACHIEVEMENT_MAP = {
   boss_attack: ["boss_first_kill", "boss_level_10", "boss_level_50", "boss_top_damage"],
   command_use: ["social_first_command", "social_all_features"],
   subscribe: ["subscribe_first", "subscribe_3", "subscribe_6", "subscribe_12"],
-  mention_keyword: ["mention_admin_hi", "mention_memory_seeker"],
+  mention_keyword: ["mention_admin_hi", "mention_memory_seeker", "mention_void_gazer"],
 };
 
 // --- Progress calculation strategies by achievement type ---
@@ -100,6 +100,7 @@ const ACHIEVEMENT_STRATEGY = {
   subscribe_12: cv => STRATEGIES.increment(cv),
   mention_admin_hi: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
   mention_memory_seeker: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
+  mention_void_gazer: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
 };
 
 const GODDESS_STONE_ITEM_ID = 999;
