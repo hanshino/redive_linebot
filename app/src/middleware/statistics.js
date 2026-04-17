@@ -1,6 +1,8 @@
+const { get } = require("lodash");
 const { io } = require("../util/connection");
 const redis = require("../util/redis");
 const AchievementEngine = require("../service/AchievementEngine");
+const { notifyUnlocks } = require("../service/achievementNotifier");
 const MessageIO = io.of("/admin/messages");
 
 /**
@@ -16,7 +18,27 @@ const statistics = async (context, props) => {
     const userId = context.event.source.userId;
     const groupId = context.event.source.groupId;
     if (userId) {
-      AchievementEngine.evaluate(userId, "chat_message", { groupId }).catch(() => {});
+      const mentionees = get(context, "event.message.mention.mentionees", []) || [];
+      const mentionedUserIds = mentionees.map(m => m && m.userId).filter(Boolean);
+      const text = context.event.text || "";
+
+      const tasks = [
+        AchievementEngine.evaluate(userId, "chat_message", { groupId, text }).catch(() => ({
+          unlocked: [],
+        })),
+      ];
+      if (mentionedUserIds.length) {
+        tasks.push(
+          AchievementEngine.evaluate(userId, "mention_keyword", {
+            mentionedUserIds,
+            text,
+          }).catch(() => ({ unlocked: [] }))
+        );
+      }
+
+      const results = await Promise.all(tasks);
+      const unlocked = results.flatMap(r => (r && r.unlocked) || []);
+      await notifyUnlocks(context, userId, unlocked);
     }
   }
 
