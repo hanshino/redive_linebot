@@ -11,6 +11,7 @@ const JankenService = require("../../service/JankenService");
 const uuid = require("uuid-random");
 const { DefaultLogger } = require("../../util/Logger");
 const AchievementEngine = require("../../service/AchievementEngine");
+const { notifyUnlocks } = require("../../service/achievementNotifier");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
 const ASSET_VERSION = Date.now();
@@ -264,8 +265,16 @@ exports.decide = async (context, { payload }) => {
 
   if (p1Result !== "draw") {
     const winnerId = p1Result === "win" ? userId : targetUserId;
-    AchievementEngine.evaluate(winnerId, "janken_win", { streak: winnerStreak }).catch(() => {});
-    AchievementEngine.evaluate(targetUserId, "janken_challenge", {}).catch(() => {});
+    const [winResult, challengeResult] = await Promise.all([
+      AchievementEngine.evaluate(winnerId, "janken_win", { streak: winnerStreak }).catch(() => ({
+        unlocked: [],
+      })),
+      AchievementEngine.evaluate(targetUserId, "janken_challenge", {}).catch(() => ({
+        unlocked: [],
+      })),
+    ]);
+    await notifyUnlocks(context, winnerId, winResult.unlocked);
+    await notifyUnlocks(context, targetUserId, challengeResult.unlocked);
 
     if (loserBounty > 0) {
       const breakerName = p1Result === "win" ? p1Name : p2Name;
@@ -433,8 +442,16 @@ exports.challenge = async (context, { payload }) => {
 
     if (p1Result !== "draw") {
       const winnerId = p1Result === "win" ? holderUserId : challengerUserId;
-      AchievementEngine.evaluate(winnerId, "janken_win", { streak: winnerStreak }).catch(() => {});
-      AchievementEngine.evaluate(challengerUserId, "janken_challenge", {}).catch(() => {});
+      const [winResult, challengeResult] = await Promise.all([
+        AchievementEngine.evaluate(winnerId, "janken_win", { streak: winnerStreak }).catch(() => ({
+          unlocked: [],
+        })),
+        AchievementEngine.evaluate(challengerUserId, "janken_challenge", {}).catch(() => ({
+          unlocked: [],
+        })),
+      ]);
+      await notifyUnlocks(context, winnerId, winResult.unlocked);
+      await notifyUnlocks(context, challengerUserId, challengeResult.unlocked);
 
       if (loserBounty > 0) {
         const breakerName = p1Result === "win" ? p1Name : p2Name;

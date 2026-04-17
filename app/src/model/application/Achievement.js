@@ -13,6 +13,9 @@ const fillable = [
   "target_value",
   "reward_stones",
   "order",
+  "condition",
+  "notify_on_unlock",
+  "notify_message",
 ];
 
 class Achievement extends Base {}

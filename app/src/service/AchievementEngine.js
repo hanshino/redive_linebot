@@ -35,6 +35,7 @@ const EVENT_ACHIEVEMENT_MAP = {
   boss_attack: ["boss_first_kill", "boss_level_10", "boss_level_50", "boss_top_damage"],
   command_use: ["social_first_command", "social_all_features"],
   subscribe: ["subscribe_first", "subscribe_3", "subscribe_6", "subscribe_12"],
+  mention_keyword: ["mention_admin_hi", "mention_memory_seeker", "mention_void_gazer"],
 };
 
 // --- Progress calculation strategies by achievement type ---
@@ -55,6 +56,19 @@ const STRATEGIES = {
   timeWindow(currentValue, achievement, startHour, endHour) {
     const hour = new Date(Date.now() + 8 * 60 * 60 * 1000).getUTCHours(); // Asia/Taipei
     return hour >= startHour && hour < endHour ? achievement.target_value : currentValue;
+  },
+  mentionKeyword(currentValue, achievement, context) {
+    const condition = achievement.condition || {};
+    const targetUserIds = Array.isArray(condition.targetUserIds) ? condition.targetUserIds : [];
+    const keywords = Array.isArray(condition.keywords) ? condition.keywords : [];
+    if (!targetUserIds.length) return currentValue;
+
+    const mentioned = Array.isArray(context.mentionedUserIds) ? context.mentionedUserIds : [];
+    const text = typeof context.text === "string" ? context.text : "";
+
+    const allTagged = targetUserIds.every(id => mentioned.includes(id));
+    const allKeyword = keywords.length === 0 || keywords.every(k => text.includes(k));
+    return allTagged && allKeyword ? achievement.target_value : currentValue;
   },
 };
 
@@ -84,6 +98,9 @@ const ACHIEVEMENT_STRATEGY = {
   subscribe_3: cv => STRATEGIES.increment(cv),
   subscribe_6: cv => STRATEGIES.increment(cv),
   subscribe_12: cv => STRATEGIES.increment(cv),
+  mention_admin_hi: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
+  mention_memory_seeker: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
+  mention_void_gazer: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
 };
 
 const GODDESS_STONE_ITEM_ID = 999;
@@ -91,16 +108,18 @@ const REDIS_TTL = 90 * 24 * 60 * 60; // 90 days
 
 /**
  * Evaluate achievements for a user after an event.
- * Fire-and-forget — errors are logged, never thrown.
+ * Errors are logged and swallowed, never thrown.
+ * @returns {Promise<{ unlocked: Array }>} newly unlocked achievement rows (empty if none).
  */
 exports.evaluate = async (userId, eventType, context = {}) => {
+  const unlocked = [];
   try {
     const achievementKeys = EVENT_ACHIEVEMENT_MAP[eventType];
-    if (!achievementKeys || achievementKeys.length === 0) return;
+    if (!achievementKeys || achievementKeys.length === 0) return { unlocked };
 
     const cache = await getCache();
     const achievements = achievementKeys.map(key => cache.find(a => a.key === key)).filter(Boolean);
-    if (achievements.length === 0) return;
+    if (achievements.length === 0) return { unlocked };
 
     const unlockedIds = await UserAchievementModel.getUnlockedIds(
       userId,
@@ -120,6 +139,7 @@ exports.evaluate = async (userId, eventType, context = {}) => {
 
         if (newValue >= achievement.target_value) {
           await unlockAchievement(userId, achievement);
+          unlocked.push(achievement);
         }
       } catch (innerErr) {
         DefaultLogger.error(
@@ -131,6 +151,7 @@ exports.evaluate = async (userId, eventType, context = {}) => {
   } catch (err) {
     DefaultLogger.error("AchievementEngine.evaluate error:", err);
   }
+  return { unlocked };
 };
 
 async function calculateProgress(userId, achievement, context) {

@@ -20,6 +20,7 @@ const config = require("config");
 const i18n = require("../../util/i18n");
 const commonTemplate = require("../../templates/common");
 const AchievementEngine = require("../../service/AchievementEngine");
+const { notifyUnlocks } = require("../../service/achievementNotifier");
 
 function GachaException(message, code) {
   this.message = message;
@@ -473,10 +474,11 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     })
   );
 
-  AchievementEngine.evaluate(userId, "gacha_pull", {
+  const { unlocked } = await AchievementEngine.evaluate(userId, "gacha_pull", {
     threeStarCount: rareCount[3] || 0,
     uniqueCount: dailyResult.ownCharactersCount + dailyResult.newCharacters.length,
-  }).catch(() => {});
+  }).catch(() => ({ unlocked: [] }));
+  await notifyUnlocks(context, userId, unlocked);
 
   return context.replyFlex("每日一抽結果", {
     type: "carousel",

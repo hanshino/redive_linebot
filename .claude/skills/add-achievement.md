@@ -1,6 +1,6 @@
 ---
 name: add-achievement
-description: Guide for adding new achievements to the achievement system. Use this skill whenever the user mentions adding, creating, or defining new achievements, unlock conditions, or achievement categories. Also applies when discussing new event types that should trigger achievement progress.
+description: Guide for adding new achievements to the achievement system. Use this skill whenever the user mentions adding, creating, or defining new achievements, unlock conditions, achievement categories, mention-based triggers, or unlock notifications. Also applies when discussing new event types that should trigger achievement progress, or when configuring a reply message to be sent back to chat on unlock.
 ---
 
 # Add Achievement to the System
@@ -50,6 +50,14 @@ exports.up = async function (knex) {
     target_value: <number>,        // how many times / what threshold to unlock
     reward_stones: <number>,       // goddess stones reward
     order: <number>,               // display order within category
+
+    // --- Optional: condition JSON for strategies that need per-achievement config
+    //     (mention_keyword is the primary user). Omit if strategy doesn't read it.
+    condition: JSON.stringify({ /* strategy-specific shape */ }),
+
+    // --- Optional: send a chat reply when this achievement unlocks
+    notify_on_unlock: true,              // default false → silent unlock (logs only)
+    notify_message: "<template or null>" // null → use default template
   });
 };
 
@@ -89,6 +97,7 @@ In `ACHIEVEMENT_STRATEGY`, define how progress is calculated. Choose from built-
 | `contextValue` | Progress comes from external data | Level reached, unique count |
 | `threshold` | Context value must exceed a minimum | Score >= 100 in one game |
 | `timeWindow` | Must happen during specific hours | Action between 3-4 AM |
+| `mentionKeyword` | @mention a target userId, optionally with keywords | Greet an admin; touch a specific god |
 
 ```js
 const ACHIEVEMENT_STRATEGY = {
@@ -139,6 +148,139 @@ If no icon is mapped, the system falls back to the category icon, then to `LockI
 
 If the achievement can be retroactively checked for existing users (e.g. "registered 30+ days ago"), add batch logic in `batchEvaluate()` in `AchievementEngine.js`. This runs as a cron job.
 
+## Mention-Keyword Achievements (event type: `mention_keyword`)
+
+A data-driven trigger that fires when a user sends a text message that @mentions one or more target userIds, optionally also containing specific keywords. Useful for easter-egg achievements like "greet an admin", "touch a specific god", etc.
+
+**Key property**: the trigger logic is generic. All per-achievement data lives in the `condition` JSON column — so a new mention-keyword achievement is just a migration + two lines in `AchievementEngine.js`. No business-logic wiring needed: `statistics.js` already dispatches `mention_keyword` for every text message containing `mention.mentionees`.
+
+### Condition schema
+
+```json
+{
+  "targetUserIds": ["U123...", "U456..."],  // ALL must be @mentioned
+  "keywords": ["謝謝", "感謝"]               // ALL must appear as substrings. May be empty.
+}
+```
+
+Semantics:
+- `targetUserIds` is **required**. Empty → never unlocks.
+- `keywords` is **optional**. Empty array (`[]`) means "mention-only trigger" — the achievement fires on any message that @mentions all target userIds, regardless of text content.
+- Both lists use all-must-match (AND) semantics, not any-match.
+
+### When to use empty keywords
+
+Use mention-only triggers (`keywords: []`) when:
+- The target userId is rarely @mentioned (e.g. a niche persona), so the trigger threshold is naturally low.
+- You want the achievement to feel serendipitous — the user doesn't need to know what to say.
+
+Avoid empty keywords when the target userId is a frequently-mentioned admin/active user — the achievement will fire on almost any interaction and feel cheap. In that case, gate it with 1–2 keywords.
+
+**Cost of empty keywords**: none beyond the existing dispatch. Once a user unlocks the achievement, `evaluate()` short-circuits on the already-unlocked check before running the strategy, so there's no repeated computation — just one indexed DB lookup per @mention event from that user.
+
+### Example migration (keyword-gated)
+
+```js
+await knex("achievements").insert({
+  category_id: category.id,
+  key: "mention_admin_hi",
+  name: "來自鬆餅的祝福",
+  description: "與管理員打招呼",
+  icon: "🥞",
+  type: "hidden",
+  rarity: 2,
+  target_value: 1,
+  reward_stones: 100,
+  order: 99,
+  condition: JSON.stringify({
+    targetUserIds: ["U41b31c07a3279ca64355d2de43101b3d"],
+    keywords: ["鬆餅", "祝福"],
+  }),
+  notify_on_unlock: true,
+  notify_message: "恭喜你加入鬆餅教(((o(*ﾟ▽ﾟ*)o)))\n已解鎖隱藏成就：{icon} {name}",
+});
+```
+
+### Example migration (mention-only, no keywords)
+
+```js
+await knex("achievements").insert({
+  category_id: category.id,
+  key: "mention_memory_seeker",
+  name: "追尋神祇回憶的人",
+  description: "觸碰到了布丁古神的意識",
+  icon: "🍮",
+  type: "hidden",
+  rarity: 2,
+  target_value: 1,
+  reward_stones: 100,
+  order: 100,
+  condition: JSON.stringify({
+    targetUserIds: ["U80ca6f24809c9a00981562b771fb6b84"],
+    keywords: [],  // ← empty: fires on any mention of the target userId
+  }),
+  notify_on_unlock: true,
+  notify_message:
+    "你觸摸到了布丁古神，古老的符文緩緩浮現……\n「穿越時光的旅人啊，神祇向你致意」\n已解鎖隱藏成就：{icon} {name}",
+});
+```
+
+### Engine wiring (two one-liners)
+
+```js
+// 1. Add the key to the mention_keyword event map
+EVENT_ACHIEVEMENT_MAP.mention_keyword = ["mention_admin_hi", "mention_memory_seeker"];
+
+// 2. Wire the strategy (reuse STRATEGIES.mentionKeyword)
+ACHIEVEMENT_STRATEGY.mention_memory_seeker = (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx);
+```
+
+No controller changes needed — `statistics.js` already dispatches `mention_keyword` on every text message with mentionees.
+
+## Unlock Notifications (`notify_on_unlock`)
+
+Select achievements can send a reply back to the chat where the unlock was triggered, via Bottender's batched reply queue (zero extra LINE API cost — batched into the same `reply` call as other messages).
+
+### How to enable
+
+Set two columns on the achievement row:
+- `notify_on_unlock: true` (default `false` → silent, logs only)
+- `notify_message: "<template>"` (or `null` to use the default template)
+
+### Template placeholders
+
+Supported in custom `notify_message`:
+- `{user}` — the unlocker's `display_name` (falls back to literal `"玩家"` if missing)
+- `{name}` — achievement name
+- `{icon}` — achievement icon
+- `{reward}` — reward stone count as integer
+
+Repeated placeholders are replaced globally. `{description}` is intentionally not supported.
+
+### Default templates (when `notify_message` is `null`)
+
+- With reward (`reward_stones > 0`): `🎉 {user} 解鎖成就「{icon} {name}」！獲得 {reward} 顆女神石`
+- No reward: `🎉 {user} 解鎖成就「{icon} {name}」！`
+
+### Call-site pattern
+
+`AchievementEngine.evaluate()` returns `{ unlocked: Achievement[] }`. For any call site that has a Bottender `context`, use the `notifyUnlocks` helper to emit replies:
+
+```js
+const AchievementEngine = require("../service/AchievementEngine");
+const { notifyUnlocks } = require("../service/achievementNotifier");
+
+const { unlocked } = await AchievementEngine.evaluate(userId, "<eventType>", ctx)
+  .catch(() => ({ unlocked: [] }));
+await notifyUnlocks(context, userId, unlocked);
+```
+
+Batch/cron call sites (no `context`) simply ignore the return value — that's fine.
+
+### Reply-queue cap
+
+LINE reply tokens cap at 5 messages per reply. If a single event generates >5 `context.replyText` calls (controller replies + unlock notifications combined), Bottender drops the overflow and logs a warning. This is tolerated as-is — unlikely in practice and harmless.
+
 ## Achievement Types Reference
 
 | Type | Behavior | Example |
@@ -180,7 +322,9 @@ Before finishing, verify:
 - [ ] Achievement key is unique across all achievements
 - [ ] Event type added to `EVENT_ACHIEVEMENT_MAP`
 - [ ] Strategy defined in `ACHIEVEMENT_STRATEGY`
-- [ ] `evaluate()` called from the relevant business logic
+- [ ] `evaluate()` called from the relevant business logic (skip for `mention_keyword` — `statistics.js` dispatches it automatically)
+- [ ] If `condition` is needed, `JSON.stringify(...)` the object before insert
+- [ ] If `notify_on_unlock: true`, confirm the relevant call site destructures `{ unlocked }` and calls `notifyUnlocks(context, userId, unlocked)` (already wired for `statistics.js`, gacha, janken, subscribe)
 - [ ] Migration runs cleanly: `cd app && yarn migrate`
 - [ ] (Optional) Frontend icon mapped
 - [ ] (Optional) Batch evaluation added if retroactive check is needed
