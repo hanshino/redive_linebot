@@ -27,7 +27,22 @@ exports._setCache = data => {
 // Maps event types to achievement keys
 const EVENT_ACHIEVEMENT_MAP = {
   chat_message: ["chat_100", "chat_1000", "chat_5000", "chat_night_owl", "chat_multi_group"],
-  gacha_pull: ["gacha_first", "gacha_100", "gacha_500", "gacha_collector_50", "gacha_lucky"],
+  gacha_pull: [
+    "gacha_first",
+    "gacha_100",
+    "gacha_500",
+    "gacha_collector_50",
+    "gacha_lucky",
+    "gacha_europe_1",
+    "gacha_europe_10",
+    "gacha_europe_50",
+    "gacha_pickup_1",
+    "gacha_pickup_10",
+    "gacha_pickup_50",
+    "gacha_ensure_1",
+    "gacha_ensure_10",
+    "gacha_ensure_50",
+  ],
   janken_win: ["janken_first_win", "janken_win_50", "janken_streak_5", "janken_streak_10"],
   janken_lose: [],
   janken_draw: [],
@@ -57,6 +72,12 @@ const STRATEGIES = {
     const hour = new Date(Date.now() + 8 * 60 * 60 * 1000).getUTCHours(); // Asia/Taipei
     return hour >= startHour && hour < endHour ? achievement.target_value : currentValue;
   },
+  conditionalIncrement(currentValue, achievement, context) {
+    const condition = achievement.condition || {};
+    const { pullType } = condition;
+    if (pullType && context.pullType !== pullType) return currentValue;
+    return currentValue + 1;
+  },
   mentionKeyword(currentValue, achievement, context) {
     const condition = achievement.condition || {};
     const targetUserIds = Array.isArray(condition.targetUserIds) ? condition.targetUserIds : [];
@@ -83,6 +104,15 @@ const ACHIEVEMENT_STRATEGY = {
   gacha_500: cv => STRATEGIES.increment(cv),
   gacha_collector_50: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "uniqueCount"),
   gacha_lucky: (cv, a, ctx) => STRATEGIES.threshold(cv, a, ctx, "threeStarCount", 3),
+  gacha_europe_1: STRATEGIES.conditionalIncrement,
+  gacha_europe_10: STRATEGIES.conditionalIncrement,
+  gacha_europe_50: STRATEGIES.conditionalIncrement,
+  gacha_pickup_1: STRATEGIES.conditionalIncrement,
+  gacha_pickup_10: STRATEGIES.conditionalIncrement,
+  gacha_pickup_50: STRATEGIES.conditionalIncrement,
+  gacha_ensure_1: STRATEGIES.conditionalIncrement,
+  gacha_ensure_10: STRATEGIES.conditionalIncrement,
+  gacha_ensure_50: STRATEGIES.conditionalIncrement,
   janken_first_win: (cv, a) => STRATEGIES.instant(cv, a),
   janken_win_50: cv => STRATEGIES.increment(cv),
   janken_streak_5: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "streak"),
@@ -132,8 +162,8 @@ exports.evaluate = async (userId, eventType, context = {}) => {
       try {
         if (unlockedIds.has(achievement.id)) continue;
 
-        const newValue = await calculateProgress(userId, achievement, ctx);
-        if (newValue === null) continue;
+        const { currentValue, newValue } = await calculateProgress(userId, achievement, ctx);
+        if (newValue === null || newValue === currentValue) continue;
 
         await UserProgressModel.upsert(userId, achievement.id, newValue);
 
@@ -159,9 +189,9 @@ async function calculateProgress(userId, achievement, context) {
   const currentValue = progress ? progress.current_value : 0;
 
   const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
-  if (!strategy) return currentValue;
+  const newValue = strategy ? strategy(currentValue, achievement, context) : currentValue;
 
-  return strategy(currentValue, achievement, context);
+  return { currentValue, newValue };
 }
 
 async function handleTrackedSet(userId, achievementId, newItem, currentValue) {
