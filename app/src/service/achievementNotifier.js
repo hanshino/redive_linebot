@@ -27,7 +27,7 @@ async function notifyUnlocks(context, userId, achievements) {
     if (!toNotify.length) return;
     const userName = await getDisplayName(userId);
     for (const a of toNotify) {
-      context.replyText(renderTemplate(a, userName));
+      await context.replyText(renderTemplate(a, userName));
     }
   } catch (err) {
     DefaultLogger.error("achievementNotifier.notifyUnlocks error:", err);
