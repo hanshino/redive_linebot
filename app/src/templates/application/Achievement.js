@@ -1,17 +1,13 @@
 const { getLiffUri } = require("../common");
+const { SURFACE, RARITY, FEATURE } = require("../common/theme");
 
-const RARITY_COLORS = {
-  0: { bg: "#757575", text: "#ffffff" }, // Common
-  1: { bg: "#6c5ce7", text: "#ffffff" }, // Rare
-  2: { bg: "#b8860b", text: "#ffffff" }, // Epic
-  3: { bg: "#d63384", text: "#ffffff" }, // Legendary
-};
+const ACCENT = FEATURE.achievement;
 
-const RARITY_NAMES = {
-  0: "普通",
-  1: "稀有",
-  2: "史詩",
-  3: "傳說",
+const RARITY_CONFIG = {
+  0: { ...RARITY.common, label: "普通" },
+  1: { ...RARITY.rare, label: "稀有" },
+  2: { ...RARITY.epic, label: "史詩" },
+  3: { ...RARITY.legendary, label: "傳說" },
 };
 
 exports.generateSummaryFlex = ({ total, unlocked, percentage, recentUnlocks, nearCompletion }) => {
@@ -36,8 +32,10 @@ exports.generateSummaryFlex = ({ total, unlocked, percentage, recentUnlocks, nea
     header: {
       type: "box",
       layout: "vertical",
-      contents: [{ type: "text", text: "成就系統", weight: "bold", size: "xl", color: "#ffffff" }],
-      backgroundColor: "#6c5ce7",
+      contents: [
+        { type: "text", text: "成就系統", weight: "bold", size: "xl", color: ACCENT.contrast },
+      ],
+      backgroundColor: ACCENT.main,
       paddingAll: "lg",
     },
     body: {
@@ -59,7 +57,7 @@ exports.generateSummaryFlex = ({ total, unlocked, percentage, recentUnlocks, nea
             uri: getLiffUri("full", "/achievements"),
           },
           style: "primary",
-          color: "#6c5ce7",
+          color: ACCENT.main,
         },
       ],
     },
@@ -87,12 +85,12 @@ function generateHeaderSection(unlocked, total, percentage) {
             layout: "vertical",
             contents: [{ type: "filler" }],
             width: `${percentage}%`,
-            backgroundColor: "#6c5ce7",
+            backgroundColor: ACCENT.main,
             height: "6px",
             cornerRadius: "3px",
           },
         ],
-        backgroundColor: "#e0e0e0",
+        backgroundColor: SURFACE.bgMuted,
         height: "6px",
         cornerRadius: "3px",
         margin: "md",
@@ -101,7 +99,7 @@ function generateHeaderSection(unlocked, total, percentage) {
         type: "text",
         text: `${percentage}% 完成`,
         size: "xs",
-        color: "#888888",
+        color: SURFACE.textMuted,
         align: "center",
         margin: "sm",
       },
@@ -111,8 +109,7 @@ function generateHeaderSection(unlocked, total, percentage) {
 
 function generateRecentSection(recentUnlocks) {
   const items = recentUnlocks.map(achievement => {
-    const rarity = RARITY_COLORS[achievement.rarity] || RARITY_COLORS[0];
-    const rarityName = RARITY_NAMES[achievement.rarity] || "普通";
+    const rarity = RARITY_CONFIG[achievement.rarity] || RARITY_CONFIG[0];
     const timeAgo = getTimeAgo(achievement.unlocked_at);
 
     return {
@@ -126,14 +123,14 @@ function generateRecentSection(recentUnlocks) {
           flex: 6,
           contents: [
             { type: "text", text: achievement.name, size: "sm", weight: "bold" },
-            { type: "text", text: timeAgo, size: "xxs", color: "#888888" },
+            { type: "text", text: timeAgo, size: "xxs", color: SURFACE.textMuted },
           ],
         },
         {
           type: "text",
-          text: `★ ${rarityName}`,
+          text: `★ ${rarity.label}`,
           size: "xxs",
-          color: rarity.bg,
+          color: rarity.main,
           flex: 2,
           align: "end",
           gravity: "center",
@@ -151,7 +148,7 @@ function generateRecentSection(recentUnlocks) {
         type: "text",
         text: "最近解鎖",
         size: "xs",
-        color: "#888888",
+        color: SURFACE.textMuted,
         weight: "bold",
         margin: "md",
       },
@@ -188,12 +185,12 @@ function generateNearCompletionSection(nearCompletion) {
                   layout: "vertical",
                   contents: [{ type: "filler" }],
                   width: `${pct}%`,
-                  backgroundColor: "#a29bfe",
+                  backgroundColor: ACCENT.light,
                   height: "4px",
                   cornerRadius: "2px",
                 },
               ],
-              backgroundColor: "#e0e0e0",
+              backgroundColor: SURFACE.bgMuted,
               height: "4px",
               cornerRadius: "2px",
               margin: "sm",
@@ -204,7 +201,7 @@ function generateNearCompletionSection(nearCompletion) {
           type: "text",
           text: `${pct}%`,
           size: "xxs",
-          color: "#888888",
+          color: SURFACE.textMuted,
           flex: 1,
           align: "end",
           gravity: "center",
@@ -222,7 +219,7 @@ function generateNearCompletionSection(nearCompletion) {
         type: "text",
         text: "即將達成",
         size: "xs",
-        color: "#888888",
+        color: SURFACE.textMuted,
         weight: "bold",
         margin: "md",
       },
@@ -234,7 +231,7 @@ function generateNearCompletionSection(nearCompletion) {
 
 exports.generateTitlesFlex = titles => {
   const rows = titles.map(title => {
-    const rarity = RARITY_COLORS[title.rarity] || RARITY_COLORS[0];
+    const rarity = RARITY_CONFIG[title.rarity] || RARITY_CONFIG[0];
     return {
       type: "box",
       layout: "horizontal",
@@ -243,15 +240,15 @@ exports.generateTitlesFlex = titles => {
         { type: "text", text: title.name, size: "sm", flex: 5, gravity: "center" },
         {
           type: "text",
-          text: RARITY_NAMES[title.rarity] || "",
+          text: rarity.label,
           size: "xxs",
-          color: rarity.bg,
+          color: rarity.main,
           flex: 2,
           align: "end",
           gravity: "center",
         },
       ],
-      backgroundColor: `${rarity.bg}22`,
+      backgroundColor: rarity.bg,
       paddingAll: "sm",
       cornerRadius: "md",
     };
@@ -262,8 +259,10 @@ exports.generateTitlesFlex = titles => {
     header: {
       type: "box",
       layout: "vertical",
-      contents: [{ type: "text", text: "我的稱號", weight: "bold", size: "lg", color: "#ffffff" }],
-      backgroundColor: "#6c5ce7",
+      contents: [
+        { type: "text", text: "我的稱號", weight: "bold", size: "lg", color: ACCENT.contrast },
+      ],
+      backgroundColor: ACCENT.main,
       paddingAll: "lg",
     },
     body: {

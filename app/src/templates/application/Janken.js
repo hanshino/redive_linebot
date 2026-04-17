@@ -1,5 +1,6 @@
 const JankenRating = require("../../model/application/JankenRating");
 const { getLiffUri } = require("../common");
+const { SEMANTIC, HERO_SURFACE } = require("../common/theme");
 
 const ASSET_VERSION = Date.now();
 const jankenAsset = (baseUrl, name) => `${baseUrl}/bot-assets/janken/${name}?v=${ASSET_VERSION}`;
@@ -73,7 +74,7 @@ exports.generateDuelCard = ({
           },
         ],
         paddingAll: "md",
-        backgroundColor: "#2d2d4e",
+        backgroundColor: HERO_SURFACE.bgRaised,
         cornerRadius: "lg",
         flex: 1,
         action: genAction("rock", actionParams),
@@ -90,7 +91,7 @@ exports.generateDuelCard = ({
           },
         ],
         paddingAll: "md",
-        backgroundColor: "#2d2d4e",
+        backgroundColor: HERO_SURFACE.bgRaised,
         cornerRadius: "lg",
         flex: 1,
         action: genAction("scissors", actionParams),
@@ -107,7 +108,7 @@ exports.generateDuelCard = ({
           },
         ],
         paddingAll: "md",
-        backgroundColor: "#2d2d4e",
+        backgroundColor: HERO_SURFACE.bgRaised,
         cornerRadius: "lg",
         flex: 1,
         action: genAction("paper", actionParams),
@@ -124,14 +125,14 @@ exports.generateDuelCard = ({
         type: "text",
         align: "center",
         text: "交給命運",
-        color: "#ffffff",
+        color: HERO_SURFACE.text,
         weight: "bold",
       },
     ],
     paddingAll: "lg",
     margin: "md",
     cornerRadius: "md",
-    backgroundColor: "#3d3d6e",
+    backgroundColor: HERO_SURFACE.bgButton,
     action: genAction("random", actionParams),
   };
 
@@ -190,7 +191,7 @@ exports.generateDuelCard = ({
           type: "text",
           text: `賭注：${betAmount} 女神石`,
           align: "center",
-          color: "#FFD700",
+          color: HERO_SURFACE.textAccent,
           weight: "bold",
         },
       ],
@@ -206,7 +207,7 @@ exports.generateDuelCard = ({
       type: "text",
       text: "試試 /決鬥 @對手 金額 來下注對決！",
       align: "center",
-      color: "#888888",
+      color: HERO_SURFACE.textMuted,
       size: "xxs",
       margin: "md",
     });
@@ -217,7 +218,7 @@ exports.generateDuelCard = ({
     body: {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       contents: bodyContents,
       paddingAll: "lg",
       spacing: "lg",
@@ -228,14 +229,14 @@ exports.generateDuelCard = ({
     bubble.header = {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       contents: [
         {
           type: "text",
           text: title,
           align: "center",
           weight: "bold",
-          color: "#ffffff",
+          color: HERO_SURFACE.text,
           size: "lg",
         },
       ],
@@ -275,7 +276,7 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
           },
         ],
         paddingAll: "md",
-        backgroundColor: "#2d2d4e",
+        backgroundColor: HERO_SURFACE.bgRaised,
         cornerRadius: "lg",
         flex: 1,
         action: genChallengeAction("rock", challengeParams),
@@ -292,7 +293,7 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
           },
         ],
         paddingAll: "md",
-        backgroundColor: "#2d2d4e",
+        backgroundColor: HERO_SURFACE.bgRaised,
         cornerRadius: "lg",
         flex: 1,
         action: genChallengeAction("scissors", challengeParams),
@@ -309,7 +310,7 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
           },
         ],
         paddingAll: "md",
-        backgroundColor: "#2d2d4e",
+        backgroundColor: HERO_SURFACE.bgRaised,
         cornerRadius: "lg",
         flex: 1,
         action: genChallengeAction("paper", challengeParams),
@@ -326,14 +327,14 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
         type: "text",
         align: "center",
         text: "交給命運",
-        color: "#ffffff",
+        color: HERO_SURFACE.text,
         weight: "bold",
       },
     ],
     paddingAll: "lg",
     margin: "md",
     cornerRadius: "md",
-    backgroundColor: "#3d3d6e",
+    backgroundColor: HERO_SURFACE.bgButton,
     action: genChallengeAction("random", challengeParams),
   };
 
@@ -370,7 +371,7 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
     body: {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       contents: bodyContents,
       paddingAll: "lg",
       spacing: "lg",
@@ -381,14 +382,14 @@ exports.generateArenaCard = ({ userId, groupId, iconUrl, title = "", baseUrl }) 
     bubble.header = {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       contents: [
         {
           type: "text",
           text: title,
           align: "center",
           weight: "bold",
-          color: "#ffffff",
+          color: HERO_SURFACE.text,
           size: "lg",
         },
       ],
@@ -430,9 +431,9 @@ exports.generateResultCard = ({
   p2NewElo,
 }) => {
   const resultColorMap = {
-    win: "#FFD700",
-    lose: "#808080",
-    draw: "#4FC3F7",
+    win: HERO_SURFACE.textAccent,
+    lose: HERO_SURFACE.textMuted,
+    draw: SEMANTIC.primary.light,
   };
 
   const p1Image = jankenAsset(baseUrl, `${p1Choice}.png`);
@@ -440,7 +441,7 @@ exports.generateResultCard = ({
   const winImage = jankenAsset(baseUrl, "win.png");
   const loseImage = jankenAsset(baseUrl, "lose.png");
   const drawImage = jankenAsset(baseUrl, "draw.png");
-  const resultColor = resultColorMap[resultType] || "#ffffff";
+  const resultColor = resultColorMap[resultType] || HERO_SURFACE.text;
 
   const winnerText = resultType === "draw" ? "平手！" : `${winnerName} 贏了！`;
 
@@ -477,7 +478,7 @@ exports.generateResultCard = ({
               type: "text",
               text: p1Name,
               align: "center",
-              color: "#ffffff",
+              color: HERO_SURFACE.text,
               size: "sm",
               weight: "bold",
             },
@@ -499,7 +500,7 @@ exports.generateResultCard = ({
                     type: "text",
                     text: JankenRating.getRankLabel(p1NewElo),
                     align: "center",
-                    color: "#B0B0B0",
+                    color: HERO_SURFACE.textMuted,
                     size: "xxs",
                   },
                 ]
@@ -513,7 +514,7 @@ exports.generateResultCard = ({
           type: "text",
           text: "VS",
           align: "center",
-          color: "#ffffff",
+          color: HERO_SURFACE.text,
           weight: "bold",
           size: "lg",
           flex: 0,
@@ -533,7 +534,7 @@ exports.generateResultCard = ({
               type: "text",
               text: p2Name,
               align: "center",
-              color: "#ffffff",
+              color: HERO_SURFACE.text,
               size: "sm",
               weight: "bold",
             },
@@ -555,7 +556,7 @@ exports.generateResultCard = ({
                     type: "text",
                     text: JankenRating.getRankLabel(p2NewElo),
                     align: "center",
-                    color: "#B0B0B0",
+                    color: HERO_SURFACE.textMuted,
                     size: "xxs",
                   },
                 ]
@@ -588,7 +589,7 @@ exports.generateResultCard = ({
       type: "text",
       text: betText,
       align: "center",
-      color: "#FFD700",
+      color: HERO_SURFACE.textAccent,
       size: "sm",
       margin: "md",
     });
@@ -599,7 +600,7 @@ exports.generateResultCard = ({
       type: "text",
       text: `${winnerName} ${winnerStreak} 連勝中！`,
       align: "center",
-      color: "#FF6B35",
+      color: SEMANTIC.warning.main,
       size: "sm",
       weight: "bold",
       margin: "md",
@@ -617,7 +618,7 @@ exports.generateResultCard = ({
           type: "text",
           text: `${p1Name}: ${p1Sign}${p1EloChange}`,
           align: "center",
-          color: p1EloChange >= 0 ? "#4CAF50" : "#F44336",
+          color: p1EloChange >= 0 ? SEMANTIC.success.main : SEMANTIC.danger.main,
           size: "xs",
           flex: 1,
         },
@@ -625,7 +626,7 @@ exports.generateResultCard = ({
           type: "text",
           text: `${p2Name}: ${p2Sign}${p2EloChange}`,
           align: "center",
-          color: p2EloChange >= 0 ? "#4CAF50" : "#F44336",
+          color: p2EloChange >= 0 ? SEMANTIC.success.main : SEMANTIC.danger.main,
           size: "xs",
           flex: 1,
         },
@@ -639,7 +640,7 @@ exports.generateResultCard = ({
     body: {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       contents: bodyContents,
       paddingAll: "lg",
       spacing: "lg",
@@ -647,7 +648,7 @@ exports.generateResultCard = ({
     footer: {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       contents: [
         {
           type: "button",
@@ -657,7 +658,7 @@ exports.generateResultCard = ({
             uri: getLiffUri("full", "/janken"),
           },
           style: "link",
-          color: "#4FC3F7",
+          color: SEMANTIC.primary.light,
           height: "sm",
         },
       ],
@@ -812,7 +813,7 @@ exports.generateRankCard = ({
       type: "text",
       text: rankLabel,
       align: "center",
-      color: "#FFD700",
+      color: HERO_SURFACE.textAccent,
       weight: "bold",
       size: "xl",
     },
@@ -820,10 +821,10 @@ exports.generateRankCard = ({
       type: "text",
       text: `積分：${elo}`,
       align: "center",
-      color: "#B0B0B0",
+      color: HERO_SURFACE.textMuted,
       size: "sm",
     },
-    { type: "separator", color: "#3d3d6e", margin: "lg" },
+    { type: "separator", color: HERO_SURFACE.divider, margin: "lg" },
     {
       type: "box",
       layout: "horizontal",
@@ -832,7 +833,7 @@ exports.generateRankCard = ({
           type: "text",
           text: `${winCount} 勝`,
           align: "center",
-          color: "#4CAF50",
+          color: SEMANTIC.success.main,
           size: "sm",
           flex: 1,
         },
@@ -840,7 +841,7 @@ exports.generateRankCard = ({
           type: "text",
           text: `${loseCount} 敗`,
           align: "center",
-          color: "#F44336",
+          color: SEMANTIC.danger.main,
           size: "sm",
           flex: 1,
         },
@@ -848,7 +849,7 @@ exports.generateRankCard = ({
           type: "text",
           text: `${drawCount} 平`,
           align: "center",
-          color: "#4FC3F7",
+          color: SEMANTIC.primary.light,
           size: "sm",
           flex: 1,
         },
@@ -859,7 +860,7 @@ exports.generateRankCard = ({
       type: "text",
       text: `勝率：${winRate}%`,
       align: "center",
-      color: "#ffffff",
+      color: HERO_SURFACE.text,
       size: "sm",
       margin: "sm",
     },
@@ -871,7 +872,7 @@ exports.generateRankCard = ({
           type: "text",
           text: `連勝：${streak}`,
           align: "center",
-          color: "#FF6B35",
+          color: SEMANTIC.warning.main,
           size: "sm",
           flex: 1,
         },
@@ -879,14 +880,14 @@ exports.generateRankCard = ({
           type: "text",
           text: `最高：${maxStreak}`,
           align: "center",
-          color: "#FF6B35",
+          color: SEMANTIC.warning.main,
           size: "sm",
           flex: 1,
         },
       ],
       margin: "sm",
     },
-    { type: "separator", color: "#3d3d6e", margin: "lg" },
+    { type: "separator", color: HERO_SURFACE.divider, margin: "lg" },
     {
       type: "box",
       layout: "vertical",
@@ -895,11 +896,11 @@ exports.generateRankCard = ({
           type: "box",
           layout: "horizontal",
           contents: [
-            { type: "text", text: "懸賞金", color: "#B0B0B0", size: "xs", flex: 1 },
+            { type: "text", text: "懸賞金", color: HERO_SURFACE.textMuted, size: "xs", flex: 1 },
             {
               type: "text",
               text: `${bounty} 女神石`,
-              color: "#ffffff",
+              color: HERO_SURFACE.text,
               size: "xs",
               align: "end",
               flex: 2,
@@ -910,11 +911,11 @@ exports.generateRankCard = ({
           type: "box",
           layout: "horizontal",
           contents: [
-            { type: "text", text: "最大下注", color: "#B0B0B0", size: "xs", flex: 1 },
+            { type: "text", text: "最大下注", color: HERO_SURFACE.textMuted, size: "xs", flex: 1 },
             {
               type: "text",
               text: `${maxBet} 女神石`,
-              color: "#ffffff",
+              color: HERO_SURFACE.text,
               size: "xs",
               align: "end",
               flex: 2,
@@ -927,11 +928,17 @@ exports.generateRankCard = ({
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  { type: "text", text: "全服排名", color: "#B0B0B0", size: "xs", flex: 1 },
+                  {
+                    type: "text",
+                    text: "全服排名",
+                    color: HERO_SURFACE.textMuted,
+                    size: "xs",
+                    flex: 1,
+                  },
                   {
                     type: "text",
                     text: `第 ${serverRank} 名`,
-                    color: "#ffffff",
+                    color: HERO_SURFACE.text,
                     size: "xs",
                     align: "end",
                     flex: 2,
@@ -946,11 +953,17 @@ exports.generateRankCard = ({
                 type: "box",
                 layout: "horizontal",
                 contents: [
-                  { type: "text", text: "距下一段位", color: "#B0B0B0", size: "xs", flex: 1 },
+                  {
+                    type: "text",
+                    text: "距下一段位",
+                    color: HERO_SURFACE.textMuted,
+                    size: "xs",
+                    flex: 1,
+                  },
                   {
                     type: "text",
                     text: `還差 ${eloToNext} 積分`,
-                    color: "#FFD700",
+                    color: HERO_SURFACE.textAccent,
                     size: "xs",
                     align: "end",
                     flex: 2,
@@ -970,7 +983,7 @@ exports.generateRankCard = ({
     body: {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       contents: bodyContents,
       paddingAll: "lg",
       spacing: "sm",
@@ -978,7 +991,7 @@ exports.generateRankCard = ({
     footer: {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       contents: [
         {
           type: "button",
@@ -988,7 +1001,7 @@ exports.generateRankCard = ({
             uri: getLiffUri("full", "/janken"),
           },
           style: "link",
-          color: "#4FC3F7",
+          color: SEMANTIC.primary.light,
           height: "sm",
         },
       ],
