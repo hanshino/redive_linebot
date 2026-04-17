@@ -273,6 +273,34 @@ describe("AchievementEngine", () => {
       expect(result.unlocked).toEqual([]);
     });
 
+    it("unlocks when keywords is empty and all target userIds are mentioned", async () => {
+      AchievementEngine._setCache([
+        {
+          ...baseAchievement,
+          condition: { targetUserIds: ["Uadmin"], keywords: [] },
+        },
+      ]);
+      const ctx = { mentionedUserIds: ["Uadmin"], text: "隨便打什麼都行" };
+
+      const result = await AchievementEngine.evaluate("user1", "mention_keyword", ctx);
+
+      expect(result.unlocked.map(a => a.key)).toEqual(["mention_admin_hi"]);
+    });
+
+    it("does not unlock when targetUserIds is empty even if keywords is also empty", async () => {
+      AchievementEngine._setCache([
+        {
+          ...baseAchievement,
+          condition: { targetUserIds: [], keywords: [] },
+        },
+      ]);
+      const ctx = { mentionedUserIds: ["Uadmin"], text: "隨便" };
+
+      const result = await AchievementEngine.evaluate("user1", "mention_keyword", ctx);
+
+      expect(result.unlocked).toEqual([]);
+    });
+
     it("requires ALL keywords (not just one)", async () => {
       AchievementEngine._setCache([
         {

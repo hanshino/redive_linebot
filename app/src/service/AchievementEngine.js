@@ -35,7 +35,7 @@ const EVENT_ACHIEVEMENT_MAP = {
   boss_attack: ["boss_first_kill", "boss_level_10", "boss_level_50", "boss_top_damage"],
   command_use: ["social_first_command", "social_all_features"],
   subscribe: ["subscribe_first", "subscribe_3", "subscribe_6", "subscribe_12"],
-  mention_keyword: ["mention_admin_hi"],
+  mention_keyword: ["mention_admin_hi", "mention_memory_seeker"],
 };
 
 // --- Progress calculation strategies by achievement type ---
@@ -61,13 +61,13 @@ const STRATEGIES = {
     const condition = achievement.condition || {};
     const targetUserIds = Array.isArray(condition.targetUserIds) ? condition.targetUserIds : [];
     const keywords = Array.isArray(condition.keywords) ? condition.keywords : [];
-    if (!targetUserIds.length || !keywords.length) return currentValue;
+    if (!targetUserIds.length) return currentValue;
 
     const mentioned = Array.isArray(context.mentionedUserIds) ? context.mentionedUserIds : [];
     const text = typeof context.text === "string" ? context.text : "";
 
     const allTagged = targetUserIds.every(id => mentioned.includes(id));
-    const allKeyword = keywords.every(k => text.includes(k));
+    const allKeyword = keywords.length === 0 || keywords.every(k => text.includes(k));
     return allTagged && allKeyword ? achievement.target_value : currentValue;
   },
 };
@@ -99,6 +99,7 @@ const ACHIEVEMENT_STRATEGY = {
   subscribe_6: cv => STRATEGIES.increment(cv),
   subscribe_12: cv => STRATEGIES.increment(cv),
   mention_admin_hi: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
+  mention_memory_seeker: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
 };
 
 const GODDESS_STONE_ITEM_ID = 999;
