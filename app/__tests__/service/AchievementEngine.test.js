@@ -186,6 +186,108 @@ describe("AchievementEngine", () => {
     });
   });
 
+  describe("mention_keyword event", () => {
+    const baseAchievement = {
+      id: 99,
+      key: "mention_admin_hi",
+      target_value: 1,
+      reward_stones: 100,
+      notify_on_unlock: true,
+      notify_message: null,
+      icon: "🫡",
+      name: "管理員粉絲",
+      condition: { targetUserIds: ["Uadmin"], keywords: ["大大好"] },
+    };
+
+    beforeEach(() => {
+      AchievementEngine._setCache([baseAchievement]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgress.mockResolvedValue(null);
+      UserProgressModel.upsert.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.delete.mockResolvedValue();
+      mysql.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(null),
+        insert: jest.fn().mockResolvedValue(),
+      });
+    });
+
+    afterEach(() => {
+      // Restore the default mysql mock chain so later describes (e.g. getUserSummary)
+      // don't inherit the mention_keyword override
+      mysql.mockImplementation(() => ({
+        insert: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        whereIn: jest.fn().mockReturnThis(),
+        update: jest.fn().mockResolvedValue(1),
+        first: jest.fn().mockResolvedValue(undefined),
+        select: jest.fn().mockReturnThis(),
+      }));
+    });
+
+    it("unlocks when all target userIds are mentioned and all keywords are present", async () => {
+      const ctx = { mentionedUserIds: ["Uadmin"], text: "嗨 大大好 今天過得如何" };
+
+      const result = await AchievementEngine.evaluate("user1", "mention_keyword", ctx);
+
+      expect(result.unlocked.map(a => a.key)).toEqual(["mention_admin_hi"]);
+    });
+
+    it("does not unlock when mention is missing", async () => {
+      const ctx = { mentionedUserIds: [], text: "大大好" };
+
+      const result = await AchievementEngine.evaluate("user1", "mention_keyword", ctx);
+
+      expect(result.unlocked).toEqual([]);
+    });
+
+    it("does not unlock when keyword is missing", async () => {
+      const ctx = { mentionedUserIds: ["Uadmin"], text: "嗨" };
+
+      const result = await AchievementEngine.evaluate("user1", "mention_keyword", ctx);
+
+      expect(result.unlocked).toEqual([]);
+    });
+
+    it("does not unlock when condition is null", async () => {
+      AchievementEngine._setCache([{ ...baseAchievement, condition: null }]);
+      const ctx = { mentionedUserIds: ["Uadmin"], text: "大大好" };
+
+      const result = await AchievementEngine.evaluate("user1", "mention_keyword", ctx);
+
+      expect(result.unlocked).toEqual([]);
+    });
+
+    it("requires ALL target userIds (not just one)", async () => {
+      AchievementEngine._setCache([
+        {
+          ...baseAchievement,
+          condition: { targetUserIds: ["Uadmin", "Umod"], keywords: ["大大好"] },
+        },
+      ]);
+      const ctx = { mentionedUserIds: ["Uadmin"], text: "大大好" };
+
+      const result = await AchievementEngine.evaluate("user1", "mention_keyword", ctx);
+
+      expect(result.unlocked).toEqual([]);
+    });
+
+    it("requires ALL keywords (not just one)", async () => {
+      AchievementEngine._setCache([
+        {
+          ...baseAchievement,
+          condition: { targetUserIds: ["Uadmin"], keywords: ["大大好", "早安"] },
+        },
+      ]);
+      const ctx = { mentionedUserIds: ["Uadmin"], text: "大大好" };
+
+      const result = await AchievementEngine.evaluate("user1", "mention_keyword", ctx);
+
+      expect(result.unlocked).toEqual([]);
+    });
+  });
+
   describe("getUserSummary", () => {
     it("should return structured summary", async () => {
       AchievementModel.allWithCategories.mockResolvedValue([
