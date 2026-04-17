@@ -12,6 +12,7 @@ const GachaController = require("../princess/gacha");
 const config = require("config");
 const { generateCard, generateEffect } = require("../../templates/application/Subscribe");
 const AchievementEngine = require("../../service/AchievementEngine");
+const { notifyUnlocks } = require("../../service/achievementNotifier");
 
 exports.router = [
   text(/^[.#/](訂閱|sub)$/, showInformation),
@@ -82,7 +83,10 @@ async function buyMonthCard(context, props) {
 
     trx.commit();
 
-    AchievementEngine.evaluate(userId, "subscribe").catch(() => {});
+    const { unlocked } = await AchievementEngine.evaluate(userId, "subscribe").catch(() => ({
+      unlocked: [],
+    }));
+    await notifyUnlocks(context, userId, unlocked);
   } catch (e) {
     trx.rollback();
     console.error(e);
@@ -252,7 +256,10 @@ async function subscribeCouponExchange(context, props) {
   await context.replyText(messages.join("\n"));
   !isContinue && (await DailyRation());
 
-  AchievementEngine.evaluate(userId, "subscribe").catch(() => {});
+  const { unlocked } = await AchievementEngine.evaluate(userId, "subscribe").catch(() => ({
+    unlocked: [],
+  }));
+  await notifyUnlocks(context, userId, unlocked);
 }
 
 /**
