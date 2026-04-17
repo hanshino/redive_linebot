@@ -91,3 +91,13 @@ export function clearDebugLogs() {
   logs.length = 0;
   window.sessionStorage.removeItem(STORAGE_KEY);
 }
+
+export function disableDebugMode() {
+  window.localStorage.removeItem("liff_debug");
+  const url = new URL(window.location.href);
+  if (url.searchParams.has("debug")) {
+    url.searchParams.delete("debug");
+    window.history.replaceState({}, "", url.toString());
+  }
+  clearDebugLogs();
+}

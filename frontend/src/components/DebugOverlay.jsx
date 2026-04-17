@@ -5,7 +5,13 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import { getDebugLogs, formatDebugLogs, isDebugMode, clearDebugLogs } from "../utils/debugLogger";
+import {
+  getDebugLogs,
+  formatDebugLogs,
+  isDebugMode,
+  clearDebugLogs,
+  disableDebugMode,
+} from "../utils/debugLogger";
 
 export default function DebugOverlay() {
   const [expanded, setExpanded] = useState(true);
@@ -106,7 +112,14 @@ export default function DebugOverlay() {
             <ExpandLessIcon sx={{ fontSize: 16 }} />
           )}
         </IconButton>
-        <IconButton size="small" onClick={() => setVisible(false)} sx={{ color: "#666", p: 0.5 }}>
+        <IconButton
+          size="small"
+          onClick={() => {
+            disableDebugMode();
+            setVisible(false);
+          }}
+          sx={{ color: "#666", p: 0.5 }}
+        >
           <CloseIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>

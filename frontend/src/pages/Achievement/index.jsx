@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
 import useLiff from "../../context/useLiff";
+import AlertLogin from "../../components/AlertLogin";
 import { getUserAchievements, getAchievementStats } from "../../services/achievement";
 
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -102,7 +103,7 @@ export default function Achievement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const { profile } = useLiff();
+  const { loggedIn: isLoggedIn, profile } = useLiff();
   const [searchParams] = useSearchParams();
   const userId = searchParams.get("userId") || profile?.userId || "";
 
@@ -112,7 +113,6 @@ export default function Achievement() {
 
   const fetchData = useCallback(async () => {
     if (!userId) {
-      setError("請先登入以查看成就");
       setLoading(false);
       return;
     }
@@ -156,6 +156,7 @@ export default function Achievement() {
       </Box>
     );
   }
+  if (!isLoggedIn && !userId) return <AlertLogin />;
   if (error)
     return (
       <Box sx={{ py: 2 }}>
