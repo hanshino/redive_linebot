@@ -477,6 +477,7 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   const { unlocked } = await AchievementEngine.evaluate(userId, "gacha_pull", {
     threeStarCount: rareCount[3] || 0,
     uniqueCount: dailyResult.ownCharactersCount + dailyResult.newCharacters.length,
+    pullType: europe ? "europe" : ensure ? "ensure" : pickup ? "pickup" : undefined,
   }).catch(() => ({ unlocked: [] }));
   await notifyUnlocks(context, userId, unlocked);
 
