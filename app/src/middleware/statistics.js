@@ -18,7 +18,7 @@ const statistics = async (context, props) => {
     const userId = context.event.source.userId;
     const groupId = context.event.source.groupId;
     if (userId) {
-      const mentionees = get(context, "event.message.mention.mentionees", []) || [];
+      const mentionees = get(context, "event.message.mention.mentionees", []);
       const mentionedUserIds = mentionees.map(m => m && m.userId).filter(Boolean);
       const text = context.event.text || "";
 
