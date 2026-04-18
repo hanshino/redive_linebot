@@ -196,7 +196,7 @@ describe("AchievementEngine", () => {
       notify_message: null,
       icon: "🫡",
       name: "管理員粉絲",
-      condition: { targetUserIds: ["Uadmin"], keywords: ["大大好"] },
+      condition: { mentionTargetUserIds: ["Uadmin"], keywords: ["大大好"] },
     };
 
     beforeEach(() => {
@@ -263,7 +263,7 @@ describe("AchievementEngine", () => {
       AchievementEngine._setCache([
         {
           ...baseAchievement,
-          condition: { targetUserIds: ["Uadmin", "Umod"], keywords: ["大大好"] },
+          condition: { mentionTargetUserIds: ["Uadmin", "Umod"], keywords: ["大大好"] },
         },
       ]);
       const ctx = { mentionedUserIds: ["Uadmin"], text: "大大好" };
@@ -277,7 +277,7 @@ describe("AchievementEngine", () => {
       AchievementEngine._setCache([
         {
           ...baseAchievement,
-          condition: { targetUserIds: ["Uadmin"], keywords: [] },
+          condition: { mentionTargetUserIds: ["Uadmin"], keywords: [] },
         },
       ]);
       const ctx = { mentionedUserIds: ["Uadmin"], text: "隨便打什麼都行" };
@@ -287,11 +287,11 @@ describe("AchievementEngine", () => {
       expect(result.unlocked.map(a => a.key)).toEqual(["mention_admin_hi"]);
     });
 
-    it("does not unlock when targetUserIds is empty even if keywords is also empty", async () => {
+    it("does not unlock when mentionTargetUserIds is empty even if keywords is also empty", async () => {
       AchievementEngine._setCache([
         {
           ...baseAchievement,
-          condition: { targetUserIds: [], keywords: [] },
+          condition: { mentionTargetUserIds: [], keywords: [] },
         },
       ]);
       const ctx = { mentionedUserIds: ["Uadmin"], text: "隨便" };
@@ -305,7 +305,7 @@ describe("AchievementEngine", () => {
       AchievementEngine._setCache([
         {
           ...baseAchievement,
-          condition: { targetUserIds: ["Uadmin"], keywords: ["大大好", "早安"] },
+          condition: { mentionTargetUserIds: ["Uadmin"], keywords: ["大大好", "早安"] },
         },
       ]);
       const ctx = { mentionedUserIds: ["Uadmin"], text: "大大好" };
@@ -339,6 +339,186 @@ describe("AchievementEngine", () => {
       expect(summary.categories[0].achievements).toHaveLength(2);
       expect(summary).toHaveProperty("recentUnlocks");
       expect(summary).toHaveProperty("nearCompletion");
+    });
+
+    it("excludes ineligible rows from total and category count", async () => {
+      AchievementModel.allWithCategories.mockResolvedValue([
+        { id: 1, key: "a1", name: "A1", category_key: "social", condition: null },
+        {
+          id: 2,
+          key: "a2",
+          name: "A2",
+          category_key: "social",
+          condition: { eligibility: { excludeUserIds: ["Uvip"] } },
+        },
+        {
+          id: 3,
+          key: "a3",
+          name: "A3",
+          category_key: "social",
+          condition: { eligibility: { includeUserIds: ["Uvip"] } },
+        },
+      ]);
+      CategoryModel.all.mockResolvedValue([{ id: 1, key: "social", name: "社交" }]);
+      UserAchievementModel.findByUser.mockResolvedValue([]);
+      UserProgressModel.findByUser.mockResolvedValue([]);
+      UserAchievementModel.getRecentByUser.mockResolvedValue([]);
+      UserProgressModel.getNearCompletion.mockResolvedValue([]);
+
+      const vipSummary = await AchievementEngine.getUserSummary("Uvip");
+      expect(vipSummary.total).toBe(2);
+      expect(vipSummary.categories[0].total).toBe(2);
+      expect(vipSummary.categories[0].achievements.map(a => a.key)).toEqual(["a1", "a3"]);
+
+      const plebSummary = await AchievementEngine.getUserSummary("Upleb");
+      expect(plebSummary.total).toBe(2);
+      expect(plebSummary.categories[0].achievements.map(a => a.key)).toEqual(["a1", "a2"]);
+    });
+  });
+
+  describe("isEligible", () => {
+    const { _isEligible } = AchievementEngine;
+
+    it("returns true when no eligibility block set", () => {
+      expect(_isEligible("Uany", { condition: null })).toBe(true);
+      expect(_isEligible("Uany", { condition: {} })).toBe(true);
+    });
+
+    it("rejects users in excludeUserIds", () => {
+      const a = { condition: { eligibility: { excludeUserIds: ["Ubanned"] } } };
+      expect(_isEligible("Ubanned", a)).toBe(false);
+      expect(_isEligible("Uother", a)).toBe(true);
+    });
+
+    it("admits only users in includeUserIds when set", () => {
+      const a = { condition: { eligibility: { includeUserIds: ["Uvip"] } } };
+      expect(_isEligible("Uvip", a)).toBe(true);
+      expect(_isEligible("Uother", a)).toBe(false);
+    });
+
+    it("exclude wins when user is in both", () => {
+      const a = {
+        condition: { eligibility: { includeUserIds: ["Uvip"], excludeUserIds: ["Uvip"] } },
+      };
+      expect(_isEligible("Uvip", a)).toBe(false);
+    });
+  });
+
+  describe("evaluate with eligibility filter", () => {
+    it("does not touch progress for excluded users", async () => {
+      AchievementEngine._setCache([
+        {
+          id: 50,
+          key: "mention_admin_hi",
+          target_value: 1,
+          reward_stones: 100,
+          notify_on_unlock: true,
+          condition: {
+            mentionTargetUserIds: ["Uadmin"],
+            keywords: [],
+            eligibility: { excludeUserIds: ["Uadmin"] },
+          },
+        },
+      ]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgress.mockResolvedValue(null);
+
+      // The excluded user mentions themselves (which would otherwise pass the gate).
+      const result = await AchievementEngine.evaluate("Uadmin", "mention_keyword", {
+        mentionedUserIds: ["Uadmin"],
+        text: "",
+      });
+
+      expect(result.unlocked).toEqual([]);
+      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("received_mention event", () => {
+    const sister = {
+      id: 60,
+      key: "mention_admin_hi_self",
+      target_value: 10,
+      reward_stones: 300,
+      notify_on_unlock: true,
+      notify_message: null,
+      icon: "🥞",
+      name: "鬆餅教教主",
+      condition: {
+        keywords: ["鬆餅", "祝福"],
+        eligibility: { includeUserIds: ["Uadmin"] },
+      },
+    };
+
+    beforeEach(() => {
+      AchievementEngine._setCache([sister]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.upsert.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.delete.mockResolvedValue();
+      mysql.mockImplementation(() => ({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(null),
+        insert: jest.fn().mockResolvedValue(),
+      }));
+    });
+
+    it("increments progress for the tagged mentionee when keywords match", async () => {
+      UserProgressModel.getProgress.mockResolvedValue({ current_value: 3 });
+
+      await AchievementEngine.evaluate("Uadmin", "received_mention", {
+        mentionedByUserId: "Ufan",
+        text: "大大鬆餅祝福你",
+      });
+
+      expect(UserProgressModel.upsert).toHaveBeenCalledWith("Uadmin", 60, 4);
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+    });
+
+    it("unlocks when cumulative mentions reach target_value", async () => {
+      UserProgressModel.getProgress.mockResolvedValue({ current_value: 9 });
+
+      const result = await AchievementEngine.evaluate("Uadmin", "received_mention", {
+        mentionedByUserId: "Ufan",
+        text: "鬆餅祝福",
+      });
+
+      expect(result.unlocked.map(a => a.key)).toEqual(["mention_admin_hi_self"]);
+    });
+
+    it("does not increment when mentioned by self (self-farming block)", async () => {
+      UserProgressModel.getProgress.mockResolvedValue({ current_value: 3 });
+
+      await AchievementEngine.evaluate("Uadmin", "received_mention", {
+        mentionedByUserId: "Uadmin",
+        text: "鬆餅祝福",
+      });
+
+      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
+    });
+
+    it("does not increment when keywords are missing", async () => {
+      UserProgressModel.getProgress.mockResolvedValue({ current_value: 3 });
+
+      await AchievementEngine.evaluate("Uadmin", "received_mention", {
+        mentionedByUserId: "Ufan",
+        text: "哈囉",
+      });
+
+      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
+    });
+
+    it("does not fire for users outside includeUserIds (eligibility gate)", async () => {
+      UserProgressModel.getProgress.mockResolvedValue(null);
+
+      const result = await AchievementEngine.evaluate("Uother", "received_mention", {
+        mentionedByUserId: "Ufan",
+        text: "鬆餅祝福",
+      });
+
+      expect(result.unlocked).toEqual([]);
+      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
     });
   });
 });

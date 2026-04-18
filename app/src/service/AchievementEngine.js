@@ -24,6 +24,25 @@ exports._setCache = data => {
   cacheExpiry = Date.now() + CACHE_TTL_MS;
 };
 
+// Shared by evaluate() and getUserSummary() so ineligible rows are filtered
+// from both the unlock path and the collection-rate denominator.
+function isEligible(userId, achievement) {
+  const eligibility =
+    (achievement && achievement.condition && achievement.condition.eligibility) || null;
+  if (!eligibility) return true;
+  const include = Array.isArray(eligibility.includeUserIds) ? eligibility.includeUserIds : null;
+  const exclude = Array.isArray(eligibility.excludeUserIds) ? eligibility.excludeUserIds : [];
+  if (exclude.includes(userId)) return false;
+  if (include && !include.includes(userId)) return false;
+  return true;
+}
+exports._isEligible = isEligible;
+
+function matchesAllKeywords(text, keywords) {
+  if (!Array.isArray(keywords) || keywords.length === 0) return true;
+  return keywords.every(k => text.includes(k));
+}
+
 // Maps event types to achievement keys
 const EVENT_ACHIEVEMENT_MAP = {
   chat_message: ["chat_100", "chat_1000", "chat_5000", "chat_night_owl", "chat_multi_group"],
@@ -51,6 +70,11 @@ const EVENT_ACHIEVEMENT_MAP = {
   command_use: ["social_first_command", "social_all_features"],
   subscribe: ["subscribe_first", "subscribe_3", "subscribe_6", "subscribe_12"],
   mention_keyword: ["mention_admin_hi", "mention_memory_seeker", "mention_void_gazer"],
+  received_mention: [
+    "mention_admin_hi_self",
+    "mention_memory_seeker_self",
+    "mention_void_gazer_self",
+  ],
 };
 
 // --- Progress calculation strategies by achievement type ---
@@ -80,16 +104,26 @@ const STRATEGIES = {
   },
   mentionKeyword(currentValue, achievement, context) {
     const condition = achievement.condition || {};
-    const targetUserIds = Array.isArray(condition.targetUserIds) ? condition.targetUserIds : [];
-    const keywords = Array.isArray(condition.keywords) ? condition.keywords : [];
-    if (!targetUserIds.length) return currentValue;
+    const mentionTargetUserIds = Array.isArray(condition.mentionTargetUserIds)
+      ? condition.mentionTargetUserIds
+      : [];
+    if (!mentionTargetUserIds.length) return currentValue;
 
     const mentioned = Array.isArray(context.mentionedUserIds) ? context.mentionedUserIds : [];
     const text = typeof context.text === "string" ? context.text : "";
 
-    const allTagged = targetUserIds.every(id => mentioned.includes(id));
-    const allKeyword = keywords.length === 0 || keywords.every(k => text.includes(k));
-    return allTagged && allKeyword ? achievement.target_value : currentValue;
+    const allTagged = mentionTargetUserIds.every(id => mentioned.includes(id));
+    return allTagged && matchesAllKeywords(text, condition.keywords)
+      ? achievement.target_value
+      : currentValue;
+  },
+  receivedMentionKeyword(currentValue, achievement, context) {
+    const condition = achievement.condition || {};
+    const mentionedByUserId = context && context.mentionedByUserId;
+    const mentioneeId = context && context._userId;
+    if (!mentionedByUserId || mentionedByUserId === mentioneeId) return currentValue;
+    const text = typeof context.text === "string" ? context.text : "";
+    return matchesAllKeywords(text, condition.keywords) ? currentValue + 1 : currentValue;
   },
 };
 
@@ -131,6 +165,9 @@ const ACHIEVEMENT_STRATEGY = {
   mention_admin_hi: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
   mention_memory_seeker: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
   mention_void_gazer: (cv, a, ctx) => STRATEGIES.mentionKeyword(cv, a, ctx),
+  mention_admin_hi_self: (cv, a, ctx) => STRATEGIES.receivedMentionKeyword(cv, a, ctx),
+  mention_memory_seeker_self: (cv, a, ctx) => STRATEGIES.receivedMentionKeyword(cv, a, ctx),
+  mention_void_gazer_self: (cv, a, ctx) => STRATEGIES.receivedMentionKeyword(cv, a, ctx),
 };
 
 const GODDESS_STONE_ITEM_ID = 999;
@@ -148,7 +185,10 @@ exports.evaluate = async (userId, eventType, context = {}) => {
     if (!achievementKeys || achievementKeys.length === 0) return { unlocked };
 
     const cache = await getCache();
-    const achievements = achievementKeys.map(key => cache.find(a => a.key === key)).filter(Boolean);
+    const achievements = achievementKeys
+      .map(key => cache.find(a => a.key === key))
+      .filter(Boolean)
+      .filter(a => isEligible(userId, a));
     if (achievements.length === 0) return { unlocked };
 
     const unlockedIds = await UserAchievementModel.getUnlockedIds(
@@ -256,11 +296,12 @@ exports.getUserSummary = async userId => {
     progressMap[p.id] = p.current_value;
   });
 
-  const total = allAchievements.length;
+  const eligibleAchievements = allAchievements.filter(a => isEligible(userId, a));
+  const total = eligibleAchievements.length;
   const unlockedCount = unlocked.length;
 
   const categorySummary = categories.map(cat => {
-    const catAchievements = allAchievements.filter(a => a.category_key === cat.key);
+    const catAchievements = eligibleAchievements.filter(a => a.category_key === cat.key);
     const catUnlocked = catAchievements.filter(a => unlockedIds.has(a.id));
     return {
       ...cat,
