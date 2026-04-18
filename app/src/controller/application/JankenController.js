@@ -155,6 +155,17 @@ async function duel(context) {
     baseUrl,
   });
 
+  // Subscriber auto-fate (v1 scope: p2/challenged player only). The initiator explicitly
+  // typed the duel command, so we don't auto-play for them. p2 is the AFK case.
+  try {
+    await JankenService.autoFateIfEligible(targetUserId, matchId, "p2", {
+      p1UserId: userId,
+      p2UserId: targetUserId,
+    });
+  } catch (err) {
+    DefaultLogger.error(`[Janken] auto-fate error: ${err && err.message}`);
+  }
+
   await context.replyText(
     i18n.__("message.duel.start", {
       displayName,

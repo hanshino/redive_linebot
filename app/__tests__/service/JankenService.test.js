@@ -30,8 +30,18 @@ const mockTrxQuery = jest.fn(() => ({
   })),
 }));
 mockTrxQuery.transaction = jest.fn(async cb => cb(mockTrxQuery));
+mockTrxQuery.transactionProvider = jest.fn(() => jest.fn(async () => mockTrxQuery));
 
 jest.mock("../../src/util/mysql", () => mockTrxQuery);
+jest.mock("../../src/model/application/JankenAutoFateLog", () => ({
+  create: jest.fn().mockResolvedValue(1),
+}));
+jest.mock("../../src/model/application/UserAutoPreference", () => ({
+  first: jest.fn().mockResolvedValue(null),
+}));
+jest.mock("../../src/service/SubscriptionService", () => ({
+  hasEffect: jest.fn().mockResolvedValue(false),
+}));
 
 const JankenService = require("../../src/service/JankenService");
 const redis = require("../../src/util/redis");

@@ -2,8 +2,11 @@ const redis = require("../util/redis");
 const config = require("config");
 const JankenRecords = require("../model/application/JankenRecords");
 const JankenResult = require("../model/application/JankenResult");
+const JankenAutoFateLog = require("../model/application/JankenAutoFateLog");
+const UserAutoPreference = require("../model/application/UserAutoPreference");
 const { inventory } = require("../model/application/Inventory");
 const EventCenterService = require("./EventCenterService");
+const SubscriptionService = require("./SubscriptionService");
 const { DefaultLogger } = require("../util/Logger");
 const JankenRating = require("../model/application/JankenRating");
 
@@ -101,9 +104,7 @@ exports.updateStreaks = async function (
     const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
     // Bounty funded from match fee — no new money created
     const bountyIncrement =
-      newStreak >= 2 && betAmount >= BOUNTY_MIN_BET
-        ? exports.calculateBountyIncrement(fee)
-        : 0;
+      newStreak >= 2 && betAmount >= BOUNTY_MIN_BET ? exports.calculateBountyIncrement(fee) : 0;
     const maxBounty = JankenRating.getMaxBounty(winnerRating.rank_tier);
     const newBounty = Math.min(winnerRating.bounty + bountyIncrement, maxBounty);
     // Bounty claim capped by claimer's bet amount
@@ -136,6 +137,38 @@ exports.updateStreaks = async function (
       loserBounty,
     };
   });
+};
+
+/**
+ * 猜拳代選判斷：若使用者開啟 auto_janken_fate 且訂閱包含該 effect，
+ * 則用隨機出拳代為送出 submitChoice，並寫一筆 janken_auto_fate_log。
+ * 僅用於標準對戰（duel）流程；arena 不呼叫。
+ *
+ * @param {string} userId 要代打的使用者
+ * @param {string} matchId 對戰 uuid
+ * @param {"p1"|"p2"} role 該使用者在這場對戰的角色
+ * @param {Object} ctx
+ * @param {string} ctx.p1UserId
+ * @param {string} ctx.p2UserId
+ * @returns {Promise<{eligible:boolean, ready?:boolean, p1Choice?:string, p2Choice?:string, choice?:string}>}
+ */
+exports.autoFateIfEligible = async function (userId, matchId, role, { p1UserId, p2UserId } = {}) {
+  const enabled = config.has("autoJankenFate.enabled") && config.get("autoJankenFate.enabled");
+  if (!enabled) return { eligible: false };
+
+  const pref = await UserAutoPreference.first({ filter: { user_id: userId } });
+  if (!pref || pref.auto_janken_fate !== 1) return { eligible: false };
+
+  const entitled = await SubscriptionService.hasEffect(userId, "auto_janken_fate");
+  if (!entitled) return { eligible: false };
+
+  const choice = exports.randomChoice();
+  await JankenAutoFateLog.create({ match_id: matchId, user_id: userId, role, choice });
+  DefaultLogger.info(
+    `janken.auto_fate.submit match_id=${matchId} user_id=${userId} role=${role} choice=${choice}`
+  );
+  const result = await exports.submitChoice(matchId, userId, choice, { p1UserId, p2UserId });
+  return { eligible: true, choice, ...result };
 };
 
 exports.submitChoice = async function (matchId, userId, choice, { p1UserId, p2UserId } = {}) {
@@ -300,13 +333,25 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
 
     const p1Streak = p1Rating.streak || 0;
     const p2Streak = p2Rating.streak || 0;
-    const p1EloChange = exports.calculateEloChange(p1Rating.elo, p2Rating.elo, p1Result, betAmount, {
-      streak: p1Streak,
-    });
+    const p1EloChange = exports.calculateEloChange(
+      p1Rating.elo,
+      p2Rating.elo,
+      p1Result,
+      betAmount,
+      {
+        streak: p1Streak,
+      }
+    );
     const p2Result = p1Result === "win" ? "lose" : "win";
-    const p2EloChange = exports.calculateEloChange(p2Rating.elo, p1Rating.elo, p2Result, betAmount, {
-      streak: p2Streak,
-    });
+    const p2EloChange = exports.calculateEloChange(
+      p2Rating.elo,
+      p1Rating.elo,
+      p2Result,
+      betAmount,
+      {
+        streak: p2Streak,
+      }
+    );
 
     const p1NewElo = Math.max(0, p1Rating.elo + p1EloChange);
     const p2NewElo = Math.max(0, p2Rating.elo + p2EloChange);
