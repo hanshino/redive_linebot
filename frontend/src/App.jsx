@@ -25,6 +25,8 @@ import BattleControl from "./pages/Panel/BattleControl";
 import BattleSign from "./pages/Panel/BattleSign";
 import CustomerOrder from "./pages/CustomerOrder";
 import Achievement from "./pages/Achievement";
+import AutoSettings from "./pages/AutoSettings";
+import AutoHistory from "./pages/AutoHistory";
 import AdminGachaPool from "./pages/Admin/GachaPool";
 import AdminGachaPoolForm from "./pages/Admin/GachaPool/GachaPoolForm";
 import AdminGachaBanner from "./pages/Admin/GachaBanner";
@@ -85,6 +87,10 @@ export default function App() {
 
           {/* Achievement */}
           <Route path="achievements" element={<Achievement />} />
+
+          {/* Subscriber auto-actions (LIFF) */}
+          <Route path="AutoSettings" element={<AutoSettings />} />
+          <Route path="AutoHistory" element={<AutoHistory />} />
 
           {/* Admin — requires admin privilege */}
           <Route element={<RequireAdmin />}>
