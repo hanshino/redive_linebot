@@ -22,23 +22,39 @@ const statistics = async (context, props) => {
       const mentionedUserIds = mentionees.map(m => m && m.userId).filter(Boolean);
       const text = context.event.text || "";
 
-      const tasks = [
-        AchievementEngine.evaluate(userId, "chat_message", { groupId, text }).catch(() => ({
-          unlocked: [],
-        })),
+      const unlocksByUser = { [userId]: [] };
+      const evaluations = [
+        AchievementEngine.evaluate(userId, "chat_message", { groupId, text })
+          .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
+          .catch(() => {}),
       ];
       if (mentionedUserIds.length) {
-        tasks.push(
+        evaluations.push(
           AchievementEngine.evaluate(userId, "mention_keyword", {
             mentionedUserIds,
             text,
-          }).catch(() => ({ unlocked: [] }))
+          })
+            .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
+            .catch(() => {})
         );
+        for (const mentioneeId of mentionedUserIds) {
+          unlocksByUser[mentioneeId] = unlocksByUser[mentioneeId] || [];
+          evaluations.push(
+            AchievementEngine.evaluate(mentioneeId, "received_mention", {
+              mentionedByUserId: userId,
+              text,
+              groupId,
+            })
+              .then(r => unlocksByUser[mentioneeId].push(...((r && r.unlocked) || [])))
+              .catch(() => {})
+          );
+        }
       }
 
-      const results = await Promise.all(tasks);
-      const unlocked = results.flatMap(r => (r && r.unlocked) || []);
-      await notifyUnlocks(context, userId, unlocked);
+      await Promise.all(evaluations);
+      for (const [uid, unlocked] of Object.entries(unlocksByUser)) {
+        if (unlocked.length) await notifyUnlocks(context, uid, unlocked);
+      }
     }
   }
 
