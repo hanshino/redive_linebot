@@ -9,6 +9,8 @@ const GachaRecord = require("../model/princess/GachaRecord");
 const GachaRecordDetail = require("../model/princess/GachaRecordDetail");
 const GachaBanner = require("../model/princess/GachaBanner");
 const signModel = require("../model/application/SigninDays");
+const SubscribeUser = require("../model/application/SubscribeUser");
+const SubscribeCard = require("../model/application/SubscribeCard");
 
 const EventCenterService = require("./EventCenterService");
 const AchievementEngine = require("./AchievementEngine");
@@ -262,6 +264,47 @@ async function runDailyDraw(userId, opts = {}) {
   };
 }
 
+/**
+ * 回傳使用者今日的每日抽卡配額狀態。邏輯對齊 controller 內的 detectCanDaily：
+ * 基礎額度 = config.gacha.daily_limit，每張有效訂閱卡額外加上其 gacha_times effect。
+ * @param {string} userId
+ * @returns {Promise<{total:number, used:number, remaining:number}>}
+ */
+async function getRemainingDailyQuota(userId) {
+  const base = config.get("gacha.daily_limit");
+  const now = moment();
+
+  const subs = await SubscribeUser.all({ filter: { user_id: userId } }).join(
+    SubscribeCard.table,
+    SubscribeCard.getColumnName("key"),
+    SubscribeUser.getColumnName("subscribe_card_key")
+  );
+  const activeSubs = subs.filter(
+    s => moment(s.start_at).isSameOrBefore(now) && moment(s.end_at).isAfter(now)
+  );
+
+  const bonus = activeSubs.reduce((acc, sub) => {
+    const effects = Array.isArray(sub.effects)
+      ? sub.effects
+      : typeof sub.effects === "string"
+        ? JSON.parse(sub.effects || "[]")
+        : [];
+    const eff = effects.find(e => e && e.type === "gacha_times");
+    return acc + (eff && eff.value ? eff.value : 0);
+  }, 0);
+  const total = base + bonus;
+
+  const countRow = await GachaRecord.knex
+    .where({ user_id: userId })
+    .whereBetween("created_at", [now.startOf("day").toDate(), now.endOf("day").toDate()])
+    .count({ count: "*" })
+    .first();
+  const used = Number((countRow && countRow.count) || 0);
+
+  return { total, used, remaining: Math.max(0, total - used) };
+}
+
 module.exports = {
   runDailyDraw,
+  getRemainingDailyQuota,
 };

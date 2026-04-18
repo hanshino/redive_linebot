@@ -82,13 +82,11 @@ async function drawForUser(target, runDate, counters) {
       });
     }
 
-    // Source-of-truth re-check: did they already pull today?
-    const pulled = await mysql("gacha_record")
-      .where("user_id", userId)
-      .where("created_at", ">=", moment().startOf("day").toDate())
-      .where("created_at", "<=", moment().endOf("day").toDate())
-      .first();
-    if (pulled) {
+    // Quota gate: subscribers get base + gacha_times bonus pulls per day. Cron
+    // must deliver the full remaining quota so we don't short-change month/season
+    // card holders compared to the manual `/抽` path.
+    const quota = await GachaService.getRemainingDailyQuota(userId);
+    if (quota.remaining === 0) {
       counters.skipped++;
       return upsertLog(userId, runDate, {
         status: "skipped",
@@ -98,12 +96,16 @@ async function drawForUser(target, runDate, counters) {
       });
     }
 
-    const result = await GachaService.runDailyDraw(userId);
+    const aggregated = emptyAggregate();
+    for (let i = 0; i < quota.remaining; i++) {
+      const result = await GachaService.runDailyDraw(userId);
+      accumulate(aggregated, result);
+    }
     counters.success++;
     return upsertLog(userId, runDate, {
       status: "success",
-      pulls_made: (result.rewards || []).length,
-      reward_summary: summarizeRewards(result),
+      pulls_made: aggregated.rewards.length,
+      reward_summary: summarizeAggregate(aggregated, quota),
       error: null,
       duration_ms: Date.now() - perStart,
     });
@@ -120,13 +122,44 @@ async function drawForUser(target, runDate, counters) {
   }
 }
 
-function summarizeRewards(result) {
+function emptyAggregate() {
   return {
-    rareCount: result.rareCount || {},
-    newCharactersCount: (result.newCharacters || []).length,
-    godStoneCost: result.godStoneCost || 0,
-    repeatReward: result.repeatReward || 0,
+    rewards: [],
+    rareCount: {},
+    newCharactersCount: 0,
+    godStoneCost: 0,
+    repeatReward: 0,
   };
+}
+
+function accumulate(agg, result) {
+  agg.rewards.push(...(result.rewards || []));
+  agg.newCharactersCount += (result.newCharacters || []).length;
+  agg.godStoneCost += result.godStoneCost || 0;
+  agg.repeatReward += result.repeatReward || 0;
+  if (result.rareCount) {
+    for (const star of Object.keys(result.rareCount)) {
+      const n = Number(result.rareCount[star] || 0);
+      if (n) agg.rareCount[star] = (agg.rareCount[star] || 0) + n;
+    }
+  }
+}
+
+function summarizeAggregate(agg, quota) {
+  return {
+    rareCount: agg.rareCount,
+    newCharactersCount: agg.newCharactersCount,
+    godStoneCost: agg.godStoneCost,
+    repeatReward: agg.repeatReward,
+    rounds: quota.remaining,
+    quota_total: quota.total,
+  };
+}
+
+function summarizeRewards(result) {
+  const agg = emptyAggregate();
+  accumulate(agg, result);
+  return summarizeAggregate(agg, { total: 1, remaining: 1 });
 }
 
 async function upsertLog(userId, runDate, fields) {

@@ -20,6 +20,7 @@ jest.mock("config", () => {
 
 jest.mock("../../src/service/GachaService", () => ({
   runDailyDraw: jest.fn(),
+  getRemainingDailyQuota: jest.fn(),
 }));
 jest.mock("../../src/service/SubscriptionService", () => ({
   hasEffect: jest.fn(),
@@ -37,6 +38,7 @@ describe("AutoGacha cron", () => {
     config.__reset();
     SubscriptionService.hasEffect.mockResolvedValue(true);
     mysql.first.mockResolvedValue(null);
+    GachaService.getRemainingDailyQuota.mockResolvedValue({ total: 1, used: 0, remaining: 1 });
     GachaService.runDailyDraw.mockResolvedValue({
       rewards: new Array(10).fill({ id: 1, star: "1" }),
       rareCount: { 1: 10 },
@@ -83,10 +85,27 @@ describe("AutoGacha cron", () => {
     const summary = JSON.parse(args[6]);
     expect(summary.rareCount).toEqual({ 1: 10 });
     expect(summary.repeatReward).toBe(10);
+    expect(summary.rounds).toBe(1);
   });
 
-  it("drawForUser logs skipped / already_pulled when gacha_record has a row for today", async () => {
-    mysql.first.mockResolvedValueOnce({ id: 42 });
+  it("drawForUser loops runDailyDraw once per remaining quota slot (month-card = 2 rounds)", async () => {
+    GachaService.getRemainingDailyQuota.mockResolvedValueOnce({ total: 2, used: 0, remaining: 2 });
+    const counters = { success: 0, failed: 0, skipped: 0 };
+    await AutoGacha.drawForUser({ user_id: "Umonth" }, "2026-04-18", counters);
+    expect(GachaService.runDailyDraw).toHaveBeenCalledTimes(2);
+    expect(counters.success).toBe(1);
+    const args = mysql.raw.mock.calls[0][1];
+    expect(args[2]).toBe("success");
+    expect(args[3]).toBe(20); // 2 rounds × 10 pulls each
+    const summary = JSON.parse(args[6]);
+    expect(summary.rareCount).toEqual({ 1: 20 });
+    expect(summary.repeatReward).toBe(20); // 10 per round × 2 rounds
+    expect(summary.rounds).toBe(2);
+    expect(summary.quota_total).toBe(2);
+  });
+
+  it("drawForUser logs skipped / already_pulled when quota is exhausted", async () => {
+    GachaService.getRemainingDailyQuota.mockResolvedValueOnce({ total: 1, used: 1, remaining: 0 });
     const counters = { success: 0, failed: 0, skipped: 0 };
     await AutoGacha.drawForUser({ user_id: "Upulled" }, "2026-04-18", counters);
     expect(counters.skipped).toBe(1);
@@ -119,18 +138,19 @@ describe("AutoGacha cron", () => {
     expect(args[4]).toBe("x".repeat(255));
   });
 
-  it("summarizeRewards normalizes a GachaService result into a reward summary shape", () => {
+  it("summarizeRewards normalizes a single GachaService result into a reward summary shape", () => {
     const out = AutoGacha.summarizeRewards({
       rareCount: { 1: 7, 2: 2, 3: 1 },
       newCharacters: [{ id: 1 }, { id: 2 }],
       godStoneCost: 1500,
       repeatReward: 50,
     });
-    expect(out).toEqual({
+    expect(out).toMatchObject({
       rareCount: { 1: 7, 2: 2, 3: 1 },
       newCharactersCount: 2,
       godStoneCost: 1500,
       repeatReward: 50,
+      rounds: 1,
     });
   });
 });
