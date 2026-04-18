@@ -70,7 +70,22 @@ jest.mock("../../src/service/AchievementEngine", () => ({
   evaluate: jest.fn().mockResolvedValue({ unlocked: [] }),
 }));
 
+jest.mock("config", () => ({
+  get: jest.fn(key => {
+    const values = {
+      "gacha.pick_up_cost": 1500,
+      "gacha.ensure_cost": 3000,
+      "gacha.europe_cost": 5000,
+      "gacha.silver_repeat_reward": 1,
+      "gacha.gold_repeat_reward": 10,
+      "gacha.rainbow_repeat_reward": 50,
+    };
+    return values[key];
+  }),
+}));
+
 const GachaModel = require("../../src/model/princess/gacha");
+const GachaBanner = require("../../src/model/princess/GachaBanner");
 const GachaService = require("../../src/service/GachaService");
 const EventCenterService = require("../../src/service/EventCenterService");
 const AchievementEngine = require("../../src/service/AchievementEngine");
@@ -89,6 +104,7 @@ describe("GachaService.runDailyDraw", () => {
     jest.clearAllMocks();
     txInserts.length = 0;
     GachaModel.getDatabasePool.mockResolvedValue(makePool());
+    GachaBanner.getActiveBannersWithCharacters.mockResolvedValue([]);
   });
 
   it("returns plain-data shape with exactly the seven documented keys", async () => {
@@ -178,5 +194,47 @@ describe("GachaService.runDailyDraw", () => {
       t => t.table === "Inventory" && t.rows.itemId === 999 && t.rows.itemAmount < 0
     );
     expect(costInserts.length).toBe(0);
+  });
+
+  describe("Mode specific tests", () => {
+    it("europe: costs 5000 and all rewards are 3-star", async () => {
+      const result = await GachaService.runDailyDraw("Ueuro", { europe: true });
+      expect(result.godStoneCost).toBe(5000);
+      expect(result.rewards.every(r => r.star == "3")).toBe(true);
+      expect(result.rareCount["3"]).toBe(10);
+
+      const costInsert = txInserts.find(
+        t => t.table === "Inventory" && t.rows.itemId === 999 && t.rows.itemAmount === -5000
+      );
+      expect(costInsert).toBeDefined();
+    });
+
+    it("europe: uses banner cost if active", async () => {
+      GachaBanner.getActiveBannersWithCharacters.mockResolvedValue([
+        { type: "europe", cost: 4444 },
+      ]);
+      const result = await GachaService.runDailyDraw("Ubanner", { europe: true });
+      expect(result.godStoneCost).toBe(4444);
+    });
+
+    it("pickup: costs 1500 and invokes pickup logic (verified via godStoneCost)", async () => {
+      const result = await GachaService.runDailyDraw("Upick", { pickup: true });
+      expect(result.godStoneCost).toBe(1500);
+    });
+
+    it("ensure: costs 3000 and the last reward is guaranteed 3-star", async () => {
+      // We force a pool where only 1-star characters exist to verify the guarantee.
+      GachaModel.getDatabasePool.mockResolvedValue([
+        { id: 1, name: "silver-1", rate: "100%", star: "1", isPrincess: "1" },
+        { id: 3, name: "rainbow-3", rate: "0%", star: "3", isPrincess: "1" },
+      ]);
+
+      const result = await GachaService.runDailyDraw("Uensure", { ensure: true });
+      expect(result.godStoneCost).toBe(3000);
+      expect(result.rewards[9].star).toBe("3");
+      // The other 9 should be 1-star based on our forced pool.
+      const oneStars = result.rewards.slice(0, 9);
+      expect(oneStars.every(r => r.star == "1")).toBe(true);
+    });
   });
 });
