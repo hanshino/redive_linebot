@@ -111,7 +111,7 @@ describe("JankenService", () => {
       expect(redis.set).toHaveBeenCalledWith(
         expect.stringContaining("match-123:user-1"),
         "rock",
-        expect.objectContaining({ EX: 3600 })
+        expect.objectContaining({ EX: 7 * 24 * 60 * 60 })
       );
     });
 

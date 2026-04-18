@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -13,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import HistoryIcon from "@mui/icons-material/History";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
@@ -90,7 +93,12 @@ export default function AutoSettings() {
   const [state, setState] = useState({
     auto_daily_gacha: 0,
     auto_janken_fate: 0,
-    entitlements: { auto_daily_gacha: false, auto_janken_fate: false },
+    auto_janken_fate_with_bet: 0,
+    entitlements: {
+      auto_daily_gacha: false,
+      auto_janken_fate: false,
+      auto_janken_fate_with_bet: false,
+    },
   });
   const [snack, setSnack] = useState(null);
 
@@ -157,7 +165,7 @@ export default function AutoSettings() {
       >
         <Stack direction="row" alignItems="center" spacing={1.5}>
           <AutoAwesomeIcon sx={{ fontSize: 32 }} />
-          <Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               訂閱者自動行為
             </Typography>
@@ -165,6 +173,21 @@ export default function AutoSettings() {
               開啟後，布丁會自動替你執行這些行為。隨時可以關閉。
             </Typography>
           </Box>
+          <Button
+            component={RouterLink}
+            to="/auto/history"
+            size="small"
+            variant="outlined"
+            startIcon={<HistoryIcon />}
+            sx={{
+              color: "#fff",
+              borderColor: "rgba(255,255,255,0.6)",
+              whiteSpace: "nowrap",
+              "&:hover": { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.08)" },
+            }}
+          >
+            查看紀錄
+          </Button>
         </Stack>
       </Paper>
 

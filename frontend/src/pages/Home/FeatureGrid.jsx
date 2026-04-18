@@ -7,15 +7,59 @@ import LocalLibraryIcon from "@mui/icons-material/LocalLibrary";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 
 const features = [
-  { icon: HowToVoteIcon, label: "專屬指令", description: "自訂群組指令", path: null, color: "#6C63FF" },
-  { icon: RecordVoiceOverIcon, label: "幹話等級", description: "聊天經驗排行", path: "/rankings", color: "#FFB830" },
+  {
+    icon: HowToVoteIcon,
+    label: "專屬指令",
+    description: "自訂群組指令",
+    path: null,
+    color: "#6C63FF",
+  },
+  {
+    icon: RecordVoiceOverIcon,
+    label: "幹話等級",
+    description: "聊天經驗排行",
+    path: "/rankings",
+    color: "#FFB830",
+  },
   { icon: GroupIcon, label: "公會管理", description: "群組設定管理", path: null, color: "#51CF66" },
-  { icon: LocalLibraryIcon, label: "遊戲查詢", description: "角色與裝備資訊", path: null, color: "#74C0FC" },
-  { icon: EmojiEventsIcon, label: "公會戰", description: "報刀與戰績", path: null, color: "#FF6B6B" },
-  { icon: StorefrontIcon, label: "轉蛋商店", description: "女神石兌換", path: "/gacha/exchange", color: "#E599F7" },
-  { icon: FitnessCenterIcon, label: "裝備管理", description: "查看我的裝備", path: "/equipment", color: "#FF6B6B" },
+  {
+    icon: LocalLibraryIcon,
+    label: "遊戲查詢",
+    description: "角色與裝備資訊",
+    path: null,
+    color: "#74C0FC",
+  },
+  {
+    icon: EmojiEventsIcon,
+    label: "公會戰",
+    description: "報刀與戰績",
+    path: null,
+    color: "#FF6B6B",
+  },
+  {
+    icon: StorefrontIcon,
+    label: "轉蛋商店",
+    description: "女神石兌換",
+    path: "/gacha/exchange",
+    color: "#E599F7",
+  },
+  {
+    icon: FitnessCenterIcon,
+    label: "裝備管理",
+    description: "查看我的裝備",
+    path: "/equipment",
+    color: "#FF6B6B",
+  },
+  {
+    icon: AutoAwesomeIcon,
+    label: "自動設定",
+    description: "訂閱者自動行為",
+    path: "/auto/settings",
+    color: "#9775FA",
+  },
 ];
 
 export default function FeatureGrid() {
@@ -32,7 +76,8 @@ export default function FeatureGrid() {
             <Card
               sx={{
                 height: "100%",
-                transition: "border-color 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out",
+                transition:
+                  "border-color 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out",
                 "&:hover": {
                   transform: "translateY(-2px)",
                 },

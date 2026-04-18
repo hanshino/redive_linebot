@@ -25,6 +25,14 @@ function statusColor(status) {
   return "default";
 }
 
+function statusLabel(status) {
+  if (status === "success") return "成功";
+  if (status === "failed") return "失敗";
+  if (status === "skipped") return "略過";
+  if (status === "submitted") return "已送出";
+  return status;
+}
+
 function summaryText(item) {
   if (item.type === "gacha") {
     const s = item.summary || {};
@@ -63,7 +71,7 @@ function HistoryItemCard({ item }) {
           </Box>
           <Chip
             size="small"
-            label={item.status}
+            label={statusLabel(item.status)}
             color={statusColor(item.status)}
             variant={item.status === "submitted" ? "outlined" : "filled"}
           />
