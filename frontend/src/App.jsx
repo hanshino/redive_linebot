@@ -89,8 +89,8 @@ export default function App() {
           <Route path="achievements" element={<Achievement />} />
 
           {/* Subscriber auto-actions (LIFF) */}
-          <Route path="AutoSettings" element={<AutoSettings />} />
-          <Route path="AutoHistory" element={<AutoHistory />} />
+          <Route path="auto/settings" element={<AutoSettings />} />
+          <Route path="auto/history" element={<AutoHistory />} />
 
           {/* Admin — requires admin privilege */}
           <Route element={<RequireAdmin />}>

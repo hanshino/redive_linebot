@@ -198,7 +198,7 @@ describe("AutoPreferenceController", () => {
   });
 
   describe("showAutoSettings (LINE command)", () => {
-    it("replies a Flex bubble with URI action pointing at /AutoSettings", async () => {
+    it("replies a Flex bubble with URI action pointing at /auto/settings", async () => {
       process.env.LINE_LIFF_TALL_ID = "1234567890-abc";
       const context = { replyFlex: jest.fn().mockResolvedValue(undefined) };
       await controller.showAutoSettings(context);
@@ -207,7 +207,7 @@ describe("AutoPreferenceController", () => {
       expect(altText).toBe("自動設定");
       expect(bubble.type).toBe("bubble");
       expect(bubble.body.action.type).toBe("uri");
-      expect(bubble.body.action.uri).toContain("/AutoSettings");
+      expect(bubble.body.action.uri).toContain("/auto/settings");
     });
   });
 });

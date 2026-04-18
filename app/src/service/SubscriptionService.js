@@ -1,6 +1,11 @@
+const i18n = require("../util/i18n");
 const SubscribeUser = require("../model/application/SubscribeUser");
 const SubscribeCard = require("../model/application/SubscribeCard");
 const { DefaultLogger } = require("../util/Logger");
+
+// Effect types that represent a feature unlock (binary perk) rather than a
+// numeric bonus. Rendered without a "+N" suffix since the value is always 1.
+const FEATURE_EFFECT_TYPES = new Set(["auto_daily_gacha", "auto_janken_fate"]);
 
 function parseEffects(raw) {
   if (Array.isArray(raw)) return raw;
@@ -59,6 +64,24 @@ async function hasEffect(userId, effectType) {
   return false;
 }
 
+/**
+ * Render a subscribe card effect as a single localized display row.
+ * Feature-unlock effects omit the numeric "+value" suffix.
+ * @param {{type: string, value: number|boolean}} effect
+ * @returns {string}
+ */
+function formatEffectRow(effect) {
+  const type = i18n.__(`message.subscribe.effects.${effect.type}`);
+  if (FEATURE_EFFECT_TYPES.has(effect.type)) {
+    return i18n.__("message.subscribe.effects_row_feature", { type });
+  }
+  return i18n.__("message.subscribe.effects_row_positive", {
+    type,
+    value: effect.value,
+  });
+}
+
 module.exports = {
   hasEffect,
+  formatEffectRow,
 };

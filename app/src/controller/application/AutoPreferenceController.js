@@ -200,7 +200,7 @@ function parseJsonSafe(raw) {
  * Replies a Flex button bubble that opens the LIFF AutoSettings page.
  */
 exports.showAutoSettings = async function (context) {
-  const uri = commonTemplate.getLiffUri("tall", "/AutoSettings");
+  const uri = commonTemplate.getLiffUri("tall", "/auto/settings");
   const bubble = commonTemplate.genLinkBubble("自動設定", uri, "blue");
   await context.replyFlex("自動設定", bubble);
 };

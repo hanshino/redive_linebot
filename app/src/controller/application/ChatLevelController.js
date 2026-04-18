@@ -17,6 +17,7 @@ const DonateModel = require("../../model/application/DonateList");
 const UserTitleModel = require("../../model/application/UserTitle");
 const SubscribeUserModel = require("../../model/application/SubscribeUser");
 const SubscribeCardModel = require("../../model/application/SubscribeCard");
+const SubscriptionService = require("../../service/SubscriptionService");
 const { get, sample, set } = require("lodash");
 
 function formatTitle(title) {
@@ -109,13 +110,7 @@ exports.showStatus = async (context, props) => {
       monthBubble = SubscribeTemplate.generateStatus({
         title: i18n.__("message.subscribe.month"),
         effects: monthCard.effects.map(effect =>
-          SubscribeTemplate.generateEffect(
-            i18n.__("message.subscribe.effects_row_positive", {
-              type: i18n.__(`message.subscribe.effects.${effect.type}`),
-              value: effect.value,
-            }),
-            "blue"
-          )
+          SubscribeTemplate.generateEffect(SubscriptionService.formatEffectRow(effect), "blue")
         ),
         expiredAt: moment(monthCard.end_at).format("YYYY-MM-DD"),
         theme: "blue",
@@ -128,13 +123,7 @@ exports.showStatus = async (context, props) => {
       seasonBubble = SubscribeTemplate.generateStatus({
         title: i18n.__("message.subscribe.season"),
         effects: seasonCard.effects.map(effect =>
-          SubscribeTemplate.generateEffect(
-            i18n.__("message.subscribe.effects_row_positive", {
-              type: i18n.__(`message.subscribe.effects.${effect.type}`),
-              value: effect.value,
-            }),
-            "red"
-          )
+          SubscribeTemplate.generateEffect(SubscriptionService.formatEffectRow(effect), "red")
         ),
         expiredAt: moment(seasonCard.end_at).format("YYYY-MM-DD"),
         theme: "red",
