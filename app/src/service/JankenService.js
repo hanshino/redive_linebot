@@ -144,28 +144,53 @@ exports.updateStreaks = async function (
  * 則用隨機出拳代為送出 submitChoice，並寫一筆 janken_auto_fate_log。
  * 僅用於標準對戰（duel）流程；arena 不呼叫。
  *
+ * 賭注場特別處理：只有當 pref.auto_janken_fate_with_bet === 1 且 tryEscrowOnce
+ * 成功把女神石押上時才代為出拳；否則拒絕 auto-fate（避免資金洩漏：被代打的人若
+ * 沒有押上賭金就進入 resolveMatch，payout 會視同雙方都押但只有 p1 的石頭被扣）。
+ *
  * @param {string} userId 要代打的使用者
  * @param {string} matchId 對戰 uuid
  * @param {"p1"|"p2"} role 該使用者在這場對戰的角色
  * @param {Object} ctx
  * @param {string} ctx.p1UserId
  * @param {string} ctx.p2UserId
- * @returns {Promise<{eligible:boolean, ready?:boolean, p1Choice?:string, p2Choice?:string, choice?:string}>}
+ * @param {number} [ctx.betAmount=0] 本場賭金；>0 時需要 with_bet 子偏好 + 成功 escrow
+ * @returns {Promise<{eligible:boolean, reason?:string, ready?:boolean, p1Choice?:string, p2Choice?:string, choice?:string}>}
  */
-exports.autoFateIfEligible = async function (userId, matchId, role, { p1UserId, p2UserId } = {}) {
+exports.autoFateIfEligible = async function (
+  userId,
+  matchId,
+  role,
+  { p1UserId, p2UserId, betAmount = 0 } = {}
+) {
   const enabled = config.has("autoJankenFate.enabled") && config.get("autoJankenFate.enabled");
-  if (!enabled) return { eligible: false };
+  if (!enabled) return { eligible: false, reason: "feature_disabled" };
 
   const pref = await UserAutoPreference.first({ filter: { user_id: userId } });
-  if (!pref || pref.auto_janken_fate !== 1) return { eligible: false };
+  if (!pref || pref.auto_janken_fate !== 1) return { eligible: false, reason: "opt_out" };
 
   const entitled = await SubscriptionService.hasEffect(userId, "auto_janken_fate");
-  if (!entitled) return { eligible: false };
+  if (!entitled) return { eligible: false, reason: "no_entitlement" };
+
+  if (betAmount > 0) {
+    if (pref.auto_janken_fate_with_bet !== 1) {
+      return { eligible: false, reason: "bet_auto_fate_not_opted_in" };
+    }
+    const escrow = await exports.tryEscrowOnce(matchId, userId, betAmount);
+    if (escrow.alreadyEscrowed) {
+      // Bet already posted by another path — safe to proceed with auto-fate.
+    } else if (!escrow.success) {
+      DefaultLogger.info(
+        `janken.auto_fate.skipped_insufficient_funds match_id=${matchId} user_id=${userId} bet=${betAmount}`
+      );
+      return { eligible: false, reason: "insufficient_funds_for_bet" };
+    }
+  }
 
   const choice = exports.randomChoice();
   await JankenAutoFateLog.create({ match_id: matchId, user_id: userId, role, choice });
   DefaultLogger.info(
-    `janken.auto_fate.submit match_id=${matchId} user_id=${userId} role=${role} choice=${choice}`
+    `janken.auto_fate.submit match_id=${matchId} user_id=${userId} role=${role} choice=${choice} bet=${betAmount}`
   );
   const result = await exports.submitChoice(matchId, userId, choice, { p1UserId, p2UserId });
   return { eligible: true, choice, ...result };

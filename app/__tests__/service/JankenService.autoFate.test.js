@@ -32,6 +32,14 @@ jest.mock("../../src/service/SubscriptionService", () => ({
   hasEffect: jest.fn(),
 }));
 
+jest.mock("../../src/model/application/Inventory", () => ({
+  inventory: {
+    getUserMoney: jest.fn(),
+    decreaseGodStone: jest.fn().mockResolvedValue(undefined),
+    increaseGodStone: jest.fn().mockResolvedValue(undefined),
+  },
+}));
+
 const config = require("config");
 const redis = require("../../src/util/redis");
 const UserAutoPreference = require("../../src/model/application/UserAutoPreference");
@@ -77,7 +85,7 @@ describe("JankenService.autoFateIfEligible", () => {
       p1UserId: "Up1",
       p2UserId: "Up2",
     });
-    expect(result).toEqual({ eligible: false });
+    expect(result).toEqual({ eligible: false, reason: "feature_disabled" });
     expect(UserAutoPreference.first).not.toHaveBeenCalled();
     expect(JankenAutoFateLog.create).not.toHaveBeenCalled();
     expect(redis.set).not.toHaveBeenCalled();
@@ -113,6 +121,72 @@ describe("JankenService.autoFateIfEligible", () => {
     expect(result.eligible).toBe(false);
     expect(JankenAutoFateLog.create).not.toHaveBeenCalled();
     expect(redis.set).not.toHaveBeenCalled();
+  });
+
+  describe("bet-mode auto-fate (fund-leak safety)", () => {
+    it("bet match: skips when auto_janken_fate_with_bet is not opted in", async () => {
+      UserAutoPreference.first.mockResolvedValueOnce({
+        user_id: "Up2",
+        auto_janken_fate: 1,
+        auto_janken_fate_with_bet: 0,
+      });
+      const result = await JankenService.autoFateIfEligible("Up2", "match-b", "p2", {
+        p1UserId: "Up1",
+        p2UserId: "Up2",
+        betAmount: 100,
+      });
+      expect(result).toEqual({ eligible: false, reason: "bet_auto_fate_not_opted_in" });
+      expect(JankenAutoFateLog.create).not.toHaveBeenCalled();
+      // Confirm submitChoice was never called.
+      expect(redis.set.mock.calls.some(c => String(c[0]).startsWith("jankenDecide:match-b:"))).toBe(
+        false
+      );
+    });
+
+    it("bet match: escrow fails (insufficient funds) → skip auto-fate, no log, no submit", async () => {
+      UserAutoPreference.first.mockResolvedValueOnce({
+        user_id: "Up2",
+        auto_janken_fate: 1,
+        auto_janken_fate_with_bet: 1,
+      });
+      // First redis.set is tryEscrowOnce's NX lock acquiring → "OK"; escrowBet then
+      // calls inventory.getUserMoney which returns insufficient balance.
+      const { inventory } = require("../../src/model/application/Inventory");
+      inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+      redis.set.mockResolvedValue("OK"); // escrow NX succeeds
+
+      const result = await JankenService.autoFateIfEligible("Up2", "match-b2", "p2", {
+        p1UserId: "Up1",
+        p2UserId: "Up2",
+        betAmount: 1000,
+      });
+      expect(result).toEqual({ eligible: false, reason: "insufficient_funds_for_bet" });
+      expect(JankenAutoFateLog.create).not.toHaveBeenCalled();
+      expect(inventory.decreaseGodStone).not.toHaveBeenCalled();
+    });
+
+    it("bet match: with_bet=1 and escrow succeeds → proceed with auto-fate", async () => {
+      UserAutoPreference.first.mockResolvedValueOnce({
+        user_id: "Up2",
+        auto_janken_fate: 1,
+        auto_janken_fate_with_bet: 1,
+      });
+      const { inventory } = require("../../src/model/application/Inventory");
+      inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+      redis.set.mockResolvedValue("OK");
+
+      const result = await JankenService.autoFateIfEligible("Up2", "match-b3", "p2", {
+        p1UserId: "Up1",
+        p2UserId: "Up2",
+        betAmount: 1000,
+      });
+      expect(result.eligible).toBe(true);
+      expect(["rock", "paper", "scissors"]).toContain(result.choice);
+      expect(inventory.decreaseGodStone).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "Up2", amount: 1000, note: "janken_bet_escrow" })
+      );
+      expect(JankenAutoFateLog.create).toHaveBeenCalled();
+    });
   });
 });
 

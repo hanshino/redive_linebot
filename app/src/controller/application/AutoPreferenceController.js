@@ -5,7 +5,14 @@ const SubscriptionService = require("../../service/SubscriptionService");
 const commonTemplate = require("../../templates/common");
 const { DefaultLogger } = require("../../util/Logger");
 
-const VALID_FLAGS = ["auto_daily_gacha", "auto_janken_fate"];
+const VALID_FLAGS = ["auto_daily_gacha", "auto_janken_fate", "auto_janken_fate_with_bet"];
+// Each flag declares which subscription effect gates it. with_bet re-uses the
+// auto_janken_fate effect (it's a sub-option of the same feature).
+const FLAG_EFFECT = {
+  auto_daily_gacha: "auto_daily_gacha",
+  auto_janken_fate: "auto_janken_fate",
+  auto_janken_fate_with_bet: "auto_janken_fate",
+};
 const HISTORY_DEFAULT_LIMIT = 30;
 const HISTORY_MAX_LIMIT = 100;
 
@@ -17,6 +24,7 @@ async function loadEntitlements(userId) {
   return {
     auto_daily_gacha: autoDailyGacha,
     auto_janken_fate: autoJankenFate,
+    auto_janken_fate_with_bet: autoJankenFate,
   };
 }
 
@@ -25,6 +33,7 @@ async function loadPreference(userId) {
   return {
     auto_daily_gacha: row && row.auto_daily_gacha === 1 ? 1 : 0,
     auto_janken_fate: row && row.auto_janken_fate === 1 ? 1 : 0,
+    auto_janken_fate_with_bet: row && row.auto_janken_fate_with_bet === 1 ? 1 : 0,
   };
 }
 
@@ -66,24 +75,27 @@ exports.api.setPreference = async (req, res) => {
 
     const entitlements = await loadEntitlements(userId);
     for (const flag of Object.keys(update)) {
-      if (update[flag] === 1 && !entitlements[flag]) {
+      if (update[flag] === 1 && !entitlements[FLAG_EFFECT[flag]]) {
         return res.status(403).json({ error: "entitlement_missing", field: flag });
       }
     }
 
     await mysql.raw(
       `INSERT INTO user_auto_preference
-        (user_id, auto_daily_gacha, auto_janken_fate)
-       VALUES (?, ?, ?)
+        (user_id, auto_daily_gacha, auto_janken_fate, auto_janken_fate_with_bet)
+       VALUES (?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          auto_daily_gacha = COALESCE(?, auto_daily_gacha),
-         auto_janken_fate = COALESCE(?, auto_janken_fate)`,
+         auto_janken_fate = COALESCE(?, auto_janken_fate),
+         auto_janken_fate_with_bet = COALESCE(?, auto_janken_fate_with_bet)`,
       [
         userId,
         update.auto_daily_gacha === undefined ? 0 : update.auto_daily_gacha,
         update.auto_janken_fate === undefined ? 0 : update.auto_janken_fate,
+        update.auto_janken_fate_with_bet === undefined ? 0 : update.auto_janken_fate_with_bet,
         update.auto_daily_gacha === undefined ? null : update.auto_daily_gacha,
         update.auto_janken_fate === undefined ? null : update.auto_janken_fate,
+        update.auto_janken_fate_with_bet === undefined ? null : update.auto_janken_fate_with_bet,
       ]
     );
 

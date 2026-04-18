@@ -49,7 +49,12 @@ describe("AutoPreferenceController", () => {
       expect(res.json).toHaveBeenCalledWith({
         auto_daily_gacha: 1,
         auto_janken_fate: 0,
-        entitlements: { auto_daily_gacha: true, auto_janken_fate: false },
+        auto_janken_fate_with_bet: 0,
+        entitlements: {
+          auto_daily_gacha: true,
+          auto_janken_fate: false,
+          auto_janken_fate_with_bet: false,
+        },
       });
     });
 
@@ -63,7 +68,12 @@ describe("AutoPreferenceController", () => {
       expect(res.json).toHaveBeenCalledWith({
         auto_daily_gacha: 0,
         auto_janken_fate: 0,
-        entitlements: { auto_daily_gacha: false, auto_janken_fate: false },
+        auto_janken_fate_with_bet: 0,
+        entitlements: {
+          auto_daily_gacha: false,
+          auto_janken_fate: false,
+          auto_janken_fate_with_bet: false,
+        },
       });
     });
   });

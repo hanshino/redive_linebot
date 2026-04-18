@@ -29,6 +29,13 @@ const FLAGS = [
     title: "猜拳自動出手 (被挑戰時)",
     description: "被 @tag 猜拳時由系統代你出拳，避免長時間未回應。僅限標準對戰。",
   },
+  {
+    key: "auto_janken_fate_with_bet",
+    title: "含賭注的猜拳也自動代打",
+    description:
+      "上面那個開關啟用後才生效。開啟後被下戰書含賭金時也自動出拳，系統會先替你把女神石押上（餘額不足時自動放棄代打）。",
+    dependsOn: "auto_janken_fate",
+  },
 ];
 
 function ToggleRow({ flag, value, entitled, disabled, onChange }) {
@@ -165,16 +172,19 @@ export default function AutoSettings() {
         <SettingsSkeleton />
       ) : (
         <Stack spacing={2}>
-          {FLAGS.map(flag => (
-            <ToggleRow
-              key={flag.key}
-              flag={flag}
-              value={state[flag.key]}
-              entitled={state.entitlements?.[flag.key]}
-              disabled={saving}
-              onChange={handleToggle}
-            />
-          ))}
+          {FLAGS.map(flag => {
+            const dependencyUnmet = flag.dependsOn && state[flag.dependsOn] !== 1;
+            return (
+              <ToggleRow
+                key={flag.key}
+                flag={flag}
+                value={state[flag.key]}
+                entitled={state.entitlements?.[flag.key]}
+                disabled={saving || dependencyUnmet}
+                onChange={handleToggle}
+              />
+            );
+          })}
         </Stack>
       )}
 
