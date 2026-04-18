@@ -14,7 +14,7 @@ const lineUtil = require("../../src/util/line");
 const {
   notifyUnlocks,
   renderTemplate,
-  getDisplayName,
+  _getDisplayName: getDisplayName,
 } = require("../../src/service/achievementNotifier");
 
 describe("achievementNotifier", () => {
@@ -181,8 +181,6 @@ describe("achievementNotifier", () => {
   describe("getDisplayName fallback chain", () => {
     beforeEach(() => {
       jest.clearAllMocks();
-      lineUtil.getGroupMemberProfile.mockReset();
-      getUserProfileMock.mockReset();
     });
 
     it("DB hit short-circuits LINE API calls", async () => {
