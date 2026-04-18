@@ -19,12 +19,6 @@ async function main() {
 }
 
 async function run() {
-  const enabled = config.has("autoGacha.enabled") && config.get("autoGacha.enabled");
-  if (!enabled) {
-    DefaultLogger.info("[AutoGacha] disabled via config.autoGacha.enabled=false");
-    return;
-  }
-
   const concurrency = config.get("autoGacha.concurrency") || 8;
   const runDate = moment().format("YYYY-MM-DD");
   const start = Date.now();

@@ -1,9 +1,8 @@
-// AutoGacha cron — unit tests covering disabled gate, concurrency cap,
-// and per-user success / already_pulled / failed / expired paths.
+// AutoGacha cron — unit tests covering concurrency cap and per-user
+// success / already_pulled / failed / expired paths.
 
 jest.mock("config", () => {
   const store = {
-    "autoGacha.enabled": true,
     "autoGacha.concurrency": 2,
     "autoGacha.schedule": ["0", "50", "23", "*", "*", "*"],
   };
@@ -14,7 +13,6 @@ jest.mock("config", () => {
       store[k] = v;
     },
     __reset: () => {
-      store["autoGacha.enabled"] = true;
       store["autoGacha.concurrency"] = 2;
     },
   };
@@ -52,14 +50,6 @@ describe("AutoGacha cron", () => {
 
   afterAll(() => {
     jest.restoreAllMocks();
-  });
-
-  it("skips entirely when autoGacha.enabled is false", async () => {
-    config.__setForTest("autoGacha.enabled", false);
-    const loadSpy = jest.spyOn(AutoGacha.impl, "loadTargets");
-    await AutoGacha();
-    expect(loadSpy).not.toHaveBeenCalled();
-    loadSpy.mockRestore();
   });
 
   it("runBatched respects the concurrency cap", async () => {

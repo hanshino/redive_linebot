@@ -16,6 +16,7 @@ const FEE_RATE = config.get("minigame.janken.bet.feeRate");
 const MIN_BET = config.get("minigame.janken.bet.minAmount");
 const BOUNTY_MIN_BET = config.get("minigame.janken.streak.bountyMinBet");
 const BOUNTY_CLAIM_MULTIPLIER = config.get("minigame.janken.streak.bountyClaimMultiplier");
+const MATCH_WINDOW_SECONDS = 7 * 24 * 60 * 60;
 
 const RESULT_MAP = {
   rock: { rock: "draw", paper: "lose", scissors: "win" },
@@ -63,7 +64,7 @@ exports.escrowBet = async function (userId, amount) {
 
 exports.tryEscrowOnce = async function (matchId, userId, amount) {
   const escrowKey = `${REDIS_PREFIX}:escrow:${matchId}:${userId}`;
-  const locked = await redis.set(escrowKey, "1", { EX: 3600, NX: true });
+  const locked = await redis.set(escrowKey, "1", { EX: MATCH_WINDOW_SECONDS, NX: true });
   if (!locked) {
     return { alreadyEscrowed: true };
   }
@@ -163,9 +164,6 @@ exports.autoFateIfEligible = async function (
   role,
   { p1UserId, p2UserId, betAmount = 0 } = {}
 ) {
-  const enabled = config.has("autoJankenFate.enabled") && config.get("autoJankenFate.enabled");
-  if (!enabled) return { eligible: false, reason: "feature_disabled" };
-
   const pref = await UserAutoPreference.first({ filter: { user_id: userId } });
   if (!pref || pref.auto_janken_fate !== 1) return { eligible: false, reason: "opt_out" };
 
@@ -202,7 +200,7 @@ exports.submitChoice = async function (matchId, userId, choice, { p1UserId, p2Us
   }
 
   const key = `${REDIS_PREFIX}:${matchId}:${userId}`;
-  await redis.set(key, choice, { EX: 3600 });
+  await redis.set(key, choice, { EX: MATCH_WINDOW_SECONDS });
 
   DefaultLogger.info(`[Janken] ${userId} chose ${choice} for match ${matchId}`);
 

@@ -197,12 +197,8 @@
     "rainbow_repeat_reward": 50
   },
   "autoGacha": {
-    "enabled": false,
     "schedule": ["0", "50", "23", "*", "*", "*"],
     "concurrency": 8
-  },
-  "autoJankenFate": {
-    "enabled": false
   },
   "subscribe": {
     "month_icon": "https://redive.estertion.win/icon/item/23001.webp",

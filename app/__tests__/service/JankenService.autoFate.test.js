@@ -2,7 +2,6 @@
 
 jest.mock("config", () => {
   const store = {
-    "autoJankenFate.enabled": true,
     "redis.keys.jankenDecide": "jankenDecide",
     "redis.keys.jankenChallenge": "jankenChallenge",
     "minigame.janken.bet.feeRate": 0.1,
@@ -16,9 +15,7 @@ jest.mock("config", () => {
     __setForTest: (k, v) => {
       store[k] = v;
     },
-    __reset: () => {
-      store["autoJankenFate.enabled"] = true;
-    },
+    __reset: () => {},
   };
 });
 
@@ -75,20 +72,8 @@ describe("JankenService.autoFateIfEligible", () => {
     expect(redis.set).toHaveBeenCalledWith(
       "jankenDecide:match-1:Up2",
       result.choice,
-      expect.objectContaining({ EX: 3600 })
+      expect.objectContaining({ EX: 7 * 24 * 60 * 60 })
     );
-  });
-
-  it("no-ops when feature flag autoJankenFate.enabled is false", async () => {
-    config.__setForTest("autoJankenFate.enabled", false);
-    const result = await JankenService.autoFateIfEligible("Up2", "match-1", "p2", {
-      p1UserId: "Up1",
-      p2UserId: "Up2",
-    });
-    expect(result).toEqual({ eligible: false, reason: "feature_disabled" });
-    expect(UserAutoPreference.first).not.toHaveBeenCalled();
-    expect(JankenAutoFateLog.create).not.toHaveBeenCalled();
-    expect(redis.set).not.toHaveBeenCalled();
   });
 
   it("no-ops when user has no preference row", async () => {
