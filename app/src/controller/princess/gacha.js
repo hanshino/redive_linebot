@@ -1,7 +1,6 @@
 const GachaModel = require("../../model/princess/gacha");
 const InventoryModel = require("../../model/application/Inventory");
 const { inventory } = InventoryModel;
-const random = require("math-random");
 const GachaTemplate = require("../../templates/princess/gacha");
 const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
 const redis = require("../../util/redis");
@@ -9,9 +8,7 @@ const { DefaultLogger, CustomLogger } = require("../../util/Logger");
 const { getClient } = require("bottender");
 const lineClient = getClient("line");
 const moment = require("moment");
-const EventCenterService = require("../../service/EventCenterService");
-const signModel = require("../../model/application/SigninDays");
-const { isNull, get, countBy, shuffle, uniqBy, difference, sum, uniq, pullAt } = require("lodash");
+const { isNull, get, countBy, shuffle } = require("lodash");
 const GachaRecord = require("../../model/princess/GachaRecord");
 const GachaBanner = require("../../model/princess/GachaBanner");
 const SubscribeUser = require("../../model/application/SubscribeUser");
@@ -19,8 +16,9 @@ const SubscribeCard = require("../../model/application/SubscribeCard");
 const config = require("config");
 const i18n = require("../../util/i18n");
 const commonTemplate = require("../../templates/common");
-const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
+const GachaService = require("../../service/GachaService");
+const { play, filterPool } = require("../../service/gachaDrawUtil");
 
 function GachaException(message, code) {
   this.message = message;
@@ -29,91 +27,6 @@ function GachaException(message, code) {
 }
 
 GachaException.prototype = new Error();
-
-function getTotalRate(gachaPool) {
-  let result = gachaPool
-    .map(data => parseFloat(data.rate.replace("%", "")) || 0)
-    .reduce((pre, curr) => pre + curr, 0);
-  return [Math.round(result * 10000), 10000];
-}
-
-/**
- * 進行亂數產生
- * @param {Number} times
- * @returns {Array}
- */
-function genRandom(max, min, times = 1) {
-  let result = [];
-  for (let i = 0; i < times; i++) {
-    result.push(Math.round(random() * (max - min) + min));
-  }
-
-  return result;
-}
-
-/**
- * 進行轉蛋
- * @param {Array} gachaPool 轉蛋池
- */
-function play(gachaPool, times = 1) {
-  const [max, rate] = getTotalRate(gachaPool);
-  // 產出亂數陣列，用該數字，取得轉蛋池中相對應位置之獎勵
-  const randomAry = genRandom(max, 1, times).sort((a, b) => a - b);
-
-  let stack = 0; // 數字堆疊
-  let anchor = 0; // 處理到的亂數陣列錨點
-  const rewards = []; // 轉出獎勵陣列
-
-  gachaPool.forEach(data => {
-    if (anchor >= randomAry.length) return;
-    let top = Math.floor(parseFloat(data.rate.replace(/[^\d.]+/, "") * rate));
-
-    // 介於轉蛋池中的 堆疊數 和 頂點 的亂數 即為抽出內容物
-    while (
-      randomAry[anchor] >= stack &&
-      randomAry[anchor] <= stack + top &&
-      anchor < randomAry.length
-    ) {
-      rewards.push({ ...data });
-      anchor++; // 處理下一錨點
-    }
-
-    stack += top; // 數字往上堆疊
-  });
-
-  return rewards;
-}
-
-function getRainbowCharater(gachaPool) {
-  return gachaPool.filter(data => data.star == 3);
-}
-
-/**
- * 篩選出符合標籤之轉蛋池
- * @param {Array} gachaPool
- * @param {String} tag
- */
-function filterPool(gachaPool, tag) {
-  if (tag === undefined) return gachaPool.filter(data => data.isPrincess === "1");
-
-  let isPrincess = true;
-  let resultPool = gachaPool.filter(data => {
-    let tags = (data.tag || "").split(",");
-    if (tags.indexOf(tag) !== -1) {
-      isPrincess = data.isPrincess === "0" ? false : true;
-      return true;
-    }
-  });
-
-  // 非公主池子，直接回傳
-  if (isPrincess === false) return resultPool;
-
-  // 無符合標籤，回傳滿池，不過將非公主角色排除
-  if (resultPool.length === 0) return gachaPool.filter(data => data.isPrincess === "1");
-
-  // 有篩選出特定標籤，將1,2星角色補滿池子
-  return resultPool.concat(gachaPool.filter(data => data.star < 3 && data.isPrincess === "1"));
-}
 
 /**
  * 針對群組單一用戶進行冷卻時間設定
@@ -149,32 +62,6 @@ async function userCooldown(userId) {
 }
 
 /**
- * 對符合條件的角色套用機率加成
- * @param {Array} pool 轉蛋池
- * @param {Function} shouldBoost 判斷是否加成的 predicate
- * @param {Number} boost 加成百分比，如 150 → (100+150)/100 = 2.5 倍
- * @returns {Array}
- */
-function boostRate(pool, shouldBoost, boost) {
-  return pool.map(data => {
-    if (!shouldBoost(data)) return data;
-    return {
-      ...data,
-      rate: `${(parseFloat(data.rate) * (100 + boost)) / 100}%`,
-    };
-  });
-}
-
-function makePickup(pool, rate = 100) {
-  return boostRate(pool, data => data.star === "3", rate);
-}
-
-function applyBannerRateUp(pool, characterIds, rateBoost) {
-  const idSet = new Set(characterIds);
-  return boostRate(pool, data => idSet.has(data.id), rateBoost);
-}
-
-/**
  * 檢視自己的轉蛋包包
  * @param {import("bottender").LineContext} context
  */
@@ -197,10 +84,10 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   let { tag, times = 10 } = match.groups;
   const { userId, type, groupId } = context.event.source;
 
-  // 一次查詢所有進行中的 banner（避免多次 DB round-trip）
+  // Europe banner pre-check — service will re-fetch internally, but controller
+  // needs the cost for the stone-balance gate and the early-return text.
   const allActiveBanners = await GachaBanner.getActiveBannersWithCharacters();
   const europeBanners = allActiveBanners.filter(b => b.type === "europe");
-  const rateUpBanners = allActiveBanners.filter(b => b.type === "rate_up");
 
   let activeEuropeBanner = null;
   if (europe) {
@@ -276,166 +163,11 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     return context.replyText(i18n.__("message.gacha.not_enough_stone"));
   }
 
-  const queries = [];
-  const dailyResult = {
-    rewards: [],
-    godStoneCost: 0,
-    ownCharactersCount: 0,
-    newCharacters: [],
-    repeatReward: 0,
-  };
-  const dailyPool = (() => {
-    let pool = filteredPool;
-
-    for (const banner of rateUpBanners) {
-      if (banner.characterIds.length > 0) {
-        pool = applyBannerRateUp(pool, banner.characterIds, banner.rate_boost);
-      }
-    }
-
-    if (pickup) {
-      return makePickup(pool, 200);
-    } else if (ensure) {
-      return pool;
-    } else if (europe) {
-      return pool.filter(data => data.star == "3");
-    }
-    return pool;
-  })();
-
-  // 進行特殊費用扣除
-  if (pickup || ensure || europe) {
-    let cost = 0;
-    let note = "";
-    if (pickup) {
-      cost = pickupCost;
-      note = i18n.__("message.gacha.pick_up_cost_note");
-    } else if (ensure) {
-      cost = ensureCost;
-      note = i18n.__("message.gacha.ensure_cost_note");
-    } else if (europe) {
-      cost = europeCost;
-      note = i18n.__("message.gacha.europe_cost_note");
-    }
-
-    queries.push(
-      inventory.knex.insert({
-        userId,
-        itemId: 999,
-        itemAmount: -1 * cost,
-        note,
-      })
-    );
-    dailyResult.godStoneCost = cost;
-  }
-
-  let rareCount;
-  do {
-    const rewards = shuffle(play(dailyPool, times));
-
-    if (ensure) {
-      DefaultLogger.info(`${userId} 使用了保證抽，扣除3000顆女神石，並且將最後一抽強制轉彩！`);
-      const rainbowPool = getRainbowCharater(dailyPool);
-      // remove last element of rewards
-      rewards.pop();
-      // add rainbow character
-      rewards.push(...play(rainbowPool, 1));
-    }
-
-    rareCount = countBy(rewards, "star");
-    dailyResult.rewards = rewards;
-  } while (rareCount[1] === 10);
-
-  // 每日一抽成功，紀錄轉蛋資訊
-  const message = [];
-  const uniqRewards = uniqBy(dailyResult.rewards, "id");
-  const rawRewardIds = dailyResult.rewards.map(reward => reward.id);
-  const rewardIds = uniq(rawRewardIds);
-  const ownItems = await inventory.knex
-    .where({ userId })
-    .select("itemId")
-    .andWhereNot("itemId", 999)
-    .orderBy("itemId", "asc");
-  const ownItemIds = ownItems.map(item => item.itemId);
-
-  dailyResult.ownCharactersCount = ownItemIds.length;
-  // 檢查是否有重複獲得的角色
-  const duplicateItems = [...rawRewardIds];
-  // 檢查是否有尚未獲得的角色
-  const newItemIds = difference(rewardIds, ownItemIds);
-  pullAt(
-    duplicateItems,
-    newItemIds.map(id => duplicateItems.indexOf(id))
-  );
-
-  dailyResult.repeatReward = sum(
-    duplicateItems.map(id => {
-      const targetReward = uniqRewards.find(reward => reward.id === id);
-
-      switch (parseInt(targetReward.star)) {
-        case 1:
-          message.push(`${targetReward.name} 1星 +1`);
-          return config.get("gacha.silver_repeat_reward");
-        case 2:
-          message.push(`${targetReward.name} 2星 +10`);
-          return config.get("gacha.gold_repeat_reward");
-        case 3:
-          message.push(`${targetReward.name} 3星 +50`);
-          return config.get("gacha.rainbow_repeat_reward");
-        default:
-          return 0;
-      }
-    })
-  );
-  dailyResult.newCharacters = uniqRewards.filter(reward => newItemIds.includes(reward.id));
-
-  // 紀錄每日一抽獲得的角色
-  if (dailyResult.newCharacters.length > 0) {
-    queries.push(
-      inventory.knex.insert(
-        dailyResult.newCharacters.map(character => ({
-          userId,
-          itemId: character.id,
-          itemAmount: 1,
-          attributes: JSON.stringify([
-            {
-              key: "star",
-              value: parseInt(character.star),
-            },
-          ]),
-          note: i18n.__("message.gacha.new_character_note"),
-        }))
-      )
-    );
-  }
-
-  // 紀錄每日一抽獲得的女神石
-  if (dailyResult.repeatReward > 0) {
-    queries.push(
-      inventory.knex.insert({
-        userId,
-        itemId: 999,
-        itemAmount: dailyResult.repeatReward,
-        note: i18n.__("message.gacha.repeat_reward_note"),
-      })
-    );
-  }
-
-  // 寫入所有紀錄
-  const trx = await inventory.transaction();
+  let result;
   try {
-    await Promise.all(queries.map(query => query.transacting(trx)));
-    GachaRecord.setTransaction(trx);
-    await GachaRecord.create({
-      user_id: userId,
-      silver: rareCount[1],
-      gold: rareCount[2],
-      rainbow: rareCount[3],
-      has_new: dailyResult.newCharacters.length > 0 ? 1 : 0,
-    });
-    await trx.commit();
+    result = await GachaService.runDailyDraw(userId, { tag, pickup, ensure, europe });
   } catch (err) {
-    await trx.rollback();
+    DefaultLogger.warn(`[gacha] runDailyDraw failed for ${userId}: ${err.message}`);
     console.log(err);
     return context.replyText(
       i18n.__("message.error_contact_admin", {
@@ -445,18 +177,12 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     );
   }
 
-  await Promise.all([
-    handleSignin(userId),
-    EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId }),
-  ]);
-
   const bubbles = [];
-  // 發送每日一抽結果
   bubbles.push(
     GachaTemplate.line.generateGachaResult({
-      rewards: dailyResult.rewards,
+      rewards: result.rewards,
       tag,
-      rareCount,
+      rareCount: result.rareCount,
       hasCooldown: type === "group",
     })
   );
@@ -465,21 +191,16 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
 
   bubbles.unshift(
     GachaTemplate.line.generateDailyGachaInfo({
-      newCharacters: dailyResult.newCharacters,
-      collectedCount: dailyResult.ownCharactersCount + dailyResult.newCharacters.length,
+      newCharacters: result.newCharacters,
+      collectedCount: result.ownCharactersCount + result.newCharacters.length,
       allCount: allCharactersCount,
       ownGodStone: userOwnStone,
-      costGodStone: dailyResult.godStoneCost,
-      gainGodStoneAmount: dailyResult.repeatReward,
+      costGodStone: result.godStoneCost,
+      gainGodStoneAmount: result.repeatReward,
     })
   );
 
-  const { unlocked } = await AchievementEngine.evaluate(userId, "gacha_pull", {
-    threeStarCount: rareCount[3] || 0,
-    uniqueCount: dailyResult.ownCharactersCount + dailyResult.newCharacters.length,
-    pullType: europe ? "europe" : ensure ? "ensure" : pickup ? "pickup" : undefined,
-  }).catch(() => ({ unlocked: [] }));
-  await notifyUnlocks(context, userId, unlocked);
+  await notifyUnlocks(context, userId, result.unlocks);
 
   return context.replyFlex("每日一抽結果", {
     type: "carousel",
@@ -718,27 +439,4 @@ async function showGodStoneRank(req, res) {
     DefaultLogger.warn(e);
     return res.status(400).json({ message: e.message });
   }
-}
-
-async function handleSignin(userId) {
-  const userData = await signModel.first({ filter: { user_id: userId } });
-  const now = moment();
-
-  if (!userData) {
-    return await signModel.create({ user_id: userId, last_signin_at: now.toDate() });
-  }
-
-  const latsSigninAt = moment(userData.last_signin_at);
-  const updateData = { last_signin_at: now.toDate() };
-
-  if (now.isSame(latsSigninAt, "day")) {
-    // 今天已簽到
-    return;
-  } else if (now.diff(latsSigninAt, "days") > 1) {
-    updateData.sum_days = 1;
-  } else {
-    updateData.sum_days = userData.sum_days + 1;
-  }
-
-  await signModel.update(userId, updateData, { pk: "user_id" });
 }
