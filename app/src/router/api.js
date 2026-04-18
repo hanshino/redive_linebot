@@ -372,6 +372,14 @@ router.get("/achievements/user/:userId", AchievementController.api.getUserAchiev
 router.get("/achievements/stats", AchievementController.api.getStats);
 router.get("/titles/user/:userId", AchievementController.api.getUserTitles);
 
+/**
+ * 訂閱者自動行為偏好 / 歷史
+ */
+const AutoPreferenceController = require("../controller/application/AutoPreferenceController");
+router.get("/auto-preference", verifyToken, AutoPreferenceController.api.getPreference);
+router.put("/auto-preference", verifyToken, AutoPreferenceController.api.setPreference);
+router.get("/auto-history", verifyToken, AutoPreferenceController.api.getHistory);
+
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });
 });
