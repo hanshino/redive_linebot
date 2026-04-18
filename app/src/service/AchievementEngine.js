@@ -189,7 +189,7 @@ async function calculateProgress(userId, achievement, context) {
   const currentValue = progress ? progress.current_value : 0;
 
   const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
-  const newValue = strategy ? strategy(currentValue, achievement, context) : currentValue;
+  const newValue = strategy ? await strategy(currentValue, achievement, context) : currentValue;
 
   return { currentValue, newValue };
 }

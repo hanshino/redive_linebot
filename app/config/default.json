@@ -196,6 +196,10 @@
     "gold_repeat_reward": 10,
     "rainbow_repeat_reward": 50
   },
+  "autoGacha": {
+    "schedule": ["0", "50", "23", "*", "*", "*"],
+    "concurrency": 8
+  },
   "subscribe": {
     "month_icon": "https://redive.estertion.win/icon/item/23001.webp",
     "season_icon": "https://redive.estertion.win/icon/item/24001.webp",

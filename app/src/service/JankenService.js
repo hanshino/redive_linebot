@@ -2,8 +2,11 @@ const redis = require("../util/redis");
 const config = require("config");
 const JankenRecords = require("../model/application/JankenRecords");
 const JankenResult = require("../model/application/JankenResult");
+const JankenAutoFateLog = require("../model/application/JankenAutoFateLog");
+const UserAutoPreference = require("../model/application/UserAutoPreference");
 const { inventory } = require("../model/application/Inventory");
 const EventCenterService = require("./EventCenterService");
+const SubscriptionService = require("./SubscriptionService");
 const { DefaultLogger } = require("../util/Logger");
 const JankenRating = require("../model/application/JankenRating");
 
@@ -13,6 +16,7 @@ const FEE_RATE = config.get("minigame.janken.bet.feeRate");
 const MIN_BET = config.get("minigame.janken.bet.minAmount");
 const BOUNTY_MIN_BET = config.get("minigame.janken.streak.bountyMinBet");
 const BOUNTY_CLAIM_MULTIPLIER = config.get("minigame.janken.streak.bountyClaimMultiplier");
+const MATCH_WINDOW_SECONDS = 7 * 24 * 60 * 60;
 
 const RESULT_MAP = {
   rock: { rock: "draw", paper: "lose", scissors: "win" },
@@ -60,7 +64,7 @@ exports.escrowBet = async function (userId, amount) {
 
 exports.tryEscrowOnce = async function (matchId, userId, amount) {
   const escrowKey = `${REDIS_PREFIX}:escrow:${matchId}:${userId}`;
-  const locked = await redis.set(escrowKey, "1", { EX: 3600, NX: true });
+  const locked = await redis.set(escrowKey, "1", { EX: MATCH_WINDOW_SECONDS, NX: true });
   if (!locked) {
     return { alreadyEscrowed: true };
   }
@@ -101,9 +105,7 @@ exports.updateStreaks = async function (
     const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
     // Bounty funded from match fee — no new money created
     const bountyIncrement =
-      newStreak >= 2 && betAmount >= BOUNTY_MIN_BET
-        ? exports.calculateBountyIncrement(fee)
-        : 0;
+      newStreak >= 2 && betAmount >= BOUNTY_MIN_BET ? exports.calculateBountyIncrement(fee) : 0;
     const maxBounty = JankenRating.getMaxBounty(winnerRating.rank_tier);
     const newBounty = Math.min(winnerRating.bounty + bountyIncrement, maxBounty);
     // Bounty claim capped by claimer's bet amount
@@ -138,13 +140,67 @@ exports.updateStreaks = async function (
   });
 };
 
+/**
+ * 猜拳代選判斷：若使用者開啟 auto_janken_fate 且訂閱包含該 effect，
+ * 則用隨機出拳代為送出 submitChoice，並寫一筆 janken_auto_fate_log。
+ * 僅用於標準對戰（duel）流程；arena 不呼叫。
+ *
+ * 賭注場特別處理：只有當 pref.auto_janken_fate_with_bet === 1 且 tryEscrowOnce
+ * 成功把女神石押上時才代為出拳；否則拒絕 auto-fate（避免資金洩漏：被代打的人若
+ * 沒有押上賭金就進入 resolveMatch，payout 會視同雙方都押但只有 p1 的石頭被扣）。
+ *
+ * @param {string} userId 要代打的使用者
+ * @param {string} matchId 對戰 uuid
+ * @param {"p1"|"p2"} role 該使用者在這場對戰的角色
+ * @param {Object} ctx
+ * @param {string} ctx.p1UserId
+ * @param {string} ctx.p2UserId
+ * @param {number} [ctx.betAmount=0] 本場賭金；>0 時需要 with_bet 子偏好 + 成功 escrow
+ * @returns {Promise<{eligible:boolean, reason?:string, ready?:boolean, p1Choice?:string, p2Choice?:string, choice?:string}>}
+ */
+exports.autoFateIfEligible = async function (
+  userId,
+  matchId,
+  role,
+  { p1UserId, p2UserId, betAmount = 0 } = {}
+) {
+  const pref = await UserAutoPreference.first({ filter: { user_id: userId } });
+  if (!pref || pref.auto_janken_fate !== 1) return { eligible: false, reason: "opt_out" };
+
+  const entitled = await SubscriptionService.hasEffect(userId, "auto_janken_fate");
+  if (!entitled) return { eligible: false, reason: "no_entitlement" };
+
+  if (betAmount > 0) {
+    if (pref.auto_janken_fate_with_bet !== 1) {
+      return { eligible: false, reason: "bet_auto_fate_not_opted_in" };
+    }
+    const escrow = await exports.tryEscrowOnce(matchId, userId, betAmount);
+    if (escrow.alreadyEscrowed) {
+      // Bet already posted by another path — safe to proceed with auto-fate.
+    } else if (!escrow.success) {
+      DefaultLogger.info(
+        `janken.auto_fate.skipped_insufficient_funds match_id=${matchId} user_id=${userId} bet=${betAmount}`
+      );
+      return { eligible: false, reason: "insufficient_funds_for_bet" };
+    }
+  }
+
+  const choice = exports.randomChoice();
+  await JankenAutoFateLog.create({ match_id: matchId, user_id: userId, role, choice });
+  DefaultLogger.info(
+    `janken.auto_fate.submit match_id=${matchId} user_id=${userId} role=${role} choice=${choice} bet=${betAmount}`
+  );
+  const result = await exports.submitChoice(matchId, userId, choice, { p1UserId, p2UserId });
+  return { eligible: true, choice, ...result };
+};
+
 exports.submitChoice = async function (matchId, userId, choice, { p1UserId, p2UserId } = {}) {
   if (choice === "random") {
     choice = exports.randomChoice();
   }
 
   const key = `${REDIS_PREFIX}:${matchId}:${userId}`;
-  await redis.set(key, choice, { EX: 3600 });
+  await redis.set(key, choice, { EX: MATCH_WINDOW_SECONDS });
 
   DefaultLogger.info(`[Janken] ${userId} chose ${choice} for match ${matchId}`);
 
@@ -300,13 +356,25 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
 
     const p1Streak = p1Rating.streak || 0;
     const p2Streak = p2Rating.streak || 0;
-    const p1EloChange = exports.calculateEloChange(p1Rating.elo, p2Rating.elo, p1Result, betAmount, {
-      streak: p1Streak,
-    });
+    const p1EloChange = exports.calculateEloChange(
+      p1Rating.elo,
+      p2Rating.elo,
+      p1Result,
+      betAmount,
+      {
+        streak: p1Streak,
+      }
+    );
     const p2Result = p1Result === "win" ? "lose" : "win";
-    const p2EloChange = exports.calculateEloChange(p2Rating.elo, p1Rating.elo, p2Result, betAmount, {
-      streak: p2Streak,
-    });
+    const p2EloChange = exports.calculateEloChange(
+      p2Rating.elo,
+      p1Rating.elo,
+      p2Result,
+      betAmount,
+      {
+        streak: p2Streak,
+      }
+    );
 
     const p1NewElo = Math.max(0, p1Rating.elo + p1EloChange);
     const p2NewElo = Math.max(0, p2Rating.elo + p2EloChange);

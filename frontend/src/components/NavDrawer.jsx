@@ -30,6 +30,8 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LinkIcon from "@mui/icons-material/Link";
 import CelebrationIcon from "@mui/icons-material/Celebration";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import HistoryIcon from "@mui/icons-material/History";
 
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
@@ -50,6 +52,8 @@ const personalItems = [
   { label: "交易管理", path: "/trade/manage", icon: ShoppingBasketIcon },
   { label: "轉蛋包包", path: "/bag", icon: LocalMallIcon },
   { label: "裝備管理", path: "/equipment", icon: FitnessCenterIcon },
+  { label: "自動設定", path: "/auto/settings", icon: AutoAwesomeIcon },
+  { label: "自動行為紀錄", path: "/auto/history", icon: HistoryIcon },
 ];
 
 const adminItems = [

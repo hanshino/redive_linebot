@@ -13,6 +13,7 @@ const config = require("config");
 const { generateCard, generateEffect } = require("../../templates/application/Subscribe");
 const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
+const SubscriptionService = require("../../service/SubscriptionService");
 
 exports.router = [
   text(/^[.#/](訂閱|sub)$/, showInformation),
@@ -108,12 +109,7 @@ async function showInformation(context) {
   const cards = await SubscribeCard.all();
   const bubbles = cards.map(card => {
     const effects = get(card, "effects", []).map(effect =>
-      generateEffect(
-        i18n.__("message.subscribe.effects_row_positive", {
-          type: i18n.__(`message.subscribe.effects.${effect.type}`),
-          value: effect.value,
-        })
-      )
+      generateEffect(SubscriptionService.formatEffectRow(effect))
     );
 
     return generateCard({
@@ -244,14 +240,7 @@ async function subscribeCouponExchange(context, props) {
   );
 
   const effects = get(card, "effects", []);
-  effects.forEach(effect =>
-    messages.push(
-      i18n.__("message.subscribe.effects_row_positive", {
-        type: i18n.__(`message.subscribe.effects.${effect.type}`),
-        value: effect.value,
-      })
-    )
-  );
+  effects.forEach(effect => messages.push(SubscriptionService.formatEffectRow(effect)));
 
   await context.replyText(messages.join("\n"));
   !isContinue && (await DailyRation());

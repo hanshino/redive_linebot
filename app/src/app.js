@@ -1,6 +1,7 @@
 const { router, text, route } = require("bottender/router");
 const { chain, withProps } = require("bottender");
 const gacha = require("./controller/princess/gacha");
+const AutoPreferenceController = require("./controller/application/AutoPreferenceController");
 const battle = require("./controller/princess/battle");
 const customerOrder = require("./controller/application/CustomerOrder");
 const guildConfig = require("./controller/application/GroupConfig");
@@ -182,6 +183,7 @@ async function OrderBased(context, { next }) {
       withProps(gacha.play, { ...props, ensure: true })
     ),
     text(["#我的包包", "/mybag"], gacha.showGachaBag),
+    text(/^[/#.]自動設定$/, AutoPreferenceController.showAutoSettings),
     text("/state", showState),
     text(/^.show/, showMention),
     text("/source", context => context.replyText(JSON.stringify(context.event.source))),

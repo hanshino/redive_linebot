@@ -182,9 +182,12 @@
       "coupon_exchange_success_continue": "已成功為您延期至 *{{ end_at }}*",
       "effects_row_positive": "+ {{ type }} +{{ value }}",
       "effects_row_negative": "- {{ type }} -{{ value }}",
+      "effects_row_feature": "✨ {{ type }}",
       "effects": {
         "gacha_times": "每日單抽次數",
-        "daily_ration": "每日寶石"
+        "daily_ration": "每日寶石",
+        "auto_daily_gacha": "每日自動抽卡",
+        "auto_janken_fate": "猜拳自動代打"
       },
       "not_enough_money": "女神石不足，無法購買月卡",
       "buy_month_card_success": "成功購買月卡，以下是您的月卡序號，請複製再發送此訊息",
