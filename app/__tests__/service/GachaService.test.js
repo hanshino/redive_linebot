@@ -223,16 +223,19 @@ describe("GachaService.runDailyDraw", () => {
     });
 
     it("ensure: costs 3000 and the last reward is guaranteed 3-star", async () => {
-      // We force a pool where only 1-star characters exist to verify the guarantee.
+      // Force the pool so that 1-star dominates natural draws (rate so high that 3-star's
+      // 1% is statistically negligible over 10 pulls), while keeping rainbow rate > 0 so
+      // the ensure-mode rainbow pool can still produce a reward via play().
       GachaModel.getDatabasePool.mockResolvedValue([
-        { id: 1, name: "silver-1", rate: "100%", star: "1", isPrincess: "1" },
-        { id: 3, name: "rainbow-3", rate: "0%", star: "3", isPrincess: "1" },
+        { id: 1, name: "silver-1", rate: "10000%", star: "1", isPrincess: "1" },
+        { id: 3, name: "rainbow-3", rate: "1%", star: "3", isPrincess: "1" },
       ]);
 
       const result = await GachaService.runDailyDraw("Uensure", { ensure: true });
       expect(result.godStoneCost).toBe(3000);
+      expect(result.rewards.length).toBe(10);
       expect(result.rewards[9].star).toBe("3");
-      // The other 9 should be 1-star based on our forced pool.
+      // The other 9 should be 1-star based on our forced pool (natural rainbow chance ≈ 0.01%).
       const oneStars = result.rewards.slice(0, 9);
       expect(oneStars.every(r => r.star == "1")).toBe(true);
     });

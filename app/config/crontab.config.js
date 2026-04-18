@@ -90,4 +90,11 @@ module.exports = [
     immediate: true,
     require_path: "./bin/RaceAdvance",
   },
+  {
+    name: "Auto Gacha",
+    description: "nightly auto daily-draw for subscribers with auto_daily_gacha opt-in",
+    period: require("config").get("autoGacha.schedule"),
+    immediate: false,
+    require_path: "./bin/AutoGacha",
+  },
 ];
