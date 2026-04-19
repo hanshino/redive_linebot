@@ -1,7 +1,7 @@
 const { text } = require("bottender/router");
 const { get } = require("lodash");
 const i18n = require("../../util/i18n");
-const { genLinkBubble, getLiffUri } = require("../../templates/common");
+const { genActionBubble, getLiffUri } = require("../../templates/common");
 const { getClient } = require("bottender");
 const { trimMentionees, getMentionName } = require("../../util/line");
 const { removeOrder, isLineUserId } = require("../../util/string");
@@ -23,7 +23,14 @@ exports.router = [
 
 function showManage(context) {
   const link = `${getLiffUri("full")}/trade/manage`;
-  const bubble = genLinkBubble("交易管理", link, "#e0f7fa");
+  const bubble = genActionBubble({
+    icon: "🛒",
+    title: "交易管理",
+    subtitle: "管理你的委託單",
+    url: link,
+    theme: "cyan",
+    cta: "前往管理",
+  });
   return context.replyFlex("交易管理", bubble);
 }
 
@@ -40,10 +47,16 @@ async function trade(context) {
   }
 
   const targetUserId = get(mentionees, "[0].userId");
-  const link = `${getLiffUri("full")}/trade/order?target_id=${targetUserId}`;
-  const bubble = genLinkBubble("交易申請", link, "#e0f7fa");
-
   const { displayName } = await getProfile(context, targetUserId);
+  const link = `${getLiffUri("full")}/trade/order?target_id=${targetUserId}`;
+  const bubble = genActionBubble({
+    icon: "🤝",
+    title: "交易申請",
+    subtitle: `向 ${displayName} 發起交易`,
+    url: link,
+    theme: "rose",
+    cta: "建立申請",
+  });
 
   context.replyText(i18n.__("message.trade.apply", { displayName }));
   await context.replyFlex("交易申請", bubble);

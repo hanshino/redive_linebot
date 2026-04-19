@@ -68,7 +68,14 @@ async function userCooldown(userId) {
 async function showGachaBag(context) {
   if (context.state.guildConfig.Gacha === "N") return;
   const bagUri = commonTemplate.getLiffUri("tall", "/Bag");
-  const bubble = commonTemplate.genLinkBubble("轉蛋包包", bagUri, "blue");
+  const bubble = commonTemplate.genActionBubble({
+    icon: "🎁",
+    title: "轉蛋包包",
+    subtitle: "管理你的抽卡紀錄",
+    url: bagUri,
+    theme: "indigo",
+    cta: "開啟包包",
+  });
 
   context.replyFlex("轉蛋包包", bubble);
 }

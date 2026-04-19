@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <title>Link Bubble Redesign — Preview</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light;
+        --chat-bg: #8caab2;
+        --panel-bg: #ffffff;
+        --line-radius: 13px;
+        --text: #1f1f1f;
+        --muted: #8a8a8a;
+        --divider: #e6e6e6;
+
+        --indigo: #4f46e5;
+        --indigo-bg: #eef2ff;
+        --emerald: #059669;
+        --emerald-bg: #ecfdf5;
+        --amber: #d97706;
+        --amber-bg: #fffbeb;
+        --rose: #e11d48;
+        --rose-bg: #fff1f2;
+        --cyan: #0891b2;
+        --cyan-bg: #ecfeff;
+        --slate: #334155;
+        --slate-bg: #f1f5f9;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f4f5f7;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+          "PingFang TC", Roboto, sans-serif;
+        color: var(--text);
+      }
+
+      header {
+        padding: 28px 32px 8px;
+      }
+      header h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .section {
+        padding: 16px 32px 32px;
+      }
+      .section h2 {
+        font-size: 15px;
+        font-weight: 600;
+        color: #555;
+        margin: 24px 0 8px;
+        letter-spacing: 0.02em;
+      }
+      .section .caption {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 0 0 16px;
+      }
+
+      /* Chat canvas that mimics LINE */
+      .chat {
+        background: var(--chat-bg);
+        border-radius: 18px;
+        padding: 20px;
+        overflow: hidden;
+      }
+      .chat-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      /* ---------- BEFORE: nano bubbles ---------- */
+      .nano-carousel {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .nano {
+        flex: 0 0 auto;
+        width: 80px;
+        height: 54px;
+        border-radius: var(--line-radius);
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        line-height: 1.2;
+        text-align: center;
+        padding: 6px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+      }
+      .nano.red {
+        background: #ff123436;
+        color: #1f1f1f;
+      }
+      .nano.green {
+        background: #12ff3436;
+        color: #1f1f1f;
+      }
+      .nano.blue {
+        background: #1234ff36;
+        color: #1f1f1f;
+      }
+      .nano.bahamut {
+        background: #117e96;
+        color: #fff;
+      }
+      .nano.github {
+        background: #171515;
+        color: #fff;
+      }
+
+      /* ---------- AFTER: micro action bubble ---------- */
+      .carousel {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .action {
+        flex: 0 0 auto;
+        width: 160px;
+        background: var(--panel-bg);
+        border-radius: var(--line-radius);
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        display: flex;
+        flex-direction: column;
+      }
+      .action .strip {
+        height: 6px;
+      }
+      .action .body {
+        padding: 14px 12px 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+      .action .icon-wrap {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+        margin-bottom: 2px;
+      }
+      .action .title {
+        font-size: 14px;
+        font-weight: 700;
+        text-align: center;
+        line-height: 1.25;
+      }
+      .action .subtitle {
+        font-size: 11px;
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.3;
+        min-height: 28px;
+      }
+      .action .cta {
+        margin-top: 6px;
+        width: 100%;
+        padding: 8px 0;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: center;
+        color: #fff;
+      }
+
+      /* Themes */
+      .t-indigo .strip,
+      .t-indigo .cta {
+        background: var(--indigo);
+      }
+      .t-indigo .icon-wrap {
+        background: var(--indigo-bg);
+        color: var(--indigo);
+      }
+      .t-emerald .strip,
+      .t-emerald .cta {
+        background: var(--emerald);
+      }
+      .t-emerald .icon-wrap {
+        background: var(--emerald-bg);
+        color: var(--emerald);
+      }
+      .t-amber .strip,
+      .t-amber .cta {
+        background: var(--amber);
+      }
+      .t-amber .icon-wrap {
+        background: var(--amber-bg);
+        color: var(--amber);
+      }
+      .t-rose .strip,
+      .t-rose .cta {
+        background: var(--rose);
+      }
+      .t-rose .icon-wrap {
+        background: var(--rose-bg);
+        color: var(--rose);
+      }
+      .t-cyan .strip,
+      .t-cyan .cta {
+        background: var(--cyan);
+      }
+      .t-cyan .icon-wrap {
+        background: var(--cyan-bg);
+        color: var(--cyan);
+      }
+      .t-slate .strip,
+      .t-slate .cta {
+        background: var(--slate);
+      }
+      .t-slate .icon-wrap {
+        background: var(--slate-bg);
+        color: var(--slate);
+      }
+
+      /* Solo bubble row */
+      .solo-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      /* ---------- AFTER: directory-style single bubble ---------- */
+      .menu {
+        width: 300px;
+        background: var(--panel-bg);
+        border-radius: var(--line-radius);
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      .menu .header {
+        padding: 16px 18px 14px;
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+        color: #fff;
+      }
+      .menu .header .h-title {
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .menu .header .h-sub {
+        font-size: 11px;
+        opacity: 0.85;
+        margin-top: 2px;
+      }
+      .menu .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--divider);
+      }
+      .menu .row:first-of-type {
+        border-top: none;
+      }
+      .row .chip {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+      }
+      .row .text {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .row .r-title {
+        font-size: 13.5px;
+        font-weight: 600;
+        line-height: 1.25;
+      }
+      .row .r-sub {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.3;
+        margin-top: 1px;
+      }
+      .row .chev {
+        color: #bbb;
+        font-size: 18px;
+        font-weight: 300;
+      }
+
+      .chip.c-indigo {
+        background: var(--indigo-bg);
+        color: var(--indigo);
+      }
+      .chip.c-emerald {
+        background: var(--emerald-bg);
+        color: var(--emerald);
+      }
+      .chip.c-amber {
+        background: var(--amber-bg);
+        color: var(--amber);
+      }
+      .chip.c-rose {
+        background: var(--rose-bg);
+        color: var(--rose);
+      }
+      .chip.c-cyan {
+        background: var(--cyan-bg);
+        color: var(--cyan);
+      }
+      .chip.c-slate {
+        background: var(--slate-bg);
+        color: var(--slate);
+      }
+
+      /* Meta block */
+      .meta {
+        background: #fff;
+        border: 1px solid var(--divider);
+        border-radius: 10px;
+        padding: 16px 18px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .meta code {
+        background: #f1f1f1;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .palette {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .swatch {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #444;
+      }
+      .swatch .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Link Bubble 全面翻新 — 設計稿預覽</h1>
+      <p>對照現況 vs. 新設計。實際渲染會由 LINE 完成，此頁僅為視覺對照。</p>
+    </header>
+
+    <!-- ======================= BEFORE ======================= -->
+    <section class="section">
+      <h2>⌛ 現況 — `/link` nano carousel</h2>
+      <p class="caption">
+        6 顆 nano bubble，僅由半透明色塊 + 一行文字組成。
+      </p>
+      <div class="chat">
+        <div class="chat-inner">
+          <div class="nano-carousel">
+            <div class="nano red">🏠首頁</div>
+            <div class="nano red">🏆排行榜</div>
+            <div class="nano red">📑指令集</div>
+            <div class="nano green">⏱️刀軸轉換</div>
+            <div class="nano bahamut">巴哈更新</div>
+            <div class="nano github">Github</div>
+          </div>
+        </div>
+      </div>
+
+      <h2>⌛ 現況 — 單顆按鈕回覆（轉蛋包包 / 自動設定 / 交易管理）</h2>
+      <div class="chat">
+        <div class="chat-inner">
+          <div class="solo-row">
+            <div class="nano blue">轉蛋包包</div>
+            <div class="nano blue">自動設定</div>
+            <div
+              class="nano"
+              style="background: #e0f7fa; color: #1f1f1f"
+            >
+              交易管理
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= AFTER: single directory bubble ======================= -->
+    <section class="section">
+      <h2>✨ 新設計 A — 單一整合 bubble（推薦）</h2>
+      <p class="caption">
+        所有連結整合為一張「目錄」卡：漸層標題區 + 直向條列，每行 icon chip + 標題 + 副標 + chevron，整張 bubble 只佔一個訊息、不需橫向捲動。
+      </p>
+      <div class="chat">
+        <div class="chat-inner">
+          <div class="menu">
+            <div class="header">
+              <div class="h-title">🔗 實用連結</div>
+              <div class="h-sub">快速前往常用功能</div>
+            </div>
+            <div class="row">
+              <div class="chip c-indigo">🏠</div>
+              <div class="text">
+                <div class="r-title">首頁</div>
+                <div class="r-sub">主選單總覽</div>
+              </div>
+              <div class="chev">›</div>
+            </div>
+            <div class="row">
+              <div class="chip c-amber">🏆</div>
+              <div class="text">
+                <div class="r-title">排行榜</div>
+                <div class="r-sub">活躍度與戰力榜</div>
+              </div>
+              <div class="chev">›</div>
+            </div>
+            <div class="row">
+              <div class="chip c-indigo">📑</div>
+              <div class="text">
+                <div class="r-title">指令集</div>
+                <div class="r-sub">完整指令手冊</div>
+              </div>
+              <div class="chev">›</div>
+            </div>
+            <div class="row">
+              <div class="chip c-emerald">⏱️</div>
+              <div class="text">
+                <div class="r-title">刀軸轉換</div>
+                <div class="r-sub">公會戰時間計算</div>
+              </div>
+              <div class="chev">›</div>
+            </div>
+            <div class="row">
+              <div class="chip c-cyan">📰</div>
+              <div class="text">
+                <div class="r-title">巴哈更新</div>
+                <div class="r-sub">官方公告討論串</div>
+              </div>
+              <div class="chev">›</div>
+            </div>
+            <div class="row">
+              <div class="chip c-slate">💻</div>
+              <div class="text">
+                <div class="r-title">GitHub</div>
+                <div class="r-sub">原始碼與回報</div>
+              </div>
+              <div class="chev">›</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= AFTER: carousel alternative ======================= -->
+    <section class="section">
+      <h2>✨ 新設計 B — `/link` carousel（備選）</h2>
+      <p class="caption">
+        micro bubble：頂部主題色條 + icon chip + 標題 + 副標 + 主題色 CTA。
+      </p>
+      <div class="chat">
+        <div class="chat-inner">
+          <div class="carousel">
+            <div class="action t-indigo">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">🏠</div>
+                <div class="title">首頁</div>
+                <div class="subtitle">主選單總覽</div>
+                <div class="cta">前往</div>
+              </div>
+            </div>
+            <div class="action t-amber">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">🏆</div>
+                <div class="title">排行榜</div>
+                <div class="subtitle">活躍度與戰力榜</div>
+                <div class="cta">前往</div>
+              </div>
+            </div>
+            <div class="action t-indigo">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">📑</div>
+                <div class="title">指令集</div>
+                <div class="subtitle">完整指令手冊</div>
+                <div class="cta">前往</div>
+              </div>
+            </div>
+            <div class="action t-emerald">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">⏱️</div>
+                <div class="title">刀軸轉換</div>
+                <div class="subtitle">公會戰時間計算</div>
+                <div class="cta">前往</div>
+              </div>
+            </div>
+            <div class="action t-cyan">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">📰</div>
+                <div class="title">巴哈更新</div>
+                <div class="subtitle">官方公告討論串</div>
+                <div class="cta">前往</div>
+              </div>
+            </div>
+            <div class="action t-slate">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">💻</div>
+                <div class="title">GitHub</div>
+                <div class="subtitle">原始碼與回報</div>
+                <div class="cta">前往</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2>✨ 新設計 — 單顆按鈕回覆</h2>
+      <p class="caption">
+        同一套樣板，只送一顆也不失比例；每個功能都能擁有自己的主題色與定位文案。
+      </p>
+      <div class="chat">
+        <div class="chat-inner">
+          <div class="solo-row">
+            <div class="action t-indigo">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">🎁</div>
+                <div class="title">轉蛋包包</div>
+                <div class="subtitle">管理你的抽卡紀錄</div>
+                <div class="cta">開啟包包</div>
+              </div>
+            </div>
+            <div class="action t-emerald">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">⚙️</div>
+                <div class="title">自動設定</div>
+                <div class="subtitle">自動抽卡偏好</div>
+                <div class="cta">開啟設定</div>
+              </div>
+            </div>
+            <div class="action t-cyan">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">🛒</div>
+                <div class="title">交易管理</div>
+                <div class="subtitle">管理你的委託單</div>
+                <div class="cta">前往管理</div>
+              </div>
+            </div>
+            <div class="action t-rose">
+              <div class="strip"></div>
+              <div class="body">
+                <div class="icon-wrap">🤝</div>
+                <div class="title">交易申請</div>
+                <div class="subtitle">向 @Alice 發起交易</div>
+                <div class="cta">建立申請</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= Tokens ======================= -->
+    <section class="section">
+      <h2>設計 Token</h2>
+      <div class="meta">
+        <div>
+          <strong>尺寸</strong>：LINE bubble
+          <code>micro</code>（carousel 可並排 ~6 顆）
+        </div>
+        <div>
+          <strong>結構</strong>：頂條 6px + icon chip 40×40 + 標題 14/700 +
+          副標 11/muted + CTA 8px radius
+        </div>
+        <div>
+          <strong>API 草稿</strong>：<code
+            >genActionBubble({ icon, title, subtitle, url, theme, cta })</code
+          >
+        </div>
+        <div style="margin-top: 8px"><strong>主題色</strong></div>
+        <div class="palette">
+          <div class="swatch">
+            <span class="dot" style="background: var(--indigo)"></span>indigo
+          </div>
+          <div class="swatch">
+            <span class="dot" style="background: var(--emerald)"></span>emerald
+          </div>
+          <div class="swatch">
+            <span class="dot" style="background: var(--amber)"></span>amber
+          </div>
+          <div class="swatch">
+            <span class="dot" style="background: var(--rose)"></span>rose
+          </div>
+          <div class="swatch">
+            <span class="dot" style="background: var(--cyan)"></span>cyan
+          </div>
+          <div class="swatch">
+            <span class="dot" style="background: var(--slate)"></span>slate
+          </div>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

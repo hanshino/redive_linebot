@@ -213,33 +213,50 @@ async function OrderBased(context, { next }) {
     text("#等級排行", ChatLevelController.showRank),
     text(["/link", "#實用連結", "#連結"], context => {
       const liffUri = commonTemplate.getLiffUri("full");
-      let carousel = {
-        type: "carousel",
-        contents: [
-          commonTemplate.genLinkBubble("🏠首頁", `${liffUri}`, "red"),
-          commonTemplate.genLinkBubble("🏆排行榜", `${liffUri}/rankings`, "red"),
-          commonTemplate.genLinkBubble("📑指令集", `${liffUri}/panel/manual`, "red"),
-          commonTemplate.genLinkBubble("⏱️刀軸轉換", `${liffUri}/tools/battle-time`, "green"),
-          commonTemplate.genLinkBubble(
-            "巴哈更新",
-            pConfig.get("links.bahamut"),
-            pConfig.get("color.bahamut"),
-            {
-              textColor: "#ffffff",
-            }
-          ),
-          commonTemplate.genLinkBubble(
-            "Github",
-            pConfig.get("links.github"),
-            pConfig.get("color.github"),
-            {
-              textColor: "#ffffff",
-            }
-          ),
+      const bubble = commonTemplate.genLinkMenu({
+        title: "🔗 實用連結",
+        subtitle: "快速前往常用功能",
+        items: [
+          { icon: "🏠", title: "首頁", subtitle: "主選單總覽", url: liffUri, theme: "indigo" },
+          {
+            icon: "🏆",
+            title: "排行榜",
+            subtitle: "活躍度與戰力榜",
+            url: `${liffUri}/rankings`,
+            theme: "amber",
+          },
+          {
+            icon: "📑",
+            title: "指令集",
+            subtitle: "完整指令手冊",
+            url: `${liffUri}/panel/manual`,
+            theme: "indigo",
+          },
+          {
+            icon: "⏱️",
+            title: "刀軸轉換",
+            subtitle: "公會戰時間計算",
+            url: `${liffUri}/tools/battle-time`,
+            theme: "emerald",
+          },
+          {
+            icon: "📰",
+            title: "巴哈更新",
+            subtitle: "官方公告討論串",
+            url: pConfig.get("links.bahamut"),
+            theme: "cyan",
+          },
+          {
+            icon: "💻",
+            title: "GitHub",
+            subtitle: "原始碼與回報",
+            url: pConfig.get("links.github"),
+            theme: "slate",
+          },
         ],
-      };
+      });
 
-      context.replyFlex("實用連結", carousel);
+      context.replyFlex("實用連結", bubble);
     }),
     text(".test", () => console.log("test")),
     text("/resetsession", OpenaiController.resetSession),
@@ -293,11 +310,14 @@ function BattleOrder(context) {
     text(/^[#.](三刀重置|重置三刀|reset)$/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
     text(["#刀軸轉換", ".bt", "/bt"], context => {
-      let bubble = commonTemplate.genLinkBubble(
-        "⏱️刀軸轉換",
-        `${commonTemplate.getLiffUri("full")}/tools/battle-time`,
-        "green"
-      );
+      const bubble = commonTemplate.genActionBubble({
+        icon: "⏱️",
+        title: "刀軸轉換",
+        subtitle: "公會戰時間計算",
+        url: `${commonTemplate.getLiffUri("full")}/tools/battle-time`,
+        theme: "emerald",
+        cta: "開啟",
+      });
 
       return context.replyFlex("刀軸轉換按鈕", bubble);
     }),

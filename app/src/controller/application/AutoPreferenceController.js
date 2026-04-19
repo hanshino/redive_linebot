@@ -249,7 +249,14 @@ function parseJsonSafe(raw) {
  */
 exports.showAutoSettings = async function (context) {
   const uri = commonTemplate.getLiffUri("tall", "/auto/settings");
-  const bubble = commonTemplate.genLinkBubble("自動設定", uri, "blue");
+  const bubble = commonTemplate.genActionBubble({
+    icon: "⚙️",
+    title: "自動設定",
+    subtitle: "自動抽卡偏好",
+    url: uri,
+    theme: "emerald",
+    cta: "開啟設定",
+  });
   await context.replyFlex("自動設定", bubble);
 };
 
