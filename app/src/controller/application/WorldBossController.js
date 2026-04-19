@@ -10,6 +10,8 @@ const minigameService = require("../../service/MinigameService");
 const worldBossUserAttackMessageService = require("../../service/WorldBossUserAttackMessageService");
 const EquipmentService = require("../../service/EquipmentService");
 const worldBossTemplate = require("../../templates/application/WorldBoss");
+const AchievementEngine = require("../../service/AchievementEngine");
+const { notifyUnlocks } = require("../../service/achievementNotifier");
 const { model: worldBossLogModel } = require("../../model/application/WorldBossLog");
 const UserModel = require("../../model/application/UserModel");
 const { inventory: Inventory } = require("../../model/application/Inventory");
@@ -548,6 +550,14 @@ const attackOnBoss = async (context, props) => {
   };
   await worldBossEventLogService.create(attributes);
 
+  AchievementEngine.evaluate(userId, "boss_attack", {
+    level,
+    damage,
+    feature: "world_boss",
+  })
+    .then(({ unlocked }) => notifyUnlocks(context, userId, unlocked))
+    .catch(() => {});
+
   // 隨機取得此次攻擊的訊息樣板
   const messageTemplates = await worldBossUserAttackMessageService.all();
   const tags = await worldBossUserAttackMessageService.getTags();
@@ -555,7 +565,9 @@ const attackOnBoss = async (context, props) => {
   const tag = sample(tags);
   // 再根據 tag 抽取訊息樣板
   const templateData = sample(messageTemplates.filter(data => data.tag === tag)) ||
-    sample(messageTemplates) || { template: "{display_name} 對 {boss_name} 造成了 {damage} 傷害！" };
+    sample(messageTemplates) || {
+      template: "{display_name} 對 {boss_name} 造成了 {damage} 傷害！",
+    };
 
   let causedDamagePercent = calculateDamagePercentage(eventBoss.hp, damage);
   let earnedExp = (eventBoss.exp * causedDamagePercent) / 100;
