@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 3000,
-    allowedHosts: ["host.docker.internal", ".ngrok-free.app"],
+    allowedHosts: ["host.docker.internal", ".ngrok-free.app", ".trycloudflare.com"],
     proxy: {
       "/api": {
         target: "http://localhost:9527",
