@@ -250,20 +250,15 @@ async function unlockAchievement(userId, achievement) {
   await UserProgressModel.delete(userId, achievement.id);
 
   if (achievement.reward_stones > 0) {
-    const existing = await mysql("Inventory")
-      .where({ userId, itemId: GODDESS_STONE_ITEM_ID })
-      .first();
-    if (existing) {
-      await mysql("Inventory")
-        .where({ userId, itemId: GODDESS_STONE_ITEM_ID })
-        .update({ itemAmount: mysql.raw("itemAmount + ?", [achievement.reward_stones]) });
-    } else {
-      await mysql("Inventory").insert({
-        userId,
-        itemId: GODDESS_STONE_ITEM_ID,
-        itemAmount: achievement.reward_stones,
-      });
-    }
+    // Append a new ledger row — balance is SUM(itemAmount) across rows.
+    // The prior UPDATE-without-row-ID version multiplied the reward by the
+    // user's existing row count (see project_stone_ledger_refactor memo).
+    await mysql("Inventory").insert({
+      userId,
+      itemId: GODDESS_STONE_ITEM_ID,
+      itemAmount: achievement.reward_stones,
+      note: "成就獎勵",
+    });
   }
 
   DefaultLogger.info(

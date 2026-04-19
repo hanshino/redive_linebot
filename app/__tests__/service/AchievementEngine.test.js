@@ -166,6 +166,44 @@ describe("AchievementEngine", () => {
       expect(result.unlocked[0].key).toBe("chat_100");
     });
 
+    it("credits reward_stones via a single INSERT row (never UPDATE across existing rows)", async () => {
+      const achievement = {
+        id: 2,
+        key: "chat_100",
+        target_value: 100,
+        reward_stones: 50,
+        notify_on_unlock: false,
+        notify_message: null,
+        condition: null,
+      };
+      AchievementEngine._setCache([achievement]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgress.mockResolvedValue({ current_value: 99 });
+      UserProgressModel.upsert.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.delete.mockResolvedValue();
+      const insert = jest.fn().mockResolvedValue();
+      const update = jest.fn().mockResolvedValue(99);
+      mysql.mockImplementationOnce(() => ({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue({ ID: 42, itemAmount: 1000 }),
+        insert,
+        update,
+      }));
+
+      await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      expect(insert).toHaveBeenCalledTimes(1);
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "user1",
+          itemId: 999,
+          itemAmount: 50,
+        })
+      );
+      expect(update).not.toHaveBeenCalled();
+    });
+
     it("returns { unlocked: [] } when inner error is swallowed", async () => {
       AchievementEngine._setCache([
         {
