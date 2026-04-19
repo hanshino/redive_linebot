@@ -5,6 +5,8 @@ const AchievementEngine = require("../service/AchievementEngine");
 const { notifyUnlocks } = require("../service/achievementNotifier");
 const MessageIO = io.of("/admin/messages");
 
+const COMMAND_PREFIX_RE = /^[/#.]\p{L}/u;
+
 /**
  * 數據紀錄
  * @param {Context} context
@@ -24,10 +26,17 @@ const statistics = async (context, props) => {
 
       const unlocksByUser = { [userId]: [] };
       const evaluations = [
-        AchievementEngine.evaluate(userId, "chat_message", { groupId, text })
+        AchievementEngine.evaluate(userId, "chat_message", { groupId, text, feature: "chat" })
           .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
           .catch(() => {}),
       ];
+      if (COMMAND_PREFIX_RE.test(text)) {
+        evaluations.push(
+          AchievementEngine.evaluate(userId, "command_use", {})
+            .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
+            .catch(() => {})
+        );
+      }
       if (mentionedUserIds.length) {
         evaluations.push(
           AchievementEngine.evaluate(userId, "mention_keyword", {

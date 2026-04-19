@@ -280,12 +280,17 @@ exports.decide = async (context, { payload }) => {
   if (p1Result !== "draw") {
     const winnerId = p1Result === "win" ? userId : targetUserId;
     const [winResult, challengeResult] = await Promise.all([
-      AchievementEngine.evaluate(winnerId, "janken_win", { streak: winnerStreak }).catch(() => ({
+      AchievementEngine.evaluate(winnerId, "janken_win", {
+        streak: winnerStreak,
+        feature: "janken",
+      }).catch(() => ({
         unlocked: [],
       })),
-      AchievementEngine.evaluate(targetUserId, "janken_challenge", {}).catch(() => ({
-        unlocked: [],
-      })),
+      AchievementEngine.evaluate(targetUserId, "janken_challenge", { feature: "janken" }).catch(
+        () => ({
+          unlocked: [],
+        })
+      ),
     ]);
     await notifyUnlocks(context, winnerId, winResult.unlocked);
     await notifyUnlocks(context, targetUserId, challengeResult.unlocked);
@@ -457,10 +462,15 @@ exports.challenge = async (context, { payload }) => {
     if (p1Result !== "draw") {
       const winnerId = p1Result === "win" ? holderUserId : challengerUserId;
       const [winResult, challengeResult] = await Promise.all([
-        AchievementEngine.evaluate(winnerId, "janken_win", { streak: winnerStreak }).catch(() => ({
+        AchievementEngine.evaluate(winnerId, "janken_win", {
+          streak: winnerStreak,
+          feature: "janken",
+        }).catch(() => ({
           unlocked: [],
         })),
-        AchievementEngine.evaluate(challengerUserId, "janken_challenge", {}).catch(() => ({
+        AchievementEngine.evaluate(challengerUserId, "janken_challenge", {
+          feature: "janken",
+        }).catch(() => ({
           unlocked: [],
         })),
       ]);

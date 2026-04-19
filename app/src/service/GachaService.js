@@ -246,6 +246,7 @@ async function runDailyDraw(userId, opts = {}) {
     threeStarCount: rareCount[3] || 0,
     uniqueCount: ownCharactersCount + newCharacters.length,
     pullType: europe ? "europe" : ensure ? "ensure" : pickup ? "pickup" : undefined,
+    feature: "gacha",
   }).catch(err => {
     DefaultLogger.warn(
       `GachaService.runDailyDraw achievement.evaluate failed user=${userId}: ${err && err.message}`

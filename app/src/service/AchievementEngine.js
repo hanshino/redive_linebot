@@ -45,7 +45,14 @@ function matchesAllKeywords(text, keywords) {
 
 // Maps event types to achievement keys
 const EVENT_ACHIEVEMENT_MAP = {
-  chat_message: ["chat_100", "chat_1000", "chat_5000", "chat_night_owl", "chat_multi_group"],
+  chat_message: [
+    "chat_100",
+    "chat_1000",
+    "chat_5000",
+    "chat_night_owl",
+    "chat_multi_group",
+    "social_all_features",
+  ],
   gacha_pull: [
     "gacha_first",
     "gacha_100",
@@ -61,13 +68,26 @@ const EVENT_ACHIEVEMENT_MAP = {
     "gacha_ensure_1",
     "gacha_ensure_10",
     "gacha_ensure_50",
+    "social_all_features",
   ],
-  janken_win: ["janken_first_win", "janken_win_50", "janken_streak_5", "janken_streak_10"],
+  janken_win: [
+    "janken_first_win",
+    "janken_win_50",
+    "janken_streak_5",
+    "janken_streak_10",
+    "social_all_features",
+  ],
   janken_lose: [],
   janken_draw: [],
-  janken_challenge: ["janken_challenged_10"],
-  boss_attack: ["boss_first_kill", "boss_level_10", "boss_level_50", "boss_top_damage"],
-  command_use: ["social_first_command", "social_all_features"],
+  janken_challenge: ["janken_challenged_10", "social_all_features"],
+  boss_attack: [
+    "boss_first_kill",
+    "boss_level_10",
+    "boss_level_50",
+    "boss_top_damage",
+    "social_all_features",
+  ],
+  command_use: ["social_first_command"],
   subscribe: ["subscribe_first", "subscribe_3", "subscribe_6", "subscribe_12"],
   mention_keyword: ["mention_admin_hi", "mention_memory_seeker", "mention_void_gazer"],
   received_mention: [
