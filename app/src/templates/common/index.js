@@ -1,7 +1,84 @@
 /**
  * 存放通用函式庫
  */
+
+const LINK_THEMES = {
+  indigo: { solid: "#4F46E5", soft: "#EEF2FF" },
+  emerald: { solid: "#059669", soft: "#ECFDF5" },
+  amber: { solid: "#D97706", soft: "#FFFBEB" },
+  rose: { solid: "#E11D48", soft: "#FFF1F2" },
+  cyan: { solid: "#0891B2", soft: "#ECFEFF" },
+  slate: { solid: "#334155", soft: "#F1F5F9" },
+};
+
+const MUTED_TEXT = "#8A8A8A";
+const CHEVRON_COLOR = "#BBBBBB";
+const DIVIDER_COLOR = "#EEEEEE";
+
+function resolveTheme(theme) {
+  return LINK_THEMES[theme] || LINK_THEMES.indigo;
+}
+
+function buildMenuRow({ icon, title, subtitle, url, theme }) {
+  const t = resolveTheme(theme);
+  const textContents = [{ type: "text", text: title, weight: "bold", size: "sm" }];
+  if (subtitle) {
+    textContents.push({
+      type: "text",
+      text: subtitle,
+      size: "xxs",
+      color: MUTED_TEXT,
+      margin: "xs",
+    });
+  }
+
+  return {
+    type: "box",
+    layout: "horizontal",
+    paddingAll: "md",
+    spacing: "md",
+    action: { type: "uri", label: title, uri: url },
+    contents: [
+      {
+        type: "box",
+        layout: "vertical",
+        width: "36px",
+        height: "36px",
+        backgroundColor: t.soft,
+        cornerRadius: "8px",
+        justifyContent: "center",
+        contents: [
+          {
+            type: "text",
+            text: icon,
+            align: "center",
+            color: t.solid,
+            size: "lg",
+          },
+        ],
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        flex: 1,
+        justifyContent: "center",
+        contents: textContents,
+      },
+      {
+        type: "text",
+        text: "›",
+        color: CHEVRON_COLOR,
+        size: "xl",
+        flex: 0,
+        gravity: "center",
+      },
+    ],
+  };
+}
+
 module.exports = {
+  LINK_THEMES,
+
   assemble: function (mapData, strData) {
     var objMapData = {};
 
@@ -48,53 +125,159 @@ module.exports = {
   },
 
   /**
-   * 產出小型的 bubble 按鈕
-   * @param {String} title 標題
-   * @param {String} url 網址
-   * @param {String} color 色碼
-   * @param {Object} option 其他參數
-   * @param {String} option.textColor 文字顏色
+   * 產出整合式連結目錄 bubble（單一 bubble，條列多個連結）。
+   * @param {Object} opts
+   * @param {String} opts.title 標題
+   * @param {String} [opts.subtitle] 副標
+   * @param {String} [opts.headerColor] 標題區塊背景色，預設 indigo
+   * @param {Array<{icon:string,title:string,subtitle?:string,url:string,theme?:string}>} opts.items
    */
-  genLinkBubble: function (title, url, color, option = {}) {
-    let defaultColor = {
-      red: "#ff123436",
-      blue: "#1234ff36",
-      green: "#12ff3436",
+  genLinkMenu: function ({ title, subtitle, headerColor, items }) {
+    const header = {
+      type: "box",
+      layout: "vertical",
+      paddingAll: "lg",
+      backgroundColor: headerColor || LINK_THEMES.indigo.solid,
+      contents: [
+        {
+          type: "text",
+          text: title,
+          color: "#FFFFFF",
+          weight: "bold",
+          size: "md",
+        },
+      ],
     };
+    if (subtitle) {
+      header.contents.push({
+        type: "text",
+        text: subtitle,
+        color: "#FFFFFFCC",
+        size: "xxs",
+        margin: "xs",
+      });
+    }
 
-    // 如果指定的 color 存在色碼，則使用指定的色碼
-    color = defaultColor[color] || color;
-
-    const { textColor } = option;
+    const bodyContents = [];
+    items.forEach((item, idx) => {
+      if (idx > 0) {
+        bodyContents.push({ type: "separator", color: DIVIDER_COLOR });
+      }
+      bodyContents.push(buildMenuRow(item));
+    });
 
     return {
       type: "bubble",
-      size: "nano",
+      size: "kilo",
+      header,
       body: {
         type: "box",
         layout: "vertical",
+        paddingAll: "none",
+        spacing: "none",
+        contents: bodyContents,
+      },
+    };
+  },
+
+  /**
+   * 產出單一動作卡（micro bubble，頂條 + icon + 標題 + 副標 + CTA）。
+   * @param {Object} opts
+   * @param {String} opts.icon emoji
+   * @param {String} opts.title 標題
+   * @param {String} [opts.subtitle] 副標
+   * @param {String} opts.url 連結
+   * @param {String} [opts.theme] indigo|emerald|amber|rose|cyan|slate
+   * @param {String} [opts.cta] 按鈕文字，預設「前往」
+   */
+  genActionBubble: function ({ icon, title, subtitle, url, theme, cta }) {
+    const t = resolveTheme(theme);
+    const label = cta || "前往";
+
+    const inner = [
+      {
+        type: "box",
+        layout: "vertical",
+        width: "44px",
+        height: "44px",
+        backgroundColor: t.soft,
+        cornerRadius: "12px",
+        justifyContent: "center",
+        contents: [
+          {
+            type: "text",
+            text: icon,
+            align: "center",
+            color: t.solid,
+            size: "xl",
+          },
+        ],
+      },
+      {
+        type: "text",
+        text: title,
+        weight: "bold",
+        size: "sm",
+        align: "center",
+        margin: "md",
+      },
+    ];
+
+    if (subtitle) {
+      inner.push({
+        type: "text",
+        text: subtitle,
+        size: "xxs",
+        color: MUTED_TEXT,
+        align: "center",
+        wrap: true,
+        margin: "xs",
+      });
+    }
+
+    inner.push({
+      type: "box",
+      layout: "vertical",
+      backgroundColor: t.solid,
+      cornerRadius: "8px",
+      paddingAll: "sm",
+      margin: "md",
+      contents: [
+        {
+          type: "text",
+          text: label,
+          color: "#FFFFFF",
+          align: "center",
+          size: "xs",
+          weight: "bold",
+        },
+      ],
+    });
+
+    return {
+      type: "bubble",
+      size: "micro",
+      body: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "none",
+        action: { type: "uri", label: title, uri: url },
         contents: [
           {
             type: "box",
             layout: "vertical",
-            contents: [
-              {
-                type: "text",
-                text: title,
-                align: "center",
-                color: textColor || undefined,
-              },
-            ],
-            paddingTop: "md",
-            paddingBottom: "md",
+            height: "6px",
+            backgroundColor: t.solid,
+            contents: [{ type: "filler" }],
+          },
+          {
+            type: "box",
+            layout: "vertical",
+            paddingAll: "lg",
+            alignItems: "center",
+            contents: inner,
           },
         ],
-        backgroundColor: color,
-        action: {
-          type: "uri",
-          label: "action",
-          uri: url,
-        },
       },
     };
   },

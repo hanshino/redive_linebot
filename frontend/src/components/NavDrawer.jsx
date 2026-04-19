@@ -13,7 +13,6 @@ import { useState } from "react";
 import useLiff from "../context/useLiff";
 import HomeIcon from "@mui/icons-material/Home";
 import EqualizerIcon from "@mui/icons-material/Equalizer";
-import LoopIcon from "@mui/icons-material/Loop";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
@@ -40,10 +39,7 @@ const mainItems = [
   { label: "蘭德索爾盃", path: "/race", icon: EmojiEventsIcon },
 ];
 
-const princessItems = [
-  { label: "補償刀軸換算", path: "/tools/battle-time", icon: LoopIcon },
-  { label: "轉蛋商店", path: "/gacha/exchange", icon: StorefrontIcon },
-];
+const princessItems = [{ label: "轉蛋商店", path: "/gacha/exchange", icon: StorefrontIcon }];
 
 const botItems = [{ label: "使用手冊", path: "/panel/manual", icon: LibraryBooksIcon }];
 

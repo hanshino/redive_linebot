@@ -63,15 +63,12 @@ const Accordions = [
   {
     title: "其他",
     description: "集合了其餘雜項功能！",
-    buttons: [
-      { title: "報名成功測試", text: ".signtest" },
-      { title: "補償刀軸轉換", text: ".bt" },
-    ],
+    buttons: [{ title: "報名成功測試", text: ".signtest" }],
   },
 ];
 
 function genAccordionButtons({ showDialog, send, sendable, buttons }) {
-  return buttons.map((button) => {
+  return buttons.map(button => {
     const onClick = button.dialog
       ? () => showDialog({ open: true, param: { ...button, send } })
       : () => send(button.text);
@@ -135,8 +132,8 @@ function InputDialog({
     let message = text;
     let pass = true;
     Object.keys(param)
-      .filter((key) => disabled.indexOf(key) === -1)
-      .forEach((key) => {
+      .filter(key => disabled.indexOf(key) === -1)
+      .forEach(key => {
         const isEmpty = param[key].data === "";
         const isError = param[key].error;
         const isRequired = required.indexOf(key) !== -1;
@@ -160,7 +157,7 @@ function InputDialog({
           label="周次"
           type="tel"
           disabled={disabled.indexOf("week") !== -1}
-          onChange={(e) => dispatcher({ type: "WEEK", week: e.target.value })}
+          onChange={e => dispatcher({ type: "WEEK", week: e.target.value })}
         />
         <TextField
           fullWidth
@@ -169,7 +166,7 @@ function InputDialog({
           label="王"
           type="tel"
           disabled={disabled.indexOf("boss") !== -1}
-          onChange={(e) => dispatcher({ type: "BOSS", boss: e.target.value })}
+          onChange={e => dispatcher({ type: "BOSS", boss: e.target.value })}
         />
       </DialogContent>
       <DialogActions>
@@ -221,7 +218,7 @@ function AccordionButtons() {
 
   const AccordionView = useMemo(
     () =>
-      Accordions.map((data) => (
+      Accordions.map(data => (
         <Accordion key={data.title}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h6">{data.title}</Typography>
@@ -237,13 +234,13 @@ function AccordionButtons() {
           </AccordionActions>
         </Accordion>
       )),
-    [sendable, send],
+    [sendable, send]
   );
 
   return (
     <div style={{ width: "100%" }}>
       {isSending && (
-        <Backdrop sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, color: "#fff" }} open>
+        <Backdrop sx={{ zIndex: theme => theme.zIndex.drawer + 1, color: "#fff" }} open>
           <CircularProgress color="inherit" />
         </Backdrop>
       )}
