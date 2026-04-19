@@ -39,7 +39,6 @@ import AdminWorldbossEvent from "./pages/Admin/WorldbossEvent";
 import AdminWorldbossMessage from "./pages/Admin/WorldbossMessage";
 import AdminWorldbossMessageCreate from "./pages/Admin/WorldbossMessageCreate";
 import AdminWorldbossMessageUpdate from "./pages/Admin/WorldbossMessageUpdate";
-import ToolsBattleTime from "./pages/Tools/BattleTime";
 import RequireAdmin from "./components/RequireAdmin";
 
 export default function App() {
@@ -115,9 +114,6 @@ export default function App() {
               element={<AdminWorldbossMessageUpdate />}
             />
           </Route>
-
-          {/* Tools */}
-          <Route path="tools/battle-time" element={<ToolsBattleTime />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -14,7 +14,6 @@ const commandMap = [
   { pattern: /^[#.](三刀出完|出完三刀|done)$/, name: "battle_done", category: "princess" },
   { pattern: /^[#.](三刀重置|重置三刀|reset)$/, name: "battle_reset", category: "princess" },
   { pattern: /^[#.](出完沒|趕快出|gblist)/, name: "battle_list", category: "princess" },
-  { pattern: /^[#.]刀軸轉換$|^[./]bt$/i, name: "battle_time", category: "princess" },
   { pattern: /^[!#/]升滿星/, name: "character_full_rankup", category: "princess" },
   { pattern: /^[!#/]升星/, name: "character_rankup", category: "princess" },
   { pattern: /^[.#]轉蛋(兌換|商店)/, name: "godstone_shop", category: "princess" },

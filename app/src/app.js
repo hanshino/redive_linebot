@@ -233,13 +233,6 @@ async function OrderBased(context, { next }) {
             theme: "indigo",
           },
           {
-            icon: "⏱️",
-            title: "刀軸轉換",
-            subtitle: "公會戰時間計算",
-            url: `${liffUri}/tools/battle-time`,
-            theme: "emerald",
-          },
-          {
             icon: "📰",
             title: "巴哈更新",
             subtitle: "官方公告討論串",
@@ -309,18 +302,6 @@ function BattleOrder(context) {
     text(/^[#.](三刀出完|出完三刀|done)$/, battle.reportFinish),
     text(/^[#.](三刀重置|重置三刀|reset)$/, battle.reportReset),
     text(/^[#.](出完沒|趕快出|gblist)(\s(?<date>\d{1,2}))?$/, battle.showSigninList),
-    text(["#刀軸轉換", ".bt", "/bt"], context => {
-      const bubble = commonTemplate.genActionBubble({
-        icon: "⏱️",
-        title: "刀軸轉換",
-        subtitle: "公會戰時間計算",
-        url: `${commonTemplate.getLiffUri("full")}/tools/battle-time`,
-        theme: "emerald",
-        cta: "開啟",
-      });
-
-      return context.replyFlex("刀軸轉換按鈕", bubble);
-    }),
   ];
 }
 
