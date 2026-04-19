@@ -20,13 +20,13 @@ import { getHistory } from "../../services/autoPreference";
 
 const MODE_LABEL = {
   normal: "普通",
-  pickup: "機率調升",
+  pickup: "消耗抽",
   ensure: "保證",
-  europe: "歐派",
+  europe: "歐洲",
 };
 
 const FALLBACK_LABEL = {
-  europe_unavailable: "歐派活動結束，已改為普通抽。",
+  europe_unavailable: "歐洲活動結束，已改為普通抽。",
   insufficient_stone: "女神石不足，部份輪次改為普通抽。",
 };
 

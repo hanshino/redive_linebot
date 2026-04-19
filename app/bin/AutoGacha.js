@@ -30,8 +30,8 @@ async function run() {
   const targets = await impl.loadTargets();
   DefaultLogger.info(`cron.auto_gacha.start target_count=${targets.length}`);
 
-  // Fetch the active europe banner once per batch. A single query beats
-  // re-fetching per user; banner state is stable across a run.
+  // Fetch once per batch — banner state is stable across a run, so per-user
+  // re-fetches would be pure overhead.
   const europeBanners = await GachaBanner.getActiveBannersWithCharacters({ type: "europe" });
   const activeEuropeBanner = europeBanners && europeBanners.length > 0 ? europeBanners[0] : null;
   const context = { activeEuropeBanner };
@@ -76,25 +76,13 @@ async function loadTargets() {
   return rows;
 }
 
-/**
- * Cost per 10-pull for the selected mode. Europe mirrors the
- * GachaService.resolveCost precedence: use banner.cost when > 0, otherwise
- * the config default.
- */
 function costForMode(mode, activeEuropeBanner) {
-  switch (mode) {
-    case "pickup":
-      return config.get("gacha.pick_up_cost");
-    case "ensure":
-      return config.get("gacha.ensure_cost");
-    case "europe":
-      return activeEuropeBanner && activeEuropeBanner.cost > 0
-        ? activeEuropeBanner.cost
-        : config.get("gacha.europe_cost");
-    case "normal":
-    default:
-      return 0;
-  }
+  return GachaService.resolveCost(
+    mode === "pickup",
+    mode === "ensure",
+    mode === "europe",
+    activeEuropeBanner
+  ).amount;
 }
 
 function optsForMode(mode) {
@@ -122,7 +110,7 @@ async function drawForUser(target, runDate, counters, context = {}) {
   const requestedMode = normalizeMode(target.auto_daily_gacha_mode);
 
   // europe is period-limited: without an active europe banner, degrade the
-  // whole day to normal (matches controller-level behaviour for /抽 歐派).
+  // whole day to normal (matches controller-level behaviour for /歐洲抽).
   let workingMode = requestedMode;
   let fallbackReason = null;
   if (requestedMode === "europe" && !activeEuropeBanner) {

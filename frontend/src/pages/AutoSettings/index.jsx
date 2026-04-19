@@ -57,7 +57,7 @@ const MODE_OPTIONS = [
   },
   {
     value: "pickup",
-    label: "機率調升（祈願）",
+    label: "消耗抽（彩率上升）",
     description: "提升限定角色中獎機率。",
   },
   {
@@ -67,7 +67,7 @@ const MODE_OPTIONS = [
   },
   {
     value: "europe",
-    label: "歐派抽（只彩池）",
+    label: "歐洲抽（只彩池）",
     description: "整池僅保留三星角色。期間限定。",
   },
 ];
@@ -174,7 +174,7 @@ function GachaModeSelector({ mode, context, disabled, onChange }) {
                           variant="caption"
                           sx={{ color: "warning.main", mt: 0.25, display: "block" }}
                         >
-                          目前無歐派活動，選擇後會自動視為普通抽。
+                          目前無歐洲活動，選擇後會自動視為普通抽。
                         </Typography>
                       )}
                     </Box>

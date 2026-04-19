@@ -8,6 +8,12 @@ jest.mock("../../src/service/SubscriptionService", () => ({
 }));
 jest.mock("../../src/service/GachaService", () => ({
   getRemainingDailyQuota: jest.fn(),
+  resolveCost: jest.fn((pickup, ensure, europe, banner) => {
+    if (pickup) return { amount: 1500, note: "" };
+    if (ensure) return { amount: 3000, note: "" };
+    if (europe) return { amount: banner && banner.cost > 0 ? banner.cost : 10000, note: "" };
+    return { amount: 0, note: "" };
+  }),
 }));
 jest.mock("../../src/model/princess/gacha", () => ({
   getUserGodStoneCount: jest.fn(),

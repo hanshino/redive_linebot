@@ -1,5 +1,4 @@
 const { get } = require("lodash");
-const config = require("config");
 const mysql = require("../../util/mysql");
 const UserAutoPreference = require("../../model/application/UserAutoPreference");
 const SubscriptionService = require("../../service/SubscriptionService");
@@ -47,7 +46,7 @@ async function loadPreference(userId) {
 
 /**
  * 前端 AutoSettings 需要用來估算「依目前模式與配額，今晚大概會花多少女神石」。
- * 一併回傳歐派活動是否進行中 — 無活動時前端要把 europe 選項灰階。
+ * 一併回傳歐洲活動是否進行中 — 無活動時前端要把 europe 選項灰階。
  */
 async function loadGachaContext(userId) {
   const [stoneRaw, quota, europeBanners] = await Promise.all([
@@ -56,18 +55,14 @@ async function loadGachaContext(userId) {
     GachaBanner.getActiveBannersWithCharacters({ type: "europe" }),
   ]);
   const activeEuropeBanner = europeBanners && europeBanners.length > 0 ? europeBanners[0] : null;
-  const europeCost =
-    activeEuropeBanner && activeEuropeBanner.cost > 0
-      ? activeEuropeBanner.cost
-      : config.get("gacha.europe_cost");
   return {
     stone_balance: parseInt(stoneRaw) || 0,
     daily_quota: quota,
     costs: {
       normal: 0,
-      pickup: config.get("gacha.pick_up_cost"),
-      ensure: config.get("gacha.ensure_cost"),
-      europe: europeCost,
+      pickup: GachaService.resolveCost(true, false, false, null).amount,
+      ensure: GachaService.resolveCost(false, true, false, null).amount,
+      europe: GachaService.resolveCost(false, false, true, activeEuropeBanner).amount,
     },
     europe_banner_active: Boolean(activeEuropeBanner),
   };
