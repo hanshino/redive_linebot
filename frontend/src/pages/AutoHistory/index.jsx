@@ -1,11 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, Card, CardContent, Chip, Paper, Skeleton, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  Paper,
+  Skeleton,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import CasinoIcon from "@mui/icons-material/Casino";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import HistoryIcon from "@mui/icons-material/History";
+import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
 import { getHistory } from "../../services/autoPreference";
+
+const MODE_LABEL = {
+  normal: "普通",
+  pickup: "消耗抽",
+  ensure: "保證",
+  europe: "歐洲",
+};
+
+const FALLBACK_LABEL = {
+  europe_unavailable: "歐洲活動結束，已改為普通抽。",
+  insufficient_stone: "女神石不足，部份輪次改為普通抽。",
+};
 
 function formatDay(iso) {
   if (!iso) return "";
@@ -54,6 +77,48 @@ function summaryText(item) {
   return "";
 }
 
+/**
+ * Render a compact mode breakdown like `保證 ×1 + 普通 ×1`. Returns null
+ * when the log predates the mode feature (no breakdown recorded).
+ */
+function formatModeBreakdown(breakdown) {
+  if (!breakdown || typeof breakdown !== "object") return null;
+  const entries = Object.entries(breakdown).filter(([, n]) => Number(n) > 0);
+  if (entries.length === 0) return null;
+  return entries.map(([mode, n]) => `${MODE_LABEL[mode] || mode} ×${n}`).join(" + ");
+}
+
+function GachaModeBadge({ summary }) {
+  const reward = summary?.reward_summary;
+  const breakdown = formatModeBreakdown(reward?.mode_breakdown);
+  const fallback = reward?.fallback_reason;
+  if (!breakdown && !fallback) return null;
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.25 }}>
+      {breakdown && (
+        <Chip
+          size="small"
+          variant="outlined"
+          label={breakdown}
+          sx={{ fontSize: "0.7rem", height: 20 }}
+        />
+      )}
+      {fallback && (
+        <Tooltip title={FALLBACK_LABEL[fallback] || fallback} arrow>
+          <Chip
+            size="small"
+            color="warning"
+            variant="outlined"
+            icon={<ReportProblemIcon sx={{ fontSize: "0.85rem !important" }} />}
+            label="降級"
+            sx={{ fontSize: "0.7rem", height: 20 }}
+          />
+        </Tooltip>
+      )}
+    </Stack>
+  );
+}
+
 function HistoryItemCard({ item }) {
   const Icon = item.type === "gacha" ? CasinoIcon : SportsMmaIcon;
   return (
@@ -68,6 +133,7 @@ function HistoryItemCard({ item }) {
             <Typography variant="caption" color="text.secondary">
               {summaryText(item)}
             </Typography>
+            {item.type === "gacha" && <GachaModeBadge summary={item.summary} />}
           </Box>
           <Chip
             size="small"

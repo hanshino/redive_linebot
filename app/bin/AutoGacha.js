@@ -4,6 +4,10 @@ const mysql = require("../src/util/mysql");
 const { DefaultLogger } = require("../src/util/Logger");
 const GachaService = require("../src/service/GachaService");
 const SubscriptionService = require("../src/service/SubscriptionService");
+const GachaModel = require("../src/model/princess/gacha");
+const GachaBanner = require("../src/model/princess/GachaBanner");
+
+const VALID_MODES = ["normal", "pickup", "ensure", "europe"];
 
 let running = false;
 
@@ -26,8 +30,14 @@ async function run() {
   const targets = await impl.loadTargets();
   DefaultLogger.info(`cron.auto_gacha.start target_count=${targets.length}`);
 
+  // Fetch once per batch — banner state is stable across a run, so per-user
+  // re-fetches would be pure overhead.
+  const europeBanners = await GachaBanner.getActiveBannersWithCharacters({ type: "europe" });
+  const activeEuropeBanner = europeBanners && europeBanners.length > 0 ? europeBanners[0] : null;
+  const context = { activeEuropeBanner };
+
   const counters = { success: 0, failed: 0, skipped: 0 };
-  await impl.runBatched(targets, concurrency, t => impl.drawForUser(t, runDate, counters));
+  await impl.runBatched(targets, concurrency, t => impl.drawForUser(t, runDate, counters, context));
 
   const durationMs = Date.now() - start;
   DefaultLogger.info(
@@ -40,6 +50,7 @@ async function run() {
 /**
  * 找出今晚代抽的目標使用者：有效訂閱 + 卡包含 auto_daily_gacha effect +
  * user_auto_preference.auto_daily_gacha=1 + 今日尚未抽過。
+ * 一併帶出 auto_daily_gacha_mode 供 drawForUser 使用。
  */
 async function loadTargets() {
   const now = new Date();
@@ -59,18 +70,55 @@ async function loadTargets() {
     .where("uap.auto_daily_gacha", 1)
     .whereNull("gr.id")
     .whereRaw("JSON_SEARCH(sc.effects, 'one', 'auto_daily_gacha', NULL, '$[*].type') IS NOT NULL")
-    .select("su.user_id", "sc.key as card_key")
+    .select("su.user_id", "sc.key as card_key", "uap.auto_daily_gacha_mode")
     .distinct();
 
   return rows;
 }
 
-async function drawForUser(target, runDate, counters) {
+function costForMode(mode, activeEuropeBanner) {
+  return GachaService.resolveCost(
+    mode === "pickup",
+    mode === "ensure",
+    mode === "europe",
+    activeEuropeBanner
+  ).amount;
+}
+
+function optsForMode(mode) {
+  switch (mode) {
+    case "pickup":
+      return { pickup: true };
+    case "ensure":
+      return { ensure: true };
+    case "europe":
+      return { europe: true };
+    case "normal":
+    default:
+      return {};
+  }
+}
+
+function normalizeMode(raw) {
+  return VALID_MODES.includes(raw) ? raw : "normal";
+}
+
+async function drawForUser(target, runDate, counters, context = {}) {
   const userId = target.user_id;
   const perStart = Date.now();
+  const activeEuropeBanner = context.activeEuropeBanner || null;
+  const requestedMode = normalizeMode(target.auto_daily_gacha_mode);
+
+  // europe is period-limited: without an active europe banner, degrade the
+  // whole day to normal (matches controller-level behaviour for /歐洲抽).
+  let workingMode = requestedMode;
+  let fallbackReason = null;
+  if (requestedMode === "europe" && !activeEuropeBanner) {
+    workingMode = "normal";
+    fallbackReason = "europe_unavailable";
+  }
 
   try {
-    // Explicit re-check: subscription may have expired between loadTargets and now
     const stillActive = await SubscriptionService.hasEffect(userId, "auto_daily_gacha");
     if (!stillActive) {
       counters.skipped++;
@@ -82,9 +130,6 @@ async function drawForUser(target, runDate, counters) {
       });
     }
 
-    // Quota gate: subscribers get base + gacha_times bonus pulls per day. Cron
-    // must deliver the full remaining quota so we don't short-change month/season
-    // card holders compared to the manual `/抽` path.
     const quota = await GachaService.getRemainingDailyQuota(userId);
     if (quota.remaining === 0) {
       counters.skipped++;
@@ -97,15 +142,36 @@ async function drawForUser(target, runDate, counters) {
     }
 
     const aggregated = emptyAggregate();
+    const breakdown = { normal: 0, pickup: 0, ensure: 0, europe: 0 };
+    const modeCost = costForMode(workingMode, activeEuropeBanner);
+
     for (let i = 0; i < quota.remaining; i++) {
-      const result = await GachaService.runDailyDraw(userId);
+      let roundMode = workingMode;
+      if (modeCost > 0) {
+        // Re-read balance before each round — prior rounds (and any concurrent
+        // manual /抽) will have updated the stone count.
+        const stoneRaw = await GachaModel.getUserGodStoneCount(userId);
+        const stone = parseInt(stoneRaw) || 0;
+        if (stone < modeCost) {
+          roundMode = "normal";
+          if (!fallbackReason) fallbackReason = "insufficient_stone";
+        }
+      }
+
+      const result = await GachaService.runDailyDraw(userId, optsForMode(roundMode));
       accumulate(aggregated, result);
+      breakdown[roundMode]++;
     }
+
     counters.success++;
     return upsertLog(userId, runDate, {
       status: "success",
       pulls_made: aggregated.rewards.length,
-      reward_summary: summarizeAggregate(aggregated, quota),
+      reward_summary: summarizeAggregate(aggregated, quota, {
+        modeRequested: requestedMode,
+        breakdown,
+        fallbackReason,
+      }),
       error: null,
       duration_ms: Date.now() - perStart,
     });
@@ -145,8 +211,8 @@ function accumulate(agg, result) {
   }
 }
 
-function summarizeAggregate(agg, quota) {
-  return {
+function summarizeAggregate(agg, quota, modeMeta = {}) {
+  const summary = {
     rareCount: agg.rareCount,
     newCharactersCount: agg.newCharactersCount,
     godStoneCost: agg.godStoneCost,
@@ -154,6 +220,16 @@ function summarizeAggregate(agg, quota) {
     rounds: quota.remaining,
     quota_total: quota.total,
   };
+  if (modeMeta.modeRequested !== undefined) {
+    summary.mode_requested = modeMeta.modeRequested;
+  }
+  if (modeMeta.breakdown) {
+    summary.mode_breakdown = modeMeta.breakdown;
+  }
+  if (modeMeta.fallbackReason !== undefined) {
+    summary.fallback_reason = modeMeta.fallbackReason;
+  }
+  return summary;
 }
 
 function summarizeRewards(result) {
@@ -210,6 +286,8 @@ module.exports.drawForUser = drawForUser;
 module.exports.runBatched = runBatched;
 module.exports.summarizeRewards = summarizeRewards;
 module.exports.upsertLog = upsertLog;
+module.exports.costForMode = costForMode;
+module.exports.optsForMode = optsForMode;
 
 if (require.main === module) {
   main().then(() => process.exit(0));

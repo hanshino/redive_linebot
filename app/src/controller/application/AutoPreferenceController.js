@@ -2,6 +2,9 @@ const { get } = require("lodash");
 const mysql = require("../../util/mysql");
 const UserAutoPreference = require("../../model/application/UserAutoPreference");
 const SubscriptionService = require("../../service/SubscriptionService");
+const GachaService = require("../../service/GachaService");
+const GachaModel = require("../../model/princess/gacha");
+const GachaBanner = require("../../model/princess/GachaBanner");
 const commonTemplate = require("../../templates/common");
 const { DefaultLogger } = require("../../util/Logger");
 
@@ -13,6 +16,7 @@ const FLAG_EFFECT = {
   auto_janken_fate: "auto_janken_fate",
   auto_janken_fate_with_bet: "auto_janken_fate",
 };
+const VALID_MODES = ["normal", "pickup", "ensure", "europe"];
 const HISTORY_DEFAULT_LIMIT = 30;
 const HISTORY_MAX_LIMIT = 100;
 
@@ -30,10 +34,37 @@ async function loadEntitlements(userId) {
 
 async function loadPreference(userId) {
   const row = await UserAutoPreference.first({ filter: { user_id: userId } });
+  const mode =
+    row && VALID_MODES.includes(row.auto_daily_gacha_mode) ? row.auto_daily_gacha_mode : "normal";
   return {
     auto_daily_gacha: row && row.auto_daily_gacha === 1 ? 1 : 0,
+    auto_daily_gacha_mode: mode,
     auto_janken_fate: row && row.auto_janken_fate === 1 ? 1 : 0,
     auto_janken_fate_with_bet: row && row.auto_janken_fate_with_bet === 1 ? 1 : 0,
+  };
+}
+
+/**
+ * 前端 AutoSettings 需要用來估算「依目前模式與配額，今晚大概會花多少女神石」。
+ * 一併回傳歐洲活動是否進行中 — 無活動時前端要把 europe 選項灰階。
+ */
+async function loadGachaContext(userId) {
+  const [stoneRaw, quota, europeBanners] = await Promise.all([
+    GachaModel.getUserGodStoneCount(userId),
+    GachaService.getRemainingDailyQuota(userId),
+    GachaBanner.getActiveBannersWithCharacters({ type: "europe" }),
+  ]);
+  const activeEuropeBanner = europeBanners && europeBanners.length > 0 ? europeBanners[0] : null;
+  return {
+    stone_balance: parseInt(stoneRaw) || 0,
+    daily_quota: quota,
+    costs: {
+      normal: 0,
+      pickup: GachaService.resolveCost(true, false, false, null).amount,
+      ensure: GachaService.resolveCost(false, true, false, null).amount,
+      europe: GachaService.resolveCost(false, false, true, activeEuropeBanner).amount,
+    },
+    europe_banner_active: Boolean(activeEuropeBanner),
   };
 }
 
@@ -44,11 +75,12 @@ exports.api.getPreference = async (req, res) => {
     const userId = get(req, "profile.userId");
     if (!userId) return res.status(401).json({ error: "unauthenticated" });
 
-    const [preference, entitlements] = await Promise.all([
+    const [preference, entitlements, gachaContext] = await Promise.all([
       loadPreference(userId),
       loadEntitlements(userId),
+      loadGachaContext(userId),
     ]);
-    return res.json({ ...preference, entitlements });
+    return res.json({ ...preference, entitlements, gacha_context: gachaContext });
   } catch (err) {
     DefaultLogger.error(`auto-preference.get failed: ${err && err.message}`);
     return res.status(500).json({ error: "internal_error" });
@@ -67,10 +99,20 @@ exports.api.setPreference = async (req, res) => {
       const v = body[flag] === true || body[flag] === 1 || body[flag] === "1" ? 1 : 0;
       update[flag] = v;
     }
-    if (Object.keys(update).length === 0) {
-      const preference = await loadPreference(userId);
-      const entitlements = await loadEntitlements(userId);
-      return res.json({ ...preference, entitlements });
+    let modeUpdate;
+    if (body.auto_daily_gacha_mode !== undefined && body.auto_daily_gacha_mode !== null) {
+      if (!VALID_MODES.includes(body.auto_daily_gacha_mode)) {
+        return res.status(400).json({ error: "invalid_mode", field: "auto_daily_gacha_mode" });
+      }
+      modeUpdate = body.auto_daily_gacha_mode;
+    }
+    if (Object.keys(update).length === 0 && modeUpdate === undefined) {
+      const [preference, entitlements, gachaContext] = await Promise.all([
+        loadPreference(userId),
+        loadEntitlements(userId),
+        loadGachaContext(userId),
+      ]);
+      return res.json({ ...preference, entitlements, gacha_context: gachaContext });
     }
 
     const entitlements = await loadEntitlements(userId);
@@ -82,25 +124,31 @@ exports.api.setPreference = async (req, res) => {
 
     await mysql.raw(
       `INSERT INTO user_auto_preference
-        (user_id, auto_daily_gacha, auto_janken_fate, auto_janken_fate_with_bet)
-       VALUES (?, ?, ?, ?)
+        (user_id, auto_daily_gacha, auto_daily_gacha_mode, auto_janken_fate, auto_janken_fate_with_bet)
+       VALUES (?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          auto_daily_gacha = COALESCE(?, auto_daily_gacha),
+         auto_daily_gacha_mode = COALESCE(?, auto_daily_gacha_mode),
          auto_janken_fate = COALESCE(?, auto_janken_fate),
          auto_janken_fate_with_bet = COALESCE(?, auto_janken_fate_with_bet)`,
       [
         userId,
         update.auto_daily_gacha === undefined ? 0 : update.auto_daily_gacha,
+        modeUpdate === undefined ? "normal" : modeUpdate,
         update.auto_janken_fate === undefined ? 0 : update.auto_janken_fate,
         update.auto_janken_fate_with_bet === undefined ? 0 : update.auto_janken_fate_with_bet,
         update.auto_daily_gacha === undefined ? null : update.auto_daily_gacha,
+        modeUpdate === undefined ? null : modeUpdate,
         update.auto_janken_fate === undefined ? null : update.auto_janken_fate,
         update.auto_janken_fate_with_bet === undefined ? null : update.auto_janken_fate_with_bet,
       ]
     );
 
-    const preference = await loadPreference(userId);
-    return res.json({ ...preference, entitlements });
+    const [preference, gachaContext] = await Promise.all([
+      loadPreference(userId),
+      loadGachaContext(userId),
+    ]);
+    return res.json({ ...preference, entitlements, gacha_context: gachaContext });
   } catch (err) {
     DefaultLogger.error(`auto-preference.put failed: ${err && err.message}`);
     return res.status(500).json({ error: "internal_error" });
@@ -209,5 +257,7 @@ exports.showAutoSettings = async function (context) {
 exports._internal = {
   loadEntitlements,
   loadPreference,
+  loadGachaContext,
   parseJsonSafe,
+  VALID_MODES,
 };

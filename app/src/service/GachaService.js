@@ -126,7 +126,7 @@ function computeRepeatReward(uniqRewards, duplicateItems) {
  * @param {string} [opts.tag]       轉蛋池標籤（undefined 即為預設公主池）
  * @param {boolean} [opts.pickup]   祈願（花費女神石提升彩率）
  * @param {boolean} [opts.ensure]   保證（最後一抽必彩）
- * @param {boolean} [opts.europe]   歐派（只彩池）
+ * @param {boolean} [opts.europe]   歐洲（只彩池）
  * @returns {Promise<{
  *   rewards: Array,
  *   rareCount: Object,
@@ -307,4 +307,5 @@ async function getRemainingDailyQuota(userId) {
 module.exports = {
   runDailyDraw,
   getRemainingDailyQuota,
+  resolveCost,
 };
