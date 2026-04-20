@@ -1,4 +1,10 @@
 {
+  "name": "redive-linebot",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
     "husky": "^9.1.7",
     "lint-staged": "^16.3.2"
@@ -9,9 +15,13 @@
     "dev:app": "yarn --cwd app dev",
     "dev:frontend": "yarn --cwd frontend dev",
     "build:frontend": "yarn --cwd frontend build",
+    "test": "yarn test:app",
     "test:app": "yarn --cwd app test",
+    "lint": "yarn lint:app && yarn lint:frontend",
     "lint:app": "yarn --cwd app lint",
     "lint:frontend": "yarn --cwd frontend lint",
+    "format": "app/node_modules/.bin/prettier --write \"app/src/**/*.js\" \"app/bin/**/*.js\" \"app/config/**/*.js\" \"app/__tests__/**/*.js\" \"frontend/src/**/*.{js,jsx}\"",
+    "format:check": "app/node_modules/.bin/prettier --check \"app/src/**/*.js\" \"app/bin/**/*.js\" \"app/config/**/*.js\" \"app/__tests__/**/*.js\" \"frontend/src/**/*.{js,jsx}\"",
     "migrate": "yarn --cwd app migrate"
   },
   "lint-staged": {

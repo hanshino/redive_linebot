@@ -59,10 +59,4 @@ jobs:
         working-directory: app
         run: yarn install --frozen-lockfile
       - name: Check formatting
-        run: |
-          app/node_modules/.bin/prettier --check \
-            "app/src/**/*.js" \
-            "app/bin/**/*.js" \
-            "app/config/**/*.js" \
-            "app/__tests__/**/*.js" \
-            "frontend/src/**/*.{js,jsx}"
+        run: yarn format:check
