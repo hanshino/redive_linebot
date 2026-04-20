@@ -33,7 +33,7 @@ async function buyMonthCard(context, props) {
   const { userId } = context.event.source;
   const number = parseInt(get(props, "match.groups.number", "1"), 10);
   const { amount: ownMoney = 0 } = await inventoryModel.getUserMoney(userId);
-  let cost = 0;
+  let cost;
 
   switch (number) {
     case 1:
@@ -261,7 +261,7 @@ async function subscribeCouponExchange(context, props) {
 function handleUser(user, card) {
   const now = mement();
   const endAt = mement(get(user, "end_at"));
-  let isContinue = false;
+  let isContinue;
 
   if (endAt.isBefore(now)) {
     // 已過期

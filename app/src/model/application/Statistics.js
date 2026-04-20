@@ -8,6 +8,7 @@ exports.getGuildCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `GuildCount_${date}`;
   let count = await redis.get(memoryKey);
+  if (count !== null) return count;
 
   count = await mysql
     .select()

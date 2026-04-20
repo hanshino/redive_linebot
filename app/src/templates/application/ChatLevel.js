@@ -166,9 +166,7 @@ exports.showTopRank = (context, { rankData, sendType }) => {
  * @returns {Object<{type: String, text: String}>}
  */
 function genTextTopRank(rankData) {
-  let result = "";
-
-  result = rankData
+  const result = rankData
     .map((data, index) => [index + 1, `${data.level}等`, `${data.range}的${data.rank}`].join("\t"))
     .join("\n");
 

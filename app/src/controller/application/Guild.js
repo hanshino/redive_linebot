@@ -16,16 +16,15 @@ exports.api.getGuildSummarys = (req, res) => {
 
 exports.api.getGuildSummary = async (req, res) => {
   const { guildId } = req.params;
-  var result = {};
 
   try {
-    result = {
+    const result = {
       ...(await line.getGroupSummary(guildId)),
       ...(await line.getGroupCount(guildId)),
     };
 
     res.json(result);
-  } catch (e) {
+  } catch {
     res.status(404).json({ message: "Not Found." });
   }
 };

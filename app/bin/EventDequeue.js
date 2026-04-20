@@ -1,6 +1,6 @@
 const mysql = require("../src/util/mysql");
 const redis = require("../src/util/redis");
-const { DefaultLogger, CustomLogger } = require("../src/util/Logger");
+const { DefaultLogger } = require("../src/util/Logger");
 
 module.exports = main;
 

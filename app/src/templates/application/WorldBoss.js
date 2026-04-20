@@ -188,7 +188,7 @@ exports.generateAttackBubble = ({ eventId }) => ({
   },
 });
 
-exports.generateBoss = ({ id, image, fullHp, currentHp }) => {
+exports.generateBoss = ({ image, fullHp, currentHp }) => {
   // caclute percentage of hp and round it to 0 decimal places
   const percentage = Math.round((currentHp / fullHp) * 100);
 

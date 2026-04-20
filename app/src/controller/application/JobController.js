@@ -190,7 +190,7 @@ exports.swordmanAttackTarget = async function (context) {
 
   const { level } = await minigameService.findByUserId(userId);
 
-  let damage = 0;
+  let damage;
   if (count < 5) {
     damage = new Adventurer({ level }).attack();
   } else {

@@ -3,7 +3,6 @@ const GuildModel = require("../../model/application/Guild");
 const GuildBattleConfigRepo = require("../../repositories/princess/guild/ConfigRepository");
 const line = require("../../util/line");
 const BattleTemplate = require("../../templates/princess/guild/battle");
-const { recordSign } = require("../../util/traffic");
 const BattleSender = { name: "戰隊秘書", iconUrl: "https://i.imgur.com/NuZZR7Q.jpg" };
 const redis = require("../../util/redis");
 // eslint-disable-next-line no-unused-vars
