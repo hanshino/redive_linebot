@@ -1,19 +1,5 @@
 const humanNumber = require("human-number");
-const { SEMANTIC } = require("../../common/theme");
-const { buildSubPanel } = require("./_shared");
-
-const CYAN_700 = "#00838F";
-const CYAN_600 = SEMANTIC.primary.main;
-const CYAN_BG = "#E0F7FA";
-const AMBER_400 = SEMANTIC.secondary.light;
-const AMBER_300 = "#FCD34D";
-const AMBER_BG = "#FFF7E6";
-const GREEN_500 = SEMANTIC.success.main;
-const GREEN_BG = "#E8F9EF";
-const RED_500 = SEMANTIC.danger.main;
-const RED_BG = "#FDECEC";
-const TEXT_DARK = "#3A2800";
-const MUTED = "#5A6B7F";
+const { buildSubPanel, COLORS } = require("./_shared");
 
 const formatExp = n => humanNumber(n, v => Number.parseFloat(v).toFixed(1));
 
@@ -56,11 +42,11 @@ function buildHero({
         text: `Lv.${level} · ${range}`,
         weight: "bold",
         size: "xxs",
-        color: TEXT_DARK,
+        color: COLORS.textDark,
         align: "center",
       },
     ],
-    backgroundColor: AMBER_400,
+    backgroundColor: COLORS.amber400,
     cornerRadius: "xl",
     paddingStart: "sm",
     paddingEnd: "sm",
@@ -92,7 +78,7 @@ function buildHero({
     type: "text",
     text: `Rank #${ranking}`,
     size: "xxs",
-    color: AMBER_300,
+    color: COLORS.amber300,
     weight: "bold",
     margin: "xs",
   };
@@ -125,7 +111,7 @@ function buildHero({
         type: "text",
         text: expText,
         size: "xxs",
-        color: AMBER_300,
+        color: COLORS.amber300,
         weight: "bold",
         align: "end",
       },
@@ -142,12 +128,12 @@ function buildHero({
         layout: "vertical",
         contents: [],
         height: "7px",
-        backgroundColor: AMBER_400,
+        backgroundColor: COLORS.amber400,
         width: `${clampedRate}%`,
         cornerRadius: "md",
       },
     ],
-    backgroundColor: "#FFFFFF44",
+    backgroundColor: COLORS.whiteOverlay,
     height: "7px",
     cornerRadius: "md",
     margin: "xs",
@@ -161,10 +147,10 @@ function buildHero({
     background: {
       type: "linearGradient",
       angle: "135deg",
-      startColor: CYAN_700,
-      endColor: CYAN_600,
+      startColor: COLORS.cyan700,
+      endColor: COLORS.cyan600,
     },
-    backgroundColor: CYAN_700,
+    backgroundColor: COLORS.cyan700,
   };
 }
 
@@ -177,7 +163,7 @@ function buildSubBadge({ text }) {
         type: "text",
         text: `🎟 訂閱中 · ${text}`,
         size: "xxs",
-        color: CYAN_700,
+        color: COLORS.cyan700,
         weight: "bold",
         flex: 1,
         gravity: "center",
@@ -186,13 +172,13 @@ function buildSubBadge({ text }) {
         type: "text",
         text: "›",
         size: "md",
-        color: CYAN_700,
+        color: COLORS.cyan700,
         weight: "bold",
         align: "end",
         flex: 0,
       },
     ],
-    backgroundColor: CYAN_BG,
+    backgroundColor: COLORS.cyanBg,
     paddingStart: "md",
     paddingEnd: "md",
     paddingTop: "sm",
@@ -203,9 +189,9 @@ function buildSubBadge({ text }) {
 
 function buildStat({ fraction, icon, label, tone }) {
   const toneMap = {
-    done: { bg: GREEN_BG, fg: GREEN_500, accent: GREEN_500 },
-    miss: { bg: RED_BG, fg: RED_500, accent: RED_500 },
-    progress: { bg: CYAN_BG, fg: CYAN_700, accent: CYAN_600 },
+    done: { bg: COLORS.greenBg, fg: COLORS.green500, accent: COLORS.green500 },
+    miss: { bg: COLORS.redBg, fg: COLORS.red500, accent: COLORS.red500 },
+    progress: { bg: COLORS.cyanBg, fg: COLORS.cyan700, accent: COLORS.cyan600 },
   };
   const { bg, fg, accent } = toneMap[tone] || toneMap.progress;
 
@@ -234,7 +220,7 @@ function buildStat({ fraction, icon, label, tone }) {
         type: "text",
         text: label,
         size: "xxs",
-        color: MUTED,
+        color: COLORS.textMuted,
         align: "center",
         margin: "xs",
       },
@@ -294,7 +280,7 @@ function buildStreak(signinDays) {
         type: "text",
         text: "🔥 連續簽到",
         size: "xs",
-        color: MUTED,
+        color: COLORS.textMuted,
         flex: 1,
         gravity: "center",
       },
@@ -305,16 +291,16 @@ function buildStreak(signinDays) {
             type: "span",
             text: `${signinDays || 0}`,
             weight: "bold",
-            color: SEMANTIC.warning.main,
+            color: COLORS.amber500,
             size: "md",
           },
-          { type: "span", text: " 天", color: MUTED, size: "xs" },
+          { type: "span", text: " 天", color: COLORS.textMuted, size: "xs" },
         ],
         align: "end",
         flex: 0,
       },
     ],
-    backgroundColor: AMBER_BG,
+    backgroundColor: COLORS.amberBg,
     cornerRadius: "md",
     paddingStart: "md",
     paddingEnd: "md",

@@ -1,44 +1,60 @@
-const { SEMANTIC } = require("../../common/theme");
+const { PALETTE, SEMANTIC, SURFACE, HERO_SURFACE } = require("../../common/theme");
 
-const HERO_BG_ALT = "#12243A";
-const HERO_TEXT = "#E8EEF4";
-const HERO_MUTED = "#B0BEC5";
-const AMBER_500 = SEMANTIC.secondary.main;
-const AMBER_300 = "#FCD34D";
-const AMBER_400 = SEMANTIC.secondary.light;
-const CYAN_500 = SEMANTIC.primary.light;
-const TAG_CYAN_TEXT = "#002A30";
-const TAG_AMBER_TEXT = "#3A2800";
+const COLORS = {
+  cyan700: PALETTE.cyan700,
+  cyan600: SEMANTIC.primary.main,
+  cyan500: SEMANTIC.primary.light,
+  cyan400: PALETTE.cyan400,
+  cyanBg: "#E0F7FA",
 
-/**
- * Dark-luxury subscription panel — used by Profile (inline) and Subscription (standalone bubble).
- * Design: dark navy base + amber "gold hairline" at top + tag chip per card type.
- *
- * @param {Object} param0
- * @param {String} param0.key         "month" | "season"
- * @param {String} param0.titleText   e.g. "月卡"
- * @param {String} param0.expireText  e.g. "2026-05-01"
- * @param {String[]} param0.effects   pre-formatted effect row strings
- * @returns {Object} LINE Flex box
- */
-exports.buildSubPanel = ({ key, titleText, expireText, effects }) => {
+  amber500: SEMANTIC.secondary.main,
+  amber400: SEMANTIC.secondary.light,
+  amber300: PALETTE.amber300,
+  amberBg: "#FFF7E6",
+
+  green500: SEMANTIC.success.main,
+  greenBg: "#E8F9EF",
+  red500: SEMANTIC.danger.main,
+  redBg: "#FDECEC",
+
+  text: SURFACE.text,
+  textMuted: SURFACE.textMuted,
+  textDark: "#3A2800",
+  track: "#F0F4F7",
+  divider: "#EEF2F6",
+  whiteOverlay: "#FFFFFF44",
+
+  heroBgAlt: HERO_SURFACE.bgAlt,
+  heroText: HERO_SURFACE.text,
+  heroTextMuted: HERO_SURFACE.textMuted,
+  tagCyanText: "#002A30",
+  tagAmberText: "#3A2800",
+};
+
+const buildAccentBar = ({ startColor, endColor, height = "4px" }) => ({
+  type: "box",
+  layout: "vertical",
+  contents: [],
+  height,
+  background: {
+    type: "linearGradient",
+    angle: "90deg",
+    startColor,
+    endColor,
+  },
+  backgroundColor: startColor,
+});
+
+const buildSubPanel = ({ key, titleText, expireText, effects }) => {
   const isSeason = key === "season";
-  const tagBg = isSeason ? AMBER_400 : CYAN_500;
-  const tagFg = isSeason ? TAG_AMBER_TEXT : TAG_CYAN_TEXT;
+  const tagBg = isSeason ? COLORS.amber400 : COLORS.cyan500;
+  const tagFg = isSeason ? COLORS.tagAmberText : COLORS.tagCyanText;
 
-  const goldHairline = {
-    type: "box",
-    layout: "vertical",
-    contents: [],
+  const goldHairline = buildAccentBar({
+    startColor: COLORS.amber500,
+    endColor: COLORS.amber300,
     height: "3px",
-    background: {
-      type: "linearGradient",
-      angle: "90deg",
-      startColor: AMBER_500,
-      endColor: AMBER_300,
-    },
-    backgroundColor: AMBER_500,
-  };
+  });
 
   const tagChip = {
     type: "box",
@@ -71,7 +87,7 @@ exports.buildSubPanel = ({ key, titleText, expireText, effects }) => {
         type: "text",
         text: `${expireText} 到期`,
         size: "xxs",
-        color: HERO_MUTED,
+        color: COLORS.heroTextMuted,
         gravity: "center",
         align: "end",
         flex: 1,
@@ -84,8 +100,8 @@ exports.buildSubPanel = ({ key, titleText, expireText, effects }) => {
   const effectLines = effects.map(text => ({
     type: "text",
     contents: [
-      { type: "span", text: "◆ ", color: AMBER_400, weight: "bold" },
-      { type: "span", text, color: HERO_TEXT },
+      { type: "span", text: "◆ ", color: COLORS.amber400, weight: "bold" },
+      { type: "span", text, color: COLORS.heroText },
     ],
     size: "xxs",
   }));
@@ -94,7 +110,7 @@ exports.buildSubPanel = ({ key, titleText, expireText, effects }) => {
     type: "box",
     layout: "vertical",
     contents: [headRow, ...effectLines],
-    backgroundColor: HERO_BG_ALT,
+    backgroundColor: COLORS.heroBgAlt,
     paddingStart: "lg",
     paddingEnd: "lg",
     paddingTop: "md",
@@ -109,3 +125,5 @@ exports.buildSubPanel = ({ key, titleText, expireText, effects }) => {
     spacing: "none",
   };
 };
+
+module.exports = { COLORS, buildAccentBar, buildSubPanel };

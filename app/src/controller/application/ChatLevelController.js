@@ -45,16 +45,8 @@ exports.showStatus = async (context, props) => {
       exp = 0,
     } = await ChatLevelModel.getUserData(userId);
     const expDatas = await ChatLevelModel.getExpUnitData();
-    const nowThreshold = get(
-      expDatas.find(d => d.level === level),
-      "exp",
-      0
-    );
-    const nextThreshold = get(
-      expDatas.find(d => d.level === level + 1),
-      "exp",
-      0
-    );
+    const nowThreshold = expDatas.find(d => d.level === level)?.exp ?? 0;
+    const nextThreshold = expDatas.find(d => d.level === level + 1)?.exp ?? 0;
     const expCurrent = Math.max(0, exp - nowThreshold);
     const expNext = Math.max(0, nextThreshold - nowThreshold);
     const expRate = expNext > 0 ? Math.round((expCurrent / expNext) * 100) : 0;
@@ -132,8 +124,8 @@ exports.showStatus = async (context, props) => {
       starProgress: gachaProgress.progress,
       godStone,
       paidStone: donateAmount || 0,
-      lastRainbowDays: gachaHistory.rainbow === "-" ? null : gachaHistory.rainbow,
-      lastHasNewDays: gachaHistory.hasNew === "-" ? null : gachaHistory.hasNew,
+      lastRainbowDays: gachaHistory.rainbow,
+      lastHasNewDays: gachaHistory.hasNew,
       janken: { win: winCount, lose: loseCount, draw: drawCount, rate: winRate },
       subscriptionCards,
     });
@@ -154,10 +146,11 @@ async function getGachaCollectProgress(userId) {
   const ownItems = await inventory.getAllUserOwnCharacters(userId);
   const princessCountInGame = await GachaModel.getPrincessCharacterCount();
   const userTotalStar = ownItems.reduce((acc, item) => {
-    const attributes = item && item.attributes;
+    const attributes = item?.attributes;
     if (!Array.isArray(attributes)) return acc;
     const star = attributes.find(attr => attr.key === "star");
-    return parseInt(star && star.value, 10) + acc || acc;
+    const value = parseInt(star?.value, 10);
+    return Number.isFinite(value) ? acc + value : acc;
   }, 0);
 
   const totalStarInGame = princessCountInGame * 5;
@@ -167,44 +160,26 @@ async function getGachaCollectProgress(userId) {
 }
 
 async function getGachaHistory(userId) {
-  const lastRainbowRecord = await GachaRecord.first({
-    filter: {
-      user_id: userId,
-      rainbow: {
-        operator: ">",
-        value: 0,
+  const [lastRainbowRecord, lastHasNewRecord] = await Promise.all([
+    GachaRecord.first({
+      filter: {
+        user_id: userId,
+        rainbow: { operator: ">", value: 0 },
       },
-    },
-    order: [{ column: "created_at", direction: "desc" }],
-  });
-
-  const lastHasNewRecord = await GachaRecord.first({
-    filter: {
-      user_id: userId,
-      has_new: 1,
-    },
-    order: [{ column: "created_at", direction: "desc" }],
-  });
+      order: [{ column: "created_at", direction: "desc" }],
+    }),
+    GachaRecord.first({
+      filter: { user_id: userId, has_new: 1 },
+      order: [{ column: "created_at", direction: "desc" }],
+    }),
+  ]);
 
   const now = moment();
-  const countLastDay = createdAt => {
-    const start = moment(createdAt).startOf("day");
-    return now.diff(start, "days");
-  };
-
-  let lastRainbow = "-";
-  if (lastRainbowRecord) {
-    lastRainbow = countLastDay(lastRainbowRecord.created_at);
-  }
-
-  let lastHasNew = "-";
-  if (lastHasNewRecord) {
-    lastHasNew = countLastDay(lastHasNewRecord.created_at);
-  }
+  const countLastDay = createdAt => now.diff(moment(createdAt).startOf("day"), "days");
 
   return {
-    rainbow: lastRainbow,
-    hasNew: lastHasNew,
+    rainbow: lastRainbowRecord ? countLastDay(lastRainbowRecord.created_at) : null,
+    hasNew: lastHasNewRecord ? countLastDay(lastHasNewRecord.created_at) : null,
   };
 }
 

@@ -1,26 +1,4 @@
-const { SEMANTIC } = require("../../common/theme");
-const { buildSubPanel } = require("./_shared");
-
-const AMBER_500 = SEMANTIC.secondary.main;
-const AMBER_300 = "#FCD34D";
-const TEXT = "#1A2332";
-const MUTED = "#5A6B7F";
-
-function accentBar() {
-  return {
-    type: "box",
-    layout: "vertical",
-    contents: [],
-    height: "4px",
-    background: {
-      type: "linearGradient",
-      angle: "90deg",
-      startColor: AMBER_500,
-      endColor: AMBER_300,
-    },
-    backgroundColor: AMBER_500,
-  };
-}
+const { COLORS, buildAccentBar, buildSubPanel } = require("./_shared");
 
 function header(count) {
   return {
@@ -32,14 +10,14 @@ function header(count) {
         text: "訂閱特權",
         weight: "bold",
         size: "sm",
-        color: TEXT,
+        color: COLORS.text,
         flex: 1,
       },
       {
         type: "text",
         text: `${count} 張啟用中`,
         size: "xxs",
-        color: MUTED,
+        color: COLORS.textMuted,
         align: "end",
         gravity: "bottom",
         flex: 0,
@@ -54,7 +32,10 @@ function header(count) {
 }
 
 exports.build = ({ panels }) => {
-  const contents = [accentBar(), header(panels.length)];
+  const contents = [
+    buildAccentBar({ startColor: COLORS.amber500, endColor: COLORS.amber300 }),
+    header(panels.length),
+  ];
   panels.forEach(p => contents.push(buildSubPanel(p)));
 
   return {
