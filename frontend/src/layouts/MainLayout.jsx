@@ -21,7 +21,7 @@ import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import NavDrawer from "../components/NavDrawer";
 import DebugOverlay from "../components/DebugOverlay";
-import { useColorMode } from "../theme/ColorModeContext";
+import { useColorMode } from "../theme/useColorMode";
 import useLiff from "../context/useLiff";
 
 const DRAWER_WIDTH = 260;

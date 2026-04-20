@@ -49,7 +49,7 @@ function analyzeMessage(event) {
 }
 
 function analyzeEvent(event) {
-  let message = "";
+  let message;
   let avatar = "無";
 
   switch (event.type) {
@@ -114,9 +114,9 @@ function getSourceInfo(datas) {
 // --- Components ---
 
 function SourceCard({ source, action }) {
-  let from = "";
-  let avatar = "";
-  let title = "";
+  let from;
+  let avatar;
+  let title;
   const id = source[`${source.type}Id`];
 
   switch (source.type) {

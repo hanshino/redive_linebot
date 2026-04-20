@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Box, Typography, Grid, Tabs, Tab, Paper, Skeleton } from "@mui/material";
 import { EmojiEvents, Casino, Diamond } from "@mui/icons-material";
 import OverviewCard, { RANK_COLORS } from "./OverviewCard";
-import ChatLevelChart, { useChatLevelData } from "./ChatLevelChart";
-import GachaRankChart, { useGachaRankData } from "./GachaRankChart";
-import GodStoneChart, { useGodStoneData } from "./GodStoneChart";
+import ChatLevelChart from "./ChatLevelChart";
+import GachaRankChart from "./GachaRankChart";
+import GodStoneChart from "./GodStoneChart";
+import { useChatLevelData, useGachaRankData, useGodStoneData } from "./hooks";
 
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null;

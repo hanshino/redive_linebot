@@ -172,7 +172,6 @@ export default function Race() {
             <Grid size={{ xs: 12, md: 7 }}>
               <RaceTrack
                 runners={sortedRunners}
-                status={raceData.race.status}
                 trackLength={raceData.trackLength ?? DEFAULT_TRACK_LENGTH}
               />
             </Grid>
@@ -300,7 +299,7 @@ function RaceHeader({ race }) {
 
 // ─── RaceTrack ────────────────────────────────────────────────────────────────
 
-function RaceTrack({ runners, status, trackLength = DEFAULT_TRACK_LENGTH }) {
+function RaceTrack({ runners, trackLength = DEFAULT_TRACK_LENGTH }) {
   return (
     <Card variant="outlined" sx={{ height: "100%" }}>
       <CardContent sx={{ p: "20px !important" }}>
