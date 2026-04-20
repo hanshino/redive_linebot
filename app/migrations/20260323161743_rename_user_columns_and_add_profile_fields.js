@@ -1,17 +1,11 @@
 exports.up = async function (knex) {
   // Rename columns using raw SQL to preserve DEFAULT CURRENT_TIMESTAMP
-  await knex.raw(
-    "ALTER TABLE `User` CHANGE `No` `id` int NOT NULL AUTO_INCREMENT"
-  );
-  await knex.raw(
-    "ALTER TABLE `User` CHANGE `platformId` `platform_id` varchar(45) NOT NULL"
-  );
+  await knex.raw("ALTER TABLE `User` CHANGE `No` `id` int NOT NULL AUTO_INCREMENT");
+  await knex.raw("ALTER TABLE `User` CHANGE `platformId` `platform_id` varchar(45) NOT NULL");
   await knex.raw(
     "ALTER TABLE `User` CHANGE `createDTM` `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
   );
-  await knex.raw(
-    "ALTER TABLE `User` CHANGE `closeDTM` `closed_at` datetime NULL DEFAULT NULL"
-  );
+  await knex.raw("ALTER TABLE `User` CHANGE `closeDTM` `closed_at` datetime NULL DEFAULT NULL");
 
   // Add LINE profile fields
   await knex.schema.alterTable("User", table => {
@@ -28,16 +22,10 @@ exports.down = async function (knex) {
     table.dropColumn("picture_url");
   });
 
-  await knex.raw(
-    "ALTER TABLE `User` CHANGE `id` `No` int NOT NULL AUTO_INCREMENT"
-  );
-  await knex.raw(
-    "ALTER TABLE `User` CHANGE `platform_id` `platformId` varchar(45) NOT NULL"
-  );
+  await knex.raw("ALTER TABLE `User` CHANGE `id` `No` int NOT NULL AUTO_INCREMENT");
+  await knex.raw("ALTER TABLE `User` CHANGE `platform_id` `platformId` varchar(45) NOT NULL");
   await knex.raw(
     "ALTER TABLE `User` CHANGE `created_at` `createDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
   );
-  await knex.raw(
-    "ALTER TABLE `User` CHANGE `closed_at` `closeDTM` datetime NULL DEFAULT NULL"
-  );
+  await knex.raw("ALTER TABLE `User` CHANGE `closed_at` `closeDTM` datetime NULL DEFAULT NULL");
 };
