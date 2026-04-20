@@ -309,12 +309,7 @@ function RaceTrack({ runners, status, trackLength = DEFAULT_TRACK_LENGTH }) {
         </Typography>
         <Stack spacing={2}>
           {runners.map(runner => (
-            <RunnerRow
-              key={runner.id}
-              runner={runner}
-              raceFinished={status === "finished"}
-              trackLength={trackLength}
-            />
+            <RunnerRow key={runner.id} runner={runner} trackLength={trackLength} />
           ))}
         </Stack>
       </CardContent>
@@ -322,7 +317,7 @@ function RaceTrack({ runners, status, trackLength = DEFAULT_TRACK_LENGTH }) {
   );
 }
 
-function RunnerRow({ runner, raceFinished, trackLength }) {
+function RunnerRow({ runner, trackLength }) {
   const progress = Math.min((runner.position / trackLength) * 100, 100);
   const isWinner = runner.position >= trackLength;
   const rankStyle = RANK_STYLES[runner.rank];

@@ -406,7 +406,8 @@ exports.api.insertOrder = async (req, res) => {
 };
 
 exports.api.setCustomerOrderStatus = async (req, res) => {
-  const { sourceId, orderKey, status } = req.params;
+  const { sourceId, orderKey } = req.params;
+  const { status } = req.body;
   const { profile } = req;
   try {
     if (![1, 0].includes(parseInt(status))) throw new CusOrderException("Bad Request.");

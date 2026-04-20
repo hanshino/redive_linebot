@@ -84,7 +84,7 @@ function genAccordionButtons({ showDialog, send, sendable, buttons }) {
 
 const paramReducer = (state, action) => {
   const { type, week, boss } = action;
-  let error = null;
+  let error;
   switch (type) {
     case "INIT":
       return {

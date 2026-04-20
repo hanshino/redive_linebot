@@ -8,7 +8,7 @@ export function useChatLevelData() {
 
   const rows = useMemo(() => {
     if (!data) return [];
-    return data.map((d, i) => ({
+    return data.map(d => ({
       displayName: d.displayName,
       value: d.experience,
       level: d.level,
