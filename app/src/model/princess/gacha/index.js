@@ -121,11 +121,6 @@ exports.getUserGodStoneCount = userId => {
     .then(res => (res.length === 0 ? 0 : res[0].total || 0));
 };
 
-function getTodayDate() {
-  let date = new Date();
-  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join("/");
-}
-
 /**
  * 取得蒐集排行榜
  * @param {Object}  options

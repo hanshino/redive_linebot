@@ -1,17 +1,9 @@
-import { createContext, useContext, useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { lightTheme, darkTheme } from "./index";
-
-const ColorModeContext = createContext({
-  mode: "light",
-  toggleColorMode: () => {},
-});
-
-export function useColorMode() {
-  return useContext(ColorModeContext);
-}
+import { ColorModeContext } from "./useColorMode";
 
 export function ColorModeProvider({ children }) {
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");

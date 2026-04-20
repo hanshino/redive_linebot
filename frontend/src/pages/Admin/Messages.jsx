@@ -49,7 +49,7 @@ function analyzeMessage(event) {
 }
 
 function analyzeEvent(event) {
-  let message = "";
+  let message;
   let avatar = "無";
 
   switch (event.type) {
@@ -114,9 +114,9 @@ function getSourceInfo(datas) {
 // --- Components ---
 
 function SourceCard({ source, action }) {
-  let from = "";
-  let avatar = "";
-  let title = "";
+  let from;
+  let avatar;
+  let title;
   const id = source[`${source.type}Id`];
 
   switch (source.type) {
@@ -300,6 +300,30 @@ export default function AdminMessages() {
     currId: null,
   });
 
+  const handleEvent = event => {
+    setEvents(prev => [...prev, event]);
+  };
+
+  const genDialogData = sourceId => {
+    let sourceType = "";
+    switch (sourceId[0]) {
+      case "C":
+        sourceType = "group";
+        break;
+      case "R":
+        sourceType = "room";
+        break;
+      case "U":
+      default:
+        sourceType = "user";
+        break;
+    }
+
+    return events.filter(
+      event => event.source[`${sourceType}Id`] === sourceId && event.source.type === sourceType
+    );
+  };
+
   useEffect(() => {
     if (!isLoggedIn) return;
     document.title = "訊息實況";
@@ -325,30 +349,6 @@ export default function AdminMessages() {
       }));
     }
   }, [events]);
-
-  const handleEvent = event => {
-    setEvents(prev => [...prev, event]);
-  };
-
-  const genDialogData = sourceId => {
-    let sourceType = "";
-    switch (sourceId[0]) {
-      case "C":
-        sourceType = "group";
-        break;
-      case "R":
-        sourceType = "room";
-        break;
-      case "U":
-      default:
-        sourceType = "user";
-        break;
-    }
-
-    return events.filter(
-      event => event.source[`${sourceType}Id`] === sourceId && event.source.type === sourceType
-    );
-  };
 
   const handleOpen = sourceId => {
     setDialog({

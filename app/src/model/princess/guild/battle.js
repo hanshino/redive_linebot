@@ -45,12 +45,10 @@ exports.resetFinishBattle = (guildId, userId) => {
  */
 exports.getFinishList = async (guildId, objDate) => {
   let { start, end } = getBattleDate(objDate);
-  let memberIds = [],
-    signinIds = [];
 
   let rows = await mysql.select("userId").from("GuildMembers").where({ guildId, status: 1 });
 
-  memberIds = rows.map(row => row.userId);
+  const memberIds = rows.map(row => row.userId);
 
   let GBFrows = await mysql
     .select(["userId", "createDTM"])
@@ -58,7 +56,7 @@ exports.getFinishList = async (guildId, objDate) => {
     .where({ guildId })
     .whereBetween("createDTM", [start, end]);
 
-  signinIds = GBFrows.map(row => row.userId);
+  const signinIds = GBFrows.map(row => row.userId);
 
   return memberIds.map(id => ({
     userId: id,

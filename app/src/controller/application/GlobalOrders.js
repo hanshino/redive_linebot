@@ -24,12 +24,10 @@ exports.GlobalOrderBase = async (context, { next }) => {
     return false;
   });
 
-  var objOrder = null;
-
   if (fullMatchResult.length !== 0) {
     recordSign("GlobalOrder");
     umami.track("global_order_hit", "/bot/application/global_order", umami.getSourceData(context));
-    objOrder = fullMatchResult[getRandom(fullMatchResult.length - 1)];
+    const objOrder = fullMatchResult[getRandom(fullMatchResult.length - 1)];
     send(context, objOrder.replyDatas, { name: objOrder.senderName, iconUrl: objOrder.senderIcon });
     return;
   }
@@ -42,7 +40,7 @@ exports.GlobalOrderBase = async (context, { next }) => {
   if (matchResult.length !== 0) {
     recordSign("GlobalOrder");
     umami.track("global_order_hit", "/bot/application/global_order", umami.getSourceData(context));
-    objOrder = matchResult[getRandom(matchResult.length - 1)];
+    const objOrder = matchResult[getRandom(matchResult.length - 1)];
     send(context, objOrder.replyDatas, { name: objOrder.senderName, iconUrl: objOrder.senderIcon });
     return;
   }

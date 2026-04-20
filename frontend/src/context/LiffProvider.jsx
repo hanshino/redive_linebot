@@ -1,22 +1,13 @@
-import { createContext, useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import liff from "@line/liff";
 import api, { setAuthToken, clearAuthToken } from "../services/api";
 import { FullPageLoading } from "../components/Loading";
 import { debugLog } from "../utils/debugLogger";
+import { LiffContext } from "./LiffContext";
 
 const TOKEN_KEY = "liff_access_token";
 const SIZE_KEY = "liff_size";
 const DEFAULT_SIZE = "full";
-
-export const LiffContext = createContext({
-  ready: false,
-  loggedIn: false,
-  isAdmin: false,
-  profile: null,
-  liffContext: {},
-  login: () => {},
-  logout: () => {},
-});
 
 function getLiffSize() {
   const match = window.location.pathname.match(/^\/liff\/([^/]+)/);

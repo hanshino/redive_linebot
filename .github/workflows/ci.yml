@@ -14,7 +14,6 @@ jobs:
   lint-app:
     name: Lint (app)
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: app
@@ -31,7 +30,6 @@ jobs:
   lint-frontend:
     name: Lint (frontend)
     runs-on: ubuntu-latest
-    continue-on-error: true
     defaults:
       run:
         working-directory: frontend

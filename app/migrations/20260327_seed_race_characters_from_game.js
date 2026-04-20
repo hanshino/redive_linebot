@@ -9,15 +9,21 @@ exports.up = async function (knex) {
 
   // All playable characters from unit_profile
   const profiles = sqlite
-    .prepare("SELECT unit_id, unit_name FROM unit_profile WHERE unit_id >= 100000 AND unit_id < 200000 ORDER BY unit_id")
+    .prepare(
+      "SELECT unit_id, unit_name FROM unit_profile WHERE unit_id >= 100000 AND unit_id < 200000 ORDER BY unit_id"
+    )
     .all();
 
   // Max rarity per unit (6-star uses +60, otherwise +30)
   const rarities = sqlite
-    .prepare("SELECT unit_id, MAX(rarity) as max_rarity FROM unit_rarity WHERE unit_id >= 100000 AND unit_id < 200000 GROUP BY unit_id")
+    .prepare(
+      "SELECT unit_id, MAX(rarity) as max_rarity FROM unit_rarity WHERE unit_id >= 100000 AND unit_id < 200000 GROUP BY unit_id"
+    )
     .all();
   const rarityMap = {};
-  rarities.forEach(r => { rarityMap[r.unit_id] = r.max_rarity; });
+  rarities.forEach(r => {
+    rarityMap[r.unit_id] = r.max_rarity;
+  });
 
   sqlite.close();
 

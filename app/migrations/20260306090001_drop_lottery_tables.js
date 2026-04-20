@@ -26,7 +26,10 @@ exports.down = async function (knex) {
     table.integer("lottery_main_id").unsigned().notNullable();
     table.string("user_id").notNullable();
     table.string("content").notNullable();
-    table.enum("status", ["initial", "exchanged", "canceled", "expired"]).notNullable().defaultTo("initial");
+    table
+      .enum("status", ["initial", "exchanged", "canceled", "expired"])
+      .notNullable()
+      .defaultTo("initial");
     table.enum("buy_type", ["manual", "auto"]).notNullable().defaultTo("manual");
     table.enum("result", ["first", "second", "third", "fourth", "fifth"]).nullable();
     table.timestamps(true, true);

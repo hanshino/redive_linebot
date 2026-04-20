@@ -30,7 +30,7 @@ exports.updateWorldBoss = async (req, res) => {
   try {
     await WorldBossModel.update(id, req.body);
     res.json({});
-  } catch (e) {
+  } catch {
     res.status(500).json({
       message: i18n.t("api.error.unknown"),
     });
@@ -42,7 +42,7 @@ exports.deleteWorldBoss = async (req, res) => {
   try {
     await WorldBossModel.destory(id);
     res.json({});
-  } catch (e) {
+  } catch {
     res.status(500).json({
       message: i18n.t("api.error.unknown"),
     });

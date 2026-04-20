@@ -68,7 +68,7 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
   const statusColor = STATUS_COLOR[raceData.status];
   const winner = rankedRunners.find(r => r.position >= trackLength);
 
-  let subtitle = "";
+  let subtitle;
   if (raceData.status === "betting") {
     const endTime = new Date(raceData.betting_end_at).toLocaleTimeString("zh-TW");
     subtitle = `截止時間: ${endTime}`;

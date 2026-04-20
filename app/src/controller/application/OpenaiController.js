@@ -72,7 +72,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
   console.log(fullContent);
   const result = await model.generateContent(fullContent);
 
-  const reponseText = result.response.text().replace(/bot\:/gi, "").trim();
+  const reponseText = result.response.text().replace(/bot:/gi, "").trim();
   await context.replyText(reponseText);
 };
 

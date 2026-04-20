@@ -7,7 +7,7 @@ function normalizeEffects(raw) {
     try {
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   }

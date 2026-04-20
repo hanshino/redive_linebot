@@ -277,7 +277,7 @@ export default function AutoSettings() {
     try {
       const data = await getPreference();
       setState(data);
-    } catch (err) {
+    } catch {
       setSnack({ severity: "error", message: "讀取偏好失敗，請稍後再試" });
     } finally {
       setLoading(false);

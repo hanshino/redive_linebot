@@ -172,7 +172,6 @@ export default function Race() {
             <Grid size={{ xs: 12, md: 7 }}>
               <RaceTrack
                 runners={sortedRunners}
-                status={raceData.race.status}
                 trackLength={raceData.trackLength ?? DEFAULT_TRACK_LENGTH}
               />
             </Grid>
@@ -300,7 +299,7 @@ function RaceHeader({ race }) {
 
 // ─── RaceTrack ────────────────────────────────────────────────────────────────
 
-function RaceTrack({ runners, status, trackLength = DEFAULT_TRACK_LENGTH }) {
+function RaceTrack({ runners, trackLength = DEFAULT_TRACK_LENGTH }) {
   return (
     <Card variant="outlined" sx={{ height: "100%" }}>
       <CardContent sx={{ p: "20px !important" }}>
@@ -309,12 +308,7 @@ function RaceTrack({ runners, status, trackLength = DEFAULT_TRACK_LENGTH }) {
         </Typography>
         <Stack spacing={2}>
           {runners.map(runner => (
-            <RunnerRow
-              key={runner.id}
-              runner={runner}
-              raceFinished={status === "finished"}
-              trackLength={trackLength}
-            />
+            <RunnerRow key={runner.id} runner={runner} trackLength={trackLength} />
           ))}
         </Stack>
       </CardContent>
@@ -322,7 +316,7 @@ function RaceTrack({ runners, status, trackLength = DEFAULT_TRACK_LENGTH }) {
   );
 }
 
-function RunnerRow({ runner, raceFinished, trackLength }) {
+function RunnerRow({ runner, trackLength }) {
   const progress = Math.min((runner.position / trackLength) * 100, 100);
   const isWinner = runner.position >= trackLength;
   const rankStyle = RANK_STYLES[runner.rank];

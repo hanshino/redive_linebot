@@ -5,7 +5,6 @@ const { raceRunner } = require("../model/application/RaceRunner");
 const { raceBet } = require("../model/application/RaceBet");
 const { raceCharacter } = require("../model/application/RaceCharacter");
 const { raceEvent } = require("../model/application/RaceEvent");
-const { inventory } = require("../model/application/Inventory");
 
 const _ = require("lodash");
 

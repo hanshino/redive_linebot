@@ -1,5 +1,3 @@
-const { pad } = require("lodash");
-
 exports.generateRankupBubble = ({ beforeHeadImage, afterHeadImage, command, unitName }) => ({
   type: "bubble",
   body: {

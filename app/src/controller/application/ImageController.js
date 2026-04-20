@@ -1,6 +1,5 @@
 const { text } = require("bottender/router");
 const { getClient } = require("bottender");
-const { get } = require("lodash");
 const i18n = require("../../util/i18n");
 const LineClient = getClient("line");
 const pictshare = require("../../util/pictshare");
