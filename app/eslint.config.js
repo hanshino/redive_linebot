@@ -11,7 +11,8 @@ module.exports = [
       prettier: prettierPlugin,
     },
     languageOptions: {
-      ecmaVersion: 2018,
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
       globals: {
         ...globals.node,
       },
@@ -27,7 +28,7 @@ module.exports = [
     },
   },
   {
-    files: ["**/*.test.js"],
+    files: ["**/*.test.js", "**/__tests__/**/*.js"],
     languageOptions: {
       globals: {
         ...globals.jest,
