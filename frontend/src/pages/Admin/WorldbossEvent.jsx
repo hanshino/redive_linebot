@@ -53,7 +53,13 @@ function EditDialog({ open, onClose, onSubmit, loading: parentLoading }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
       <DialogTitle sx={{ fontWeight: 700 }}>新增世界王活動</DialogTitle>
       <DialogContent>
         <Stack spacing={2.5} sx={{ mt: 1 }}>
@@ -76,18 +82,13 @@ function EditDialog({ open, onClose, onSubmit, loading: parentLoading }) {
                 inputRef={bossEl}
                 helperText="請選擇世界王來綁定活動，若無世界王，請先去新增世界王"
               >
-                {bossData.map((boss) => (
+                {bossData.map(boss => (
                   <MenuItem key={boss.id} value={boss.id}>
                     {boss.name}
                   </MenuItem>
                 ))}
               </TextField>
-              <TextField
-                label="活動公告"
-                multiline
-                fullWidth
-                inputRef={announceEl}
-              />
+              <TextField label="活動公告" multiline fullWidth inputRef={announceEl} />
               <Box sx={{ display: "flex", gap: 2 }}>
                 <TextField
                   label="開始時間"
@@ -114,12 +115,7 @@ function EditDialog({ open, onClose, onSubmit, loading: parentLoading }) {
         <Button onClick={onClose} variant="outlined" color="inherit">
           取消
         </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          color="primary"
-          disabled={parentLoading}
-        >
+        <Button onClick={handleSubmit} variant="contained" color="primary" disabled={parentLoading}>
           新增
         </Button>
       </DialogActions>
@@ -130,7 +126,7 @@ function EditDialog({ open, onClose, onSubmit, loading: parentLoading }) {
 function EventListSkeleton() {
   return (
     <Paper sx={{ borderRadius: 3 }}>
-      {[0, 1, 2].map((i) => (
+      {[0, 1, 2].map(i => (
         <Box key={i}>
           {i > 0 && <Divider />}
           <Box
@@ -163,21 +159,13 @@ function formatDateTime(value) {
 export default function AdminWorldbossEvent() {
   const { loggedIn: isLoggedIn } = useLiff();
   const [hintState, { handleOpen, handleClose }] = useHintBar();
-  const [{ data, loading, error }, fetchData] = useAxios(
-    "/api/admin/world-boss-events",
-    { manual: true }
-  );
-  const [
-    { data: createdResponse, loading: createdLoading, error: createdError },
-    createData,
-  ] = useAxios(
-    { url: "/api/admin/world-boss-events", method: "POST" },
-    { manual: true }
-  );
-  const [
-    { data: deletedResponse, loading: deletedLoading, error: deletedError },
-    deleteData,
-  ] = useAxios({ method: "DELETE" }, { manual: true });
+  const [{ data, loading, error }, fetchData] = useAxios("/api/admin/world-boss-events", {
+    manual: true,
+  });
+  const [{ data: createdResponse, loading: createdLoading, error: createdError }, createData] =
+    useAxios({ url: "/api/admin/world-boss-events", method: "POST" }, { manual: true });
+  const [{ data: deletedResponse, loading: deletedLoading, error: deletedError }, deleteData] =
+    useAxios({ method: "DELETE" }, { manual: true });
 
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -232,7 +220,7 @@ export default function AdminWorldbossEvent() {
           sx={{
             position: "absolute",
             inset: 0,
-            background: (theme) =>
+            background: theme =>
               `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
           }}
         />
@@ -274,7 +262,6 @@ export default function AdminWorldbossEvent() {
           </Button>
         </Box>
       </Paper>
-
       {/* Event List */}
       {loading ? (
         <EventListSkeleton />
@@ -282,7 +269,12 @@ export default function AdminWorldbossEvent() {
         <Paper sx={{ borderRadius: 3 }}>
           {events.length === 0 && (
             <Box sx={{ px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 尚無活動資料
               </Typography>
             </Box>
@@ -308,12 +300,20 @@ export default function AdminWorldbossEvent() {
                   </Typography>
                   <Typography
                     variant="caption"
-                    color="text.secondary"
-                    sx={{ display: "block", mb: 0.25 }}
+                    sx={{
+                      color: "text.secondary",
+                      display: "block",
+                      mb: 0.25,
+                    }}
                   >
                     {event.announcement || "（無公告）"}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {formatDateTime(event.start_time)} ～ {formatDateTime(event.end_time)}
                   </Typography>
                 </Box>
@@ -335,7 +335,6 @@ export default function AdminWorldbossEvent() {
           ))}
         </Paper>
       )}
-
       <HintSnackBar
         open={hintState.open}
         message={hintState.message}
@@ -345,7 +344,7 @@ export default function AdminWorldbossEvent() {
       <EditDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        onSubmit={(formData) => createData({ data: formData })}
+        onSubmit={formData => createData({ data: formData })}
         loading={createdLoading}
       />
     </Box>

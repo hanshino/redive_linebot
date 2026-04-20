@@ -80,7 +80,13 @@ export default function Janken() {
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
         猜拳競技場
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 3,
+        }}
+      >
         即時對戰排行
       </Typography>
       {error && (

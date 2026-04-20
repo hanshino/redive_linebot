@@ -38,10 +38,9 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
   const expEl = useRef(null);
   const goldEl = useRef(null);
   const descEl = useRef(null);
-  const [{ data = {}, loading }, fetchData] = useAxios(
-    `/api/admin/world-bosses/${id}`,
-    { manual: true }
-  );
+  const [{ data = {}, loading }, fetchData] = useAxios(`/api/admin/world-bosses/${id}`, {
+    manual: true,
+  });
   const [image, setImage] = useState(null);
   const [{ data: uploadResult = {}, loading: uploading }, doUpload] = useAxios(
     { url: "/api/images", method: "POST" },
@@ -80,15 +79,13 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
     });
   };
 
-  const handleUploadImage = (event) => {
+  const handleUploadImage = event => {
     const file = get(event, "target.files[0]");
     if (!file) return;
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
-      const result = /^data:image\/(png|jpg|jpeg);base64,(.+)/.exec(
-        reader.result
-      );
+      const result = /^data:image\/(png|jpg|jpeg);base64,(.+)/.exec(reader.result);
       const base = get(result, "[2]");
       if (base) {
         doUpload({
@@ -134,11 +131,7 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
         {loading ? (
           <Skeleton variant="circular" width={120} height={120} />
         ) : image ? (
-          <Avatar
-            src={image}
-            alt="世界王圖片"
-            sx={{ width: 120, height: 120 }}
-          />
+          <Avatar src={image} alt="世界王圖片" sx={{ width: 120, height: 120 }} />
         ) : (
           <Box
             sx={{
@@ -188,10 +181,7 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
           </Stack>
         ) : (
           <Stack spacing={2.5}>
-            <Typography
-              variant="overline"
-              sx={{ color: "text.secondary", fontWeight: 700 }}
-            >
+            <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 700 }}>
               基本資訊
             </Typography>
 
@@ -221,10 +211,7 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
               inputRef={descEl}
             />
 
-            <Typography
-              variant="overline"
-              sx={{ color: "text.secondary", fontWeight: 700 }}
-            >
+            <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 700 }}>
               數值設定
             </Typography>
 
@@ -258,17 +245,12 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
                 label="圖片"
                 variant="outlined"
                 value={image || ""}
-                onChange={(event) => setImage(event.target.value)}
+                onChange={event => setImage(event.target.value)}
                 slotProps={{
                   input: {
                     endAdornment: (
                       <IconButton component="label">
-                        <input
-                          type="file"
-                          hidden
-                          accept="image/*"
-                          onChange={handleUploadImage}
-                        />
+                        <input type="file" hidden accept="image/*" onChange={handleUploadImage} />
                         <ImageIcon />
                       </IconButton>
                     ),
@@ -300,7 +282,7 @@ function DataForm({ id, onSubmit, onCancel, submitting }) {
 function BossListSkeleton() {
   return (
     <Paper sx={{ borderRadius: 3 }}>
-      {[0, 1, 2].map((i) => (
+      {[0, 1, 2].map(i => (
         <Box key={i}>
           {i > 0 && <Divider />}
           <Box
@@ -327,22 +309,16 @@ function BossListSkeleton() {
 
 export default function AdminWorldboss() {
   const { loggedIn: isLoggedIn } = useLiff();
-  const [dialogState, { handleOpen: openDialog, handleClose: closeDialog }] =
-    useAlertDialog();
-  const [{ data = [], loading }, fetchData] = useAxios(
-    "/api/admin/world-bosses",
+  const [dialogState, { handleOpen: openDialog, handleClose: closeDialog }] = useAlertDialog();
+  const [{ data = [], loading }, fetchData] = useAxios("/api/admin/world-bosses", { manual: true });
+  const [{ data: updateData, loading: updateLoading, error: updatedError }, updateDataRequest] =
+    useAxios({ method: "PUT" }, { manual: true });
+  const [{ data: createdData, loading: createdLoading }, createDataRequest] = useAxios(
+    { method: "POST" },
     { manual: true }
   );
-  const [
-    { data: updateData, loading: updateLoading, error: updatedError },
-    updateDataRequest,
-  ] = useAxios({ method: "PUT" }, { manual: true });
-  const [{ data: createdData, loading: createdLoading }, createDataRequest] =
-    useAxios({ method: "POST" }, { manual: true });
-  const [
-    { data: deletedData, loading: deletedLoading, error: deletedError },
-    deleteDataRequest,
-  ] = useAxios({ method: "DELETE" }, { manual: true });
+  const [{ data: deletedData, loading: deletedLoading, error: deletedError }, deleteDataRequest] =
+    useAxios({ method: "DELETE" }, { manual: true });
   const [editState, setEditState] = useState({ id: null, isActive: false });
   const [hintState, { handleOpen, handleClose }] = useHintBar();
 
@@ -386,7 +362,7 @@ export default function AdminWorldboss() {
     }
   }, [isLoggedIn]);
 
-  const handleSubmit = (formData) => {
+  const handleSubmit = formData => {
     const id = get(formData, "id");
     if (id) {
       updateDataRequest({
@@ -436,7 +412,7 @@ export default function AdminWorldboss() {
           sx={{
             position: "absolute",
             inset: 0,
-            background: (theme) =>
+            background: theme =>
               `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
           }}
         />
@@ -478,7 +454,6 @@ export default function AdminWorldboss() {
           </Button>
         </Box>
       </Paper>
-
       {/* Boss List */}
       {loading ? (
         <BossListSkeleton />
@@ -486,7 +461,12 @@ export default function AdminWorldboss() {
         <Paper sx={{ borderRadius: 3 }}>
           {data.length === 0 && (
             <Box sx={{ px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 尚無世界王資料
               </Typography>
             </Box>
@@ -514,7 +494,12 @@ export default function AdminWorldboss() {
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     {boss.name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Lv.{boss.level} &nbsp;|&nbsp; HP {boss.hp?.toLocaleString()} &nbsp;|&nbsp; EXP{" "}
                     {boss.exp?.toLocaleString()} &nbsp;|&nbsp; 女神石 {boss.gold?.toLocaleString()}
                   </Typography>
@@ -535,8 +520,7 @@ export default function AdminWorldboss() {
                       onClick={() =>
                         openDialog({
                           title: "刪除此世界王",
-                          description:
-                            "刪除之後，將會連帶影響活動中的世界王，確定要刪除嗎？",
+                          description: "刪除之後，將會連帶影響活動中的世界王，確定要刪除嗎？",
                           submitText: "刪除",
                           cancelText: "取消",
                           onCancel: () => closeDialog(),
@@ -559,7 +543,6 @@ export default function AdminWorldboss() {
           ))}
         </Paper>
       )}
-
       <HintSnackBar
         open={hintState.open}
         message={hintState.message}

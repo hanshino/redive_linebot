@@ -31,9 +31,7 @@ describe("GET /api/admin/gacha-pool", () => {
 
 describe("PUT /api/admin/gacha-pool", () => {
   it("returns 200 on successful character update", async () => {
-    const res = await request(app)
-      .put("/api/admin/gacha-pool")
-      .send({ id: 1, name: "updated" });
+    const res = await request(app).put("/api/admin/gacha-pool").send({ id: 1, name: "updated" });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true });
@@ -42,9 +40,7 @@ describe("PUT /api/admin/gacha-pool", () => {
 
 describe("POST /api/admin/gacha-pool", () => {
   it("returns 201 on successful character insert", async () => {
-    const res = await request(app)
-      .post("/api/admin/gacha-pool")
-      .send({ name: "new character" });
+    const res = await request(app).post("/api/admin/gacha-pool").send({ name: "new character" });
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual({ id: 1 });

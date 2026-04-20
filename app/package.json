@@ -15,7 +15,7 @@
     "@google/generative-ai": "^0.24.1",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
-    "axios": "1.15.0",
+    "axios": "1.15.1",
     "better-sqlite3": "^12.9.0",
     "bottender": "1.5.5",
     "brotli": "^1.3.3",
@@ -36,7 +36,7 @@
     "md5": "^2.3.0",
     "minimist": "^1.2.8",
     "moment": "^2.30.1",
-    "mysql2": "^3.22.0",
+    "mysql2": "^3.22.1",
     "redis": "^5.12.1",
     "socket.io": "^4.8.3",
     "table": "^6.9.0",
@@ -46,14 +46,23 @@
     "@types/express": "^4.17.25",
     "dotenv": "^17.4.2",
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.2.0",
+    "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "globals": "^17.5.0",
-    "jest": "^29.7.0",
+    "jest": "^30.3.0",
     "nodemon": "^3.1.14",
     "prettier": "^3.8.3",
     "supertest": "^7.2.2"
+  },
+  "resolutions": {
+    "@slack/web-api/form-data": "^2.5.5",
+    "@types/request/form-data": "^2.5.5",
+    "request/form-data": "^2.5.5",
+    "request/qs": "^6.14.2",
+    "body-parser/qs": "^6.14.2",
+    "@bottender/express/body-parser/qs": "^6.14.2",
+    "har-validator/ajv": "^6.14.0"
   },
   "packageManager": "yarn@1.22.22"
 }

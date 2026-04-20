@@ -57,11 +57,7 @@ function simulateRace() {
 
       runner.position = Math.min(runner.position + move, raceConfig.trackLength);
       const staminaCost = random(raceConfig.stamina.minCost, raceConfig.stamina.maxCost);
-      runner.stamina = clamp(
-        runner.stamina - staminaCost + raceConfig.stamina.recovery,
-        0,
-        100
-      );
+      runner.stamina = clamp(runner.stamina - staminaCost + raceConfig.stamina.recovery, 0, 100);
       runner.status = "normal";
     }
 

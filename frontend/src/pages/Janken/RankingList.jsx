@@ -28,7 +28,12 @@ export default function RankingList({ rankings, loading }) {
   if (!rankings || rankings.length === 0) {
     return (
       <Card sx={{ p: 3, textAlign: "center" }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           尚無排名資料
         </Typography>
       </Card>
@@ -37,7 +42,13 @@ export default function RankingList({ rankings, loading }) {
 
   return (
     <Box>
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{
+          color: "text.secondary",
+          mb: 1,
+        }}
+      >
         段位排行榜
       </Typography>
       <Stack spacing={1}>
@@ -68,7 +79,6 @@ export default function RankingList({ rankings, loading }) {
               >
                 {player.rank}
               </Typography>
-
               {player.rankImage && (
                 <Box
                   component="img"
@@ -77,9 +87,14 @@ export default function RankingList({ rankings, loading }) {
                   sx={{ width: 28, height: 28, objectFit: "contain", flexShrink: 0 }}
                 />
               )}
-
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" alignItems="center" spacing={1}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "center",
+                  }}
+                >
                   <Typography
                     variant="body2"
                     sx={{
@@ -99,12 +114,16 @@ export default function RankingList({ rankings, loading }) {
                     sx={{ fontSize: "0.75rem", height: 22 }}
                   />
                 </Stack>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {player.winCount}勝 {player.loseCount}負 {player.drawCount}平{" / "}
                   勝率 {player.winRate}%{player.streak > 0 && ` / ${player.streak} 連勝`}
                 </Typography>
               </Box>
-
               <Typography
                 variant="body2"
                 sx={{ fontWeight: 700, color: "primary.main", whiteSpace: "nowrap" }}

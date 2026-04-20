@@ -153,7 +153,14 @@ export default function GachaBannerForm() {
   return (
     <Box sx={{ width: "100%", maxWidth: 640, mx: "auto", pb: 10 }}>
       {/* Header */}
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
         <IconButton
           onClick={() => navigate("/admin/gacha-banner")}
           sx={{
@@ -167,7 +174,6 @@ export default function GachaBannerForm() {
           {isEdit ? "編輯活動" : "新增活動"}
         </Typography>
       </Stack>
-
       {/* Form */}
       <Paper
         elevation={0}
@@ -315,7 +321,6 @@ export default function GachaBannerForm() {
           />
         </Stack>
       </Paper>
-
       {/* Sticky Save Button */}
       <Box
         sx={{
@@ -346,7 +351,6 @@ export default function GachaBannerForm() {
           </Button>
         </Box>
       </Box>
-
       <HintSnackBar
         open={hintState.open}
         message={hintState.message}

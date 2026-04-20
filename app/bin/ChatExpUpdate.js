@@ -98,7 +98,10 @@ async function writeRecords(expDatas) {
 
   let queries = recordDatas.map(data =>
     mysql
-      .update({ modify_date: new Date(), experience: mysql.raw("experience + ?", [data.experience]) })
+      .update({
+        modify_date: new Date(),
+        experience: mysql.raw("experience + ?", [data.experience]),
+      })
       .from("chat_user_data")
       .where({ id: data.id })
   );

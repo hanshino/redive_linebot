@@ -11,12 +11,12 @@ export default function useAlertDialog() {
     onCancel: null,
   });
 
-  const handleOpen = useCallback((detail) => {
-    setState((prev) => ({ ...prev, ...detail, open: true }));
+  const handleOpen = useCallback(detail => {
+    setState(prev => ({ ...prev, ...detail, open: true }));
   }, []);
 
   const handleClose = useCallback(() => {
-    setState((prev) => ({ ...prev, open: false }));
+    setState(prev => ({ ...prev, open: false }));
   }, []);
 
   return [state, { handleOpen, handleClose }];

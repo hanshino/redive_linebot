@@ -206,7 +206,7 @@ function generateTrackRow(runner, rankIndex, oddsInfo, isBetting = false) {
   const statusIcon = isStunned ? " 💫" : isSlowed ? " 🐌" : "";
   // Betting phase: show character number so users can type .賽跑下注 {number} {amount}
   const rankNum = isBetting ? `${runner.lane}` : `${rankIndex + 1}`;
-  const rankBgColor = isBetting ? "#3B82F6" : (RANK_COLORS[rankIndex] || "#555555");
+  const rankBgColor = isBetting ? "#3B82F6" : RANK_COLORS[rankIndex] || "#555555";
   const nameColor = isWinner ? "#FFD700" : rankIndex < 3 ? "#FFFFFF" : "#999999";
   const barColor = isWinner
     ? "#FFD700"

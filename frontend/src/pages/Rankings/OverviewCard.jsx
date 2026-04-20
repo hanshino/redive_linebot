@@ -20,7 +20,13 @@ export default function OverviewCard({ icon, title, topName, topValue, count, co
         <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
             {icon}
-            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: "text.secondary",
+                fontWeight: 600,
+              }}
+            >
               {title}
             </Typography>
           </Box>
@@ -30,7 +36,12 @@ export default function OverviewCard({ icon, title, topName, topValue, count, co
           <Typography variant="h5" sx={{ fontWeight: 800, color }}>
             {topValue ?? "-"}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             共 {count ?? 0} 人參與
           </Typography>
         </CardContent>

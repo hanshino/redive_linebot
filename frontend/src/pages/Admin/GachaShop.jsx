@@ -37,7 +37,7 @@ function GachaShopSkeleton() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <Skeleton variant="rounded" height={140} animation="wave" />
       <Skeleton variant="rounded" height={56} animation="wave" />
-      {[1, 2, 3, 4, 5].map((i) => (
+      {[1, 2, 3, 4, 5].map(i => (
         <Skeleton key={i} variant="rounded" height={72} animation="wave" />
       ))}
     </Box>
@@ -48,11 +48,7 @@ function GachaShopSkeleton() {
 function ShopItemRow({ row, onEdit, onDelete }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 2, py: 2 }}>
-      <Avatar
-        alt={row.name}
-        src={row.headImage}
-        sx={{ width: 48, height: 48, flexShrink: 0 }}
-      >
+      <Avatar alt={row.name} src={row.headImage} sx={{ width: 48, height: 48, flexShrink: 0 }}>
         {row.name?.charAt(0)}
       </Avatar>
       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -95,7 +91,7 @@ export default function AdminGachaShop() {
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
   const [alertState, { handleOpen: showAlert, handleClose: closeAlert }] = useAlertDialog();
 
-  const existIds = useMemo(() => rows.map((item) => item.itemId), [rows]);
+  const existIds = useMemo(() => rows.map(item => item.itemId), [rows]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -114,7 +110,7 @@ export default function AdminGachaShop() {
     fetchData();
   }, [fetchData]);
 
-  const handleCreate = async (formData) => {
+  const handleCreate = async formData => {
     try {
       setLoading(true);
       await gachaShopService.createItem(formData);
@@ -127,7 +123,7 @@ export default function AdminGachaShop() {
     }
   };
 
-  const handleOpenEdit = (row) => {
+  const handleOpenEdit = row => {
     setEditingRow({
       id: row.id,
       name: row.name || "",
@@ -152,7 +148,7 @@ export default function AdminGachaShop() {
     }
   };
 
-  const handleDeleteClick = (row) => {
+  const handleDeleteClick = row => {
     showAlert({
       title: "確認刪除",
       description: `確定要刪除商品「${row.name}」嗎？`,
@@ -201,7 +197,7 @@ export default function AdminGachaShop() {
           sx={{
             position: "absolute",
             inset: 0,
-            background: (theme) =>
+            background: theme =>
               `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
           }}
         />
@@ -243,12 +239,17 @@ export default function AdminGachaShop() {
           </Button>
         </Box>
       </Paper>
-
       {/* Item List */}
       {rows.length === 0 ? (
         <Paper sx={{ py: 6, textAlign: "center", borderRadius: 3 }}>
           <StorefrontIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
-          <Typography color="text.secondary">尚無商品資料</Typography>
+          <Typography
+            sx={{
+              color: "text.secondary",
+            }}
+          >
+            尚無商品資料
+          </Typography>
         </Paper>
       ) : (
         <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
@@ -260,7 +261,6 @@ export default function AdminGachaShop() {
           ))}
         </Paper>
       )}
-
       {/* Edit Dialog */}
       <Dialog
         open={editDialogOpen}
@@ -283,7 +283,7 @@ export default function AdminGachaShop() {
             fullWidth
             label="價格"
             value={editingRow?.price ?? ""}
-            onChange={(e) => setEditingRow((prev) => ({ ...prev, price: e.target.value }))}
+            onChange={e => setEditingRow(prev => ({ ...prev, price: e.target.value }))}
             sx={{ mb: 2 }}
             size="small"
             type="number"
@@ -292,7 +292,7 @@ export default function AdminGachaShop() {
             fullWidth
             label="大圖"
             value={editingRow?.itemImage || ""}
-            onChange={(e) => setEditingRow((prev) => ({ ...prev, itemImage: e.target.value }))}
+            onChange={e => setEditingRow(prev => ({ ...prev, itemImage: e.target.value }))}
             size="small"
           />
         </DialogContent>
@@ -303,7 +303,6 @@ export default function AdminGachaShop() {
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Delete Confirmation */}
       <AlertDialog
         open={alertState.open}
@@ -313,7 +312,6 @@ export default function AdminGachaShop() {
         title={alertState.title}
         description={alertState.description}
       />
-
       {/* Snackbar */}
       <HintSnackBar
         open={hintState.open}
@@ -340,9 +338,7 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
     ]).then(([poolData, charData]) => {
       setGachaData(poolData || []);
       setCharacters(charData || []);
-      const available = (poolData || []).filter(
-        (item) => !existIds.includes(parseInt(item.id))
-      );
+      const available = (poolData || []).filter(item => !existIds.includes(parseInt(item.id)));
       if (available.length > 0) {
         setSelectedId(available[0].id);
       }
@@ -351,15 +347,15 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
 
   const nameList = useMemo(() => {
     if (!gachaData.length) return [];
-    return gachaData.filter((item) => !existIds.includes(parseInt(item.id)));
+    return gachaData.filter(item => !existIds.includes(parseInt(item.id)));
   }, [gachaData, existIds]);
 
-  const handleCharacterChange = (e) => {
+  const handleCharacterChange = e => {
     const id = parseInt(e.target.value);
     setSelectedId(id);
-    const target = gachaData.find((item) => item.id === id);
+    const target = gachaData.find(item => item.id === id);
     if (target) {
-      const character = characters.find((item) => item.unitName === target.unitName);
+      const character = characters.find(item => item.unitName === target.unitName);
       if (character) {
         setItemImage(character.image);
         setPreview(character.image);
@@ -368,7 +364,7 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
   };
 
   const handleSubmit = () => {
-    const target = gachaData.find((item) => item.id === parseInt(selectedId));
+    const target = gachaData.find(item => item.id === parseInt(selectedId));
     if (!itemImage || !price || !target?.id) {
       alert("請填寫完整");
       return;
@@ -412,7 +408,7 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
             value={selectedId}
             onChange={handleCharacterChange}
           >
-            {nameList.map((item) => (
+            {nameList.map(item => (
               <MenuItem key={item.id} value={item.id}>
                 {item.name}
               </MenuItem>
@@ -426,7 +422,7 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
             required
             type="number"
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            onChange={e => setPrice(e.target.value)}
           />
 
           <TextField
@@ -435,7 +431,7 @@ function CreateForm({ existIds, onSubmit, onCancel, loading }) {
             variant="outlined"
             required
             value={itemImage}
-            onChange={(e) => setItemImage(e.target.value)}
+            onChange={e => setItemImage(e.target.value)}
           />
 
           {preview && (

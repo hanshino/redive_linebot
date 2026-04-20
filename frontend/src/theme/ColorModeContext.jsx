@@ -29,7 +29,7 @@ export function ColorModeProvider({ children }) {
   }, [prefersDark]);
 
   const toggleColorMode = () => {
-    setMode((prev) => {
+    setMode(prev => {
       const next = prev === "dark" ? "light" : "dark";
       localStorage.setItem("color-mode", next);
       return next;

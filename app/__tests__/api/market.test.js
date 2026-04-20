@@ -14,9 +14,7 @@ beforeAll(() => {
 
 describe("GET /api/market/:id", () => {
   it("returns 200 with market item details", async () => {
-    const res = await request(app)
-      .get("/api/market/42")
-      .set("Authorization", "Bearer test-token");
+    const res = await request(app).get("/api/market/42").set("Authorization", "Bearer test-token");
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ id: "42" });

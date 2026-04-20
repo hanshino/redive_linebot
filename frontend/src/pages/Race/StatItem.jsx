@@ -3,7 +3,14 @@ import { Box, Typography } from "@mui/material";
 export default function StatItem({ label, value, highlight }) {
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.2 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          display: "block",
+          lineHeight: 1.2,
+        }}
+      >
         {label}
       </Typography>
       <Typography

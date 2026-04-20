@@ -19,7 +19,10 @@ router.get(
     let targetRace = await race.getActive();
 
     if (!targetRace) {
-      targetRace = await race.knex.where("status", "finished").orderBy("finished_at", "desc").first();
+      targetRace = await race.knex
+        .where("status", "finished")
+        .orderBy("finished_at", "desc")
+        .first();
     }
 
     if (!targetRace) {
@@ -125,10 +128,9 @@ router.get(
           .select(
             raceBet.connection.raw("COUNT(*) as totalBets"),
             raceBet.connection.raw("COUNT(DISTINCT user_id) as totalBettors"),
-            raceBet.connection.raw(
-              "SUM(CASE WHEN runner_id = ? THEN 1 ELSE 0 END) as winnerBets",
-              [raceData.winner_runner_id]
-            )
+            raceBet.connection.raw("SUM(CASE WHEN runner_id = ? THEN 1 ELSE 0 END) as winnerBets", [
+              raceData.winner_runner_id,
+            ])
           )
           .first(),
       ]);

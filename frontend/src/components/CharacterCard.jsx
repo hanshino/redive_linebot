@@ -66,12 +66,7 @@ export default function CharacterCard({
             {buttonText}
           </Button>
         ) : (
-          <Button
-            size="small"
-            color="primary"
-            onClick={onClick}
-            disabled={buttonDisabled}
-          >
+          <Button size="small" color="primary" onClick={onClick} disabled={buttonDisabled}>
             {buttonText}
           </Button>
         )}

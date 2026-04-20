@@ -2,8 +2,17 @@ import { useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import useAxios from "axios-hooks";
 import {
-  Box, Grid, Typography, Paper, Card, CardContent,
-  Avatar, Chip, LinearProgress, Skeleton, Divider,
+  Box,
+  Grid,
+  Typography,
+  Paper,
+  Card,
+  CardContent,
+  Avatar,
+  Chip,
+  LinearProgress,
+  Skeleton,
+  Divider,
 } from "@mui/material";
 import ForumIcon from "@mui/icons-material/Forum";
 import ImageIcon from "@mui/icons-material/Image";
@@ -15,8 +24,8 @@ import AlertLogin from "../../components/AlertLogin";
 
 /* ---------- helpers ---------- */
 const sum = (arr, key) => arr.reduce((acc, cur) => acc + (cur[key] || 0), 0);
-const total = (m) => (m.textCnt || 0) + (m.imageCnt || 0) + (m.stickerCnt || 0);
-const fmtDate = (ts) => {
+const total = m => (m.textCnt || 0) + (m.imageCnt || 0) + (m.stickerCnt || 0);
+const fmtDate = ts => {
   if (!ts) return "-";
   const d = new Date(ts);
   return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -29,8 +38,17 @@ function StatChip({ icon, label, value }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
       {icon}
-      <Typography variant="caption" color="text.secondary">{label}</Typography>
-      <Typography variant="caption" sx={{ fontWeight: 700 }}>{value.toLocaleString()}</Typography>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
+        {label}
+      </Typography>
+      <Typography variant="caption" sx={{ fontWeight: 700 }}>
+        {value.toLocaleString()}
+      </Typography>
     </Box>
   );
 }
@@ -66,12 +84,20 @@ function GroupBanner({ group, rank }) {
           sx={{
             position: "absolute",
             inset: 0,
-            background: (theme) =>
+            background: theme =>
               `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
           }}
         />
       )}
-      <Box sx={{ position: "relative", p: { xs: 3, sm: 4 }, display: "flex", alignItems: "center", gap: 2.5 }}>
+      <Box
+        sx={{
+          position: "relative",
+          p: { xs: 3, sm: 4 },
+          display: "flex",
+          alignItems: "center",
+          gap: 2.5,
+        }}
+      >
         <Avatar
           src={group?.pictureUrl}
           alt={group?.groupName}
@@ -123,7 +149,15 @@ function TopContributors({ rank }) {
                 height: "100%",
               }}
             >
-              <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, py: 2.5 }}>
+              <CardContent
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 1,
+                  py: 2.5,
+                }}
+              >
                 <Box sx={{ position: "relative" }}>
                   <Avatar
                     sx={{
@@ -164,13 +198,30 @@ function TopContributors({ rank }) {
                 <Typography variant="h6" sx={{ fontWeight: 700 }} color="primary">
                   {total(member).toLocaleString()}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   則互動
                 </Typography>
                 <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", justifyContent: "center" }}>
-                  <StatChip icon={<ForumIcon sx={{ fontSize: 14 }} color="action" />} label="文字" value={member.textCnt || 0} />
-                  <StatChip icon={<ImageIcon sx={{ fontSize: 14 }} color="action" />} label="圖片" value={member.imageCnt || 0} />
-                  <StatChip icon={<InsertEmoticonIcon sx={{ fontSize: 14 }} color="action" />} label="貼圖" value={member.stickerCnt || 0} />
+                  <StatChip
+                    icon={<ForumIcon sx={{ fontSize: 14 }} color="action" />}
+                    label="文字"
+                    value={member.textCnt || 0}
+                  />
+                  <StatChip
+                    icon={<ImageIcon sx={{ fontSize: 14 }} color="action" />}
+                    label="圖片"
+                    value={member.imageCnt || 0}
+                  />
+                  <StatChip
+                    icon={<InsertEmoticonIcon sx={{ fontSize: 14 }} color="action" />}
+                    label="貼圖"
+                    value={member.stickerCnt || 0}
+                  />
                 </Box>
               </CardContent>
             </Card>
@@ -184,7 +235,7 @@ function TopContributors({ rank }) {
 /* ---------- MyStats ---------- */
 function MyStats({ rank, maxTotal }) {
   const userId = window.liff?.getContext?.()?.userId;
-  const me = rank.find((m) => m.userId === userId);
+  const me = rank.find(m => m.userId === userId);
   if (!me) return null;
 
   const myTotal = total(me);
@@ -213,10 +264,26 @@ function MyStats({ rank, maxTotal }) {
               sx={{ height: 8, borderRadius: 4, mt: 0.5, mb: 1 }}
             />
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-              <StatChip icon={<ForumIcon sx={{ fontSize: 14 }} color="action" />} label="文字" value={me.textCnt || 0} />
-              <StatChip icon={<ImageIcon sx={{ fontSize: 14 }} color="action" />} label="圖片" value={me.imageCnt || 0} />
-              <StatChip icon={<InsertEmoticonIcon sx={{ fontSize: 14 }} color="action" />} label="貼圖" value={me.stickerCnt || 0} />
-              <StatChip icon={<ReplayIcon sx={{ fontSize: 14 }} color="action" />} label="收回" value={me.unsendCnt || 0} />
+              <StatChip
+                icon={<ForumIcon sx={{ fontSize: 14 }} color="action" />}
+                label="文字"
+                value={me.textCnt || 0}
+              />
+              <StatChip
+                icon={<ImageIcon sx={{ fontSize: 14 }} color="action" />}
+                label="圖片"
+                value={me.imageCnt || 0}
+              />
+              <StatChip
+                icon={<InsertEmoticonIcon sx={{ fontSize: 14 }} color="action" />}
+                label="貼圖"
+                value={me.stickerCnt || 0}
+              />
+              <StatChip
+                icon={<ReplayIcon sx={{ fontSize: 14 }} color="action" />}
+                label="收回"
+                value={me.unsendCnt || 0}
+              />
             </Box>
           </Box>
         </Box>
@@ -234,43 +301,83 @@ function MemberRow({ member, maxTotal }) {
     <Box sx={{ display: "flex", alignItems: "center", gap: 2, py: 2 }}>
       <Typography
         variant="body2"
-        sx={{ width: 28, textAlign: "right", fontWeight: 600, color: "text.secondary", flexShrink: 0 }}
+        sx={{
+          width: 28,
+          textAlign: "right",
+          fontWeight: 600,
+          color: "text.secondary",
+          flexShrink: 0,
+        }}
       >
         {member.rank}
       </Typography>
-      <Avatar sx={{ width: 36, height: 36, fontSize: 14 }}>
-        {member.displayName?.charAt(0)}
-      </Avatar>
+      <Avatar sx={{ width: 36, height: 36, fontSize: 14 }}>{member.displayName?.charAt(0)}</Avatar>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 0.25 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+            mb: 0.25,
+          }}
+        >
           <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
             {member.displayName}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, ml: 1 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              flexShrink: 0,
+              ml: 1,
+            }}
+          >
             {memberTotal.toLocaleString()} 則
           </Typography>
         </Box>
-        <LinearProgress
-          variant="determinate"
-          value={pct}
-          sx={{ height: 6, borderRadius: 3 }}
-        />
+        <LinearProgress variant="determinate" value={pct} sx={{ height: 6, borderRadius: 3 }} />
         <Box sx={{ display: "flex", gap: 1.5, mt: 0.5 }}>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             文字 {member.textCnt || 0}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             圖片 {member.imageCnt || 0}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             貼圖 {member.stickerCnt || 0}
           </Typography>
           {(member.unsendCnt || 0) > 0 && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               收回 {member.unsendCnt}
             </Typography>
           )}
-          <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              ml: "auto",
+            }}
+          >
             {fmtDate(member.lastSpeakTS)}
           </Typography>
         </Box>
@@ -284,7 +391,13 @@ function MemberList({ rank, maxTotal }) {
   if (rank.length === 0) {
     return (
       <Paper sx={{ p: { xs: 4, sm: 5 }, textAlign: "center" }}>
-        <Typography color="text.secondary">尚無成員數據</Typography>
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
+          尚無成員數據
+        </Typography>
       </Paper>
     );
   }
@@ -310,14 +423,14 @@ function RecordSkeleton() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Skeleton variant="rounded" height={120} animation="wave" />
       <Grid container spacing={2}>
-        {[1, 2, 3].map((i) => (
+        {[1, 2, 3].map(i => (
           <Grid size={{ xs: 12, sm: 4 }} key={i}>
             <Skeleton variant="rounded" height={200} animation="wave" />
           </Grid>
         ))}
       </Grid>
       <Skeleton variant="rounded" height={60} animation="wave" />
-      {[1, 2, 3, 4, 5].map((i) => (
+      {[1, 2, 3, 4, 5].map(i => (
         <Skeleton key={i} variant="rounded" height={48} animation="wave" />
       ))}
     </Box>
@@ -331,11 +444,11 @@ export default function GroupRecord() {
 
   const [{ data: rankData, loading: rankLoading }, fetchRank] = useAxios(
     { url: `/api/groups/${groupId}/speak-rank` },
-    { manual: true },
+    { manual: true }
   );
   const [{ data: groupData, loading: groupLoading }, fetchGroup] = useAxios(
     { url: `/api/guilds/${groupId}` },
-    { manual: true },
+    { manual: true }
   );
 
   useEffect(() => {

@@ -94,7 +94,14 @@ function GachaModeBadge({ summary }) {
   const fallback = reward?.fallback_reason;
   if (!breakdown && !fallback) return null;
   return (
-    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.25 }}>
+    <Stack
+      direction="row"
+      spacing={0.5}
+      sx={{
+        alignItems: "center",
+        mt: 0.25,
+      }}
+    >
       {breakdown && (
         <Chip
           size="small"
@@ -124,13 +131,24 @@ function HistoryItemCard({ item }) {
   return (
     <Card>
       <CardContent sx={{ py: 1.5, "&:last-child": { pb: 1.5 } }}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Icon color={item.type === "gacha" ? "primary" : "secondary"} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {item.type === "gacha" ? "每日自動抽卡" : "猜拳自動出手"}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {summaryText(item)}
             </Typography>
             {item.type === "gacha" && <GachaModeBadge summary={item.summary} />}
@@ -151,7 +169,13 @@ function EmptyState() {
   return (
     <Paper sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
       <HistoryIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
-      <Typography color="text.secondary">尚無自動行為紀錄</Typography>
+      <Typography
+        sx={{
+          color: "text.secondary",
+        }}
+      >
+        尚無自動行為紀錄
+      </Typography>
     </Paper>
   );
 }
@@ -218,7 +242,13 @@ export default function AutoHistory() {
           color: "#fff",
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <HistoryIcon sx={{ fontSize: 32 }} />
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -230,7 +260,6 @@ export default function AutoHistory() {
           </Box>
         </Stack>
       </Paper>
-
       {loading ? (
         <HistorySkeleton />
       ) : grouped.length === 0 ? (
@@ -241,8 +270,12 @@ export default function AutoHistory() {
             <Box key={day}>
               <Typography
                 variant="overline"
-                color="text.secondary"
-                sx={{ display: "block", mb: 1, letterSpacing: 1 }}
+                sx={{
+                  color: "text.secondary",
+                  display: "block",
+                  mb: 1,
+                  letterSpacing: 1,
+                }}
               >
                 {day}
               </Typography>

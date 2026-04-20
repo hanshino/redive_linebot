@@ -8,13 +8,7 @@ import { createTheme } from "@mui/material/styles";
 
 const shared = {
   typography: {
-    fontFamily: [
-      "Roboto",
-      '"Noto Sans TC"',
-      '"Helvetica Neue"',
-      "Arial",
-      "sans-serif",
-    ].join(","),
+    fontFamily: ["Roboto", '"Noto Sans TC"', '"Helvetica Neue"', "Arial", "sans-serif"].join(","),
     h4: { fontWeight: 700 },
     h5: { fontWeight: 600 },
     h6: { fontWeight: 600 },

@@ -16,7 +16,7 @@ import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
 import { getUserAchievements, getAchievementStats } from "../../services/achievement";
 
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlined";
 import ForumIcon from "@mui/icons-material/Forum";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import GroupsIcon from "@mui/icons-material/Groups";
@@ -35,7 +35,7 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import ShareIcon from "@mui/icons-material/Share";
 import CelebrationIcon from "@mui/icons-material/Celebration";
 import LockIcon from "@mui/icons-material/Lock";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
@@ -181,14 +181,31 @@ export default function Achievement() {
           />
         )}
         {summary.profile?.displayName && (
-          <Typography variant="subtitle1" fontWeight="bold">
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: "bold",
+            }}
+          >
             {summary.profile.displayName}
           </Typography>
         )}
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mt: 0.5,
+            mb: 2,
+          }}
+        >
           探索並解鎖所有成就吧！
         </Typography>
-        <Typography variant="h4" fontWeight="bold">
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: "bold",
+          }}
+        >
           {summary.unlocked} / {summary.total}
         </Typography>
         <LinearProgress
@@ -205,11 +222,15 @@ export default function Achievement() {
             },
           }}
         />
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {summary.percentage}% 完成
         </Typography>
       </Box>
-
       <Tabs
         value={activeTab}
         onChange={(_, v) => setActiveTab(v)}
@@ -232,7 +253,6 @@ export default function Achievement() {
           );
         })}
       </Tabs>
-
       <Box
         sx={{
           display: "grid",
@@ -266,7 +286,12 @@ function AchievementStatus({ achievement, isHidden, progress, rarity }) {
   }
   if (isHidden) {
     return (
-      <Typography variant="caption" color="text.disabled">
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.disabled",
+        }}
+      >
         隱藏成就
       </Typography>
     );
@@ -285,8 +310,12 @@ function AchievementStatus({ achievement, isHidden, progress, rarity }) {
       />
       <Typography
         variant="caption"
-        color="text.secondary"
-        sx={{ display: "block", textAlign: "center", mt: 0.5 }}
+        sx={{
+          color: "text.secondary",
+          display: "block",
+          textAlign: "center",
+          mt: 0.5,
+        }}
       >
         {achievement.currentValue}/{achievement.target_value}
       </Typography>
@@ -355,9 +384,13 @@ function AchievementCard({ achievement, stats }) {
 
         <Typography
           variant="body2"
-          fontWeight="bold"
           noWrap
-          sx={{ width: "100%", textAlign: "center", mb: 0.5 }}
+          sx={{
+            fontWeight: "bold",
+            width: "100%",
+            textAlign: "center",
+            mb: 0.5,
+          }}
         >
           {isHidden ? "???" : achievement.name}
         </Typography>
@@ -372,8 +405,11 @@ function AchievementCard({ achievement, stats }) {
         {unlockRate && !isHidden && (
           <Typography
             variant="caption"
-            color="text.disabled"
-            sx={{ mt: "auto", fontSize: "0.65rem" }}
+            sx={{
+              color: "text.disabled",
+              mt: "auto",
+              fontSize: "0.65rem",
+            }}
           >
             {unlockRate} 已解鎖
           </Typography>

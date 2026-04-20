@@ -18,7 +18,7 @@ export default function StatsCard({ icon: Icon, label, value, loading }) {
             width: 48,
             height: 48,
             borderRadius: 2,
-            bgcolor: (theme) => `${theme.palette.primary.main}15`,
+            bgcolor: theme => `${theme.palette.primary.main}15`,
             color: "primary.main",
             flexShrink: 0,
           }}
@@ -26,14 +26,20 @@ export default function StatsCard({ icon: Icon, label, value, loading }) {
           <Icon sx={{ fontSize: 28 }} />
         </Box>
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="body2" color="text.secondary" noWrap>
+          <Typography
+            variant="body2"
+            noWrap
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {label}
           </Typography>
           {loading ? (
             <Skeleton width={80} height={32} />
           ) : (
             <Typography variant="h5" noWrap sx={{ fontVariantNumeric: "tabular-nums" }}>
-              {typeof value === "number" ? value.toLocaleString() : value ?? "—"}
+              {typeof value === "number" ? value.toLocaleString() : (value ?? "—")}
             </Typography>
           )}
         </Box>

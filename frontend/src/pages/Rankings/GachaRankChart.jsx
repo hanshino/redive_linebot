@@ -8,7 +8,7 @@ export function useGachaRankData() {
 
   const rows = useMemo(() => {
     if (!data) return [];
-    return data.map((d) => ({
+    return data.map(d => ({
       displayName: d.displayName,
       value: d.cnt,
     }));

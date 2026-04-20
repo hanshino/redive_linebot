@@ -102,10 +102,21 @@ function CommandCard({ item, sendable, onSend }) {
       }}
     >
       <CardContent sx={{ flexGrow: 1, pb: 0 }}>
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography
+          variant="subtitle1"
+          sx={{
+            fontWeight: 600,
+          }}
+        >
           {item.title}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mt: 0.5,
+          }}
+        >
           {item.description}
         </Typography>
       </CardContent>
@@ -135,13 +146,31 @@ function CategorySection({ category, sendable, onSend }) {
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          mb: 0.5,
+        }}
+      >
         {Icon && <Icon color="primary" fontSize="small" />}
-        <Typography variant="h6" fontWeight={700}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+          }}
+        >
           {category.title}
         </Typography>
       </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2,
+        }}
+      >
         {category.description}
       </Typography>
       <Grid container spacing={2}>
@@ -164,14 +193,14 @@ export default function Manual() {
   const filteredCategories = useMemo(() => {
     const screenType = liffContext?.type;
     if (!screenType) return TabDatas;
-    return TabDatas.filter((data) => data.enableScreen.includes(screenType));
+    return TabDatas.filter(data => data.enableScreen.includes(screenType));
   }, [liffContext]);
 
   const handleSend = useCallback(
-    (text) => {
+    text => {
       send(text);
     },
-    [send],
+    [send]
   );
 
   useEffect(() => {
@@ -197,18 +226,27 @@ export default function Manual() {
   return (
     <Box sx={{ maxWidth: 800, mx: "auto", px: 2, py: 3 }}>
       <HintSnackBar {...hintState} onClose={closeHint} />
-
-      <Typography variant="h5" fontWeight={700} gutterBottom>
+      <Typography
+        variant="h5"
+        gutterBottom
+        sx={{
+          fontWeight: 700,
+        }}
+      >
         指令手冊
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 3,
+        }}
+      >
         快速發送指令到 LINE 聊天室
       </Typography>
-
       <Divider sx={{ mb: 3 }} />
-
       <Stack spacing={4}>
-        {filteredCategories.map((category) => (
+        {filteredCategories.map(category => (
           <CategorySection
             key={category.key}
             category={category}

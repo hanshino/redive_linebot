@@ -106,7 +106,13 @@ export default function AdminGachaBanner() {
             : "linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(168,85,247,0.04) 100%)",
         }}
       >
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               轉蛋活動管理
@@ -125,7 +131,6 @@ export default function AdminGachaBanner() {
           </Button>
         </Stack>
       </Paper>
-
       {/* Banner List */}
       <Paper elevation={0} sx={{ borderRadius: 3, border: 1, borderColor: "divider" }}>
         {rows.length === 0 && (
@@ -139,7 +144,12 @@ export default function AdminGachaBanner() {
             }}
           >
             <CelebrationIcon sx={{ fontSize: 48, color: "text.disabled" }} />
-            <Typography variant="body1" color="text.secondary">
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               尚無活動資料
             </Typography>
             <Button
@@ -175,9 +185,11 @@ export default function AdminGachaBanner() {
                   <Stack
                     direction="row"
                     spacing={1}
-                    alignItems="center"
-                    flexWrap="wrap"
-                    sx={{ mb: 0.5 }}
+                    sx={{
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      mb: 0.5,
+                    }}
                   >
                     <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                       {banner.name}
@@ -194,16 +206,33 @@ export default function AdminGachaBanner() {
                       variant="outlined"
                     />
                   </Stack>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {formatDateTime(banner.start_at)} ～ {formatDateTime(banner.end_at)}
                   </Typography>
                   {banner.type === "rate_up" && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
                       機率加成: {banner.rate_boost}%
                     </Typography>
                   )}
                   {banner.type === "europe" && banner.cost > 0 && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
                       花費: {banner.cost} 女神石
                     </Typography>
                   )}
@@ -241,7 +270,6 @@ export default function AdminGachaBanner() {
           );
         })}
       </Paper>
-
       <AlertDialog
         open={alertState.open}
         onClose={closeAlert}

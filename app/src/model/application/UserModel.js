@@ -15,10 +15,7 @@ exports.getId = async platformId => {
  * @param {Array<Number>} ids
  */
 exports.getPlatformIds = ids => {
-  return mysql
-    .select({ userId: "platform_id", id: "id" })
-    .whereIn("id", ids)
-    .from(USER_TABLE);
+  return mysql.select({ userId: "platform_id", id: "id" }).whereIn("id", ids).from(USER_TABLE);
 };
 
 /**

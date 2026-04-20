@@ -1,7 +1,5 @@
 import { useState } from "react";
-import {
-  Card, CardContent, CardActions, Typography, Switch,
-} from "@mui/material";
+import { Card, CardContent, CardActions, Typography, Switch } from "@mui/material";
 
 export default function ConfigCard({ title, description, status, name, handle, isLoggedIn }) {
   const [checked, setChecked] = useState(status === "Y");
@@ -17,7 +15,12 @@ export default function ConfigCard({ title, description, status, name, handle, i
         <Typography variant="h6" component="h2">
           {title}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {description}
         </Typography>
       </CardContent>

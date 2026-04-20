@@ -8,7 +8,7 @@ export default function useHintBar() {
   }, []);
 
   const handleClose = useCallback(() => {
-    setState((prev) => ({ ...prev, open: false }));
+    setState(prev => ({ ...prev, open: false }));
   }, []);
 
   return [state, { handleOpen, handleClose }];

@@ -13,9 +13,7 @@ beforeAll(() => {
 
 describe("GET /api/trades", () => {
   it("returns 200 with trades list", async () => {
-    const res = await request(app)
-      .get("/api/trades")
-      .set("Authorization", "Bearer test-token");
+    const res = await request(app).get("/api/trades").set("Authorization", "Bearer test-token");
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ trades: [] });

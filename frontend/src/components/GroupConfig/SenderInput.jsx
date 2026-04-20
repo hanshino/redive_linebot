@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Grid, Paper, Typography, TextField, ButtonGroup, Button, Avatar,
-} from "@mui/material";
+import { Grid, Paper, Typography, TextField, ButtonGroup, Button, Avatar } from "@mui/material";
 import HintSnackBar from "../HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 
@@ -23,7 +21,7 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
   }, [Sender]);
 
   const handleInput = (e, type) => {
-    setState((prev) => ({ ...prev, [type]: e.target.value }));
+    setState(prev => ({ ...prev, [type]: e.target.value }));
   };
 
   const save = (name, iconUrl) => {
@@ -48,19 +46,30 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
   return (
     <>
       <Paper sx={{ p: 2, my: 1 }}>
-        <Grid container alignItems="flex-end" spacing={2}>
+        <Grid
+          container
+          spacing={2}
+          sx={{
+            alignItems: "flex-end",
+          }}
+        >
           <Grid size={{ xs: 12, sm: 8 }}>
             <Typography variant="h6" component="h2">
               自訂機器人頭像
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               可設定群組獨特的機器人頭像
             </Typography>
             <TextField
               label="名稱"
               fullWidth
               value={state.name}
-              onChange={(e) => handleInput(e, "name")}
+              onChange={e => handleInput(e, "name")}
               slotProps={{ htmlInput: { maxLength: 40 } }}
               {...(!isValidName(state.name)
                 ? { error: true, helperText: "發送人長度限制0~20字" }
@@ -71,7 +80,7 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
               label="頭像"
               fullWidth
               value={state.iconUrl}
-              onChange={(e) => handleInput(e, "iconUrl")}
+              onChange={e => handleInput(e, "iconUrl")}
               {...(!isValidIcon(state.iconUrl)
                 ? { error: true, helperText: "圖片格式需為https開頭，jpe(g),png結尾" }
                 : {})}
@@ -79,7 +88,14 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Grid container direction="column" alignItems="center" spacing={1}>
+            <Grid
+              container
+              direction="column"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+              }}
+            >
               <Grid>
                 <Typography variant="subtitle1">
                   {state.name ? `${state.name} from ` : null}布丁
@@ -106,7 +122,6 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
           </Grid>
         </Grid>
       </Paper>
-
       <HintSnackBar {...hint} onClose={hintActions.handleClose} />
     </>
   );

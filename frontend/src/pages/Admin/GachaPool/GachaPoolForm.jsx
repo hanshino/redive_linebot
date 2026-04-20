@@ -67,7 +67,7 @@ export default function GachaPoolForm() {
     try {
       setLoading(true);
       const data = await gachaPoolService.fetchData();
-      const character = data.find((d) => d.id === Number(id));
+      const character = data.find(d => d.id === Number(id));
       if (!character) {
         showHint("找不到該角色", "error");
         navigate("/admin/gacha-pool");
@@ -96,24 +96,28 @@ export default function GachaPoolForm() {
     }
   }, [isEdit, fetchCharacter]);
 
-  const handleChange = (field) => (e) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+  const handleChange = field => e => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
     if (field === "imageUrl") {
       setImgError(false);
       setImageUrlError("");
     }
   };
 
-  const cleanUrl = (url) => url.trim().replace(/^['"]+|['"]+$/g, "").trim();
+  const cleanUrl = url =>
+    url
+      .trim()
+      .replace(/^['"]+|['"]+$/g, "")
+      .trim();
 
   const handleImageUrlBlur = () => {
     const cleaned = cleanUrl(formData.imageUrl);
     if (cleaned !== formData.imageUrl) {
-      setFormData((prev) => ({ ...prev, imageUrl: cleaned }));
+      setFormData(prev => ({ ...prev, imageUrl: cleaned }));
     }
   };
 
-  const validateImageUrl = (url) => {
+  const validateImageUrl = url => {
     if (!url) return "";
     if (!url.startsWith("https://")) return "圖片網址必須以 https:// 開頭";
     return "";
@@ -172,7 +176,14 @@ export default function GachaPoolForm() {
   return (
     <Box sx={{ width: "100%", maxWidth: 640, mx: "auto", pb: 10 }}>
       {/* Header */}
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 3 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
         <IconButton
           onClick={() => navigate("/admin/gacha-pool")}
           sx={{
@@ -186,7 +197,6 @@ export default function GachaPoolForm() {
           {isEdit ? "編輯角色" : "新增角色"}
         </Typography>
       </Stack>
-
       {/* Image Preview Card */}
       <Paper
         elevation={0}
@@ -247,7 +257,6 @@ export default function GachaPoolForm() {
           </Typography>
         )}
       </Paper>
-
       {/* Form Card */}
       <Paper
         elevation={0}
@@ -296,7 +305,7 @@ export default function GachaPoolForm() {
               value={formData.star}
               onChange={handleChange("star")}
             >
-              {starOptions.map((opt) => (
+              {starOptions.map(opt => (
                 <MenuItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </MenuItem>
@@ -321,23 +330,17 @@ export default function GachaPoolForm() {
               value={formData.isPrincess}
               onChange={handleChange("isPrincess")}
             >
-              {princessOptions.map((opt) => (
+              {princessOptions.map(opt => (
                 <MenuItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </MenuItem>
               ))}
             </TextField>
 
-            <TextField
-              fullWidth
-              label="標籤"
-              value={formData.tag}
-              onChange={handleChange("tag")}
-            />
+            <TextField fullWidth label="標籤" value={formData.tag} onChange={handleChange("tag")} />
           </Stack>
         </Stack>
       </Paper>
-
       {/* Sticky Save Button */}
       <Box
         sx={{
@@ -349,7 +352,7 @@ export default function GachaPoolForm() {
           bgcolor: "background.paper",
           borderTop: 1,
           borderColor: "divider",
-          zIndex: (t) => t.zIndex.appBar - 1,
+          zIndex: t => t.zIndex.appBar - 1,
           backdropFilter: "blur(8px)",
           backgroundColor: isDark ? "rgba(10,26,42,0.92)" : "rgba(255,255,255,0.92)",
         }}
@@ -368,7 +371,6 @@ export default function GachaPoolForm() {
           </Button>
         </Box>
       </Box>
-
       {/* Snackbar */}
       <HintSnackBar
         open={hintState.open}

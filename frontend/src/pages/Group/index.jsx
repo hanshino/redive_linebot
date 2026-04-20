@@ -14,7 +14,7 @@ function SkeletonCard() {
         <Skeleton width="30%" height={20} animation="wave" sx={{ mt: 1 }} />
       </Box>
       <Box sx={{ display: "flex", gap: 1, px: 2, pb: 2, flexWrap: "wrap" }}>
-        {[1, 2, 3, 4].map((i) => (
+        {[1, 2, 3, 4].map(i => (
           <Skeleton key={i} variant="rounded" width={90} height={30} animation="wave" />
         ))}
       </Box>
@@ -48,10 +48,7 @@ function EmptyState() {
 export default function GroupList() {
   const isLoggedIn = window.liff?.isLoggedIn?.() ?? false;
 
-  const [{ data, loading, error }, refetch] = useAxios(
-    { url: "/api/guilds" },
-    { manual: true },
-  );
+  const [{ data, loading, error }, refetch] = useAxios({ url: "/api/guilds" }, { manual: true });
 
   useEffect(() => {
     document.title = "我的群組";
@@ -73,40 +70,47 @@ export default function GroupList() {
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
           我的群組
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mt: 0.5,
+          }}
+        >
           管理你所屬的 LINE 群組
         </Typography>
       </Box>
-
       {error && (
-        <Alert severity="error" action={
-          <Typography
-            component="button"
-            variant="body2"
-            onClick={() => refetch()}
-            sx={{
-              background: "none",
-              border: "none",
-              color: "inherit",
-              textDecoration: "underline",
-              cursor: "pointer",
-            }}
-          >
-            重試
-          </Typography>
-        }>
+        <Alert
+          severity="error"
+          action={
+            <Typography
+              component="button"
+              variant="body2"
+              onClick={() => refetch()}
+              sx={{
+                background: "none",
+                border: "none",
+                color: "inherit",
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+            >
+              重試
+            </Typography>
+          }
+        >
           載入群組資料失敗，請稍後再試
         </Alert>
       )}
-
       <Grid container spacing={2.5}>
         {loading
-          ? [1, 2, 3].map((i) => (
+          ? [1, 2, 3].map(i => (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
                 <SkeletonCard />
               </Grid>
             ))
-          : (data || []).map((group) => (
+          : (data || []).map(group => (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={group.groupId}>
                 <GroupCard
                   groupId={group.groupId}
@@ -117,7 +121,6 @@ export default function GroupList() {
               </Grid>
             ))}
       </Grid>
-
       {!loading && !error && data?.length === 0 && <EmptyState />}
     </Box>
   );

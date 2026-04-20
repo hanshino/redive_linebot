@@ -30,8 +30,15 @@ export default function TradeTransaction() {
   const [{ message, severity, open }, { handleOpen, handleClose }] = useHintBar();
   const [alertState, { handleOpen: alertHandleOpen, handleClose: alertHandleClose }] =
     useAlertDialog();
-  const { open: alertOpen, title, description, submitText, cancelText, onSubmit, onCancel } =
-    alertState;
+  const {
+    open: alertOpen,
+    title,
+    description,
+    submitText,
+    cancelText,
+    onSubmit,
+    onCancel,
+  } = alertState;
   const { marketId } = useParams();
   const query = useQuery();
   const action = query.get("action");
