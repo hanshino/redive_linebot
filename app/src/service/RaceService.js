@@ -210,10 +210,7 @@ exports.settleBets = async function (raceId) {
   if (!currentRace || currentRace.status !== "finished" || !currentRace.winner_runner_id) return;
 
   // Idempotency: skip if any bet already has payout set
-  const alreadySettled = await raceBet.knex
-    .where("race_id", raceId)
-    .whereNotNull("payout")
-    .first();
+  const alreadySettled = await raceBet.knex.where("race_id", raceId).whereNotNull("payout").first();
   if (alreadySettled) return;
 
   const totalPool = await raceBet.getTotalPool(raceId);

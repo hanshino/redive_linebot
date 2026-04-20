@@ -229,7 +229,10 @@ async function userRecord(userId) {
     await mysql.insert({ platform, platform_id: userId, created_at: new Date() }).into("user");
     clearUserCache(userId);
   } else if (userData.status === 0) {
-    await mysql.update({ status: 1, closed_at: null }).from("user").where({ status: 0, platform_id: userId });
+    await mysql
+      .update({ status: 1, closed_at: null })
+      .from("user")
+      .where({ status: 0, platform_id: userId });
   }
 }
 
@@ -240,13 +243,19 @@ async function groupRecord(groupId) {
   if (data === false) {
     await mysql.insert({ guildId: groupId, createDTM: new Date() }).into("Guild");
   } else if (data.Status === 0) {
-    await mysql.update({ status: 1, closeDTM: null }).from("Guild").where({ status: 0, guildId: groupId });
+    await mysql
+      .update({ status: 1, closeDTM: null })
+      .from("Guild")
+      .where({ status: 0, guildId: groupId });
   }
 }
 
 function closeUser(userId) {
   clearUserCache(userId);
-  return mysql.update({ status: 0, closed_at: null }).from("user").where({ status: 1, platform_id: userId });
+  return mysql
+    .update({ status: 0, closed_at: null })
+    .from("user")
+    .where({ status: 1, platform_id: userId });
 }
 
 async function setMemberStatus(userId, groupId, status) {
@@ -304,7 +313,10 @@ async function getGroupMemberCount(groupId) {
   if (cached !== null) return parseInt(cached, 10);
 
   try {
-    let result = await mysql("GuildMembers").where({ GuildId: groupId, status: 1 }).count({ count: "*" }).first();
+    let result = await mysql("GuildMembers")
+      .where({ GuildId: groupId, status: 1 })
+      .count({ count: "*" })
+      .first();
     let count = result ? result.count : 0;
     await redis.set(redisKey, String(count), { EX: 600 });
     return count;

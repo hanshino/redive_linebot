@@ -1,7 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import {
-  Card, CardMedia, CardContent, CardActions,
-  Typography, Button, Box, Avatar,
+  Card,
+  CardMedia,
+  CardContent,
+  CardActions,
+  Typography,
+  Button,
+  Box,
+  Avatar,
 } from "@mui/material";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -10,10 +16,10 @@ import CodeIcon from "@mui/icons-material/Code";
 import PeopleIcon from "@mui/icons-material/People";
 
 const actions = [
-  { label: "聊天數據", icon: BarChartIcon, path: (id) => `/group/${id}/record` },
-  { label: "群組設定", icon: SettingsIcon, path: (id) => `/group/${id}/config` },
-  { label: "戰隊管理", icon: ShieldIcon, path: (id) => `/group/${id}/battle` },
-  { label: "自訂指令", icon: CodeIcon, path: (id) => `/source/${id}/customer/orders` },
+  { label: "聊天數據", icon: BarChartIcon, path: id => `/group/${id}/record` },
+  { label: "群組設定", icon: SettingsIcon, path: id => `/group/${id}/config` },
+  { label: "戰隊管理", icon: ShieldIcon, path: id => `/group/${id}/battle` },
+  { label: "自訂指令", icon: CodeIcon, path: id => `/source/${id}/customer/orders` },
 ];
 
 export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
@@ -38,7 +44,7 @@ export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: (theme) =>
+            background: theme =>
               `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
           }}
         >

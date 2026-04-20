@@ -21,7 +21,7 @@ export const useSendMessage = () => {
     isSuccess: false,
   });
 
-  const handleSend = async (text) => {
+  const handleSend = async text => {
     dispatch({ type: "SEND_INIT" });
     try {
       await liff.sendMessages([{ type: "text", text }]);

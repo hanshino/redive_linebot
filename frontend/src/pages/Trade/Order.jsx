@@ -113,7 +113,7 @@ export default function TradeOrder() {
             autoFocus
             disabled={isSelf}
           >
-            {data.map((item) => (
+            {data.map(item => (
               <option key={item.itemId} value={item.itemId}>
                 {item.name}
               </option>

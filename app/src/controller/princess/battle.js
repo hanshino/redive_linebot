@@ -180,4 +180,3 @@ exports.api.updateGuildBattleConfig = async (req, res) => {
 
   res.status(code).json(result);
 };
-

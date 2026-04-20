@@ -34,10 +34,7 @@ export default function GachaExchange() {
     { manual: true }
   );
   const [{ data: purchaseResponse, loading: purchaseLoading, error: purchaseError }, doPurchase] =
-    useAxios(
-      { url: "/api/god-stone-shop/purchase", method: "POST" },
-      { manual: true }
-    );
+    useAxios({ url: "/api/god-stone-shop/purchase", method: "POST" }, { manual: true });
 
   useEffect(() => {
     document.title = "女神石兌換商店";
@@ -58,10 +55,10 @@ export default function GachaExchange() {
 
   const list = useMemo(() => {
     if (!data || !history) return [];
-    const holdingIds = get(history, "holdingList", []).map((item) => item.itemId);
+    const holdingIds = get(history, "holdingList", []).map(item => item.itemId);
 
     return data
-      .map((item) => ({
+      .map(item => ({
         ...item,
         holding: holdingIds.includes(item.itemId),
       }))
@@ -77,7 +74,7 @@ export default function GachaExchange() {
     const exchangeId = query.get("exchangeId");
     if (!exchangeId) return;
 
-    const target = list.find((item) => item.itemId == exchangeId);
+    const target = list.find(item => item.itemId == exchangeId);
     if (!target || queryState.asked === true) return;
 
     handlePurchase(target);
@@ -98,7 +95,7 @@ export default function GachaExchange() {
 
   if (loading) return <FullPageLoading />;
 
-  const handlePurchase = (item) => {
+  const handlePurchase = item => {
     const { price } = item;
     const godStone = get(history, "godStone", 0);
 
@@ -126,7 +123,7 @@ export default function GachaExchange() {
     });
   };
 
-  const handleCloseBar = () => setBarState((old) => ({ ...old, open: false }));
+  const handleCloseBar = () => setBarState(old => ({ ...old, open: false }));
 
   return (
     <Grid container direction="column" spacing={3}>
@@ -153,12 +150,7 @@ export default function GachaExchange() {
         ))}
       </Grid>
       <Snackbar open={barState.open} autoHideDuration={6000} onClose={handleCloseBar}>
-        <Alert
-          elevation={6}
-          variant="filled"
-          onClose={handleCloseBar}
-          severity={barState.severity}
-        >
+        <Alert elevation={6} variant="filled" onClose={handleCloseBar} severity={barState.severity}>
           {barState.message}
         </Alert>
       </Snackbar>

@@ -4,13 +4,22 @@ const { CustomLogger } = require("../src/util/Logger");
 module.exports = main;
 
 async function main() {
-  await Promise.all([removeDeletedOrders(), markUselessOrders(), clearClosed(), clearLeftMembers()]);
+  await Promise.all([
+    removeDeletedOrders(),
+    markUselessOrders(),
+    clearClosed(),
+    clearLeftMembers(),
+  ]);
 }
 
 async function removeDeletedOrders() {
   let expireDates = new Date();
   expireDates.setDate(expireDates.getDate() - 3);
-  await mysql.from("CustomerOrder").where("status", 0).where("ModifyDTM", "<", expireDates).delete();
+  await mysql
+    .from("CustomerOrder")
+    .where("status", 0)
+    .where("ModifyDTM", "<", expireDates)
+    .delete();
 }
 
 async function markUselessOrders() {
@@ -55,7 +64,6 @@ async function clearClosed() {
 
     let r4 = await trx.from("CustomerOrder").whereIn("SourceId", delGuilds).delete();
     records.push(`刪除了 ${r4} 個群組自訂指令`);
-
   });
 
   CustomLogger.info({ message: records.join("\n"), alert: true });

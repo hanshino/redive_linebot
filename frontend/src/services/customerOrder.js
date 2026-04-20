@@ -1,6 +1,6 @@
 import api from "./api";
 
-export const fetchOrders = (sourceId) =>
+export const fetchOrders = sourceId =>
   api.get(`/api/sources/${sourceId}/custom-orders`).then(r => r.data);
 export const updateOrder = (sourceId, orderData) =>
   api.put(`/api/sources/${sourceId}/custom-orders`, orderData).then(r => r.data);

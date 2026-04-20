@@ -14,9 +14,7 @@ beforeAll(() => {
 
 describe("GET /api/inventory", () => {
   it("returns 200 with inventory items", async () => {
-    const res = await request(app)
-      .get("/api/inventory")
-      .set("Authorization", "Bearer test-token");
+    const res = await request(app).get("/api/inventory").set("Authorization", "Bearer test-token");
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ items: [] });

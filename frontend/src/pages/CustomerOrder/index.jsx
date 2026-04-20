@@ -1,15 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import {
-  Alert,
-  AlertTitle,
-  Box,
-  Button,
-  Avatar,
-  Chip,
-  IconButton,
-  Tooltip,
-} from "@mui/material";
+import { Alert, AlertTitle, Box, Button, Avatar, Chip, IconButton, Tooltip } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
@@ -32,7 +23,7 @@ function arrangeOrderDatas(orderDatas) {
   if (!orderDatas || orderDatas.length === 0) return [];
 
   const hashReplies = {};
-  orderDatas.forEach((data) => {
+  orderDatas.forEach(data => {
     hashReplies[data.orderKey] = hashReplies[data.orderKey] || [];
     hashReplies[data.orderKey].push({
       messageType: data.messageType,
@@ -41,9 +32,10 @@ function arrangeOrderDatas(orderDatas) {
     });
   });
 
-  return Object.keys(hashReplies).map((orderKey) => {
-    const { cusOrder, touchType, status, senderName, senderIcon } =
-      orderDatas.find((d) => d.orderKey === orderKey);
+  return Object.keys(hashReplies).map(orderKey => {
+    const { cusOrder, touchType, status, senderName, senderIcon } = orderDatas.find(
+      d => d.orderKey === orderKey
+    );
     return {
       orderKey,
       order: cusOrder,
@@ -94,7 +86,7 @@ export default function CustomerOrder() {
     setDialogOpen(true);
   }, []);
 
-  const handleEdit = useCallback((row) => {
+  const handleEdit = useCallback(row => {
     setDialogData(row);
     setDialogOpen(true);
   }, []);
@@ -105,11 +97,11 @@ export default function CustomerOrder() {
   }, []);
 
   const handleSave = useCallback(
-    async (orderData) => {
+    async orderData => {
       if (!orderData.order || orderData.order === "") return;
       if (!Array.isArray(orderData.replyDatas)) return;
 
-      orderData.replyDatas = orderData.replyDatas.filter((d) => d.reply !== "");
+      orderData.replyDatas = orderData.replyDatas.filter(d => d.reply !== "");
 
       const isInsert =
         !Object.prototype.hasOwnProperty.call(orderData, "orderKey") ||
@@ -158,13 +150,13 @@ export default function CustomerOrder() {
         field: "touchType",
         headerName: "觸發方式",
         width: 120,
-        valueFormatter: (value) => TOUCH_TYPE_MAP[value] || value,
+        valueFormatter: value => TOUCH_TYPE_MAP[value] || value,
       },
       {
         field: "status",
         headerName: "狀態",
         width: 90,
-        renderCell: (params) => (
+        renderCell: params => (
           <Chip
             label={STATUS_MAP[params.value] || params.value}
             size="small"
@@ -177,7 +169,7 @@ export default function CustomerOrder() {
         field: "senderName",
         headerName: "發送名",
         width: 100,
-        valueFormatter: (value) => value || "預設",
+        valueFormatter: value => value || "預設",
       },
       {
         field: "senderIcon",
@@ -185,7 +177,7 @@ export default function CustomerOrder() {
         width: 80,
         sortable: false,
         filterable: false,
-        renderCell: (params) => {
+        renderCell: params => {
           const icon = params.value || null;
           const name = params.row.senderName || "預設";
           return <Avatar alt={name} src={icon} sx={{ width: 32, height: 32 }} />;
@@ -197,7 +189,7 @@ export default function CustomerOrder() {
         width: 120,
         sortable: false,
         filterable: false,
-        renderCell: (params) => {
+        renderCell: params => {
           const row = params.row;
           return (
             <Box sx={{ display: "flex", gap: 0.5 }}>
@@ -270,7 +262,7 @@ export default function CustomerOrder() {
         <DataGrid
           rows={orders}
           columns={columns}
-          getRowId={(row) => row.orderKey}
+          getRowId={row => row.orderKey}
           autoHeight
           pageSizeOptions={[10, 25, 50]}
           initialState={{

@@ -107,4 +107,3 @@ function getBattleDate(objDate) {
       ["04", "59", "59"].join(":"),
   };
 }
-

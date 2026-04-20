@@ -42,9 +42,7 @@ describe("GET /api/admin/equipment/:id", () => {
 
 describe("POST /api/admin/equipment", () => {
   it("returns 201 on successful equipment creation", async () => {
-    const res = await request(app)
-      .post("/api/admin/equipment")
-      .send({ name: "Sword" });
+    const res = await request(app).post("/api/admin/equipment").send({ name: "Sword" });
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual({ id: 1 });
@@ -53,9 +51,7 @@ describe("POST /api/admin/equipment", () => {
 
 describe("PUT /api/admin/equipment/:id", () => {
   it("returns 200 on successful equipment update", async () => {
-    const res = await request(app)
-      .put("/api/admin/equipment/7")
-      .send({ name: "Updated Sword" });
+    const res = await request(app).put("/api/admin/equipment/7").send({ name: "Updated Sword" });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true });

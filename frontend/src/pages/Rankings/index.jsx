@@ -85,9 +85,15 @@ export default function Rankings() {
           <Tab label="轉蛋蒐集" />
           <Tab label="女神石" />
         </Tabs>
-        <TabPanel value={tab} index={0}><ChatLevelChart /></TabPanel>
-        <TabPanel value={tab} index={1}><GachaRankChart /></TabPanel>
-        <TabPanel value={tab} index={2}><GodStoneChart /></TabPanel>
+        <TabPanel value={tab} index={0}>
+          <ChatLevelChart />
+        </TabPanel>
+        <TabPanel value={tab} index={1}>
+          <GachaRankChart />
+        </TabPanel>
+        <TabPanel value={tab} index={2}>
+          <GodStoneChart />
+        </TabPanel>
       </Paper>
     </Box>
   );

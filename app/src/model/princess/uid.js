@@ -95,4 +95,3 @@ async function getPrincessNickName(uid, server) {
 }
 
 exports.getPrincessNickName = getPrincessNickName;
-

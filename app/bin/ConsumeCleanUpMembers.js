@@ -50,10 +50,9 @@ async function consume() {
 
 async function getGroupMemberProfile(groupId, userId) {
   try {
-    const res = await axios.get(
-      `https://api.line.me/v2/bot/group/${groupId}/member/${userId}`,
-      { headers: { Authorization: `Bearer ${process.env.LINE_ACCESS_TOKEN}` } }
-    );
+    const res = await axios.get(`https://api.line.me/v2/bot/group/${groupId}/member/${userId}`, {
+      headers: { Authorization: `Bearer ${process.env.LINE_ACCESS_TOKEN}` },
+    });
     return res.data;
   } catch {
     return null;

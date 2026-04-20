@@ -36,9 +36,7 @@ describe("GET /api/admin/world-bosses/:id", () => {
 
 describe("POST /api/admin/world-bosses", () => {
   it("returns 201 on successful world boss creation", async () => {
-    const res = await request(app)
-      .post("/api/admin/world-bosses")
-      .send({ name: "Dragon" });
+    const res = await request(app).post("/api/admin/world-bosses").send({ name: "Dragon" });
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual({ id: 1 });
