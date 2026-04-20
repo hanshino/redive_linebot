@@ -1,32 +1,20 @@
 const ChatLevelModel = require("../../model/application/ChatLevelModel");
 const ChatLevelTemplate = require("../../templates/application/ChatLevel");
+const MeTemplate = require("../../templates/application/Me");
 const { DefaultLogger } = require("../../util/Logger");
 const UserModel = require("../../model/application/UserModel");
 const { getClient } = require("bottender");
 const LineClient = getClient("line");
 const GachaModel = require("../../model/princess/gacha");
 const GachaRecord = require("../../model/princess/GachaRecord");
-const GachaTemplate = require("../../templates/princess/gacha").line;
-const JankenTemplate = require("../../templates/application/Janken");
-const DailyTemplate = require("../../templates/application/DailyQuest");
-const SubscribeTemplate = require("../../templates/application/Subscribe");
 const JankenResult = require("../../model/application/JankenResult");
 const SigninModel = require("../../model/application/SigninDays");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
-const UserTitleModel = require("../../model/application/UserTitle");
 const SubscribeUserModel = require("../../model/application/SubscribeUser");
 const SubscribeCardModel = require("../../model/application/SubscribeCard");
 const SubscriptionService = require("../../service/SubscriptionService");
-const { get, sample, set } = require("lodash");
-
-function formatTitle(title) {
-  if (!title) return "-";
-  const icon = title.icon || "";
-  const name = title.name || "-";
-  return icon ? `${icon} ${name}` : name;
-}
-const config = require("config");
+const { get } = require("lodash");
 const moment = require("moment");
 const i18n = require("../../util/i18n");
 const { inventory } = require("../../model/application/Inventory");
@@ -50,27 +38,35 @@ exports.showStatus = async (context, props) => {
       throw "userId or displayName is empty";
     }
 
-    let { rank, range, level, ranking, exp } = await ChatLevelModel.getUserData(userId);
-
-    let expDatas = await ChatLevelModel.getExpUnitData();
-
-    let targets = expDatas.filter(data => data.level === level + 1 || data.level === level);
-    let expRate = 0;
-
-    if (targets.length === 2) {
-      let [nowExpData, nextExpData] = targets;
-      expRate = Math.round(((exp - nowExpData.exp) / (nextExpData.exp - nowExpData.exp)) * 100);
-    }
+    const {
+      range = "等待投胎",
+      level = 0,
+      ranking = "?",
+      exp = 0,
+    } = await ChatLevelModel.getUserData(userId);
+    const expDatas = await ChatLevelModel.getExpUnitData();
+    const nowThreshold = get(
+      expDatas.find(d => d.level === level),
+      "exp",
+      0
+    );
+    const nextThreshold = get(
+      expDatas.find(d => d.level === level + 1),
+      "exp",
+      0
+    );
+    const expCurrent = Math.max(0, exp - nowThreshold);
+    const expNext = Math.max(0, nextThreshold - nowThreshold);
+    const expRate = expNext > 0 ? Math.round((expCurrent / expNext) * 100) : 0;
 
     const [
-      current = 0,
-      total = 0,
+      characterCurrent = 0,
+      characterTotal = 0,
       godStone = 0,
       jankenResult,
       signinInfo,
       questInfo,
       donateAmount,
-      achievement,
       subscribeInfo,
       gachaHistory,
       gachaProgress,
@@ -82,118 +78,67 @@ exports.showStatus = async (context, props) => {
       SigninModel.first({ filter: { user_id: userId } }),
       getQuestInfo(userId),
       DonateModel.getUserTotalAmount(userId),
-      UserTitleModel.findByUser(userId),
       getSubscribeInfo(userId),
       getGachaHistory(userId),
       getGachaCollectProgress(userId),
     ]);
 
-    const bubbles = [];
-
-    // ---------- 整理聊天數據 ----------
-    const chatlevelBubble = ChatLevelTemplate.showStatus({
-      displayName,
-      range,
-      rank,
-      level,
-      ranking,
-      pictureUrl,
-      expRate,
-      exp,
-      achievement: formatTitle(sample(achievement)),
-    });
-
-    // ---------- 整理訂閱數據 ----------
-    const monthCard = subscribeInfo.find(data => data.key === "month");
-    let monthBubble;
-    if (monthCard) {
-      monthBubble = SubscribeTemplate.generateStatus({
-        title: i18n.__("message.subscribe.month"),
-        effects: monthCard.effects.map(effect =>
-          SubscribeTemplate.generateEffect(SubscriptionService.formatEffectRow(effect), "blue")
-        ),
-        expiredAt: moment(monthCard.end_at).format("YYYY-MM-DD"),
-        theme: "blue",
-      });
-    }
-
-    const seasonCard = subscribeInfo.find(data => data.key === "season");
-    let seasonBubble;
-    if (seasonCard) {
-      seasonBubble = SubscribeTemplate.generateStatus({
-        title: i18n.__("message.subscribe.season"),
-        effects: seasonCard.effects.map(effect =>
-          SubscribeTemplate.generateEffect(SubscriptionService.formatEffectRow(effect), "red")
-        ),
-        expiredAt: moment(seasonCard.end_at).format("YYYY-MM-DD"),
-        theme: "red",
-      });
-    }
-
-    // ---------- 整理轉蛋數據 ----------
-    const gachaBubble = GachaTemplate.genGachaStatus({
-      current,
-      total,
-      godStone,
-      paidStone: donateAmount || 0,
-      gachaHistory,
-      gachaStarProgress: gachaProgress.progress,
-    });
-
-    // ---------- 整理猜拳數據 ----------
-    let winCount = get(
+    const winCount = get(
       jankenResult.find(data => data.result === JankenResult.resultMap.win),
       "count",
       0
     );
-    let loseCount = get(
+    const loseCount = get(
       jankenResult.find(data => data.result === JankenResult.resultMap.lose),
       "count",
       0
     );
-    let drawCount = get(
+    const drawCount = get(
       jankenResult.find(data => data.result === JankenResult.resultMap.draw),
       "count",
       0
     );
-    let rate = Math.floor((winCount / (winCount + loseCount)) * 100) || 0;
-    const jankenGradeBubble = JankenTemplate.generateJankenGrade({
-      winCount,
-      loseCount,
-      drawCount,
-      rate,
+    const decisive = winCount + loseCount;
+    const winRate = decisive > 0 ? Math.floor((winCount / decisive) * 100) : null;
+
+    const subscriptionRank = k => (k === "month" ? 0 : k === "season" ? 1 : 99);
+    const subscriptionCards = (subscribeInfo || [])
+      .slice()
+      .sort((a, b) => subscriptionRank(a.key) - subscriptionRank(b.key))
+      .map(card => ({
+        key: card.key,
+        titleText: i18n.__(`message.subscribe.${card.key}`),
+        expireText: moment(card.end_at).format("YYYY-MM-DD"),
+        effects: (card.effects || []).map(effect => SubscriptionService.formatEffectRow(effect)),
+      }));
+
+    const bubbles = MeTemplate.buildBubbles({
+      displayName,
+      pictureUrl,
+      level,
+      range,
+      ranking,
+      expRate,
+      expCurrent,
+      expNext,
+      today: {
+        gacha: questInfo.gacha,
+        janken: questInfo.janken,
+        weeklyCompleted: questInfo.weeklyCompletedCount,
+      },
+      signinDays: get(signinInfo, "sum_days", 0),
+      characterCurrent,
+      characterTotal,
+      starProgress: gachaProgress.progress,
+      godStone,
+      paidStone: donateAmount || 0,
+      lastRainbowDays: gachaHistory.rainbow === "-" ? null : gachaHistory.rainbow,
+      lastHasNewDays: gachaHistory.hasNew === "-" ? null : gachaHistory.hasNew,
+      janken: { win: winCount, lose: loseCount, draw: drawCount, rate: winRate },
+      subscriptionCards,
     });
-
-    const dailyBubble = DailyTemplate.genDailyInfo({
-      ...questInfo,
-      sumDays: get(signinInfo, "sum_days", 0),
-    });
-
-    bubbles.push(chatlevelBubble, dailyBubble, gachaBubble, jankenGradeBubble);
-    const subscribeBubbles = [];
-
-    if (monthBubble) {
-      bubbles.forEach(bubble =>
-        changeBackgroundColor(bubble, config.get("subscribe.month_user_background_color"))
-      );
-      subscribeBubbles.push(monthBubble);
-    }
-
-    if (seasonBubble) {
-      bubbles.forEach(bubble =>
-        changeBackgroundColor(bubble, config.get("subscribe.season_user_background_color"))
-      );
-      subscribeBubbles.push(seasonBubble);
-    }
-
-    subscribeBubbles && bubbles.push(...subscribeBubbles);
 
     context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
-
-    const isSelf = context.event.source.userId === userId;
-    if (!level && isSelf) {
-      context.replyText("尚未有任何數據，經驗開始累積後即可投胎！");
-    }
   } catch (e) {
     console.error(e);
     DefaultLogger.error(e);
@@ -209,17 +154,16 @@ async function getGachaCollectProgress(userId) {
   const ownItems = await inventory.getAllUserOwnCharacters(userId);
   const princessCountInGame = await GachaModel.getPrincessCharacterCount();
   const userTotalStar = ownItems.reduce((acc, item) => {
-    const { attributes } = item;
-    return parseInt(attributes.find(attr => attr.key === "star").value) + acc;
+    const attributes = item && item.attributes;
+    if (!Array.isArray(attributes)) return acc;
+    const star = attributes.find(attr => attr.key === "star");
+    return parseInt(star && star.value, 10) + acc || acc;
   }, 0);
 
   const totalStarInGame = princessCountInGame * 5;
+  const progress = totalStarInGame > 0 ? Math.floor((userTotalStar / totalStarInGame) * 100) : 0;
 
-  return {
-    userTotalStar,
-    totalStarInGame,
-    progress: Math.floor((userTotalStar / totalStarInGame) * 100),
-  };
+  return { userTotalStar, totalStarInGame, progress };
 }
 
 async function getGachaHistory(userId) {
@@ -402,11 +346,6 @@ function appendLevelTitle(data) {
       data = { ...data, rank, range };
       return data;
     });
-}
-
-function changeBackgroundColor(bubble, color) {
-  set(bubble, "header.backgroundColor", color);
-  set(bubble, "body.backgroundColor", color);
 }
 
 exports.api = {};

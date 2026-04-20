@@ -1,0 +1,1319 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <title>/me Bubble Redesign — Preview v2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light;
+        --chat-bg: #8caab2;
+        --panel-bg: #ffffff;
+        --line-radius: 13px;
+        --text: #1a2332;
+        --muted: #5a6b7f;
+        --dim: #8da4be;
+        --divider: #e6e6e6;
+        --divider-soft: #eef2f6;
+
+        /* Miyako theme tokens (aligned with app/src/templates/common/theme.js) */
+        --cyan-700: #00838f; /* AA-safe base for white text */
+        --cyan-600: #00acc1;
+        --cyan-500: #26c6da;
+        --cyan-400: #4dd0e1;
+        --cyan-bg: #e0f7fa;
+
+        --amber-500: #f59e0b;
+        --amber-400: #fbbf24;
+        --amber-300: #fcd34d;
+        --amber-bg: #fff7e6;
+
+        --green-500: #22c55e;
+        --green-bg: #e8f9ef;
+        --red-500: #ef4444;
+        --red-bg: #fdecec;
+
+        --hero-900: #0a1a2a;
+        --hero-800: #12243a;
+        --hero-700: #1a2e4a;
+        --hero-text: #e8eef4;
+        --hero-muted: #b0bec5;
+
+        --sub-month: #3d52d5;
+        --sub-season: #b88c9e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f4f5f7;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+          "PingFang TC", Roboto, sans-serif;
+        color: var(--text);
+      }
+
+      header {
+        padding: 28px 32px 8px;
+      }
+      header h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      header .pill-v2 {
+        display: inline-block;
+        margin-top: 6px;
+        background: var(--cyan-bg);
+        color: var(--cyan-700);
+        padding: 2px 10px;
+        font-size: 11px;
+        border-radius: 999px;
+        font-weight: 700;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        padding: 16px 32px 48px;
+      }
+      @media (max-width: 1100px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .col h2 {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        margin: 0 0 12px;
+        text-transform: uppercase;
+      }
+      .col p.caption {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 0 0 16px;
+      }
+
+      /* Chat canvas */
+      .chat {
+        background: var(--chat-bg);
+        border-radius: 18px;
+        padding: 18px;
+      }
+      .carousel {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scrollbar-width: thin;
+      }
+      .bubble {
+        flex: 0 0 auto;
+        width: 260px;
+        background: var(--panel-bg);
+        border-radius: var(--line-radius);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ------------------ BEFORE ------------------ */
+      .bubble-old .head {
+        padding: 12px 14px 6px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .bubble-old .body {
+        padding: 10px 14px 14px;
+      }
+
+      .old-chatlevel .head {
+        color: var(--text);
+      }
+      .old-chatlevel .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .old-chatlevel .avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 999px;
+        overflow: hidden;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        background: #eee;
+      }
+      .old-chatlevel .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .old-chatlevel .name {
+        font-size: 11px;
+        text-align: center;
+        font-weight: 700;
+        margin-top: 4px;
+      }
+      .old-chatlevel .rank-title {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .old-chatlevel .lvl {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--text);
+        margin-top: 4px;
+      }
+      .old-chatlevel .expbar {
+        margin-top: 4px;
+        width: 100%;
+        height: 14px;
+        background: #f2f2f2;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .old-chatlevel .expfill {
+        height: 100%;
+        width: 58%;
+        background: #80ff80;
+      }
+      .old-chatlevel .ranking {
+        text-align: right;
+        font-size: 10px;
+        color: var(--dim);
+        margin-top: 6px;
+      }
+
+      .old-quest .quest-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 0;
+      }
+      .old-quest .chip {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        border: 2px solid #00ff00;
+        font-size: 11px;
+        color: #999;
+        display: grid;
+        place-items: center;
+      }
+      .old-quest .chip.weekly {
+        border-color: #ff000066;
+      }
+      .old-quest .q-label {
+        font-size: 13px;
+      }
+      .old-quest .signin {
+        text-align: right;
+        color: var(--dim);
+        font-size: 10px;
+        margin-top: 6px;
+      }
+
+      .old-gacha .line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        font-size: 12px;
+      }
+      .old-gacha .line .label {
+        flex: 0 0 60px;
+      }
+      .old-gacha .line .track {
+        flex: 1;
+        height: 5px;
+        background: #80808033;
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .old-gacha .line .fill-pink {
+        background: #ffabcd;
+        height: 100%;
+        width: 60%;
+      }
+      .old-gacha .line .fill-yellow {
+        background: #ffec8b;
+        height: 100%;
+        width: 45%;
+      }
+      .old-gacha .line .num {
+        width: 55px;
+        text-align: right;
+        font-size: 11px;
+      }
+      .old-gacha .recent {
+        display: flex;
+        justify-content: space-around;
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      .old-gacha .stones {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--muted);
+        border-top: 1px solid var(--divider);
+        padding-top: 6px;
+        margin-top: 8px;
+      }
+
+      .old-janken .scores {
+        display: flex;
+        justify-content: space-around;
+        font-size: 13px;
+        padding: 6px 0;
+      }
+      .old-janken .winrate {
+        text-align: center;
+        font-size: 13px;
+        padding-top: 6px;
+      }
+
+      .bubble-old.sub .head {
+        background: var(--sub-month);
+        color: #fff;
+        text-align: left;
+      }
+      .bubble-old.sub .body {
+        background: var(--sub-month);
+        color: #fff;
+      }
+      .bubble-old.sub .effect {
+        font-size: 12px;
+        line-height: 1.6;
+      }
+      .bubble-old.sub .expire {
+        text-align: right;
+        font-size: 10px;
+        color: #e0e0f7;
+        margin-top: 10px;
+      }
+
+      /* ------------------ AFTER v2 ------------------ */
+      .bubble-new {
+        width: 296px;
+      }
+
+      /* Profile bubble */
+      .new-profile .hero {
+        padding: 18px 16px 14px;
+        background: linear-gradient(135deg, var(--cyan-700) 0%, var(--cyan-600) 100%);
+        color: #fff;
+      }
+      .new-profile .hero-row {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .new-profile .avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 999px;
+        overflow: hidden;
+        flex: 0 0 auto;
+        border: 2px solid #ffffff;
+        background: #eee;
+      }
+      .new-profile .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .new-profile .ident {
+        flex: 1;
+        min-width: 0;
+      }
+      .new-profile .ident .line1 {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .new-profile .ident .name {
+        font-size: 16px;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+      .new-profile .ident .lv-pill {
+        font-size: 10px;
+        padding: 2px 8px;
+        background: var(--amber-400);
+        color: #3a2800;
+        border-radius: 999px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+      }
+      .new-profile .ident .line2 {
+        font-size: 11px;
+        margin-top: 6px;
+        opacity: 0.96;
+      }
+      .new-profile .ident .line2 .rank {
+        color: var(--amber-300);
+        font-weight: 700;
+      }
+
+      .new-profile .exp-block {
+        margin-top: 14px;
+      }
+      .new-profile .exp-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 10px;
+        opacity: 0.92;
+      }
+      .new-profile .exp-head .num {
+        color: var(--amber-300);
+        font-weight: 700;
+      }
+      .new-profile .expbar {
+        margin-top: 4px;
+        width: 100%;
+        height: 7px;
+        background: rgba(255, 255, 255, 0.26);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .new-profile .expfill {
+        height: 100%;
+        width: 58%;
+        background: var(--amber-400);
+        border-radius: 999px;
+      }
+
+      /* Dark luxury sub-panel — "jewelry box" aesthetic, brand-aligned */
+      .sub-panel {
+        position: relative;
+        padding: 14px 16px 14px;
+        background: #12243a; /* HERO_SURFACE.bgAlt */
+        color: #e8eef4; /* HERO_SURFACE.text */
+        font-size: 11px;
+      }
+      .sub-panel::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #f59e0b 0%, #fcd34d 50%, #f59e0b 100%);
+      }
+      .sub-panel .head-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .sub-panel .tag {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        margin-right: 8px;
+        letter-spacing: 0.06em;
+        font-weight: 800;
+      }
+      .sub-panel.month .tag {
+        background: var(--cyan-500);
+        color: #002a30;
+      }
+      .sub-panel.season .tag {
+        background: var(--amber-400);
+        color: #3a2800;
+      }
+      .sub-panel .expire {
+        font-weight: 500;
+        color: #b0bec5; /* HERO_SURFACE.textMuted */
+        font-size: 10px;
+      }
+      .sub-panel .effects {
+        font-size: 10px;
+        line-height: 1.6;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px 10px;
+        opacity: 0.95;
+      }
+      .sub-panel .effect {
+        padding-left: 12px;
+        position: relative;
+        color: #e8eef4;
+      }
+      .sub-panel .effect::before {
+        content: "◆";
+        position: absolute;
+        left: 0;
+        color: var(--amber-400);
+        font-size: 9px;
+        top: 1px;
+      }
+
+      /* subscription-variant section */
+      .variants {
+        margin-top: 16px;
+      }
+      .variants h3 {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        margin: 0 0 8px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .variant-row {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding: 12px;
+        background: var(--chat-bg);
+        border-radius: 18px;
+      }
+      .variant {
+        flex: 0 0 auto;
+      }
+      .variant .caption {
+        text-align: center;
+        font-size: 11px;
+        color: #f5f5f5;
+        margin-top: 6px;
+        font-weight: 600;
+      }
+
+      .new-profile .stats {
+        padding: 12px 16px 6px;
+        display: flex;
+        gap: 8px;
+      }
+      .new-profile .stat {
+        flex: 1;
+        text-align: center;
+        padding: 10px 4px;
+        background: var(--cyan-bg);
+        border-radius: 10px;
+        border-left: 3px solid var(--cyan-600);
+      }
+      .new-profile .stat.done {
+        background: var(--green-bg);
+        border-left-color: var(--green-500);
+      }
+      .new-profile .stat.miss {
+        background: var(--red-bg);
+        border-left-color: var(--red-500);
+      }
+      .new-profile .stat .top {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--cyan-700);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+      }
+      .new-profile .stat.done .top {
+        color: var(--green-500);
+      }
+      .new-profile .stat.miss .top {
+        color: var(--red-500);
+      }
+      .new-profile .stat .icon {
+        font-weight: 900;
+      }
+      .new-profile .stat .label {
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+
+      .new-profile .streak {
+        padding: 8px 16px 14px;
+      }
+      .new-profile .streak-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--amber-bg);
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+      }
+      .new-profile .streak-row .big {
+        font-weight: 800;
+        color: var(--amber-500);
+        font-size: 14px;
+      }
+
+      /* Dedicated Subscription bubble (only when both cards active) */
+      .new-sub-bubble {
+        width: 296px;
+      }
+      .new-sub-bubble .accent {
+        height: 4px;
+        background: linear-gradient(90deg, var(--sub-month), var(--sub-season));
+      }
+      .new-sub-bubble .head {
+        padding: 12px 16px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .new-sub-bubble .head .title {
+        font-weight: 800;
+        font-size: 14px;
+        color: var(--text);
+      }
+      .new-sub-bubble .head .sub {
+        font-size: 10px;
+        color: var(--muted);
+      }
+
+      /* inline compact badge on Profile when sub is moved out */
+      .new-profile .sub-badge {
+        margin: 8px 16px 0;
+        padding: 6px 10px;
+        background: var(--cyan-bg);
+        color: var(--cyan-700);
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .new-profile .sub-badge .count {
+        font-size: 10px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      /* Progress bubble */
+      .new-progress .accent {
+        height: 4px;
+        background: linear-gradient(90deg, var(--cyan-700), var(--cyan-400));
+      }
+      .new-progress .head {
+        padding: 12px 16px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .new-progress .head .title {
+        font-weight: 800;
+        font-size: 14px;
+        color: var(--text);
+      }
+      .new-progress .head .sub {
+        font-size: 10px;
+        color: var(--muted);
+      }
+
+      .new-progress .block {
+        padding: 10px 16px;
+        border-top: 1px solid var(--divider-soft);
+      }
+      .new-progress .block-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 12px;
+        margin-bottom: 6px;
+      }
+      .new-progress .block-head .label {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .new-progress .block-head .val {
+        font-weight: 700;
+        color: var(--text);
+      }
+      .new-progress .block-meta {
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 4px;
+        text-align: right;
+      }
+      .new-progress .track {
+        width: 100%;
+        height: 6px;
+        background: #f0f4f7;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .new-progress .fill.cyan {
+        background: linear-gradient(90deg, var(--cyan-600), var(--cyan-400));
+        height: 100%;
+        width: 60%;
+        border-radius: 999px;
+      }
+      .new-progress .fill.amber {
+        background: linear-gradient(90deg, var(--amber-500), var(--amber-400));
+        height: 100%;
+        width: 45%;
+        border-radius: 999px;
+      }
+
+      .new-progress .wallet {
+        display: flex;
+        gap: 10px;
+        padding: 10px 16px;
+        border-top: 1px solid var(--divider-soft);
+      }
+      .new-progress .coin {
+        flex: 1;
+        background: var(--amber-bg);
+        border-radius: 10px;
+        padding: 8px 10px;
+      }
+      .new-progress .coin .label {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .new-progress .coin .value {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--amber-500);
+      }
+
+      .new-progress .janken-row {
+        display: flex;
+        gap: 8px;
+      }
+      .new-progress .jk {
+        flex: 1;
+        text-align: center;
+        padding: 6px 0;
+        border-radius: 8px;
+        background: #f5f7fa;
+      }
+      .new-progress .jk.win {
+        background: var(--green-bg);
+      }
+      .new-progress .jk.lose {
+        background: var(--red-bg);
+      }
+      .new-progress .jk.draw {
+        background: var(--cyan-bg);
+      }
+      .new-progress .jk .v {
+        font-size: 15px;
+        font-weight: 800;
+      }
+      .new-progress .jk.win .v {
+        color: var(--green-500);
+      }
+      .new-progress .jk.lose .v {
+        color: var(--red-500);
+      }
+      .new-progress .jk.draw .v {
+        color: var(--cyan-700);
+      }
+      .new-progress .jk .l {
+        font-size: 10px;
+        color: var(--muted);
+      }
+
+      .notes {
+        padding: 0 32px 48px;
+      }
+      .notes h3 {
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .notes ul {
+        font-size: 13px;
+        color: var(--text);
+        line-height: 1.7;
+        padding-left: 18px;
+      }
+      .notes code {
+        background: #eef2f6;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>/me 個人狀態 — Bubble Redesign</h1>
+      <p>
+        Before：目前 carousel 會依情況串 4–5 個獨立 bubble（聊天等級 · 每日任務 · 轉蛋 · 猜拳 · 訂閱）。<br />
+        After v2：收斂成 2 個 bubble — <b>Profile</b> 與 <b>Progress</b>，套用 Miyako cyan 主題，並修正 LINE Flex 相容性與對比度。
+      </p>
+      <span class="pill-v2">v2 · contrast + layout fixes</span>
+    </header>
+
+    <div class="layout">
+      <!-- ============ BEFORE ============ -->
+      <div class="col">
+        <h2>Before · 5 bubbles carousel</h2>
+        <p class="caption">每個 bubble 自成一格、沒有共用設計語言；訂閱啟用時其他 bubble 還會被染色。</p>
+        <div class="chat">
+          <div class="carousel">
+            <!-- ChatLevel -->
+            <div class="bubble bubble-old old-chatlevel">
+              <div class="head">👑 見習甜點師</div>
+              <div class="body">
+                <div class="row">
+                  <div style="flex: 1; text-align: center">
+                    <div class="avatar">
+                      <img
+                        src="https://i.imgur.com/NMl4z2u.png"
+                        alt=""
+                        onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'🍮',style:'font-size:30px;'}))"
+                      />
+                    </div>
+                    <div class="name">Minghan</div>
+                  </div>
+                  <div style="flex: 2">
+                    <div class="rank-title">初級 的 見習生</div>
+                    <hr style="border: 0; border-top: 1px solid var(--divider); margin: 4px 0" />
+                    <div class="lvl">
+                      <span>Level 12</span>
+                      <span style="color: var(--dim); font-size: 10px">48.2K</span>
+                    </div>
+                    <div class="expbar"><div class="expfill"></div></div>
+                  </div>
+                </div>
+                <div class="ranking">Rank #42</div>
+              </div>
+            </div>
+
+            <!-- DailyQuest -->
+            <div class="bubble bubble-old old-quest">
+              <div class="head">任務一覽</div>
+              <div class="body">
+                <div class="quest-row">
+                  <div class="chip">日</div>
+                  <div class="q-label">轉蛋 1/1</div>
+                </div>
+                <div class="quest-row">
+                  <div class="chip">日</div>
+                  <div class="q-label">猜拳 0/1</div>
+                </div>
+                <div class="quest-row">
+                  <div class="chip weekly">週</div>
+                  <div class="q-label">週任務 3/7</div>
+                </div>
+                <div class="signin">連續簽到天數 12天</div>
+              </div>
+            </div>
+
+            <!-- Gacha -->
+            <div class="bubble bubble-old old-gacha">
+              <div class="head">每日一抽進度</div>
+              <div class="body">
+                <div>
+                  <div style="font-size: 12px">蒐集角色</div>
+                  <div class="line">
+                    <div class="track"><div class="fill-pink"></div></div>
+                    <div class="num">120/200</div>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size: 12px; margin-top: 6px">累積星數</div>
+                  <div class="line">
+                    <div class="track"><div class="fill-yellow"></div></div>
+                    <div class="num">45%</div>
+                  </div>
+                </div>
+                <div class="recent">
+                  <div><b>3</b> 天前出彩</div>
+                  <div><b>1</b> 天前出新</div>
+                </div>
+                <div class="stones">
+                  <span>💎 女神石 2,450</span>
+                  <span>💰 付費 120</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Janken -->
+            <div class="bubble bubble-old old-janken">
+              <div class="head">猜拳戰績</div>
+              <div class="body">
+                <div class="scores">
+                  <span>12勝</span>
+                  <span>8敗</span>
+                  <span>3平手</span>
+                </div>
+                <div class="winrate">勝率：60%</div>
+              </div>
+            </div>
+
+            <!-- Subscribe -->
+            <div class="bubble bubble-old sub">
+              <div class="head">月卡</div>
+              <div class="body">
+                <div class="effect">• 經驗加成 +10%</div>
+                <div class="effect">• 轉蛋 +1</div>
+                <div class="effect">• 每日女神石 +50</div>
+                <div class="expire">到期日：2026-05-01</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ AFTER v2 ============ -->
+      <div class="col">
+        <h2>After v2 · 2 bubbles carousel</h2>
+        <p class="caption">
+          Hero 改 cyan700 → cyan600 漸層（白字 AA 通過）；身份資訊收成 2 行；stat 卡改為 icon + 分數一致格式；
+          Progress 合併「上次出彩/出新」成 meta，少一 block。
+        </p>
+        <div class="chat">
+          <div class="carousel">
+            <!-- Profile bubble -->
+            <div class="bubble bubble-new new-profile">
+              <div class="hero">
+                <div class="hero-row">
+                  <div class="avatar">
+                    <img
+                      src="https://i.imgur.com/NMl4z2u.png"
+                      alt=""
+                      onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'🍮',style:'font-size:30px;display:flex;align-items:center;justify-content:center;height:100%;background:#fff3e6;'}))"
+                    />
+                  </div>
+                  <div class="ident">
+                    <div class="line1">
+                      <span class="name">Minghan</span>
+                      <span class="lv-pill">Lv.12 · 初級</span>
+                    </div>
+                    <div class="line2">
+                      <span class="rank">Rank #42</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="exp-block">
+                  <div class="exp-head">
+                    <span>EXP</span>
+                    <span class="num">48.2K / 82K</span>
+                  </div>
+                  <div class="expbar"><div class="expfill"></div></div>
+                </div>
+              </div>
+
+              <!-- subscribe panel (只有訂閱者看得到) -->
+              <div class="sub-panel month">
+                <div class="head-row">
+                  <span><span class="tag">月卡</span><span class="expire">2026-05-01 到期</span></span>
+                </div>
+                <div class="effects">
+                  <span class="effect">經驗加成 +10%</span>
+                  <span class="effect">每日轉蛋 +1</span>
+                  <span class="effect">每日女神石 +50</span>
+                </div>
+              </div>
+
+              <!-- 今日任務 stat row，icon + 分數統一格式 -->
+              <div class="stats">
+                <div class="stat done">
+                  <div class="top"><span class="icon">✓</span><span>1/1</span></div>
+                  <div class="label">今日轉蛋</div>
+                </div>
+                <div class="stat miss">
+                  <div class="top"><span class="icon">!</span><span>0/1</span></div>
+                  <div class="label">今日猜拳</div>
+                </div>
+                <div class="stat">
+                  <div class="top"><span class="icon">⋯</span><span>3/7</span></div>
+                  <div class="label">週任務</div>
+                </div>
+              </div>
+
+              <!-- 簽到 -->
+              <div class="streak">
+                <div class="streak-row">
+                  <span>🔥 連續簽到</span>
+                  <span><b class="big">12</b> 天</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress bubble -->
+            <div class="bubble bubble-new new-progress">
+              <div class="accent"></div>
+              <div class="head">
+                <span class="title">布丁世界進度</span>
+                <span class="sub">蒐集 · 戰績</span>
+              </div>
+
+              <div class="block">
+                <div class="block-head">
+                  <span class="label">蒐集角色</span>
+                  <span class="val">120 / 200</span>
+                </div>
+                <div class="track"><div class="fill cyan"></div></div>
+                <div class="block-meta">🌈 3 天前上次出彩</div>
+              </div>
+
+              <div class="block">
+                <div class="block-head">
+                  <span class="label">累積星數</span>
+                  <span class="val">45%</span>
+                </div>
+                <div class="track"><div class="fill amber"></div></div>
+                <div class="block-meta">✨ 1 天前上次出新</div>
+              </div>
+
+              <div class="wallet">
+                <div class="coin">
+                  <div class="label">💎 女神石</div>
+                  <div class="value">2,450</div>
+                </div>
+                <div class="coin">
+                  <div class="label">💰 付費贊助</div>
+                  <div class="value">120</div>
+                </div>
+              </div>
+
+              <div class="block">
+                <div class="block-head">
+                  <span class="label">猜拳戰績</span>
+                  <span class="val">勝率 <b style="color: var(--cyan-700)">60%</b></span>
+                </div>
+                <div class="janken-row">
+                  <div class="jk win"><div class="v">12</div><div class="l">勝</div></div>
+                  <div class="jk lose"><div class="v">8</div><div class="l">敗</div></div>
+                  <div class="jk draw"><div class="v">3</div><div class="l">平</div></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Subscription state variants -->
+        <div class="variants">
+          <h3>訂閱狀態變體 · Profile bubble</h3>
+          <p class="caption">只有 Profile 會因訂閱狀態變化；Progress bubble 不變。ribbon 夾在 hero 與今日任務之間。</p>
+          <div class="variant-row">
+
+            <!-- 無訂閱 -->
+            <div class="variant">
+              <div class="bubble bubble-new new-profile">
+                <div class="hero">
+                  <div class="hero-row">
+                    <div class="avatar"><img src="https://i.imgur.com/NMl4z2u.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'🍮',style:'font-size:30px;display:flex;align-items:center;justify-content:center;height:100%;background:#fff3e6;'}))" /></div>
+                    <div class="ident">
+                      <div class="line1"><span class="name">Minghan</span><span class="lv-pill">Lv.12 · 初級</span></div>
+                      <div class="line2"><span class="rank">Rank #42</span></div>
+                    </div>
+                  </div>
+                  <div class="exp-block">
+                    <div class="exp-head"><span>EXP</span><span class="num">48.2K / 82K</span></div>
+                    <div class="expbar"><div class="expfill"></div></div>
+                  </div>
+                </div>
+                <div class="stats">
+                  <div class="stat done"><div class="top"><span class="icon">✓</span><span>1/1</span></div><div class="label">今日轉蛋</div></div>
+                  <div class="stat miss"><div class="top"><span class="icon">!</span><span>0/1</span></div><div class="label">今日猜拳</div></div>
+                  <div class="stat"><div class="top"><span class="icon">⋯</span><span>3/7</span></div><div class="label">週任務</div></div>
+                </div>
+                <div class="streak">
+                  <div class="streak-row"><span>🔥 連續簽到</span><span><b class="big">12</b> 天</span></div>
+                </div>
+              </div>
+              <div class="caption">無訂閱</div>
+            </div>
+
+            <!-- 月卡 -->
+            <div class="variant">
+              <div class="bubble bubble-new new-profile">
+                <div class="hero">
+                  <div class="hero-row">
+                    <div class="avatar"><img src="https://i.imgur.com/NMl4z2u.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'🍮',style:'font-size:30px;display:flex;align-items:center;justify-content:center;height:100%;background:#fff3e6;'}))" /></div>
+                    <div class="ident">
+                      <div class="line1"><span class="name">Minghan</span><span class="lv-pill">Lv.12 · 初級</span></div>
+                      <div class="line2"><span class="rank">Rank #42</span></div>
+                    </div>
+                  </div>
+                  <div class="exp-block">
+                    <div class="exp-head"><span>EXP</span><span class="num">48.2K / 82K</span></div>
+                    <div class="expbar"><div class="expfill"></div></div>
+                  </div>
+                </div>
+                <div class="sub-panel month">
+                  <div class="head-row"><span><span class="tag">月卡</span><span class="expire">2026-05-01 到期</span></span></div>
+                  <div class="effects">
+                    <span class="effect">經驗加成 +10%</span>
+                    <span class="effect">每日轉蛋 +1</span>
+                    <span class="effect">每日女神石 +50</span>
+                  </div>
+                </div>
+                <div class="stats">
+                  <div class="stat done"><div class="top"><span class="icon">✓</span><span>1/1</span></div><div class="label">今日轉蛋</div></div>
+                  <div class="stat miss"><div class="top"><span class="icon">!</span><span>0/1</span></div><div class="label">今日猜拳</div></div>
+                  <div class="stat"><div class="top"><span class="icon">⋯</span><span>3/7</span></div><div class="label">週任務</div></div>
+                </div>
+                <div class="streak">
+                  <div class="streak-row"><span>🔥 連續簽到</span><span><b class="big">12</b> 天</span></div>
+                </div>
+              </div>
+              <div class="caption">月卡</div>
+            </div>
+
+            <!-- 季卡 -->
+            <div class="variant">
+              <div class="bubble bubble-new new-profile">
+                <div class="hero">
+                  <div class="hero-row">
+                    <div class="avatar"><img src="https://i.imgur.com/NMl4z2u.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'🍮',style:'font-size:30px;display:flex;align-items:center;justify-content:center;height:100%;background:#fff3e6;'}))" /></div>
+                    <div class="ident">
+                      <div class="line1"><span class="name">Minghan</span><span class="lv-pill">Lv.12 · 初級</span></div>
+                      <div class="line2"><span class="rank">Rank #42</span></div>
+                    </div>
+                  </div>
+                  <div class="exp-block">
+                    <div class="exp-head"><span>EXP</span><span class="num">48.2K / 82K</span></div>
+                    <div class="expbar"><div class="expfill"></div></div>
+                  </div>
+                </div>
+                <div class="sub-panel season">
+                  <div class="head-row"><span><span class="tag">季卡</span><span class="expire">2026-07-15 到期</span></span></div>
+                  <div class="effects">
+                    <span class="effect">女神石產出 +25%</span>
+                    <span class="effect">每日轉蛋 +2</span>
+                    <span class="effect">經驗加成 +15%</span>
+                    <span class="effect">猜拳下注上限 ×2</span>
+                  </div>
+                </div>
+                <div class="stats">
+                  <div class="stat done"><div class="top"><span class="icon">✓</span><span>1/1</span></div><div class="label">今日轉蛋</div></div>
+                  <div class="stat miss"><div class="top"><span class="icon">!</span><span>0/1</span></div><div class="label">今日猜拳</div></div>
+                  <div class="stat"><div class="top"><span class="icon">⋯</span><span>3/7</span></div><div class="label">週任務</div></div>
+                </div>
+                <div class="streak">
+                  <div class="streak-row"><span>🔥 連續簽到</span><span><b class="big">12</b> 天</span></div>
+                </div>
+              </div>
+              <div class="caption">季卡</div>
+            </div>
+
+            <!-- 月+季 -->
+            <div class="variant">
+              <div class="bubble bubble-new new-profile">
+                <div class="hero">
+                  <div class="hero-row">
+                    <div class="avatar"><img src="https://i.imgur.com/NMl4z2u.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'🍮',style:'font-size:30px;display:flex;align-items:center;justify-content:center;height:100%;background:#fff3e6;'}))" /></div>
+                    <div class="ident">
+                      <div class="line1"><span class="name">Minghan</span><span class="lv-pill">Lv.12 · 初級</span></div>
+                      <div class="line2"><span class="rank">Rank #42</span></div>
+                    </div>
+                  </div>
+                  <div class="exp-block">
+                    <div class="exp-head"><span>EXP</span><span class="num">48.2K / 82K</span></div>
+                    <div class="expbar"><div class="expfill"></div></div>
+                  </div>
+                </div>
+                <div class="sub-panel month">
+                  <div class="head-row"><span><span class="tag">月卡</span><span class="expire">2026-05-01 到期</span></span></div>
+                  <div class="effects">
+                    <span class="effect">經驗加成 +10%</span>
+                    <span class="effect">每日轉蛋 +1</span>
+                    <span class="effect">每日女神石 +50</span>
+                  </div>
+                </div>
+                <div class="sub-panel season">
+                  <div class="head-row"><span><span class="tag">季卡</span><span class="expire">2026-07-15 到期</span></span></div>
+                  <div class="effects">
+                    <span class="effect">女神石產出 +25%</span>
+                    <span class="effect">每日轉蛋 +2</span>
+                    <span class="effect">經驗加成 +15%</span>
+                    <span class="effect">猜拳下注上限 ×2</span>
+                  </div>
+                </div>
+                <div class="stats">
+                  <div class="stat done"><div class="top"><span class="icon">✓</span><span>1/1</span></div><div class="label">今日轉蛋</div></div>
+                  <div class="stat miss"><div class="top"><span class="icon">!</span><span>0/1</span></div><div class="label">今日猜拳</div></div>
+                  <div class="stat"><div class="top"><span class="icon">⋯</span><span>3/7</span></div><div class="label">週任務</div></div>
+                </div>
+                <div class="streak">
+                  <div class="streak-row"><span>🔥 連續簽到</span><span><b class="big">12</b> 天</span></div>
+                </div>
+              </div>
+              <div class="caption">月+季 · 內嵌（~410px）</div>
+            </div>
+
+            <!-- 月+季 拆成獨立 bubble（推薦） -->
+            <div class="variant" style="display: flex; gap: 8px; align-items: flex-start;">
+              <div style="display: flex; flex-direction: column; align-items: center;">
+                <div class="bubble bubble-new new-profile">
+                  <div class="hero">
+                    <div class="hero-row">
+                      <div class="avatar"><img src="https://i.imgur.com/NMl4z2u.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{textContent:'🍮',style:'font-size:30px;display:flex;align-items:center;justify-content:center;height:100%;background:#fff3e6;'}))" /></div>
+                      <div class="ident">
+                        <div class="line1"><span class="name">Minghan</span><span class="lv-pill">Lv.12 · 初級</span></div>
+                        <div class="line2"><span class="rank">Rank #42</span></div>
+                      </div>
+                    </div>
+                    <div class="exp-block">
+                      <div class="exp-head"><span>EXP</span><span class="num">48.2K / 82K</span></div>
+                      <div class="expbar"><div class="expfill"></div></div>
+                    </div>
+                  </div>
+                  <div class="sub-badge">
+                    <span>🎟 訂閱中 · 月卡 + 季卡</span>
+                    <span class="count">›</span>
+                  </div>
+                  <div class="stats">
+                    <div class="stat done"><div class="top"><span class="icon">✓</span><span>1/1</span></div><div class="label">今日轉蛋</div></div>
+                    <div class="stat miss"><div class="top"><span class="icon">!</span><span>0/1</span></div><div class="label">今日猜拳</div></div>
+                    <div class="stat"><div class="top"><span class="icon">⋯</span><span>3/7</span></div><div class="label">週任務</div></div>
+                  </div>
+                  <div class="streak">
+                    <div class="streak-row"><span>🔥 連續簽到</span><span><b class="big">12</b> 天</span></div>
+                  </div>
+                </div>
+                <div class="caption">Profile（~260px）</div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; align-items: center;">
+                <div class="bubble bubble-new new-sub-bubble">
+                  <div class="accent"></div>
+                  <div class="head">
+                    <span class="title">訂閱特權</span>
+                    <span class="sub">2 張啟用中</span>
+                  </div>
+                  <div class="sub-panel month">
+                    <div class="head-row"><span><span class="tag">月卡</span><span class="expire">2026-05-01 到期</span></span></div>
+                    <div class="effects">
+                      <span class="effect">經驗加成 +10%</span>
+                      <span class="effect">每日轉蛋 +1</span>
+                      <span class="effect">每日女神石 +50</span>
+                    </div>
+                  </div>
+                  <div class="sub-panel season">
+                    <div class="head-row"><span><span class="tag">季卡</span><span class="expire">2026-07-15 到期</span></span></div>
+                    <div class="effects">
+                      <span class="effect">女神石產出 +25%</span>
+                      <span class="effect">每日轉蛋 +2</span>
+                      <span class="effect">經驗加成 +15%</span>
+                      <span class="effect">猜拳下注上限 ×2</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="caption">Subscription（~220px）</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>v3 · Dark Luxury 訂閱卡</h3>
+      <ul>
+        <li>
+          <b>訂閱顏色全面更換</b>：舊的 indigo <code>#3D52D5</code> / rose <code>#B88C9E</code> 不延續，
+          改為深 navy <code>#12243A</code>（theme.js <code>HERO_SURFACE.bgAlt</code>），跟 Janken 段位卡 / 戰王類 bubble 一致。
+        </li>
+        <li>
+          <b>金色細線</b>：頂部 3px amber 漸層 hairline（<code>#F59E0B → #FCD34D → #F59E0B</code>），
+          視覺上像一條金框，傳達「高級感 / 訂閱會員」訊號。
+        </li>
+        <li>
+          <b>月卡 vs 季卡用 tag 區分</b>：月卡 tag 用 cyan，季卡 tag 用 amber；tag 反白為深色字 → 「polished badge」的感覺。
+          內文底色不變，保持 dark navy 的沉穩。
+        </li>
+        <li>
+          <b>Bullet 點改菱形 ◆</b>（琥珀色），不再用普通 bullet •，視覺更精緻。
+        </li>
+        <li>
+          <b>Stats card 左側色條</b>（3px）：cyan / green / red 分別對應進行中 / 已完成 / 未完成，
+          跟 Progress bubble 的 accent bar 呼應，把 Profile 各 section 串成一致的 card 系統。
+        </li>
+        <li>
+          <b>size 退回 mega</b>：giga 是治標。Dark luxury 設計把視覺重量拉低，Profile 自然就不擠了。
+        </li>
+      </ul>
+
+      <h3>v2 修正摘要</h3>
+      <ul>
+        <li>
+          <b>對比度（必修）</b>：Hero 背景改 <code>linear-gradient(#00838F → #00ACC1)</code>。
+          白字 on <code>#00838F</code> 對比 ≈ 5.3:1，WCAG AA 通過。Level / rank 都安全可讀。
+        </li>
+        <li>
+          <b>LINE Flex 相容性</b>：avatar 外框改 2px 實色白，去除 <code>box-shadow</code>（LINE 不支援）。
+          stat card / wallet / janken row 全部從 CSS grid 改成 flex，對應 <code>layout: "horizontal"</code> + <code>flex:1</code>。
+        </li>
+        <li>
+          <b>身份資訊 2 行化</b>：
+          <code>name + Lv.12 · 初級 pill</code> 一行，<code>Rank #42</code> 一行。
+          原本的「初級 的 見習生」字串被壓縮進等級 pill，rank 用琥珀色強調。
+          （稱號/成就功能正重構中，先不放。）
+        </li>
+        <li>
+          <b>Stat card 格式統一</b>：全部 <code>icon + 分數</code>（✓ 1/1 ｜ ! 0/1 ｜ ⋯ 3/7），
+          icon 提供非顏色線索，解決色盲依賴問題。
+        </li>
+        <li>
+          <b>Progress 少一 block</b>：「上次出彩/出新」收進對應進度條的 <code>block-meta</code>，
+          bubble 高度降低。新增頂部 4px cyan accent bar，跟 Profile 呼應。
+        </li>
+        <li>
+          <b>文案統一中文</b>：Progress pill 的 <code>PROGRESS</code> 改成「蒐集 · 戰績」副標。
+          底部 LIFF CTA 暫時移除（等未來 <code>/me</code> 頁做完再補）。
+        </li>
+      </ul>
+
+      <h3>訂閱顯示策略（閾值拆分）</h3>
+      <ul>
+        <li><b>0 張卡</b>：Profile 不顯示 sub-panel。</li>
+        <li><b>1 張卡</b>：sub-panel 內嵌在 Profile（hero 與 stats 之間），顯示到期日與效果清單。</li>
+        <li>
+          <b>2 張卡</b>（月+季）：Profile 內嵌會衝到 ~410px，超過 LINE 舒適範圍。
+          建議改成 <b>3-bubble carousel</b>（Profile → <code>訂閱特權</code> → Progress），
+          Profile 改放 <code>sub-badge</code> 小色塊當提示（「🎟 訂閱中 · 月卡 + 季卡」），
+          詳細效果搬到獨立 Subscription bubble。
+        </li>
+      </ul>
+
+      <h3>實作待辦</h3>
+      <ul>
+        <li>
+          移除 <code>ChatLevelController.showStatus</code> 末段的
+          <code>context.replyText("尚未有任何數據，經驗開始累積後即可投胎！")</code>。
+          新 UI 的空狀態（Level 0 + 空 EXP bar + 0/200 蒐集 + 0 勝 0 敗）已經能表達「尚未投胎」。
+        </li>
+      </ul>
+
+      <h3>空狀態處理原則</h3>
+      <ul>
+        <li>猜拳無紀錄：顯示 <code>0 勝 0 敗 0 平 · 勝率 -%</code>，不收 block。</li>
+        <li>轉蛋無紀錄：<code>120/200</code> 顯示 <code>0/200</code>、<code>上次出彩</code> 顯示 <code>-</code>。</li>
+        <li>連續簽到 0 天：顯示 <code>0 天</code>，不收 row。</li>
+        <li>訂閱 0 張：整個 sub-panel / sub-badge 區塊不渲染（hero 直接接 stats）。</li>
+        <li>
+          <b>適用原則</b>：所有統計數值的預設值是「0」或「-」，不要整段隱藏，
+          讓使用者看到「我在這個系統還沒有數據」而不是「這個系統不存在」。
+          其他 feature bubble（競技場、戰王、市集…）也比照辦理。
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>
