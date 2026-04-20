@@ -14,8 +14,8 @@ import {
   IconButton,
   InputAdornment,
 } from "@mui/material";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutlined";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutlined";
 import MessageIcon from "@mui/icons-material/Message";
 import ImageIcon from "@mui/icons-material/Image";
 
@@ -29,7 +29,7 @@ function ReplyField({ index, value, onChange, onRemove, canRemove }) {
       fullWidth
       label={`回覆 ${index + 1}`}
       value={value}
-      onChange={(e) => onChange(index, e.target.value)}
+      onChange={e => onChange(index, e.target.value)}
       size="small"
       sx={{ mb: 1 }}
       slotProps={{
@@ -65,7 +65,7 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
       setTouchType(String(data.touchType || "1"));
       setSenderName(data.senderName || "");
       setSenderIcon(data.senderIcon || "");
-      setReplyDatas(data.replyDatas?.length ? data.replyDatas.map((r) => r.reply || "") : [""]);
+      setReplyDatas(data.replyDatas?.length ? data.replyDatas.map(r => r.reply || "") : [""]);
     } else {
       setOrder("");
       setTouchType("1");
@@ -76,15 +76,15 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
   }, [data, open]);
 
   const handleReplyChange = (index, value) => {
-    setReplyDatas((prev) => prev.map((r, i) => (i === index ? value : r)));
+    setReplyDatas(prev => prev.map((r, i) => (i === index ? value : r)));
   };
 
   const handleAddReply = () => {
-    if (replyDatas.length < MAX_REPLIES) setReplyDatas((prev) => [...prev, ""]);
+    if (replyDatas.length < MAX_REPLIES) setReplyDatas(prev => [...prev, ""]);
   };
 
-  const handleRemoveReply = (index) => {
-    setReplyDatas((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveReply = index => {
+    setReplyDatas(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = () => {
@@ -94,7 +94,7 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
       touchType,
       senderName,
       senderIcon,
-      replyDatas: replyDatas.filter((r) => r.trim()).map((reply) => ({ reply })),
+      replyDatas: replyDatas.filter(r => r.trim()).map(reply => ({ reply })),
     });
   };
 
@@ -106,17 +106,13 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
           fullWidth
           label="指令"
           value={order}
-          onChange={(e) => setOrder(e.target.value)}
+          onChange={e => setOrder(e.target.value)}
           sx={{ mt: 1, mb: 2 }}
           size="small"
         />
         <FormControl fullWidth size="small" sx={{ mb: 2 }}>
           <InputLabel>觸發方式</InputLabel>
-          <Select
-            value={touchType}
-            label="觸發方式"
-            onChange={(e) => setTouchType(e.target.value)}
-          >
+          <Select value={touchType} label="觸發方式" onChange={e => setTouchType(e.target.value)}>
             <MenuItem value="1">全符合</MenuItem>
             <MenuItem value="2">關鍵字符合</MenuItem>
           </Select>
@@ -127,7 +123,7 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
               fullWidth
               label="發送名"
               value={senderName}
-              onChange={(e) => setSenderName(e.target.value)}
+              onChange={e => setSenderName(e.target.value)}
               size="small"
             />
           </Grid>
@@ -136,7 +132,7 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
               fullWidth
               label="發送頭像"
               value={senderIcon}
-              onChange={(e) => setSenderIcon(e.target.value)}
+              onChange={e => setSenderIcon(e.target.value)}
               size="small"
             />
           </Grid>

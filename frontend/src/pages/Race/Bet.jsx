@@ -75,7 +75,12 @@ function BalanceChip({ balance, loading }) {
           {balance != null ? balance.toLocaleString() : "—"}
         </Typography>
       )}
-      <Typography variant="caption" color="text.secondary">
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         女神石
       </Typography>
     </Box>
@@ -156,7 +161,12 @@ function RunnerCard({ runner, existingBet, selected, onToggle, betAmount, onAmou
             >
               {runner.character_name}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               賠率 {runner.odds ?? "—"}x
             </Typography>
           </Box>
@@ -203,7 +213,14 @@ function RunnerCard({ runner, existingBet, selected, onToggle, betAmount, onAmou
         {selected && (
           <Box onClick={e => e.stopPropagation()} sx={{ mt: 1.5 }}>
             <Divider sx={{ mb: 1.5 }} />
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                mb: 1,
+                display: "block",
+              }}
+            >
               選擇下注金額
             </Typography>
 
@@ -273,7 +290,12 @@ function BetHistory({ isLoggedIn }) {
           <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.5 }}>
             還沒有下注紀錄
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             在下注期間選擇角色押注，結果將顯示在這裡
           </Typography>
         </CardContent>
@@ -306,7 +328,12 @@ function BetHistory({ isLoggedIn }) {
                   sx={{ fontWeight: 700, fontSize: "0.7rem" }}
                 />
                 {isFinished && firstBet.finished_at && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {new Date(firstBet.finished_at).toLocaleString("zh-TW", {
                       month: "numeric",
                       day: "numeric",
@@ -340,19 +367,61 @@ function BetHistory({ isLoggedIn }) {
                             color: isWin ? "success.main" : "text.primary",
                           }}
                         >
-                          {isWin ? <EmojiEventsIcon sx={{ fontSize: 16, color: "warning.main", mr: 0.5, verticalAlign: "text-bottom" }} />
-                            : isLose ? <CancelIcon sx={{ fontSize: 16, color: "error.main", mr: 0.5, verticalAlign: "text-bottom" }} />
-                            : <HourglassEmptyIcon sx={{ fontSize: 16, color: "text.disabled", mr: 0.5, verticalAlign: "text-bottom" }} />}
+                          {isWin ? (
+                            <EmojiEventsIcon
+                              sx={{
+                                fontSize: 16,
+                                color: "warning.main",
+                                mr: 0.5,
+                                verticalAlign: "text-bottom",
+                              }}
+                            />
+                          ) : isLose ? (
+                            <CancelIcon
+                              sx={{
+                                fontSize: 16,
+                                color: "error.main",
+                                mr: 0.5,
+                                verticalAlign: "text-bottom",
+                              }}
+                            />
+                          ) : (
+                            <HourglassEmptyIcon
+                              sx={{
+                                fontSize: 16,
+                                color: "text.disabled",
+                                mr: 0.5,
+                                verticalAlign: "text-bottom",
+                              }}
+                            />
+                          )}
                           {bet.character_name}
-                          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                          <Typography
+                            component="span"
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                              ml: 0.5,
+                            }}
+                          >
                             {bet.lane}號道
                           </Typography>
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           押 {bet.amount.toLocaleString()} 石
                           {isWin && (
-                            <Typography component="span" variant="caption" sx={{ color: "success.main", fontWeight: 700 }}>
-                              {" "}→ +{bet.payout.toLocaleString()} 石
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{ color: "success.main", fontWeight: 700 }}
+                            >
+                              {" "}
+                              → +{bet.payout.toLocaleString()} 石
                             </Typography>
                           )}
                           {isLose && <> → 未中獎</>}
@@ -375,10 +444,25 @@ function BetHistory({ isLoggedIn }) {
                     borderRadius: 1.5,
                   }}
                 >
-                  <Stack direction="row" spacing={2} flexWrap="wrap">
-                    <StatItem label="總注額" value={`${settlement.totalPool.toLocaleString()} 石`} />
-                    <StatItem label="系統抽成" value={`${(settlement.feeRate * 100).toFixed(0)}%`} />
-                    <StatItem label="中獎總注額" value={`${settlement.winnerPool.toLocaleString()} 石`} />
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                    sx={{
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <StatItem
+                      label="總注額"
+                      value={`${settlement.totalPool.toLocaleString()} 石`}
+                    />
+                    <StatItem
+                      label="系統抽成"
+                      value={`${(settlement.feeRate * 100).toFixed(0)}%`}
+                    />
+                    <StatItem
+                      label="中獎總注額"
+                      value={`${settlement.winnerPool.toLocaleString()} 石`}
+                    />
                     {settlement.multiplier && (
                       <StatItem label="中獎倍數" value={`${settlement.multiplier}x`} highlight />
                     )}
@@ -393,7 +477,6 @@ function BetHistory({ isLoggedIn }) {
   );
 }
 
-
 function EmptyState({ message, sub }) {
   return (
     <Card variant="outlined" sx={{ textAlign: "center", py: 6 }}>
@@ -405,7 +488,12 @@ function EmptyState({ message, sub }) {
           {message}
         </Typography>
         {sub && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {sub}
           </Typography>
         )}
@@ -630,7 +718,11 @@ export default function Bet() {
           onChange={(_, v) => setActiveTab(v)}
           sx={{ mb: 2, minHeight: 40, "& .MuiTab-root": { minHeight: 40, fontWeight: 700 } }}
         >
-          <Tab icon={<MonetizationOnIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="下注" />
+          <Tab
+            icon={<MonetizationOnIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label="下注"
+          />
           <Tab icon={<HistoryIcon sx={{ fontSize: 18 }} />} iconPosition="start" label="我的紀錄" />
         </Tabs>
 
@@ -674,7 +766,6 @@ export default function Bet() {
         {/* Tab 1: Bet History */}
         {activeTab === 1 && <BetHistory isLoggedIn={isLoggedIn} />}
       </Container>
-
       {/* sticky bottom bar */}
       {isBettingOpen && activeTab === 0 && (
         <Box
@@ -701,7 +792,12 @@ export default function Bet() {
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {selectedEntries.length > 0 ? (
               <>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   已選 {selectedEntries.length} 位角色
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, color: "secondary.main" }}>
@@ -709,7 +805,12 @@ export default function Bet() {
                 </Typography>
               </>
             ) : (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 點選角色開始下注
               </Typography>
             )}
@@ -732,7 +833,6 @@ export default function Bet() {
           </Button>
         </Box>
       )}
-
       {/* snackbar feedback */}
       <Snackbar
         open={snack.open}

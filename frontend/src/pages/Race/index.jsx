@@ -123,9 +123,7 @@ export default function Race() {
   // ─── render ───────────────────────────────────────────────────────────────
 
   // sort runners by position descending (leader first) and attach odds
-  const oddsMap = Object.fromEntries(
-    (raceData?.odds ?? []).map(o => [o.runnerId, o])
-  );
+  const oddsMap = Object.fromEntries((raceData?.odds ?? []).map(o => [o.runnerId, o]));
   const sortedRunners = [...(raceData?.runners ?? [])]
     .sort((a, b) => b.position - a.position)
     .map((r, idx) => ({ ...r, rank: idx + 1, oddsEntry: oddsMap[r.id] ?? null }));
@@ -138,7 +136,12 @@ export default function Race() {
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
             蘭德索爾盃
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             每 10 秒自動更新
           </Typography>
         </Box>
@@ -152,13 +155,11 @@ export default function Race() {
           {raceData?.race?.status === "betting" ? "前往下注" : "下注 / 紀錄"}
         </Button>
       </Box>
-
       {error && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-
       {!raceData?.race ? (
         <NoRace />
       ) : (
@@ -169,22 +170,25 @@ export default function Race() {
           <Grid container spacing={2} sx={{ mt: 0 }}>
             {/* left: race track */}
             <Grid size={{ xs: 12, md: 7 }}>
-              <RaceTrack runners={sortedRunners} status={raceData.race.status} trackLength={raceData.trackLength ?? DEFAULT_TRACK_LENGTH} />
+              <RaceTrack
+                runners={sortedRunners}
+                status={raceData.race.status}
+                trackLength={raceData.trackLength ?? DEFAULT_TRACK_LENGTH}
+              />
             </Grid>
 
             {/* right: event log + history */}
             <Grid size={{ xs: 12, md: 5 }}>
               <Stack spacing={2}>
-                {raceData.events?.length > 0 && (
-                  <EventLog events={raceData.events} />
+                {raceData.events?.length > 0 && <EventLog events={raceData.events} />}
+                {history.length > 0 && (
+                  <RaceHistory history={history} onRaceClick={id => navigate(`/race/${id}`)} />
                 )}
-                {history.length > 0 && <RaceHistory history={history} onRaceClick={id => navigate(`/race/${id}`)} />}
               </Stack>
             </Grid>
           </Grid>
         </>
       )}
-
       {/* history only when no active race */}
       {!raceData?.race && history.length > 0 && (
         <Box sx={{ mt: 3 }}>
@@ -210,10 +214,22 @@ function NoRace() {
     >
       <CardContent>
         <FlagIcon sx={{ fontSize: 48, color: "text.disabled", mb: 2 }} />
-        <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 600 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            color: "text.secondary",
+            fontWeight: 600,
+          }}
+        >
           目前沒有進行中的比賽
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mt: 0.5,
+          }}
+        >
           下一場比賽將在整點自動開賽
         </Typography>
       </CardContent>
@@ -228,10 +244,7 @@ function RaceHeader({ race }) {
   const { Icon } = meta;
 
   return (
-    <Card
-      variant="outlined"
-      sx={{ mb: 2, px: 2, py: 1.5 }}
-    >
+    <Card variant="outlined" sx={{ mb: 2, px: 2, py: 1.5 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
         <Chip
           icon={<Icon sx={{ fontSize: "1rem !important" }} />}
@@ -242,17 +255,38 @@ function RaceHeader({ race }) {
         />
 
         {race.status === "betting" && race.betting_end_at && (
-          <Typography variant="body2" color="text.secondary">
-            下注截止：{new Date(race.betting_end_at).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
+            下注截止：
+            {new Date(race.betting_end_at).toLocaleString("zh-TW", {
+              month: "numeric",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </Typography>
         )}
         {race.status === "running" && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             第 <strong>{race.round}</strong> 回合
           </Typography>
         )}
         {race.status === "finished" && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             共 {race.round} 回合
             {race.finished_at && (
               <> &middot; {new Date(race.finished_at).toLocaleString("zh-TW")}</>
@@ -385,7 +419,12 @@ function RunnerRow({ runner, raceFinished, trackLength }) {
           {/* stamina */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.25, mt: 0.25 }}>
             <BoltIcon sx={{ fontSize: 12, color: "text.disabled" }} />
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {runner.stamina}
             </Typography>
           </Box>
@@ -407,7 +446,6 @@ function RunnerRow({ runner, raceFinished, trackLength }) {
           </Typography>
         )}
       </Box>
-
       {/* progress bar */}
       <LinearProgress
         variant="determinate"
@@ -416,8 +454,7 @@ function RunnerRow({ runner, raceFinished, trackLength }) {
         sx={{
           height: 10,
           borderRadius: 5,
-          bgcolor: theme =>
-            theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "grey.200",
+          bgcolor: theme => (theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "grey.200"),
           "& .MuiLinearProgress-bar": {
             borderRadius: 5,
             bgcolor: barColor,
@@ -425,9 +462,15 @@ function RunnerRow({ runner, raceFinished, trackLength }) {
           },
         }}
       />
-
       {/* position label */}
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, display: "block" }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.secondary",
+          mt: 0.25,
+          display: "block",
+        }}
+      >
         {runner.position} / {trackLength}
       </Typography>
     </Box>
@@ -451,10 +494,7 @@ function EventLog({ events }) {
           divider={<Divider sx={{ my: 0.5 }} />}
         >
           {recentEvents.map(event => (
-            <Box
-              key={event.id}
-              sx={{ display: "flex", alignItems: "flex-start", gap: 1, py: 0.5 }}
-            >
+            <Box key={event.id} sx={{ display: "flex", alignItems: "flex-start", gap: 1, py: 0.5 }}>
               {/* round badge */}
               <Paper
                 elevation={0}
@@ -477,7 +517,13 @@ function EventLog({ events }) {
                 </Typography>
               </Paper>
 
-              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                  lineHeight: 1.5,
+                }}
+              >
                 {event.description}
               </Typography>
             </Box>
@@ -532,12 +578,16 @@ function RaceHistory({ history, onRaceClick }) {
                 {/* position number */}
                 <Typography
                   variant="caption"
-                  color="text.disabled"
-                  sx={{ width: 18, flexShrink: 0, textAlign: "center", fontWeight: 600 }}
+                  sx={{
+                    color: "text.disabled",
+                    width: 18,
+                    flexShrink: 0,
+                    textAlign: "center",
+                    fontWeight: 600,
+                  }}
                 >
                   {i + 1}
                 </Typography>
-
                 {/* winner avatar with colored border */}
                 <Avatar
                   src={r.winner_avatar}
@@ -551,12 +601,9 @@ function RaceHistory({ history, onRaceClick }) {
                     transition: "border-color 200ms ease",
                   }}
                 />
-
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    {i === 0 && (
-                      <EmojiEventsIcon sx={{ fontSize: 14, color: "#F59E0B" }} />
-                    )}
+                    {i === 0 && <EmojiEventsIcon sx={{ fontSize: 14, color: "#F59E0B" }} />}
                     <Typography
                       variant="body2"
                       sx={{
@@ -569,7 +616,12 @@ function RaceHistory({ history, onRaceClick }) {
                       {r.winner_name}
                     </Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {finishedAt}
                     {r.round && <> &middot; {r.round} 回合</>}
                   </Typography>

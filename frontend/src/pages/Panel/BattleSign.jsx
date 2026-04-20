@@ -98,21 +98,21 @@ export default function BattleSign() {
       { title: "法刀一刀", damage, comment: "法隊一刀殺", type: "1" },
     ]);
 
-    setState((prev) => ({ ...prev, maxDamage: parseInt(damage) }));
+    setState(prev => ({ ...prev, maxDamage: parseInt(damage) }));
   }, [location.search]);
 
-  const handleDamage = (event) => {
+  const handleDamage = event => {
     let damage = event.target.value;
     damage = /^\d+$/.test(damage) ? parseInt(damage) : "";
-    setState((prev) => ({ ...prev, damage }));
+    setState(prev => ({ ...prev, damage }));
   };
 
-  const handleComment = (event) => {
-    setState((prev) => ({ ...prev, comment: event.target.value }));
+  const handleComment = event => {
+    setState(prev => ({ ...prev, comment: event.target.value }));
   };
 
-  const handleType = (event) => {
-    setState((prev) => ({ ...prev, type: event.target.value }));
+  const handleType = event => {
+    setState(prev => ({ ...prev, type: event.target.value }));
   };
 
   return (
@@ -142,7 +142,7 @@ export default function BattleSign() {
               <Button
                 key={index}
                 onClick={() =>
-                  setState((prev) => ({
+                  setState(prev => ({
                     ...prev,
                     damage: hotkey.damage,
                     comment: hotkey.comment,
@@ -156,7 +156,14 @@ export default function BattleSign() {
           </ButtonGroup>
         </Grid>
       </Grid>
-      <Grid container justifyContent="space-around" sx={{ p: 1, "& > *": { m: 1 } }}>
+      <Grid
+        container
+        sx={{
+          justifyContent: "space-around",
+          p: 1,
+          "& > *": { m: 1 },
+        }}
+      >
         <Grid size={{ xs: 12, sm: 3 }}>
           <TextField
             select
@@ -169,7 +176,7 @@ export default function BattleSign() {
             }}
             variant="outlined"
           >
-            {SaberTypes.map((data) => (
+            {SaberTypes.map(data => (
               <option key={data.value} value={data.value}>
                 {data.title}
               </option>
@@ -193,9 +200,7 @@ export default function BattleSign() {
               max={state.maxDamage}
               step={Math.floor(state.maxDamage / 100) || 1}
               value={parseInt(state.damage) || 0}
-              onChange={(event, value) =>
-                setState((prev) => ({ ...prev, damage: value.toString() }))
-              }
+              onChange={(event, value) => setState(prev => ({ ...prev, damage: value.toString() }))}
             />
           </Grid>
         </Grid>

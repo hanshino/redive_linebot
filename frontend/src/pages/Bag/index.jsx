@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import useAxios from "axios-hooks";
 import {
-  Box, Typography, Paper, Avatar, Chip, Skeleton,
-  Card, CardContent, LinearProgress, ToggleButtonGroup,
-  ToggleButton, Grid,
+  Box,
+  Typography,
+  Paper,
+  Avatar,
+  Chip,
+  Skeleton,
+  Card,
+  CardContent,
+  LinearProgress,
+  ToggleButtonGroup,
+  ToggleButton,
+  Grid,
 } from "@mui/material";
 import CatchingPokemonIcon from "@mui/icons-material/CatchingPokemon";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -29,7 +38,7 @@ function CollectionBanner({ obtained, total, godStone }) {
         sx={{
           position: "absolute",
           inset: 0,
-          background: (theme) =>
+          background: theme =>
             `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
         }}
       />
@@ -171,7 +180,11 @@ function CollectionGrid({ items, obtained }) {
     return (
       <Paper sx={{ p: { xs: 4, sm: 5 }, textAlign: "center", borderRadius: 3 }}>
         <CatchingPokemonIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
-        <Typography color="text.secondary">
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {obtained ? "尚未取得任何角色" : "已收集全部角色！"}
         </Typography>
       </Paper>
@@ -180,7 +193,7 @@ function CollectionGrid({ items, obtained }) {
 
   return (
     <Grid container spacing={1.5}>
-      {items.map((item) => (
+      {items.map(item => (
         <Grid size={{ xs: 4, sm: 3, md: 2 }} key={item.itemId}>
           <CharacterCard item={item} obtained={obtained} />
         </Grid>
@@ -192,16 +205,34 @@ function CollectionGrid({ items, obtained }) {
 /* ---------- StatsCards ---------- */
 function StatsCards({ obtained, unobtained }) {
   const stats = [
-    { label: "已取得", count: obtained.length, color: "success.main", icon: <CheckCircleIcon sx={{ fontSize: 20 }} /> },
-    { label: "未取得", count: unobtained.length, color: "text.secondary", icon: <LockIcon sx={{ fontSize: 20 }} /> },
+    {
+      label: "已取得",
+      count: obtained.length,
+      color: "success.main",
+      icon: <CheckCircleIcon sx={{ fontSize: 20 }} />,
+    },
+    {
+      label: "未取得",
+      count: unobtained.length,
+      color: "text.secondary",
+      icon: <LockIcon sx={{ fontSize: 20 }} />,
+    },
   ];
 
   return (
     <Grid container spacing={2}>
-      {stats.map((stat) => (
+      {stats.map(stat => (
         <Grid size={{ xs: 6 }} key={stat.label}>
           <Card>
-            <CardContent sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 2, "&:last-child": { pb: 2 } }}>
+            <CardContent
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                py: 2,
+                "&:last-child": { pb: 2 },
+              }}
+            >
               <Avatar sx={{ width: 36, height: 36, bgcolor: "transparent", color: stat.color }}>
                 {stat.icon}
               </Avatar>
@@ -209,7 +240,12 @@ function StatsCards({ obtained, unobtained }) {
                 <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
                   {stat.count}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {stat.label}
                 </Typography>
               </Box>
@@ -236,7 +272,7 @@ function BagSkeleton() {
       </Grid>
       <Skeleton variant="rounded" height={40} animation="wave" />
       <Grid container spacing={1.5}>
-        {[1, 2, 3, 4, 5, 6].map((i) => (
+        {[1, 2, 3, 4, 5, 6].map(i => (
           <Grid size={{ xs: 4, sm: 3, md: 2 }} key={i}>
             <Skeleton variant="rounded" height={120} animation="wave" />
           </Grid>
@@ -256,17 +292,20 @@ export default function Bag() {
   const [{ data: pool = [], loading: poolLoading }] = useAxios("/api/inventory/pool", {
     manual: !isLoggedIn,
   });
-  const [{ data: godStoneData, loading: godStoneLoading }] = useAxios("/api/inventory/total-god-stone", {
-    manual: !isLoggedIn,
-  });
+  const [{ data: godStoneData, loading: godStoneLoading }] = useAxios(
+    "/api/inventory/total-god-stone",
+    {
+      manual: !isLoggedIn,
+    }
+  );
 
   useEffect(() => {
     document.title = "轉蛋包包";
   }, []);
 
   const unobtainedItems = useMemo(() => {
-    const obtainedItemIds = items.map((item) => item.itemId);
-    return pool.filter((item) => !obtainedItemIds.includes(item.itemId));
+    const obtainedItemIds = items.map(item => item.itemId);
+    return pool.filter(item => !obtainedItemIds.includes(item.itemId));
   }, [items, pool]);
 
   if (!isLoggedIn) {
@@ -284,11 +323,7 @@ export default function Bag() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      <CollectionBanner
-        obtained={items.length}
-        total={totalCount}
-        godStone={godStoneData?.total}
-      />
+      <CollectionBanner obtained={items.length} total={totalCount} godStone={godStoneData?.total} />
 
       <StatsCards obtained={items} unobtained={unobtainedItems} />
 
@@ -312,12 +347,8 @@ export default function Bag() {
               },
             }}
           >
-            <ToggleButton value="obtained">
-              已取得 ({items.length})
-            </ToggleButton>
-            <ToggleButton value="unobtained">
-              未取得 ({unobtainedItems.length})
-            </ToggleButton>
+            <ToggleButton value="obtained">已取得 ({items.length})</ToggleButton>
+            <ToggleButton value="unobtained">未取得 ({unobtainedItems.length})</ToggleButton>
           </ToggleButtonGroup>
         </Box>
         <CollectionGrid items={displayItems} obtained={tab === "obtained"} />

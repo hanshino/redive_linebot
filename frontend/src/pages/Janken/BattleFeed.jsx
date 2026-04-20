@@ -97,7 +97,12 @@ export default function BattleFeed({ matches, loading }) {
   if (!matches || matches.length === 0) {
     return (
       <Card sx={{ p: 2, mb: 3, textAlign: "center" }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           尚無對戰紀錄
         </Typography>
       </Card>
@@ -111,7 +116,13 @@ export default function BattleFeed({ matches, loading }) {
 
   return (
     <Box sx={{ mb: 3 }}>
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{
+          color: "text.secondary",
+          mb: 1,
+        }}
+      >
         戰況播報
       </Typography>
       <Box sx={{ perspective: 600, minHeight: 72 }}>

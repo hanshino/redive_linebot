@@ -67,7 +67,11 @@ export default function RaceDetail() {
           <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/race")}>
             返回賽事
           </Button>
-          <Button startIcon={<MonetizationOnIcon />} variant="outlined" onClick={() => navigate("/race/bet")}>
+          <Button
+            startIcon={<MonetizationOnIcon />}
+            variant="outlined"
+            onClick={() => navigate("/race/bet")}
+          >
             下注 / 紀錄
           </Button>
         </Box>
@@ -96,7 +100,12 @@ export default function RaceDetail() {
               sx={{ fontWeight: 700 }}
             />
           </Box>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             共 {race.round} 回合
             {race.finished_at && (
               <> &middot; {new Date(race.finished_at).toLocaleString("zh-TW")}</>
@@ -123,13 +132,13 @@ export default function RaceDetail() {
           </Button>
         </Box>
       </Box>
-
       {/* Winner highlight — full width */}
       {isFinished && winner && (
         <Card
           sx={{
             mb: 2,
-            background: theme => `linear-gradient(135deg, ${theme.palette.warning.main}22, ${theme.palette.warning.main}08)`,
+            background: theme =>
+              `linear-gradient(135deg, ${theme.palette.warning.main}22, ${theme.palette.warning.main}08)`,
             borderColor: "warning.main",
             borderWidth: 1,
             borderStyle: "solid",
@@ -143,7 +152,12 @@ export default function RaceDetail() {
               sx={{ width: 52, height: 52, border: 2, borderColor: "warning.main" }}
             />
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 冠軍
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -153,7 +167,6 @@ export default function RaceDetail() {
           </CardContent>
         </Card>
       )}
-
       {/* Responsive two-column layout */}
       <Grid container spacing={2}>
         {/* Left column: settlement + standings */}
@@ -170,21 +183,63 @@ export default function RaceDetail() {
                   {/* Primary stats: pool + payout in larger style */}
                   <Grid container spacing={2} sx={{ mb: 2 }}>
                     <Grid size={{ xs: 6 }}>
-                      <Box sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 2, textAlign: "center" }}>
-                        <Typography variant="caption" color="text.secondary">總注額</Typography>
+                      <Box
+                        sx={{
+                          p: 1.5,
+                          bgcolor: "action.hover",
+                          borderRadius: 2,
+                          textAlign: "center",
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
+                          總注額
+                        </Typography>
                         <Typography variant="h6" sx={{ fontWeight: 700 }}>
                           {settlement.totalPool.toLocaleString()}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">女神石</Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
+                          女神石
+                        </Typography>
                       </Box>
                     </Grid>
                     <Grid size={{ xs: 6 }}>
-                      <Box sx={{ p: 1.5, bgcolor: "action.hover", borderRadius: 2, textAlign: "center" }}>
-                        <Typography variant="caption" color="text.secondary">實發獎金</Typography>
+                      <Box
+                        sx={{
+                          p: 1.5,
+                          bgcolor: "action.hover",
+                          borderRadius: 2,
+                          textAlign: "center",
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
+                          實發獎金
+                        </Typography>
                         <Typography variant="h6" sx={{ fontWeight: 700, color: "success.main" }}>
                           {settlement.prizePool.toLocaleString()}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">女神石</Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
+                          女神石
+                        </Typography>
                       </Box>
                     </Grid>
                   </Grid>
@@ -192,7 +247,10 @@ export default function RaceDetail() {
                   {/* Secondary stats row */}
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 4 }}>
-                      <StatItem label="系統抽成" value={`${(settlement.feeRate * 100).toFixed(0)}%`} />
+                      <StatItem
+                        label="系統抽成"
+                        value={`${(settlement.feeRate * 100).toFixed(0)}%`}
+                      />
                     </Grid>
                     {settlement.multiplier && (
                       <Grid size={{ xs: 4 }}>
@@ -253,7 +311,12 @@ export default function RaceDetail() {
                           <Avatar
                             src={runner.avatar_url}
                             alt={runner.character_name}
-                            sx={{ width: 36, height: 36, border: 2, borderColor: isWinner ? "warning.main" : "divider" }}
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              border: 2,
+                              borderColor: isWinner ? "warning.main" : "divider",
+                            }}
                           />
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography
@@ -269,16 +332,32 @@ export default function RaceDetail() {
                               {runner.character_name}
                               {isWinner && (
                                 <EmojiEventsIcon
-                                  sx={{ fontSize: 14, color: "warning.main", ml: 0.5, verticalAlign: "text-bottom" }}
+                                  sx={{
+                                    fontSize: 14,
+                                    color: "warning.main",
+                                    ml: 0.5,
+                                    verticalAlign: "text-bottom",
+                                  }}
                                 />
                               )}
                             </Typography>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                               <BoltIcon sx={{ fontSize: 12, color: "text.disabled" }} />
-                              <Typography variant="caption" color="text.secondary">
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: "text.secondary",
+                                }}
+                              >
                                 {runner.stamina}
                               </Typography>
-                              <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: "text.secondary",
+                                  ml: 1,
+                                }}
+                              >
                                 {runner.position}/{trackLength}
                               </Typography>
                             </Box>
@@ -293,7 +372,11 @@ export default function RaceDetail() {
                             bgcolor: "grey.200",
                             "& .MuiLinearProgress-bar": {
                               borderRadius: 3,
-                              bgcolor: isWinner ? "warning.main" : rank <= 3 ? "primary.main" : "grey.400",
+                              bgcolor: isWinner
+                                ? "warning.main"
+                                : rank <= 3
+                                  ? "primary.main"
+                                  : "grey.400",
                             },
                           }}
                         />
@@ -338,12 +421,22 @@ export default function RaceDetail() {
                         }}
                       >
                         <Typography
-                          sx={{ fontSize: "0.65rem", fontWeight: 700, color: "primary.contrastText" }}
+                          sx={{
+                            fontSize: "0.65rem",
+                            fontWeight: 700,
+                            color: "primary.contrastText",
+                          }}
                         >
                           R{event.round}
                         </Typography>
                       </Paper>
-                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "text.secondary",
+                          lineHeight: 1.5,
+                        }}
+                      >
                         {event.description}
                       </Typography>
                     </Box>
@@ -357,4 +450,3 @@ export default function RaceDetail() {
     </Container>
   );
 }
-

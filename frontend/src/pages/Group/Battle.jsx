@@ -1,8 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Box, Paper, Typography, Avatar, Chip, Skeleton,
-  ToggleButton, ToggleButtonGroup, Divider, LinearProgress,
+  Box,
+  Paper,
+  Typography,
+  Avatar,
+  Chip,
+  Skeleton,
+  ToggleButton,
+  ToggleButtonGroup,
+  Divider,
+  LinearProgress,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -15,7 +23,7 @@ import * as GroupAPI from "../../services/group";
 /* ---------- helpers ---------- */
 function processSignData(signDatas) {
   let dates = [];
-  signDatas.forEach((data) => {
+  signDatas.forEach(data => {
     dates = [...dates, ...data.signDates];
   });
   dates = [...new Set(dates)].sort((a, b) => a - b);
@@ -26,9 +34,8 @@ function processSignData(signDatas) {
 function SummaryBanner({ members, dates, month }) {
   const totalMembers = members.length;
   const totalSignIns = members.reduce((acc, m) => acc + m.signDates.length, 0);
-  const perfectMembers = dates.length > 0
-    ? members.filter((m) => m.signDates.length === dates.length).length
-    : 0;
+  const perfectMembers =
+    dates.length > 0 ? members.filter(m => m.signDates.length === dates.length).length : 0;
 
   return (
     <Paper
@@ -42,7 +49,7 @@ function SummaryBanner({ members, dates, month }) {
         sx={{
           position: "absolute",
           inset: 0,
-          background: (theme) =>
+          background: theme =>
             `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
         }}
       />
@@ -115,7 +122,7 @@ function MonthSelector({ month, onChange }) {
           },
         }}
       >
-        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
           <ToggleButton key={m} value={m}>
             {m}月
           </ToggleButton>
@@ -141,7 +148,14 @@ function MemberSignRow({ member, dates, month, totalDates }) {
           {member.displayName?.charAt(0)}
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mb: 0.25 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              mb: 0.25,
+            }}
+          >
             <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
               {member.displayName}
             </Typography>
@@ -160,16 +174,19 @@ function MemberSignRow({ member, dates, month, totalDates }) {
             sx={{ height: 6, borderRadius: 3, mb: 1 }}
           />
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
-            {dates.map((date) => {
+            {dates.map(date => {
               const signed = member.signDates.includes(date);
               return (
                 <Chip
                   key={date}
                   label={`${month}/${date}`}
                   size="small"
-                  icon={signed
-                    ? <CheckCircleIcon sx={{ fontSize: "14px !important" }} />
-                    : <CancelIcon sx={{ fontSize: "14px !important" }} />
+                  icon={
+                    signed ? (
+                      <CheckCircleIcon sx={{ fontSize: "14px !important" }} />
+                    ) : (
+                      <CancelIcon sx={{ fontSize: "14px !important" }} />
+                    )
                   }
                   color={signed ? "success" : "default"}
                   variant={signed ? "filled" : "outlined"}
@@ -193,7 +210,13 @@ function MemberList({ members, dates, month }) {
   if (members.length === 0) {
     return (
       <Paper sx={{ p: { xs: 4, sm: 5 }, textAlign: "center", borderRadius: 3 }}>
-        <Typography color="text.secondary">本月尚無簽到資料</Typography>
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
+          本月尚無簽到資料
+        </Typography>
       </Paper>
     );
   }
@@ -206,12 +229,7 @@ function MemberList({ members, dates, month }) {
       {sorted.map((member, i) => (
         <Box key={member.displayName + i}>
           {i > 0 && <Divider />}
-          <MemberSignRow
-            member={member}
-            dates={dates}
-            month={month}
-            totalDates={dates.length}
-          />
+          <MemberSignRow member={member} dates={dates} month={month} totalDates={dates.length} />
         </Box>
       ))}
     </Paper>
@@ -224,7 +242,7 @@ function BattleSkeleton() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Skeleton variant="rounded" height={110} animation="wave" />
       <Skeleton variant="rounded" height={80} animation="wave" />
-      {[1, 2, 3, 4, 5].map((i) => (
+      {[1, 2, 3, 4, 5].map(i => (
         <Skeleton key={i} variant="rounded" height={64} animation="wave" />
       ))}
     </Box>
@@ -246,7 +264,7 @@ export default function GroupBattle() {
   useEffect(() => {
     setLoading(true);
     GroupAPI.getSignList(groupId, month)
-      .then((result) => setSignDatas(result))
+      .then(result => setSignDatas(result))
       .catch(() => setSignDatas([]))
       .finally(() => setLoading(false));
   }, [month, groupId]);

@@ -37,9 +37,24 @@ const STAR_FILTERS = [
 ];
 
 const STAR_CONFIG = {
-  3: { label: "SSR", color: "#F59E0B", bg: "rgba(245, 158, 11, 0.12)", border: "rgba(245, 158, 11, 0.3)" },
-  2: { label: "SR", color: "#A855F7", bg: "rgba(168, 85, 247, 0.12)", border: "rgba(168, 85, 247, 0.3)" },
-  1: { label: "R", color: "#6B7280", bg: "rgba(107, 114, 128, 0.1)", border: "rgba(107, 114, 128, 0.25)" },
+  3: {
+    label: "SSR",
+    color: "#F59E0B",
+    bg: "rgba(245, 158, 11, 0.12)",
+    border: "rgba(245, 158, 11, 0.3)",
+  },
+  2: {
+    label: "SR",
+    color: "#A855F7",
+    bg: "rgba(168, 85, 247, 0.12)",
+    border: "rgba(168, 85, 247, 0.3)",
+  },
+  1: {
+    label: "R",
+    color: "#6B7280",
+    bg: "rgba(107, 114, 128, 0.1)",
+    border: "rgba(107, 114, 128, 0.25)",
+  },
 };
 
 export default function AdminGachaPool() {
@@ -61,7 +76,7 @@ export default function AdminGachaPool() {
       setLoading(true);
       const data = await gachaPoolService.fetchData();
       setRows(
-        data.map((d) => ({
+        data.map(d => ({
           ...d,
           star: parseInt(d.star, 10),
           rate: parseFloat(d.rate),
@@ -83,16 +98,16 @@ export default function AdminGachaPool() {
   const filteredRows = useMemo(() => {
     let result = rows;
     if (starFilter !== null) {
-      result = result.filter((r) => r.star === starFilter);
+      result = result.filter(r => r.star === starFilter);
     }
     if (search.trim()) {
       const keyword = search.trim().toLowerCase();
-      result = result.filter((r) => r.name.toLowerCase().includes(keyword));
+      result = result.filter(r => r.name.toLowerCase().includes(keyword));
     }
     return result;
   }, [rows, starFilter, search]);
 
-  const handleDeleteClick = (row) => {
+  const handleDeleteClick = row => {
     showAlert({
       title: "確認刪除",
       description: `確定要刪除角色「${row.name}」嗎？`,
@@ -117,7 +132,7 @@ export default function AdminGachaPool() {
       width: isMobile ? 48 : 56,
       sortable: false,
       filterable: false,
-      renderCell: (params) => {
+      renderCell: params => {
         const cfg = STAR_CONFIG[params.row.star] || STAR_CONFIG[1];
         return (
           <Avatar
@@ -139,7 +154,7 @@ export default function AdminGachaPool() {
       headerName: "名稱",
       flex: 1,
       minWidth: isMobile ? 70 : 100,
-      renderCell: (params) => (
+      renderCell: params => (
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {params.value}
         </Typography>
@@ -149,7 +164,7 @@ export default function AdminGachaPool() {
       field: "star",
       headerName: "星等",
       width: isMobile ? 64 : 80,
-      renderCell: (params) => {
+      renderCell: params => {
         const cfg = STAR_CONFIG[params.value] || STAR_CONFIG[1];
         return (
           <Chip
@@ -174,7 +189,7 @@ export default function AdminGachaPool() {
             field: "rate",
             headerName: "機率",
             width: 90,
-            renderCell: (params) => (
+            renderCell: params => (
               <Typography variant="body2" sx={{ fontFamily: "monospace", color: "text.secondary" }}>
                 {params.value}%
               </Typography>
@@ -184,7 +199,7 @@ export default function AdminGachaPool() {
             field: "isPrincess",
             headerName: "公主",
             width: 72,
-            renderCell: (params) =>
+            renderCell: params =>
               params.value === 1 ? (
                 <Tooltip title="公主角色" arrow>
                   <AutoAwesomeIcon sx={{ color: "secondary.main", fontSize: 20 }} />
@@ -204,7 +219,7 @@ export default function AdminGachaPool() {
       width: isMobile ? 80 : 96,
       sortable: false,
       filterable: false,
-      renderCell: (params) => (
+      renderCell: params => (
         <Stack direction="row" spacing={0.5}>
           <Tooltip title="編輯" arrow>
             <IconButton
@@ -259,9 +274,11 @@ export default function AdminGachaPool() {
       >
         <Stack
           direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ mb: 2.5 }}
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2.5,
+          }}
         >
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
@@ -288,7 +305,7 @@ export default function AdminGachaPool() {
           size="small"
           placeholder="搜尋角色名稱..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={e => setSearch(e.target.value)}
           slotProps={{
             input: {
               startAdornment: (
@@ -309,7 +326,7 @@ export default function AdminGachaPool() {
 
         {/* Star Filter Chips */}
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 0.5 }}>
-          {STAR_FILTERS.map((f) => {
+          {STAR_FILTERS.map(f => {
             const active = starFilter === f.value;
             const cfg = f.value ? STAR_CONFIG[f.value] : null;
             return (
@@ -333,7 +350,6 @@ export default function AdminGachaPool() {
           })}
         </Stack>
       </Paper>
-
       {/* DataGrid */}
       <Paper
         elevation={0}
@@ -390,7 +406,6 @@ export default function AdminGachaPool() {
           }}
         />
       </Paper>
-
       {/* Delete Confirmation */}
       <AlertDialog
         open={alertState.open}
@@ -400,7 +415,6 @@ export default function AdminGachaPool() {
         title={alertState.title}
         description={alertState.description}
       />
-
       {/* Snackbar */}
       <HintSnackBar
         open={hintState.open}

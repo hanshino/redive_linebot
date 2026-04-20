@@ -1,9 +1,21 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Box, Grid, Container, Paper, Typography, TextField, Button, Avatar,
-  Alert, Dialog, DialogTitle, DialogContent, DialogActions,
-  useMediaQuery, useTheme,
+  Box,
+  Grid,
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Avatar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { FullPageLoading } from "../../components/Loading";
 import ConfigCard from "../../components/GroupConfig/ConfigCard";
@@ -63,17 +75,29 @@ function WebhookInput({ DiscordWebhook, modifyTrigger, isLoggedIn }) {
       <Typography variant="h6" component="h2">
         Discord Webhook 綁定
       </Typography>
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         可將 Line 訊息，即時轉發至 Discord 指定頻道
       </Typography>
-      <Grid container spacing={1} sx={{ mt: 1 }} alignItems="center">
+      <Grid
+        container
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          mt: 1,
+        }}
+      >
         <Grid size={{ xs: 12, sm: 8 }}>
           <TextField
             label="Discord Webhook"
             fullWidth
             disabled={!isLoggedIn}
             value={webhook}
-            onChange={(e) => setWebhook(e.target.value)}
+            onChange={e => setWebhook(e.target.value)}
           />
         </Grid>
         <Grid size={{ xs: 4, sm: 1 }}>
@@ -82,12 +106,7 @@ function WebhookInput({ DiscordWebhook, modifyTrigger, isLoggedIn }) {
           </Button>
         </Grid>
         <Grid size={{ xs: 4, sm: 1 }}>
-          <Button
-            color="primary"
-            disabled={!isLoggedIn}
-            onClick={handleSave}
-            sx={{ m: 1, mb: 0 }}
-          >
+          <Button color="primary" disabled={!isLoggedIn} onClick={handleSave} sx={{ m: 1, mb: 0 }}>
             連結
           </Button>
         </Grid>
@@ -129,10 +148,22 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
         <Typography variant="h6" component="h2">
           加入歡迎訊息
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           可設定新成員加入發送特定訊息。
         </Typography>
-        <Grid container spacing={1} sx={{ mt: 1 }} alignItems="center">
+        <Grid
+          container
+          spacing={1}
+          sx={{
+            alignItems: "center",
+            mt: 1,
+          }}
+        >
           <Grid size={{ xs: 12, sm: 10 }}>
             <TextField
               label="歡迎訊息"
@@ -155,7 +186,6 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
           </Grid>
         </Grid>
       </Paper>
-
       <Dialog
         fullScreen={fullScreen}
         open={open}
@@ -171,7 +201,7 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
                 label="訊息"
                 fullWidth
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={e => setMessage(e.target.value)}
                 multiline
                 rows={4}
               />
@@ -180,7 +210,7 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => setMessage((m) => `${m} {UserName}`)}
+                onClick={() => setMessage(m => `${m} {UserName}`)}
               >
                 使用者名稱
               </Button>
@@ -189,7 +219,7 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => setMessage((m) => `${m} {GroupName}`)}
+                onClick={() => setMessage(m => `${m} {GroupName}`)}
               >
                 群組名稱
               </Button>
@@ -211,7 +241,7 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
 function FeatureCards({ datas, config, handle, isLoggedIn }) {
   return (
     <Grid container spacing={2} sx={{ mt: 1 }}>
-      {datas.map((data) => (
+      {datas.map(data => (
         <Grid size={{ xs: 12, sm: 4 }} key={data.name}>
           <ConfigCard
             {...data}
@@ -262,8 +292,8 @@ export default function GroupConfig() {
 
       const { GroupConfig: gc, DiscordWebhook, WelcomeMessage, Sender } = Config;
 
-      setInfo((prev) => ({ ...prev, ...Info }));
-      setState((prev) => ({
+      setInfo(prev => ({ ...prev, ...Info }));
+      setState(prev => ({
         ...prev,
         GroupConfigData,
         GroupConfig: gc,

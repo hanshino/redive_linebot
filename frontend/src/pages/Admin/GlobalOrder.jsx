@@ -38,7 +38,7 @@ function GlobalOrderSkeleton() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <Skeleton variant="rounded" height={140} animation="wave" />
-      {[1, 2, 3, 4, 5].map((i) => (
+      {[1, 2, 3, 4, 5].map(i => (
         <Skeleton key={i} variant="rounded" height={72} animation="wave" />
       ))}
     </Box>
@@ -71,7 +71,12 @@ function OrderRow({ row, onEdit, onDelete }) {
             variant="outlined"
           />
           {row.senderName && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {row.senderName}
             </Typography>
           )}
@@ -125,7 +130,7 @@ export default function AdminGlobalOrder() {
     setOrderDialogOpen(true);
   };
 
-  const handleOpenEdit = (row) => {
+  const handleOpenEdit = row => {
     setEditingOrder(row);
     setOrderDialogOpen(true);
   };
@@ -135,10 +140,10 @@ export default function AdminGlobalOrder() {
     setEditingOrder(null);
   };
 
-  const handleSave = async (orderData) => {
+  const handleSave = async orderData => {
     if (!orderData.order || orderData.order.trim() === "") return;
     if (!Array.isArray(orderData.replyDatas)) return;
-    orderData.replyDatas = orderData.replyDatas.filter((d) => d.reply !== "");
+    orderData.replyDatas = orderData.replyDatas.filter(d => d.reply !== "");
 
     const isInsert =
       !Object.prototype.hasOwnProperty.call(orderData, "orderKey") ||
@@ -161,7 +166,7 @@ export default function AdminGlobalOrder() {
     }
   };
 
-  const handleDeleteClick = (row) => {
+  const handleDeleteClick = row => {
     showAlert({
       title: "確認刪除",
       description: `確定要刪除指令「${row.order}」嗎？`,
@@ -191,7 +196,7 @@ export default function AdminGlobalOrder() {
           sx={{
             position: "absolute",
             inset: 0,
-            background: (theme) =>
+            background: theme =>
               `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
           }}
         />
@@ -233,12 +238,17 @@ export default function AdminGlobalOrder() {
           </Button>
         </Box>
       </Paper>
-
       {/* Command List */}
       {rows.length === 0 ? (
         <Paper sx={{ py: 6, textAlign: "center", borderRadius: 3 }}>
           <TerminalIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
-          <Typography color="text.secondary">尚無指令資料</Typography>
+          <Typography
+            sx={{
+              color: "text.secondary",
+            }}
+          >
+            尚無指令資料
+          </Typography>
         </Paper>
       ) : (
         <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
@@ -250,7 +260,6 @@ export default function AdminGlobalOrder() {
           ))}
         </Paper>
       )}
-
       {/* Order Add/Edit Dialog */}
       <OrderDialog
         open={orderDialogOpen}
@@ -258,7 +267,6 @@ export default function AdminGlobalOrder() {
         onSave={handleSave}
         data={editingOrder}
       />
-
       {/* Delete Confirmation */}
       <AlertDialog
         open={alertState.open}
@@ -268,7 +276,6 @@ export default function AdminGlobalOrder() {
         title={alertState.title}
         description={alertState.description}
       />
-
       {/* Snackbar */}
       <HintSnackBar
         open={hintState.open}

@@ -21,7 +21,7 @@ export default function AnnouncementBoard() {
   useEffect(() => {
     api
       .get("/api/announcements/1")
-      .then((r) => setAnnouncements(r.data || []))
+      .then(r => setAnnouncements(r.data || []))
       .catch(() => setAnnouncements([]))
       .finally(() => setLoading(false));
   }, []);
@@ -60,7 +60,12 @@ export default function AnnouncementBoard() {
             )}
           </Alert>
         ) : (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             目前沒有公告
           </Typography>
         )}
@@ -79,7 +84,12 @@ export default function AnnouncementBoard() {
               <Typography variant="body2">{news.title}</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 {news.content}
               </Typography>
             </AccordionDetails>

@@ -224,7 +224,12 @@ function AccordionButtons() {
             <Typography variant="h6">{data.title}</Typography>
           </AccordionSummary>
           <AccordionDetails>
-            <Typography variant="subtitle1" color="text.secondary">
+            <Typography
+              variant="subtitle1"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {data.description}
             </Typography>
           </AccordionDetails>

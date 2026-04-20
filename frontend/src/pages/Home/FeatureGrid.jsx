@@ -106,7 +106,12 @@ export default function FeatureGrid() {
                   <Typography variant="subtitle2" gutterBottom>
                     {label}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {description}
                   </Typography>
                 </CardContent>

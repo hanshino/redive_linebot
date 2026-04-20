@@ -88,7 +88,7 @@ function DataList() {
   if (loading) {
     return (
       <Paper sx={{ borderRadius: 3 }}>
-        {[1, 2, 3].map((i) => (
+        {[1, 2, 3].map(i => (
           <Box key={i} sx={{ px: { xs: 2.5, sm: 3 }, py: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Skeleton variant="circular" width={40} height={40} />
@@ -110,7 +110,12 @@ function DataList() {
   if (messageData.length === 0) {
     return (
       <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: 4, textAlign: "center" }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           尚無訊息樣板，點擊右上角「新增」按鈕新增
         </Typography>
       </Paper>
@@ -164,7 +169,7 @@ export default function AdminWorldbossMessage() {
           sx={{
             position: "absolute",
             inset: 0,
-            background: (theme) =>
+            background: theme =>
               `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
           }}
         />

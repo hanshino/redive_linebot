@@ -87,7 +87,7 @@ function analyzeEvent(event) {
 
 function genSourceDatas(events) {
   const result = {};
-  events.forEach((event) => {
+  events.forEach(event => {
     const { groupId, userId, roomId } = event.source;
     const sourceId = groupId || roomId || userId;
     result[sourceId] = event.source;
@@ -158,9 +158,11 @@ function SourceCard({ source, action }) {
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             variant="subtitle2"
-            fontWeight={700}
             noWrap
             title={title}
+            sx={{
+              fontWeight: 700,
+            }}
           >
             {title}
           </Typography>
@@ -194,7 +196,12 @@ function SourceList({ events, handleOpen }) {
         }}
       >
         <InboxIcon sx={{ fontSize: 56, opacity: 0.3 }} />
-        <Typography variant="body1" color="text.secondary">
+        <Typography
+          variant="body1"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           尚無訊息來源，等待即時事件中…
         </Typography>
       </Box>
@@ -227,13 +234,19 @@ function ContentDialog({ open, handleClose, datas }) {
           borderColor: "divider",
         }}
       >
-        <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            flex: 1,
+          }}
+        >
           {title}
         </Typography>
         <IconButton
           aria-label="close"
           onClick={handleClose}
-          sx={{ color: (theme) => theme.palette.grey[500] }}
+          sx={{ color: theme => theme.palette.grey[500] }}
         >
           <CloseIcon />
         </IconButton>
@@ -261,8 +274,11 @@ function ContentDialog({ open, handleClose, datas }) {
           {datas.length === 0 && (
             <Typography
               variant="body2"
-              color="text.secondary"
-              sx={{ textAlign: "center", py: 2 }}
+              sx={{
+                color: "text.secondary",
+                textAlign: "center",
+                py: 2,
+              }}
             >
               暫無訊息
             </Typography>
@@ -293,8 +309,8 @@ export default function AdminMessages() {
       },
     });
 
-    socket.on("newEvent", (event) => handleEvent(event));
-    socket.on("error", (msg) => alert(msg));
+    socket.on("newEvent", event => handleEvent(event));
+    socket.on("error", msg => alert(msg));
 
     return () => {
       socket.close();
@@ -303,18 +319,18 @@ export default function AdminMessages() {
 
   useEffect(() => {
     if (dialogState.open && dialogState.currId) {
-      setDialog((prev) => ({
+      setDialog(prev => ({
         ...prev,
         data: genDialogData(dialogState.currId),
       }));
     }
   }, [events]);
 
-  const handleEvent = (event) => {
-    setEvents((prev) => [...prev, event]);
+  const handleEvent = event => {
+    setEvents(prev => [...prev, event]);
   };
 
-  const genDialogData = (sourceId) => {
+  const genDialogData = sourceId => {
     let sourceType = "";
     switch (sourceId[0]) {
       case "C":
@@ -330,13 +346,11 @@ export default function AdminMessages() {
     }
 
     return events.filter(
-      (event) =>
-        event.source[`${sourceType}Id`] === sourceId &&
-        event.source.type === sourceType
+      event => event.source[`${sourceType}Id`] === sourceId && event.source.type === sourceType
     );
   };
 
-  const handleOpen = (sourceId) => {
+  const handleOpen = sourceId => {
     setDialog({
       open: true,
       data: genDialogData(sourceId),
@@ -375,15 +389,19 @@ export default function AdminMessages() {
           sx={{
             position: "absolute",
             inset: 0,
-            background: (theme) =>
+            background: theme =>
               `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
           }}
         />
-        <ForumIcon
-          sx={{ position: "relative", fontSize: 48, color: "rgba(255,255,255,0.8)" }}
-        />
+        <ForumIcon sx={{ position: "relative", fontSize: 48, color: "rgba(255,255,255,0.8)" }} />
         <Box sx={{ position: "relative", flex: 1 }}>
-          <Typography variant="h5" fontWeight={700} color="#fff">
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              color: "#fff",
+            }}
+          >
             訊息實況
           </Typography>
           <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.75)", mt: 0.5 }}>
@@ -403,17 +421,11 @@ export default function AdminMessages() {
           </Box>
         </Box>
       </Paper>
-
       {/* Source List */}
       <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
         <SourceList events={events} handleOpen={handleOpen} />
       </Paper>
-
-      <ContentDialog
-        open={dialogState.open}
-        datas={dialogState.data}
-        handleClose={handleClose}
-      />
+      <ContentDialog open={dialogState.open} datas={dialogState.data} handleClose={handleClose} />
     </Box>
   );
 }

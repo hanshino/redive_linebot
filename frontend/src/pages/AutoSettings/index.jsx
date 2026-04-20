@@ -81,9 +81,21 @@ function ToggleRow({ flag, value, entitled, disabled, onChange }) {
   return (
     <Card sx={{ opacity: locked ? 0.7 : 1 }}>
       <CardContent>
-        <Stack direction="row" alignItems="center" spacing={2}>
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+              }}
+            >
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                 {flag.title}
               </Typography>
@@ -97,7 +109,13 @@ function ToggleRow({ flag, value, entitled, disabled, onChange }) {
                 />
               )}
             </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                mt: 0.5,
+              }}
+            >
               {flag.description}
             </Typography>
           </Box>
@@ -136,7 +154,12 @@ function GachaModeSelector({ mode, context, disabled, onChange }) {
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               抽卡模式
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               今日預估配額 {quotaTotal} 次；女神石餘額 {formatStones(stoneBalance)} 顆。
             </Typography>
           </Box>
@@ -156,17 +179,35 @@ function GachaModeSelector({ mode, context, disabled, onChange }) {
                   sx={{ alignItems: "flex-start", m: 0, py: 0.75 }}
                   label={
                     <Box sx={{ ml: 0.5 }}>
-                      <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {opt.label}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                          }}
+                        >
                           {perPull === 0
                             ? "免費"
                             : `每次 ${formatStones(perPull)} 石 × ${quotaTotal} 次 ≈ ${formatStones(estimate)} 石`}
                         </Typography>
                       </Stack>
-                      <Typography variant="caption" color="text.secondary" display="block">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                          display: "block",
+                        }}
+                      >
                         {opt.description}
                       </Typography>
                       {europeUnavailable && (
@@ -311,7 +352,13 @@ export default function AutoSettings() {
           color: "#fff",
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <AutoAwesomeIcon sx={{ fontSize: 32 }} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -350,7 +397,6 @@ export default function AutoSettings() {
           </Button>
         </Stack>
       </Paper>
-
       {loading ? (
         <SettingsSkeleton />
       ) : (
@@ -387,7 +433,6 @@ export default function AutoSettings() {
           })}
         </Stack>
       )}
-
       <Snackbar
         open={!!snack}
         autoHideDuration={3000}

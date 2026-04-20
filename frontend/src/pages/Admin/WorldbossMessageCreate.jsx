@@ -28,23 +28,19 @@ function DemoArea({ imageUrl = "", template = "" }) {
     display_name: "佑樹",
     boss_name: "要塞破壞者",
   };
-  const imageRegex =
-    /^https?:\/\/(?:[a-z-]+\.)+[a-z]{2,6}(?:\/[^/#?]+)+\.(?:jpe?g|png)$/;
+  const imageRegex = /^https?:\/\/(?:[a-z-]+\.)+[a-z]{2,6}(?:\/[^/#?]+)+\.(?:jpe?g|png)$/;
   const isValidImage = imageRegex.test(imageUrl);
   const validUrl = isValidImage ? imageUrl : "";
 
   return (
-    <Paper
-      variant="outlined"
-      sx={{ p: 2, borderRadius: 2, bgcolor: "background.default" }}
-    >
+    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "background.default" }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
         效果預覽
       </Typography>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
         <Avatar src={validUrl} alt="頭像" />
         <Typography variant="body2">
-          {template.replace(/{{.*?}}/gm, (match) => {
+          {template.replace(/{{.*?}}/gm, match => {
             const key = match.replace(/[{}]/g, "").trim();
             return demoData[key] || "";
           })}
@@ -70,8 +66,7 @@ function MessageForm({
     setFormData({ ...formData, [name]: value });
   };
 
-  const imageRegex =
-    /^https?:\/\/(?:[a-z-]+\.)+[a-z]{2,6}(?:\/[^/#?]+)+\.(?:jpe?g|png)$/;
+  const imageRegex = /^https?:\/\/(?:[a-z-]+\.)+[a-z]{2,6}(?:\/[^/#?]+)+\.(?:jpe?g|png)$/;
   const isValidImage = !formData.imageUrl || imageRegex.test(formData.imageUrl);
   const isValidTemplate = formData.template.length > 0;
 
@@ -94,7 +89,7 @@ function MessageForm({
             value={formData.template}
             error={!isValidTemplate}
             helperText={!isValidTemplate ? "請輸入樣板訊息" : ""}
-            onChange={(event) => handleChange("template", event.target.value)}
+            onChange={event => handleChange("template", event.target.value)}
           />
 
           <TextField
@@ -104,23 +99,28 @@ function MessageForm({
             value={formData.imageUrl}
             error={!isValidImage}
             helperText={!isValidImage ? "請輸入有效的圖片網址 (jpg/png)" : ""}
-            onChange={(event) => handleChange("imageUrl", event.target.value)}
+            onChange={event => handleChange("imageUrl", event.target.value)}
           />
 
           <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+                mb: 1,
+                display: "block",
+              }}
+            >
               點擊插入樣板標籤：
             </Typography>
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              {templateTags.map((tag) => (
+              {templateTags.map(tag => (
                 <Tooltip key={tag.label} title={`插入 ${tag.value.trim()}`} arrow>
                   <Chip
                     label={tag.label}
                     variant="outlined"
                     clickable
-                    onClick={() =>
-                      handleChange("template", `${formData.template}${tag.value}`)
-                    }
+                    onClick={() => handleChange("template", `${formData.template}${tag.value}`)}
                     size="small"
                   />
                 </Tooltip>
@@ -145,9 +145,7 @@ function MessageForm({
               variant="contained"
               color="primary"
               disabled={!isValidImage || !isValidTemplate || loading}
-              onClick={() =>
-                onSubmit({ data: formData, isValidImage, isValidTemplate })
-              }
+              onClick={() => onSubmit({ data: formData, isValidImage, isValidTemplate })}
             >
               {loading ? "送出中..." : "送出"}
             </Button>
@@ -190,12 +188,8 @@ export default function AdminWorldbossMessageCreate() {
     return <AlertLogin />;
   }
 
-  const onSubmit = (formData) => {
-    const {
-      data: formValues = {},
-      isValidImage = false,
-      isValidTemplate = false,
-    } = formData;
+  const onSubmit = formData => {
+    const { data: formValues = {}, isValidImage = false, isValidTemplate = false } = formData;
     const { template, imageUrl } = formValues;
 
     if (isValidImage && isValidTemplate) {

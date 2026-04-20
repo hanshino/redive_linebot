@@ -87,9 +87,7 @@ function EquipSlotCard({ slot, item, onClick }) {
         "&:hover": {
           boxShadow: "0 4px 12px rgba(93, 64, 55, 0.2)",
         },
-        ...(isEmpty
-          ? { borderStyle: "dashed", opacity: 0.7 }
-          : { borderColor: rarityColor }),
+        ...(isEmpty ? { borderStyle: "dashed", opacity: 0.7 } : { borderColor: rarityColor }),
       }}
     >
       <CardActionArea>
@@ -127,19 +125,27 @@ function EquipSlotCard({ slot, item, onClick }) {
             </Avatar>
           )}
           <Box sx={{ flex: 1 }}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {SLOT_LABELS[slot]}
             </Typography>
             {isEmpty ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 點擊選擇裝備
               </Typography>
             ) : (
               <>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  <Typography sx={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                    {item.name}
-                  </Typography>
+                  <Typography sx={{ fontWeight: 600, fontSize: "0.95rem" }}>{item.name}</Typography>
                   <Chip
                     label={item.rarity}
                     size="small"
@@ -169,17 +175,14 @@ function EquipSlotCard({ slot, item, onClick }) {
 }
 
 function BonusSummary({ bonuses }) {
-  const hasBonus = Object.values(bonuses).some((v) => v !== 0);
+  const hasBonus = Object.values(bonuses).some(v => v !== 0);
 
   if (!hasBonus) return null;
 
   return (
     <>
       <Divider sx={{ my: 2, bgcolor: "#E0D5C1" }} />
-      <Typography
-        variant="subtitle1"
-        sx={{ fontWeight: 600, color: "#5D4037", mb: 1 }}
-      >
+      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#5D4037", mb: 1 }}>
         裝備加成總覽
       </Typography>
       <Card
@@ -202,16 +205,10 @@ function BonusSummary({ bonuses }) {
                   py: 0.5,
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{ color: "#795548", fontWeight: 500 }}
-                >
+                <Typography variant="body2" sx={{ color: "#795548", fontWeight: 500 }}>
                   {ATTR_LABELS[key] || key}
                 </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ fontWeight: 700, color: "#2E7D32" }}
-                >
+                <Typography variant="body2" sx={{ fontWeight: 700, color: "#2E7D32" }}>
                   {formatAttrValue(key, value)}
                 </Typography>
               </Box>
@@ -242,7 +239,12 @@ function EquipDialog({
           </Box>
         )}
         {equippedItem && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             目前裝備：{equippedItem.name}
           </Typography>
         )}
@@ -263,16 +265,20 @@ function EquipDialog({
         )}
 
         {equipmentList.length === 0 ? (
-          <Typography color="text.secondary" align="center" sx={{ p: 2 }}>
+          <Typography
+            align="center"
+            sx={{
+              color: "text.secondary",
+              p: 2,
+            }}
+          >
             沒有可用的裝備
           </Typography>
         ) : (
           <List disablePadding>
-            {equipmentList.map((item) => {
+            {equipmentList.map(item => {
               const attrs =
-                typeof item.attributes === "string"
-                  ? JSON.parse(item.attributes)
-                  : item.attributes;
+                typeof item.attributes === "string" ? JSON.parse(item.attributes) : item.attributes;
               const eqId = item.equipment_id || item.id;
               const isEquipped = equippedItem && equippedItem.id === eqId;
 
@@ -338,11 +344,7 @@ function EquipDialog({
                         onClick={() => onEquip(eqId)}
                         disabled={loading}
                       >
-                        <Typography
-                          variant="caption"
-                          color="primary"
-                          sx={{ fontWeight: 600 }}
-                        >
+                        <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
                           裝備
                         </Typography>
                       </IconButton>
@@ -408,15 +410,15 @@ export default function Equipment() {
 
   const filteredEquipment = useMemo(() => {
     if (!selectedSlot) return [];
-    return availableList.filter((item) => item.slot === selectedSlot);
+    return availableList.filter(item => item.slot === selectedSlot);
   }, [availableList, selectedSlot]);
 
-  const handleSlotClick = useCallback((slot) => {
+  const handleSlotClick = useCallback(slot => {
     setSelectedSlot(slot);
   }, []);
 
   const handleEquip = useCallback(
-    async (equipmentId) => {
+    async equipmentId => {
       try {
         await doEquip({ data: { equipment_id: equipmentId } });
         showSnack("裝備成功！", "success");
@@ -432,7 +434,7 @@ export default function Equipment() {
   );
 
   const handleUnequip = useCallback(
-    async (slot) => {
+    async slot => {
       try {
         await doUnequip({ data: { slot } });
         showSnack("已卸下裝備", "success");
@@ -454,16 +456,13 @@ export default function Equipment() {
 
   return (
     <>
-      <Typography
-        variant="h5"
-        sx={{ fontWeight: 700, mb: 2, color: "#5D4037" }}
-      >
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: "#5D4037" }}>
         裝備管理
       </Typography>
 
       {/* Equipped Slots */}
       <Grid container spacing={2}>
-        {["weapon", "armor", "accessory"].map((slot) => (
+        {["weapon", "armor", "accessory"].map(slot => (
           <Grid size={{ xs: 12 }} key={slot}>
             <EquipSlotCard
               slot={slot}

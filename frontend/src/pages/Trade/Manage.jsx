@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import useAxios from "axios-hooks";
 import {
-  Box, Typography, Paper, Chip, Skeleton, Divider,
-  IconButton, Avatar, Alert,
+  Box,
+  Typography,
+  Paper,
+  Chip,
+  Skeleton,
+  Divider,
+  IconButton,
+  Avatar,
+  Alert,
 } from "@mui/material";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -17,23 +24,35 @@ import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
 
 /* ---------- helpers ---------- */
-const fmtDate = (ts) => {
+const fmtDate = ts => {
   if (!ts) return "-";
   const d = new Date(ts);
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
 const STATUS_MAP = {
-  0: { label: "未交易", color: "warning", icon: <HourglassEmptyIcon sx={{ fontSize: "14px !important" }} /> },
-  1: { label: "已交易", color: "success", icon: <CheckCircleIcon sx={{ fontSize: "14px !important" }} /> },
-  "-1": { label: "已取消", color: "default", icon: <CancelIcon sx={{ fontSize: "14px !important" }} /> },
+  0: {
+    label: "未交易",
+    color: "warning",
+    icon: <HourglassEmptyIcon sx={{ fontSize: "14px !important" }} />,
+  },
+  1: {
+    label: "已交易",
+    color: "success",
+    icon: <CheckCircleIcon sx={{ fontSize: "14px !important" }} />,
+  },
+  "-1": {
+    label: "已取消",
+    color: "default",
+    icon: <CancelIcon sx={{ fontSize: "14px !important" }} />,
+  },
 };
 
 /* ---------- SummaryBanner ---------- */
 function SummaryBanner({ trades }) {
-  const pending = trades.filter((t) => t.status === 0).length;
-  const completed = trades.filter((t) => t.status === 1).length;
-  const cancelled = trades.filter((t) => t.status === -1).length;
+  const pending = trades.filter(t => t.status === 0).length;
+  const completed = trades.filter(t => t.status === 1).length;
+  const cancelled = trades.filter(t => t.status === -1).length;
 
   return (
     <Paper
@@ -47,7 +66,7 @@ function SummaryBanner({ trades }) {
         sx={{
           position: "absolute",
           inset: 0,
-          background: (theme) =>
+          background: theme =>
             `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
         }}
       />
@@ -106,7 +125,12 @@ function TradeRow({ trade }) {
           sx={{
             width: 40,
             height: 40,
-            bgcolor: trade.status === 0 ? "warning.main" : trade.status === 1 ? "success.main" : "grey.400",
+            bgcolor:
+              trade.status === 0
+                ? "warning.main"
+                : trade.status === 1
+                  ? "success.main"
+                  : "grey.400",
             fontSize: 16,
             fontWeight: 700,
           }}
@@ -114,7 +138,9 @@ function TradeRow({ trade }) {
           #{trade.id}
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+          <Box
+            sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}
+          >
             <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
               商品 #{trade.item_id}
             </Typography>
@@ -141,19 +167,39 @@ function TradeRow({ trade }) {
             </Box>
           </Box>
           <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               價格：<strong>{trade.price}</strong> 女神石
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               建立：{fmtDate(trade.created_at)}
             </Typography>
             {trade.sold_at && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 成交：{fmtDate(trade.sold_at)}
               </Typography>
             )}
             {trade.closed_at && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 關閉：{fmtDate(trade.closed_at)}
               </Typography>
             )}
@@ -170,7 +216,13 @@ function TradeList({ trades, page, onPageChange }) {
     return (
       <Paper sx={{ p: { xs: 4, sm: 5 }, textAlign: "center", borderRadius: 3 }}>
         <ReceiptLongIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3 }} />
-        <Typography color="text.secondary">尚無交易紀錄</Typography>
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
+          尚無交易紀錄
+        </Typography>
       </Paper>
     );
   }
@@ -185,7 +237,14 @@ function TradeList({ trades, page, onPageChange }) {
           <IconButton size="small" onClick={() => onPageChange(page - 1)} disabled={page === 0}>
             <NavigateBeforeIcon fontSize="small" />
           </IconButton>
-          <Typography variant="caption" color="text.secondary" sx={{ minWidth: 32, textAlign: "center" }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+              minWidth: 32,
+              textAlign: "center",
+            }}
+          >
             {page + 1}
           </Typography>
           <IconButton
@@ -212,7 +271,7 @@ function ManageSkeleton() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <Skeleton variant="rounded" height={120} animation="wave" />
-      {[1, 2, 3, 4, 5].map((i) => (
+      {[1, 2, 3, 4, 5].map(i => (
         <Skeleton key={i} variant="rounded" height={64} animation="wave" />
       ))}
     </Box>
@@ -243,7 +302,7 @@ export default function TradeManage() {
     fetchMarketList();
   }, [isLoggedIn, fetchMarketList]);
 
-  const handlePageChange = (newPage) => {
+  const handlePageChange = newPage => {
     setPage(newPage);
     fetchMarketList({
       params: {
@@ -267,9 +326,7 @@ export default function TradeManage() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <SummaryBanner trades={trades} />
 
-      {error && (
-        <Alert severity="error">載入交易資料失敗，請稍後再試</Alert>
-      )}
+      {error && <Alert severity="error">載入交易資料失敗，請稍後再試</Alert>}
 
       <TradeList trades={trades} page={page} onPageChange={handlePageChange} />
     </Box>

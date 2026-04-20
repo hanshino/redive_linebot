@@ -1,7 +1,14 @@
 import { useMemo } from "react";
 import { Box, Typography } from "@mui/material";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  LabelList,
 } from "recharts";
 
 const MEDAL_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
@@ -26,7 +33,13 @@ export default function RankingBarChart({ data, color = DEFAULT_COLOR }) {
   if (!chartData.length) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 300 }}>
-        <Typography color="text.secondary">暫無數據</Typography>
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
+          暫無數據
+        </Typography>
       </Box>
     );
   }
@@ -35,7 +48,11 @@ export default function RankingBarChart({ data, color = DEFAULT_COLOR }) {
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 60, left: 8, bottom: 8 }}>
+      <BarChart
+        data={chartData}
+        layout="vertical"
+        margin={{ top: 8, right: 60, left: 8, bottom: 8 }}
+      >
         <XAxis type="number" hide />
         <YAxis
           type="category"
@@ -48,12 +65,17 @@ export default function RankingBarChart({ data, color = DEFAULT_COLOR }) {
             return `${prefix} ${name}`;
           }}
         />
-        <Tooltip formatter={(val) => [val.toLocaleString(), "數值"]} />
+        <Tooltip formatter={val => [val.toLocaleString(), "數值"]} />
         <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={28}>
           {chartData.map((_, i) => (
             <Cell key={i} fill={i < 3 ? MEDAL_COLORS[i] : color} fillOpacity={i < 3 ? 0.85 : 0.5} />
           ))}
-          <LabelList dataKey="value" position="right" formatter={formatValue} style={{ fontSize: 12, fontWeight: 600 }} />
+          <LabelList
+            dataKey="value"
+            position="right"
+            formatter={formatValue}
+            style={{ fontSize: 12, fontWeight: 600 }}
+          />
         </Bar>
       </BarChart>
     </ResponsiveContainer>

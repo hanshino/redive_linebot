@@ -80,7 +80,12 @@ export default function TradeDetail() {
             </Typography>
           </Grid>
         </Grid>
-        <Grid container justifyContent="flex-end">
+        <Grid
+          container
+          sx={{
+            justifyContent: "flex-end",
+          }}
+        >
           <Grid>
             <Typography variant="subtitle2" color="textPrimary">
               要求：<strong>{data.price}</strong> 女神石
