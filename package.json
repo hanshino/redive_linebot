@@ -15,7 +15,7 @@
     "migrate": "yarn --cwd app migrate"
   },
   "lint-staged": {
-    "app/**/*.js": "app/node_modules/.bin/prettier --write --config app/.prettierrc",
-    "frontend/**/*.{js,jsx}": "app/node_modules/.bin/prettier --write --config app/.prettierrc"
+    "app/**/*.js": "app/node_modules/.bin/prettier --write",
+    "frontend/**/*.{js,jsx}": "app/node_modules/.bin/prettier --write"
   }
 }
