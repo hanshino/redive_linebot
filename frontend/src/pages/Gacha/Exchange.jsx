@@ -69,32 +69,6 @@ export default function GachaExchange() {
       });
   }, [data, history]);
 
-  useEffect(() => {
-    if (list.length === 0) return;
-    const exchangeId = query.get("exchangeId");
-    if (!exchangeId) return;
-
-    const target = list.find(item => item.itemId == exchangeId);
-    if (!target || queryState.asked === true) return;
-
-    handlePurchase(target);
-    setQueryState({ asked: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, list]);
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    fetchData();
-    fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn]);
-
-  if (!isLoggedIn) {
-    return <AlertLogin />;
-  }
-
-  if (loading) return <FullPageLoading />;
-
   const handlePurchase = item => {
     const { price } = item;
     const godStone = get(history, "godStone", 0);
@@ -122,6 +96,32 @@ export default function GachaExchange() {
       },
     });
   };
+
+  useEffect(() => {
+    if (list.length === 0) return;
+    const exchangeId = query.get("exchangeId");
+    if (!exchangeId) return;
+
+    const target = list.find(item => item.itemId == exchangeId);
+    if (!target || queryState.asked === true) return;
+
+    handlePurchase(target);
+    setQueryState({ asked: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, list]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchData();
+    fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
+
+  if (!isLoggedIn) {
+    return <AlertLogin />;
+  }
+
+  if (loading) return <FullPageLoading />;
 
   const handleCloseBar = () => setBarState(old => ({ ...old, open: false }));
 
