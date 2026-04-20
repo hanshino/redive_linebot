@@ -8,7 +8,7 @@ exports.getGuildCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `GuildCount_${date}`;
   let count = await redis.get(memoryKey);
-  if (count !== null) return count;
+  if (count !== null) return Number(count);
 
   count = await mysql
     .select()
@@ -29,7 +29,7 @@ exports.getUserCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `UserCount_${date}`;
   let count = await redis.get(memoryKey);
-  if (count !== null) return count;
+  if (count !== null) return Number(count);
 
   count = await mysql
     .select()
@@ -48,7 +48,7 @@ exports.getCustomerOrderCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `CustomerOrder_${date}`;
   let count = await redis.get(memoryKey);
-  if (count !== null) return count;
+  if (count !== null) return Number(count);
 
   count = await mysql
     .select()
@@ -69,7 +69,7 @@ exports.getSpeakTimesCount = async () => {
   let date = new Date().getDate();
   let memoryKey = `SpeakTimes_${date}`;
   let times = await redis.get(memoryKey);
-  if (times !== null) return times;
+  if (times !== null) return Number(times);
 
   times = await mysql
     .select()

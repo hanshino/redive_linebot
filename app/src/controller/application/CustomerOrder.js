@@ -410,11 +410,9 @@ exports.api.setCustomerOrderStatus = async (req, res) => {
   const { status } = req.body;
   const { profile } = req;
   try {
-    if (![1, 0].includes(parseInt(status))) throw new CusOrderException("Bad Request.");
-    await CustomerOrderModel.setStatus(
-      { orderKey, sourceId, modifyUser: profile.userId },
-      parseInt(status)
-    );
+    const parsed = parseInt(status, 10);
+    if (![1, 0].includes(parsed)) throw new CusOrderException("Bad Request.");
+    await CustomerOrderModel.setStatus({ orderKey, sourceId, modifyUser: profile.userId }, parsed);
     res.json({});
   } catch (e) {
     if (e.name === "CusOrderException") {
