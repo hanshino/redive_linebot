@@ -19,7 +19,7 @@ jobs:
         working-directory: app
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: yarn
@@ -35,7 +35,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: yarn
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: yarn
