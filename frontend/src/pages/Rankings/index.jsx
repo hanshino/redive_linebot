@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, Grid, Tabs, Tab, Paper, Skeleton } from "@mui/material";
-import { EmojiEvents, Casino, Diamond } from "@mui/icons-material";
+import { EmojiEvents, Casino, Diamond, MilitaryTech } from "@mui/icons-material";
 import OverviewCard, { RANK_COLORS } from "./OverviewCard";
 import ChatLevelChart from "./ChatLevelChart";
 import GachaRankChart from "./GachaRankChart";
 import GodStoneChart from "./GodStoneChart";
-import { useChatLevelData, useGachaRankData, useGodStoneData } from "./hooks";
+import AchievementRankChart from "./AchievementRankChart";
+import {
+  useChatLevelData,
+  useGachaRankData,
+  useGodStoneData,
+  useAchievementRankData,
+} from "./hooks";
 
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null;
@@ -16,6 +22,7 @@ export default function Rankings() {
   const level = useChatLevelData();
   const gacha = useGachaRankData();
   const godStone = useGodStoneData();
+  const achievement = useAchievementRankData();
 
   useEffect(() => {
     document.title = "各大排行榜";
@@ -49,6 +56,15 @@ export default function Rankings() {
       color: RANK_COLORS.godStone,
       loading: godStone.loading,
     },
+    {
+      icon: <MilitaryTech sx={{ fontSize: 28, color: RANK_COLORS.achievement }} />,
+      title: "獎盃獵人",
+      topName: achievement.topEntry?.displayName,
+      topValue: achievement.topEntry?.value?.toLocaleString(),
+      count: achievement.count,
+      color: RANK_COLORS.achievement,
+      loading: achievement.loading,
+    },
   ];
 
   return (
@@ -60,7 +76,7 @@ export default function Rankings() {
       {/* Overview Cards */}
       <Grid container spacing={2}>
         {cards.map((card, i) => (
-          <Grid size={{ xs: 12, sm: 4 }} key={i}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
             {card.loading ? (
               <Skeleton variant="rounded" height={160} />
             ) : (
@@ -71,13 +87,16 @@ export default function Rankings() {
       </Grid>
 
       {/* Tabbed Charts */}
-      <Paper sx={{ p: 2 }}>
+      <Paper sx={{ p: { xs: 1, sm: 2 } }}>
         <Tabs
           value={tab}
           onChange={(_, v) => setTab(v)}
           textColor="inherit"
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{
-            "& .MuiTab-root": { fontWeight: 600 },
+            "& .MuiTab-root": { fontWeight: 600, minWidth: 72 },
             borderBottom: 1,
             borderColor: "divider",
           }}
@@ -85,6 +104,7 @@ export default function Rankings() {
           <Tab label="等級排行" />
           <Tab label="轉蛋蒐集" />
           <Tab label="女神石" />
+          <Tab label="成就蒐集" />
         </Tabs>
         <TabPanel value={tab} index={0}>
           <ChatLevelChart />
@@ -94,6 +114,9 @@ export default function Rankings() {
         </TabPanel>
         <TabPanel value={tab} index={2}>
           <GodStoneChart />
+        </TabPanel>
+        <TabPanel value={tab} index={3}>
+          <AchievementRankChart />
         </TabPanel>
       </Paper>
     </Box>

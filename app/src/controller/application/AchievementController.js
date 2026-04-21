@@ -1,9 +1,13 @@
 // eslint-disable-next-line no-unused-vars
-const { Context } = require("bottender");
+const { Context, getClient } = require("bottender");
 const { text } = require("bottender/router");
+const { get } = require("lodash");
 const AchievementEngine = require("../../service/AchievementEngine");
 const UserTitleModel = require("../../model/application/UserTitle");
+const UserAchievementModel = require("../../model/application/UserAchievement");
 const AchievementTemplate = require("../../templates/application/Achievement");
+
+const lineClient = getClient("line");
 
 exports.router = [text(/^[.#/](成就|achievement|adv)$/, showAchievements)];
 
@@ -70,6 +74,22 @@ exports.api = {
       const { userId } = req.params;
       const titles = await UserTitleModel.findByUser(userId);
       res.json(titles);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  },
+
+  async getRanking(req, res) {
+    try {
+      const rankData = await UserAchievementModel.getUnlockRank({ limit: 10 });
+      const result = await Promise.all(
+        rankData.map(async (data, index) => {
+          const profile = await lineClient.getUserProfile(data.user_id).catch(() => null);
+          const displayName = get(profile, "displayName", `未知${index + 1}`);
+          return { ...data, displayName };
+        })
+      );
+      res.json(result);
     } catch (err) {
       res.status(500).json({ message: err.message });
     }

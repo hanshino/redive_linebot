@@ -43,3 +43,17 @@ export function useGodStoneData() {
 
   return { rows, loading, topEntry: rows[0], count: rows.length };
 }
+
+export function useAchievementRankData() {
+  const [{ data, loading }] = useAxios("/api/achievements/rankings");
+
+  const rows = useMemo(() => {
+    if (!data) return [];
+    return data.map(d => ({
+      displayName: d.displayName,
+      value: d.cnt,
+    }));
+  }, [data]);
+
+  return { rows, loading, topEntry: rows[0], count: rows.length };
+}
