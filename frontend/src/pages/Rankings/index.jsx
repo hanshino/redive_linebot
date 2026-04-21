@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { Box, Typography, Grid, Tabs, Tab, Paper, Skeleton } from "@mui/material";
 import { EmojiEvents, Casino, Diamond, MilitaryTech } from "@mui/icons-material";
 import OverviewCard, { RANK_COLORS } from "./OverviewCard";
-import ChatLevelChart from "./ChatLevelChart";
-import GachaRankChart from "./GachaRankChart";
-import GodStoneChart from "./GodStoneChart";
-import AchievementRankChart from "./AchievementRankChart";
+import RankingBarChart from "./RankingBarChart";
 import {
   useChatLevelData,
   useGachaRankData,
@@ -107,16 +104,16 @@ export default function Rankings() {
           <Tab label="成就蒐集" />
         </Tabs>
         <TabPanel value={tab} index={0}>
-          <ChatLevelChart />
+          <RankingBarChart data={level.rows} color={RANK_COLORS.level} />
         </TabPanel>
         <TabPanel value={tab} index={1}>
-          <GachaRankChart />
+          <RankingBarChart data={gacha.rows} color={RANK_COLORS.gacha} />
         </TabPanel>
         <TabPanel value={tab} index={2}>
-          <GodStoneChart />
+          <RankingBarChart data={godStone.rows} color={RANK_COLORS.godStone} />
         </TabPanel>
         <TabPanel value={tab} index={3}>
-          <AchievementRankChart />
+          <RankingBarChart data={achievement.rows} color={RANK_COLORS.achievement} />
         </TabPanel>
       </Paper>
     </Box>

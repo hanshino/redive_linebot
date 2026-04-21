@@ -2,12 +2,15 @@
 const { Context, getClient } = require("bottender");
 const { text } = require("bottender/router");
 const { get } = require("lodash");
+const redis = require("../../util/redis");
 const AchievementEngine = require("../../service/AchievementEngine");
 const UserTitleModel = require("../../model/application/UserTitle");
 const UserAchievementModel = require("../../model/application/UserAchievement");
 const AchievementTemplate = require("../../templates/application/Achievement");
 
 const lineClient = getClient("line");
+const RANKING_CACHE_KEY = "AchievementRanking_v1";
+const RANKING_CACHE_TTL = 60 * 60;
 
 exports.router = [text(/^[.#/](成就|achievement|adv)$/, showAchievements)];
 
@@ -81,6 +84,9 @@ exports.api = {
 
   async getRanking(req, res) {
     try {
+      const cached = await redis.get(RANKING_CACHE_KEY);
+      if (cached) return res.json(JSON.parse(cached));
+
       const rankData = await UserAchievementModel.getUnlockRank({ limit: 10 });
       const result = await Promise.all(
         rankData.map(async (data, index) => {
@@ -89,6 +95,7 @@ exports.api = {
           return { ...data, displayName };
         })
       );
+      redis.set(RANKING_CACHE_KEY, JSON.stringify(result), { EX: RANKING_CACHE_TTL });
       res.json(result);
     } catch (err) {
       res.status(500).json({ message: err.message });
