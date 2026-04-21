@@ -58,3 +58,12 @@ exports.getRecentByUser = async (userId, limit = 3) => {
     .orderBy("user_achievements.unlocked_at", "desc")
     .limit(limit);
 };
+
+exports.getUnlockRank = async ({ limit = 10 } = {}) => {
+  return mysql(TABLE)
+    .select("user_id")
+    .count({ cnt: "id" })
+    .groupBy("user_id")
+    .orderBy("cnt", "desc")
+    .limit(limit);
+};

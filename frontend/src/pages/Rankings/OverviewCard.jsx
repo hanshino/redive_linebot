@@ -4,6 +4,7 @@ const RANK_COLORS = {
   level: "#7c4dff",
   gacha: "#ff6d00",
   godStone: "#00bfa5",
+  achievement: "#d81b60",
 };
 
 export default function OverviewCard({ icon, title, topName, topValue, count, color, onClick }) {
