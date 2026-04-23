@@ -19,7 +19,13 @@ const model = new PrestigeTrial({ table: TABLE, fillable });
 
 exports.model = model;
 
-exports.all = () => model.all({ order: [{ column: "star", direction: "asc" }] });
+exports.all = () =>
+  model.all({
+    order: [
+      { column: "star", direction: "asc" },
+      { column: "id", direction: "asc" },
+    ],
+  });
 
 exports.findBySlug = slug => model.first({ filter: { slug } });
 

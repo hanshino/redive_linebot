@@ -1,9 +1,3 @@
-jest.mock("../../src/util/mysql", () => {
-  const knex = jest.fn();
-  knex.transactionProvider = jest.fn();
-  return knex;
-});
-
 const ChatExpUnit = require("../../src/model/application/ChatExpUnit");
 
 const ROWS = [
@@ -30,6 +24,15 @@ describe("ChatExpUnit", () => {
     it("caps at max level when exp >= max total_exp", () => {
       expect(ChatExpUnit.getLevelFromExp(27000, ROWS)).toBe(100);
       expect(ChatExpUnit.getLevelFromExp(999999, ROWS)).toBe(100);
+    });
+
+    it("returns 0 for negative exp (never overwrites initial level)", () => {
+      expect(ChatExpUnit.getLevelFromExp(-1, ROWS)).toBe(0);
+      expect(ChatExpUnit.getLevelFromExp(-9999, ROWS)).toBe(0);
+    });
+
+    it("returns 0 for empty rows array", () => {
+      expect(ChatExpUnit.getLevelFromExp(1000, [])).toBe(0);
     });
   });
 

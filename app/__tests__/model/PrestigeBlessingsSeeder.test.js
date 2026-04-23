@@ -1,5 +1,3 @@
-jest.mock("../../src/util/mysql", () => jest.fn());
-
 describe("PrestigeBlessingsSeeder", () => {
   const Seeder = require("../../seeds/PrestigeBlessingsSeeder");
 
