@@ -110,6 +110,7 @@ describe("pipeline.processBatch", () => {
     findByUserIdSpy.mockResolvedValueOnce({
       user_id: "Ua",
       current_exp: 6750,
+      active_trial_id: 2,
       active_trial_exp_progress: 500,
     });
 

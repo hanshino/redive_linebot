@@ -114,14 +114,18 @@ async function writeBatch(userId, state, batch) {
   const existing = await ChatUserData.findByUserId(userId);
   const prevExp = existing?.current_exp ?? 0;
   const prevTrialProgress = existing?.active_trial_exp_progress ?? 0;
+  // Use the fresh DB row's active_trial_id (not the cached state's) as the
+  // authority for the write phase. state.active_trial_id is a 10-min Redis
+  // cache and M3 may end a trial between cache population and this batch;
+  // writing against state would advance progress on an already-resolved trial.
+  const activeTrialId = existing?.active_trial_id ?? null;
   const newExp = Math.min(LEVEL_CAP_EXP, prevExp + batch.effectiveDelta);
   const newLevel = ChatExpUnit.getLevelFromExp(newExp, batch.expUnitRows);
-  const newTrialProgress = state.active_trial_id
-    ? prevTrialProgress + batch.effectiveDelta
-    : prevTrialProgress;
 
   const updates = { current_exp: newExp, current_level: newLevel };
-  if (state.active_trial_id) updates.active_trial_exp_progress = newTrialProgress;
+  if (activeTrialId) {
+    updates.active_trial_exp_progress = prevTrialProgress + batch.effectiveDelta;
+  }
 
   await ChatUserData.upsert(userId, updates);
 
@@ -132,9 +136,13 @@ async function writeBatch(userId, state, batch) {
     effectiveExp: batch.effectiveDelta,
     msgCount: batch.msgCount,
     honeymoonActive: state.prestige_count === 0,
-    trialId: state.active_trial_id,
+    trialId: activeTrialId,
   });
 
+  // insertEvent calls are sequential without a per-row try/catch: a failure
+  // aborts the remaining events mid-loop (chat_user_data + chat_exp_daily
+  // already written). This is part of the v1 no-transaction trade-off noted
+  // at the top of the file; M3+ may revisit.
   for (const rec of batch.eventRecords) {
     await ChatExpEvent.insertEvent(rec);
   }
