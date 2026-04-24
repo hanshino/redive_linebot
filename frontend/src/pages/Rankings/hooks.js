@@ -10,6 +10,10 @@ export function useChatLevelData() {
       displayName: d.displayName,
       value: d.experience,
       level: d.level,
+      prestigeCount: d.prestigeCount ?? 0,
+      awakened: d.awakened ?? false,
+      blessingIds: d.blessingIds ?? [],
+      buildTag: d.buildTag ?? null,
     }));
   }, [data]);
 
