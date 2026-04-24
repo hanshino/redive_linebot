@@ -241,3 +241,179 @@ describe("PrestigeService.forfeitTrial", () => {
     });
   });
 });
+
+describe("PrestigeService.checkTrialCompletion", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(chatUserState, "invalidate").mockResolvedValue(1);
+    jest.spyOn(broadcastQueue, "pushEvent").mockResolvedValue(true);
+  });
+
+  it("returns completed:false when active_trial_id is null", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: null,
+    });
+    const result = await PrestigeService.checkTrialCompletion("Uabc", "Ggroup1");
+    expect(result).toEqual({ completed: false });
+    expect(broadcastQueue.pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("returns completed:false when progress is below required_exp", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: 1,
+      active_trial_exp_progress: 1500,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
+      id: 1,
+      slug: "departure",
+      star: 1,
+      required_exp: 2000,
+      reward_meta: { type: "trigger_achievement", achievement_slug: "prestige_departure" },
+    });
+
+    const result = await PrestigeService.checkTrialCompletion("Uabc", "Ggroup1");
+    expect(result).toEqual({ completed: false });
+  });
+
+  it("passes the trial, clears active, emits trial_pass with groupIdHint", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: 2,
+      active_trial_exp_progress: 3100,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
+      id: 2,
+      slug: "hardship",
+      star: 2,
+      required_exp: 3000,
+      reward_meta: { type: "permanent_xp_multiplier", value: 0.1 },
+    });
+    jest.spyOn(UserPrestigeTrial, "findActiveByUserId").mockResolvedValueOnce({
+      id: 55,
+      user_id: "Uabc",
+      trial_id: 2,
+      status: "active",
+    });
+    jest.spyOn(UserPrestigeTrial.model, "update").mockResolvedValueOnce(1);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+
+    const result = await PrestigeService.checkTrialCompletion("Uabc", "Ghint");
+
+    expect(UserPrestigeTrial.model.update).toHaveBeenCalledWith(
+      55,
+      expect.objectContaining({
+        status: "passed",
+        final_exp_progress: 3100,
+      })
+    );
+    expect(ChatUserData.upsert).toHaveBeenCalledWith(
+      "Uabc",
+      expect.objectContaining({
+        active_trial_id: null,
+        active_trial_started_at: null,
+        active_trial_exp_progress: 0,
+      })
+    );
+    expect(chatUserState.invalidate).toHaveBeenCalledWith("Uabc");
+    expect(broadcastQueue.pushEvent).toHaveBeenCalledWith(
+      "Ghint",
+      expect.objectContaining({
+        type: "trial_pass",
+        userId: "Uabc",
+        text: "通過了 ★2 的試煉，永久解放 永久 XP +10%",
+        payload: { trialId: 2, trialStar: 2, trialSlug: "hardship" },
+      })
+    );
+    expect(result).toEqual({ completed: true, trialId: 2, trialStar: 2 });
+  });
+
+  it("falls back to CHAT_USER_LAST_GROUP when groupIdHint is null", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: 1,
+      active_trial_exp_progress: 2000,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
+      id: 1,
+      slug: "departure",
+      star: 1,
+      required_exp: 2000,
+      reward_meta: { type: "trigger_achievement", achievement_slug: "prestige_departure" },
+    });
+    jest.spyOn(UserPrestigeTrial, "findActiveByUserId").mockResolvedValueOnce({
+      id: 10,
+      trial_id: 1,
+      status: "active",
+    });
+    jest.spyOn(UserPrestigeTrial.model, "update").mockResolvedValueOnce(1);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+    redis.get.mockResolvedValueOnce("Gfallback");
+
+    await PrestigeService.checkTrialCompletion("Uabc", null);
+
+    expect(broadcastQueue.pushEvent).toHaveBeenCalledWith(
+      "Gfallback",
+      expect.objectContaining({ type: "trial_pass" })
+    );
+  });
+
+  it("formats reward text for cooldown_tier_override as 律動精通", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: 3,
+      active_trial_exp_progress: 2500,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
+      id: 3,
+      slug: "rhythm",
+      star: 3,
+      required_exp: 2500,
+      reward_meta: { type: "cooldown_tier_override", tiers: { "2-4": 0.7, "4-6": 0.9 } },
+    });
+    jest.spyOn(UserPrestigeTrial, "findActiveByUserId").mockResolvedValueOnce({
+      id: 11,
+      status: "active",
+    });
+    jest.spyOn(UserPrestigeTrial.model, "update").mockResolvedValueOnce(1);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+
+    await PrestigeService.checkTrialCompletion("Uabc", "Gg");
+
+    expect(broadcastQueue.pushEvent).toHaveBeenCalledWith(
+      "Gg",
+      expect.objectContaining({
+        text: "通過了 ★3 的試煉，永久解放 律動精通",
+      })
+    );
+  });
+
+  it("formats reward text for group_bonus_double as 群組加成翻倍", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: 4,
+      active_trial_exp_progress: 2500,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
+      id: 4,
+      slug: "solitude",
+      star: 4,
+      required_exp: 2500,
+      reward_meta: { type: "group_bonus_double" },
+    });
+    jest.spyOn(UserPrestigeTrial, "findActiveByUserId").mockResolvedValueOnce({
+      id: 12,
+      status: "active",
+    });
+    jest.spyOn(UserPrestigeTrial.model, "update").mockResolvedValueOnce(1);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+
+    await PrestigeService.checkTrialCompletion("Uabc", "Gg");
+
+    expect(broadcastQueue.pushEvent).toHaveBeenCalledWith(
+      "Gg",
+      expect.objectContaining({ text: "通過了 ★4 的試煉，永久解放 群組加成翻倍" })
+    );
+  });
+});

@@ -105,4 +105,63 @@ async function forfeitTrial(userId) {
   return { ok: true, trialId };
 }
 
-module.exports = { startTrial, forfeitTrial, PRESTIGE_CAP };
+function formatTrialReward(rewardMeta, displayName) {
+  if (!rewardMeta || typeof rewardMeta !== "object") return displayName || "獎勵";
+  switch (rewardMeta.type) {
+    case "permanent_xp_multiplier": {
+      const pct = Math.round((rewardMeta.value || 0) * 100);
+      return `永久 XP +${pct}%`;
+    }
+    case "cooldown_tier_override":
+      return "律動精通";
+    case "group_bonus_double":
+      return "群組加成翻倍";
+    case "trigger_achievement":
+      if (rewardMeta.achievement_slug === "prestige_awakening") return "覺醒之證";
+      return "啟程之證";
+    default:
+      return displayName || "獎勵";
+  }
+}
+
+async function checkTrialCompletion(userId, groupIdHint) {
+  const row = await ChatUserData.findByUserId(userId);
+  if (!row || !row.active_trial_id) return { completed: false };
+
+  const trial = await PrestigeTrial.findById(row.active_trial_id);
+  if (!trial) return { completed: false };
+
+  const progress = row.active_trial_exp_progress || 0;
+  if (progress < trial.required_exp) return { completed: false };
+
+  const active = await UserPrestigeTrial.findActiveByUserId(userId);
+  if (!active) return { completed: false };
+
+  const now = new Date();
+  await UserPrestigeTrial.model.update(active.id, {
+    status: "passed",
+    ended_at: now,
+    final_exp_progress: progress,
+  });
+
+  await ChatUserData.upsert(userId, {
+    active_trial_id: null,
+    active_trial_started_at: null,
+    active_trial_exp_progress: 0,
+  });
+
+  await chatUserState.invalidate(userId);
+
+  const groupId = groupIdHint || (await resolveLastGroup(userId));
+  const rewardText = formatTrialReward(trial.reward_meta, trial.display_name);
+  await broadcastQueue.pushEvent(groupId, {
+    type: "trial_pass",
+    userId,
+    text: `通過了 ★${trial.star} 的試煉，永久解放 ${rewardText}`,
+    payload: { trialId: trial.id, trialStar: trial.star, trialSlug: trial.slug },
+  });
+
+  return { completed: true, trialId: trial.id, trialStar: trial.star };
+}
+
+module.exports = { startTrial, forfeitTrial, checkTrialCompletion, PRESTIGE_CAP };
