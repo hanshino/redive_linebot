@@ -18,6 +18,8 @@ import {
 } from "@mui/material";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
+import HintSnackBar from "../../components/HintSnackBar";
+import useHintBar from "../../hooks/useHintBar";
 import { getPrestigeStatus } from "../../services/prestige";
 import { getStarConfig } from "./starColors";
 import LevelClimbView from "./LevelClimbView";
@@ -243,41 +245,51 @@ export default function Prestige() {
   const [connError, setConnError] = useState(false);
   const backoffRef = useRef(0);
   const timerRef = useRef(null);
+  const statusRef = useRef(null);
+  const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
+
+  // Keep statusRef in sync so tick() can read latest status without stale closure
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   useEffect(() => {
     document.title = "轉生之路";
   }, []);
 
   const tick = useCallback(async () => {
+    clearTimeout(timerRef.current);
     try {
       const s = await getPrestigeStatus();
       setStatus(s);
       setConnError(false);
       backoffRef.current = 0;
+      if (s.activeTrial) {
+        timerRef.current = setTimeout(tick, BASE_INTERVAL);
+      }
     } catch {
       backoffRef.current += 1;
       if (backoffRef.current >= 3) setConnError(true);
+      // Retry with backoff only when a prior activeTrial was known and we haven't exhausted retries
+      const prev = statusRef.current;
+      if (prev?.activeTrial && backoffRef.current < 3) {
+        const delay = BASE_INTERVAL * Math.pow(2, Math.min(backoffRef.current, 2));
+        timerRef.current = setTimeout(tick, delay);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const scheduleNext = useCallback(
-    hasActiveTrial => {
-      const delay = BASE_INTERVAL * Math.pow(2, Math.min(backoffRef.current, 2));
-      timerRef.current = setTimeout(async () => {
-        await tick();
-        if (hasActiveTrial) scheduleNext(hasActiveTrial);
-      }, delay);
+  const handleMutationError = useCallback(
+    message => {
+      showHint(message ?? "操作失敗，請稍後再試", "error");
     },
-    [tick]
+    [showHint]
   );
 
   useEffect(() => {
-    tick();
-
-    const hasActiveTrial = !!status?.activeTrial;
-    if (hasActiveTrial) scheduleNext(hasActiveTrial);
+    tick(); // fires once; self-schedules if activeTrial present
 
     const onFocus = () => tick();
     const onVis = () => {
@@ -285,7 +297,6 @@ export default function Prestige() {
         clearTimeout(timerRef.current);
       } else {
         tick();
-        if (status?.activeTrial) scheduleNext(true);
       }
     };
 
@@ -297,7 +308,7 @@ export default function Prestige() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [tick, scheduleNext, status?.activeTrial]);
+  }, [tick]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -340,9 +351,16 @@ export default function Prestige() {
         <>
           <StatusCard status={status} profile={profile} reducedMotion={reducedMotion} />
           <PrestigeStepper status={status} />
-          <ActionCard status={status} onRefresh={tick} onMutationError={() => setConnError(true)} />
+          <ActionCard status={status} onRefresh={tick} onMutationError={handleMutationError} />
         </>
       )}
+
+      <HintSnackBar
+        open={hintState.open}
+        message={hintState.message}
+        severity={hintState.severity}
+        onClose={closeHint}
+      />
     </Container>
   );
 }
