@@ -144,20 +144,10 @@ function StatusCard({ status, profile, reducedMotion }) {
 // ─── 5-Step Stepper ───────────────────────────────────────────────────────────
 
 function PrestigeStepper({ status }) {
-  const { passedTrialIds, activeTrial, availableTrials } = status;
-
-  // Build a star→trialId lookup from availableTrials (for completed step detection)
-  // passedTrialIds is an array of IDs; availableTrials has star info
-  // We need to know which star each passedTrialId belongs to.
-  // Strategy: union availableTrials with activeTrial to get all known trials
-  const allKnownTrials = [...(availableTrials ?? [])];
-  if (activeTrial && !allKnownTrials.find(t => t.id === activeTrial.id)) {
-    allKnownTrials.push(activeTrial);
-  }
-  const idToStar = Object.fromEntries(allKnownTrials.map(t => [t.id, t.star]));
+  const { passedTrials = [], activeTrial } = status;
 
   // Which stars are passed?
-  const passedStars = new Set((passedTrialIds ?? []).map(id => idToStar[id]).filter(Boolean));
+  const passedStars = new Set(passedTrials.map(t => t.star));
 
   const activeStepIndex = activeTrial ? activeTrial.star - 1 : -1;
 

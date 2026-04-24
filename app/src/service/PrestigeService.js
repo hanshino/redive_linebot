@@ -319,6 +319,18 @@ async function getPrestigeStatus(userId) {
     : [[], [], []];
 
   const passedTrialIds = passedRows.map(p => p.trial_id);
+  const passedTrials = passedRows
+    .map(p => {
+      const cfg = allTrials.find(t => t.id === p.trial_id);
+      if (!cfg) return null;
+      return {
+        id: cfg.id,
+        star: cfg.star,
+        displayName: cfg.display_name,
+        passedAt: p.ended_at ?? null,
+      };
+    })
+    .filter(Boolean);
   const passedSet = new Set(passedTrialIds);
   const consumedTrialIds = new Set(historyRows.map(h => h.trial_id));
   const unconsumedTrialIds = passedTrialIds.filter(id => !consumedTrialIds.has(id));
@@ -386,6 +398,7 @@ async function getPrestigeStatus(userId) {
     availableBlessings,
     ownedBlessings,
     passedTrialIds,
+    passedTrials,
     hasUnconsumedPassedTrial: unconsumedTrialIds.length > 0,
   };
 }
