@@ -330,6 +330,7 @@ async function getPrestigeStatus(userId) {
       slug: t.slug,
       star: t.star,
       displayName: t.display_name,
+      description: t.description,
       requiredExp: t.required_exp,
       restrictionMeta: t.restriction_meta,
       rewardMeta: t.reward_meta,
@@ -342,6 +343,7 @@ async function getPrestigeStatus(userId) {
       id: b.id,
       slug: b.slug,
       displayName: b.display_name,
+      description: b.description,
       effectMeta: b.effect_meta,
     }));
 
