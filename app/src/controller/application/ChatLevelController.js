@@ -329,32 +329,32 @@ exports.api = {};
 /**
  * Resolve a single buildTag string from the array returned by
  * evaluateBuildAchievementKeys, applying priority: breeze > torrent >
- * temperature > solitude. solitude is only emitted when the user owns >=3
- * blessings and does NOT own blessing id 6 (per ranking display rules — do not
- * modify evaluateBuildAchievementKeys itself whose tests depend on raw output).
+ * temperature > solitude.
  *
- * @param {string[]} keys  — raw output of evaluateBuildAchievementKeys
- * @param {number[]} ownedBlessingIds
- * @returns {string|null}
+ * Note: evaluateBuildAchievementKeys emits "blessing_solitude" for any user
+ * who does not own blessing id 6 — including users with zero blessings. The
+ * >=3 owned-blessings check below is a DISPLAY-ONLY gate enforced here to
+ * avoid tagging fresh accounts as solitude build.
  */
 function resolveBuildTag(keys, ownedBlessingIds) {
   const priority = ["blessing_breeze", "blessing_torrent", "blessing_temperature"];
   for (const key of priority) {
     if (keys.includes(key)) return key.replace("blessing_", "");
   }
-  // solitude: gate on >=3 owned blessings (avoids displaying it for zero-prestige users)
   if (keys.includes("blessing_solitude") && ownedBlessingIds.length >= 3) {
     return "solitude";
   }
   return null;
 }
 
+// Global top-10 across all groups (intentional). Per-group rankings live
+// at GET /api/groups/:groupId/speak-rank (see api.js:79).
 exports.api.queryRank = async (req, res) => {
-  // Query top 10 users from new M1 schema, skipping never-chatted rows
   const rows = await mysql("chat_user_data")
     .select("user_id", "current_level", "current_exp", "prestige_count")
     .where("current_exp", ">", 0)
     .orderBy("current_exp", "desc")
+    .orderBy("user_id", "asc")
     .limit(10);
 
   if (rows.length === 0) {
