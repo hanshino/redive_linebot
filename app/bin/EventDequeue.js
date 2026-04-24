@@ -1,6 +1,9 @@
 const mysql = require("../src/util/mysql");
 const redis = require("../src/util/redis");
 const { DefaultLogger } = require("../src/util/Logger");
+const replyTokenQueue = require("../src/util/replyTokenQueue");
+const broadcastQueue = require("../src/util/broadcastQueue");
+const { getClient } = require("bottender");
 
 module.exports = main;
 
@@ -49,9 +52,24 @@ async function eventHandle(event) {
   try {
     await route.action(event);
     await saveReplyToken(event);
+    tryDrainBroadcast(event);
   } catch (e) {
     console.error(e);
   }
+}
+
+// Fire-and-forget drain after we've just stored a fresh reply token — if this
+// event comes from a group/room with pending broadcast events, the drainer can
+// immediately consume them with the token we just saved. Errors are logged but
+// never allowed to fail the main event pipeline.
+function tryDrainBroadcast(event) {
+  const { type } = event.source;
+  if (type !== "group" && type !== "room") return;
+  const sourceId = event.source[`${type}Id`];
+  const lineClient = getClient("line");
+  broadcastQueue
+    .drain(sourceId, { lineClient, replyTokenQueue, logger: DefaultLogger })
+    .catch(err => console.error("[EventDequeue.tryDrainBroadcast]", err));
 }
 
 function handleFollow(event) {
@@ -274,14 +292,17 @@ async function recordMessageTimes(botEvent, id) {
 }
 
 async function saveReplyToken(event) {
-  let { type } = event.source;
-  let sourceId = event.source[`${type}Id`];
-  let token = event.replyToken;
+  const { type } = event.source;
+  const sourceId = event.source[`${type}Id`];
+  const token = event.replyToken;
 
-  if (!/^[CUD][0-9a-f]{32}$/.test(sourceId)) return;
+  // LINE source IDs: U=user, C=group, R=room. `D` is preserved from the
+  // pre-M4 regex for backwards-compat; M4 added R so room tokens no longer
+  // get silently dropped.
+  if (!/^[CUDR][0-9a-f]{32}$/.test(sourceId)) return;
   if (!token) return;
 
-  return redis.set(`ReplyToken_${sourceId}`, token, { EX: 20 });
+  return replyTokenQueue.saveToken(sourceId, token, event.timestamp);
 }
 
 async function getGroupMemberCount(groupId) {
@@ -302,7 +323,7 @@ async function getGroupMemberCount(groupId) {
   }
 }
 
-module.exports.__testing = { handleChatExp };
+module.exports.__testing = { handleChatExp, saveReplyToken, tryDrainBroadcast };
 
 if (require.main === module) {
   main().then(() => process.exit(0));
