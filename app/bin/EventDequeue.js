@@ -156,6 +156,11 @@ async function handleChatExp(botEvent) {
   // touch markers within the full-speed tier — spec line 88.
   await redis.set(touchKey, String(currTS), { EX: 10 });
 
+  // Record the group this user was last active in. PrestigeService uses this
+  // to route LIFF-originated broadcasts (trial_enter / prestige / awakening)
+  // when the caller has no explicit group context.
+  await redis.set(`CHAT_USER_LAST_GROUP_${userId}`, groupId, { EX: 86400 });
+
   await redis.lPush(
     "CHAT_EXP_RECORD",
     JSON.stringify({ userId, groupId, ts: currTS, timeSinceLastMsg, groupCount })

@@ -19,6 +19,8 @@ const { computeGroupBonus } = require("./groupBonus");
 const { computePerMsgXp } = require("./perMsgXp");
 const { applyDiminish } = require("./diminishTier");
 const { applyTrialAndPermanent } = require("./trialAndPermanent");
+const PrestigeService = require("../PrestigeService");
+const broadcastQueue = require("../../util/broadcastQueue");
 
 const LEVEL_CAP_EXP = 27000;
 
@@ -100,7 +102,8 @@ async function processUserEvents(userId, events, ctx) {
 
   if (rawDelta === 0 && msgCount === 0) return;
 
-  await writeBatch(userId, state, {
+  const batchLastGroupId = events[events.length - 1].groupId;
+  const result = await writeBatch(userId, state, {
     today: ctx.today,
     expUnitRows: ctx.expUnitRows,
     rawDelta,
@@ -108,11 +111,14 @@ async function processUserEvents(userId, events, ctx) {
     msgCount,
     eventRecords,
   });
+
+  await onBatchWritten(userId, result, batchLastGroupId);
 }
 
 async function writeBatch(userId, state, batch) {
   const existing = await ChatUserData.findByUserId(userId);
   const prevExp = existing?.current_exp ?? 0;
+  const prevLevel = existing?.current_level ?? 0;
   const prevTrialProgress = existing?.active_trial_exp_progress ?? 0;
   // Use the fresh DB row's active_trial_id (not the cached state's) as the
   // authority for the write phase. state.active_trial_id is a 10-min Redis
@@ -146,6 +152,22 @@ async function writeBatch(userId, state, batch) {
   for (const rec of batch.eventRecords) {
     await ChatExpEvent.insertEvent(rec);
   }
+
+  return { prevLevel, newLevel, hadActiveTrial: Boolean(activeTrialId) };
 }
 
-module.exports = { processBatch };
+async function onBatchWritten(userId, batchResult, groupId) {
+  if (batchResult.hadActiveTrial) {
+    await PrestigeService.checkTrialCompletion(userId, groupId);
+  }
+  if (batchResult.prevLevel < 100 && batchResult.newLevel >= 100) {
+    await broadcastQueue.pushEvent(groupId, {
+      type: "lv_100_cta",
+      userId,
+      text: "已達成 Lv.100，可以前往 LIFF 進行轉生",
+      payload: { level: 100 },
+    });
+  }
+}
+
+module.exports = { processBatch, __onBatchWritten: onBatchWritten };

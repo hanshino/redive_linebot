@@ -14,6 +14,13 @@ module.exports = [
     require_path: "./bin/ChatExpUpdate",
   },
   {
+    name: "Trial Expiry Check",
+    description: "expire 60-day-old active trials to failed status",
+    period: ["0", "5", "0", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/TrialExpiryCheck",
+  },
+  {
     name: "Chat Ranking",
     description: "refresh chat level rankings",
     period: ["12", "*/10", "*", "*", "*", "*"],
