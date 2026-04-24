@@ -170,7 +170,13 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
         )}
 
         {/* Forfeit button */}
-        <Button variant="outlined" color="error" size="small" onClick={() => setDialogOpen(true)}>
+        <Button
+          variant="outlined"
+          color="error"
+          size="small"
+          sx={{ minHeight: 44, minWidth: 44 }}
+          onClick={() => setDialogOpen(true)}
+        >
           放棄試煉
         </Button>
 
@@ -292,7 +298,12 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
 
       {/* Forfeit button */}
       <Box>
-        <Button variant="outlined" color="error" onClick={() => setDialogOpen(true)}>
+        <Button
+          variant="outlined"
+          color="error"
+          sx={{ minHeight: 44 }}
+          onClick={() => setDialogOpen(true)}
+        >
           放棄試煉
         </Button>
       </Box>

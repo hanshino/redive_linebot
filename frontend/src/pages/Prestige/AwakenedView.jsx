@@ -14,8 +14,7 @@ function detectBuilds(blessingIds) {
   if (set.has(2) && set.has(3)) builds.push({ key: "breeze", emoji: "🌬️", name: "疾風之道" });
   if (set.has(4) && set.has(5)) builds.push({ key: "torrent", emoji: "🌊", name: "洪流之道" });
   if (set.has(6) && set.has(7)) builds.push({ key: "temperature", emoji: "🌡️", name: "溫度兼融" });
-  if (!set.has(6) && blessingIds.length >= 3)
-    builds.push({ key: "solitude", emoji: "🏝️", name: "孤獨之道" });
+  if (!set.has(6)) builds.push({ key: "solitude", emoji: "🏝️", name: "孤獨之道" });
   return builds;
 }
 

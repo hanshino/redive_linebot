@@ -25,7 +25,9 @@ export default function AlertDialog({
         <DialogContentText sx={{ whiteSpace: "pre-line" }}>{description}</DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onCancel || onClose}>{cancelText}</Button>
+        <Button onClick={onCancel || onClose} disabled={disabled}>
+          {cancelText}
+        </Button>
         <Button onClick={onSubmit} variant="contained" autoFocus disabled={disabled}>
           {submitText}
         </Button>
