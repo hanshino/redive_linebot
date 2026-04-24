@@ -10,7 +10,6 @@ function buildMockSequence({ matched, orphans, updateMock }) {
   // - `.select()` after only `.where()` calls → orphans SELECT
   // - `.update()` after `.where()` → per-row update
   let matchedReturned = false;
-  let orphansReturned = false;
 
   return () => {
     const qb = {
@@ -21,7 +20,6 @@ function buildMockSequence({ matched, orphans, updateMock }) {
           matchedReturned = true;
           return Promise.resolve(matched);
         }
-        orphansReturned = true;
         return Promise.resolve(orphans);
       }),
       update: updateMock,
