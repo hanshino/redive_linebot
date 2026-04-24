@@ -11,6 +11,8 @@ jest.mock("../src/util/redis", () => ({
   hGetAll: jest.fn(),
   exists: jest.fn(),
   expire: jest.fn(),
+  lPush: jest.fn(),
+  rPop: jest.fn(),
   connect: jest.fn(),
   on: jest.fn(),
   quit: jest.fn(),
