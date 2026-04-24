@@ -23,7 +23,7 @@
 | `forfeitTrial(userId)` | 放棄當前試煉（會檢 `NO_ACTIVE_TRIAL`） |
 | `prestige(userId, blessingId)` | 消耗一個已通過未消費的 trial + 選一個未取祝福 → 完成轉生；第 5 次觸發覺醒 |
 
-全部會丟 `Error` with `.code`（例：`AWAKENED` / `NOT_LEVEL_100` / `NO_PASSED_TRIAL_AVAILABLE` / `NO_UNCONSUMED_TRIAL` / `INVALID_BLESSING` / `ALREADY_HAS_BLESSING`）——API 層要把這些 code 對回 HTTP status + 中文 message。
+全部會丟 `Error` with `.code`（實際 service 碼：`AWAKENED` / `NOT_LEVEL_100` / `ALREADY_ACTIVE` / `ALREADY_PASSED` / `INVALID_TRIAL` / `NO_ACTIVE_TRIAL` / `NO_PASSED_TRIAL` / `INVALID_BLESSING` / `BLESSING_ALREADY_OWNED`）——API 層要把這些 code 對回 HTTP status + 中文 message。
 
 前端既有基礎建設（**不需要重做**）：
 - `LiffProvider` 已處理 LIFF SDK init、token 取得、`/api/me` profile 拉取。
@@ -119,10 +119,9 @@ API error → 中文映射表（service layer 統一處理）：
 | `ALREADY_PASSED` | 該試煉已通過 |
 | `INVALID_TRIAL` | 試煉不存在 |
 | `NO_ACTIVE_TRIAL` | 目前沒有進行中的試煉 |
-| `NO_PASSED_TRIAL_AVAILABLE` | 請先通過一個試煉 |
-| `NO_UNCONSUMED_TRIAL` | 沒有未消費的已通過試煉 |
+| `NO_PASSED_TRIAL` | 請先通過一個試煉 |
 | `INVALID_BLESSING` | 祝福不存在 |
-| `ALREADY_HAS_BLESSING` | 已擁有此祝福 |
+| `BLESSING_ALREADY_OWNED` | 已擁有此祝福 |
 | 其他 | 系統暫時無法處理，請稍後再試 |
 
 ### 6. Polling over Socket.IO（v1）⚠️ 更新週期 + 錯誤處理
