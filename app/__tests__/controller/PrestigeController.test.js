@@ -278,5 +278,37 @@ describe("PrestigeController", () => {
         message: "已達覺醒狀態，無法再轉生",
       });
     });
+
+    it("400 BLESSING_ALREADY_OWNED — when service throws BLESSING_ALREADY_OWNED", async () => {
+      const err = new Error("User already owns this blessing");
+      err.code = "BLESSING_ALREADY_OWNED";
+      PrestigeService.prestige.mockRejectedValue(err);
+
+      const req = mockReq({ body: { blessingId: 2 } });
+      const res = mockRes();
+      await controller.api.prestige(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        code: "BLESSING_ALREADY_OWNED",
+        message: "已擁有此祝福",
+      });
+    });
+
+    it("400 NO_PASSED_TRIAL — when service throws NO_PASSED_TRIAL", async () => {
+      const err = new Error("No passed trial available to consume");
+      err.code = "NO_PASSED_TRIAL";
+      PrestigeService.prestige.mockRejectedValue(err);
+
+      const req = mockReq({ body: { blessingId: 3 } });
+      const res = mockRes();
+      await controller.api.prestige(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        code: "NO_PASSED_TRIAL",
+        message: "請先通過一個試煉",
+      });
+    });
   });
 });
