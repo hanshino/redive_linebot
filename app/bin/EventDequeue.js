@@ -129,65 +129,37 @@ async function handleUnsend(event) {
 
 // --- Chat exp handling ---
 
+// Emits a fat payload onto CHAT_EXP_RECORD with everything the pipeline (see
+// app/src/service/chatXp/pipeline.js) needs to compute XP in the 5-min batch.
+// XP, cooldown, and group bonus are NOT computed here — the pipeline owns
+// all of that. This function only captures raw inputs and updates the
+// CHAT_TOUCH_TIMESTAMP so the next event can see the delta.
 async function handleChatExp(botEvent) {
-  const config = require("config");
   if (botEvent.source.type !== "group") return;
   if (botEvent.type !== "message" || botEvent.message.type !== "text") return;
 
-  let { userId, groupId, displayName } = botEvent.source;
-  if (!userId) return;
+  const { userId, groupId } = botEvent.source;
+  if (!userId || !groupId) return;
 
-  let { timestamp: currTS } = botEvent;
-  let lastTouchTS = await redis.get(`CHAT_TOUCH_TIMESTAMP_${userId}`);
-  let count = await getGroupMemberCount(groupId);
+  const currTS = botEvent.timestamp;
+  const touchKey = `CHAT_TOUCH_TIMESTAMP_${userId}`;
+  const lastTouchRaw = await redis.get(touchKey);
+  const lastTouchTS = lastTouchRaw ? Number(lastTouchRaw) : null;
+  const timeSinceLastMsg =
+    lastTouchTS && Number.isFinite(lastTouchTS) ? currTS - lastTouchTS : null;
 
-  let rate = getExpRate(currTS, lastTouchTS);
-  let additionRate = count ? getGroupExpAdditionRate(count) : 1;
-  let defaultRate = config.get("chat_level.exp.rate.default");
-  let globalRate = (await redis.get("CHAT_GLOBAL_RATE")) || defaultRate;
-  let expUnit = Math.round((additionRate * rate * globalRate) / 100);
+  const groupCount = await getGroupMemberCount(groupId);
 
-  DefaultLogger.info(
-    "個人頻率倍率",
-    rate,
-    "群組倍率加成",
-    additionRate,
-    "經驗單位",
-    expUnit,
-    "伺服器倍率",
-    globalRate,
-    "群組人數",
-    count,
-    "Line名稱",
-    displayName,
-    "userId",
-    userId
+  // TTL 10s — must stay above the cooldown table's longest baseline tier
+  // (6s full-speed threshold) so the pipeline can always resolve the
+  // previous timestamp. The pre-M2 code used 5s which silently expired
+  // touch markers within the full-speed tier — spec line 88.
+  await redis.set(touchKey, String(currTS), { EX: 10 });
+
+  await redis.lPush(
+    "CHAT_EXP_RECORD",
+    JSON.stringify({ userId, groupId, ts: currTS, timeSinceLastMsg, groupCount })
   );
-
-  if (rate !== 0) {
-    await redis.set(`CHAT_TOUCH_TIMESTAMP_${userId}`, currTS, { EX: 5 });
-  }
-
-  await redis.lPush("CHAT_EXP_RECORD", JSON.stringify({ userId, expUnit }));
-}
-
-function getExpRate(now, last) {
-  let defaultRate = 100;
-  let configs = [
-    { diff: 1000, rate: 0 },
-    { diff: 2000, rate: 10 },
-    { diff: 4000, rate: 50 },
-    { diff: 6000, rate: 80 },
-  ];
-  if (!last) return defaultRate;
-  let diff = now - last;
-  let target = configs.find(c => diff < c.diff);
-  return target ? target.rate : defaultRate;
-}
-
-function getGroupExpAdditionRate(memberCount = 0) {
-  if (memberCount < 5) return 1;
-  return 1 + (memberCount - 5) * 0.02;
 }
 
 // --- Data helpers ---
@@ -324,6 +296,8 @@ async function getGroupMemberCount(groupId) {
     return 0;
   }
 }
+
+module.exports.__testing = { handleChatExp };
 
 if (require.main === module) {
   main().then(() => process.exit(0));
