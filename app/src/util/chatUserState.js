@@ -65,9 +65,11 @@ async function resolveTrialStar(activeTrialId) {
 }
 
 async function hydrate(userId) {
-  const base = await ChatUserData.findByUserId(userId);
-  const blessings = await UserBlessing.listBlessingIdsByUserId(userId);
-  const rewards = await loadPassedTrialRewards(userId);
+  const [base, blessings, rewards] = await Promise.all([
+    ChatUserData.findByUserId(userId),
+    UserBlessing.listBlessingIdsByUserId(userId),
+    loadPassedTrialRewards(userId),
+  ]);
 
   if (!base) {
     return { ...defaultState(userId), blessings, ...rewards };
@@ -89,15 +91,26 @@ async function hydrate(userId) {
   };
 }
 
+function isValidCachedState(parsed) {
+  return (
+    parsed !== null &&
+    typeof parsed === "object" &&
+    typeof parsed.user_id === "string" &&
+    Array.isArray(parsed.blessings)
+  );
+}
+
 async function load(userId) {
   const cached = await redis.get(STATE_KEY(userId));
   if (cached) {
     try {
-      return JSON.parse(cached);
+      const parsed = JSON.parse(cached);
+      if (isValidCachedState(parsed)) return parsed;
     } catch {
       // corrupted cache, fall through to hydrate
     }
   }
+  // Call via module.exports so jest.spyOn(chatUserState, "hydrate") takes effect.
   const state = await module.exports.hydrate(userId);
   await redis.set(STATE_KEY(userId), JSON.stringify(state), { EX: TTL_SECONDS });
   return state;

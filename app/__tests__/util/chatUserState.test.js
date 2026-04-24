@@ -176,6 +176,29 @@ describe("chatUserState", () => {
       expect(hydrateSpy).not.toHaveBeenCalled();
     });
 
+    it("falls through to hydrate when cached value has wrong shape", async () => {
+      // e.g. key collision with an unrelated writer — cached JSON is valid but not a state
+      redis.get.mockResolvedValueOnce(JSON.stringify({ foo: "bar" }));
+      const fallback = {
+        user_id: "Ushape",
+        prestige_count: 0,
+        current_level: 0,
+        current_exp: 0,
+        blessings: [],
+        active_trial_id: null,
+        active_trial_star: null,
+        active_trial_started_at: null,
+        active_trial_exp_progress: 0,
+        permanent_xp_multiplier: 0,
+        rhythm_mastery: false,
+        group_bonus_double: false,
+      };
+      jest.spyOn(chatUserState, "hydrate").mockResolvedValueOnce(fallback);
+
+      const state = await chatUserState.load("Ushape");
+      expect(state).toEqual(fallback);
+    });
+
     it("hydrates and caches on cache miss", async () => {
       redis.get.mockResolvedValueOnce(null);
       const hydrated = {
