@@ -5,6 +5,7 @@ const UserPrestigeTrial = require("../../src/model/application/UserPrestigeTrial
 const chatUserState = require("../../src/util/chatUserState");
 const broadcastQueue = require("../../src/util/broadcastQueue");
 const redis = require("../../src/util/redis");
+const AchievementEngine = require("../../src/service/AchievementEngine");
 
 describe("PrestigeService.startTrial", () => {
   beforeEach(() => {
@@ -873,5 +874,229 @@ describe("PrestigeService.getPrestigeStatus", () => {
     expect(status.awakened).toBe(true);
     expect(status.canPrestige).toBe(false);
     expect(status.prestigeCount).toBe(5);
+  });
+});
+
+// --- M5 achievement integration ---
+
+describe("PrestigeService.evaluateBuildAchievementKeys", () => {
+  const fn = PrestigeService.evaluateBuildAchievementKeys;
+
+  it("returns breeze + torrent + solitude for {1,2,3,4,5}", () => {
+    expect(fn([1, 2, 3, 4, 5]).sort()).toEqual(
+      ["blessing_breeze", "blessing_solitude", "blessing_torrent"].sort()
+    );
+  });
+
+  it("returns breeze + temperature for {1,2,3,6,7}", () => {
+    expect(fn([1, 2, 3, 6, 7]).sort()).toEqual(["blessing_breeze", "blessing_temperature"].sort());
+  });
+
+  it("returns torrent + temperature for {4,5,6,7}", () => {
+    expect(fn([4, 5, 6, 7]).sort()).toEqual(["blessing_temperature", "blessing_torrent"].sort());
+  });
+
+  it("returns torrent + solitude for {1,2,4,5,7} (no blessing 6)", () => {
+    expect(fn([1, 2, 4, 5, 7]).sort()).toEqual(["blessing_solitude", "blessing_torrent"].sort());
+  });
+
+  it("returns empty for a build with no combos", () => {
+    // {1,2,6}: has 6 (so no solitude), no 3, no 5, no 7 → no combos
+    expect(fn([1, 2, 6])).toEqual([]);
+  });
+
+  it("returns solitude for an otherwise empty set", () => {
+    expect(fn([])).toEqual(["blessing_solitude"]);
+  });
+});
+
+describe("PrestigeService.checkTrialCompletion — achievement trigger", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(chatUserState, "invalidate").mockResolvedValue(1);
+    jest.spyOn(broadcastQueue, "pushEvent").mockResolvedValue(true);
+  });
+
+  function arrangePass(trialOverrides) {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: trialOverrides.id,
+      active_trial_exp_progress: trialOverrides.required_exp,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce(trialOverrides);
+    jest
+      .spyOn(UserPrestigeTrial, "findActiveByUserId")
+      .mockResolvedValueOnce({ id: 1, status: "active" });
+    jest.spyOn(UserPrestigeTrial.model, "update").mockResolvedValueOnce(1);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+  }
+
+  it("★1 departure trigger prestige_departure achievement", async () => {
+    arrangePass({
+      id: 1,
+      slug: "departure",
+      star: 1,
+      required_exp: 2000,
+      reward_meta: { type: "trigger_achievement", achievement_slug: "prestige_departure" },
+    });
+    const unlockSpy = jest
+      .spyOn(AchievementEngine, "unlockByKey")
+      .mockResolvedValueOnce({ unlocked: true });
+
+    await PrestigeService.checkTrialCompletion("Uabc", "Gg");
+
+    expect(unlockSpy).toHaveBeenCalledWith("Uabc", "prestige_departure");
+  });
+
+  it("★5 awakening trigger prestige_awakening achievement", async () => {
+    arrangePass({
+      id: 5,
+      slug: "awakening",
+      star: 5,
+      required_exp: 5000,
+      reward_meta: {
+        type: "permanent_xp_multiplier",
+        value: 0.15,
+        achievement_slug: "prestige_awakening",
+      },
+    });
+    const unlockSpy = jest
+      .spyOn(AchievementEngine, "unlockByKey")
+      .mockResolvedValueOnce({ unlocked: true });
+
+    await PrestigeService.checkTrialCompletion("Uabc", "Gg");
+
+    expect(unlockSpy).toHaveBeenCalledWith("Uabc", "prestige_awakening");
+  });
+
+  it("does not call unlockByKey when reward_meta has no achievement_slug (★2/★3/★4)", async () => {
+    arrangePass({
+      id: 2,
+      slug: "hardship",
+      star: 2,
+      required_exp: 3000,
+      reward_meta: { type: "permanent_xp_multiplier", value: 0.1 },
+    });
+    const unlockSpy = jest.spyOn(AchievementEngine, "unlockByKey").mockResolvedValue({});
+
+    await PrestigeService.checkTrialCompletion("Uabc", "Gg");
+
+    expect(unlockSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns completed:true even when unlockByKey rejects (errors swallowed downstream)", async () => {
+    arrangePass({
+      id: 1,
+      slug: "departure",
+      star: 1,
+      required_exp: 2000,
+      reward_meta: { type: "trigger_achievement", achievement_slug: "prestige_departure" },
+    });
+    // unlockByKey itself never throws (it catches internally), so we just
+    // assert trial-pass state commits regardless of award outcome.
+    jest.spyOn(AchievementEngine, "unlockByKey").mockResolvedValueOnce({
+      unlocked: false,
+      reason: "error",
+    });
+
+    const result = await PrestigeService.checkTrialCompletion("Uabc", "Gg");
+
+    expect(result).toEqual({ completed: true, trialId: 1, trialStar: 1 });
+  });
+});
+
+describe("PrestigeService.prestige — awakening build-combo trigger", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(chatUserState, "invalidate").mockResolvedValue(1);
+    jest.spyOn(broadcastQueue, "pushEvent").mockResolvedValue(true);
+  });
+
+  function arrangeAwakeningWith(ownedBlessingIds, chosenBlessingId) {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uold",
+      prestige_count: 4,
+      current_level: 100,
+      current_exp: 27000,
+      created_at: new Date("2026-01-01T00:00:00Z"),
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
+      id: chosenBlessingId,
+      slug: "test",
+      display_name: "test",
+    });
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce(ownedBlessingIds);
+    jest
+      .spyOn(UserPrestigeTrial, "listPassedByUserId")
+      .mockResolvedValueOnce([{ id: 14, trial_id: 5, ended_at: new Date("2026-06-01T00:00:00Z") }]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserPrestigeHistory, "latestByUserId").mockResolvedValueOnce({
+      prestige_count_after: 4,
+      prestiged_at: new Date("2026-05-10T00:00:00Z"),
+    });
+    jest.spyOn(UserBlessing.model, "create").mockResolvedValueOnce(1);
+    jest.spyOn(UserPrestigeHistory.model, "create").mockResolvedValueOnce(2);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+    redis.get.mockResolvedValueOnce("Gg");
+  }
+
+  it("unlocks breeze + torrent + solitude when awakening with build {1,2,3,4,5}", async () => {
+    arrangeAwakeningWith([1, 2, 3, 4], 5);
+    const unlockSpy = jest.spyOn(AchievementEngine, "unlockByKey").mockResolvedValue({});
+
+    await PrestigeService.prestige("Uold", 5);
+
+    const calledKeys = unlockSpy.mock.calls.map(c => c[1]);
+    expect(calledKeys.sort()).toEqual(
+      ["blessing_breeze", "blessing_solitude", "blessing_torrent"].sort()
+    );
+  });
+
+  it("unlocks temperature when awakening with build containing both 6 and 7", async () => {
+    arrangeAwakeningWith([1, 2, 3, 6], 7);
+    const unlockSpy = jest.spyOn(AchievementEngine, "unlockByKey").mockResolvedValue({});
+
+    await PrestigeService.prestige("Uold", 7);
+
+    const calledKeys = unlockSpy.mock.calls.map(c => c[1]);
+    expect(calledKeys).toContain("blessing_breeze");
+    expect(calledKeys).toContain("blessing_temperature");
+    expect(calledKeys).not.toContain("blessing_solitude");
+  });
+
+  it("does not evaluate build combos on non-awakening prestige (4th call = count 3 → 4)", async () => {
+    // Override the awakening fixture: prestige_count=3 → 4 (not awakening)
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Umid",
+      prestige_count: 3,
+      current_level: 100,
+      current_exp: 27000,
+      created_at: new Date("2026-01-01T00:00:00Z"),
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
+      id: 4,
+      slug: "whispering",
+      display_name: "絮語之心",
+    });
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([1, 2, 3]);
+    jest
+      .spyOn(UserPrestigeTrial, "listPassedByUserId")
+      .mockResolvedValueOnce([{ id: 13, trial_id: 4, ended_at: new Date("2026-05-01T00:00:00Z") }]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserPrestigeHistory, "latestByUserId").mockResolvedValueOnce({
+      prestige_count_after: 3,
+      prestiged_at: new Date("2026-04-10T00:00:00Z"),
+    });
+    jest.spyOn(UserBlessing.model, "create").mockResolvedValueOnce(1);
+    jest.spyOn(UserPrestigeHistory.model, "create").mockResolvedValueOnce(2);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+    redis.get.mockResolvedValueOnce("Gg");
+
+    const unlockSpy = jest.spyOn(AchievementEngine, "unlockByKey").mockResolvedValue({});
+
+    const result = await PrestigeService.prestige("Umid", 4);
+
+    expect(result.awakened).toBe(false);
+    expect(unlockSpy).not.toHaveBeenCalled();
   });
 });

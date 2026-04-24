@@ -1,6 +1,7 @@
 const redis = require("../util/redis");
 const chatUserState = require("../util/chatUserState");
 const broadcastQueue = require("../util/broadcastQueue");
+const AchievementEngine = require("./AchievementEngine");
 const ChatUserData = require("../model/application/ChatUserData");
 const PrestigeTrial = require("../model/application/PrestigeTrial");
 const UserPrestigeTrial = require("../model/application/UserPrestigeTrial");
@@ -9,6 +10,20 @@ const UserBlessing = require("../model/application/UserBlessing");
 const UserPrestigeHistory = require("../model/application/UserPrestigeHistory");
 
 const PRESTIGE_CAP = 5;
+
+// Blessing id → effect category mapping for awakening build combo detection.
+// Ids are fixed by seeds/PrestigeBlessingsSeeder.js:
+//   1 language_gift, 2 swift_tongue, 3 ember_afterglow,
+//   4 whispering,    5 rhythm_spring, 6 star_guard, 7 greenhouse
+function evaluateBuildAchievementKeys(blessingIds) {
+  const set = new Set(blessingIds);
+  const keys = [];
+  if (set.has(2) && set.has(3)) keys.push("blessing_breeze");
+  if (set.has(4) && set.has(5)) keys.push("blessing_torrent");
+  if (set.has(6) && set.has(7)) keys.push("blessing_temperature");
+  if (!set.has(6)) keys.push("blessing_solitude");
+  return keys;
+}
 
 function error(code, message) {
   const err = new Error(message);
@@ -164,6 +179,11 @@ async function checkTrialCompletion(userId, groupIdHint) {
     payload: { trialId: trial.id, trialStar: trial.star, trialSlug: trial.slug },
   });
 
+  const achievementSlug = trial?.reward_meta?.achievement_slug;
+  if (achievementSlug) {
+    await AchievementEngine.unlockByKey(userId, achievementSlug);
+  }
+
   return { completed: true, trialId: trial.id, trialStar: trial.star };
 }
 
@@ -253,6 +273,16 @@ async function prestige(userId, blessingId) {
       text: "達成覺醒！",
       payload: { prestigeCount: PRESTIGE_CAP },
     });
+
+    // Build combo achievements: reuse the owned-blessings list we fetched
+    // above (line ~204) and splice the freshly-chosen one in. Avoids a second
+    // DB round-trip and dodges any trx-visibility ambiguity around the just-
+    // inserted user_blessings row.
+    const finalBlessingIds = [...ownedBlessingIds, blessingId];
+    const buildKeys = evaluateBuildAchievementKeys(finalBlessingIds);
+    for (const key of buildKeys) {
+      await AchievementEngine.unlockByKey(userId, key);
+    }
   }
 
   return {
@@ -364,5 +394,6 @@ module.exports = {
   checkTrialCompletion,
   prestige,
   getPrestigeStatus,
+  evaluateBuildAchievementKeys,
   PRESTIGE_CAP,
 };
