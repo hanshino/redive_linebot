@@ -4,6 +4,9 @@ const broadcastQueue = require("../util/broadcastQueue");
 const ChatUserData = require("../model/application/ChatUserData");
 const PrestigeTrial = require("../model/application/PrestigeTrial");
 const UserPrestigeTrial = require("../model/application/UserPrestigeTrial");
+const PrestigeBlessing = require("../model/application/PrestigeBlessing");
+const UserBlessing = require("../model/application/UserBlessing");
+const UserPrestigeHistory = require("../model/application/UserPrestigeHistory");
 
 const PRESTIGE_CAP = 5;
 
@@ -164,4 +167,108 @@ async function checkTrialCompletion(userId, groupIdHint) {
   return { completed: true, trialId: trial.id, trialStar: trial.star };
 }
 
-module.exports = { startTrial, forfeitTrial, checkTrialCompletion, PRESTIGE_CAP };
+async function prestige(userId, blessingId) {
+  const row = await ChatUserData.findByUserId(userId);
+  if (!row || row.prestige_count >= PRESTIGE_CAP) {
+    throw error("AWAKENED", "User is awakened or not initialized");
+  }
+  if ((row.current_level || 0) < 100) {
+    throw error("NOT_LEVEL_100", "User must be Lv.100 to prestige");
+  }
+
+  const blessing = await PrestigeBlessing.findById(blessingId);
+  if (!blessing) {
+    throw error("INVALID_BLESSING", `Blessing ${blessingId} does not exist`);
+  }
+
+  const ownedBlessingIds = await UserBlessing.listBlessingIdsByUserId(userId);
+  if (ownedBlessingIds.includes(blessingId)) {
+    throw error("BLESSING_ALREADY_OWNED", `Blessing ${blessingId} already owned`);
+  }
+
+  const passedRows = await UserPrestigeTrial.listPassedByUserId(userId);
+  const historyRows = await UserPrestigeHistory.listByUserId(userId);
+  const consumedTrialIds = new Set(historyRows.map(h => h.trial_id));
+  const passedButUnused = passedRows.filter(p => !consumedTrialIds.has(p.trial_id));
+  if (passedButUnused.length === 0) {
+    throw error("NO_PASSED_TRIAL", "No passed trial available to consume");
+  }
+
+  const claimed = passedButUnused[0]; // FIFO — earliest-passed first
+  const newPrestigeCount = row.prestige_count + 1;
+  const awakened = newPrestigeCount === PRESTIGE_CAP;
+
+  let cycleStartedAt;
+  if (row.prestige_count === 0) {
+    cycleStartedAt = row.created_at || new Date();
+  } else {
+    const latest = await UserPrestigeHistory.latestByUserId(userId);
+    cycleStartedAt = latest?.prestiged_at || row.created_at || new Date();
+  }
+
+  const now = new Date();
+
+  await UserBlessing.model.create({
+    user_id: userId,
+    blessing_id: blessingId,
+    acquired_at_prestige: newPrestigeCount,
+    acquired_at: now,
+  });
+
+  await UserPrestigeHistory.model.create({
+    user_id: userId,
+    prestige_count_after: newPrestigeCount,
+    trial_id: claimed.trial_id,
+    blessing_id: blessingId,
+    cycle_started_at: cycleStartedAt,
+    prestiged_at: now,
+  });
+
+  await ChatUserData.upsert(userId, {
+    prestige_count: newPrestigeCount,
+    current_level: 0,
+    current_exp: 0,
+    awakened_at: awakened ? now : null,
+  });
+
+  await chatUserState.invalidate(userId);
+
+  const groupId = await resolveLastGroup(userId);
+  await broadcastQueue.pushEvent(groupId, {
+    type: "prestige",
+    userId,
+    text: `完成第 ${newPrestigeCount} 次轉生，選擇了祝福『${blessing.display_name}』`,
+    payload: {
+      prestigeCount: newPrestigeCount,
+      trialId: claimed.trial_id,
+      blessingId,
+      blessingSlug: blessing.slug,
+    },
+  });
+
+  if (awakened) {
+    await broadcastQueue.pushEvent(groupId, {
+      type: "awakening",
+      userId,
+      text: "達成覺醒！",
+      payload: { prestigeCount: PRESTIGE_CAP },
+    });
+  }
+
+  return {
+    ok: true,
+    newPrestigeCount,
+    trialId: claimed.trial_id,
+    blessingId,
+    awakened,
+    groupId,
+  };
+}
+
+module.exports = {
+  startTrial,
+  forfeitTrial,
+  checkTrialCompletion,
+  prestige,
+  PRESTIGE_CAP,
+};

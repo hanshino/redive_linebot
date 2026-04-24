@@ -417,3 +417,303 @@ describe("PrestigeService.checkTrialCompletion", () => {
     );
   });
 });
+
+const PrestigeBlessing = require("../../src/model/application/PrestigeBlessing");
+const UserBlessing = require("../../src/model/application/UserBlessing");
+const UserPrestigeHistory = require("../../src/model/application/UserPrestigeHistory");
+
+describe("PrestigeService.prestige", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(chatUserState, "invalidate").mockResolvedValue(1);
+    jest.spyOn(broadcastQueue, "pushEvent").mockResolvedValue(true);
+  });
+
+  it("prestige_count 0 → 1: claims FIFO passed trial, inserts history & blessing, emits prestige broadcast", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      prestige_count: 0,
+      current_level: 100,
+      current_exp: 27000,
+      active_trial_id: null,
+      created_at: new Date("2026-04-01T00:00:00Z"),
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
+      id: 1,
+      slug: "language_gift",
+      display_name: "語言天賦",
+    });
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([]);
+    jest
+      .spyOn(UserPrestigeTrial, "listPassedByUserId")
+      .mockResolvedValueOnce([
+        { id: 1, trial_id: 1, status: "passed", ended_at: new Date("2026-05-01T00:00:00Z") },
+      ]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserBlessing.model, "create").mockResolvedValueOnce(99);
+    jest.spyOn(UserPrestigeHistory.model, "create").mockResolvedValueOnce(100);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+    redis.get.mockResolvedValueOnce("Glast");
+
+    const result = await PrestigeService.prestige("Uabc", 1);
+
+    expect(UserBlessing.model.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: "Uabc",
+        blessing_id: 1,
+        acquired_at_prestige: 1,
+      })
+    );
+    expect(UserPrestigeHistory.model.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: "Uabc",
+        prestige_count_after: 1,
+        trial_id: 1,
+        blessing_id: 1,
+        cycle_started_at: new Date("2026-04-01T00:00:00Z"),
+      })
+    );
+    expect(ChatUserData.upsert).toHaveBeenCalledWith(
+      "Uabc",
+      expect.objectContaining({
+        prestige_count: 1,
+        current_level: 0,
+        current_exp: 0,
+        awakened_at: null,
+      })
+    );
+    expect(broadcastQueue.pushEvent).toHaveBeenCalledWith(
+      "Glast",
+      expect.objectContaining({
+        type: "prestige",
+        userId: "Uabc",
+        text: "完成第 1 次轉生，選擇了祝福『語言天賦』",
+        payload: {
+          prestigeCount: 1,
+          trialId: 1,
+          blessingId: 1,
+          blessingSlug: "language_gift",
+        },
+      })
+    );
+    expect(broadcastQueue.pushEvent).toHaveBeenCalledTimes(1);
+
+    expect(result).toEqual({
+      ok: true,
+      newPrestigeCount: 1,
+      trialId: 1,
+      blessingId: 1,
+      awakened: false,
+      groupId: "Glast",
+    });
+  });
+
+  it("prestige_count 4 → 5: awakens, writes awakened_at, emits BOTH prestige and awakening", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uold",
+      prestige_count: 4,
+      current_level: 100,
+      current_exp: 27000,
+      created_at: new Date("2026-01-01T00:00:00Z"),
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
+      id: 5,
+      slug: "rhythm_spring",
+      display_name: "節律之泉",
+    });
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([1, 2, 4, 6]);
+    jest.spyOn(UserPrestigeTrial, "listPassedByUserId").mockResolvedValueOnce([
+      { id: 10, trial_id: 1, ended_at: new Date("2026-02-01T00:00:00Z") },
+      { id: 11, trial_id: 2, ended_at: new Date("2026-03-01T00:00:00Z") },
+      { id: 12, trial_id: 3, ended_at: new Date("2026-04-01T00:00:00Z") },
+      { id: 13, trial_id: 4, ended_at: new Date("2026-05-01T00:00:00Z") },
+      { id: 14, trial_id: 5, ended_at: new Date("2026-06-01T00:00:00Z") },
+    ]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([
+      { prestige_count_after: 1, trial_id: 1, prestiged_at: new Date("2026-02-10T00:00:00Z") },
+      { prestige_count_after: 2, trial_id: 2, prestiged_at: new Date("2026-03-10T00:00:00Z") },
+      { prestige_count_after: 3, trial_id: 3, prestiged_at: new Date("2026-04-10T00:00:00Z") },
+      { prestige_count_after: 4, trial_id: 4, prestiged_at: new Date("2026-05-10T00:00:00Z") },
+    ]);
+    jest.spyOn(UserPrestigeHistory, "latestByUserId").mockResolvedValueOnce({
+      prestige_count_after: 4,
+      prestiged_at: new Date("2026-05-10T00:00:00Z"),
+    });
+    jest.spyOn(UserBlessing.model, "create").mockResolvedValueOnce(1);
+    jest.spyOn(UserPrestigeHistory.model, "create").mockResolvedValueOnce(2);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+    redis.get.mockResolvedValueOnce("Gg");
+
+    const result = await PrestigeService.prestige("Uold", 5);
+
+    expect(UserPrestigeHistory.model.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prestige_count_after: 5,
+        trial_id: 5,
+        blessing_id: 5,
+        cycle_started_at: new Date("2026-05-10T00:00:00Z"),
+      })
+    );
+    const upsertArgs = ChatUserData.upsert.mock.calls[0][1];
+    expect(upsertArgs.prestige_count).toBe(5);
+    expect(upsertArgs.current_level).toBe(0);
+    expect(upsertArgs.current_exp).toBe(0);
+    expect(upsertArgs.awakened_at).toBeInstanceOf(Date);
+
+    expect(broadcastQueue.pushEvent).toHaveBeenCalledTimes(2);
+    expect(broadcastQueue.pushEvent).toHaveBeenNthCalledWith(
+      1,
+      "Gg",
+      expect.objectContaining({ type: "prestige" })
+    );
+    expect(broadcastQueue.pushEvent).toHaveBeenNthCalledWith(
+      2,
+      "Gg",
+      expect.objectContaining({
+        type: "awakening",
+        text: "達成覺醒！",
+        payload: { prestigeCount: 5 },
+      })
+    );
+    expect(result.awakened).toBe(true);
+  });
+
+  it("claims FIFO earliest-passed trial when multiple passes are unused", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Udefer",
+      prestige_count: 0,
+      current_level: 100,
+      created_at: new Date("2026-01-01T00:00:00Z"),
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
+      id: 1,
+      slug: "language_gift",
+      display_name: "語言天賦",
+    });
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserPrestigeTrial, "listPassedByUserId").mockResolvedValueOnce([
+      { id: 1, trial_id: 1, ended_at: new Date("2026-03-01T00:00:00Z") },
+      { id: 2, trial_id: 3, ended_at: new Date("2026-03-20T00:00:00Z") },
+    ]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserBlessing.model, "create").mockResolvedValueOnce(1);
+    jest.spyOn(UserPrestigeHistory.model, "create").mockResolvedValueOnce(1);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+
+    await PrestigeService.prestige("Udefer", 1);
+
+    expect(UserPrestigeHistory.model.create).toHaveBeenCalledWith(
+      expect.objectContaining({ trial_id: 1 })
+    );
+  });
+
+  it("throws AWAKENED when prestige_count is 5", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uawake",
+      prestige_count: 5,
+      current_level: 100,
+    });
+    await expect(PrestigeService.prestige("Uawake", 1)).rejects.toMatchObject({ code: "AWAKENED" });
+  });
+
+  it("throws NOT_LEVEL_100 when current_level < 100", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Ulow",
+      prestige_count: 0,
+      current_level: 99,
+    });
+
+    await expect(PrestigeService.prestige("Ulow", 1)).rejects.toMatchObject({
+      code: "NOT_LEVEL_100",
+    });
+  });
+
+  it("throws INVALID_BLESSING for unknown blessingId", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      prestige_count: 0,
+      current_level: 100,
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce(null);
+    await expect(PrestigeService.prestige("Uabc", 99)).rejects.toMatchObject({
+      code: "INVALID_BLESSING",
+    });
+  });
+
+  it("throws BLESSING_ALREADY_OWNED when user already has this blessing", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      prestige_count: 2,
+      current_level: 100,
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
+      id: 1,
+      slug: "language_gift",
+      display_name: "語言天賦",
+    });
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([1, 4]);
+    await expect(PrestigeService.prestige("Uabc", 1)).rejects.toMatchObject({
+      code: "BLESSING_ALREADY_OWNED",
+    });
+  });
+
+  it("throws NO_PASSED_TRIAL when no passed trials are unconsumed", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      prestige_count: 1,
+      current_level: 100,
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
+      id: 2,
+      slug: "swift_tongue",
+      display_name: "迅雷語速",
+    });
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([1]);
+    jest
+      .spyOn(UserPrestigeTrial, "listPassedByUserId")
+      .mockResolvedValueOnce([{ id: 1, trial_id: 1 }]);
+    jest
+      .spyOn(UserPrestigeHistory, "listByUserId")
+      .mockResolvedValueOnce([{ trial_id: 1, prestige_count_after: 1 }]);
+    await expect(PrestigeService.prestige("Uabc", 2)).rejects.toMatchObject({
+      code: "NO_PASSED_TRIAL",
+    });
+  });
+
+  it("uses UserPrestigeHistory.latestByUserId for cycle_started_at on subsequent prestiges", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      prestige_count: 1,
+      current_level: 100,
+      created_at: new Date("2026-01-01T00:00:00Z"),
+    });
+    jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
+      id: 2,
+      slug: "swift_tongue",
+      display_name: "迅雷語速",
+    });
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([1]);
+    jest.spyOn(UserPrestigeTrial, "listPassedByUserId").mockResolvedValueOnce([
+      { id: 1, trial_id: 1 },
+      { id: 2, trial_id: 2 },
+    ]);
+    jest
+      .spyOn(UserPrestigeHistory, "listByUserId")
+      .mockResolvedValueOnce([{ prestige_count_after: 1, trial_id: 1 }]);
+    jest.spyOn(UserPrestigeHistory, "latestByUserId").mockResolvedValueOnce({
+      prestige_count_after: 1,
+      prestiged_at: new Date("2026-03-15T00:00:00Z"),
+    });
+    jest.spyOn(UserBlessing.model, "create").mockResolvedValueOnce(1);
+    jest.spyOn(UserPrestigeHistory.model, "create").mockResolvedValueOnce(1);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+
+    await PrestigeService.prestige("Uabc", 2);
+
+    expect(UserPrestigeHistory.model.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cycle_started_at: new Date("2026-03-15T00:00:00Z"),
+      })
+    );
+  });
+});
