@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   Box,
   List,
-  ListItem,
+  ListItemButton,
   ListItemAvatar,
   ListItemText,
   Avatar,
@@ -10,7 +10,6 @@ import {
   Collapse,
   Typography,
   Tooltip,
-  IconButton,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { getBlessingIcon } from "../Prestige/blessingIcons";
@@ -77,7 +76,7 @@ function BuildTagChip({ buildTag, blessingIds }) {
   const tooltipContent = tooltipLines.length > 0 ? tooltipLines.join(" / ") : "尚未取得祝福";
 
   return (
-    <Tooltip title={tooltipContent} arrow>
+    <Tooltip title={tooltipContent} arrow disableTouchListener>
       <Chip
         label={label}
         size="small"
@@ -144,18 +143,14 @@ export default function PrestigeRankList({ rows }) {
 
           return (
             <Box key={rank}>
-              <ListItem
-                disablePadding
+              <ListItemButton
                 sx={{
-                  cursor: "pointer",
                   borderRadius: 1,
                   minHeight: 48,
-                  "&:hover": { bgcolor: "action.hover" },
                   px: 1,
                   py: 0.5,
                 }}
                 onClick={() => handleToggle(rank)}
-                role="button"
                 aria-expanded={isExpanded}
               >
                 <ListItemAvatar sx={{ minWidth: 44 }}>
@@ -203,9 +198,9 @@ export default function PrestigeRankList({ rows }) {
                     </Box>
                   }
                 />
-                <IconButton
-                  size="small"
-                  tabIndex={-1}
+                <ExpandMoreIcon
+                  fontSize="small"
+                  aria-hidden="true"
                   sx={{
                     transition: "transform 0.2s",
                     transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
@@ -214,14 +209,9 @@ export default function PrestigeRankList({ rows }) {
                     },
                     ml: 0.5,
                     flexShrink: 0,
-                    minWidth: 40,
-                    minHeight: 40,
                   }}
-                  aria-hidden="true"
-                >
-                  <ExpandMoreIcon fontSize="small" />
-                </IconButton>
-              </ListItem>
+                />
+              </ListItemButton>
               <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                 <Box
                   sx={{
