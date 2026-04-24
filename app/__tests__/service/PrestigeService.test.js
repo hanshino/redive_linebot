@@ -717,3 +717,161 @@ describe("PrestigeService.prestige", () => {
     );
   });
 });
+
+describe("PrestigeService.getPrestigeStatus", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns fresh-user shape when chat_user_data is missing", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce(null);
+    jest.spyOn(PrestigeTrial, "all").mockResolvedValueOnce([
+      { id: 1, slug: "departure", star: 1, display_name: "啟程", required_exp: 2000 },
+      { id: 2, slug: "hardship", star: 2, display_name: "刻苦", required_exp: 3000 },
+    ]);
+    jest
+      .spyOn(PrestigeBlessing, "all")
+      .mockResolvedValueOnce([
+        { id: 1, slug: "language_gift", display_name: "語言天賦", effect_meta: {} },
+      ]);
+
+    const status = await PrestigeService.getPrestigeStatus("Unew");
+
+    expect(status.userId).toBe("Unew");
+    expect(status.prestigeCount).toBe(0);
+    expect(status.awakened).toBe(false);
+    expect(status.currentLevel).toBe(0);
+    expect(status.canPrestige).toBe(false);
+    expect(status.activeTrial).toBeNull();
+    expect(status.availableTrials).toHaveLength(2);
+    expect(status.availableBlessings).toHaveLength(1);
+    expect(status.ownedBlessings).toEqual([]);
+    expect(status.passedTrialIds).toEqual([]);
+    expect(status.hasUnconsumedPassedTrial).toBe(false);
+  });
+
+  it("returns active trial with startedAt + expiresAt when an active trial exists", async () => {
+    const startedAt = new Date("2026-04-01T00:00:00Z");
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uactive",
+      prestige_count: 0,
+      current_level: 40,
+      current_exp: 4320,
+      active_trial_id: 3,
+      active_trial_started_at: startedAt,
+      active_trial_exp_progress: 1100,
+    });
+    jest.spyOn(PrestigeTrial, "all").mockResolvedValueOnce([
+      {
+        id: 3,
+        slug: "rhythm",
+        star: 3,
+        display_name: "律動",
+        required_exp: 2500,
+        duration_days: 60,
+      },
+    ]);
+    jest.spyOn(PrestigeBlessing, "all").mockResolvedValueOnce([]);
+    jest.spyOn(UserPrestigeTrial, "listPassedByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([]);
+
+    const status = await PrestigeService.getPrestigeStatus("Uactive");
+    expect(status.activeTrial).toEqual({
+      id: 3,
+      slug: "rhythm",
+      star: 3,
+      displayName: "律動",
+      requiredExp: 2500,
+      progress: 1100,
+      startedAt,
+      expiresAt: new Date(startedAt.getTime() + 60 * 86_400_000),
+    });
+  });
+
+  it("excludes passed trials from availableTrials; excludes owned blessings from availableBlessings", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Upart",
+      prestige_count: 2,
+      current_level: 100,
+      current_exp: 27000,
+      active_trial_id: null,
+      created_at: new Date("2026-01-01T00:00:00Z"),
+    });
+    jest.spyOn(PrestigeTrial, "all").mockResolvedValueOnce([
+      { id: 1, slug: "departure", star: 1, display_name: "啟程", required_exp: 2000 },
+      { id: 2, slug: "hardship", star: 2, display_name: "刻苦", required_exp: 3000 },
+      { id: 3, slug: "rhythm", star: 3, display_name: "律動", required_exp: 2500 },
+    ]);
+    jest.spyOn(PrestigeBlessing, "all").mockResolvedValueOnce([
+      { id: 1, slug: "language_gift", display_name: "語言天賦", effect_meta: {} },
+      { id: 4, slug: "whispering", display_name: "絮語之心", effect_meta: {} },
+    ]);
+    jest.spyOn(UserPrestigeTrial, "listPassedByUserId").mockResolvedValueOnce([
+      { id: 10, trial_id: 1 },
+      { id: 11, trial_id: 2 },
+    ]);
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([1]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([
+      { prestige_count_after: 1, trial_id: 1 },
+      { prestige_count_after: 2, trial_id: 2 },
+    ]);
+
+    const status = await PrestigeService.getPrestigeStatus("Upart");
+    expect(status.availableTrials.map(t => t.id)).toEqual([3]);
+    expect(status.availableBlessings.map(b => b.id)).toEqual([4]);
+    expect(status.passedTrialIds).toEqual([1, 2]);
+    expect(status.hasUnconsumedPassedTrial).toBe(false);
+    expect(status.canPrestige).toBe(false);
+  });
+
+  it("canPrestige=true when Lv.100 + unconsumed passed trial + unused blessing", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uready",
+      prestige_count: 0,
+      current_level: 100,
+      current_exp: 27000,
+      active_trial_id: null,
+      created_at: new Date("2026-01-01T00:00:00Z"),
+    });
+    jest
+      .spyOn(PrestigeTrial, "all")
+      .mockResolvedValueOnce([
+        { id: 1, slug: "departure", star: 1, display_name: "啟程", required_exp: 2000 },
+      ]);
+    jest
+      .spyOn(PrestigeBlessing, "all")
+      .mockResolvedValueOnce([
+        { id: 1, slug: "language_gift", display_name: "語言天賦", effect_meta: {} },
+      ]);
+    jest
+      .spyOn(UserPrestigeTrial, "listPassedByUserId")
+      .mockResolvedValueOnce([{ id: 10, trial_id: 1 }]);
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([]);
+
+    const status = await PrestigeService.getPrestigeStatus("Uready");
+    expect(status.canPrestige).toBe(true);
+    expect(status.hasUnconsumedPassedTrial).toBe(true);
+  });
+
+  it("awakened=true when prestige_count === 5, canPrestige=false", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uawake",
+      prestige_count: 5,
+      current_level: 30,
+      current_exp: 2430,
+      awakened_at: new Date("2026-06-01T00:00:00Z"),
+    });
+    jest.spyOn(PrestigeTrial, "all").mockResolvedValueOnce([]);
+    jest.spyOn(PrestigeBlessing, "all").mockResolvedValueOnce([]);
+    jest.spyOn(UserPrestigeTrial, "listPassedByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserBlessing, "listBlessingIdsByUserId").mockResolvedValueOnce([]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([]);
+
+    const status = await PrestigeService.getPrestigeStatus("Uawake");
+    expect(status.awakened).toBe(true);
+    expect(status.canPrestige).toBe(false);
+    expect(status.prestigeCount).toBe(5);
+  });
+});

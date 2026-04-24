@@ -265,10 +265,104 @@ async function prestige(userId, blessingId) {
   };
 }
 
+async function getPrestigeStatus(userId) {
+  const [row, allTrials, allBlessings] = await Promise.all([
+    ChatUserData.findByUserId(userId),
+    PrestigeTrial.all(),
+    PrestigeBlessing.all(),
+  ]);
+
+  const prestigeCount = row?.prestige_count ?? 0;
+  const currentLevel = row?.current_level ?? 0;
+  const currentExp = row?.current_exp ?? 0;
+  const awakened = prestigeCount >= PRESTIGE_CAP;
+  const activeTrialId = row?.active_trial_id ?? null;
+  const activeTrialStartedAt = row?.active_trial_started_at ?? null;
+  const activeTrialProgress = row?.active_trial_exp_progress ?? 0;
+
+  const [passedRows, ownedBlessings, historyRows] = row
+    ? await Promise.all([
+        UserPrestigeTrial.listPassedByUserId(userId),
+        UserBlessing.listBlessingIdsByUserId(userId),
+        UserPrestigeHistory.listByUserId(userId),
+      ])
+    : [[], [], []];
+
+  const passedTrialIds = passedRows.map(p => p.trial_id);
+  const passedSet = new Set(passedTrialIds);
+  const consumedTrialIds = new Set(historyRows.map(h => h.trial_id));
+  const unconsumedTrialIds = passedTrialIds.filter(id => !consumedTrialIds.has(id));
+
+  const availableTrials = allTrials
+    .filter(t => !passedSet.has(t.id))
+    .map(t => ({
+      id: t.id,
+      slug: t.slug,
+      star: t.star,
+      displayName: t.display_name,
+      requiredExp: t.required_exp,
+      restrictionMeta: t.restriction_meta,
+      rewardMeta: t.reward_meta,
+    }));
+
+  const ownedSet = new Set(ownedBlessings);
+  const availableBlessings = allBlessings
+    .filter(b => !ownedSet.has(b.id))
+    .map(b => ({
+      id: b.id,
+      slug: b.slug,
+      displayName: b.display_name,
+      effectMeta: b.effect_meta,
+    }));
+
+  let activeTrial = null;
+  if (activeTrialId) {
+    const cfg = allTrials.find(t => t.id === activeTrialId);
+    if (cfg) {
+      const startedAt =
+        activeTrialStartedAt instanceof Date
+          ? activeTrialStartedAt
+          : new Date(activeTrialStartedAt);
+      activeTrial = {
+        id: cfg.id,
+        slug: cfg.slug,
+        star: cfg.star,
+        displayName: cfg.display_name,
+        requiredExp: cfg.required_exp,
+        progress: activeTrialProgress,
+        startedAt,
+        expiresAt: new Date(startedAt.getTime() + (cfg.duration_days || 60) * 86_400_000),
+      };
+    }
+  }
+
+  const canPrestige =
+    currentLevel >= 100 &&
+    prestigeCount < PRESTIGE_CAP &&
+    unconsumedTrialIds.length > 0 &&
+    availableBlessings.length > 0;
+
+  return {
+    userId,
+    prestigeCount,
+    awakened,
+    currentLevel,
+    currentExp,
+    canPrestige,
+    activeTrial,
+    availableTrials,
+    availableBlessings,
+    ownedBlessings,
+    passedTrialIds,
+    hasUnconsumedPassedTrial: unconsumedTrialIds.length > 0,
+  };
+}
+
 module.exports = {
   startTrial,
   forfeitTrial,
   checkTrialCompletion,
   prestige,
+  getPrestigeStatus,
   PRESTIGE_CAP,
 };
