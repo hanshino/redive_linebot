@@ -2,6 +2,8 @@ const mysql = require("../src/util/mysql");
 const redis = require("../src/util/redis");
 const { DefaultLogger } = require("../src/util/Logger");
 const replyTokenQueue = require("../src/util/replyTokenQueue");
+const broadcastQueue = require("../src/util/broadcastQueue");
+const { getClient } = require("bottender");
 
 module.exports = main;
 
@@ -50,9 +52,24 @@ async function eventHandle(event) {
   try {
     await route.action(event);
     await saveReplyToken(event);
+    tryDrainBroadcast(event);
   } catch (e) {
     console.error(e);
   }
+}
+
+// Fire-and-forget drain after we've just stored a fresh reply token — if this
+// event comes from a group/room with pending broadcast events, the drainer can
+// immediately consume them with the token we just saved. Errors are logged but
+// never allowed to fail the main event pipeline.
+function tryDrainBroadcast(event) {
+  const { type } = event.source;
+  if (type !== "group" && type !== "room") return;
+  const sourceId = event.source[`${type}Id`];
+  const lineClient = getClient("line");
+  broadcastQueue
+    .drain(sourceId, { lineClient, replyTokenQueue, logger: DefaultLogger })
+    .catch(err => console.error("[EventDequeue.tryDrainBroadcast]", err));
 }
 
 function handleFollow(event) {
@@ -306,7 +323,7 @@ async function getGroupMemberCount(groupId) {
   }
 }
 
-module.exports.__testing = { handleChatExp, saveReplyToken };
+module.exports.__testing = { handleChatExp, saveReplyToken, tryDrainBroadcast };
 
 if (require.main === module) {
   main().then(() => process.exit(0));

@@ -124,6 +124,7 @@ jest.mock("bottender", () => ({
     getProfile: jest.fn().mockResolvedValue({ displayName: "TestUser", userId: "Utest" }),
     pushMessage: jest.fn().mockResolvedValue({}),
     replyMessage: jest.fn().mockResolvedValue({}),
+    reply: jest.fn().mockResolvedValue({}),
     getGroupMembersCount: jest.fn().mockResolvedValue(0),
     getGroupMemberIds: jest.fn().mockResolvedValue([]),
   })),
