@@ -73,4 +73,36 @@ async function startTrial(userId, trialId) {
   return { ok: true, trial, groupId };
 }
 
-module.exports = { startTrial, PRESTIGE_CAP };
+async function forfeitTrial(userId) {
+  const row = await ChatUserData.findByUserId(userId);
+  if (!row || !row.active_trial_id) {
+    throw error("NO_ACTIVE_TRIAL", "User has no active trial");
+  }
+
+  const active = await UserPrestigeTrial.findActiveByUserId(userId);
+  if (!active) {
+    throw error("NO_ACTIVE_TRIAL", "Active trial row missing");
+  }
+
+  const trialId = row.active_trial_id;
+  const progress = row.active_trial_exp_progress || 0;
+  const now = new Date();
+
+  await UserPrestigeTrial.model.update(active.id, {
+    status: "forfeited",
+    ended_at: now,
+    final_exp_progress: progress,
+  });
+
+  await ChatUserData.upsert(userId, {
+    active_trial_id: null,
+    active_trial_started_at: null,
+    active_trial_exp_progress: 0,
+  });
+
+  await chatUserState.invalidate(userId);
+
+  return { ok: true, trialId };
+}
+
+module.exports = { startTrial, forfeitTrial, PRESTIGE_CAP };

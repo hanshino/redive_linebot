@@ -160,3 +160,84 @@ describe("PrestigeService.startTrial", () => {
     });
   });
 });
+
+describe("PrestigeService.forfeitTrial", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(chatUserState, "invalidate").mockResolvedValue(1);
+    jest.spyOn(broadcastQueue, "pushEvent").mockResolvedValue(true);
+  });
+
+  it("marks row forfeited, clears chat_user_data, invalidates state, no broadcast", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: 2,
+      active_trial_exp_progress: 1200,
+    });
+    jest.spyOn(UserPrestigeTrial, "findActiveByUserId").mockResolvedValueOnce({
+      id: 42,
+      user_id: "Uabc",
+      trial_id: 2,
+      status: "active",
+    });
+    jest.spyOn(UserPrestigeTrial.model, "update").mockResolvedValueOnce(1);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+
+    const result = await PrestigeService.forfeitTrial("Uabc");
+
+    expect(UserPrestigeTrial.model.update).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({
+        status: "forfeited",
+        final_exp_progress: 1200,
+      })
+    );
+    const updateArgs = UserPrestigeTrial.model.update.mock.calls[0][1];
+    expect(updateArgs.ended_at).toBeInstanceOf(Date);
+
+    const upsertArgs = ChatUserData.upsert.mock.calls[0];
+    expect(upsertArgs[0]).toBe("Uabc");
+    expect(upsertArgs[1]).toEqual({
+      active_trial_id: null,
+      active_trial_started_at: null,
+      active_trial_exp_progress: 0,
+    });
+
+    expect(chatUserState.invalidate).toHaveBeenCalledWith("Uabc");
+    expect(broadcastQueue.pushEvent).not.toHaveBeenCalled();
+
+    expect(result).toEqual({ ok: true, trialId: 2 });
+  });
+
+  it("throws NO_ACTIVE_TRIAL when active_trial_id is null", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: null,
+    });
+
+    await expect(PrestigeService.forfeitTrial("Uabc")).rejects.toMatchObject({
+      code: "NO_ACTIVE_TRIAL",
+    });
+  });
+
+  it("throws NO_ACTIVE_TRIAL when chat_user_data row is missing", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce(null);
+
+    await expect(PrestigeService.forfeitTrial("Uabc")).rejects.toMatchObject({
+      code: "NO_ACTIVE_TRIAL",
+    });
+  });
+
+  it("throws NO_ACTIVE_TRIAL when active row is missing despite active_trial_id set", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      active_trial_id: 2,
+      active_trial_exp_progress: 0,
+    });
+    jest.spyOn(UserPrestigeTrial, "findActiveByUserId").mockResolvedValueOnce(null);
+
+    await expect(PrestigeService.forfeitTrial("Uabc")).rejects.toMatchObject({
+      code: "NO_ACTIVE_TRIAL",
+    });
+  });
+});
