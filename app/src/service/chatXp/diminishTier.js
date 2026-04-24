@@ -23,7 +23,6 @@ function applyDiminish(incoming, dailyBefore, status) {
     const take = Math.min(remaining, tier2Upper - cursor);
     result += take * TIER2_RATE;
     remaining -= take;
-    cursor += take;
   }
   if (remaining > 0) {
     result += remaining * TIER3_RATE;
