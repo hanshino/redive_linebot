@@ -2,8 +2,9 @@ const ChatLevelModel = require("../../model/application/ChatLevelModel");
 const ChatLevelTemplate = require("../../templates/application/ChatLevel");
 const MeTemplate = require("../../templates/application/Me");
 const { DefaultLogger } = require("../../util/Logger");
-const UserModel = require("../../model/application/UserModel");
 const { getClient } = require("bottender");
+const mysql = require("../../util/mysql");
+const { evaluateBuildAchievementKeys, PRESTIGE_CAP } = require("../../service/PrestigeService");
 const LineClient = getClient("line");
 const GachaModel = require("../../model/princess/gacha");
 const GachaRecord = require("../../model/princess/GachaRecord");
@@ -325,30 +326,77 @@ function appendLevelTitle(data) {
 
 exports.api = {};
 
+/**
+ * Resolve a single buildTag string from the array returned by
+ * evaluateBuildAchievementKeys, applying priority: breeze > torrent >
+ * temperature > solitude. solitude is only emitted when the user owns >=3
+ * blessings and does NOT own blessing id 6 (per ranking display rules — do not
+ * modify evaluateBuildAchievementKeys itself whose tests depend on raw output).
+ *
+ * @param {string[]} keys  — raw output of evaluateBuildAchievementKeys
+ * @param {number[]} ownedBlessingIds
+ * @returns {string|null}
+ */
+function resolveBuildTag(keys, ownedBlessingIds) {
+  const priority = ["blessing_breeze", "blessing_torrent", "blessing_temperature"];
+  for (const key of priority) {
+    if (keys.includes(key)) return key.replace("blessing_", "");
+  }
+  // solitude: gate on >=3 owned blessings (avoids displaying it for zero-prestige users)
+  if (keys.includes("blessing_solitude") && ownedBlessingIds.length >= 3) {
+    return "solitude";
+  }
+  return null;
+}
+
 exports.api.queryRank = async (req, res) => {
-  let data = await ChatLevelModel.getRankList(1);
-  let ids = data.map(d => d.id);
+  // Query top 10 users from new M1 schema, skipping never-chatted rows
+  const rows = await mysql("chat_user_data")
+    .select("user_id", "current_level", "current_exp", "prestige_count")
+    .where("current_exp", ">", 0)
+    .orderBy("current_exp", "desc")
+    .limit(10);
 
-  let platformIds = await UserModel.getPlatformIds(ids);
-  let hashPlatformIds = {};
+  if (rows.length === 0) {
+    return res.json([]);
+  }
 
-  platformIds.forEach(v => {
-    hashPlatformIds[v.id] = v.userId;
-  });
+  const userIds = rows.map(r => r.user_id);
 
-  let result = await Promise.all(
-    data.map(async (d, index) => {
-      let { displayName } = await LineClient.getUserProfile(hashPlatformIds[d.id])
+  // Batch-fetch all blessing ids for ranked users in a single query
+  const blessingRows = await mysql("user_blessings")
+    .select("user_id", "blessing_id")
+    .whereIn("user_id", userIds);
+
+  // Group blessing ids by user_id
+  const blessingMap = {};
+  for (const row of blessingRows) {
+    if (!blessingMap[row.user_id]) blessingMap[row.user_id] = [];
+    blessingMap[row.user_id].push(row.blessing_id);
+  }
+
+  // Resolve displayName for each user in parallel (user_id IS the LINE platform id in new schema)
+  const result = await Promise.all(
+    rows.map(async (row, index) => {
+      const { displayName } = await LineClient.getUserProfile(row.user_id)
         .then(user => ({ displayName: user.displayName || `未知${index + 1}` }))
-        .catch(() => ({
-          displayName: `未知${index + 1}`,
-        }));
-      let { rank, experience } = d;
-      let level = await ChatLevelModel.getLevel(experience);
+        .catch(() => ({ displayName: `未知${index + 1}` }));
+
+      const ownedBlessingIds = blessingMap[row.user_id] || [];
+      const buildKeys = evaluateBuildAchievementKeys(ownedBlessingIds);
+      const buildTag = resolveBuildTag(buildKeys, ownedBlessingIds);
+
+      // awakened = reached prestige cap (5); PRESTIGE_CAP imported from PrestigeService
+      const awakened = row.prestige_count >= PRESTIGE_CAP;
+
       return {
-        rank,
-        level,
-        experience,
+        rank: index + 1,
+        level: row.current_level,
+        experience: row.current_exp,
+        prestigeCount: row.prestige_count,
+        awakened,
+        blessingIds: ownedBlessingIds,
+        buildTag,
         displayName,
       };
     })
