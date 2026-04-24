@@ -16,16 +16,17 @@ export default function AlertDialog({
   description,
   submitText = "確認",
   cancelText = "取消",
+  disabled = false,
 }) {
   return (
     <Dialog open={open} onClose={onClose}>
       {title && <DialogTitle>{title}</DialogTitle>}
       <DialogContent>
-        <DialogContentText>{description}</DialogContentText>
+        <DialogContentText sx={{ whiteSpace: "pre-line" }}>{description}</DialogContentText>
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel || onClose}>{cancelText}</Button>
-        <Button onClick={onSubmit} variant="contained" autoFocus>
+        <Button onClick={onSubmit} variant="contained" autoFocus disabled={disabled}>
           {submitText}
         </Button>
       </DialogActions>

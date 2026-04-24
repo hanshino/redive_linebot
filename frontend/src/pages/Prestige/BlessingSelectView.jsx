@@ -71,7 +71,7 @@ function FinalBlessingDialog({ open, blessing, onClose, onConfirm, confirming })
   const [confirmText, setConfirmText] = useState("");
   const [isComposing, setIsComposing] = useState(false);
 
-  const matched = !isComposing && confirmText === (blessing?.displayName ?? "");
+  const matched = !isComposing && confirmText.trim() === (blessing?.displayName ?? "");
 
   const handleClose = () => {
     setConfirmText("");

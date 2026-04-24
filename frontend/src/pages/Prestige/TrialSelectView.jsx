@@ -1,19 +1,7 @@
 import { useState } from "react";
-import {
-  Grid,
-  Card,
-  CardActionArea,
-  CardContent,
-  Typography,
-  Box,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-} from "@mui/material";
+import { Grid, Card, CardActionArea, CardContent, Typography, Box, Alert } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import AlertDialog from "../../components/AlertDialog";
 import { startTrial } from "../../services/prestige";
 import { getStarConfig } from "./starColors";
 
@@ -146,9 +134,19 @@ export default function TrialSelectView({ status, onRefresh, onMutationError }) 
   }
 
   const dialogTrial = selectedTrial;
-  const dialogTitle = dialogTrial ? `挑戰 ★${dialogTrial.star} ${dialogTrial.displayName}？` : "";
   const restrictionText = dialogTrial ? renderRestriction(dialogTrial.restrictionMeta) : "";
   const rewardText = dialogTrial ? renderReward(dialogTrial.rewardMeta) : "";
+  const description = dialogTrial
+    ? [
+        restrictionText ? `期間限制：${restrictionText}` : null,
+        `通過條件：60 天內累積 ${dialogTrial.requiredExp?.toLocaleString()} XP`,
+        rewardText ? `通過獎勵：${rewardText}` : null,
+        "",
+        "若 60 天內未達成視為失敗，可再次挑戰。",
+      ]
+        .filter(line => line !== null)
+        .join("\n")
+    : "";
 
   return (
     <>
@@ -164,31 +162,19 @@ export default function TrialSelectView({ status, onRefresh, onMutationError }) 
         ))}
       </Grid>
 
-      {dialogTrial && (
-        <Dialog open={Boolean(selectedTrial)} onClose={handleCancel} maxWidth="xs" fullWidth>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogContent
-            sx={{ display: "flex", flexDirection: "column", gap: 0.75, pt: "8px !important" }}
-          >
-            {restrictionText && (
-              <Typography variant="body2">期間限制：{restrictionText}</Typography>
-            )}
-            <Typography variant="body2">
-              通過條件：60 天內累積 {dialogTrial.requiredExp?.toLocaleString()} XP
-            </Typography>
-            {rewardText && <Typography variant="body2">通過獎勵：{rewardText}</Typography>}
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              若 60 天內未達成視為失敗，可再次挑戰。
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCancel}>取消</Button>
-            <Button onClick={handleConfirm} variant="contained" disabled={confirming} autoFocus>
-              確認挑戰 ★{dialogTrial.star} {dialogTrial.displayName}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      <AlertDialog
+        open={Boolean(dialogTrial)}
+        title={dialogTrial ? `挑戰 ★${dialogTrial.star} ${dialogTrial.displayName}？` : ""}
+        description={description}
+        submitText={
+          dialogTrial ? `確認挑戰 ★${dialogTrial.star} ${dialogTrial.displayName}` : "確認"
+        }
+        cancelText="取消"
+        onSubmit={handleConfirm}
+        onCancel={handleCancel}
+        onClose={handleCancel}
+        disabled={confirming}
+      />
     </>
   );
 }
