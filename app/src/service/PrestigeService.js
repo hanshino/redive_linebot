@@ -319,6 +319,18 @@ async function getPrestigeStatus(userId) {
     : [[], [], []];
 
   const passedTrialIds = passedRows.map(p => p.trial_id);
+  const passedTrials = passedRows
+    .map(p => {
+      const cfg = allTrials.find(t => t.id === p.trial_id);
+      if (!cfg) return null;
+      return {
+        id: cfg.id,
+        star: cfg.star,
+        displayName: cfg.display_name,
+        passedAt: p.ended_at ?? null,
+      };
+    })
+    .filter(Boolean);
   const passedSet = new Set(passedTrialIds);
   const consumedTrialIds = new Set(historyRows.map(h => h.trial_id));
   const unconsumedTrialIds = passedTrialIds.filter(id => !consumedTrialIds.has(id));
@@ -330,6 +342,7 @@ async function getPrestigeStatus(userId) {
       slug: t.slug,
       star: t.star,
       displayName: t.display_name,
+      description: t.description,
       requiredExp: t.required_exp,
       restrictionMeta: t.restriction_meta,
       rewardMeta: t.reward_meta,
@@ -342,6 +355,7 @@ async function getPrestigeStatus(userId) {
       id: b.id,
       slug: b.slug,
       displayName: b.display_name,
+      description: b.description,
       effectMeta: b.effect_meta,
     }));
 
@@ -358,7 +372,10 @@ async function getPrestigeStatus(userId) {
         slug: cfg.slug,
         star: cfg.star,
         displayName: cfg.display_name,
+        description: cfg.description ?? null,
         requiredExp: cfg.required_exp,
+        restrictionMeta: cfg.restriction_meta ?? null,
+        rewardMeta: cfg.reward_meta ?? null,
         progress: activeTrialProgress,
         startedAt,
         expiresAt: new Date(startedAt.getTime() + (cfg.duration_days || 60) * 86_400_000),
@@ -372,6 +389,20 @@ async function getPrestigeStatus(userId) {
     unconsumedTrialIds.length > 0 &&
     availableBlessings.length > 0;
 
+  const ownedBlessingDetails = ownedBlessings
+    .map(id => {
+      const b = allBlessings.find(x => x.id === id);
+      if (!b) return null;
+      return {
+        id: b.id,
+        slug: b.slug,
+        displayName: b.display_name,
+        effectMeta: b.effect_meta,
+        description: b.description ?? null,
+      };
+    })
+    .filter(Boolean);
+
   return {
     userId,
     prestigeCount,
@@ -383,7 +414,9 @@ async function getPrestigeStatus(userId) {
     availableTrials,
     availableBlessings,
     ownedBlessings,
+    ownedBlessingDetails,
     passedTrialIds,
+    passedTrials,
     hasUnconsumedPassedTrial: unconsumedTrialIds.length > 0,
   };
 }

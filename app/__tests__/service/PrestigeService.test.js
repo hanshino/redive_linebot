@@ -747,6 +747,7 @@ describe("PrestigeService.getPrestigeStatus", () => {
     expect(status.availableTrials).toHaveLength(2);
     expect(status.availableBlessings).toHaveLength(1);
     expect(status.ownedBlessings).toEqual([]);
+    expect(status.ownedBlessingDetails).toEqual([]);
     expect(status.passedTrialIds).toEqual([]);
     expect(status.hasUnconsumedPassedTrial).toBe(false);
   });
@@ -783,7 +784,10 @@ describe("PrestigeService.getPrestigeStatus", () => {
       slug: "rhythm",
       star: 3,
       displayName: "律動",
+      description: null,
       requiredExp: 2500,
+      restrictionMeta: null,
+      rewardMeta: null,
       progress: 1100,
       startedAt,
       expiresAt: new Date(startedAt.getTime() + 60 * 86_400_000),
@@ -822,6 +826,10 @@ describe("PrestigeService.getPrestigeStatus", () => {
     expect(status.availableTrials.map(t => t.id)).toEqual([3]);
     expect(status.availableBlessings.map(b => b.id)).toEqual([4]);
     expect(status.passedTrialIds).toEqual([1, 2]);
+    expect(status.passedTrials).toEqual([
+      { id: 1, star: 1, displayName: "啟程", passedAt: null },
+      { id: 2, star: 2, displayName: "刻苦", passedAt: null },
+    ]);
     expect(status.hasUnconsumedPassedTrial).toBe(false);
     expect(status.canPrestige).toBe(false);
   });

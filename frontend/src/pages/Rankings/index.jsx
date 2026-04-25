@@ -3,6 +3,7 @@ import { Box, Typography, Grid, Tabs, Tab, Paper, Skeleton } from "@mui/material
 import { EmojiEvents, Casino, Diamond, MilitaryTech } from "@mui/icons-material";
 import OverviewCard, { RANK_COLORS } from "./OverviewCard";
 import RankingBarChart from "./RankingBarChart";
+import PrestigeRankList from "./PrestigeRankList";
 import {
   useChatLevelData,
   useGachaRankData,
@@ -105,6 +106,7 @@ export default function Rankings() {
         </Tabs>
         <TabPanel value={tab} index={0}>
           <RankingBarChart data={level.rows} color={RANK_COLORS.level} />
+          <PrestigeRankList rows={level.rows} />
         </TabPanel>
         <TabPanel value={tab} index={1}>
           <RankingBarChart data={gacha.rows} color={RANK_COLORS.gacha} />

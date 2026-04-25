@@ -35,6 +35,7 @@ import HistoryIcon from "@mui/icons-material/History";
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
   { label: "排行榜", path: "/rankings", icon: EqualizerIcon },
+  { label: "轉生之路", path: "/prestige", icon: AutoAwesomeIcon },
   { label: "猜拳競技場", path: "/janken", icon: EmojiEventsIcon },
   { label: "蘭德索爾盃", path: "/race", icon: EmojiEventsIcon },
 ];

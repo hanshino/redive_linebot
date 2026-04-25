@@ -381,6 +381,15 @@ router.get("/auto-preference", verifyToken, AutoPreferenceController.api.getPref
 router.put("/auto-preference", verifyToken, AutoPreferenceController.api.setPreference);
 router.get("/auto-history", verifyToken, AutoPreferenceController.api.getHistory);
 
+/**
+ * 轉生系統
+ */
+const PrestigeController = require("../controller/application/PrestigeController");
+router.get("/prestige/status", verifyToken, PrestigeController.api.status);
+router.post("/prestige/trial/start", verifyToken, PrestigeController.api.startTrial);
+router.post("/prestige/trial/forfeit", verifyToken, PrestigeController.api.forfeitTrial);
+router.post("/prestige/prestige", verifyToken, PrestigeController.api.prestige);
+
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });
 });
