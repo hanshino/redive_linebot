@@ -5,6 +5,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Grid,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
@@ -62,58 +63,60 @@ export default function LevelClimbView({ status }) {
         達到 Lv.100 才能開啟轉生之路
       </Button>
 
-      {/* First-time onboarding — only for brand-new users */}
       {showOnboarding && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Typography variant="subtitle2" fontWeight={700}>
-            首次指南
-          </Typography>
-
-          {/* 3-step list */}
-          <Box
-            component="ol"
-            sx={{ m: 0, pl: 2.5, display: "flex", flexDirection: "column", gap: 0.75 }}
-          >
-            <Typography component="li" variant="body2">
-              爬到 Lv.100
+        <Grid container spacing={{ xs: 1.5, md: 3 }}>
+          <Grid size={{ xs: 12, md: 5 }}>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+              首次指南
             </Typography>
-            <Typography component="li" variant="body2">
-              選擇一道試煉，在 60 天內完成目標 XP
+            <Box
+              component="ol"
+              sx={{ m: 0, pl: 2.5, display: "flex", flexDirection: "column", gap: 0.75 }}
+            >
+              <Typography component="li" variant="body2">
+                爬到 Lv.100
+              </Typography>
+              <Typography component="li" variant="body2">
+                選擇一道試煉，在 60 天內完成目標 XP
+              </Typography>
+              <Typography component="li" variant="body2">
+                通過試煉後選擇祝福完成轉生，等級歸零
+              </Typography>
+            </Box>
+          </Grid>
+          <Grid size={{ xs: 12, md: 7 }}>
+            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+              常見問題
             </Typography>
-            <Typography component="li" variant="body2">
-              通過試煉後選擇祝福完成轉生，等級歸零
-            </Typography>
-          </Box>
-
-          {/* FAQ accordion */}
-          <Box sx={{ mt: 0.5 }}>
-            {FAQ_ITEMS.map((item, idx) => (
-              <Accordion
-                key={idx}
-                disableGutters
-                elevation={0}
-                sx={{
-                  border: 1,
-                  borderColor: "divider",
-                  borderRadius: "8px !important",
-                  mb: 1,
-                  "&:before": { display: "none" },
-                }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44 }}>
-                  <Typography variant="body2" fontWeight={600}>
-                    {item.q}
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails sx={{ pt: 0 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {item.a}
-                  </Typography>
-                </AccordionDetails>
-              </Accordion>
-            ))}
-          </Box>
-        </Box>
+            <Box>
+              {FAQ_ITEMS.map((item, idx) => (
+                <Accordion
+                  key={idx}
+                  disableGutters
+                  elevation={0}
+                  sx={{
+                    border: 1,
+                    borderColor: "divider",
+                    borderRadius: "8px !important",
+                    mb: 1,
+                    "&:before": { display: "none" },
+                  }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44 }}>
+                    <Typography variant="body2" fontWeight={600}>
+                      {item.q}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.a}
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+            </Box>
+          </Grid>
+        </Grid>
       )}
     </Box>
   );

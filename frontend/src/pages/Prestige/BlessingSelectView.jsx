@@ -177,7 +177,7 @@ export default function BlessingSelectView({ status, onRefresh, onMutationError 
 
       <Grid container spacing={2}>
         {availableBlessings.map(blessing => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={blessing.id}>
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={blessing.id}>
             <BlessingCard
               blessing={blessing}
               BlessingIcon={getBlessingIcon(blessing.slug)}

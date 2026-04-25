@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Container,
   Typography,
   Alert,
   Box,
@@ -93,7 +92,7 @@ function StatusCard({ status, profile, reducedMotion }) {
   const xpPercent = currentLevel >= 100 ? 100 : Math.min((currentExp / APPROX_MAX_EXP) * 100, 100);
 
   return (
-    <Card variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
+    <Card variant="outlined" sx={{ borderRadius: 2 }}>
       <CardContent>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
           {profile?.pictureUrl && (
@@ -156,7 +155,7 @@ function PrestigeStepper({ status }) {
   // MUI Stepper: activeStep drives "completed" icons for steps before active.
   // We want fine-grained control, so we use the completed prop on StepLabel.
   return (
-    <Stepper alternativeLabel activeStep={activeStepIndex} sx={{ mb: 3 }}>
+    <Stepper alternativeLabel activeStep={activeStepIndex}>
       {TRIAL_STEP_LABELS.map((label, idx) => {
         const star = idx + 1;
         const isPassed = passedStars.has(star);
@@ -313,21 +312,20 @@ export default function Prestige() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <Container maxWidth="sm" sx={{ py: 3 }}>
-      {/* Page header */}
-      <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
-        轉生之路
-      </Typography>
-      <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-        探索五道試煉，成為覺醒者
-      </Typography>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <Box>
+        <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
+          轉生之路
+        </Typography>
+        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+          探索五道試煉，成為覺醒者
+        </Typography>
+      </Box>
 
-      {/* Connection error banner (dismissible, keeps prior UI below) */}
       {connError && (
         <Alert
           severity="warning"
           onClose={() => setConnError(false)}
-          sx={{ mb: 2 }}
           action={
             <Button color="inherit" size="small" onClick={tick}>
               重試
@@ -338,15 +336,12 @@ export default function Prestige() {
         </Alert>
       )}
 
-      {/* Auth guard */}
       {!loggedIn && <AlertLogin />}
 
-      {/* Loading skeleton (only when we have no data yet) */}
       {loading && !status && (
-        <Skeleton variant="rectangular" height={240} sx={{ borderRadius: 2, mb: 3 }} />
+        <Skeleton variant="rectangular" height={240} sx={{ borderRadius: 2 }} />
       )}
 
-      {/* Main content — shown as soon as we have at least one successful fetch */}
       {status && (
         <>
           <StatusCard status={status} profile={profile} reducedMotion={reducedMotion} />
@@ -361,6 +356,6 @@ export default function Prestige() {
         severity={hintState.severity}
         onClose={closeHint}
       />
-    </Container>
+    </Box>
   );
 }

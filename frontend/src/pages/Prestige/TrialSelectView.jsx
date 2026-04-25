@@ -123,7 +123,7 @@ export default function TrialSelectView({ status, onRefresh, onMutationError }) 
 
       <Grid container spacing={2}>
         {availableTrials.map(trial => (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={trial.id}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={trial.id}>
             <TrialCard trial={trial} onClick={() => handleCardClick(trial)} />
           </Grid>
         ))}

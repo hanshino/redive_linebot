@@ -1,4 +1,4 @@
-import { Box, Typography, Chip, useMediaQuery } from "@mui/material";
+import { Box, Typography, Chip, Grid, useMediaQuery } from "@mui/material";
 import { getStarConfig } from "./starColors";
 import { getBlessingIcon } from "./blessingIcons";
 
@@ -39,11 +39,15 @@ export default function AwakenedView({ status }) {
             : "linear-gradient(135deg, #6c5ce7 0%, #d63384 100%)",
           color: "#fff",
           borderRadius: 2,
-          p: 3,
+          p: { xs: 3, md: 5 },
           textAlign: "center",
         }}
       >
-        <Typography variant="h4" component="div" fontWeight={800} sx={{ mb: 1 }}>
+        <Typography
+          component="div"
+          fontWeight={800}
+          sx={{ mb: 1, fontSize: { xs: "2rem", md: "2.75rem" } }}
+        >
           ✨ 覺醒者 ✨
         </Typography>
         <Typography variant="body1" sx={{ opacity: 0.9 }}>
@@ -54,7 +58,6 @@ export default function AwakenedView({ status }) {
         </Typography>
       </Box>
 
-      {/* Passed trials */}
       {passedTrials.length > 0 && (
         <Box
           sx={{
@@ -88,79 +91,84 @@ export default function AwakenedView({ status }) {
         </Box>
       )}
 
-      {/* Owned blessings */}
-      {ownedBlessingDetails.length > 0 && (
-        <Box
-          sx={{
-            border: 1,
-            borderColor: "divider",
-            borderRadius: 2,
-            p: 2,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ fontWeight: 700, mb: 1.5, display: "block" }}
-          >
-            永久祝福 ({ownedBlessingDetails.length})
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            {ownedBlessingDetails.map(blessing => {
-              const BlessingIcon = getBlessingIcon(blessing.slug);
-              return (
-                <Box key={blessing.id} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                  <BlessingIcon sx={{ fontSize: 20, color: "primary.main", flexShrink: 0 }} />
-                  <Box>
-                    <Typography variant="body2" fontWeight={700}>
-                      {blessing.displayName}
-                    </Typography>
-                    {blessing.description && (
-                      <Typography variant="caption" color="text.secondary">
-                        {blessing.description}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              );
-            })}
-          </Box>
-        </Box>
-      )}
+      <Grid container spacing={2.5}>
+        {ownedBlessingDetails.length > 0 && (
+          <Grid size={{ xs: 12, md: detectedBuilds.length > 0 ? 7 : 12 }}>
+            <Box
+              sx={{
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 2,
+                p: 2,
+                height: "100%",
+              }}
+            >
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 700, mb: 1.5, display: "block" }}
+              >
+                永久祝福 ({ownedBlessingDetails.length})
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {ownedBlessingDetails.map(blessing => {
+                  const BlessingIcon = getBlessingIcon(blessing.slug);
+                  return (
+                    <Box key={blessing.id} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                      <BlessingIcon sx={{ fontSize: 20, color: "primary.main", flexShrink: 0 }} />
+                      <Box>
+                        <Typography variant="body2" fontWeight={700}>
+                          {blessing.displayName}
+                        </Typography>
+                        {blessing.description && (
+                          <Typography variant="caption" color="text.secondary">
+                            {blessing.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Box>
+          </Grid>
+        )}
 
-      {/* Detected build achievements */}
-      {detectedBuilds.length > 0 && (
-        <Box
-          sx={{
-            border: 1,
-            borderColor: "divider",
-            borderRadius: 2,
-            p: 2,
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ fontWeight: 700, mb: 1.5, display: "block" }}
-          >
-            解鎖 Build 成就
-          </Typography>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-            {detectedBuilds.map(build => (
-              <Chip
-                key={build.key}
-                label={`${build.emoji} ${build.name}`}
-                size="small"
-                color="secondary"
-                variant="outlined"
-                sx={{ fontWeight: 600 }}
-              />
-            ))}
-          </Box>
-        </Box>
-      )}
+        {detectedBuilds.length > 0 && (
+          <Grid size={{ xs: 12, md: ownedBlessingDetails.length > 0 ? 5 : 12 }}>
+            <Box
+              sx={{
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 2,
+                p: 2,
+                height: "100%",
+              }}
+            >
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ fontWeight: 700, mb: 1.5, display: "block" }}
+              >
+                解鎖 Build 成就
+              </Typography>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                {detectedBuilds.map(build => (
+                  <Chip
+                    key={build.key}
+                    label={`${build.emoji} ${build.name}`}
+                    size="small"
+                    color="secondary"
+                    variant="outlined"
+                    sx={{ fontWeight: 600 }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </Grid>
+        )}
+      </Grid>
 
-      {/* Footer note */}
       <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center" }}>
         可繼續升等，但等級上限保持 Lv.100
       </Typography>

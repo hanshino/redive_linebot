@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, LinearProgress, Alert, Button, useMediaQuery } from "@mui/material";
+import { Box, Typography, LinearProgress, Alert, Button, Grid, useMediaQuery } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AlertDialog from "../../components/AlertDialog";
 import { forfeitTrial } from "../../services/prestige";
@@ -221,82 +221,91 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
         </Typography>
       </Box>
 
-      {/* Progress bar */}
-      <Box>
-        <LinearProgress
-          variant="determinate"
-          value={xpPercent}
-          sx={{
-            height: 10,
-            borderRadius: 5,
-            "& .MuiLinearProgress-bar": {
-              borderRadius: 5,
-              backgroundColor: starColor,
-            },
-          }}
-        />
-        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.75 }}>
-          <Typography variant="body2" color="text.secondary">
-            {progress.toLocaleString()} / {requiredExp.toLocaleString()} XP
-          </Typography>
-          <Typography variant="body2" color="text.secondary" fontWeight={600}>
-            {Math.round(xpPercent)}%
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Countdown */}
-      {countdown.expired ? (
-        <Alert severity="error">已失效 — 請放棄並重新挑戰</Alert>
-      ) : (
-        <Typography
-          variant="body2"
-          sx={{
-            color: countdown.color,
-            fontWeight: countdown.urgent ? 700 : 400,
-            ...(countdown.urgent && !reducedMotion
-              ? {
-                  "@keyframes pulse": {
-                    "0%, 100%": { opacity: 1 },
-                    "50%": { opacity: 0.4 },
+      <Grid container spacing={{ xs: 2, md: 3 }}>
+        {/* Live progress + countdown */}
+        <Grid size={{ xs: 12, md: restrictionText || rewardText ? 6 : 12 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Box>
+              <LinearProgress
+                variant="determinate"
+                value={xpPercent}
+                sx={{
+                  height: 10,
+                  borderRadius: 5,
+                  "& .MuiLinearProgress-bar": {
+                    borderRadius: 5,
+                    backgroundColor: starColor,
                   },
-                  animation: "pulse 2s ease-in-out infinite",
-                }
-              : {}),
-          }}
-        >
-          ⏰ {countdown.text}
-        </Typography>
-      )}
+                }}
+              />
+              <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.75 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {progress.toLocaleString()} / {requiredExp.toLocaleString()} XP
+                </Typography>
+                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                  {Math.round(xpPercent)}%
+                </Typography>
+              </Box>
+            </Box>
 
-      {/* Restriction section */}
-      {restrictionText && (
-        <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-            📋 期間限制
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-            {restrictionText}
-          </Typography>
-        </Box>
-      )}
-
-      {/* Reward section */}
-      {rewardText && (
-        <Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <EmojiEventsIcon sx={{ fontSize: 14, color: "warning.main" }} />
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-              通過獎勵
-            </Typography>
+            {countdown.expired ? (
+              <Alert severity="error">已失效 — 請放棄並重新挑戰</Alert>
+            ) : (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: countdown.color,
+                  fontWeight: countdown.urgent ? 700 : 400,
+                  ...(countdown.urgent && !reducedMotion
+                    ? {
+                        "@keyframes pulse": {
+                          "0%, 100%": { opacity: 1 },
+                          "50%": { opacity: 0.4 },
+                        },
+                        animation: "pulse 2s ease-in-out infinite",
+                      }
+                    : {}),
+                }}
+              >
+                ⏰ {countdown.text}
+              </Typography>
+            )}
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
-            {rewardText}
-          </Typography>
-        </Box>
-      )}
+        </Grid>
 
-      {/* Forfeit button */}
+        {/* Static metadata: restriction + reward */}
+        {(restrictionText || rewardText) && (
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+              {restrictionText && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    📋 期間限制
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    {restrictionText}
+                  </Typography>
+                </Box>
+              )}
+
+              {rewardText && (
+                <Box>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <EmojiEventsIcon sx={{ fontSize: 14, color: "warning.main" }} />
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                      通過獎勵
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                    {rewardText}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Grid>
+        )}
+      </Grid>
+
       <Box>
         <Button
           variant="outlined"
