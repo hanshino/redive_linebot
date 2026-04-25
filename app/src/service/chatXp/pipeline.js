@@ -21,6 +21,7 @@ const { applyDiminish } = require("./diminishTier");
 const { applyTrialAndPermanent } = require("./trialAndPermanent");
 const PrestigeService = require("../PrestigeService");
 const broadcastQueue = require("../../util/broadcastQueue");
+const { DefaultLogger } = require("../../util/Logger");
 
 const LEVEL_CAP_EXP = 27000;
 
@@ -112,6 +113,13 @@ async function processUserEvents(userId, events, ctx) {
     eventRecords,
   });
 
+  DefaultLogger.info(
+    `[chatXp] user=${userId.slice(0, 8)} msgs=${msgCount} raw=+${rawDelta.toFixed(1)} ` +
+      `eff=+${effectiveDelta} ${result.prevLevel}→${result.newLevel} ` +
+      `exp=${result.prevExp}→${result.newExp}` +
+      (result.hadActiveTrial ? ` trial+=${effectiveDelta}` : "")
+  );
+
   await onBatchWritten(userId, result, batchLastGroupId);
 }
 
@@ -153,10 +161,22 @@ async function writeBatch(userId, state, batch) {
     await ChatExpEvent.insertEvent(rec);
   }
 
-  return { prevLevel, newLevel, hadActiveTrial: Boolean(activeTrialId) };
+  return {
+    prevLevel,
+    newLevel,
+    prevExp,
+    newExp,
+    hadActiveTrial: Boolean(activeTrialId),
+  };
 }
 
 async function onBatchWritten(userId, batchResult, groupId) {
+  if (batchResult.newLevel > batchResult.prevLevel) {
+    DefaultLogger.info(
+      `[chatXp] LEVEL UP user=${userId.slice(0, 8)} ` +
+        `${batchResult.prevLevel}→${batchResult.newLevel}`
+    );
+  }
   if (batchResult.hadActiveTrial) {
     await PrestigeService.checkTrialCompletion(userId, groupId);
   }
