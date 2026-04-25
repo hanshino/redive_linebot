@@ -213,6 +213,17 @@ async function OrderBased(context, { next }) {
     text("#等級排行", ChatLevelController.showRank),
     text(/^[!！]等級$/, ChatLevelController.showLevelOneLine),
     text(/^[!！]轉生狀態$/, ChatLevelController.showPrestigeStatus),
+    text(["#轉生", "/轉生"], context => {
+      const bubble = commonTemplate.genActionBubble({
+        icon: "🪄",
+        title: "轉生入口",
+        subtitle: "Lv.100 後挑戰試煉、選祝福",
+        url: commonTemplate.getLiffUri("full", "/prestige"),
+        theme: "indigo",
+        cta: "前往",
+      });
+      return context.replyFlex("轉生入口", bubble);
+    }),
     text(["/link", "#實用連結", "#連結"], context => {
       const liffUri = commonTemplate.getLiffUri("full");
       const bubble = commonTemplate.genLinkMenu({
