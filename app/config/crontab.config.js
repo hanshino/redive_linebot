@@ -29,13 +29,6 @@ module.exports = [
     require_path: "./bin/BroadcastQueueDrainer",
   },
   {
-    name: "Chat Ranking",
-    description: "refresh chat level rankings",
-    period: ["12", "*/10", "*", "*", "*", "*"],
-    immediate: false,
-    require_path: "./bin/ChatRanking",
-  },
-  {
     name: "Daily Cleanup",
     description: "clear closed groups, left members, deleted/useless custom commands",
     period: ["0", "0", "0", "*", "*", "*"],
