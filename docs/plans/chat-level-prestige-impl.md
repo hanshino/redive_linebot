@@ -238,23 +238,32 @@ Branch：`feat/chat-level-prestige`
 
 ---
 
-## M8. Housekeeping Cron
+## M8. Housekeeping Cron ✅ Complete (2026-04-25)
 
 **目的**：資料衛生 + feature flag。
 
 **Tasks：**
 
-- [ ] 新 cron `ChatExpEventsPrune`（每日 03:00）：
+- [x] 新 cron `ChatExpEventsPrune`（每日 03:00）：
   ```sql
   DELETE FROM chat_exp_events WHERE ts < NOW() - INTERVAL 30 DAY
   ```
-- [ ] `app/config/crontab.config.js` 新增三個 job：
+- [x] `app/config/crontab.config.js` — 三個 housekeeping job 全部就位：
   - M3 的 `TrialExpiryCheck`（每日 00:05）
   - M4 的 `BroadcastQueueDrainer`（每 30s）
   - 本 M8 的 `ChatExpEventsPrune`（每日 03:00）
-- [ ] Feature flag：`CHAT_XP_PAUSED` Redis flag
-  - EventDequeue 短路：若 flag 為 true 則 return early
-  - T-0 停機期間手動設為 true、migration 跑完後 unset
+- [x] Feature flag：`CHAT_XP_PAUSED` Redis flag
+  - `handleChatExp` 短路：flag === "1" 直接 return（保留 webhook + GuildMembers + reply token 路徑）
+  - T-0 停機期間手動設為 1、migration 跑完後 unset
+
+**Branch**：`feat/clp-m8`，merged via `--no-ff` to `feat/chat-level-prestige`.
+**Plan**：[chat-level-prestige-m8.md](./chat-level-prestige-m8.md)
+
+**Exit Criteria**：
+
+- [x] `yarn lint` clean
+- [x] `yarn test` passes (37/37 bin tests; 528/529 overall — only pre-existing `images.test.js` Imgur leftover fails, unrelated)
+- [x] CHAT_XP_PAUSED short-circuit covered: flag set → no touch TS, no `CHAT_EXP_RECORD` push; flag missing or "0" → normal record path
 
 ---
 
