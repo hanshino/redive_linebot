@@ -106,4 +106,31 @@ describe("EventDequeue.handleChatExp", () => {
       EX: 10,
     });
   });
+
+  describe("CHAT_XP_PAUSED kill-switch", () => {
+    it("short-circuits when flag is '1' — no touch TS, no XP push", async () => {
+      redis.get.mockImplementation(key => Promise.resolve(key === "CHAT_XP_PAUSED" ? "1" : null));
+
+      await handleChatExp(groupTextEvent({ userId: "Uaaa", ts: 1700000000000 }));
+
+      expect(redis.set).not.toHaveBeenCalled();
+      expect(redis.lPush).not.toHaveBeenCalled();
+    });
+
+    it("still records when flag is missing", async () => {
+      redis.get.mockResolvedValue(null);
+
+      await handleChatExp(groupTextEvent({ userId: "Uaaa", ts: 1700000000000 }));
+
+      expect(redis.lPush).toHaveBeenCalledWith("CHAT_EXP_RECORD", expect.any(String));
+    });
+
+    it("still records when flag is '0'", async () => {
+      redis.get.mockImplementation(key => Promise.resolve(key === "CHAT_XP_PAUSED" ? "0" : null));
+
+      await handleChatExp(groupTextEvent({ userId: "Uaaa", ts: 1700000000000 }));
+
+      expect(redis.lPush).toHaveBeenCalledWith("CHAT_EXP_RECORD", expect.any(String));
+    });
+  });
 });

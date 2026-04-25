@@ -156,6 +156,13 @@ async function handleChatExp(botEvent) {
   if (botEvent.source.type !== "group") return;
   if (botEvent.type !== "message" || botEvent.message.type !== "text") return;
 
+  // M8 kill-switch (spec / impl plan M8). Set during the T-0 migration window
+  // so we keep accepting webhooks and updating GuildMembers / reply tokens
+  // while XP recording is frozen — the pipeline drains whatever was already
+  // queued and then idles until the flag is unset.
+  const paused = await redis.get("CHAT_XP_PAUSED");
+  if (paused === "1") return;
+
   const { userId, groupId } = botEvent.source;
   if (!userId || !groupId) return;
 
