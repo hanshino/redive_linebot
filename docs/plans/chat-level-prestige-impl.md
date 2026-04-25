@@ -208,23 +208,33 @@ Branch：`feat/chat-level-prestige`
 
 ---
 
-## M7. Controller 精簡
+## M7. Controller 精簡 ✅ Complete (2026-04-25)
 
 **目的**：拔 admin 指令 + 精簡群組命令。
 
 **Tasks：**
 
-- [ ] 刪 admin 指令（`app/src/controller/application/ChatLevelController.js`）：
-  - `setExp` / `setExpRate` / 稱號自選 / 等級查詢管理員版
-- [ ] 保留 / 新增：
-  - Lv.100 達標 CTA 廣播（「[用戶名] 已達成 Lv.100，可前往 LIFF 轉生」）
-  - 文字查詢：`!等級` / `!轉生狀態`（純查詢，不動狀態）
-- [ ] 冒險小卡（`app/src/templates/`）：
-  - 移除稱號文字欄位
-  - 加狀態 flag：`✨ 覺醒者` / `⚔️ ★N 試煉中` / `🌱 蜜月中` / `★★★ 轉生 N 次`
-- [ ] OrderBased router 更新：移除廢指令路由、加新路由
+- [x] 刪 admin 指令（`app/src/controller/application/ChatLevelController.js`）：
+  - `setExp` / `setExpRate` 移除（稱號自選 / 等級查詢管理員版本來就不存在，無事可做）
+- [x] 保留 / 新增：
+  - Lv.100 達標 CTA 廣播 — 已於 M3 接在 `pipeline.js:163-168` 的 post-write hook
+  - 文字查詢：`!等級` (`showLevelOneLine`) / `!轉生狀態` (`showPrestigeStatus`)
+- [x] 冒險小卡（`app/src/templates/application/Me/Profile.js`）：
+  - 移除 `Lv.${level} · ${range}` 中的 range 與 `Rank #${ranking}` 欄位
+  - 加狀態 flag row：`✨ 覺醒者` / `⚔️ ★N 試煉中` / `🌱 蜜月中` / `★★★ 轉生 N 次`
+- [x] OrderBased router 更新：拔 `setexp` / `setrate` admin route，加 `!等級` / `!轉生狀態`
+
+**Branch**：`feat/clp-m7`，merged via `--no-ff` to `feat/chat-level-prestige`.
+**Plan**：[chat-level-prestige-m7.md](./chat-level-prestige-m7.md)
 
 **Dependencies**：M3
+
+**Exit Criteria**：
+
+- [x] `yarn lint` clean
+- [x] `yarn test` passes (14 new tests; only pre-existing `images.test.js` Imgur leftover fails — unrelated)
+- [x] `showStatus` reads new schema (`ChatUserData.findByUserId`), no legacy `user.id ↔ cud.id` join
+- [x] Status flag rendering covers fresh / 蜜月 / 試煉 / 轉生 N 次 / 覺醒 stacking
 
 ---
 
