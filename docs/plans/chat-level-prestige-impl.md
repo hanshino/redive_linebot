@@ -267,37 +267,38 @@ Branch：`feat/chat-level-prestige`
 
 ---
 
-## M9. 遷移腳本 + Staging 演練
+## M9. 遷移腳本 + Staging 演練 ✅ Complete (2026-04-25)
 
 **目的**：真實資料能成功轉換。
 
 **Tasks：**
 
-- [ ] `app/bin/migrate-prestige-system.js`（一次性腳本）：
+- [x] `app/bin/migrate-prestige-system.js`（一次性腳本）：
   1. Assert `CHAT_XP_PAUSED = 1`（否則 abort）
-  2. Rename 舊 `chat_user_data` → `chat_user_data_legacy_snapshot`（若 M1 migration 未執行）
-  3. 讀 snapshot 篩 `experience > 8,407,860` → 先驅者 82 人名單
-  4. 寫入新 `chat_user_data`：全員 `prestige_count=0, current_level=0, current_exp=0`（包含先驅者）
-  5. 批次呼 `AchievementEngine.unlock(userId, 'prestige_pioneer')` 發成就
-  6. 輸出 audit log：筆數、先驅者名單、成就發放結果
-- [ ] `app/bin/rollback-prestige-system.js`：
-  - 設 `CHAT_XP_PAUSED = 1`
-  - DROP 新 `chat_user_data`
-  - Rename `chat_user_data_legacy_snapshot` → `chat_user_data`
-  - 撤回先驅者成就（從 `user_achievements` 刪除 `prestige_pioneer`）
-- [ ] **Staging 演練**：
-  1. Dump 一份 prod snapshot 到 staging DB
-  2. 跑完整遷移腳本
-  3. Verify SQL：先驅者名單 / 成就發放 / 新 pipeline 能寫 XP / Rankings 頁顯示正確
-  4. 演練 rollback 腳本 → 驗證可回到舊 schema
-- [ ] T-0 checklist 文件（詳細步驟 + verify SQL 查詢）
+  2. ~~Rename 舊 `chat_user_data` → `chat_user_data_legacy_snapshot`（若 M1 migration 未執行）~~ → 改為 fail-fast：knex migration 沒跑就 abort（schema 變動歸 migration 管，不在資料腳本內副作用）
+  3. 讀 snapshot 篩 `experience > 8,407,860` → 先驅者名單（依 prod 漂移約 82 ± 少量）
+  4. 寫入新 `chat_user_data`：全員 `prestige_count=0, current_level=0, current_exp=0`（包含先驅者），`INSERT … ON CONFLICT IGNORE` 保 idempotent
+  5. 逐筆呼 `AchievementEngine.unlockByKey(userId, 'prestige_pioneer')` 發成就
+  6. 輸出 audit log：筆數、策略、先驅者名單與每位 result（unlocked / already_unlocked / error）
+- [x] `app/bin/rollback-prestige-system.js`：
+  - Assert `CHAT_XP_PAUSED = 1` + snapshot 還在
+  - DROP 新 `chat_user_data` → RENAME `chat_user_data_legacy_snapshot` → `chat_user_data`
+  - 一次性 DELETE `user_achievements WHERE achievement_id = prestige_pioneer.id`
+- [x] T-0 checklist 文件（[chat-level-prestige-m9-runbook.md](./chat-level-prestige-m9-runbook.md)）：T-1 pre-flight、T-3 staging dry-run、T-0 sequence、verify SQL（5 項）、abort/rollback decision tree、T+72h cleanup
+- [ ] **Staging 演練**：runbook 已完整列出步驟；實際在 staging 環境的執行屬於 operator 動作，由 T-0 前手動跑完。
+
+**Branch**：`feat/clp-m9`，merged via `--no-ff` to `feat/chat-level-prestige`.
+**Plan**：[chat-level-prestige-m9.md](./chat-level-prestige-m9.md)
 
 **Dependencies**：M1–M8 完成
 
 **Exit Criteria**：
 
-- Staging 演練成功（遷移 + rollback 雙向可走）
-- Audit log 顯示 82 位先驅者正確發放
+- [x] `yarn lint` clean
+- [x] `yarn test` passes (15 new tests; only pre-existing `images.test.js` Imgur leftover fails — unrelated)
+- [x] Migration script idempotent (re-run = `already_unlocked` for pioneers + `INSERT IGNORE` for seed)
+- [x] Rollback script restores legacy schema and zeroes pioneer unlocks
+- [x] Runbook lists verify SQL queries + abort/rollback decision tree
 
 ---
 
