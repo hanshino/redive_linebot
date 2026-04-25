@@ -43,6 +43,13 @@ module.exports = [
     require_path: "./bin/DailyCleanup",
   },
   {
+    name: "Chat Exp Events Prune",
+    description: "drop chat_exp_events rows older than 30 days (spec line 545)",
+    period: ["0", "0", "3", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/ChatExpEventsPrune",
+  },
+  {
     name: "Daily Ration",
     description: "daily ration for subscribers",
     period: ["10", "*/10", "*", "*", "*", "*"],
