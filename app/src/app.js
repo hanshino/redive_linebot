@@ -211,6 +211,8 @@ async function OrderBased(context, { next }) {
     }),
     text(/^#狀態\s/, ChatLevelController.showFriendStatus),
     text("#等級排行", ChatLevelController.showRank),
+    text(/^[!！]等級$/, ChatLevelController.showLevelOneLine),
+    text(/^[!！]轉生狀態$/, ChatLevelController.showPrestigeStatus),
     text(["/link", "#實用連結", "#連結"], context => {
       const liffUri = commonTemplate.getLiffUri("full");
       const bubble = commonTemplate.genLinkMenu({
@@ -260,8 +262,6 @@ async function OrderBased(context, { next }) {
 function AdminOrder() {
   return [
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
-    text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
-    text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
     ...AchievementController.adminRouter,
     ...DonateListController.adminRouter,
     ...AliasController.adminRouter,

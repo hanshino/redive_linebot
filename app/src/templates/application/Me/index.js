@@ -11,11 +11,10 @@ const Subscription = require("./Subscription");
  * @param {String} data.displayName
  * @param {String} data.pictureUrl
  * @param {Number} data.level
- * @param {String} data.range            chat-level 段位 (e.g. "初級", "等待投胎")
- * @param {Number|String} data.ranking   排名 (number or "?" for new users)
  * @param {Number} data.expRate          % to next level (0–100)
  * @param {Number} data.expCurrent
  * @param {Number} data.expNext
+ * @param {Array<String>} [data.flags]   prestige status flags ("✨ 覺醒者", "⚔️ ★N 試煉中", etc.)
  * @param {Object} data.today            today's quest flags
  * @param {Boolean} data.today.gacha
  * @param {Boolean} data.today.janken
@@ -42,11 +41,10 @@ exports.buildBubbles = data => {
         displayName: data.displayName,
         pictureUrl: data.pictureUrl,
         level: data.level,
-        range: data.range,
-        ranking: data.ranking,
         expRate: data.expRate,
         expCurrent: data.expCurrent,
         expNext: data.expNext,
+        flags: data.flags,
         today: data.today,
         signinDays: data.signinDays,
         subscriptionPanel: cards.length === 1 ? cards[0] : null,
@@ -59,11 +57,10 @@ exports.buildBubbles = data => {
         displayName: data.displayName,
         pictureUrl: data.pictureUrl,
         level: data.level,
-        range: data.range,
-        ranking: data.ranking,
         expRate: data.expRate,
         expCurrent: data.expCurrent,
         expNext: data.expNext,
+        flags: data.flags,
         today: data.today,
         signinDays: data.signinDays,
         subscriptionPanel: null,

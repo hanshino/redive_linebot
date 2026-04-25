@@ -1,5 +1,8 @@
-const ChatLevelModel = require("../../model/application/ChatLevelModel");
-const ChatLevelTemplate = require("../../templates/application/ChatLevel");
+const ChatUserData = require("../../model/application/ChatUserData");
+const ChatExpUnit = require("../../model/application/ChatExpUnit");
+const PrestigeTrial = require("../../model/application/PrestigeTrial");
+const UserBlessing = require("../../model/application/UserBlessing");
+const PrestigeBlessing = require("../../model/application/PrestigeBlessing");
 const MeTemplate = require("../../templates/application/Me");
 const { DefaultLogger } = require("../../util/Logger");
 const { getClient } = require("bottender");
@@ -21,6 +24,36 @@ const i18n = require("../../util/i18n");
 const { inventory } = require("../../model/application/Inventory");
 
 /**
+ * Build the prestige status flags shown on the adventure card / queries.
+ * Awakened players never show the active-trial flag (cap reached).
+ *
+ * @param {Object} input
+ * @param {Number} input.prestigeCount
+ * @param {Boolean} input.awakened
+ * @param {Number|null} input.activeTrialStar
+ * @returns {Array<String>}
+ */
+function buildPrestigeFlags({ prestigeCount, awakened, activeTrialStar }) {
+  const flags = [];
+  if (awakened) flags.push("✨ 覺醒者");
+  if (!awakened && activeTrialStar) flags.push(`⚔️ ★${activeTrialStar} 試煉中`);
+  if (!awakened && prestigeCount === 0) flags.push("🌱 蜜月中");
+  if (!awakened && prestigeCount > 0) {
+    flags.push(`${"★".repeat(prestigeCount)} 轉生 ${prestigeCount} 次`);
+  }
+  return flags;
+}
+
+/**
+ * Resolve the active trial star number from the user row + cached trial defs.
+ */
+function resolveActiveTrialStar(activeTrialId, allTrials) {
+  if (!activeTrialId) return null;
+  const cfg = allTrials.find(t => t.id === activeTrialId);
+  return cfg ? cfg.star : null;
+}
+
+/**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
  * @param {import("bottender").LineContext} context
  */
@@ -39,18 +72,26 @@ exports.showStatus = async (context, props) => {
       throw "userId or displayName is empty";
     }
 
-    const {
-      range = "等待投胎",
-      level = 0,
-      ranking = "?",
-      exp = 0,
-    } = await ChatLevelModel.getUserData(userId);
-    const expDatas = await ChatLevelModel.getExpUnitData();
-    const nowThreshold = expDatas.find(d => d.level === level)?.exp ?? 0;
-    const nextThreshold = expDatas.find(d => d.level === level + 1)?.exp ?? 0;
-    const expCurrent = Math.max(0, exp - nowThreshold);
+    const [chatRow, expRows, allTrials] = await Promise.all([
+      ChatUserData.findByUserId(userId),
+      ChatExpUnit.all(),
+      PrestigeTrial.all(),
+    ]);
+
+    const prestigeCount = chatRow?.prestige_count ?? 0;
+    const currentLevel = chatRow?.current_level ?? 0;
+    const currentExp = chatRow?.current_exp ?? 0;
+    const activeTrialId = chatRow?.active_trial_id ?? null;
+    const awakened = prestigeCount >= PRESTIGE_CAP;
+
+    const nowThreshold = ChatExpUnit.getTotalExpForLevel(currentLevel, expRows) ?? 0;
+    const nextThreshold = ChatExpUnit.getTotalExpForLevel(currentLevel + 1, expRows) ?? 0;
+    const expCurrent = Math.max(0, currentExp - nowThreshold);
     const expNext = Math.max(0, nextThreshold - nowThreshold);
     const expRate = expNext > 0 ? Math.round((expCurrent / expNext) * 100) : 0;
+
+    const activeTrialStar = resolveActiveTrialStar(activeTrialId, allTrials);
+    const flags = buildPrestigeFlags({ prestigeCount, awakened, activeTrialStar });
 
     const [
       characterCurrent = 0,
@@ -108,12 +149,11 @@ exports.showStatus = async (context, props) => {
     const bubbles = MeTemplate.buildBubbles({
       displayName,
       pictureUrl,
-      level,
-      range,
-      ranking,
+      level: currentLevel,
       expRate,
       expCurrent,
       expNext,
+      flags,
       today: {
         gacha: questInfo.gacha,
         janken: questInfo.janken,
@@ -236,93 +276,189 @@ async function getQuestInfo(userId) {
   };
 }
 
+/**
+ * 顯示被 mention 的好友等級資訊（純查詢、文字輸出）。
+ * @param {import("bottender").LineContext} context
+ */
 exports.showFriendStatus = async context => {
   const { mention, text } = context.event.message;
   if (!mention) {
     return context.replyText("請tag想要查詢的夥伴們！");
   }
-  let users = mention.mentionees.map(d => ({
+  const users = mention.mentionees.map(d => ({
     ...d,
     displayName: text.substr(d.index + 1, d.length - 1),
   }));
-  let userDatas = await ChatLevelModel.getUserDatas(users.map(user => user.userId));
-  let messages = userDatas.map((data, index) =>
-    [
-      index + 1,
-      users.find(user => user.userId === data.userId).displayName,
-      `${data.level}等`,
-      `${data.ranking}名`,
-    ].join("\t")
-  );
-
-  if (messages.length === 0) {
-    context.replyText("查詢失敗！");
-  } else {
-    messages = [">>>查詢結果<<<", ...messages];
-    context.replyText(messages.join("\n"));
+  if (users.length === 0) {
+    return context.replyText("查詢失敗！");
   }
+
+  const userIds = users.map(u => u.userId);
+  const [rows, allTrials] = await Promise.all([
+    mysql("chat_user_data")
+      .select("user_id", "current_level", "prestige_count", "active_trial_id")
+      .whereIn("user_id", userIds),
+    PrestigeTrial.all(),
+  ]);
+
+  const rowByUser = new Map(rows.map(r => [r.user_id, r]));
+  const messages = users.map((user, index) => {
+    const row = rowByUser.get(user.userId);
+    if (!row) {
+      return [index + 1, user.displayName, "尚未開始"].join("\t");
+    }
+    const awakened = (row.prestige_count ?? 0) >= PRESTIGE_CAP;
+    const flags = buildPrestigeFlags({
+      prestigeCount: row.prestige_count ?? 0,
+      awakened,
+      activeTrialStar: resolveActiveTrialStar(row.active_trial_id, allTrials),
+    });
+    const flagText = flags.length ? `  ${flags.join(" · ")}` : "";
+    return [index + 1, user.displayName, `Lv.${row.current_level ?? 0}${flagText}`].join("\t");
+  });
+
+  context.replyText([">>>查詢結果<<<", ...messages].join("\n"));
 };
 
 /**
- * 管理員密技，直接設定經驗值
- * @param {Context} context
- * @param {Object} param1
- * @param {Object} param1.match
+ * 文字版排行榜（top 5）。`#等級排行` 的入口。
+ * 排序依據：`prestige_count * 27000 + current_exp` (lifetime XP)。
  */
-exports.setEXP = (context, { match }) => {
-  let { userId, exp } = match.groups;
-  console.log(userId, exp, "修改經驗");
-  ChatLevelModel.setExperience(userId, exp).then(result => {
-    let msg = result ? "修改成功" : "修改失敗";
-    context.replyText(msg, { sender: { name: "管理員指令" } });
-  });
-};
-
-/**
- * 管理員密技，直接設定經驗值倍率
- * @param {Context} context
- * @param {Object} param1
- * @param {Object} param1.match
- */
-exports.setEXPRate = (context, { match }) => {
-  let { expRate } = match.groups;
-  console.log(expRate, "修改經驗倍率");
-  ChatLevelModel.setExperienceRate(expRate).then(result => {
-    let msg = result ? "修改成功" : "修改失敗";
-    context.replyText(msg, { sender: { name: "管理員指令" } });
-  });
-};
-
 exports.showRank = async context => {
   let { lastSendRank } = context.state;
   let now = new Date().getTime();
   if (now - lastSendRank < 60 * 1000) return;
-
-  let list = await ChatLevelModel.getRankList(1);
-  list = await Promise.all(list.slice(0, 5).map(appendLevelTitle));
-
   context.setState({ ...context.state, lastSendRank: now });
-  ChatLevelTemplate.showTopRank(context, { rankData: list, sendType: "text" });
+
+  const [rows, allTrials] = await Promise.all([
+    mysql("chat_user_data")
+      .select("user_id", "current_level", "current_exp", "prestige_count", "active_trial_id")
+      .where("current_exp", ">", 0)
+      .orWhere("prestige_count", ">", 0)
+      .orderByRaw("prestige_count * 27000 + current_exp DESC")
+      .orderBy("user_id", "asc")
+      .limit(5),
+    PrestigeTrial.all(),
+  ]);
+
+  if (rows.length === 0) {
+    context.replyText(">>Pudding World<<\n（無資料）");
+    return;
+  }
+
+  const lines = await Promise.all(
+    rows.map(async (row, index) => {
+      const profile = await LineClient.getUserProfile(row.user_id).catch(() => null);
+      const displayName = profile?.displayName || `未知${index + 1}`;
+      const flags = buildPrestigeFlags({
+        prestigeCount: row.prestige_count ?? 0,
+        awakened: (row.prestige_count ?? 0) >= PRESTIGE_CAP,
+        activeTrialStar: resolveActiveTrialStar(row.active_trial_id, allTrials),
+      });
+      const flagText = flags.length ? `  ${flags.join(" · ")}` : "";
+      return [index + 1, displayName, `Lv.${row.current_level ?? 0}${flagText}`].join("\t");
+    })
+  );
+
+  context.replyText(`>>Pudding World<<\n${lines.join("\n")}`);
+  context.replyText("為減少伺服器負擔，此訊息一分鐘只能查一次！");
 };
 
 /**
- * 根據經驗查出等級稱號並回傳
- * @param {Object} data
- * @param {Number} data.id
- * @param {Number} data.experience
- * @returns {Object<{id: Number, experience: Number, range: String, rank: String, level: Number}>}
+ * `!等級` — 一行式查詢自己當前等級 + 狀態。
+ * @param {import("bottender").LineContext} context
  */
-function appendLevelTitle(data) {
-  return ChatLevelModel.getLevel(data.experience)
-    .then(level => {
-      data = { ...data, level };
-      return ChatLevelModel.getTitleData(level);
-    })
-    .then(({ rank, range }) => {
-      data = { ...data, rank, range };
-      return data;
-    });
-}
+exports.showLevelOneLine = async context => {
+  const userId = context.event.source.userId;
+  if (!userId) return;
+
+  const profile =
+    context.event.source.type === "user"
+      ? context.event.source
+      : await LineClient.getGroupMemberProfile(context.event.source.groupId, userId).catch(
+          () => null
+        );
+  const displayName = profile?.displayName || "你";
+
+  const [chatRow, allTrials] = await Promise.all([
+    ChatUserData.findByUserId(userId),
+    PrestigeTrial.all(),
+  ]);
+
+  const prestigeCount = chatRow?.prestige_count ?? 0;
+  const currentLevel = chatRow?.current_level ?? 0;
+  const awakened = prestigeCount >= PRESTIGE_CAP;
+  const flags = buildPrestigeFlags({
+    prestigeCount,
+    awakened,
+    activeTrialStar: resolveActiveTrialStar(chatRow?.active_trial_id, allTrials),
+  });
+  const flagText = flags.length ? ` ${flags.join(" · ")}` : "";
+
+  context.replyText(`${displayName} · Lv.${currentLevel}${flagText}`);
+};
+
+/**
+ * `!轉生狀態` — 多行式查詢自己當前轉生 / 試煉 / 祝福概況。
+ * @param {import("bottender").LineContext} context
+ */
+exports.showPrestigeStatus = async context => {
+  const userId = context.event.source.userId;
+  if (!userId) return;
+
+  const profile =
+    context.event.source.type === "user"
+      ? context.event.source
+      : await LineClient.getGroupMemberProfile(context.event.source.groupId, userId).catch(
+          () => null
+        );
+  const displayName = profile?.displayName || "你";
+
+  const [chatRow, allTrials, allBlessings, ownedBlessingIds] = await Promise.all([
+    ChatUserData.findByUserId(userId),
+    PrestigeTrial.all(),
+    PrestigeBlessing.all(),
+    UserBlessing.listBlessingIdsByUserId(userId),
+  ]);
+
+  const prestigeCount = chatRow?.prestige_count ?? 0;
+  const awakened = prestigeCount >= PRESTIGE_CAP;
+  const activeTrialId = chatRow?.active_trial_id ?? null;
+  const activeTrialStartedAt = chatRow?.active_trial_started_at ?? null;
+  const activeTrialProgress = chatRow?.active_trial_exp_progress ?? 0;
+
+  const lines = [`🪄 ${displayName} 的轉生狀態`];
+
+  if (awakened) {
+    lines.push(`✨ 覺醒者（轉生 ${PRESTIGE_CAP} 次完成）`);
+  } else {
+    lines.push(`轉生次數：${prestigeCount} 次`);
+    if (prestigeCount === 0) {
+      lines.push("🌱 蜜月加成中");
+    }
+  }
+
+  if (activeTrialId && !awakened) {
+    const cfg = allTrials.find(t => t.id === activeTrialId);
+    if (cfg) {
+      const expiresAt = activeTrialStartedAt
+        ? moment(activeTrialStartedAt).add(cfg.duration_days || 60, "days")
+        : null;
+      const remainingDays = expiresAt ? Math.max(0, expiresAt.diff(moment(), "days")) : null;
+      lines.push(
+        `進行中試煉：⚔️ ★${cfg.star} ${cfg.display_name}` +
+          `  進度 ${activeTrialProgress.toLocaleString()} / ${cfg.required_exp.toLocaleString()}` +
+          (remainingDays !== null ? `（剩 ${remainingDays} 天）` : "")
+      );
+    }
+  } else if (!awakened) {
+    lines.push("進行中試煉：—");
+  }
+
+  lines.push(`已取得祝福：${ownedBlessingIds.length} / ${allBlessings.length}`);
+
+  context.replyText(lines.join("\n"));
+};
 
 exports.api = {};
 
@@ -404,3 +540,6 @@ exports.api.queryRank = async (req, res) => {
 
   res.json(result);
 };
+
+// Exposed for unit tests.
+exports._internal = { buildPrestigeFlags, resolveActiveTrialStar };

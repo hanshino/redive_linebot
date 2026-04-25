@@ -3,16 +3,7 @@ const { buildSubPanel, COLORS } = require("./_shared");
 
 const formatExp = n => humanNumber(n, v => Number.parseFloat(v).toFixed(1));
 
-function buildHero({
-  displayName,
-  pictureUrl,
-  level,
-  range,
-  ranking,
-  expRate,
-  expCurrent,
-  expNext,
-}) {
+function buildHero({ displayName, pictureUrl, level, expRate, expCurrent, expNext, flags }) {
   const avatar = {
     type: "box",
     layout: "vertical",
@@ -39,7 +30,7 @@ function buildHero({
     contents: [
       {
         type: "text",
-        text: `Lv.${level} · ${range}`,
+        text: `Lv.${level}`,
         weight: "bold",
         size: "xxs",
         color: COLORS.textDark,
@@ -74,19 +65,23 @@ function buildHero({
     alignItems: "center",
   };
 
-  const rankRow = {
-    type: "text",
-    text: `Rank #${ranking}`,
-    size: "xxs",
-    color: COLORS.amber300,
-    weight: "bold",
-    margin: "xs",
-  };
+  const flagsList = Array.isArray(flags) ? flags.filter(Boolean) : [];
+  const flagRow = flagsList.length
+    ? {
+        type: "text",
+        text: flagsList.join(" · "),
+        size: "xxs",
+        color: COLORS.amber300,
+        weight: "bold",
+        margin: "xs",
+        wrap: true,
+      }
+    : null;
 
   const ident = {
     type: "box",
     layout: "vertical",
-    contents: [nameRow, rankRow],
+    contents: flagRow ? [nameRow, flagRow] : [nameRow],
     flex: 1,
   };
 
@@ -315,18 +310,17 @@ exports.build = ({
   displayName,
   pictureUrl,
   level,
-  range,
-  ranking,
   expRate,
   expCurrent,
   expNext,
+  flags,
   today,
   signinDays,
   subscriptionPanel,
   subscriptionBadge,
 }) => {
   const bodyContents = [
-    buildHero({ displayName, pictureUrl, level, range, ranking, expRate, expCurrent, expNext }),
+    buildHero({ displayName, pictureUrl, level, expRate, expCurrent, expNext, flags }),
   ];
 
   if (subscriptionPanel) {
