@@ -602,17 +602,27 @@ Build tag Chip：
 
 ## Exit Criteria
 
-- [ ] `/prestige` 單一入口 dispatcher 正確依 status 分派 6 種 view（含 awakened）
-- [ ] StatusCard badge 單一互斥（決策 10）、5-step Stepper 正確反映進度（決策 13）
-- [ ] 4 個 mutation endpoint 上線並通過 controller test
-- [ ] 3 個不可逆動作皆有 AlertDialog 二次確認；按鈕 label 含具體 action target；第 5 次轉生要求輸入祝福名
-- [ ] Rankings 頁顯示 prestigeCount、覺醒標記、buildTag 複合 Chip（非多 chip）
-- [ ] 未登入顯示 `AlertLogin`；mutation 失敗顯示 HintSnackBar 中文錯誤
-- [ ] Active trial 存在時 60s polling + focus trigger + exponential backoff
-- [ ] 倒數時間分級呈現（>24h / 1h–24h / <1h / expired），respect reduced-motion
-- [ ] 所有圖示用 MUI icon（非 emoji）；✨🌱 僅出現於 headline 文字裝飾
-- [ ] ★1–★5 色 + tier 文字雙編碼，色盲可辨
-- [ ] `yarn test` / `yarn lint` 全綠；`yarn build` 成功
+- [x] `/prestige` 單一入口 dispatcher 正確依 status 分派 6 種 view（含 awakened）
+- [x] StatusCard badge 單一互斥（決策 10）、5-step Stepper 正確反映進度（決策 13）
+- [x] 4 個 mutation endpoint 上線並通過 controller test
+- [x] 3 個不可逆動作皆有 AlertDialog 二次確認；按鈕 label 含具體 action target；第 5 次轉生要求輸入祝福名
+- [x] Rankings 頁顯示 prestigeCount、覺醒標記、buildTag 複合 Chip（非多 chip）
+- [x] 未登入顯示 `AlertLogin`；mutation 失敗顯示 HintSnackBar 中文錯誤
+- [x] Active trial 存在時 60s polling + focus trigger + exponential backoff
+- [x] 倒數時間分級呈現（>24h / 1h–24h / <1h / expired），respect reduced-motion
+- [x] 所有圖示用 MUI icon（非 emoji）；✨🌱 僅出現於 headline 文字裝飾
+- [x] ★1–★5 色 + tier 文字雙編碼，色盲可辨
+- [x] `yarn test` / `yarn lint` 全綠；`yarn build` 成功
+
+## M6 Closure (2026-04-25)
+
+合併進 `feat/chat-level-prestige` via `--no-ff`。16 commits delivered。
+
+**已知技術債（M7+ 處理）**：
+- Backend `formatTrialReward`（廣播文案）vs frontend `renderReward`（LIFF 顯示）獎勵字串輕微 drift（"律動精通" vs "永久冷卻區段提升"），需 align 到單一 canonical 文案
+- `restrictionMeta` / `rewardMeta` JSON deserialize 行為依賴 mysql2 driver 預設，缺乏 integration test 鎖契約
+- `GET /api/chat-levels/rankings` 對 LINE Bot API 做 10 次 fan-out（unauthenticated endpoint），考慮加 60s cache 或 rate limit
+- TOCTOU on `startTrial` / `prestige`：service 層 read-then-write 無 row lock，目前靠 LIFF 單次提交 UI 防護；建議 DB-level unique constraint hardening
 
 ## Non-goals（延後）
 

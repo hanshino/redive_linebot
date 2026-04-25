@@ -178,26 +178,29 @@ Branch：`feat/chat-level-prestige`
 
 ---
 
-## M6. LIFF 前端
+## M6. LIFF 前端 ✅ Complete (2026-04-25)
 
 **目的**：5 個頁面 + Rankings 更新。
 
 **Tasks：**
 
-- [ ] API endpoints（`app/src/router/api.js`，新增 `/api/prestige/*`）：
+- [x] API endpoints（`app/src/router/api.js`，新增 `/api/prestige/*`）：
   - `GET /api/prestige/status` — 當前狀態 + 可選試煉 + 可選祝福
   - `POST /api/prestige/trial/start` — body: `{trialId}`
   - `POST /api/prestige/trial/forfeit`
   - `POST /api/prestige/prestige` — body: `{blessingId}`
-- [ ] 前端頁面（`frontend/src/pages/Prestige/`）：
-  - `Prestige.jsx`（主頁）— 轉生入口 CTA + 當前狀態卡片
-  - `TrialSelect.jsx` — 試煉 5 選 1 + active 進度
-  - `BlessingSelect.jsx` — 祝福 7 選 1（標示已取得）
-  - `TrialProgress.jsx` — 試煉進度 + forfeit button
-  - `Awakened.jsx` — 覺醒者展示頁
-- [ ] Rankings 頁補欄：等級 / 轉生次數 / 覺醒標記 / 祝福 build icon（`frontend/src/pages/Rankings/`）
-- [ ] LIFF 整合（`@line/liff`）+ 權限驗證（既有 token 機制）
-- [ ] Socket.IO 即時更新（選配，試煉達標廣播到前端）
+- [x] 前端頁面（`frontend/src/pages/Prestige/`）：
+  - `index.jsx`（主頁）— state-machine dispatcher + StatusCard + 5-step Stepper + polling
+  - `TrialSelectView.jsx` — 試煉 5 選 1（server-filter 已通過者）
+  - `BlessingSelectView.jsx` — 祝福 7 選 1（server-filter 已取得者）+ 第 5 次輸入確認 friction
+  - `TrialProgressView.jsx` — full + compact 模式、tiered countdown、forfeit
+  - `AwakenedView.jsx` — 覺醒者展示 + 自動偵測 build 成就
+  - `LevelClimbView.jsx` — 距離 Lv.100 + 首次玩家 onboarding
+- [x] Rankings 頁補欄：等級 / 轉生次數 / 覺醒標記 / 祝福 build tag（`frontend/src/pages/Rankings/PrestigeRankList.jsx`）
+- [x] LIFF 整合（既有 `LiffProvider` + token）
+- 不做：Socket.IO 即時更新（轉到 M11 backlog）
+
+**Branch**：`feat/clp-m6`，16 commits，merged via `--no-ff` to `feat/chat-level-prestige`.
 
 **Dependencies**：M3（API 層）
 
