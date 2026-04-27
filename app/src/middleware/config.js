@@ -19,10 +19,9 @@ module.exports = async (context, props) => {
   }
 
   if (type !== "group") return props.next;
-  // 如果已經設定過就不再設定
-  let isSet = context.state.sender && context.state.guildConfig;
-  if (isSet) return props.next;
 
+  // 每次事件都重新取（兩端皆走 Redis 快取，寫入時即時 invalidate），
+  // 避免 Bottender session state 把舊的 guildConfig 持久化導致 LIFF 設定不生效。
   const { groupId } = context.event.source;
 
   const [sender, guildConfig] = await Promise.all([
