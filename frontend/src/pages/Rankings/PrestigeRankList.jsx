@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { createElement, useState } from "react";
 import {
   Box,
   List,
@@ -12,14 +12,16 @@ import {
   Tooltip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { getBlessingIcon } from "../Prestige/blessingIcons";
+import { getBuildIcon } from "../Prestige/buildIcons";
 import { BLESSING_CATALOG } from "./blessingCatalog";
 
 const BUILD_TAG_MAP = {
-  breeze: { emoji: "🌬️", displayName: "疾風" },
-  torrent: { emoji: "🌊", displayName: "洪流" },
-  temperature: { emoji: "🌡️", displayName: "溫度" },
-  solitude: { emoji: "🏝️", displayName: "孤獨" },
+  breeze: { displayName: "疾風" },
+  torrent: { displayName: "洪流" },
+  temperature: { displayName: "溫度" },
+  solitude: { displayName: "孤獨" },
 };
 
 const MEDAL_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
@@ -29,7 +31,8 @@ function PrestigeStars({ prestigeCount, awakened }) {
   if (awakened) {
     return (
       <Chip
-        label="✨ 覺醒"
+        icon={<AutoAwesomeIcon />}
+        label="覺醒"
         size="small"
         sx={{
           background: "linear-gradient(135deg, #6c5ce7, #d63384)",
@@ -39,6 +42,7 @@ function PrestigeStars({ prestigeCount, awakened }) {
           color: "#fff",
           fontWeight: 600,
           fontSize: "0.7rem",
+          "& .MuiChip-icon": { color: "#fff" },
         }}
       />
     );
@@ -69,8 +73,8 @@ function BuildTagChip({ buildTag, blessingIds }) {
 
   if (ids.length === 0 && buildTag === null) return null;
 
-  const tag = BUILD_TAG_MAP[buildTag] ?? { emoji: null, displayName: "自選" };
-  const label = tag.emoji ? `${tag.emoji} ${tag.displayName}` : tag.displayName;
+  const tag = BUILD_TAG_MAP[buildTag] ?? { displayName: "自選" };
+  const buildIconType = getBuildIcon(buildTag);
 
   const tooltipLines = ids.map(id => BLESSING_CATALOG[id]?.displayName).filter(Boolean);
   const tooltipContent = tooltipLines.length > 0 ? tooltipLines.join(" / ") : "尚未取得祝福";
@@ -78,7 +82,8 @@ function BuildTagChip({ buildTag, blessingIds }) {
   return (
     <Tooltip title={tooltipContent} arrow disableTouchListener>
       <Chip
-        label={label}
+        icon={buildIconType ? createElement(buildIconType) : undefined}
+        label={tag.displayName}
         size="small"
         variant="outlined"
         sx={{ fontSize: "0.7rem", cursor: "default" }}

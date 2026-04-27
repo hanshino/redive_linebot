@@ -1,6 +1,8 @@
 import { Box, Typography, Chip, Grid, useMediaQuery } from "@mui/material";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { getStarConfig } from "./starColors";
 import { getBlessingIcon } from "./blessingIcons";
+import { getBuildIcon } from "./buildIcons";
 
 // ─── Build detection ──────────────────────────────────────────────────────────
 
@@ -11,10 +13,10 @@ import { getBlessingIcon } from "./blessingIcons";
 function detectBuilds(blessingIds) {
   const set = new Set(blessingIds);
   const builds = [];
-  if (set.has(2) && set.has(3)) builds.push({ key: "breeze", emoji: "🌬️", name: "疾風之道" });
-  if (set.has(4) && set.has(5)) builds.push({ key: "torrent", emoji: "🌊", name: "洪流之道" });
-  if (set.has(6) && set.has(7)) builds.push({ key: "temperature", emoji: "🌡️", name: "溫度兼融" });
-  if (!set.has(6)) builds.push({ key: "solitude", emoji: "🏝️", name: "孤獨之道" });
+  if (set.has(2) && set.has(3)) builds.push({ key: "breeze", name: "疾風之道" });
+  if (set.has(4) && set.has(5)) builds.push({ key: "torrent", name: "洪流之道" });
+  if (set.has(6) && set.has(7)) builds.push({ key: "temperature", name: "溫度兼融" });
+  if (!set.has(6)) builds.push({ key: "solitude", name: "孤獨之道" });
   return builds;
 }
 
@@ -43,13 +45,25 @@ export default function AwakenedView({ status }) {
           textAlign: "center",
         }}
       >
-        <Typography
-          component="div"
-          fontWeight={800}
-          sx={{ mb: 1, fontSize: { xs: "2rem", md: "2.75rem" } }}
+        <Box
+          sx={{
+            mb: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: { xs: 1, md: 1.5 },
+          }}
         >
-          ✨ 覺醒者 ✨
-        </Typography>
+          <AutoAwesomeIcon sx={{ fontSize: { xs: "1.75rem", md: "2.25rem" } }} />
+          <Typography
+            component="div"
+            fontWeight={800}
+            sx={{ fontSize: { xs: "2rem", md: "2.75rem" }, lineHeight: 1 }}
+          >
+            覺醒者
+          </Typography>
+          <AutoAwesomeIcon sx={{ fontSize: { xs: "1.75rem", md: "2.25rem" } }} />
+        </Box>
         <Typography variant="body1" sx={{ opacity: 0.9 }}>
           你已完成所有 5 道試煉
         </Typography>
@@ -153,16 +167,20 @@ export default function AwakenedView({ status }) {
                 解鎖 Build 成就
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {detectedBuilds.map(build => (
-                  <Chip
-                    key={build.key}
-                    label={`${build.emoji} ${build.name}`}
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                    sx={{ fontWeight: 600 }}
-                  />
-                ))}
+                {detectedBuilds.map(build => {
+                  const BuildIcon = getBuildIcon(build.key);
+                  return (
+                    <Chip
+                      key={build.key}
+                      icon={BuildIcon ? <BuildIcon /> : undefined}
+                      label={build.name}
+                      size="small"
+                      color="secondary"
+                      variant="outlined"
+                      sx={{ fontWeight: 600 }}
+                    />
+                  );
+                })}
               </Box>
             </Box>
           </Grid>

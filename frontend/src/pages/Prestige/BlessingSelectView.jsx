@@ -86,7 +86,7 @@ function FinalBlessingDialog({ open, blessing, onClose, onConfirm, confirming })
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>✨ 最終祝福：{blessing?.displayName}</DialogTitle>
+      <DialogTitle>最終祝福：{blessing?.displayName}</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
           完成後將進入<strong>覺醒終態</strong>，<strong>不再開放轉生</strong>。 5

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Box, Typography, LinearProgress, Alert, Button, Grid, useMediaQuery } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import BlockIcon from "@mui/icons-material/Block";
 import AlertDialog from "../../components/AlertDialog";
 import { forfeitTrial } from "../../services/prestige";
 import { getStarConfig } from "./starColors";
@@ -149,11 +151,12 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
             已失效 — 請放棄並重新挑戰
           </Alert>
         ) : (
-          <Typography
-            variant="caption"
+          <Box
             sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
               color: countdown.color,
-              fontWeight: countdown.urgent ? 700 : 400,
               ...(countdown.urgent && !reducedMotion
                 ? {
                     "@keyframes pulse": {
@@ -165,8 +168,14 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
                 : {}),
             }}
           >
-            ⏰ {countdown.text}
-          </Typography>
+            <AccessTimeIcon sx={{ fontSize: 14 }} />
+            <Typography
+              variant="caption"
+              sx={{ fontWeight: countdown.urgent ? 700 : 400, color: "inherit" }}
+            >
+              {countdown.text}
+            </Typography>
+          </Box>
         )}
 
         {/* Forfeit button */}
@@ -251,11 +260,12 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
             {countdown.expired ? (
               <Alert severity="error">已失效 — 請放棄並重新挑戰</Alert>
             ) : (
-              <Typography
-                variant="body2"
+              <Box
                 sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
                   color: countdown.color,
-                  fontWeight: countdown.urgent ? 700 : 400,
                   ...(countdown.urgent && !reducedMotion
                     ? {
                         "@keyframes pulse": {
@@ -267,8 +277,14 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
                     : {}),
                 }}
               >
-                ⏰ {countdown.text}
-              </Typography>
+                <AccessTimeIcon sx={{ fontSize: 16 }} />
+                <Typography
+                  variant="body2"
+                  sx={{ fontWeight: countdown.urgent ? 700 : 400, color: "inherit" }}
+                >
+                  {countdown.text}
+                </Typography>
+              </Box>
             )}
           </Box>
         </Grid>
@@ -279,9 +295,12 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
               {restrictionText && (
                 <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                    📋 期間限制
-                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <BlockIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                      期間限制
+                    </Typography>
+                  </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
                     {restrictionText}
                   </Typography>

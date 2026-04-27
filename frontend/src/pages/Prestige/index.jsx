@@ -15,6 +15,9 @@ import {
   Button,
   useMediaQuery,
 } from "@mui/material";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import ShieldIcon from "@mui/icons-material/Shield";
+import SpaIcon from "@mui/icons-material/Spa";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
 import HintSnackBar from "../../components/HintSnackBar";
@@ -46,12 +49,14 @@ function StatusBadge({ status, reducedMotion }) {
   if (awakened || prestigeCount >= 5) {
     return (
       <Chip
-        label="✨ 覺醒者"
+        icon={<AutoAwesomeIcon />}
+        label="覺醒者"
         size="small"
         sx={{
           fontWeight: 700,
           color: "#fff",
           background: reducedMotion ? "#6c5ce7" : "linear-gradient(90deg, #6c5ce7, #d63384)",
+          "& .MuiChip-icon": { color: "#fff" },
         }}
       />
     );
@@ -61,9 +66,10 @@ function StatusBadge({ status, reducedMotion }) {
     const { color } = getStarConfig(activeTrial.star);
     return (
       <Chip
-        label={`⚔️ ★${activeTrial.star} 試煉中`}
+        icon={<ShieldIcon />}
+        label={`★${activeTrial.star} 試煉中`}
         size="small"
-        sx={{ fontWeight: 700, color: color }}
+        sx={{ fontWeight: 700, color, "& .MuiChip-icon": { color } }}
         variant="outlined"
         color="default"
       />
@@ -71,7 +77,15 @@ function StatusBadge({ status, reducedMotion }) {
   }
 
   if (prestigeCount === 0) {
-    return <Chip label="🌱 蜜月中" size="small" color="success" sx={{ fontWeight: 700 }} />;
+    return (
+      <Chip
+        icon={<SpaIcon />}
+        label="蜜月中"
+        size="small"
+        color="success"
+        sx={{ fontWeight: 700 }}
+      />
+    );
   }
 
   return null;
