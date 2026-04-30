@@ -4,7 +4,11 @@ const ChatExpDaily = require("../../model/application/ChatExpDaily");
 const PrestigeTrial = require("../../model/application/PrestigeTrial");
 const UserBlessing = require("../../model/application/UserBlessing");
 const PrestigeBlessing = require("../../model/application/PrestigeBlessing");
+const UserPrestigeTrial = require("../../model/application/UserPrestigeTrial");
+const UserPrestigeHistory = require("../../model/application/UserPrestigeHistory");
 const MeTemplate = require("../../templates/application/Me");
+const PrestigeStatusTemplate = require("../../templates/application/Prestige/Status");
+const commonTemplate = require("../../templates/common");
 const { DefaultLogger } = require("../../util/Logger");
 const { getClient } = require("bottender");
 const mysql = require("../../util/mysql");
@@ -298,65 +302,122 @@ async function getQuestInfo(userId) {
 }
 
 /**
- * `!轉生狀態` — 多行式查詢自己當前轉生 / 試煉 / 祝福概況。
+ * Resolve the unconsumed passed trial (ready to be consumed by next prestige), if any.
+ */
+async function resolveReadyTrial(userId, allTrials) {
+  const passed = (await UserPrestigeTrial.listPassedByUserId(userId)) || [];
+  if (passed.length === 0) return null;
+  const consumed = (await UserPrestigeHistory.listByUserId(userId)) || [];
+  const consumedSet = new Set(consumed.map(h => h.trial_id));
+  const unconsumed = passed.find(p => !consumedSet.has(p.trial_id));
+  if (!unconsumed) return null;
+  const cfg = allTrials.find(t => t.id === unconsumed.trial_id);
+  if (!cfg) return null;
+  return { star: cfg.star, display_name: cfg.display_name };
+}
+
+function parseRestrictionMeta(raw) {
+  if (!raw) return null;
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `!轉生狀態` — Flex bubble of prestige progress (4 scenarios: honeymoon /
+ * in-trial / ready-to-prestige / awakened).
  * @param {import("bottender").LineContext} context
  */
 exports.showPrestigeStatus = async context => {
-  const userId = context.event.source.userId;
-  if (!userId) return;
+  try {
+    const userId = context.event.source.userId;
+    if (!userId) return;
 
-  const profile =
-    context.event.source.type === "user"
-      ? context.event.source
-      : await LineClient.getGroupMemberProfile(context.event.source.groupId, userId).catch(
-          () => null
-        );
-  const displayName = profile?.displayName || "你";
+    const profile =
+      context.event.source.type === "user"
+        ? context.event.source
+        : await LineClient.getGroupMemberProfile(context.event.source.groupId, userId).catch(
+            () => null
+          );
+    const displayName = profile?.displayName || "你";
+    const pictureUrl = profile?.pictureUrl;
 
-  const [chatRow, allTrials, allBlessings, ownedBlessingIds] = await Promise.all([
-    ChatUserData.findByUserId(userId),
-    PrestigeTrial.all(),
-    PrestigeBlessing.all(),
-    UserBlessing.listBlessingIdsByUserId(userId),
-  ]);
+    const [chatRow, expRows, allTrials, allBlessingDefs, ownedRows] = await Promise.all([
+      ChatUserData.findByUserId(userId),
+      ChatExpUnit.all(),
+      PrestigeTrial.all(),
+      PrestigeBlessing.all(),
+      UserBlessing.listByUserId(userId),
+    ]);
 
-  const prestigeCount = chatRow?.prestige_count ?? 0;
-  const awakened = prestigeCount >= PRESTIGE_CAP;
-  const activeTrialId = chatRow?.active_trial_id ?? null;
-  const activeTrialStartedAt = chatRow?.active_trial_started_at ?? null;
-  const activeTrialProgress = chatRow?.active_trial_exp_progress ?? 0;
+    const prestigeCount = chatRow?.prestige_count ?? 0;
+    const awakened = prestigeCount >= PRESTIGE_CAP;
+    const currentLevel = chatRow?.current_level ?? 0;
+    const currentExp = chatRow?.current_exp ?? 0;
+    const activeTrialId = chatRow?.active_trial_id ?? null;
+    const activeTrialStartedAt = chatRow?.active_trial_started_at ?? null;
+    const activeTrialProgress = chatRow?.active_trial_exp_progress ?? 0;
 
-  const lines = [`🪄 ${displayName} 的轉生狀態`];
+    const nowThreshold = ChatExpUnit.getTotalExpForLevel(currentLevel, expRows) ?? 0;
+    const nextThreshold = ChatExpUnit.getTotalExpForLevel(currentLevel + 1, expRows) ?? 0;
+    const expCurrent = Math.max(0, currentExp - nowThreshold);
+    const expNext = Math.max(0, nextThreshold - nowThreshold);
+    const expRate = expNext > 0 ? Math.round((expCurrent / expNext) * 100) : 0;
 
-  if (awakened) {
-    lines.push(`✨ 覺醒者（轉生 ${PRESTIGE_CAP} 次完成）`);
-  } else {
-    lines.push(`轉生次數：${prestigeCount} 次`);
-    if (prestigeCount === 0) {
-      lines.push("🌱 蜜月加成中");
+    const activeTrialCfg = activeTrialId ? allTrials.find(t => t.id === activeTrialId) : null;
+    const activeTrial = activeTrialCfg
+      ? {
+          ...activeTrialCfg,
+          restriction_meta: parseRestrictionMeta(activeTrialCfg.restriction_meta),
+        }
+      : null;
+
+    let activeTrialRemainingDays = null;
+    let activeTrialDeadlineLabel = null;
+    if (activeTrial && activeTrialStartedAt) {
+      const expiresAt = moment(activeTrialStartedAt).add(activeTrial.duration_days || 60, "days");
+      activeTrialRemainingDays = Math.max(0, expiresAt.diff(moment(), "days"));
+      activeTrialDeadlineLabel = expiresAt.format("MM/DD");
     }
+
+    const readyTrial = awakened ? null : await resolveReadyTrial(userId, allTrials);
+
+    const blessingDefById = new Map(allBlessingDefs.map(b => [b.id, b]));
+    const ownedBlessings = ownedRows
+      .map(r => blessingDefById.get(r.blessing_id))
+      .filter(Boolean)
+      .map(b => ({ slug: b.slug, display_name: b.display_name }));
+
+    const liffUri = commonTemplate.getLiffUri("full", "/prestige");
+    const liffUriSummary = `${liffUri}?view=summary`;
+
+    const flex = PrestigeStatusTemplate.build({
+      displayName,
+      pictureUrl,
+      prestigeCount,
+      awakened,
+      level: currentLevel,
+      expCurrent,
+      expNext,
+      expRate,
+      activeTrial,
+      activeTrialProgress,
+      activeTrialRemainingDays,
+      activeTrialDeadlineLabel,
+      readyTrial,
+      ownedBlessings,
+      liffUri,
+      liffUriSummary,
+    });
+
+    context.replyFlex(flex.altText, flex.contents);
+  } catch (e) {
+    console.error(e);
+    DefaultLogger.error(e);
   }
-
-  if (activeTrialId && !awakened) {
-    const cfg = allTrials.find(t => t.id === activeTrialId);
-    if (cfg) {
-      const expiresAt = activeTrialStartedAt
-        ? moment(activeTrialStartedAt).add(cfg.duration_days || 60, "days")
-        : null;
-      const remainingDays = expiresAt ? Math.max(0, expiresAt.diff(moment(), "days")) : null;
-      lines.push(
-        `進行中試煉：⚔️ ★${cfg.star} ${cfg.display_name}` +
-          `  進度 ${activeTrialProgress.toLocaleString()} / ${cfg.required_exp.toLocaleString()}` +
-          (remainingDays !== null ? `（剩 ${remainingDays} 天）` : "")
-      );
-    }
-  } else if (!awakened) {
-    lines.push("進行中試煉：—");
-  }
-
-  lines.push(`已取得祝福：${ownedBlessingIds.length} / ${allBlessings.length}`);
-
-  context.replyText(lines.join("\n"));
 };
 
 exports.api = {};
