@@ -65,10 +65,10 @@ describe("PrestigeTrialsSeeder", () => {
   it("has correct required_exp and star per spec", () => {
     const rows = Seeder.buildRows();
     const byId = Object.fromEntries(rows.map(r => [r.id, r]));
-    expect(byId[1]).toMatchObject({ star: 1, required_exp: 2000, duration_days: 60 });
-    expect(byId[2]).toMatchObject({ star: 2, required_exp: 3000, duration_days: 60 });
-    expect(byId[3]).toMatchObject({ star: 3, required_exp: 2500, duration_days: 60 });
-    expect(byId[4]).toMatchObject({ star: 4, required_exp: 2500, duration_days: 60 });
-    expect(byId[5]).toMatchObject({ star: 5, required_exp: 5000, duration_days: 60 });
+    expect(byId[1]).toMatchObject({ star: 1, required_exp: 10000, duration_days: 60 });
+    expect(byId[2]).toMatchObject({ star: 2, required_exp: 9000, duration_days: 60 });
+    expect(byId[3]).toMatchObject({ star: 3, required_exp: 12500, duration_days: 60 });
+    expect(byId[4]).toMatchObject({ star: 4, required_exp: 12500, duration_days: 60 });
+    expect(byId[5]).toMatchObject({ star: 5, required_exp: 10000, duration_days: 60 });
   });
 });

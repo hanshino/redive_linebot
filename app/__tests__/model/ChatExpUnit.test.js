@@ -5,7 +5,7 @@ const ROWS = [
   { unit_level: 1, total_exp: 3 },
   { unit_level: 10, total_exp: 270 },
   { unit_level: 50, total_exp: 6750 },
-  { unit_level: 100, total_exp: 27000 },
+  { unit_level: 100, total_exp: 130000 },
 ];
 
 describe("ChatExpUnit", () => {
@@ -22,7 +22,7 @@ describe("ChatExpUnit", () => {
     });
 
     it("caps at max level when exp >= max total_exp", () => {
-      expect(ChatExpUnit.getLevelFromExp(27000, ROWS)).toBe(100);
+      expect(ChatExpUnit.getLevelFromExp(130000, ROWS)).toBe(100);
       expect(ChatExpUnit.getLevelFromExp(999999, ROWS)).toBe(100);
     });
 
@@ -39,7 +39,7 @@ describe("ChatExpUnit", () => {
   describe("getTotalExpForLevel", () => {
     it("returns total_exp for a known level", () => {
       expect(ChatExpUnit.getTotalExpForLevel(50, ROWS)).toBe(6750);
-      expect(ChatExpUnit.getTotalExpForLevel(100, ROWS)).toBe(27000);
+      expect(ChatExpUnit.getTotalExpForLevel(100, ROWS)).toBe(130000);
     });
 
     it("returns null for an unknown level", () => {

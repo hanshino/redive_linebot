@@ -1,11 +1,12 @@
 // eslint-disable-next-line no-unused-vars
 const { Knex } = require("knex");
+const { buildRows } = require("../seeds/PrestigeTrialsSeeder");
 
 /**
  * @param {Knex} knex
  */
-exports.up = function (knex) {
-  return knex.schema.createTable("prestige_trials", table => {
+exports.up = async function (knex) {
+  await knex.schema.createTable("prestige_trials", table => {
     table.tinyint("id").unsigned().notNullable().primary().comment("1-5");
     table.string("slug", 30).notNullable().unique().comment("machine key");
     table.string("display_name", 20).notNullable();
@@ -17,6 +18,7 @@ exports.up = function (knex) {
     table.text("description").nullable();
     table.timestamps(true, true);
   });
+  await knex("prestige_trials").insert(buildRows());
 };
 
 /**

@@ -9,7 +9,7 @@ const redis = require("../../../src/util/redis");
 // 101-row curve used for level lookups in tests
 const EXP_UNIT_ROWS = Array.from({ length: 101 }, (_, i) => ({
   unit_level: i,
-  total_exp: Math.round(2.7 * i * i),
+  total_exp: Math.round(13 * i * i),
 }));
 
 const baseState = {
@@ -131,12 +131,12 @@ describe("pipeline.processBatch", () => {
     );
   });
 
-  it("caps current_exp at 27000 (Lv.100)", async () => {
-    loadSpy.mockResolvedValueOnce({ ...baseState, current_level: 99, current_exp: 26950 });
+  it("caps current_exp at 130000 (Lv.100)", async () => {
+    loadSpy.mockResolvedValueOnce({ ...baseState, current_level: 99, current_exp: 129950 });
     findByUserDateSpy.mockResolvedValueOnce(null);
     findByUserIdSpy.mockResolvedValueOnce({
       user_id: "Ua",
-      current_exp: 26950,
+      current_exp: 129950,
       active_trial_exp_progress: 0,
     });
 
@@ -144,25 +144,25 @@ describe("pipeline.processBatch", () => {
       { userId: "Ua", groupId: "Gx", ts: 1700000000000, timeSinceLastMsg: null, groupCount: 3 },
     ]);
 
-    // raw=90, effective=90, would push to 27040 but cap at 27000
+    // raw=90, effective=90, would push to 130040 but cap at 130000
     expect(upsertSpy).toHaveBeenCalledWith(
       "Ua",
-      expect.objectContaining({ current_exp: 27000, current_level: 100 })
+      expect.objectContaining({ current_exp: 130000, current_level: 100 })
     );
   });
 
   it("accumulates dailyBefore across multiple events for same user", async () => {
     loadSpy.mockResolvedValueOnce(baseState);
-    findByUserDateSpy.mockResolvedValueOnce({ raw_exp: 150, effective_exp: 150 });
+    findByUserDateSpy.mockResolvedValueOnce({ raw_exp: 350, effective_exp: 350 });
     findByUserIdSpy.mockResolvedValueOnce({
       user_id: "Ua",
       current_exp: 6750,
       active_trial_exp_progress: 0,
     });
 
-    // Two events, each raw=90; dailyBefore starts at 150
-    // Event 1: scaled=90, scaledBefore=150, diminish: 50 at 1.0 + 40 at 0.3 = 50+12=62, effective 62
-    // Event 2: scaled=90, scaledBefore=240, diminish: all at 0.3 = 27, effective 27
+    // Two events, each raw=90; dailyBefore starts at 350 (tier1 cap=400)
+    // Event 1: scaled=90, scaledBefore=350, diminish: 50 at 1.0 + 40 at 0.3 = 50+12=62, effective 62
+    // Event 2: scaled=90, scaledBefore=440, diminish: all at 0.3 = 27, effective 27
     // Total raw 180, total effective 89
     await pipeline.processBatch([
       { userId: "Ua", groupId: "Gx", ts: 1700000000000, timeSinceLastMsg: null, groupCount: 3 },

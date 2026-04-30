@@ -5,6 +5,7 @@ const CategoryModel = require("../model/application/AchievementCategory");
 const { DefaultLogger } = require("../util/Logger");
 const mysql = require("../util/mysql");
 const redis = require("../util/redis");
+const { LV_MAX_TOTAL_EXP } = require("../../seeds/ChatExpUnitSeeder");
 
 // --- In-memory cache for achievement definitions (24 rows, rarely changes) ---
 let achievementCache = null;
@@ -390,12 +391,12 @@ exports.batchEvaluate = async () => {
     ["chat_100", "chat_1000", "chat_5000"].includes(a.key)
   );
   if (chatAchievements.length > 0) {
-    // Lifetime XP = fully-banked prestige cycles (27000 XP each) + current cycle
-    // progress. Post-prestige `current_exp` resets to 0, so a raw current_exp
-    // query would revoke chat milestones on every prestige.
+    // Lifetime XP = fully-banked prestige cycles (LV_MAX_TOTAL_EXP per cycle) +
+    // current cycle progress. Post-prestige `current_exp` resets to 0, so a raw
+    // current_exp query would revoke chat milestones on every prestige.
     const chatUsers = await mysql("chat_user_data").select(
       "user_id",
-      mysql.raw("prestige_count * 27000 + current_exp AS lifetime_exp")
+      mysql.raw("prestige_count * ? + current_exp AS lifetime_exp", [LV_MAX_TOTAL_EXP])
     );
     const chatAchievementIds = chatAchievements.map(a => a.id);
 

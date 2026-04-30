@@ -39,13 +39,13 @@ describe("PrestigeBlessingsSeeder", () => {
     });
     expect(JSON.parse(byId[4].effect_meta)).toEqual({
       type: "diminish_tier_expand",
-      tier: "0-200",
-      to: 300,
+      tier: "0-400",
+      to: 600,
     });
     expect(JSON.parse(byId[5].effect_meta)).toEqual({
       type: "diminish_tier_expand",
-      tier: "200-500",
-      to: 600,
+      tier: "400-1000",
+      to: 1200,
     });
     expect(JSON.parse(byId[6].effect_meta)).toEqual({
       type: "group_bonus_slope",

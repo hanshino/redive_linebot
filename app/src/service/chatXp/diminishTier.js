@@ -6,8 +6,8 @@ function applyDiminish(incoming, dailyBefore, status) {
   if (incoming <= 0) return 0;
 
   const blessings = Array.isArray(status.blessings) ? status.blessings : [];
-  const tier1Upper = blessings.includes(4) ? 300 : 200;
-  const tier2Upper = blessings.includes(5) ? 600 : 500;
+  const tier1Upper = blessings.includes(4) ? 600 : 400;
+  const tier2Upper = blessings.includes(5) ? 1200 : 1000;
 
   let remaining = incoming;
   let cursor = dailyBefore;

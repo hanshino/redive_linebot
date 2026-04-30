@@ -681,11 +681,12 @@ describe("AchievementEngine", () => {
       UserProgressModel.upsert.mockResolvedValue();
     });
 
-    it("uses prestige_count * 27000 + current_exp AS lifetime_exp via mysql.raw", async () => {
+    it("uses prestige_count * ? + current_exp AS lifetime_exp via mysql.raw with LV_MAX_TOTAL_EXP binding", async () => {
       stubMysqlChain([]);
       await AchievementEngine.batchEvaluate();
       expect(mysql.raw).toHaveBeenCalledWith(
-        expect.stringContaining("prestige_count * 27000 + current_exp")
+        expect.stringContaining("prestige_count * ? + current_exp"),
+        [130000]
       );
     });
 
@@ -700,7 +701,7 @@ describe("AchievementEngine", () => {
     });
 
     it("unlocks all three chat tiers for a user with banked-cycle XP (>= 5000)", async () => {
-      stubMysqlChain([{ user_id: "Ubob", lifetime_exp: 27000 }]);
+      stubMysqlChain([{ user_id: "Ubob", lifetime_exp: 130000 }]);
 
       await AchievementEngine.batchEvaluate();
 
