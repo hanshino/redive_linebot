@@ -24,6 +24,9 @@ async function pushEvent(groupId, event) {
 }
 
 function formatMessage(event) {
+  if (event && event.flex && event.flex.altText && event.flex.contents) {
+    return { type: "flex", altText: event.flex.altText, contents: event.flex.contents };
+  }
   return { type: "text", text: event && event.text ? event.text : "[空事件]" };
 }
 

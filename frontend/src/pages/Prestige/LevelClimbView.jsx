@@ -1,7 +1,6 @@
 import {
   Box,
   Typography,
-  Button,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -11,7 +10,8 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const APPROX_MAX_EXP = 95_200;
+// Lv.100 cumulative XP under the current curve (round(13 * level^2) at level 100).
+const APPROX_MAX_EXP = 130_000;
 
 const FAQ_ITEMS = [
   {
@@ -56,12 +56,10 @@ export default function LevelClimbView({ status }) {
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           目前 Lv.{currentLevel}，累積 {currentExp.toLocaleString()} XP
         </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+          可在下方選擇試煉開始挑戰，期間 XP 同時計入等級與試煉條件。
+        </Typography>
       </Box>
-
-      {/* Disabled CTA */}
-      <Button variant="contained" disabled fullWidth>
-        達到 Lv.100 才能開啟轉生之路
-      </Button>
 
       {showOnboarding && (
         <Grid container spacing={{ xs: 1.5, md: 3 }}>
@@ -74,13 +72,13 @@ export default function LevelClimbView({ status }) {
               sx={{ m: 0, pl: 2.5, display: "flex", flexDirection: "column", gap: 0.75 }}
             >
               <Typography component="li" variant="body2">
-                爬到 Lv.100
+                從下方選一道試煉開始挑戰（不需等到 Lv.100）
               </Typography>
               <Typography component="li" variant="body2">
-                選擇一道試煉，在 60 天內完成目標 XP
+                試煉期間發話 XP 同時計入等級與試煉條件，60 天為期
               </Typography>
               <Typography component="li" variant="body2">
-                通過試煉後選擇祝福完成轉生，等級歸零
+                試煉通過、Lv.100 達成後即可選祝福完成轉生，等級歸零
               </Typography>
             </Box>
           </Grid>

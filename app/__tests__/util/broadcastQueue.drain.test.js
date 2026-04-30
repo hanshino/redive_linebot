@@ -28,6 +28,24 @@ describe("broadcastQueue.formatMessage", () => {
     expect(msg.type).toBe("text");
     expect(msg.text).toBe("[空事件]");
   });
+
+  it("produces a LINE flex message when event.flex is provided", () => {
+    const flex = {
+      altText: "alt",
+      contents: { type: "bubble", body: { type: "box", layout: "vertical", contents: [] } },
+    };
+    const msg = broadcastQueue.formatMessage({ type: "lv_50_cta", flex });
+    expect(msg).toEqual({ type: "flex", altText: "alt", contents: flex.contents });
+  });
+
+  it("falls back to text when flex is missing required fields", () => {
+    const msg = broadcastQueue.formatMessage({
+      type: "lv_50_cta",
+      flex: { altText: "alt" },
+      text: "fallback",
+    });
+    expect(msg).toEqual({ type: "text", text: "fallback" });
+  });
 });
 
 describe("broadcastQueue.drain", () => {

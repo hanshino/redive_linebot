@@ -1,3 +1,4 @@
+const { getClient } = require("bottender");
 const redis = require("../util/redis");
 const chatUserState = require("../util/chatUserState");
 const broadcastQueue = require("../util/broadcastQueue");
@@ -8,6 +9,9 @@ const UserPrestigeTrial = require("../model/application/UserPrestigeTrial");
 const PrestigeBlessing = require("../model/application/PrestigeBlessing");
 const UserBlessing = require("../model/application/UserBlessing");
 const UserPrestigeHistory = require("../model/application/UserPrestigeHistory");
+const TrialEnter = require("../templates/application/Prestige/TrialEnter");
+
+const LineClient = getClient("line");
 
 const PRESTIGE_CAP = 5;
 
@@ -34,6 +38,24 @@ function error(code, message) {
 async function resolveLastGroup(userId) {
   const v = await redis.get(`CHAT_USER_LAST_GROUP_${userId}`);
   return v || null;
+}
+
+async function resolveDisplayName(groupId, userId) {
+  try {
+    if (groupId) {
+      const member = await LineClient.getGroupMemberProfile(groupId, userId);
+      if (member?.displayName) return member.displayName;
+    }
+    const user = await LineClient.getUserProfile(userId);
+    return user?.displayName || "玩家";
+  } catch {
+    return "玩家";
+  }
+}
+
+function formatDeadline(startedAt, durationDays) {
+  const ms = (durationDays || 60) * 86_400_000;
+  return new Date(startedAt.getTime() + ms).toISOString().slice(0, 10);
 }
 
 /**
@@ -63,6 +85,22 @@ async function startTrial(userId, trialId) {
     throw error("ALREADY_PASSED", `Trial ${trialId} already passed`);
   }
 
+  // One-trial-per-prestige-cycle: any passed trial that hasn't been consumed
+  // by a prestige() call locks out new starts until the player prestiges.
+  if (passed.length > 0) {
+    const consumedRows = (await UserPrestigeHistory.listByUserId(userId)) || [];
+    const consumedSet = new Set(consumedRows.map(h => h.trial_id));
+    if (passed.some(p => !consumedSet.has(p.trial_id))) {
+      throw error("PENDING_PRESTIGE", "Must prestige before starting another trial");
+    }
+  }
+
+  // Level gate: trial selection is locked until Lv.50 every cycle, including
+  // the first one — keeps the milestone aligned with the Lv.50 CTA broadcast.
+  if ((row.current_level || 0) < 50) {
+    throw error("LEVEL_GATE", "Must reach Lv.50 to unlock trial selection");
+  }
+
   const now = new Date();
   await UserPrestigeTrial.model.create({
     user_id: userId,
@@ -81,10 +119,19 @@ async function startTrial(userId, trialId) {
   await chatUserState.invalidate(userId);
 
   const groupId = await resolveLastGroup(userId);
+  const displayName = await resolveDisplayName(groupId, userId);
+  const deadline = formatDeadline(now, trial.duration_days);
+  const flex = TrialEnter.build({
+    displayName,
+    slug: trial.slug,
+    star: trial.star,
+    trialName: trial.display_name,
+    deadline,
+  });
   await broadcastQueue.pushEvent(groupId, {
     type: "trial_enter",
     userId,
-    text: `踏入了 ★${trial.star} 的試煉`,
+    flex,
     payload: { trialId: trial.id, trialStar: trial.star, trialSlug: trial.slug },
   });
 
@@ -417,6 +464,7 @@ async function getPrestigeStatus(userId) {
     ownedBlessingDetails,
     passedTrialIds,
     passedTrials,
+    unconsumedTrialIds,
     hasUnconsumedPassedTrial: unconsumedTrialIds.length > 0,
   };
 }

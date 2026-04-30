@@ -20,10 +20,50 @@ const { computePerMsgXp } = require("./perMsgXp");
 const { applyDiminish } = require("./diminishTier");
 const { applyTrialAndPermanent } = require("./trialAndPermanent");
 const PrestigeService = require("../PrestigeService");
+const PrestigeTrial = require("../../model/application/PrestigeTrial");
+const UserPrestigeTrial = require("../../model/application/UserPrestigeTrial");
+const UserPrestigeHistory = require("../../model/application/UserPrestigeHistory");
 const broadcastQueue = require("../../util/broadcastQueue");
 const { DefaultLogger } = require("../../util/Logger");
+const { getClient } = require("bottender");
+const Lv50CTA = require("../../templates/application/Prestige/Lv50CTA");
+const Lv100CTA = require("../../templates/application/Prestige/Lv100CTA");
+const Lv100NoTrialCTA = require("../../templates/application/Prestige/Lv100NoTrialCTA");
+const LineClient = getClient("line");
 
-const LEVEL_CAP_EXP = 27000;
+const PRESTIGE_LIFF_PATH = "prestige";
+
+async function resolveProfile(groupId, userId) {
+  try {
+    if (groupId) {
+      const member = await LineClient.getGroupMemberProfile(groupId, userId);
+      if (member?.displayName) {
+        return { displayName: member.displayName, pictureUrl: member.pictureUrl };
+      }
+    }
+    const user = await LineClient.getUserProfile(userId);
+    return { displayName: user?.displayName || "玩家", pictureUrl: user?.pictureUrl };
+  } catch {
+    return { displayName: "玩家", pictureUrl: undefined };
+  }
+}
+
+async function resolveUnconsumedPassedTrialName(userId) {
+  try {
+    const passed = (await UserPrestigeTrial.listPassedByUserId(userId)) || [];
+    if (passed.length === 0) return null;
+    const consumed = (await UserPrestigeHistory.listByUserId(userId)) || [];
+    const consumedSet = new Set(consumed.map(h => h.trial_id));
+    const unconsumed = passed.find(p => !consumedSet.has(p.trial_id));
+    if (!unconsumed) return null;
+    const trial = await PrestigeTrial.findById(unconsumed.trial_id);
+    return trial?.display_name || null;
+  } catch {
+    return null;
+  }
+}
+
+const { LV_MAX_TOTAL_EXP: LEVEL_CAP_EXP } = require("../../../seeds/ChatExpUnitSeeder");
 
 async function getBaseXp() {
   const redisRate = await redis.get("CHAT_GLOBAL_RATE");
@@ -167,6 +207,7 @@ async function writeBatch(userId, state, batch) {
     prevExp,
     newExp,
     hadActiveTrial: Boolean(activeTrialId),
+    prestigeCount: existing?.prestige_count ?? 0,
   };
 }
 
@@ -180,13 +221,64 @@ async function onBatchWritten(userId, batchResult, groupId) {
   if (batchResult.hadActiveTrial) {
     await PrestigeService.checkTrialCompletion(userId, groupId);
   }
-  if (batchResult.prevLevel < 100 && batchResult.newLevel >= 100) {
-    await broadcastQueue.pushEvent(groupId, {
-      type: "lv_100_cta",
-      userId,
-      text: "已達成 Lv.100，可以前往 LIFF 進行轉生",
-      payload: { level: 100 },
+  const fireLv50 =
+    batchResult.prevLevel < 50 &&
+    batchResult.newLevel >= 50 &&
+    batchResult.prestigeCount === 0 &&
+    !batchResult.hadActiveTrial;
+  const fireLv100 = batchResult.prevLevel < 100 && batchResult.newLevel >= 100;
+
+  if (!fireLv50 && !fireLv100) return;
+
+  const { displayName, pictureUrl } = await resolveProfile(groupId, userId);
+
+  if (fireLv50) {
+    const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}/${PRESTIGE_LIFF_PATH}`;
+    const flex = Lv50CTA.build({
+      displayName,
+      pictureUrl,
+      level: batchResult.newLevel,
+      prestigeCount: batchResult.prestigeCount,
+      liffUri,
     });
+    await broadcastQueue.pushEvent(groupId, {
+      type: "lv_50_cta",
+      userId,
+      flex,
+      payload: { level: 50 },
+    });
+  }
+  if (fireLv100) {
+    const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}/${PRESTIGE_LIFF_PATH}`;
+    const passedTrialName = await resolveUnconsumedPassedTrialName(userId);
+    if (passedTrialName) {
+      const flex = Lv100CTA.build({
+        displayName,
+        pictureUrl,
+        prestigeCount: batchResult.prestigeCount,
+        passedTrialName,
+        liffUri,
+      });
+      await broadcastQueue.pushEvent(groupId, {
+        type: "lv_100_cta",
+        userId,
+        flex,
+        payload: { level: 100, prestigeCount: batchResult.prestigeCount, passedTrialName },
+      });
+    } else {
+      const flex = Lv100NoTrialCTA.build({
+        displayName,
+        pictureUrl,
+        prestigeCount: batchResult.prestigeCount,
+        liffUri,
+      });
+      await broadcastQueue.pushEvent(groupId, {
+        type: "lv_100_no_trial_cta",
+        userId,
+        flex,
+        payload: { level: 100, prestigeCount: batchResult.prestigeCount },
+      });
+    }
   }
 }
 

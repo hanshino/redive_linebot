@@ -197,14 +197,65 @@ function PrestigeStepper({ status }) {
 /**
  * Renders the appropriate subview based on server-side status.
  *
- * Six cases (priority evaluated top to bottom):
- *   A. awakened (prestigeCount >= 5)         → AwakenedView
- *   B. Lv=100, hasUnconsumedPassedTrial       → BlessingSelectView
- *   C. Lv=100, activeTrial present            → TrialProgressView
- *   D. Lv=100, idle                           → TrialSelectView
- *   E. Lv<100, activeTrial present            → LevelClimbView + TrialProgressView (compact)
- *   F. Lv<100, idle                           → LevelClimbView
+ * Eight cases (priority evaluated top to bottom):
+ *   A.   awakened (prestigeCount >= 5)               → AwakenedView
+ *   B.   Lv=100, hasUnconsumedPassedTrial             → BlessingSelectView
+ *   C.   Lv=100, activeTrial present                  → TrialProgressView
+ *   D.   Lv=100, idle                                 → TrialSelectView
+ *   E.   Lv<100, activeTrial present                  → LevelClimbView + TrialProgressView (compact)
+ *   F.   Lv<100, idle, hasUnconsumedPassedTrial       → LevelClimbView + PendingPrestigeBanner
+ *   G1.  Lv<50,  idle, no pending pass                → LevelClimbView + TrialLockedBanner
+ *   G2.  Lv 50–99, idle, no pending pass              → LevelClimbView + TrialSelectView
+ *
+ * One-trial-per-prestige-cycle: once a trial is passed, the player must
+ * prestige (consume the pass at Lv.100) before starting another. The Lv.50
+ * level gate applies on every cycle (including the first), keeping trial
+ * selection aligned with the Lv.50 CTA milestone broadcast.
  */
+const TRIAL_UNLOCK_LEVEL = 50;
+
+function TrialLockedBanner({ status }) {
+  const remaining = Math.max(TRIAL_UNLOCK_LEVEL - (status.currentLevel || 0), 0);
+  return (
+    <Alert icon={<ShieldIcon />} severity="info">
+      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+        再升 {remaining} 級即可挑試煉
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        達到 Lv.{TRIAL_UNLOCK_LEVEL} 解鎖試煉選擇 — 試煉期間 XP 同時計入等級與試煉條件，60 天為期。
+      </Typography>
+    </Alert>
+  );
+}
+function PendingPrestigeBanner({ status }) {
+  const { passedTrials = [], unconsumedTrialIds = [] } = status;
+  const consumedSet = new Set();
+  // unconsumedTrialIds is the source of truth; pick the matching passed trial entry.
+  const pending = passedTrials.find(
+    t => unconsumedTrialIds.includes(t.id) && !consumedSet.has(t.id)
+  );
+  const cfg = pending ? getStarConfig(pending.star) : null;
+  const label = pending ? `★${pending.star} ${pending.displayName}` : "上一道試煉";
+
+  return (
+    <Alert
+      icon={<ShieldIcon />}
+      severity="info"
+      sx={{
+        borderColor: cfg?.border || undefined,
+        "& .MuiAlert-icon": cfg ? { color: cfg.text } : undefined,
+      }}
+    >
+      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+        {label} 已通過，等待轉生
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        累積到 Lv.100 即可完成轉生並挑選祝福，下一道試煉會在轉生後解鎖。
+      </Typography>
+    </Alert>
+  );
+}
+
 function ActionCard({ status, onRefresh, onMutationError }) {
   const { awakened, prestigeCount, currentLevel, activeTrial, hasUnconsumedPassedTrial } = status;
 
@@ -243,8 +294,33 @@ function ActionCard({ status, onRefresh, onMutationError }) {
     );
   }
 
-  // Case F: still climbing
-  return <LevelClimbView {...sharedProps} />;
+  if (!isMaxLevel && hasUnconsumedPassedTrial) {
+    // Case F: climbing + waiting for prestige (next trial locked)
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <LevelClimbView {...sharedProps} />
+        <PendingPrestigeBanner status={status} />
+      </Box>
+    );
+  }
+
+  if (currentLevel < TRIAL_UNLOCK_LEVEL) {
+    // Case G1: climbing + trial selection locked until Lv.50
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <LevelClimbView {...sharedProps} />
+        <TrialLockedBanner status={status} />
+      </Box>
+    );
+  }
+
+  // Case G2: climbing + trial selection (XP double-counts during trials)
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <LevelClimbView {...sharedProps} />
+      <TrialSelectView {...sharedProps} />
+    </Box>
+  );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────

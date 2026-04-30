@@ -111,7 +111,8 @@ describe("PrestigeService — full lifecycle integration", () => {
     expect(status.availableTrials).toHaveLength(5);
     expect(status.availableBlessings).toHaveLength(7);
 
-    ChatUserData.findByUserId.mockResolvedValueOnce(freshUser);
+    // After climbing to Lv.50 (the trial-unlock threshold), user can pick a trial
+    ChatUserData.findByUserId.mockResolvedValueOnce({ ...freshUser, current_level: 50 });
     jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce(TRIAL_DEPARTURE);
     UserPrestigeTrial.listPassedByUserId.mockResolvedValueOnce([]);
     jest.spyOn(UserPrestigeTrial.model, "create").mockResolvedValueOnce(101);
@@ -151,7 +152,7 @@ describe("PrestigeService — full lifecycle integration", () => {
     const lv100User = {
       ...freshUser,
       current_level: 100,
-      current_exp: 27000,
+      current_exp: 130000,
     };
     ChatUserData.findByUserId.mockResolvedValueOnce(lv100User);
     jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce(BLESSING_LANG);

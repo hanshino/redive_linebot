@@ -2,6 +2,7 @@ const PrestigeService = require("../../src/service/PrestigeService");
 const ChatUserData = require("../../src/model/application/ChatUserData");
 const PrestigeTrial = require("../../src/model/application/PrestigeTrial");
 const UserPrestigeTrial = require("../../src/model/application/UserPrestigeTrial");
+const UserPrestigeHistory = require("../../src/model/application/UserPrestigeHistory");
 const chatUserState = require("../../src/util/chatUserState");
 const broadcastQueue = require("../../src/util/broadcastQueue");
 const redis = require("../../src/util/redis");
@@ -24,6 +25,7 @@ describe("PrestigeService.startTrial", () => {
     jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
       id: 1,
       slug: "departure",
+      display_name: "啟程",
       star: 1,
       required_exp: 2000,
       duration_days: 60,
@@ -56,7 +58,10 @@ describe("PrestigeService.startTrial", () => {
       expect.objectContaining({
         type: "trial_enter",
         userId: "Uabc",
-        text: "踏入了 ★1 的試煉",
+        flex: expect.objectContaining({
+          altText: expect.stringContaining("啟程"),
+          contents: expect.objectContaining({ type: "bubble", size: "deca" }),
+        }),
         payload: { trialId: 1, trialStar: 1, trialSlug: "departure" },
       })
     );
@@ -70,13 +75,16 @@ describe("PrestigeService.startTrial", () => {
     jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
       user_id: "Uabc",
       prestige_count: 0,
+      current_level: 50,
       active_trial_id: null,
     });
     jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
       id: 1,
       slug: "departure",
+      display_name: "啟程",
       star: 1,
       required_exp: 2000,
+      duration_days: 60,
     });
     jest.spyOn(UserPrestigeTrial, "listPassedByUserId").mockResolvedValueOnce([]);
     jest.spyOn(UserPrestigeTrial.model, "create").mockResolvedValueOnce(1);
@@ -159,6 +167,78 @@ describe("PrestigeService.startTrial", () => {
     await expect(PrestigeService.startTrial("Uabc", 1)).rejects.toMatchObject({
       code: "ALREADY_PASSED",
     });
+  });
+
+  it("throws LEVEL_GATE when current_level < 50", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      prestige_count: 0,
+      current_level: 49,
+      active_trial_id: null,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
+      id: 1,
+      slug: "departure",
+      star: 1,
+      required_exp: 2000,
+    });
+    jest.spyOn(UserPrestigeTrial, "listPassedByUserId").mockResolvedValueOnce([]);
+
+    await expect(PrestigeService.startTrial("Uabc", 1)).rejects.toMatchObject({
+      code: "LEVEL_GATE",
+    });
+  });
+
+  it("throws PENDING_PRESTIGE when a passed trial has not been consumed by prestige yet", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      prestige_count: 0,
+      active_trial_id: null,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
+      id: 2,
+      slug: "hardship",
+      star: 2,
+      required_exp: 3000,
+    });
+    jest
+      .spyOn(UserPrestigeTrial, "listPassedByUserId")
+      .mockResolvedValueOnce([{ id: 10, trial_id: 1, status: "passed" }]);
+    jest.spyOn(UserPrestigeHistory, "listByUserId").mockResolvedValueOnce([]);
+
+    await expect(PrestigeService.startTrial("Uabc", 2)).rejects.toMatchObject({
+      code: "PENDING_PRESTIGE",
+    });
+  });
+
+  it("permits a new trial when the previous pass has already been consumed by prestige", async () => {
+    jest.spyOn(ChatUserData, "findByUserId").mockResolvedValueOnce({
+      user_id: "Uabc",
+      prestige_count: 1,
+      current_level: 50,
+      active_trial_id: null,
+    });
+    jest.spyOn(PrestigeTrial, "findById").mockResolvedValueOnce({
+      id: 2,
+      slug: "hardship",
+      display_name: "刻苦",
+      star: 2,
+      required_exp: 3000,
+      duration_days: 60,
+    });
+    jest
+      .spyOn(UserPrestigeTrial, "listPassedByUserId")
+      .mockResolvedValueOnce([{ id: 10, trial_id: 1, status: "passed" }]);
+    jest
+      .spyOn(UserPrestigeHistory, "listByUserId")
+      .mockResolvedValueOnce([{ trial_id: 1, blessing_id: 1, prestige_count_after: 1 }]);
+    jest.spyOn(UserPrestigeTrial.model, "create").mockResolvedValueOnce(50);
+    jest.spyOn(ChatUserData, "upsert").mockResolvedValueOnce(1);
+    redis.get.mockResolvedValueOnce("Glast");
+
+    const result = await PrestigeService.startTrial("Uabc", 2);
+    expect(result.ok).toBe(true);
+    expect(result.trial.id).toBe(2);
   });
 });
 
@@ -421,7 +501,6 @@ describe("PrestigeService.checkTrialCompletion", () => {
 
 const PrestigeBlessing = require("../../src/model/application/PrestigeBlessing");
 const UserBlessing = require("../../src/model/application/UserBlessing");
-const UserPrestigeHistory = require("../../src/model/application/UserPrestigeHistory");
 
 describe("PrestigeService.prestige", () => {
   beforeEach(() => {
@@ -435,7 +514,7 @@ describe("PrestigeService.prestige", () => {
       user_id: "Uabc",
       prestige_count: 0,
       current_level: 100,
-      current_exp: 27000,
+      current_exp: 130000,
       active_trial_id: null,
       created_at: new Date("2026-04-01T00:00:00Z"),
     });
@@ -514,7 +593,7 @@ describe("PrestigeService.prestige", () => {
       user_id: "Uold",
       prestige_count: 4,
       current_level: 100,
-      current_exp: 27000,
+      current_exp: 130000,
       created_at: new Date("2026-01-01T00:00:00Z"),
     });
     jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
@@ -799,7 +878,7 @@ describe("PrestigeService.getPrestigeStatus", () => {
       user_id: "Upart",
       prestige_count: 2,
       current_level: 100,
-      current_exp: 27000,
+      current_exp: 130000,
       active_trial_id: null,
       created_at: new Date("2026-01-01T00:00:00Z"),
     });
@@ -839,7 +918,7 @@ describe("PrestigeService.getPrestigeStatus", () => {
       user_id: "Uready",
       prestige_count: 0,
       current_level: 100,
-      current_exp: 27000,
+      current_exp: 130000,
       active_trial_id: null,
       created_at: new Date("2026-01-01T00:00:00Z"),
     });
@@ -1025,7 +1104,7 @@ describe("PrestigeService.prestige — awakening build-combo trigger", () => {
       user_id: "Uold",
       prestige_count: 4,
       current_level: 100,
-      current_exp: 27000,
+      current_exp: 130000,
       created_at: new Date("2026-01-01T00:00:00Z"),
     });
     jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
@@ -1078,7 +1157,7 @@ describe("PrestigeService.prestige — awakening build-combo trigger", () => {
       user_id: "Umid",
       prestige_count: 3,
       current_level: 100,
-      current_exp: 27000,
+      current_exp: 130000,
       created_at: new Date("2026-01-01T00:00:00Z"),
     });
     jest.spyOn(PrestigeBlessing, "findById").mockResolvedValueOnce({
