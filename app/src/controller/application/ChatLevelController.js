@@ -1,5 +1,6 @@
 const ChatUserData = require("../../model/application/ChatUserData");
 const ChatExpUnit = require("../../model/application/ChatExpUnit");
+const ChatExpDaily = require("../../model/application/ChatExpDaily");
 const PrestigeTrial = require("../../model/application/PrestigeTrial");
 const UserBlessing = require("../../model/application/UserBlessing");
 const PrestigeBlessing = require("../../model/application/PrestigeBlessing");
@@ -37,7 +38,7 @@ function buildPrestigeFlags({ prestigeCount, awakened, activeTrialStar }) {
   const flags = [];
   if (awakened) flags.push("✨ 覺醒者");
   if (!awakened && activeTrialStar) flags.push(`⚔️ ★${activeTrialStar} 試煉中`);
-  if (!awakened && prestigeCount === 0) flags.push("🌱 蜜月中");
+  if (!awakened && prestigeCount === 0) flags.push("🌱 蜜月 +20% XP");
   if (!awakened && prestigeCount > 0) {
     flags.push(`${"★".repeat(prestigeCount)} 轉生 ${prestigeCount} 次`);
   }
@@ -51,6 +52,18 @@ function resolveActiveTrialStar(activeTrialId, allTrials) {
   if (!activeTrialId) return null;
   const cfg = allTrials.find(t => t.id === activeTrialId);
   return cfg ? cfg.star : null;
+}
+
+/**
+ * Mirror diminishTier.js tier-cap resolution for display purposes.
+ * Blessing 4 expands tier1 (0-400 → 0-600); blessing 5 expands tier2 (400-1000 → 400-1200).
+ */
+function resolveDiminishTiers(blessingIds) {
+  const ids = Array.isArray(blessingIds) ? blessingIds : [];
+  return {
+    tier1Upper: ids.includes(4) ? 600 : 400,
+    tier2Upper: ids.includes(5) ? 1200 : 1000,
+  };
 }
 
 /**
@@ -72,11 +85,16 @@ exports.showStatus = async (context, props) => {
       throw "userId or displayName is empty";
     }
 
-    const [chatRow, expRows, allTrials] = await Promise.all([
+    const today = moment().utcOffset(480).format("YYYY-MM-DD");
+    const [chatRow, expRows, allTrials, dailyRow, blessingIds] = await Promise.all([
       ChatUserData.findByUserId(userId),
       ChatExpUnit.all(),
       PrestigeTrial.all(),
+      ChatExpDaily.findByUserDate(userId, today),
+      UserBlessing.listBlessingIdsByUserId(userId),
     ]);
+    const dailyRaw = dailyRow?.raw_exp ?? 0;
+    const { tier1Upper, tier2Upper } = resolveDiminishTiers(blessingIds);
 
     const prestigeCount = chatRow?.prestige_count ?? 0;
     const currentLevel = chatRow?.current_level ?? 0;
@@ -169,6 +187,9 @@ exports.showStatus = async (context, props) => {
       lastHasNewDays: gachaHistory.hasNew,
       janken: { win: winCount, lose: loseCount, draw: drawCount, rate: winRate },
       subscriptionCards,
+      dailyRaw,
+      tier1Upper,
+      tier2Upper,
     });
 
     context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });

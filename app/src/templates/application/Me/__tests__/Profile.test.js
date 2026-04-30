@@ -55,9 +55,9 @@ describe("Me/Profile.build", () => {
   });
 
   it("renders 蜜月 flag when fresh user", () => {
-    const bubble = Profile.build({ ...baseInput, flags: ["🌱 蜜月中"] });
+    const bubble = Profile.build({ ...baseInput, flags: ["🌱 蜜月 +20% XP"] });
     const flagRow = findText(bubble, t => t.includes("蜜月"));
-    expect(flagRow).toBe("🌱 蜜月中");
+    expect(flagRow).toBe("🌱 蜜月 +20% XP");
   });
 
   it("joins multiple flags with middle dot", () => {
@@ -82,5 +82,59 @@ describe("Me/Profile.build", () => {
     });
     const flagRow = findText(bubble, t => t.includes("轉生"));
     expect(flagRow).toBe("★ 轉生 1 次");
+  });
+
+  describe("daily cap bar", () => {
+    it("omits the daily-cap bar when caps are missing", () => {
+      const bubble = Profile.build(baseInput);
+      const capText = findText(bubble, t => t.includes("今日獲取上限"));
+      expect(capText).toBeNull();
+    });
+
+    it("renders 滿速 zone when daily raw is below tier1", () => {
+      const bubble = Profile.build({
+        ...baseInput,
+        dailyRaw: 250,
+        tier1Upper: 400,
+        tier2Upper: 1000,
+      });
+      const labelText = findText(bubble, t => t.startsWith("今日獲取"));
+      expect(labelText).toBe("今日獲取上限");
+      const valueText = findText(bubble, t => /^\d+\s*\/\s*\d+/.test(t));
+      expect(valueText).toBe("250 / 1000 · 🟢 滿速");
+    });
+
+    it("renders 30% zone when daily raw is between tier1 and tier2", () => {
+      const bubble = Profile.build({
+        ...baseInput,
+        dailyRaw: 700,
+        tier1Upper: 400,
+        tier2Upper: 1000,
+      });
+      const valueText = findText(bubble, t => /^\d+\s*\/\s*\d+/.test(t));
+      expect(valueText).toBe("700 / 1000 · 🟡 30%");
+    });
+
+    it("renders 已封頂 zone when daily raw exceeds tier2", () => {
+      const bubble = Profile.build({
+        ...baseInput,
+        dailyRaw: 1500,
+        tier1Upper: 400,
+        tier2Upper: 1000,
+      });
+      const valueText = findText(bubble, t => /^\d+\s*\/\s*\d+/.test(t));
+      expect(valueText).toBe("1500 / 1000 · 🔴 已封頂");
+    });
+
+    it("uses expanded caps when blessings widen the tiers", () => {
+      const bubble = Profile.build({
+        ...baseInput,
+        dailyRaw: 500,
+        tier1Upper: 600, // blessing 4
+        tier2Upper: 1200, // blessing 5
+      });
+      const valueText = findText(bubble, t => /^\d+\s*\/\s*\d+/.test(t));
+      expect(valueText).toBe("500 / 1200 · 🟢 滿速");
+    });
   });
 });

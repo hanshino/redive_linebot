@@ -7,13 +7,13 @@ describe("ChatLevelController._internal.buildPrestigeFlags", () => {
   it("returns 蜜月 for fresh user (prestige_count=0, no trial)", () => {
     expect(
       buildPrestigeFlags({ prestigeCount: 0, awakened: false, activeTrialStar: null })
-    ).toEqual(["🌱 蜜月中"]);
+    ).toEqual(["🌱 蜜月 +20% XP"]);
   });
 
   it("stacks 蜜月 with active trial when prestige_count=0", () => {
     expect(buildPrestigeFlags({ prestigeCount: 0, awakened: false, activeTrialStar: 1 })).toEqual([
       "⚔️ ★1 試煉中",
-      "🌱 蜜月中",
+      "🌱 蜜月 +20% XP",
     ]);
   });
 

@@ -49,6 +49,9 @@ exports.buildBubbles = data => {
         signinDays: data.signinDays,
         subscriptionPanel: cards.length === 1 ? cards[0] : null,
         subscriptionBadge: null,
+        dailyRaw: data.dailyRaw,
+        tier1Upper: data.tier1Upper,
+        tier2Upper: data.tier2Upper,
       })
     );
   } else {
@@ -65,6 +68,9 @@ exports.buildBubbles = data => {
         signinDays: data.signinDays,
         subscriptionPanel: null,
         subscriptionBadge: { text: cards.map(c => c.titleText).join(" + ") },
+        dailyRaw: data.dailyRaw,
+        tier1Upper: data.tier1Upper,
+        tier2Upper: data.tier2Upper,
       })
     );
     bubbles.push(Subscription.build({ panels: cards }));
