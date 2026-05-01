@@ -33,8 +33,6 @@ function getTiers() {
   return FALLBACK_TIERS;
 }
 
-exports.RANK_TIERS = FALLBACK_TIERS; // back-compat for any external import
-
 exports.getRankTier = function (elo) {
   const tiers = getTiers();
   for (let i = tiers.length - 1; i >= 0; i--) {

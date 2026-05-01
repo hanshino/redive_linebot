@@ -1,3 +1,6 @@
+// Integration tests against the real default.json config.
+// Pure-unit tier tests with a mocked config live at
+// app/src/model/application/__tests__/JankenRating.test.js.
 const JankenRating = require("../../src/model/application/JankenRating");
 
 describe("JankenRating", () => {

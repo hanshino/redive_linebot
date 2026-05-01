@@ -1,3 +1,6 @@
+// Unit tests with mocked config — exercises getTiers() via the config-read path.
+// Companion integration tests (no mock, against real default.json) live at
+// app/__tests__/model/JankenRating.test.js.
 jest.mock("config", () => ({
   get: jest.fn(key => {
     if (key === "minigame.janken.elo.tiers") {
