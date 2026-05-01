@@ -35,3 +35,30 @@ exports.insertEvent = params => {
   }
   return model.create(payload);
 };
+
+exports.findInRange = ({ userId, from, to, limit = 1000, beforeId = null, beforeTs = null }) => {
+  let q = model.knex
+    .where({ user_id: userId })
+    .andWhere("ts", ">=", `${from} 00:00:00`)
+    .andWhere("ts", "<", `${to} 23:59:59.999`)
+    .orderBy("ts", "desc")
+    .orderBy("id", "desc")
+    .limit(limit);
+
+  if (beforeTs && beforeId) {
+    q = q.andWhere(builder => {
+      builder
+        .where("ts", "<", beforeTs)
+        .orWhere(b2 => b2.where("ts", "=", beforeTs).andWhere("id", "<", beforeId));
+    });
+  }
+  return q;
+};
+
+exports.findLatestByUser = userId =>
+  model.knex
+    .where({ user_id: userId })
+    .orderBy("ts", "desc")
+    .orderBy("id", "desc")
+    .limit(1)
+    .first();
