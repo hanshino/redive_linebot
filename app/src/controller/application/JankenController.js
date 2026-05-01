@@ -12,6 +12,9 @@ const uuid = require("uuid-random");
 const { DefaultLogger } = require("../../util/Logger");
 const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
+const JankenSeason = require("../../model/application/JankenSeason");
+const JankenSeasonSnapshot = require("../../model/application/JankenSeasonSnapshot");
+const JankenDailyRewardLog = require("../../model/application/JankenDailyRewardLog");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
 const ASSET_VERSION = Date.now();
@@ -47,6 +50,18 @@ async function queryRank(context) {
   const serverRank = totalGames > 0 ? await JankenRating.getServerRank(userId) : null;
   const winRate = totalGames > 0 ? Math.round((rating.win_count / totalGames) * 100) : 0;
 
+  const season = await JankenSeason.getActive();
+  const today = new Date().toISOString().slice(0, 10);
+  const todayRewardRow = await JankenDailyRewardLog.getByUserAndDate(userId, today);
+  const todayReward = todayRewardRow
+    ? { type: todayRewardRow.reward_type, amount: todayRewardRow.amount }
+    : null;
+  const lifetime = {
+    win: (rating.lifetime_win_count || 0) + rating.win_count,
+    lose: (rating.lifetime_lose_count || 0) + rating.lose_count,
+    draw: (rating.lifetime_draw_count || 0) + rating.draw_count,
+  };
+
   const rankCard = jankenTemplate.generateRankCard({
     rankLabel,
     rankImageKey,
@@ -62,6 +77,10 @@ async function queryRank(context) {
     serverRank,
     maxBet,
     baseUrl,
+    seasonId: season ? season.id : null,
+    seasonStartedAt: season ? season.started_at : null,
+    lifetime,
+    todayReward,
   });
 
   await context.replyFlex("猜拳段位", rankCard);
