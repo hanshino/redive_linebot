@@ -4,7 +4,13 @@ function applyTrialAndPermanent(effective, status) {
   else if (status.active_trial_star === 5) trialMult = 0.5;
 
   const permanent = Number(status.permanent_xp_multiplier) || 0;
-  return effective * trialMult * (1 + permanent);
+  const permanentMult = 1 + permanent;
+
+  return {
+    result: effective * trialMult * permanentMult,
+    trialMult,
+    permanentMult,
+  };
 }
 
 module.exports = { applyTrialAndPermanent };
