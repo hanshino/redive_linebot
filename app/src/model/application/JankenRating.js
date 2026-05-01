@@ -30,7 +30,7 @@ function getTiers() {
   try {
     const tiers = config.get("minigame.janken.elo.tiers");
     if (Array.isArray(tiers) && tiers.length > 0) return tiers;
-  } catch (_) {
+  } catch {
     /* config miss → fallback */
   }
   return FALLBACK_TIERS;
