@@ -1,6 +1,8 @@
 function computePerMsgXp({ base, cooldownRate, groupBonus, status }) {
-  const blessing1 = Array.isArray(status.blessings) && status.blessings.includes(1) ? 0.08 : 0;
-  return Math.round(base * cooldownRate * groupBonus * (1 + blessing1));
+  const hasBlessing1 = Array.isArray(status.blessings) && status.blessings.includes(1);
+  const blessing1Mult = hasBlessing1 ? 1.08 : 1.0;
+  const raw = Math.round(base * cooldownRate * groupBonus * blessing1Mult);
+  return { raw, blessing1Mult };
 }
 
 module.exports = { computePerMsgXp };
