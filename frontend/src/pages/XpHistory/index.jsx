@@ -14,7 +14,7 @@ import {
   Divider,
   Link,
 } from "@mui/material";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
 import api from "../../services/api";
