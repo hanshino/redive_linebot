@@ -15,28 +15,40 @@ const fillable = [
   "bounty",
 ];
 
-const RANK_TIERS = [
+const FALLBACK_TIERS = [
   { key: "beginner", name: "見習者", minElo: 0 },
-  { key: "challenger", name: "挑戰者", minElo: 1200 },
-  { key: "fighter", name: "強者", minElo: 1400 },
-  { key: "master", name: "達人", minElo: 1600 },
-  { key: "legend", name: "傳說", minElo: 1800 },
+  { key: "challenger", name: "挑戰者", minElo: 1100 },
+  { key: "fighter", name: "強者", minElo: 1250 },
+  { key: "master", name: "達人", minElo: 1400 },
+  { key: "legend", name: "傳說", minElo: 1550 },
 ];
 
-exports.RANK_TIERS = RANK_TIERS;
+function getTiers() {
+  try {
+    const tiers = config.get("minigame.janken.elo.tiers");
+    if (Array.isArray(tiers) && tiers.length > 0) return tiers;
+  } catch (_) {
+    /* config miss → fallback */
+  }
+  return FALLBACK_TIERS;
+}
+
+exports.RANK_TIERS = FALLBACK_TIERS; // back-compat for any external import
 
 exports.getRankTier = function (elo) {
-  for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
-    if (elo >= RANK_TIERS[i].minElo) return RANK_TIERS[i].key;
+  const tiers = getTiers();
+  for (let i = tiers.length - 1; i >= 0; i--) {
+    if (elo >= tiers[i].minElo) return tiers[i].key;
   }
   return "beginner";
 };
 
 exports.getRankInfo = function (elo) {
-  for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
-    if (elo >= RANK_TIERS[i].minElo) return RANK_TIERS[i];
+  const tiers = getTiers();
+  for (let i = tiers.length - 1; i >= 0; i--) {
+    if (elo >= tiers[i].minElo) return tiers[i];
   }
-  return RANK_TIERS[0];
+  return tiers[0];
 };
 
 exports.getSubTier = function (elo) {
@@ -62,10 +74,11 @@ exports.getKFactor = function (betAmount) {
 };
 
 exports.getNextTierElo = function (elo) {
+  const tiers = getTiers();
   const currentKey = exports.getRankTier(elo);
-  const idx = RANK_TIERS.findIndex(t => t.key === currentKey);
-  if (idx >= RANK_TIERS.length - 1) return null;
-  return RANK_TIERS[idx + 1].minElo;
+  const idx = tiers.findIndex(t => t.key === currentKey);
+  if (idx >= tiers.length - 1) return null;
+  return tiers[idx + 1].minElo;
 };
 
 exports.getRankImageKey = function (elo) {
