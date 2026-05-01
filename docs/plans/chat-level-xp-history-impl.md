@@ -92,7 +92,11 @@ const TABLE = "chat_exp_events";
  */
 exports.up = function (knex) {
   return knex.schema.alterTable(TABLE, table => {
-    table.decimal("base_xp", 4, 3).nullable().after("modifiers");
+    table
+      .decimal("base_xp", 6, 3)
+      .nullable()
+      .after("modifiers")
+      .comment("config snapshot of getBaseXp() at write time; XP points, not a ratio");
     table.decimal("blessing1_mult", 4, 3).nullable().after("base_xp");
     table.decimal("honeymoon_mult", 4, 3).nullable().after("blessing1_mult");
     table.decimal("diminish_factor", 4, 3).nullable().after("honeymoon_mult");

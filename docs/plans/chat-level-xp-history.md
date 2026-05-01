@@ -99,16 +99,18 @@ Self-view only. API enforces `req.userId === query.userId`. No leaderboard. No p
 
 ## 6. Schema changes
 
-Add six `decimal(4,3)` columns to `chat_exp_events` (nullable, default null) so existing rows stay valid:
+Add six numeric columns to `chat_exp_events` (nullable, default null) so existing rows stay valid:
 
-| column            | range examples           | source                                                   |
-|-------------------|--------------------------|----------------------------------------------------------|
-| `base_xp`         | 5.000 (config snapshot)  | `getBaseXp()` at batch time                              |
-| `blessing1_mult`  | 1.000 / 1.080            | `1 + 0.08` if blessings includes id 1                    |
-| `honeymoon_mult`  | 1.000 / 1.200            | `1.2` if `prestige_count === 0`                          |
-| `diminish_factor` | 1.000 / 0.300 / 0.030    | from refactored `applyDiminish`                          |
-| `trial_mult`      | 0.500 / 0.700 / 1.000    | from refactored `applyTrialAndPermanent`                 |
-| `permanent_mult`  | 1.000 / 1.050            | `1 + permanent_xp_multiplier`                            |
+| column            | type           | range examples           | source                                                   |
+|-------------------|----------------|--------------------------|----------------------------------------------------------|
+| `base_xp`         | `decimal(6,3)` | 5.000 (config snapshot)  | `getBaseXp()` at batch time — XP amount, not a ratio     |
+| `blessing1_mult`  | `decimal(4,3)` | 1.000 / 1.080            | `1 + 0.08` if blessings includes id 1                    |
+| `honeymoon_mult`  | `decimal(4,3)` | 1.000 / 1.200            | `1.2` if `prestige_count === 0`                          |
+| `diminish_factor` | `decimal(4,3)` | 1.000 / 0.300 / 0.030    | from refactored `applyDiminish`                          |
+| `trial_mult`      | `decimal(4,3)` | 0.500 / 0.700 / 1.000    | from refactored `applyTrialAndPermanent`                 |
+| `permanent_mult`  | `decimal(4,3)` | 1.000 / 1.050            | `1 + permanent_xp_multiplier`                            |
+
+`base_xp` uses the wider `decimal(6,3)` (max 999.999) because it carries an absolute XP amount sourced from `getBaseXp()`, which can be tuned at runtime via the Redis key `CHAT_GLOBAL_RATE`. The other five are dimensionless multipliers bounded under 1.5, so `decimal(4,3)` (max 9.999) is plenty.
 
 Identity: `raw_exp ≈ round(base_xp × cooldown_rate × group_bonus × blessing1_mult)`
 and `effective_exp ≈ round(raw_exp × honeymoon_mult × diminish_factor × trial_mult × permanent_mult)`.
