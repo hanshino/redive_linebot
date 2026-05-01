@@ -69,21 +69,38 @@ exports.payoutDaily = async function (rewardDate) {
 
   let credited = 0;
   for (const c of candidates) {
-    const inserted = await JankenDailyRewardLog.tryInsert({
-      user_id: c.user_id,
-      reward_date: rewardDate,
-      season_id: season.id,
-      reward_type: c.reward_type,
-      amount: c.amount,
-    });
-    if (inserted && c.amount > 0) {
-      await inventory.increaseGodStone({
-        userId: c.user_id,
+    if (c.amount <= 0) {
+      // log a 0-amount row for audit — still gated by unique key
+      await JankenDailyRewardLog.tryInsert({
+        user_id: c.user_id,
+        reward_date: rewardDate,
+        season_id: season.id,
+        reward_type: c.reward_type,
         amount: c.amount,
-        note: "janken_daily_rank_reward",
       });
-      credited += c.amount;
+      continue;
     }
+    await mysql.transaction(async trx => {
+      const inserted = await JankenDailyRewardLog.tryInsert(
+        {
+          user_id: c.user_id,
+          reward_date: rewardDate,
+          season_id: season.id,
+          reward_type: c.reward_type,
+          amount: c.amount,
+        },
+        trx
+      );
+      if (inserted) {
+        await inventory.increaseGodStone({
+          userId: c.user_id,
+          amount: c.amount,
+          note: "janken_daily_rank_reward",
+          trx,
+        });
+        credited += c.amount;
+      }
+    });
   }
 
   DefaultLogger.info(
@@ -110,11 +127,11 @@ exports.payoutSeasonEnd = async function (snapshotRows, seasonId, trx) {
     if (!bucket) continue;
     const amount = rewards[bucket] || 0;
     if (amount <= 0) continue;
-    if (trx) inventory.setTransaction(trx);
     await inventory.increaseGodStone({
       userId: row.user_id,
       amount,
       note: "janken_season_end_reward",
+      trx,
     });
     paid += amount;
   }

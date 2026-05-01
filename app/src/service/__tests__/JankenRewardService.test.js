@@ -15,6 +15,10 @@ describe("JankenRewardService.payoutDaily", () => {
     await mysql("janken_seasons").insert({ id: 1, started_at: new Date(), status: "active" });
   });
   afterAll(() => mysql.destroy());
+  afterEach(() => {
+    jest.dontMock("config");
+    jest.resetModules();
+  });
 
   test("dry-run when flag is false: no inventory, no log rows", async () => {
     await mysql("janken_rating").insert({ user_id: "U_T", elo: 1100, rank_tier: "challenger" });
@@ -65,6 +69,19 @@ describe("JankenRewardService.payoutDaily", () => {
       .where({ note: "janken_daily_rank_reward", userId: "U_FlagOn" })
       .first();
     expect(Number(stones.itemAmount)).toBe(500);
+  });
+  test("dry-run with no active players returns empty candidates", async () => {
+    // No janken_records inserted. Should return empty candidates with the active season id.
+    const result = await JankenRewardService.payoutDaily(yesterdayDateString());
+    expect(result.candidates).toEqual([]);
+    expect(result.season).toBe(1);
+  });
+
+  test("dry-run with no active season returns season:null", async () => {
+    await mysql("janken_seasons").update({ status: "closed", ended_at: new Date() });
+    const result = await JankenRewardService.payoutDaily(yesterdayDateString());
+    expect(result.season).toBeNull();
+    expect(result.candidates).toEqual([]);
   });
 });
 

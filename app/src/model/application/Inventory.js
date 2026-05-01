@@ -112,12 +112,14 @@ class Inventory extends base {
     ]);
   }
 
-  async increaseGodStone({ userId, amount, note }) {
-    return this.knex.insert([{ userId, itemId: 999, itemAmount: amount, note }]);
+  async increaseGodStone({ userId, amount, note, trx }) {
+    const db = trx ? trx(this.table) : this.knex;
+    return db.insert([{ userId, itemId: 999, itemAmount: amount, note }]);
   }
 
-  async decreaseGodStone({ userId, amount, note }) {
-    return this.knex.insert([{ userId, itemId: 999, itemAmount: `${-amount}`, note }]);
+  async decreaseGodStone({ userId, amount, note, trx }) {
+    const db = trx ? trx(this.table) : this.knex;
+    return db.insert([{ userId, itemId: 999, itemAmount: `${-amount}`, note }]);
   }
 }
 
