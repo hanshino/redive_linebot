@@ -23,7 +23,15 @@ import { getBlessingIcon } from "./blessingIcons";
 
 function BlessingCard({ blessing, BlessingIcon, onClick }) {
   return (
-    <Card variant="outlined" sx={{ height: "100%", borderRadius: 2 }}>
+    <Card
+      variant="outlined"
+      sx={{
+        height: "100%",
+        borderRadius: 2,
+        transition: theme => theme.transitions.create(["border-color", "box-shadow"]),
+        "&:hover": { borderColor: "primary.main" },
+      }}
+    >
       <CardActionArea onClick={onClick} sx={{ height: "100%", alignItems: "flex-start" }}>
         <CardContent
           sx={{
@@ -85,10 +93,16 @@ function FinalBlessingDialog({ open, blessing, onClose, onConfirm, confirming })
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+    <Dialog
+      open={open}
+      onClose={confirming ? undefined : handleClose}
+      maxWidth="xs"
+      fullWidth
+      aria-describedby="prestige-final-warning"
+    >
       <DialogTitle>最終祝福：{blessing?.displayName}</DialogTitle>
       <DialogContent>
-        <DialogContentText sx={{ mb: 2 }}>
+        <DialogContentText id="prestige-final-warning" sx={{ mb: 2 }}>
           完成後將進入<strong>覺醒終態</strong>，<strong>不再開放轉生</strong>。 5
           個祝福將永久鎖定，成為你的完整 build。
         </DialogContentText>
@@ -110,7 +124,9 @@ function FinalBlessingDialog({ open, blessing, onClose, onConfirm, confirming })
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose}>取消</Button>
+        <Button onClick={handleClose} disabled={confirming}>
+          取消
+        </Button>
         <Button
           onClick={handleConfirm}
           variant="contained"

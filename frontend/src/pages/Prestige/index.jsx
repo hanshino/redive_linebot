@@ -29,13 +29,14 @@ import TrialSelectView from "./TrialSelectView";
 import TrialProgressView from "./TrialProgressView";
 import BlessingSelectView from "./BlessingSelectView";
 import AwakenedView from "./AwakenedView";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const BASE_INTERVAL = 60_000;
-const TRIAL_STEP_LABELS = ["啟程", "刻苦", "律動", "孤鳴", "覺悟"];
-// Approximate total XP required to reach Lv.100 (display-only estimate)
-const APPROX_MAX_EXP = 95_200;
+import {
+  APPROX_MAX_EXP,
+  TRIAL_UNLOCK_LEVEL,
+  TRIAL_STEP_LABELS,
+  POLL_INTERVAL_MS,
+  AWAKENED_GRADIENT,
+  AWAKENED_FALLBACK,
+} from "./constants";
 
 // ─── StarBadge chip ───────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ function StatusBadge({ status, reducedMotion }) {
         sx={{
           fontWeight: 700,
           color: "#fff",
-          background: reducedMotion ? "#6c5ce7" : "linear-gradient(90deg, #6c5ce7, #d63384)",
+          background: reducedMotion ? AWAKENED_FALLBACK : AWAKENED_GRADIENT,
           "& .MuiChip-icon": { color: "#fff" },
         }}
       />
@@ -109,13 +110,13 @@ function StatusCard({ status, profile, reducedMotion }) {
     <Card variant="outlined" sx={{ borderRadius: 2 }}>
       <CardContent>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-          {profile?.pictureUrl && (
-            <Avatar
-              src={profile.pictureUrl}
-              alt={profile.displayName}
-              sx={{ width: 52, height: 52 }}
-            />
-          )}
+          <Avatar
+            src={profile?.pictureUrl}
+            alt={profile?.displayName ?? ""}
+            sx={{ width: 52, height: 52, fontWeight: 700 }}
+          >
+            {profile?.displayName?.[0] ?? "?"}
+          </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="subtitle1" fontWeight={700} noWrap>
               {profile?.displayName ?? "—"}
@@ -158,29 +159,55 @@ function StatusCard({ status, profile, reducedMotion }) {
 
 // ─── 5-Step Stepper ───────────────────────────────────────────────────────────
 
+/**
+ * Highlights `activeTrial.star` when one is in progress; otherwise hints
+ * the lowest non-passed star as "next up" — but only when the user can
+ * actually act on it (Lv≥50 and no pending pass blocking trial selection).
+ */
+function computeStepperActiveIndex({
+  activeTrial,
+  currentLevel,
+  passedStars,
+  hasUnconsumedPassedTrial,
+}) {
+  if (activeTrial) return activeTrial.star - 1;
+  if (currentLevel < TRIAL_UNLOCK_LEVEL) return -1;
+  if (hasUnconsumedPassedTrial) return -1;
+  for (let star = 1; star <= 5; star++) {
+    if (!passedStars.has(star)) return star - 1;
+  }
+  return -1;
+}
+
 function PrestigeStepper({ status }) {
-  const { passedTrials = [], activeTrial } = status;
+  const {
+    passedTrials = [],
+    activeTrial,
+    currentLevel = 0,
+    hasUnconsumedPassedTrial = false,
+  } = status;
 
-  // Which stars are passed?
   const passedStars = new Set(passedTrials.map(t => t.star));
+  const activeStepIndex = computeStepperActiveIndex({
+    activeTrial,
+    currentLevel,
+    passedStars,
+    hasUnconsumedPassedTrial,
+  });
 
-  const activeStepIndex = activeTrial ? activeTrial.star - 1 : -1;
-
-  // MUI Stepper: activeStep drives "completed" icons for steps before active.
-  // We want fine-grained control, so we use the completed prop on StepLabel.
   return (
     <Stepper alternativeLabel activeStep={activeStepIndex}>
       {TRIAL_STEP_LABELS.map((label, idx) => {
         const star = idx + 1;
         const isPassed = passedStars.has(star);
-        const isActive = activeTrial?.star === star;
+        const isActive = idx === activeStepIndex && !isPassed;
 
         return (
           <Step key={label} completed={isPassed}>
             <StepLabel
               StepIconProps={{
                 completed: isPassed,
-                active: isActive && !isPassed,
+                active: isActive,
               }}
             >
               <Typography variant="caption">{label}</Typography>
@@ -212,7 +239,6 @@ function PrestigeStepper({ status }) {
  * level gate applies on every cycle (including the first), keeping trial
  * selection aligned with the Lv.50 CTA milestone broadcast.
  */
-const TRIAL_UNLOCK_LEVEL = 50;
 
 function TrialLockedBanner({ status }) {
   const remaining = Math.max(TRIAL_UNLOCK_LEVEL - (status.currentLevel || 0), 0);
@@ -350,7 +376,7 @@ export default function Prestige() {
       setConnError(false);
       backoffRef.current = 0;
       if (s.activeTrial) {
-        timerRef.current = setTimeout(tick, BASE_INTERVAL);
+        timerRef.current = setTimeout(tick, POLL_INTERVAL_MS);
       }
     } catch {
       backoffRef.current += 1;
@@ -358,7 +384,7 @@ export default function Prestige() {
       // Retry with backoff only when a prior activeTrial was known and we haven't exhausted retries
       const prev = statusRef.current;
       if (prev?.activeTrial && backoffRef.current < 3) {
-        const delay = BASE_INTERVAL * Math.pow(2, Math.min(backoffRef.current, 2));
+        const delay = POLL_INTERVAL_MS * Math.pow(2, Math.min(backoffRef.current, 2));
         timerRef.current = setTimeout(tick, delay);
       }
     } finally {
@@ -376,7 +402,8 @@ export default function Prestige() {
   useEffect(() => {
     tick(); // fires once; self-schedules if activeTrial present
 
-    const onFocus = () => tick();
+    // visibilitychange covers both tab-switch and minimize; on modern browsers
+    // it fires alongside `focus`, so listening to focus too would double-poll.
     const onVis = () => {
       if (document.hidden) {
         clearTimeout(timerRef.current);
@@ -385,12 +412,10 @@ export default function Prestige() {
       }
     };
 
-    window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
       clearTimeout(timerRef.current);
-      window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [tick]);
@@ -398,7 +423,16 @@ export default function Prestige() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        maxWidth: { md: 1100 },
+        mx: "auto",
+        width: "100%",
+      }}
+    >
       <Box>
         <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
           轉生之路

@@ -3,6 +3,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { getStarConfig } from "./starColors";
 import { getBlessingIcon } from "./blessingIcons";
 import { getBuildIcon } from "./buildIcons";
+import { AWAKENED_GRADIENT, AWAKENED_FALLBACK } from "./constants";
 
 // ─── Build detection ──────────────────────────────────────────────────────────
 
@@ -36,9 +37,7 @@ export default function AwakenedView({ status }) {
       {/* Gradient banner */}
       <Box
         sx={{
-          background: reducedMotion
-            ? "#6c5ce7"
-            : "linear-gradient(135deg, #6c5ce7 0%, #d63384 100%)",
+          background: reducedMotion ? AWAKENED_FALLBACK : AWAKENED_GRADIENT,
           color: "#fff",
           borderRadius: 2,
           p: { xs: 3, md: 5 },

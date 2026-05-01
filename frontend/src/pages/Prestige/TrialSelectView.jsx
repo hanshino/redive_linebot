@@ -15,7 +15,15 @@ function TrialCard({ trial, onClick }) {
   const restrictionText = renderRestriction(trial.restrictionMeta);
 
   return (
-    <Card variant="outlined" sx={{ height: "100%", borderRadius: 2 }}>
+    <Card
+      variant="outlined"
+      sx={{
+        height: "100%",
+        borderRadius: 2,
+        transition: theme => theme.transitions.create(["border-color", "box-shadow"]),
+        "&:hover": { borderColor: "primary.main" },
+      }}
+    >
       <CardActionArea onClick={onClick} sx={{ height: "100%", alignItems: "flex-start" }}>
         <CardContent
           sx={{ display: "flex", flexDirection: "column", gap: 0.5, pb: "12px !important" }}

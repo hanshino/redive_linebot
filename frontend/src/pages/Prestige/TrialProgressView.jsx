@@ -7,6 +7,7 @@ import AlertDialog from "../../components/AlertDialog";
 import { forfeitTrial } from "../../services/prestige";
 import { getStarConfig } from "./starColors";
 import { renderRestriction, renderReward } from "./trialMeta";
+import { PULSE_ANIMATION_SX } from "./constants";
 
 // ─── Countdown helpers ────────────────────────────────────────────────────────
 
@@ -72,6 +73,9 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
 
   const { star, displayName, requiredExp, progress, expiresAt, restrictionMeta, rewardMeta } =
     activeTrial;
+  // starColor is a theme token string (e.g. "warning.main") — relies on MUI
+  // sx resolving theme tokens inside nested selectors. Don't pass it to a raw
+  // CSS property outside `sx` without `theme.palette.<x>.main` lookup.
   const { color: starColor, tierLabel } = getStarConfig(star);
 
   const xpPercent = Math.min((progress / requiredExp) * 100, 100);
@@ -157,15 +161,7 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
               alignItems: "center",
               gap: 0.5,
               color: countdown.color,
-              ...(countdown.urgent && !reducedMotion
-                ? {
-                    "@keyframes pulse": {
-                      "0%, 100%": { opacity: 1 },
-                      "50%": { opacity: 0.4 },
-                    },
-                    animation: "pulse 2s ease-in-out infinite",
-                  }
-                : {}),
+              ...(countdown.urgent && !reducedMotion ? PULSE_ANIMATION_SX : {}),
             }}
           >
             <AccessTimeIcon sx={{ fontSize: 14 }} />
@@ -217,17 +213,19 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
         gap: 2,
       }}
     >
-      {/* Header: star + tier + name */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-        <Typography variant="caption" sx={{ color: starColor, fontWeight: 700, fontSize: 15 }}>
-          {"★".repeat(star) + "☆".repeat(5 - star)}
+      {/* Header: trial name (primary) on top; star + tier underneath as supporting meta */}
+      <Box>
+        <Typography variant="h6" component="div" fontWeight={700}>
+          {displayName}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {tierLabel}
-        </Typography>
-        <Typography variant="subtitle1" fontWeight={700}>
-          · {displayName}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.25 }}>
+          <Typography variant="body2" sx={{ color: starColor, fontWeight: 700 }}>
+            {"★".repeat(star) + "☆".repeat(5 - star)}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {tierLabel}
+          </Typography>
+        </Box>
       </Box>
 
       <Grid container spacing={{ xs: 2, md: 3 }}>
@@ -266,15 +264,7 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
                   alignItems: "center",
                   gap: 0.5,
                   color: countdown.color,
-                  ...(countdown.urgent && !reducedMotion
-                    ? {
-                        "@keyframes pulse": {
-                          "0%, 100%": { opacity: 1 },
-                          "50%": { opacity: 0.4 },
-                        },
-                        animation: "pulse 2s ease-in-out infinite",
-                      }
-                    : {}),
+                  ...(countdown.urgent && !reducedMotion ? PULSE_ANIMATION_SX : {}),
                 }}
               >
                 <AccessTimeIcon sx={{ fontSize: 16 }} />
@@ -325,7 +315,7 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
         )}
       </Grid>
 
-      <Box>
+      <Box sx={{ mt: 1 }}>
         <Button
           variant="outlined"
           color="error"

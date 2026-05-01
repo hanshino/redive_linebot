@@ -10,6 +10,7 @@ import {
   Collapse,
   Typography,
   Tooltip,
+  useTheme,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -24,7 +25,13 @@ const BUILD_TAG_MAP = {
   solitude: { displayName: "孤獨" },
 };
 
-const MEDAL_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
+// Per-mode medal palette: light mode keeps the saturated metallics;
+// dark mode dims them so they don't bloom against dark surfaces.
+const MEDAL_COLORS_BY_MODE = {
+  light: ["#FFD700", "#C0C0C0", "#CD7F32"],
+  dark: ["#D4AF37", "#A8A8A8", "#A05A2C"],
+};
+const DEFAULT_AVATAR_COLOR = { light: "#90a4ae", dark: "#546e7a" };
 
 // Sub-component: prestige star visualization or awakened chip
 function PrestigeStars({ prestigeCount, awakened }) {
@@ -35,7 +42,8 @@ function PrestigeStars({ prestigeCount, awakened }) {
         label="覺醒"
         size="small"
         sx={{
-          background: "linear-gradient(135deg, #6c5ce7, #d63384)",
+          // Mirrors Prestige page's AWAKENED_GRADIENT / AWAKENED_FALLBACK
+          background: "linear-gradient(135deg, #6c5ce7 0%, #d63384 100%)",
           "@media (prefers-reduced-motion: reduce)": {
             background: "#6c5ce7",
           },
@@ -86,7 +94,11 @@ function BuildTagChip({ buildTag, blessingIds }) {
         label={tag.displayName}
         size="small"
         variant="outlined"
-        sx={{ fontSize: "0.7rem", cursor: "default" }}
+        // Inherit cursor from the parent ListItemButton (pointer) so the
+        // whole row reads as one tappable target. Tooltip still works on
+        // desktop hover; mobile users get the expand-row affordance instead.
+        sx={{ fontSize: "0.7rem", cursor: "inherit" }}
+        aria-label={`Build：${tag.displayName}，展開查看祝福`}
       />
     </Tooltip>
   );
@@ -123,9 +135,14 @@ function BlessingsDetail({ blessingIds }) {
 
 // Main component: ranked list with prestige + build info
 export default function PrestigeRankList({ rows }) {
+  const theme = useTheme();
   const [expanded, setExpanded] = useState(null);
 
   if (!rows?.length) return null;
+
+  const mode = theme.palette.mode === "dark" ? "dark" : "light";
+  const medalColors = MEDAL_COLORS_BY_MODE[mode];
+  const defaultAvatarColor = DEFAULT_AVATAR_COLOR[mode];
 
   const handleToggle = rank => {
     setExpanded(prev => (prev === rank ? null : rank));
@@ -143,7 +160,7 @@ export default function PrestigeRankList({ rows }) {
         {rows.map((row, i) => {
           const rank = i + 1;
           const isExpanded = expanded === rank;
-          const avatarColor = i < 3 ? MEDAL_COLORS[i] : "#90a4ae";
+          const avatarColor = i < 3 ? medalColors[i] : defaultAvatarColor;
           const blessingIds = row.blessingIds ?? [];
 
           return (

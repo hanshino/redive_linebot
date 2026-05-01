@@ -7,11 +7,9 @@ import {
   Grid,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { APPROX_MAX_EXP } from "./constants";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-// Lv.100 cumulative XP under the current curve (round(13 * level^2) at level 100).
-const APPROX_MAX_EXP = 130_000;
 
 const FAQ_ITEMS = [
   {
@@ -31,10 +29,13 @@ const FAQ_ITEMS = [
 // ─── LevelClimbView ───────────────────────────────────────────────────────────
 
 export default function LevelClimbView({ status }) {
-  const { currentLevel, currentExp, prestigeCount } = status;
+  const { currentLevel, currentExp, prestigeCount, activeTrial, hasUnconsumedPassedTrial } = status;
 
   const remaining = Math.max(APPROX_MAX_EXP - currentExp, 0);
-  const showOnboarding = prestigeCount === 0 && currentLevel === 0;
+  // Show FAQ to anyone still in their first cycle who isn't already mid-trial
+  // and doesn't have a pending pass — this includes lapsed climbers, not just
+  // brand-new Lv.0 users.
+  const showOnboarding = prestigeCount === 0 && !activeTrial && !hasUnconsumedPassedTrial;
 
   return (
     <Box
