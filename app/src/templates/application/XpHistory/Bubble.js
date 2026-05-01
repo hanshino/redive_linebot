@@ -223,7 +223,6 @@ function buildLastEventCard(ev, groupName) {
             layout: "horizontal",
             spacing: "xs",
             margin: "sm",
-            wrap: true,
             contents: buildLastEventChips(ev),
           },
         ],
