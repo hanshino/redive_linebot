@@ -10,11 +10,15 @@ const moment = require("moment");
 const mysql = require("../src/util/mysql");
 const redis = require("../src/util/redis");
 const { DefaultLogger } = require("../src/util/Logger");
+const {
+  LEGACY_TIERS,
+  SENTINEL_NOTE,
+} = require("../migrations/20260501150000_grant_legacy_tier_achievements");
 
 const LEGACY_TABLE = "chat_user_data_legacy_snapshot";
 const NEW_TABLE = "chat_user_data";
 const PAUSE_FLAG = "CHAT_XP_PAUSED";
-const PIONEER_ACHIEVEMENT_KEY = "prestige_pioneer";
+const TIER_KEYS = LEGACY_TIERS.map(t => t.key);
 
 class RollbackAbort extends Error {
   constructor(message) {
@@ -47,14 +51,14 @@ async function assertSchemaForRollback() {
   }
 }
 
-async function findPioneerAchievementId() {
-  const row = await mysql("achievements").where({ key: PIONEER_ACHIEVEMENT_KEY }).first("id");
-  if (!row) {
-    throw new RollbackAbort(
-      `achievements row with key='${PIONEER_ACHIEVEMENT_KEY}' missing — cannot revoke.`
-    );
+async function findTierAchievementIds() {
+  const rows = await mysql("achievements").whereIn("key", TIER_KEYS).select("id", "key");
+  if (rows.length !== TIER_KEYS.length) {
+    const found = rows.map(r => r.key);
+    const missing = TIER_KEYS.filter(k => !found.includes(k));
+    throw new RollbackAbort(`achievements rows missing for keys: ${missing.join(", ")}.`);
   }
-  return row.id;
+  return rows.map(r => r.id);
 }
 
 async function swapSchema() {
@@ -65,8 +69,12 @@ async function swapSchema() {
   await mysql.schema.renameTable(LEGACY_TABLE, NEW_TABLE);
 }
 
-async function revokePioneerAchievement(achievementId) {
-  return mysql("user_achievements").where({ achievement_id: achievementId }).del();
+async function revokeTierAchievements(achievementIds) {
+  return mysql("user_achievements").whereIn("achievement_id", achievementIds).del();
+}
+
+async function deleteSentinelInventory() {
+  return mysql("Inventory").where({ note: SENTINEL_NOTE }).del();
 }
 
 function writeAuditLog(audit) {
@@ -87,26 +95,28 @@ async function main() {
   const audit = {
     started_at: new Date().toISOString(),
     finished_at: null,
-    pioneer_achievement_id: null,
+    tier_achievement_ids: [],
     revoked_count: 0,
+    inventory_revoked_count: 0,
     schema_swapped: false,
   };
 
   await assertPaused();
   await assertSchemaForRollback();
 
-  const achievementId = await findPioneerAchievementId();
-  audit.pioneer_achievement_id = achievementId;
+  const achievementIds = await findTierAchievementIds();
+  audit.tier_achievement_ids = achievementIds;
 
   await swapSchema();
   audit.schema_swapped = true;
 
-  audit.revoked_count = await revokePioneerAchievement(achievementId);
+  audit.revoked_count = await revokeTierAchievements(achievementIds);
+  audit.inventory_revoked_count = await deleteSentinelInventory();
 
   audit.finished_at = new Date().toISOString();
   const logPath = writeAuditLog(audit);
   DefaultLogger.info(
-    `[rollback-prestige-system] done. revoked=${audit.revoked_count}${logPath ? ` log=${logPath}` : ""}`
+    `[rollback-prestige-system] done. revoked=${audit.revoked_count} inventory=${audit.inventory_revoked_count}${logPath ? ` log=${logPath}` : ""}`
   );
 
   return audit;

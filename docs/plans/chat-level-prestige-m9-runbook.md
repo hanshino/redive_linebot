@@ -30,25 +30,23 @@ mysql -h staging-host -u admin -p Princess < prod_snapshot.sql
 # 2. Pause writes on staging (one-shot)
 redis-cli -h staging-redis SET CHAT_XP_PAUSED 1
 
-# 3. Run knex migrations (M1 + downstream)
+# 3. Run knex migrations (schema rebuild + 3-tier achievement grant in one pass)
 docker exec staging-bot yarn migrate
+# → final migration stdout includes:
+#   [grant_legacy_tier_achievements] seeded=<N> prestige_pioneer=<lv100> legacy_lv80=<lv80> legacy_lv50=<lv50>
 
-# 4. Run the migration script
-docker exec staging-bot node bin/migrate-prestige-system.js
-# → expected stdout: "[migrate-prestige-system] done. snapshot=22131 seeded=22131 pioneers=82 unlocked=82 already=0 errors=0"
+# 4. Verify (see Section 5 — same SQL block applies)
 
-# 5. Verify (see Section 5 — same SQL block applies)
-
-# 6. Run the rollback to confirm the reversal works
+# 5. Run the rollback to confirm the reversal works
 docker exec staging-bot node bin/rollback-prestige-system.js
-# → expected stdout: "[rollback-prestige-system] done. revoked=82"
+# → expected stdout: "[rollback-prestige-system] done. revoked=<N> inventory=<N>"
 
-# 7. Re-verify legacy schema is back:
+# 6. Re-verify legacy schema is back:
 mysql -h staging-host -e "DESCRIBE Princess.chat_user_data" \
   | grep -E "(experience|rank)"   # should show legacy columns
 ```
 
-If any step deviates from expected output, **stop** and investigate before scheduling T-0. Do not proceed if pioneer count differs by more than ±5 from the spec's 82 (caused by drift since 2026-04-23 — acceptable; spike beyond ±20 means the threshold needs revisiting).
+If any step deviates from expected output, **stop** and investigate before scheduling T-0. Do not proceed if `prestige_pioneer` count differs by more than ±5 from the spec's 82 (caused by drift since 2026-04-23 — acceptable; spike beyond ±20 means the threshold needs revisiting).
 
 ---
 
@@ -79,30 +77,26 @@ redis-cli -h prod-redis LLEN CHAT_EXP_RECORD   # → 0 within ~5 min
 docker exec redive_linebot-bot-1 yarn migrate
 ```
 
-This executes the 11 migrations from `app/migrations/2026042315*.js` and `app/migrations/20260424154256_seed_prestige_achievements.js`. The first one renames `chat_user_data` → `chat_user_data_legacy_snapshot` and recreates an empty `chat_user_data`. Subsequent migrations add the trial / blessing / event tables.
+This executes 13 migrations in a single batch:
 
-### 2.4 Run the migration script
+- `2026042315*.js` — schema rebuild (rename old `chat_user_data` → `chat_user_data_legacy_snapshot`, recreate empty new table, add trial / blessing / event tables, drop chat title tables, inline-seed `chat_exp_unit` / `prestige_trials` / `prestige_blessings` reference data).
+- `20260424154256_seed_prestige_achievements.js` — seeds the 7 prestige + legacy-tier achievement rows.
+- `20260501112206_add_xp_breakdown_columns_to_chat_exp_events.js` — adds breakdown columns to events table.
+- `20260501150000_grant_legacy_tier_achievements.js` — **the data cut-over**: seeds 23k empty `chat_user_data` rows from the legacy snapshot, then grants 3-tier memorial achievements (`prestige_pioneer` Lv.100+, `legacy_lv80` Lv.80+, `legacy_lv50` Lv.50+) plus the matching `Inventory` ledger rows tagged with the sentinel note `成就獎勵 [legacy-tier-migration-2026-05-01]`. Wrapped in a single transaction so partial failure rolls everything back.
 
-```bash
-docker exec redive_linebot-bot-1 node bin/migrate-prestige-system.js
+Expected stdout near the end:
+
+```
+[grant_legacy_tier_achievements] seeded=23091 prestige_pioneer=82 legacy_lv80=~250 legacy_lv50=2240
 ```
 
-Expected stdout (counts will drift slightly):
-```
-[migrate-prestige-system] user-key strategy: direct
-[migrate-prestige-system] done. snapshot=22131 seeded=22131 pioneers=82 unlocked=82 already=0 errors=0 log=/app/logs/migrate-prestige-20260425-2130.log
-```
+The migration auto-skips on a fresh DB (no `chat_user_data_legacy_snapshot`) — safe to re-run on dev/CI without a legacy snapshot.
 
-Audit log is written to `app/logs/migrate-prestige-<TS>.log`. Copy it out:
-```bash
-docker cp redive_linebot-bot-1:/app/logs/migrate-prestige-<TS>.log ./
-```
-
-### 2.5 Deploy new code
+### 2.4 Deploy new code
 
 Update the Portainer stack `redive_linebot` to the merged `main` image. This rolls bot + worker + frontend together. Wait for the stack to converge (`docker ps` shows all three at "Up" status).
 
-### 2.6 Unset the pause flag
+### 2.5 Unset the pause flag
 
 ```bash
 redis-cli -h prod-redis DEL CHAT_XP_PAUSED
@@ -191,14 +185,19 @@ docker logs redive_linebot-worker-1 --tail 30 | grep -E "(Trial Expiry|Broadcast
 
 ## 4. Abort / rollback decision tree
 
-### 4.1 If the migration script aborts before completion
+### 4.1 If `yarn migrate` aborts mid-batch
+
+The grant-tier migration runs inside a single `knex.transaction`, so any failure
+within `up` rolls back its own work. Earlier batch-115 migrations may already
+have succeeded (knex commits each migration individually) — check the
+`knex_migrations` table to see which point we stopped at.
 
 | Symptom | Action |
 |---|---|
-| `MigrationAbort: CHAT_XP_PAUSED is not set` | Re-run Section 2.1, then rerun the script. |
-| `MigrationAbort: chat_user_data_legacy_snapshot not found` | The knex migrations didn't run. Re-run Section 2.3, then rerun the script. |
-| `MigrationAbort: cannot resolve user identity` | The legacy table has unexpected columns. STOP. Restore from the pre-T-0 backup and investigate. |
-| Per-pioneer error in audit log only | Acceptable. The script completed; failed unlocks can be replayed by re-running (idempotent). |
+| `cannot resolve user identity` | Legacy table has unexpected columns. STOP. Restore from pre-T-0 backup and investigate. |
+| `achievements rows missing for keys: …` | The achievement-seed migration didn't run. Verify `20260424154256_seed_prestige_achievements.js` is in `knex_migrations`; if so, the row was deleted manually — re-seed and rerun `yarn migrate`. |
+| Transaction rolled back mid-grant (e.g. DB connection lost) | Re-run `yarn migrate` — knex will retry the failed migration. INSERT IGNORE / NOT EXISTS gates make it idempotent. |
+| Earlier batch-115 migration failed (schema rebuild) | STOP. Restore from pre-T-0 backup. Schema changes are not transactional in MySQL, so partial schema rollback is fragile. |
 
 ### 4.2 If verification fails (Section 3 fails any step)
 
@@ -210,7 +209,7 @@ docker logs redive_linebot-worker-1 --tail 30 | grep -E "(Trial Expiry|Broadcast
    ```bash
    docker exec redive_linebot-bot-1 node bin/rollback-prestige-system.js
    ```
-   Expected: `[rollback-prestige-system] done. revoked=<82±drift>`.
+   Expected: `[rollback-prestige-system] done. revoked=<lv50+lv80+lv100 sum> inventory=<sum>`. Both counts should be roughly equal (each grant inserted one user_achievements row + one Inventory ledger row).
 3. Redeploy the previous bot/worker/frontend image (Portainer stack revert).
 4. Unset `CHAT_XP_PAUSED`:
    ```bash
@@ -227,10 +226,14 @@ The new `chat_user_data` is gone but the legacy snapshot still exists under its 
 ```sql
 RENAME TABLE chat_user_data_legacy_snapshot TO chat_user_data;
 ```
-Then run the achievement revoke manually:
+Then run the achievement + inventory revoke manually:
 ```sql
 DELETE FROM user_achievements
-WHERE achievement_id = (SELECT id FROM achievements WHERE `key` = 'prestige_pioneer');
+WHERE achievement_id IN (
+  SELECT id FROM achievements WHERE `key` IN ('prestige_pioneer', 'legacy_lv80', 'legacy_lv50')
+);
+DELETE FROM Inventory
+WHERE note = '成就獎勵 [legacy-tier-migration-2026-05-01]';
 ```
 
 If `chat_user_data_legacy_snapshot` is also gone (catastrophic), restore from the pre-T-0 logical backup.
@@ -249,18 +252,34 @@ This closes the rollback window. From this point, rollback requires a logical-ba
 
 ---
 
-## Appendix A — pioneer threshold rationale
+## Appendix A — legacy tier thresholds
 
-`experience > 8,407,860` matches Lv.100 in the legacy `chat_exp_unit` curve (linear up to ~Lv.20, then 720 XP per level). The threshold is hardcoded in `app/bin/migrate-prestige-system.js` as `PIONEER_THRESHOLD = 8407860`. If you need to adjust, edit that constant and re-run; `unlockByKey` is idempotent so re-runs only add new unlocks (existing pioneers report `already_unlocked`).
+The 3-tier memorial achievements are gated on cumulative XP in the legacy `chat_exp_unit` curve:
 
-## Appendix B — running migrate-prestige-system.js outside the bot container
+| Tier | Achievement key | XP threshold | Legacy level | 2026-05-01 prod count |
+|---|---|---|---|---|
+| Pioneer | `prestige_pioneer` | ≥ 8,407,860 | Lv.100 | 82 |
+| Senior | `legacy_lv80` | ≥ 3,357,460 | Lv.80 | ~250 |
+| Veteran | `legacy_lv50` | ≥ 200,860 | Lv.50 | 2,240 |
 
-If you need to run the script from a host with `node` installed:
+Thresholds live in `app/migrations/20260501150000_grant_legacy_tier_achievements.js` as `LEGACY_TIERS`. Tiers nest — a Lv.100+ user receives all three. Inserts use `INSERT IGNORE` (achievements) and `NOT EXISTS` gates (Inventory) so re-runs of the migration are no-ops.
+
+## Appendix B — re-running the data cut-over
+
+The cut-over now lives in a knex migration, so `yarn migrate` is the canonical entry point. To re-trigger after a partial failure:
 
 ```bash
-cd app
-yarn install
-node bin/migrate-prestige-system.js
+docker exec redive_linebot-bot-1 yarn migrate
 ```
+
+knex skips migrations already recorded in `knex_migrations`. The grant-tier migration's `up` is idempotent — `INSERT IGNORE` + `NOT EXISTS` gates make repeated execution safe even outside the knex tracker (e.g. if the row was manually removed from `knex_migrations`).
+
+To roll back just the grant-tier migration in a non-prod environment (without touching schema):
+
+```bash
+docker exec redive_linebot-bot-1 yarn knex migrate:rollback --to=20260501150000_grant_legacy_tier_achievements.js
+```
+
+This invokes `down`, which deletes the 3-tier achievement rows + the sentinel-tagged Inventory rows. `chat_user_data` is **not** reverted — see §4.3 for the schema-level rollback path.
 
 The script reads the same `.env` as the bot via `dotenv` (line 1-5 of the script). Confirm `DB_HOST` and `REDIS_HOST` resolve to the production endpoints from your shell.
