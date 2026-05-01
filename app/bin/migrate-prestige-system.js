@@ -12,14 +12,22 @@ const redis = require("../src/util/redis");
 const AchievementEngine = require("../src/service/AchievementEngine");
 const { DefaultLogger } = require("../src/util/Logger");
 
-// Spec line 7 / impl plan line 280: rows with experience > 8,407,860 in the
-// legacy curve are at Lv.100+ — the pioneer cohort that earns the hidden
-// `prestige_pioneer` achievement on cut-over.
-const PIONEER_THRESHOLD = 8407860;
+// Legacy `chat_exp_unit` cumulative XP at each milestone level. The migration
+// grants tiered memorial achievements based on a snapshot of `chat_user_data.experience`
+// at cut-over. A user is awarded every tier whose threshold they cleared
+// (e.g. an Lv.100+ user receives all three).
+const LEGACY_TIERS = [
+  { key: "prestige_pioneer", label: "lv100", threshold: 8407860 },
+  { key: "legacy_lv80", label: "lv80", threshold: 3357460 },
+  { key: "legacy_lv50", label: "lv50", threshold: 200860 },
+];
+const LOWEST_THRESHOLD = LEGACY_TIERS.reduce(
+  (min, t) => Math.min(min, t.threshold),
+  Number.POSITIVE_INFINITY
+);
 const LEGACY_TABLE = "chat_user_data_legacy_snapshot";
 const NEW_TABLE = "chat_user_data";
 const PAUSE_FLAG = "CHAT_XP_PAUSED";
-const PIONEER_ACHIEVEMENT_KEY = "prestige_pioneer";
 
 class MigrationAbort extends Error {
   constructor(message) {
@@ -78,11 +86,15 @@ function buildBaseQuery(strategy) {
     .select("user.platform_id as user_id", "legacy.experience as experience");
 }
 
-async function fetchPioneers(strategy) {
+async function fetchTierMembers(strategy) {
   const rows = await buildBaseQuery(strategy)
-    .where("legacy.experience", ">", PIONEER_THRESHOLD)
+    .where("legacy.experience", ">=", LOWEST_THRESHOLD)
     .orderBy("legacy.experience", "desc");
   return rows.filter(r => r.user_id);
+}
+
+function tiersForExperience(experience) {
+  return LEGACY_TIERS.filter(t => experience >= t.threshold);
 }
 
 async function seedNewTable(strategy) {
@@ -109,42 +121,60 @@ async function seedNewTable(strategy) {
   return { inserted: valid.length, skipped: rows.length - valid.length };
 }
 
-async function grantPioneerAchievement(pioneers) {
+function newTierStat() {
+  return { count: 0, unlocked: 0, already_unlocked: 0, errors: 0 };
+}
+
+async function grantTierAchievements(members) {
   const summary = {
     unlocked: 0,
     already_unlocked: 0,
     errors: 0,
-    detail: [],
+    by_tier: {},
+    grants: [],
   };
+  for (const tier of LEGACY_TIERS) {
+    summary.by_tier[tier.label] = newTierStat();
+  }
 
-  for (const pioneer of pioneers) {
-    try {
-      const result = await AchievementEngine.unlockByKey(pioneer.user_id, PIONEER_ACHIEVEMENT_KEY);
-      const status = result.unlocked
-        ? "unlocked"
-        : result.reason === "already_unlocked"
-          ? "already_unlocked"
-          : `error:${result.reason || "unknown"}`;
+  for (const member of members) {
+    const tiers = tiersForExperience(member.experience);
+    for (const tier of tiers) {
+      const stat = summary.by_tier[tier.label];
+      stat.count += 1;
 
-      if (result.unlocked) summary.unlocked += 1;
-      else if (result.reason === "already_unlocked") summary.already_unlocked += 1;
-      else summary.errors += 1;
+      let status;
+      try {
+        const result = await AchievementEngine.unlockByKey(member.user_id, tier.key);
+        if (result.unlocked) {
+          status = "unlocked";
+          summary.unlocked += 1;
+          stat.unlocked += 1;
+        } else if (result.reason === "already_unlocked") {
+          status = "already_unlocked";
+          summary.already_unlocked += 1;
+          stat.already_unlocked += 1;
+        } else {
+          status = `error:${result.reason || "unknown"}`;
+          summary.errors += 1;
+          stat.errors += 1;
+        }
+      } catch (err) {
+        status = `error:${err.message}`;
+        summary.errors += 1;
+        stat.errors += 1;
+        DefaultLogger.error(
+          `[migrate-prestige-system] unlockByKey threw for ${member.user_id}/${tier.key}: ${err.message}`
+        );
+      }
 
-      summary.detail.push({
-        user_id: pioneer.user_id,
-        experience: pioneer.experience,
+      summary.grants.push({
+        user_id: member.user_id,
+        experience: member.experience,
+        achievement_key: tier.key,
+        tier: tier.label,
         achievement_result: status,
       });
-    } catch (err) {
-      summary.errors += 1;
-      summary.detail.push({
-        user_id: pioneer.user_id,
-        experience: pioneer.experience,
-        achievement_result: `error:${err.message}`,
-      });
-      DefaultLogger.error(
-        `[migrate-prestige-system] unlockByKey threw for ${pioneer.user_id}: ${err.message}`
-      );
     }
   }
 
@@ -169,15 +199,20 @@ async function main() {
   const audit = {
     started_at: new Date().toISOString(),
     finished_at: null,
-    pioneer_threshold: PIONEER_THRESHOLD,
+    legacy_tiers: LEGACY_TIERS.map(t => ({
+      key: t.key,
+      label: t.label,
+      threshold: t.threshold,
+    })),
     snapshot_user_count: 0,
     seeded_count: 0,
     skipped_no_user_id: 0,
-    pioneer_count: 0,
+    tier_member_count: 0,
     achievement_unlocked: 0,
     achievement_already_unlocked: 0,
     achievement_errors: 0,
-    pioneers: [],
+    by_tier: {},
+    grants: [],
   };
 
   await assertPaused();
@@ -192,19 +227,23 @@ async function main() {
   audit.seeded_count = seedResult.inserted;
   audit.skipped_no_user_id = seedResult.skipped;
 
-  const pioneers = await fetchPioneers(strategy);
-  audit.pioneer_count = pioneers.length;
+  const members = await fetchTierMembers(strategy);
+  audit.tier_member_count = members.length;
 
-  const grant = await grantPioneerAchievement(pioneers);
+  const grant = await grantTierAchievements(members);
   audit.achievement_unlocked = grant.unlocked;
   audit.achievement_already_unlocked = grant.already_unlocked;
   audit.achievement_errors = grant.errors;
-  audit.pioneers = grant.detail;
+  audit.by_tier = grant.by_tier;
+  audit.grants = grant.grants;
 
   audit.finished_at = new Date().toISOString();
   const logPath = writeAuditLog(audit);
+  const tierBreakdown = LEGACY_TIERS.map(t => `${t.label}=${audit.by_tier[t.label].count}`).join(
+    " "
+  );
   DefaultLogger.info(
-    `[migrate-prestige-system] done. snapshot=${audit.snapshot_user_count} seeded=${audit.seeded_count} pioneers=${audit.pioneer_count} unlocked=${audit.achievement_unlocked} already=${audit.achievement_already_unlocked} errors=${audit.achievement_errors}${logPath ? ` log=${logPath}` : ""}`
+    `[migrate-prestige-system] done. snapshot=${audit.snapshot_user_count} seeded=${audit.seeded_count} ${tierBreakdown} unlocked=${audit.achievement_unlocked} already=${audit.achievement_already_unlocked} errors=${audit.achievement_errors}${logPath ? ` log=${logPath}` : ""}`
   );
 
   return audit;
@@ -212,7 +251,9 @@ async function main() {
 
 module.exports = main;
 module.exports.MigrationAbort = MigrationAbort;
-module.exports.PIONEER_THRESHOLD = PIONEER_THRESHOLD;
+module.exports.LEGACY_TIERS = LEGACY_TIERS;
+// Backward compat: runbook references PIONEER_THRESHOLD by name.
+module.exports.PIONEER_THRESHOLD = LEGACY_TIERS.find(t => t.key === "prestige_pioneer").threshold;
 
 if (require.main === module) {
   main()

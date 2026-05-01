@@ -13,6 +13,8 @@ const redis = require("../../src/util/redis");
 const AchievementEngine = require("../../src/service/AchievementEngine");
 const main = require("../../bin/migrate-prestige-system");
 
+const LV50_THRESHOLD = 200860;
+
 function buildSchemaMock({ hasLegacy = true, hasNew = true, hasPlatformId = true, hasId = true }) {
   return {
     hasTable: jest.fn(table => {
@@ -95,11 +97,12 @@ describe("migrate-prestige-system", () => {
       mysql.schema = buildSchemaMock({ hasPlatformId: true });
     });
 
-    it("seeds new chat_user_data, identifies pioneers, grants achievement", async () => {
+    it("seeds new chat_user_data, buckets members into tiers, grants per-tier achievements", async () => {
       const allRows = [
-        { user_id: "Uwhale", experience: 12000000 },
-        { user_id: "Umoderate", experience: 5000 },
-        { user_id: "Upioneer2", experience: 9000000 },
+        { user_id: "Uwhale", experience: 12000000 }, // lv100 + lv80 + lv50
+        { user_id: "Ulv80", experience: 4000000 }, // lv80 + lv50
+        { user_id: "Ulv50", experience: 500000 }, // lv50 only
+        { user_id: "Umoderate", experience: 5000 }, // none
       ];
 
       const baseQuery = () => {
@@ -107,7 +110,9 @@ describe("migrate-prestige-system", () => {
           join: jest.fn().mockReturnThis(),
           select: jest.fn().mockReturnThis(),
           where: jest.fn().mockReturnThis(),
-          orderBy: jest.fn(() => Promise.resolve(allRows.filter(r => r.experience > 8407860))),
+          orderBy: jest.fn(() =>
+            Promise.resolve(allRows.filter(r => r.experience >= LV50_THRESHOLD))
+          ),
           then: (resolve, reject) => Promise.resolve(allRows).then(resolve, reject),
         };
         return qb;
@@ -116,14 +121,14 @@ describe("migrate-prestige-system", () => {
       const insertChain = {
         insert: jest.fn().mockReturnThis(),
         onConflict: jest.fn().mockReturnThis(),
-        ignore: jest.fn().mockResolvedValue([3]),
+        ignore: jest.fn().mockResolvedValue([4]),
       };
 
       mysql.mockImplementation(table => {
         if (table === "chat_user_data_legacy_snapshot") {
           return {
             count: jest.fn().mockReturnValue({
-              first: jest.fn().mockResolvedValue({ count: 3 }),
+              first: jest.fn().mockResolvedValue({ count: 4 }),
             }),
           };
         }
@@ -132,18 +137,24 @@ describe("migrate-prestige-system", () => {
         throw new Error(`unexpected table: ${table}`);
       });
 
-      AchievementEngine.unlockByKey
-        .mockResolvedValueOnce({ unlocked: true, achievement: { id: 1, key: "prestige_pioneer" } })
-        .mockResolvedValueOnce({ unlocked: true, achievement: { id: 1, key: "prestige_pioneer" } });
+      AchievementEngine.unlockByKey.mockResolvedValue({
+        unlocked: true,
+        achievement: { id: 1 },
+      });
 
       const audit = await main();
 
-      expect(audit.snapshot_user_count).toBe(3);
-      expect(audit.seeded_count).toBe(3);
-      expect(audit.pioneer_count).toBe(2);
-      expect(audit.achievement_unlocked).toBe(2);
+      expect(audit.snapshot_user_count).toBe(4);
+      expect(audit.seeded_count).toBe(4);
+      expect(audit.tier_member_count).toBe(3);
+      // Uwhale → 3 grants, Ulv80 → 2, Ulv50 → 1 = 6 unlocks
+      expect(audit.achievement_unlocked).toBe(6);
       expect(audit.achievement_already_unlocked).toBe(0);
       expect(audit.achievement_errors).toBe(0);
+      expect(audit.by_tier.lv100.count).toBe(1);
+      expect(audit.by_tier.lv80.count).toBe(2);
+      expect(audit.by_tier.lv50.count).toBe(3);
+
       expect(insertChain.insert).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -152,19 +163,33 @@ describe("migrate-prestige-system", () => {
             current_level: 0,
             current_exp: 0,
           }),
+          expect.objectContaining({ user_id: "Umoderate" }),
         ])
       );
       expect(insertChain.onConflict).toHaveBeenCalledWith("user_id");
       expect(insertChain.ignore).toHaveBeenCalled();
-      expect(AchievementEngine.unlockByKey).toHaveBeenNthCalledWith(
-        1,
-        "Uwhale",
-        "prestige_pioneer"
-      );
-      expect(AchievementEngine.unlockByKey).toHaveBeenNthCalledWith(
-        2,
-        "Upioneer2",
-        "prestige_pioneer"
+
+      // Members iterated DESC by experience; tiers iterated in LEGACY_TIERS order
+      // (lv100 → lv80 → lv50). So call sequence is:
+      //   Uwhale × 3 → Ulv80 × 2 → Ulv50 × 1
+      const calls = AchievementEngine.unlockByKey.mock.calls;
+      expect(calls).toEqual([
+        ["Uwhale", "prestige_pioneer"],
+        ["Uwhale", "legacy_lv80"],
+        ["Uwhale", "legacy_lv50"],
+        ["Ulv80", "legacy_lv80"],
+        ["Ulv80", "legacy_lv50"],
+        ["Ulv50", "legacy_lv50"],
+      ]);
+
+      expect(audit.grants).toHaveLength(6);
+      expect(audit.grants[0]).toEqual(
+        expect.objectContaining({
+          user_id: "Uwhale",
+          achievement_key: "prestige_pioneer",
+          tier: "lv100",
+          achievement_result: "unlocked",
+        })
       );
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
@@ -194,7 +219,7 @@ describe("migrate-prestige-system", () => {
         throw new Error(`unexpected ${table}`);
       });
 
-      AchievementEngine.unlockByKey.mockResolvedValueOnce({
+      AchievementEngine.unlockByKey.mockResolvedValue({
         unlocked: false,
         reason: "already_unlocked",
       });
@@ -202,15 +227,19 @@ describe("migrate-prestige-system", () => {
       const audit = await main();
 
       expect(audit.achievement_unlocked).toBe(0);
-      expect(audit.achievement_already_unlocked).toBe(1);
+      expect(audit.achievement_already_unlocked).toBe(3); // Uwhale gets all 3 tier grants
       expect(audit.achievement_errors).toBe(0);
-      expect(audit.pioneers[0].achievement_result).toBe("already_unlocked");
+      expect(audit.grants).toHaveLength(3);
+      expect(audit.grants.every(g => g.achievement_result === "already_unlocked")).toBe(true);
+      expect(audit.by_tier.lv100.already_unlocked).toBe(1);
+      expect(audit.by_tier.lv80.already_unlocked).toBe(1);
+      expect(audit.by_tier.lv50.already_unlocked).toBe(1);
     });
 
     it("survives a single unlockByKey throw and continues with the rest", async () => {
       const allRows = [
-        { user_id: "Ufail", experience: 9999999 },
-        { user_id: "Uok", experience: 9000000 },
+        { user_id: "Ufail", experience: 9999999 }, // lv100+
+        { user_id: "Uok", experience: 500000 }, // lv50 only
       ];
       const baseQuery = () => ({
         join: jest.fn().mockReturnThis(),
@@ -235,21 +264,28 @@ describe("migrate-prestige-system", () => {
         throw new Error(`unexpected ${table}`);
       });
 
+      // Ufail's first grant (prestige_pioneer) throws; the remaining 3 grants
+      // (Ufail/lv80, Ufail/lv50, Uok/lv50) succeed.
       AchievementEngine.unlockByKey
         .mockRejectedValueOnce(new Error("DB transient"))
-        .mockResolvedValueOnce({ unlocked: true, achievement: { id: 1 } });
+        .mockResolvedValue({ unlocked: true, achievement: { id: 1 } });
 
       const audit = await main();
 
-      expect(audit.achievement_unlocked).toBe(1);
+      expect(audit.achievement_unlocked).toBe(3);
       expect(audit.achievement_errors).toBe(1);
-      expect(audit.pioneers).toEqual(
+      expect(audit.grants).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             user_id: "Ufail",
+            achievement_key: "prestige_pioneer",
             achievement_result: expect.stringMatching(/^error/),
           }),
-          expect.objectContaining({ user_id: "Uok", achievement_result: "unlocked" }),
+          expect.objectContaining({
+            user_id: "Uok",
+            achievement_key: "legacy_lv50",
+            achievement_result: "unlocked",
+          }),
         ])
       );
     });
@@ -286,7 +322,7 @@ describe("migrate-prestige-system", () => {
         throw new Error(`unexpected ${table}`);
       });
 
-      AchievementEngine.unlockByKey.mockResolvedValueOnce({
+      AchievementEngine.unlockByKey.mockResolvedValue({
         unlocked: true,
         achievement: { id: 1 },
       });
@@ -294,8 +330,8 @@ describe("migrate-prestige-system", () => {
       const audit = await main();
 
       expect(audit.seeded_count).toBe(1);
-      expect(audit.pioneer_count).toBe(1);
-      expect(audit.pioneers[0].user_id).toBe("Ujoined");
+      expect(audit.tier_member_count).toBe(1);
+      expect(audit.grants[0].user_id).toBe("Ujoined");
     });
   });
 });
