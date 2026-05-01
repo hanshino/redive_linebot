@@ -10,6 +10,17 @@ const ACCENT = {
   grey: "#9CA3AF",
 };
 
+const TIME_FMT = new Intl.DateTimeFormat(undefined, {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+function localHHMM(ts) {
+  const d = new Date(ts);
+  return Number.isNaN(d.getTime()) ? "--:--" : TIME_FMT.format(d);
+}
+
 function accentFor(folded) {
   if (folded.degraded) return ACCENT.grey;
   const ev = folded.events[0];
@@ -74,7 +85,7 @@ export default function EventList({ events, showAll, groupLabel }) {
                     minWidth: 42,
                   }}
                 >
-                  {f.minute.slice(11, 16)}
+                  {localHHMM(f.ts)}
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography

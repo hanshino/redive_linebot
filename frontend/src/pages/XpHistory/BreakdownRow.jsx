@@ -1,6 +1,51 @@
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 
-const fmt = (n, d = 2) => (Number(n) || 0).toFixed(d);
+const trim = n => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "0";
+  return Number(num.toFixed(2)).toString();
+};
+const mult = n => `×${trim(n)}`;
+
+function Row({ label, value, accent, total, dim }) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "baseline",
+        justifyContent: "space-between",
+        gap: 1,
+        py: total ? 0.25 : 0,
+      }}
+    >
+      <Box
+        component="span"
+        sx={{
+          color: dim ? "text.disabled" : total ? "text.primary" : "text.secondary",
+          fontWeight: total ? 700 : 500,
+          fontSize: total ? 13 : 12,
+        }}
+      >
+        {label}
+      </Box>
+      <Box
+        component="span"
+        sx={{
+          fontFamily: "ui-monospace, Menlo, monospace",
+          fontWeight: total ? 700 : 600,
+          fontSize: total ? 14 : 12,
+          color: accent || (total ? "text.primary" : "text.primary"),
+        }}
+      >
+        {value}
+      </Box>
+    </Box>
+  );
+}
+
+function Divider() {
+  return <Box sx={{ height: "1px", bgcolor: "divider", my: 0.5 }} />;
+}
 
 export default function BreakdownRow({ ev, showAll }) {
   if (ev.base_xp == null) {
@@ -20,27 +65,34 @@ export default function BreakdownRow({ ev, showAll }) {
     );
   }
 
-  const rawParts = [
-    { label: "base", val: fmt(ev.base_xp, 3), hide: false, color: "text.primary" },
-    { label: "cooldown", val: `×${fmt(ev.cooldown_rate)}`, hide: ev.cooldown_rate === 1 },
-    { label: "群組", val: `×${fmt(ev.group_bonus)}`, hide: ev.group_bonus === 1 },
-    { label: "暖流", val: `×${fmt(ev.blessing1_mult)}`, hide: ev.blessing1_mult === 1 },
+  const rawSteps = [
+    { label: "冷卻", val: mult(ev.cooldown_rate), hide: ev.cooldown_rate === 1 },
+    { label: "群組加成", val: mult(ev.group_bonus), hide: ev.group_bonus === 1 },
+    { label: "暖流祝福", val: mult(ev.blessing1_mult), hide: ev.blessing1_mult === 1 },
   ];
   const tierLabel =
     ev.diminish_factor === 1
-      ? "遞減 tier1"
+      ? "遞減（第一階）"
       : ev.diminish_factor === 0.3
-        ? "遞減 tier2"
-        : "遞減 tier3";
-  const effParts = [
-    { label: "蜜月", val: `×${fmt(ev.honeymoon_mult)}`, hide: ev.honeymoon_mult === 1 },
-    { label: tierLabel, val: `×${fmt(ev.diminish_factor)}`, hide: ev.diminish_factor === 1 },
-    { label: "試煉", val: `×${fmt(ev.trial_mult)}`, hide: ev.trial_mult === 1 },
-    { label: "永久", val: `×${fmt(ev.permanent_mult)}`, hide: ev.permanent_mult === 1 },
+        ? "遞減（第二階）"
+        : ev.diminish_factor === 0.03
+          ? "遞減（第三階）"
+          : "遞減";
+  const effSteps = [
+    { label: "蜜月加成", val: mult(ev.honeymoon_mult), hide: ev.honeymoon_mult === 1 },
+    {
+      label: tierLabel,
+      val: mult(ev.diminish_factor),
+      hide: ev.diminish_factor === 1,
+      accent: ev.diminish_factor <= 0.05 ? "error.dark" : undefined,
+    },
+    { label: "試煉倍率", val: mult(ev.trial_mult), hide: ev.trial_mult === 1 },
+    { label: "永久加成", val: mult(ev.permanent_mult), hide: ev.permanent_mult === 1 },
   ];
 
-  const visibleRaw = rawParts.filter(p => showAll || !p.hide);
-  const visibleEff = effParts.filter(p => showAll || !p.hide);
+  const visibleRaw = rawSteps.filter(s => showAll || !s.hide);
+  const visibleEff = effSteps.filter(s => showAll || !s.hide);
+  const effDimmed = ev.effective_exp === 0 || ev.effective_exp < ev.raw_exp / 2;
 
   return (
     <Box
@@ -48,57 +100,31 @@ export default function BreakdownRow({ ev, showAll }) {
         p: 1.5,
         bgcolor: "#F8FAFB",
         borderRadius: 1,
-        fontFamily: "ui-monospace, Menlo, monospace",
-        fontSize: 12,
-        lineHeight: 1.7,
+        display: "flex",
+        flexDirection: "column",
+        gap: 0.25,
       }}
     >
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: "4px 8px", alignItems: "baseline" }}>
-        {visibleRaw.map((p, i) => (
-          <Box key={i} component="span" sx={{ fontWeight: i === 0 ? 700 : 600 }}>
-            <Box component="span" sx={{ color: "text.disabled", fontWeight: 400, mr: 0.5 }}>
-              {p.label}
-            </Box>
-            {p.val}
-          </Box>
-        ))}
-      </Box>
-      <Typography
-        component="div"
-        sx={{ ml: 2, fontFamily: "inherit", fontSize: 12, color: "text.secondary" }}
-      >
-        → raw{" "}
-        <Box component="span" sx={{ color: "text.primary", fontWeight: 700, fontSize: 13 }}>
-          {ev.raw_exp}
-        </Box>
-      </Typography>
-
+      <Row label="基礎 XP" value={trim(ev.base_xp)} />
+      {visibleRaw.map((s, i) => (
+        <Row key={`r${i}`} label={s.label} value={s.val} dim />
+      ))}
+      <Divider />
+      <Row label="原始 XP" value={ev.raw_exp} total />
       {visibleEff.length > 0 && (
-        <Box
-          sx={{ mt: 1, display: "flex", flexWrap: "wrap", gap: "4px 8px", alignItems: "baseline" }}
-        >
-          <Box component="span" sx={{ color: "text.disabled", fontWeight: 400 }}>
-            raw {ev.raw_exp}
-          </Box>
-          {visibleEff.map((p, i) => (
-            <Box key={i} component="span" sx={{ fontWeight: 600 }}>
-              <Box component="span" sx={{ color: "text.disabled", fontWeight: 400, mr: 0.5 }}>
-                {p.label}
-              </Box>
-              {p.val}
-            </Box>
+        <>
+          {visibleEff.map((s, i) => (
+            <Row key={`e${i}`} label={s.label} value={s.val} accent={s.accent} dim />
           ))}
-        </Box>
+          <Divider />
+        </>
       )}
-      <Typography
-        component="div"
-        sx={{ ml: 2, fontFamily: "inherit", fontSize: 12, color: "text.secondary" }}
-      >
-        → effective{" "}
-        <Box component="span" sx={{ color: "warning.dark", fontWeight: 700, fontSize: 14 }}>
-          {ev.effective_exp}
-        </Box>
-      </Typography>
+      <Row
+        label="實得 XP"
+        value={ev.effective_exp}
+        total
+        accent={effDimmed ? "warning.dark" : "success.dark"}
+      />
     </Box>
   );
 }

@@ -27,6 +27,7 @@ import CustomerOrder from "./pages/CustomerOrder";
 import Achievement from "./pages/Achievement";
 import Prestige from "./pages/Prestige";
 import XpHistory from "./pages/XpHistory";
+import XpHistoryAbout from "./pages/XpHistory/About";
 import AutoSettings from "./pages/AutoSettings";
 import AutoHistory from "./pages/AutoHistory";
 import AdminGachaPool from "./pages/Admin/GachaPool";
@@ -90,6 +91,7 @@ export default function App() {
           <Route path="achievements" element={<Achievement />} />
           <Route path="prestige" element={<Prestige />} />
           <Route path="xp-history" element={<XpHistory />} />
+          <Route path="xp-history/about" element={<XpHistoryAbout />} />
 
           {/* Subscriber auto-actions (LIFF) */}
           <Route path="auto/settings" element={<AutoSettings />} />
