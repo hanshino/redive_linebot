@@ -4,8 +4,8 @@
 
 const humanNumber = require("human-number");
 const { COLORS } = require("../Me/_shared");
+const { FALLBACK_AVATAR } = require("./_shared");
 
-const FALLBACK_AVATAR = "https://i.imgur.com/NMl4z2u.png";
 const TOTAL_BLESSINGS = 7;
 const GREEN_ACCENT = "#16A34A"; // Tailwind green-600 — used for ✓ marks and honeymoon +20% emphasis
 

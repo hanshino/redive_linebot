@@ -50,11 +50,14 @@ async function resolveProfile(groupId, userId) {
 
 async function resolveUnconsumedPassedTrialName(userId) {
   try {
-    const passed = (await UserPrestigeTrial.listPassedByUserId(userId)) || [];
-    if (passed.length === 0) return null;
-    const consumed = (await UserPrestigeHistory.listByUserId(userId)) || [];
-    const consumedSet = new Set(consumed.map(h => h.trial_id));
-    const unconsumed = passed.find(p => !consumedSet.has(p.trial_id));
+    const [passed, consumed] = await Promise.all([
+      UserPrestigeTrial.listPassedByUserId(userId),
+      UserPrestigeHistory.listByUserId(userId),
+    ]);
+    const passedRows = passed || [];
+    if (passedRows.length === 0) return null;
+    const consumedSet = new Set((consumed || []).map(h => h.trial_id));
+    const unconsumed = passedRows.find(p => !consumedSet.has(p.trial_id));
     if (!unconsumed) return null;
     const trial = await PrestigeTrial.findById(unconsumed.trial_id);
     return trial?.display_name || null;

@@ -327,9 +327,7 @@ async function prestige(userId, blessingId) {
     // inserted user_blessings row.
     const finalBlessingIds = [...ownedBlessingIds, blessingId];
     const buildKeys = evaluateBuildAchievementKeys(finalBlessingIds);
-    for (const key of buildKeys) {
-      await AchievementEngine.unlockByKey(userId, key);
-    }
+    await Promise.all(buildKeys.map(key => AchievementEngine.unlockByKey(userId, key)));
   }
 
   return {

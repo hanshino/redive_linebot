@@ -229,11 +229,7 @@ function TrialLockedBanner({ status }) {
 }
 function PendingPrestigeBanner({ status }) {
   const { passedTrials = [], unconsumedTrialIds = [] } = status;
-  const consumedSet = new Set();
-  // unconsumedTrialIds is the source of truth; pick the matching passed trial entry.
-  const pending = passedTrials.find(
-    t => unconsumedTrialIds.includes(t.id) && !consumedSet.has(t.id)
-  );
+  const pending = passedTrials.find(t => unconsumedTrialIds.includes(t.id));
   const cfg = pending ? getStarConfig(pending.star) : null;
   const label = pending ? `★${pending.star} ${pending.displayName}` : "上一道試煉";
 
