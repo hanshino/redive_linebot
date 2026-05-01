@@ -12,7 +12,6 @@ async function main() {
   try {
     await UserTitleModel.clearAll(trx);
 
-    await deliveryChatTitles(trx);
     await deliveryGachaTitles(trx);
     await deliveryJankenTitles(trx);
     await deliveryWorldBossTitles(trx);
@@ -23,24 +22,6 @@ async function main() {
     await trx.rollback();
     DefaultLogger.error("Title delivery failed:", err);
     throw err;
-  }
-}
-
-async function deliveryChatTitles(trx) {
-  const titleKeys = ["chat_king_1", "chat_king_2", "chat_king_3"];
-  const users = await trx
-    .select("platform_id")
-    .from("chat_user_data")
-    .where("rank", ">=", 1)
-    .where("rank", "<=", 3)
-    .orderBy("rank", "asc")
-    .limit(3);
-
-  for (let i = 0; i < users.length; i++) {
-    const title = await trx("titles").where("key", titleKeys[i]).first();
-    if (title && users[i]) {
-      await UserTitleModel.grantByPlatformId(users[i].platform_id, title.id, trx);
-    }
   }
 }
 

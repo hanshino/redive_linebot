@@ -3,15 +3,70 @@ const { buildSubPanel, COLORS } = require("./_shared");
 
 const formatExp = n => humanNumber(n, v => Number.parseFloat(v).toFixed(1));
 
+function buildDailyCap({ dailyRaw, tier1Upper, tier2Upper }) {
+  if (!tier1Upper || !tier2Upper || tier2Upper <= tier1Upper) return null;
+
+  const raw = Math.max(0, Math.floor(dailyRaw || 0));
+  const fillPct = Math.max(0, Math.min(100, Math.round((raw / tier2Upper) * 100)));
+
+  let zoneLabel;
+  if (raw < tier1Upper) zoneLabel = "🟢 滿速";
+  else if (raw < tier2Upper) zoneLabel = "🟡 30%";
+  else zoneLabel = "🔴 已封頂";
+
+  const head = {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      { type: "text", text: "今日獲取上限", size: "xxs", color: "#FFFFFF", flex: 0 },
+      {
+        type: "text",
+        text: `${raw} / ${tier2Upper} · ${zoneLabel}`,
+        size: "xxs",
+        color: COLORS.amber300,
+        weight: "bold",
+        align: "end",
+      },
+    ],
+    margin: "sm",
+  };
+
+  const bar = {
+    type: "box",
+    layout: "horizontal",
+    contents:
+      fillPct > 0
+        ? [
+            {
+              type: "box",
+              layout: "vertical",
+              contents: [],
+              width: `${fillPct}%`,
+              backgroundColor: COLORS.amber400,
+              cornerRadius: "md",
+            },
+          ]
+        : [],
+    backgroundColor: COLORS.whiteOverlay,
+    height: "5px",
+    cornerRadius: "md",
+    margin: "xs",
+  };
+
+  return { head, bar };
+}
+
 function buildHero({
   displayName,
   pictureUrl,
   level,
-  range,
-  ranking,
   expRate,
   expCurrent,
   expNext,
+  flags,
+  dailyRaw,
+  tier1Upper,
+  tier2Upper,
 }) {
   const avatar = {
     type: "box",
@@ -39,7 +94,7 @@ function buildHero({
     contents: [
       {
         type: "text",
-        text: `Lv.${level} · ${range}`,
+        text: `Lv.${level}`,
         weight: "bold",
         size: "xxs",
         color: COLORS.textDark,
@@ -74,19 +129,23 @@ function buildHero({
     alignItems: "center",
   };
 
-  const rankRow = {
-    type: "text",
-    text: `Rank #${ranking}`,
-    size: "xxs",
-    color: COLORS.amber300,
-    weight: "bold",
-    margin: "xs",
-  };
+  const flagsList = Array.isArray(flags) ? flags.filter(Boolean) : [];
+  const flagRow = flagsList.length
+    ? {
+        type: "text",
+        text: flagsList.join(" · "),
+        size: "xxs",
+        color: COLORS.amber300,
+        weight: "bold",
+        margin: "xs",
+        wrap: true,
+      }
+    : null;
 
   const ident = {
     type: "box",
     layout: "vertical",
-    contents: [nameRow, rankRow],
+    contents: flagRow ? [nameRow, flagRow] : [nameRow],
     flex: 1,
   };
 
@@ -139,10 +198,14 @@ function buildHero({
     margin: "xs",
   };
 
+  const heroContents = [topRow, expHead, expBar];
+  const dailyCap = buildDailyCap({ dailyRaw, tier1Upper, tier2Upper });
+  if (dailyCap) heroContents.push(dailyCap.head, dailyCap.bar);
+
   return {
     type: "box",
     layout: "vertical",
-    contents: [topRow, expHead, expBar],
+    contents: heroContents,
     paddingAll: "lg",
     background: {
       type: "linearGradient",
@@ -315,18 +378,31 @@ exports.build = ({
   displayName,
   pictureUrl,
   level,
-  range,
-  ranking,
   expRate,
   expCurrent,
   expNext,
+  flags,
   today,
   signinDays,
   subscriptionPanel,
   subscriptionBadge,
+  dailyRaw,
+  tier1Upper,
+  tier2Upper,
 }) => {
   const bodyContents = [
-    buildHero({ displayName, pictureUrl, level, range, ranking, expRate, expCurrent, expNext }),
+    buildHero({
+      displayName,
+      pictureUrl,
+      level,
+      expRate,
+      expCurrent,
+      expNext,
+      flags,
+      dailyRaw,
+      tier1Upper,
+      tier2Upper,
+    }),
   ];
 
   if (subscriptionPanel) {
@@ -347,6 +423,25 @@ exports.build = ({
     type: "box",
     layout: "vertical",
     contents: [buildStreak(signinDays)],
+    paddingStart: "lg",
+    paddingEnd: "lg",
+    paddingBottom: "md",
+  });
+  bodyContents.push({
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "button",
+        style: "secondary",
+        height: "sm",
+        action: {
+          type: "message",
+          label: "查看經驗歷程",
+          text: "#經驗歷程",
+        },
+      },
+    ],
     paddingStart: "lg",
     paddingEnd: "lg",
     paddingBottom: "lg",

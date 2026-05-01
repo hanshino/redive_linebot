@@ -14,11 +14,19 @@ module.exports = [
     require_path: "./bin/ChatExpUpdate",
   },
   {
-    name: "Chat Ranking",
-    description: "refresh chat level rankings",
-    period: ["12", "*/10", "*", "*", "*", "*"],
+    name: "Trial Expiry Check",
+    description: "expire 60-day-old active trials to failed status",
+    period: ["0", "5", "0", "*", "*", "*"],
     immediate: false,
-    require_path: "./bin/ChatRanking",
+    require_path: "./bin/TrialExpiryCheck",
+  },
+  {
+    name: "Broadcast Queue Drainer",
+    description:
+      "consume BROADCAST_QUEUE_* keys and reply to groups when a fresh token is available",
+    period: ["*/30", "*", "*", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/BroadcastQueueDrainer",
   },
   {
     name: "Daily Cleanup",
@@ -26,6 +34,13 @@ module.exports = [
     period: ["0", "0", "0", "*", "*", "*"],
     immediate: false,
     require_path: "./bin/DailyCleanup",
+  },
+  {
+    name: "Chat Exp Events Prune",
+    description: "drop chat_exp_events rows older than 30 days (spec line 545)",
+    period: ["0", "0", "3", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/ChatExpEventsPrune",
   },
   {
     name: "Daily Ration",

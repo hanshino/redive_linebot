@@ -42,13 +42,17 @@ export default function LiffProvider({ children }) {
       setIsAdmin(admin);
       debugLog("FETCH_PROFILE_OK", { isAdmin: admin, userId: data.userId?.substring(0, 8) });
     } catch (err) {
-      debugLog("FETCH_PROFILE_FAIL", { status: err.response?.status, message: err.message });
-      // Token invalid or network error — treat as not logged in
-      window.localStorage.removeItem(TOKEN_KEY);
-      clearAuthToken();
-      setLoggedIn(false);
-      setProfile(null);
-      setIsAdmin(false);
+      const status = err.response?.status;
+      debugLog("FETCH_PROFILE_FAIL", { status, message: err.message });
+      // Only the 401 path means "token is dead" — the axios interceptor
+      // (services/api.js) already cleared storage and redirected; just sync
+      // local state. Network errors / 5xx are transient: keep the token so
+      // the next request can succeed without forcing a fresh LIFF login.
+      if (status === 401) {
+        setLoggedIn(false);
+        setProfile(null);
+        setIsAdmin(false);
+      }
     }
   }, []);
 
@@ -57,65 +61,64 @@ export default function LiffProvider({ children }) {
     if (initStartedRef.current) return;
     initStartedRef.current = true;
 
-    const params = new URLSearchParams(window.location.search);
-    const isLiffRoute = window.location.pathname.startsWith("/liff/") || params.has("liff.state");
     const storedToken = window.localStorage.getItem(TOKEN_KEY);
     debugLog("INIT_START", {
       route: window.location.pathname,
-      isLiffRoute,
       hasStoredToken: !!storedToken,
     });
 
-    // Fast path: not a LIFF route and we have a stored token
-    if (!isLiffRoute && storedToken) {
-      setAuthToken(storedToken);
-      setLoggedIn(true);
-      debugLog("FAST_PATH", { tokenPrefix: storedToken.substring(0, 8) });
-      fetchProfile().finally(() => {
-        debugLog("READY", { path: "fast" });
+    // Always run liff.init(): LIFF's secondary redirect lands on the user's
+    // intended path (e.g. /rankings) without a /liff/ prefix or liff.state
+    // query, so path-based detection misses canonical LIFF URL entries.
+    // Calling init unconditionally is the only reliable way to recover the
+    // LIFF browser session.
+    if (!initPromiseRef.current) {
+      initPromiseRef.current = initLiffSdk();
+    }
+    initPromiseRef.current
+      .then(async () => {
+        const isLoggedIn = liff.isLoggedIn();
+        debugLog("LIFF_SDK_INIT", { success: true, isLoggedIn });
+        if (isLoggedIn) {
+          const token = liff.getAccessToken();
+          debugLog("LIFF_LOGGED_IN", { tokenPrefix: token?.substring(0, 8) });
+          window.localStorage.setItem(TOKEN_KEY, token);
+          setAuthToken(token);
+          setLoggedIn(true);
+          try {
+            setLiffCtx(liff.getContext() || {});
+          } catch (err) {
+            console.warn("Failed to get LIFF context:", err);
+          }
+          await fetchProfile();
+        } else if (storedToken) {
+          // SDK initialized but says not logged in (typical for external
+          // browsers that haven't gone through liff.login yet). Try the
+          // stored token; the API will tell us via 401 if it's stale.
+          debugLog("FALLBACK_STORED_TOKEN", { tokenPrefix: storedToken.substring(0, 8) });
+          setAuthToken(storedToken);
+          setLoggedIn(true);
+          await fetchProfile();
+        } else {
+          debugLog("LIFF_NOT_LOGGED_IN");
+        }
+      })
+      .catch(err => {
+        debugLog("LIFF_SDK_INIT", { success: false, error: err.message });
+        console.warn("LIFF init failed:", err);
+        // Init failed (LIFF ID fetch died, page outside LIFF endpoint, etc).
+        // Stored token is the last lifeline.
+        if (storedToken) {
+          debugLog("FALLBACK_STORED_TOKEN", { tokenPrefix: storedToken.substring(0, 8) });
+          setAuthToken(storedToken);
+          setLoggedIn(true);
+          return fetchProfile();
+        }
+      })
+      .finally(() => {
+        debugLog("READY");
         setReady(true);
       });
-      return;
-    }
-
-    // LIFF route: full SDK init to process OAuth code
-    if (isLiffRoute) {
-      if (!initPromiseRef.current) {
-        initPromiseRef.current = initLiffSdk();
-      }
-      initPromiseRef.current
-        .then(async () => {
-          debugLog("LIFF_SDK_INIT", { success: true });
-          if (liff.isLoggedIn()) {
-            const token = liff.getAccessToken();
-            debugLog("LIFF_LOGGED_IN", { tokenPrefix: token?.substring(0, 8) });
-            window.localStorage.setItem(TOKEN_KEY, token);
-            setAuthToken(token);
-            setLoggedIn(true);
-            try {
-              setLiffCtx(liff.getContext() || {});
-            } catch (err) {
-              console.warn("Failed to get LIFF context:", err);
-            }
-            await fetchProfile();
-          } else {
-            debugLog("LIFF_NOT_LOGGED_IN");
-          }
-        })
-        .catch(err => {
-          debugLog("LIFF_SDK_INIT", { success: false, error: err.message });
-          console.warn("LIFF init failed:", err);
-        })
-        .finally(() => {
-          debugLog("READY", { path: "liff" });
-          setReady(true);
-        });
-      return;
-    }
-
-    // Non-LIFF route, no stored token: just mark ready (not logged in)
-    debugLog("READY", { path: "no-token" });
-    setReady(true);
   }, []);
 
   const login = useCallback(async () => {

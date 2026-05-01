@@ -209,8 +209,19 @@ async function OrderBased(context, { next }) {
 
       return withProps(ChatLevelController.showStatus, { userId })(context);
     }),
-    text(/^#狀態\s/, ChatLevelController.showFriendStatus),
-    text("#等級排行", ChatLevelController.showRank),
+    text(/^[#!！]轉生狀態$/, ChatLevelController.showPrestigeStatus),
+    text(/^[#!！]經驗歷程$/, ChatLevelController.showXpHistory),
+    text(["#轉生", "/轉生"], context => {
+      const bubble = commonTemplate.genActionBubble({
+        icon: "🪄",
+        title: "轉生入口",
+        subtitle: "Lv.100 後挑戰試煉、選祝福",
+        url: commonTemplate.getLiffUri("full", "/prestige"),
+        theme: "indigo",
+        cta: "前往",
+      });
+      return context.replyFlex("轉生入口", bubble);
+    }),
     text(["/link", "#實用連結", "#連結"], context => {
       const liffUri = commonTemplate.getLiffUri("full");
       const bubble = commonTemplate.genLinkMenu({
@@ -260,8 +271,6 @@ async function OrderBased(context, { next }) {
 function AdminOrder() {
   return [
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
-    text(/^[.#]setexp\s(?<userId>(U[a-f0-9]{32}))\s(?<exp>\d+)/, ChatLevelController.setEXP),
-    text(/^[.#]setrate\s(?<expRate>\d+)/, ChatLevelController.setEXPRate),
     ...AchievementController.adminRouter,
     ...DonateListController.adminRouter,
     ...AliasController.adminRouter,

@@ -81,10 +81,14 @@ data
 .worktrees/
 
 # oh-my-claudecode
-.omc/
+**/.omc/*
+!.omc/skills/
 
 # Superpowers
 .superpowers
 
 # Playwright MCP
 .playwright-mcp
+
+# Designer prototypes (mockups only — production lives under frontend/src/pages/)
+/xp-history/

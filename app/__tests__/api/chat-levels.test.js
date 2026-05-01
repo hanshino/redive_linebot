@@ -6,10 +6,6 @@ jest.mock("../../src/controller/application/ChatLevelController", () => ({
     queryRank: jest.fn((req, res) => res.json({ rankings: [] })),
   },
   showStatus: jest.fn(),
-  showFriendStatus: jest.fn(),
-  setEXP: jest.fn(),
-  setEXPRate: jest.fn(),
-  showRank: jest.fn(),
 }));
 
 let app;

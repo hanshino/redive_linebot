@@ -5,6 +5,7 @@ const CategoryModel = require("../model/application/AchievementCategory");
 const { DefaultLogger } = require("../util/Logger");
 const mysql = require("../util/mysql");
 const redis = require("../util/redis");
+const { LV_MAX_TOTAL_EXP } = require("../../seeds/ChatExpUnitSeeder");
 
 // --- In-memory cache for achievement definitions (24 rows, rarely changes) ---
 let achievementCache = null;
@@ -348,6 +349,39 @@ exports.getStats = async () => {
   return AchievementModel.getStats();
 };
 
+/**
+ * Direct idempotent unlock by achievement key. Used by flows that know exactly
+ * which achievement to award (e.g. PrestigeService), bypassing the strategy-
+ * based evaluate() path. Errors are logged and swallowed so caller side-effects
+ * never rollback on reward-pipeline failure.
+ *
+ * @param {string} userId
+ * @param {string} key
+ * @returns {Promise<{unlocked:boolean, achievement?:object, reason?:string}>}
+ */
+exports.unlockByKey = async (userId, key) => {
+  try {
+    const cache = await getCache();
+    const achievement = cache.find(a => a.key === key);
+    if (!achievement) {
+      DefaultLogger.warn(`AchievementEngine.unlockByKey: unknown key=${key}`);
+      return { unlocked: false, reason: "unknown_key" };
+    }
+    if (!isEligible(userId, achievement)) {
+      return { unlocked: false, reason: "ineligible" };
+    }
+    const unlockedIds = await UserAchievementModel.getUnlockedIds(userId, [achievement.id]);
+    if (unlockedIds.has(achievement.id)) {
+      return { unlocked: false, reason: "already_unlocked" };
+    }
+    await unlockAchievement(userId, achievement);
+    return { unlocked: true, achievement };
+  } catch (err) {
+    DefaultLogger.error(`AchievementEngine.unlockByKey error for ${key}:`, err);
+    return { unlocked: false, reason: "error" };
+  }
+};
+
 exports.batchEvaluate = async () => {
   DefaultLogger.info("AchievementEngine: starting batch evaluation");
   const cache = await getCache();
@@ -357,9 +391,13 @@ exports.batchEvaluate = async () => {
     ["chat_100", "chat_1000", "chat_5000"].includes(a.key)
   );
   if (chatAchievements.length > 0) {
-    const chatUsers = await mysql("chat_user_data")
-      .join("user", "chat_user_data.id", "user.id")
-      .select("user.platform_id", "chat_user_data.experience");
+    // Lifetime XP = fully-banked prestige cycles (LV_MAX_TOTAL_EXP per cycle) +
+    // current cycle progress. Post-prestige `current_exp` resets to 0, so a raw
+    // current_exp query would revoke chat milestones on every prestige.
+    const chatUsers = await mysql("chat_user_data").select(
+      "user_id",
+      mysql.raw("prestige_count * ? + current_exp AS lifetime_exp", [LV_MAX_TOTAL_EXP])
+    );
     const chatAchievementIds = chatAchievements.map(a => a.id);
 
     const existingUnlocks = await mysql("user_achievements")
@@ -368,8 +406,8 @@ exports.batchEvaluate = async () => {
     const unlockedSet = new Set(existingUnlocks.map(u => `${u.user_id}:${u.achievement_id}`));
 
     for (const user of chatUsers) {
-      const userId = user.platform_id;
-      const count = user.experience || 0;
+      const userId = user.user_id;
+      const count = user.lifetime_exp || 0;
       for (const achievement of chatAchievements) {
         if (unlockedSet.has(`${userId}:${achievement.id}`)) continue;
         await UserProgressModel.upsert(userId, achievement.id, count);

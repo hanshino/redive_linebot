@@ -1,6 +1,9 @@
 const mysql = require("../src/util/mysql");
 const redis = require("../src/util/redis");
 const { DefaultLogger } = require("../src/util/Logger");
+const replyTokenQueue = require("../src/util/replyTokenQueue");
+const broadcastQueue = require("../src/util/broadcastQueue");
+const { getClient } = require("bottender");
 
 module.exports = main;
 
@@ -49,9 +52,24 @@ async function eventHandle(event) {
   try {
     await route.action(event);
     await saveReplyToken(event);
+    tryDrainBroadcast(event);
   } catch (e) {
     console.error(e);
   }
+}
+
+// Fire-and-forget drain after we've just stored a fresh reply token — if this
+// event comes from a group/room with pending broadcast events, the drainer can
+// immediately consume them with the token we just saved. Errors are logged but
+// never allowed to fail the main event pipeline.
+function tryDrainBroadcast(event) {
+  const { type } = event.source;
+  if (type !== "group" && type !== "room") return;
+  const sourceId = event.source[`${type}Id`];
+  const lineClient = getClient("line");
+  broadcastQueue
+    .drain(sourceId, { lineClient, replyTokenQueue, logger: DefaultLogger })
+    .catch(err => console.error("[EventDequeue.tryDrainBroadcast]", err));
 }
 
 function handleFollow(event) {
@@ -129,65 +147,49 @@ async function handleUnsend(event) {
 
 // --- Chat exp handling ---
 
+// Emits a fat payload onto CHAT_EXP_RECORD with everything the pipeline (see
+// app/src/service/chatXp/pipeline.js) needs to compute XP in the 5-min batch.
+// XP, cooldown, and group bonus are NOT computed here — the pipeline owns
+// all of that. This function only captures raw inputs and updates the
+// CHAT_TOUCH_TIMESTAMP so the next event can see the delta.
 async function handleChatExp(botEvent) {
-  const config = require("config");
   if (botEvent.source.type !== "group") return;
   if (botEvent.type !== "message" || botEvent.message.type !== "text") return;
 
-  let { userId, groupId, displayName } = botEvent.source;
-  if (!userId) return;
+  // M8 kill-switch (spec / impl plan M8). Set during the T-0 migration window
+  // so we keep accepting webhooks and updating GuildMembers / reply tokens
+  // while XP recording is frozen — the pipeline drains whatever was already
+  // queued and then idles until the flag is unset.
+  const paused = await redis.get("CHAT_XP_PAUSED");
+  if (paused === "1") return;
 
-  let { timestamp: currTS } = botEvent;
-  let lastTouchTS = await redis.get(`CHAT_TOUCH_TIMESTAMP_${userId}`);
-  let count = await getGroupMemberCount(groupId);
+  const { userId, groupId } = botEvent.source;
+  if (!userId || !groupId) return;
 
-  let rate = getExpRate(currTS, lastTouchTS);
-  let additionRate = count ? getGroupExpAdditionRate(count) : 1;
-  let defaultRate = config.get("chat_level.exp.rate.default");
-  let globalRate = (await redis.get("CHAT_GLOBAL_RATE")) || defaultRate;
-  let expUnit = Math.round((additionRate * rate * globalRate) / 100);
+  const currTS = botEvent.timestamp;
+  const touchKey = `CHAT_TOUCH_TIMESTAMP_${userId}`;
+  const lastTouchRaw = await redis.get(touchKey);
+  const lastTouchTS = lastTouchRaw ? Number(lastTouchRaw) : null;
+  const timeSinceLastMsg =
+    lastTouchTS && Number.isFinite(lastTouchTS) ? currTS - lastTouchTS : null;
 
-  DefaultLogger.info(
-    "個人頻率倍率",
-    rate,
-    "群組倍率加成",
-    additionRate,
-    "經驗單位",
-    expUnit,
-    "伺服器倍率",
-    globalRate,
-    "群組人數",
-    count,
-    "Line名稱",
-    displayName,
-    "userId",
-    userId
+  const groupCount = await getGroupMemberCount(groupId);
+
+  // TTL 10s — must stay above the cooldown table's longest baseline tier
+  // (6s full-speed threshold) so the pipeline can always resolve the
+  // previous timestamp. The pre-M2 code used 5s which silently expired
+  // touch markers within the full-speed tier — spec line 88.
+  await redis.set(touchKey, String(currTS), { EX: 10 });
+
+  // Record the group this user was last active in. PrestigeService uses this
+  // to route LIFF-originated broadcasts (trial_enter / prestige / awakening)
+  // when the caller has no explicit group context.
+  await redis.set(`CHAT_USER_LAST_GROUP_${userId}`, groupId, { EX: 86400 });
+
+  await redis.lPush(
+    "CHAT_EXP_RECORD",
+    JSON.stringify({ userId, groupId, ts: currTS, timeSinceLastMsg, groupCount })
   );
-
-  if (rate !== 0) {
-    await redis.set(`CHAT_TOUCH_TIMESTAMP_${userId}`, currTS, { EX: 5 });
-  }
-
-  await redis.lPush("CHAT_EXP_RECORD", JSON.stringify({ userId, expUnit }));
-}
-
-function getExpRate(now, last) {
-  let defaultRate = 100;
-  let configs = [
-    { diff: 1000, rate: 0 },
-    { diff: 2000, rate: 10 },
-    { diff: 4000, rate: 50 },
-    { diff: 6000, rate: 80 },
-  ];
-  if (!last) return defaultRate;
-  let diff = now - last;
-  let target = configs.find(c => diff < c.diff);
-  return target ? target.rate : defaultRate;
-}
-
-function getGroupExpAdditionRate(memberCount = 0) {
-  if (memberCount < 5) return 1;
-  return 1 + (memberCount - 5) * 0.02;
 }
 
 // --- Data helpers ---
@@ -297,14 +299,17 @@ async function recordMessageTimes(botEvent, id) {
 }
 
 async function saveReplyToken(event) {
-  let { type } = event.source;
-  let sourceId = event.source[`${type}Id`];
-  let token = event.replyToken;
+  const { type } = event.source;
+  const sourceId = event.source[`${type}Id`];
+  const token = event.replyToken;
 
-  if (!/^[CUD][0-9a-f]{32}$/.test(sourceId)) return;
+  // LINE source IDs: U=user, C=group, R=room. `D` is preserved from the
+  // pre-M4 regex for backwards-compat; M4 added R so room tokens no longer
+  // get silently dropped.
+  if (!/^[CUDR][0-9a-f]{32}$/.test(sourceId)) return;
   if (!token) return;
 
-  return redis.set(`ReplyToken_${sourceId}`, token, { EX: 20 });
+  return replyTokenQueue.saveToken(sourceId, token, event.timestamp);
 }
 
 async function getGroupMemberCount(groupId) {
@@ -324,6 +329,8 @@ async function getGroupMemberCount(groupId) {
     return 0;
   }
 }
+
+module.exports.__testing = { handleChatExp, saveReplyToken, tryDrainBroadcast };
 
 if (require.main === module) {
   main().then(() => process.exit(0));

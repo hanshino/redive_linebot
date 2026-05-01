@@ -31,6 +31,9 @@ const { admin: AdminEquipmentRouter, player: PlayerEquipmentRouter } = require("
 const { router: InventoryRouter } = require("./Inventory");
 const { router: TradeRouter } = require("./Trade");
 const { router: MarketRouter } = require("./Market");
+const moment = require("moment");
+const XpHistoryService = require("../service/XpHistoryService");
+const { todayUtc8 } = require("../util/date");
 
 router.use(MarketRouter);
 router.use(InventoryRouter);
@@ -53,6 +56,69 @@ router.get("/me", verifyToken, async (req, res) => {
     ...req.profile,
     ...adminData,
   });
+});
+
+router.get("/me/xp-summary", verifyToken, async (req, res) => {
+  try {
+    const { userId } = req.profile;
+    const summary = await XpHistoryService.buildSummary(userId);
+    res.json(summary);
+  } catch (e) {
+    console.error("[xp-summary]", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.get("/me/xp-events", verifyToken, async (req, res) => {
+  try {
+    const { userId } = req.profile;
+    const today = todayUtc8();
+    const from = (req.query.from || today).slice(0, 10);
+    const to = (req.query.to || today).slice(0, 10);
+
+    // 7-day window cap
+    const fromM = moment(from);
+    const toM = moment(to);
+    if (!fromM.isValid() || !toM.isValid() || toM.diff(fromM, "days") > 7) {
+      return res.status(400).json({ error: "range must be ≤ 7 days" });
+    }
+
+    const result = await XpHistoryService.buildEvents(userId, {
+      from,
+      to,
+      limit: Math.min(Number(req.query.limit) || 1000, 1000),
+      beforeId: req.query.beforeId ? Number(req.query.beforeId) : null,
+      beforeTs: req.query.beforeTs || null,
+    });
+    res.json(result);
+  } catch (e) {
+    console.error("[xp-events]", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.get("/me/xp-daily", verifyToken, async (req, res) => {
+  try {
+    const { userId } = req.profile;
+    const today = todayUtc8();
+    const from = (req.query.from || moment(today).subtract(29, "days").format("YYYY-MM-DD")).slice(
+      0,
+      10
+    );
+    const to = (req.query.to || today).slice(0, 10);
+
+    const fromM = moment(from);
+    const toM = moment(to);
+    if (!fromM.isValid() || !toM.isValid() || toM.diff(fromM, "days") > 365) {
+      return res.status(400).json({ error: "range must be ≤ 365 days" });
+    }
+
+    const result = await XpHistoryService.buildDaily(userId, { from, to });
+    res.json(result);
+  } catch (e) {
+    console.error("[xp-daily]", e);
+    res.status(500).json({ error: "internal_error" });
+  }
 });
 
 router.get("/liff-ids", (req, res) => {
@@ -380,6 +446,15 @@ const AutoPreferenceController = require("../controller/application/AutoPreferen
 router.get("/auto-preference", verifyToken, AutoPreferenceController.api.getPreference);
 router.put("/auto-preference", verifyToken, AutoPreferenceController.api.setPreference);
 router.get("/auto-history", verifyToken, AutoPreferenceController.api.getHistory);
+
+/**
+ * 轉生系統
+ */
+const PrestigeController = require("../controller/application/PrestigeController");
+router.get("/prestige/status", verifyToken, PrestigeController.api.status);
+router.post("/prestige/trial/start", verifyToken, PrestigeController.api.startTrial);
+router.post("/prestige/trial/forfeit", verifyToken, PrestigeController.api.forfeitTrial);
+router.post("/prestige/prestige", verifyToken, PrestigeController.api.prestige);
 
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });

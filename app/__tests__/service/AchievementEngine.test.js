@@ -559,4 +559,176 @@ describe("AchievementEngine", () => {
       expect(UserProgressModel.upsert).not.toHaveBeenCalled();
     });
   });
+
+  describe("unlockByKey", () => {
+    const PRESTIGE_CACHE = [
+      {
+        id: 101,
+        key: "prestige_departure",
+        type: "milestone",
+        target_value: 1,
+        reward_stones: 100,
+      },
+      {
+        id: 102,
+        key: "prestige_awakening",
+        type: "milestone",
+        target_value: 1,
+        reward_stones: 500,
+      },
+    ];
+
+    beforeEach(() => {
+      AchievementEngine._setCache(PRESTIGE_CACHE);
+    });
+
+    it("unlocks and inserts stone ledger row on first call", async () => {
+      UserAchievementModel.getUnlockedIds.mockResolvedValueOnce(new Set());
+      UserAchievementModel.unlock.mockResolvedValueOnce();
+
+      const result = await AchievementEngine.unlockByKey("Uabc", "prestige_departure");
+
+      expect(result.unlocked).toBe(true);
+      expect(result.achievement.key).toBe("prestige_departure");
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Uabc", 101);
+      expect(mysql).toHaveBeenCalledWith("Inventory");
+    });
+
+    it("is a no-op when already unlocked", async () => {
+      UserAchievementModel.getUnlockedIds.mockResolvedValueOnce(new Set([101]));
+
+      const result = await AchievementEngine.unlockByKey("Uabc", "prestige_departure");
+
+      expect(result).toEqual({ unlocked: false, reason: "already_unlocked" });
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+    });
+
+    it("logs warn and no-ops on unknown key", async () => {
+      const result = await AchievementEngine.unlockByKey("Uabc", "nonexistent_key");
+
+      expect(result).toEqual({ unlocked: false, reason: "unknown_key" });
+      expect(DefaultLogger.warn).toHaveBeenCalledWith(expect.stringContaining("nonexistent_key"));
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+    });
+
+    it("swallows errors from underlying unlock and returns reason:error", async () => {
+      UserAchievementModel.getUnlockedIds.mockResolvedValueOnce(new Set());
+      UserAchievementModel.unlock.mockRejectedValueOnce(new Error("db down"));
+
+      const result = await AchievementEngine.unlockByKey("Uabc", "prestige_awakening");
+
+      expect(result).toEqual({ unlocked: false, reason: "error" });
+      expect(DefaultLogger.error).toHaveBeenCalled();
+    });
+
+    it("respects eligibility gate (excludeUserIds)", async () => {
+      AchievementEngine._setCache([
+        {
+          id: 201,
+          key: "restricted",
+          type: "hidden",
+          target_value: 1,
+          reward_stones: 0,
+          condition: { eligibility: { excludeUserIds: ["Uabc"] } },
+        },
+      ]);
+
+      const result = await AchievementEngine.unlockByKey("Uabc", "restricted");
+
+      expect(result).toEqual({ unlocked: false, reason: "ineligible" });
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("batchEvaluate (lifetime XP)", () => {
+    const CHAT_CACHE = [
+      { id: 1, key: "chat_100", type: "milestone", target_value: 100, reward_stones: 50 },
+      { id: 2, key: "chat_1000", type: "milestone", target_value: 1000, reward_stones: 200 },
+      { id: 3, key: "chat_5000", type: "milestone", target_value: 5000, reward_stones: 500 },
+    ];
+
+    // Stub the knex chain so chat_user_data query returns fake lifetime-XP rows
+    // and user_achievements query returns the existing unlocks set.
+    function stubMysqlChain(chatRows, existingUnlocks = []) {
+      mysql.mockImplementation(table => {
+        if (table === "chat_user_data") {
+          return {
+            select: jest.fn().mockResolvedValue(chatRows),
+          };
+        }
+        if (table === "user_achievements") {
+          return {
+            whereIn: jest.fn().mockReturnThis(),
+            select: jest.fn().mockResolvedValue(existingUnlocks),
+          };
+        }
+        if (table === "user") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            where: jest.fn().mockResolvedValue([]),
+          };
+        }
+        if (table === "Inventory") {
+          return { insert: jest.fn().mockResolvedValue() };
+        }
+        return { where: jest.fn().mockResolvedValue([]) };
+      });
+    }
+
+    beforeEach(() => {
+      AchievementEngine._setCache(CHAT_CACHE);
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.upsert.mockResolvedValue();
+    });
+
+    it("uses prestige_count * ? + current_exp AS lifetime_exp via mysql.raw with LV_MAX_TOTAL_EXP binding", async () => {
+      stubMysqlChain([]);
+      await AchievementEngine.batchEvaluate();
+      expect(mysql.raw).toHaveBeenCalledWith(
+        expect.stringContaining("prestige_count * ? + current_exp"),
+        [130000]
+      );
+    });
+
+    it("unlocks chat_100 when lifetime_exp reaches 100 (prestige_count=0, exp=150)", async () => {
+      stubMysqlChain([{ user_id: "Ualice", lifetime_exp: 150 }]);
+
+      await AchievementEngine.batchEvaluate();
+
+      expect(UserProgressModel.upsert).toHaveBeenCalledWith("Ualice", 1, 150);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ualice", 1);
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith("Ualice", 2);
+    });
+
+    it("unlocks all three chat tiers for a user with banked-cycle XP (>= 5000)", async () => {
+      stubMysqlChain([{ user_id: "Ubob", lifetime_exp: 130000 }]);
+
+      await AchievementEngine.batchEvaluate();
+
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 1);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 2);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 3);
+    });
+
+    it("unlocks chat_100+chat_1000 but not chat_5000 at mid-tier lifetime_exp", async () => {
+      stubMysqlChain([{ user_id: "Umid", lifetime_exp: 2500 }]);
+
+      await AchievementEngine.batchEvaluate();
+
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Umid", 1);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Umid", 2);
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith("Umid", 3);
+    });
+
+    it("skips already-unlocked achievements", async () => {
+      stubMysqlChain(
+        [{ user_id: "Ucarl", lifetime_exp: 150 }],
+        [{ user_id: "Ucarl", achievement_id: 1 }]
+      );
+
+      await AchievementEngine.batchEvaluate();
+
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith("Ucarl", 1);
+    });
+  });
 });
