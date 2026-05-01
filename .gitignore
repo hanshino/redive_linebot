@@ -81,9 +81,8 @@ data
 .worktrees/
 
 # oh-my-claudecode
-.omc/*
+**/.omc/*
 !.omc/skills/
-**/.omc/state/
 
 # Superpowers
 .superpowers
