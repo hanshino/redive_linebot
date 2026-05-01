@@ -223,4 +223,48 @@ describe("pipeline.processBatch", () => {
       expect.objectContaining({ rawExp: 120, effectiveExp: 120 })
     );
   });
+
+  it("persists six numeric breakdown columns per event", async () => {
+    loadSpy.mockResolvedValueOnce({
+      ...baseState,
+      prestige_count: 0, // honeymoon active
+      blessings: [1], // blessing 1 = +8% raw
+      permanent_xp_multiplier: 0.05,
+    });
+    findByUserDateSpy.mockResolvedValueOnce(null);
+    findByUserIdSpy.mockResolvedValueOnce(null);
+
+    await pipeline.processBatch([
+      { userId: "Ua", groupId: "Gx", ts: 1700000000000, timeSinceLastMsg: null, groupCount: 3 },
+    ]);
+
+    expect(insertEventSpy).toHaveBeenCalledTimes(1);
+    const payload = insertEventSpy.mock.calls[0][0];
+
+    expect(payload).toEqual(
+      expect.objectContaining({
+        base_xp: 90,
+        blessing1_mult: 1.08,
+        honeymoon_mult: 1.2,
+        trial_mult: 1,
+        permanent_mult: 1.05,
+      })
+    );
+    expect(typeof payload.diminish_factor).toBe("number");
+    expect(payload.diminish_factor).toBeGreaterThan(0);
+  });
+
+  it("identity: raw_exp ≈ round(base × cooldown × group × blessing1)", async () => {
+    loadSpy.mockResolvedValueOnce({ ...baseState, blessings: [1] });
+    findByUserDateSpy.mockResolvedValueOnce(null);
+    findByUserIdSpy.mockResolvedValueOnce(null);
+
+    await pipeline.processBatch([
+      { userId: "Ua", groupId: "Gx", ts: 1700000000000, timeSinceLastMsg: null, groupCount: 3 },
+    ]);
+
+    const p = insertEventSpy.mock.calls[0][0];
+    const expectedRaw = Math.round(p.base_xp * p.cooldown_rate * p.group_bonus * p.blessing1_mult);
+    expect(p.raw_exp).toBe(expectedRaw);
+  });
 });
