@@ -219,10 +219,11 @@ async function checkTrialCompletion(userId, groupIdHint) {
 
   const groupId = groupIdHint || (await resolveLastGroup(userId));
   const rewardText = formatTrialReward(trial.reward_meta, trial.display_name);
+  const displayName = await resolveDisplayName(groupId, userId);
   await broadcastQueue.pushEvent(groupId, {
     type: "trial_pass",
     userId,
-    text: `通過了 ★${trial.star} 的試煉，永久解放 ${rewardText}`,
+    text: `恭喜 ${displayName} 通過了 ★${trial.star} 的試煉，永久解放 ${rewardText}`,
     payload: { trialId: trial.id, trialStar: trial.star, trialSlug: trial.slug },
   });
 
@@ -301,10 +302,11 @@ async function prestige(userId, blessingId) {
   await chatUserState.invalidate(userId);
 
   const groupId = await resolveLastGroup(userId);
+  const displayName = await resolveDisplayName(groupId, userId);
   await broadcastQueue.pushEvent(groupId, {
     type: "prestige",
     userId,
-    text: `完成第 ${newPrestigeCount} 次轉生，選擇了祝福『${blessing.display_name}』`,
+    text: `恭喜 ${displayName} 完成第 ${newPrestigeCount} 次轉生，選擇了祝福『${blessing.display_name}』`,
     payload: {
       prestigeCount: newPrestigeCount,
       trialId: claimed.trial_id,
@@ -317,7 +319,7 @@ async function prestige(userId, blessingId) {
     await broadcastQueue.pushEvent(groupId, {
       type: "awakening",
       userId,
-      text: "達成覺醒！",
+      text: `🎊 ${displayName} 達成覺醒！`,
       payload: { prestigeCount: PRESTIGE_CAP },
     });
 

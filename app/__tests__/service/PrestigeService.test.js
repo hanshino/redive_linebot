@@ -403,7 +403,7 @@ describe("PrestigeService.checkTrialCompletion", () => {
       expect.objectContaining({
         type: "trial_pass",
         userId: "Uabc",
-        text: "通過了 ★2 的試煉，永久解放 永久 XP +10%",
+        text: "恭喜 TestUser 通過了 ★2 的試煉，永久解放 永久 XP +10%",
         payload: { trialId: 2, trialStar: 2, trialSlug: "hardship" },
       })
     );
@@ -465,7 +465,7 @@ describe("PrestigeService.checkTrialCompletion", () => {
     expect(broadcastQueue.pushEvent).toHaveBeenCalledWith(
       "Gg",
       expect.objectContaining({
-        text: "通過了 ★3 的試煉，永久解放 律動精通",
+        text: "恭喜 TestUser 通過了 ★3 的試煉，永久解放 律動精通",
       })
     );
   });
@@ -494,7 +494,7 @@ describe("PrestigeService.checkTrialCompletion", () => {
 
     expect(broadcastQueue.pushEvent).toHaveBeenCalledWith(
       "Gg",
-      expect.objectContaining({ text: "通過了 ★4 的試煉，永久解放 群組加成翻倍" })
+      expect.objectContaining({ text: "恭喜 TestUser 通過了 ★4 的試煉，永久解放 群組加成翻倍" })
     );
   });
 });
@@ -567,7 +567,7 @@ describe("PrestigeService.prestige", () => {
       expect.objectContaining({
         type: "prestige",
         userId: "Uabc",
-        text: "完成第 1 次轉生，選擇了祝福『語言天賦』",
+        text: "恭喜 TestUser 完成第 1 次轉生，選擇了祝福『語言天賦』",
         payload: {
           prestigeCount: 1,
           trialId: 1,
@@ -651,7 +651,7 @@ describe("PrestigeService.prestige", () => {
       "Gg",
       expect.objectContaining({
         type: "awakening",
-        text: "達成覺醒！",
+        text: "🎊 TestUser 達成覺醒！",
         payload: { prestigeCount: 5 },
       })
     );

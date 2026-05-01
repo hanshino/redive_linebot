@@ -184,7 +184,7 @@ describe("PrestigeService — full lifecycle integration", () => {
       "Gintegration",
       expect.objectContaining({
         type: "prestige",
-        text: "完成第 1 次轉生，選擇了祝福『語言天賦』",
+        text: "恭喜 TestUser 完成第 1 次轉生，選擇了祝福『語言天賦』",
       })
     );
 
