@@ -33,6 +33,7 @@ const { router: TradeRouter } = require("./Trade");
 const { router: MarketRouter } = require("./Market");
 const moment = require("moment");
 const XpHistoryService = require("../service/XpHistoryService");
+const { todayUtc8 } = require("../util/date");
 
 router.use(MarketRouter);
 router.use(InventoryRouter);
@@ -71,7 +72,7 @@ router.get("/me/xp-summary", verifyToken, async (req, res) => {
 router.get("/me/xp-events", verifyToken, async (req, res) => {
   try {
     const { userId } = req.profile;
-    const today = moment().utcOffset(480).format("YYYY-MM-DD");
+    const today = todayUtc8();
     const from = (req.query.from || today).slice(0, 10);
     const to = (req.query.to || today).slice(0, 10);
 
@@ -99,7 +100,7 @@ router.get("/me/xp-events", verifyToken, async (req, res) => {
 router.get("/me/xp-daily", verifyToken, async (req, res) => {
   try {
     const { userId } = req.profile;
-    const today = moment().utcOffset(480).format("YYYY-MM-DD");
+    const today = todayUtc8();
     const from = (req.query.from || moment(today).subtract(29, "days").format("YYYY-MM-DD")).slice(
       0,
       10

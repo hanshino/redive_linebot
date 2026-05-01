@@ -27,24 +27,24 @@ const COLORS = {
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
 function tierStatusLine(today) {
-  const { tier, tier1_upper, daily_raw } = today;
+  const { tier, tier1_upper, raw_exp } = today;
   if (tier === 1) {
     return { text: `滿速 0–${tier1_upper} · 尚未進入遞減`, color: COLORS.amberText };
   }
   if (tier === 2) {
-    return { text: `⚠ 已進入 tier 2 · XP ×0.30 · ${daily_raw} raw`, color: COLORS.amberText };
+    return { text: `⚠ 已進入 tier 2 · XP ×0.30 · ${raw_exp} raw`, color: COLORS.amberText };
   }
-  return { text: `⚠ tier 3 · 幾乎不漲 · ${daily_raw} raw`, color: "#FCA5A5" };
+  return { text: `⚠ tier 3 · 幾乎不漲 · ${raw_exp} raw`, color: "#FCA5A5" };
 }
 
 function progressBar(today) {
-  const { daily_raw, tier1_upper, tier2_upper } = today;
-  const scale = Math.max(daily_raw, Math.round(tier2_upper * 1.4));
-  const t1 = Math.round((Math.min(daily_raw, tier1_upper) / scale) * 100);
+  const { raw_exp, tier1_upper, tier2_upper } = today;
+  const scale = Math.max(raw_exp, Math.round(tier2_upper * 1.4));
+  const t1 = Math.round((Math.min(raw_exp, tier1_upper) / scale) * 100);
   const t2 = Math.round(
-    (Math.min(Math.max(0, daily_raw - tier1_upper), tier2_upper - tier1_upper) / scale) * 100
+    (Math.min(Math.max(0, raw_exp - tier1_upper), tier2_upper - tier1_upper) / scale) * 100
   );
-  const t3 = Math.round((Math.max(0, daily_raw - tier2_upper) / scale) * 100);
+  const t3 = Math.round((Math.max(0, raw_exp - tier2_upper) / scale) * 100);
   const rest = Math.max(0, 100 - t1 - t2 - t3);
 
   const segs = [];

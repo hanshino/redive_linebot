@@ -2,13 +2,7 @@ import { useMemo, useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import BreakdownRow from "./BreakdownRow";
 import { foldEvents } from "./foldEvents";
-
-const ACCENT = {
-  cyan: "#00ACC1",
-  amber: "#F59E0B",
-  red: "#DC2626",
-  grey: "#9CA3AF",
-};
+import { tierAccentFromFactor } from "./diminishTier";
 
 const TIME_FMT = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
@@ -22,11 +16,7 @@ function localHHMM(ts) {
 }
 
 function accentFor(folded) {
-  if (folded.degraded) return ACCENT.grey;
-  const ev = folded.events[0];
-  if (ev.diminish_factor === 0.03) return ACCENT.red;
-  if (ev.diminish_factor === 0.3) return ACCENT.amber;
-  return ACCENT.cyan;
+  return tierAccentFromFactor(folded.events[0].diminish_factor, { degraded: folded.degraded });
 }
 
 export default function EventList({ events, showAll, groupLabel }) {

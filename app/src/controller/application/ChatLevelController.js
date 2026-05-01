@@ -60,17 +60,8 @@ function resolveActiveTrialStar(activeTrialId, allTrials) {
   return cfg ? cfg.star : null;
 }
 
-/**
- * Mirror diminishTier.js tier-cap resolution for display purposes.
- * Blessing 4 expands tier1 (0-400 → 0-600); blessing 5 expands tier2 (400-1000 → 400-1200).
- */
-function resolveDiminishTiers(blessingIds) {
-  const ids = Array.isArray(blessingIds) ? blessingIds : [];
-  return {
-    tier1Upper: ids.includes(4) ? 600 : 400,
-    tier2Upper: ids.includes(5) ? 1200 : 1000,
-  };
-}
+const { resolveTierUppers } = require("../../service/chatXp/diminishTier");
+const { todayUtc8 } = require("../../util/date");
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
@@ -91,7 +82,7 @@ exports.showStatus = async (context, props) => {
       throw "userId or displayName is empty";
     }
 
-    const today = moment().utcOffset(480).format("YYYY-MM-DD");
+    const today = todayUtc8();
     const [chatRow, expRows, allTrials, dailyRow, blessingIds] = await Promise.all([
       ChatUserData.findByUserId(userId),
       ChatExpUnit.all(),
@@ -100,7 +91,7 @@ exports.showStatus = async (context, props) => {
       UserBlessing.listBlessingIdsByUserId(userId),
     ]);
     const dailyRaw = dailyRow?.raw_exp ?? 0;
-    const { tier1Upper, tier2Upper } = resolveDiminishTiers(blessingIds);
+    const { tier1Upper, tier2Upper } = resolveTierUppers(blessingIds);
 
     const prestigeCount = chatRow?.prestige_count ?? 0;
     const currentLevel = chatRow?.current_level ?? 0;

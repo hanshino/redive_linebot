@@ -19,7 +19,7 @@ describe("XpHistoryService", () => {
   beforeEach(() => jest.clearAllMocks());
 
   describe("buildSummary", () => {
-    test("returns today.tier=1 when daily_raw < tier1_upper", async () => {
+    test("returns today.tier=1 when raw_exp < tier1_upper", async () => {
       ChatExpDaily.findByUserDate.mockResolvedValue({
         raw_exp: 200,
         effective_exp: 200,
@@ -32,7 +32,7 @@ describe("XpHistoryService", () => {
 
       const summary = await XpHistoryService.buildSummary("U_test");
       expect(summary.today.tier).toBe(1);
-      expect(summary.today.daily_raw).toBe(200);
+      expect(summary.today.raw_exp).toBe(200);
       expect(summary.today.tier1_upper).toBe(400);
       expect(summary.today.tier2_upper).toBe(1000);
       expect(summary.today.honeymoon_active).toBe(true);
@@ -55,7 +55,7 @@ describe("XpHistoryService", () => {
       expect(summary.today.tier).toBe(1);
     });
 
-    test("daily_raw between tier1 and tier2 → tier 2", async () => {
+    test("raw_exp between tier1 and tier2 → tier 2", async () => {
       ChatExpDaily.findByUserDate.mockResolvedValue({
         raw_exp: 800,
         effective_exp: 520,
@@ -70,7 +70,7 @@ describe("XpHistoryService", () => {
       expect(summary.today.tier).toBe(2);
     });
 
-    test("daily_raw past tier2_upper → tier 3", async () => {
+    test("raw_exp past tier2_upper → tier 3", async () => {
       ChatExpDaily.findByUserDate.mockResolvedValue({
         raw_exp: 1500,
         effective_exp: 720,
@@ -86,13 +86,13 @@ describe("XpHistoryService", () => {
       expect(summary.today.active_trial_star).toBeNull(); // last_event is null, so summary doesn't surface trial star
     });
 
-    test("no events today → daily_raw=0 / tier=1 / last_event=null", async () => {
+    test("no events today → raw_exp=0 / tier=1 / last_event=null", async () => {
       ChatExpDaily.findByUserDate.mockResolvedValue(null);
       UserBlessing.listBlessingIdsByUserId.mockResolvedValue([]);
       ChatExpEvent.findLatestByUser.mockResolvedValue(null);
 
       const summary = await XpHistoryService.buildSummary("U_test");
-      expect(summary.today.daily_raw).toBe(0);
+      expect(summary.today.raw_exp).toBe(0);
       expect(summary.today.tier).toBe(1);
       expect(summary.last_event).toBeNull();
     });

@@ -6,7 +6,6 @@ const baseSummary = {
     raw_exp: 327,
     effective_exp: 327,
     msg_count: 63,
-    daily_raw: 327,
     tier: 1,
     tier1_upper: 600,
     tier2_upper: 1000,
@@ -46,7 +45,7 @@ describe("XpHistory Bubble", () => {
   test("tier 2 → status line mentions tier 2", () => {
     const summary = JSON.parse(JSON.stringify(baseSummary));
     summary.today.tier = 2;
-    summary.today.daily_raw = 840;
+    summary.today.raw_exp = 840;
     const out = Bubble.build({ summary, groupName: null, liffUri: "u", prestigeLiffUri: "p" });
     const text = JSON.stringify(out.contents);
     expect(text).toMatch(/tier 2/);
@@ -55,7 +54,7 @@ describe("XpHistory Bubble", () => {
   test("tier 3 → status line mentions tier 3", () => {
     const summary = JSON.parse(JSON.stringify(baseSummary));
     summary.today.tier = 3;
-    summary.today.daily_raw = 1540;
+    summary.today.raw_exp = 1540;
     const out = Bubble.build({ summary, groupName: null, liffUri: "u", prestigeLiffUri: "p" });
     expect(JSON.stringify(out.contents)).toMatch(/tier 3/);
   });

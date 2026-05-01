@@ -2,12 +2,23 @@ const TIER1_RATE = 1.0;
 const TIER2_RATE = 0.3;
 const TIER3_RATE = 0.03;
 
+const TIER1_BASE_UPPER = 400;
+const TIER1_BLESSING4_UPPER = 600;
+const TIER2_BASE_UPPER = 1000;
+const TIER2_BLESSING5_UPPER = 1200;
+
+function resolveTierUppers(blessingIds) {
+  const ids = Array.isArray(blessingIds) ? blessingIds : [];
+  return {
+    tier1Upper: ids.includes(4) ? TIER1_BLESSING4_UPPER : TIER1_BASE_UPPER,
+    tier2Upper: ids.includes(5) ? TIER2_BLESSING5_UPPER : TIER2_BASE_UPPER,
+  };
+}
+
 function applyDiminish(incoming, dailyBefore, status) {
   if (incoming <= 0) return { result: 0, factor: 0 };
 
-  const blessings = Array.isArray(status.blessings) ? status.blessings : [];
-  const tier1Upper = blessings.includes(4) ? 600 : 400;
-  const tier2Upper = blessings.includes(5) ? 1200 : 1000;
+  const { tier1Upper, tier2Upper } = resolveTierUppers(status.blessings);
 
   let remaining = incoming;
   let cursor = dailyBefore;
@@ -31,4 +42,10 @@ function applyDiminish(incoming, dailyBefore, status) {
   return { result, factor: result / incoming };
 }
 
-module.exports = { applyDiminish };
+module.exports = {
+  applyDiminish,
+  resolveTierUppers,
+  TIER1_RATE,
+  TIER2_RATE,
+  TIER3_RATE,
+};

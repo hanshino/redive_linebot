@@ -1,4 +1,5 @@
 import { Box } from "@mui/material";
+import { tierLabelFromFactor } from "./diminishTier";
 
 const trim = n => {
   const num = Number(n);
@@ -70,14 +71,7 @@ export default function BreakdownRow({ ev, showAll }) {
     { label: "群組加成", val: mult(ev.group_bonus), hide: ev.group_bonus === 1 },
     { label: "暖流祝福", val: mult(ev.blessing1_mult), hide: ev.blessing1_mult === 1 },
   ];
-  const tierLabel =
-    ev.diminish_factor === 1
-      ? "遞減（第一階）"
-      : ev.diminish_factor === 0.3
-        ? "遞減（第二階）"
-        : ev.diminish_factor === 0.03
-          ? "遞減（第三階）"
-          : "遞減";
+  const tierLabel = tierLabelFromFactor(ev.diminish_factor);
   const effSteps = [
     { label: "蜜月加成", val: mult(ev.honeymoon_mult), hide: ev.honeymoon_mult === 1 },
     {

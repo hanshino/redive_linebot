@@ -1,16 +1,8 @@
-const moment = require("moment");
 const ChatExpEvent = require("../model/application/ChatExpEvent");
 const ChatExpDaily = require("../model/application/ChatExpDaily");
 const UserBlessing = require("../model/application/UserBlessing");
-
-const TIER1_BASE = 400;
-const TIER1_BLESSING4 = 600;
-const TIER2_BASE = 1000;
-const TIER2_BLESSING5 = 1200;
-
-function todayDateUtc8() {
-  return moment().utcOffset(480).format("YYYY-MM-DD");
-}
+const { resolveTierUppers } = require("./chatXp/diminishTier");
+const { todayUtc8 } = require("../util/date");
 
 function deriveTier(dailyRaw, tier1Upper, tier2Upper) {
   if (dailyRaw < tier1Upper) return 1;
@@ -55,16 +47,14 @@ function shapeEvent(row) {
 }
 
 async function buildSummary(userId) {
-  const date = todayDateUtc8();
+  const date = todayUtc8();
   const [daily, blessingIds, lastEvent] = await Promise.all([
     ChatExpDaily.findByUserDate(userId, date),
     UserBlessing.listBlessingIdsByUserId(userId),
     ChatExpEvent.findLatestByUser(userId),
   ]);
 
-  const ids = Array.isArray(blessingIds) ? blessingIds : [];
-  const tier1Upper = ids.includes(4) ? TIER1_BLESSING4 : TIER1_BASE;
-  const tier2Upper = ids.includes(5) ? TIER2_BLESSING5 : TIER2_BASE;
+  const { tier1Upper, tier2Upper } = resolveTierUppers(blessingIds);
 
   const dailyRaw = daily?.raw_exp ?? 0;
   const today = {
@@ -72,12 +62,11 @@ async function buildSummary(userId) {
     raw_exp: dailyRaw,
     effective_exp: daily?.effective_exp ?? 0,
     msg_count: daily?.msg_count ?? 0,
-    daily_raw: dailyRaw,
     tier: deriveTier(dailyRaw, tier1Upper, tier2Upper),
     tier1_upper: tier1Upper,
     tier2_upper: tier2Upper,
     honeymoon_active: Boolean(daily?.honeymoon_active),
-    active_trial_star: null, // populated below if last_event has it
+    active_trial_star: null,
   };
 
   const last = shapeEvent(lastEvent);
@@ -101,17 +90,13 @@ async function buildEvents(userId, { from, to, limit = 1000, beforeId, beforeTs 
 }
 
 async function buildDaily(userId, { from, to }) {
-  const rows = await ChatExpDaily.model.all({
-    filter: {
-      user_id: userId,
-      date: { operator: ">=", value: from },
-    },
-    order: [{ column: "date", direction: "asc" }],
-  });
-  // Filter `to` in JS — base model's filter dialect doesn't compose two operators on the same key.
-  const filtered = rows.filter(r => r.date <= to);
+  const rows = await ChatExpDaily.model.knex
+    .where({ user_id: userId })
+    .andWhere("date", ">=", from)
+    .andWhere("date", "<=", to)
+    .orderBy("date", "asc");
   return {
-    days: filtered.map(r => ({
+    days: rows.map(r => ({
       date: r.date,
       raw_exp: r.raw_exp,
       effective_exp: r.effective_exp,

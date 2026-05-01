@@ -18,6 +18,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
 import api from "../../services/api";
+import { fetchGroupSummarys } from "../../services/group";
 import EventList from "./EventList";
 import DailyTrend from "./DailyTrend";
 import { makeGroupLabel } from "./groupLabel";
@@ -57,7 +58,6 @@ export default function XpHistory() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   const [events, setEvents] = useState([]);
-  const [eventsRange] = useState({ from: addDays(TODAY(), -1), to: TODAY() });
   const [days, setDays] = useState([]);
   const [dailyRange, setDailyRange] = useState(30);
   const [groupNames, setGroupNames] = useState({});
@@ -68,19 +68,19 @@ export default function XpHistory() {
 
   useEffect(() => {
     if (!loggedIn) return;
+    const to = TODAY();
+    const from = addDays(to, -1);
     api
-      .get(`/api/me/xp-events?from=${eventsRange.from}&to=${eventsRange.to}`)
+      .get(`/api/me/xp-events?from=${from}&to=${to}`)
       .then(res => setEvents(Array.isArray(res.data.events) ? res.data.events : []));
-  }, [loggedIn, eventsRange]);
+  }, [loggedIn]);
 
   useEffect(() => {
     if (!loggedIn) return;
-    api
-      .get("/api/guilds")
-      .then(res => {
-        const list = Array.isArray(res.data) ? res.data : [];
+    fetchGroupSummarys()
+      .then(list => {
         const map = {};
-        list.forEach(g => {
+        (Array.isArray(list) ? list : []).forEach(g => {
           if (g?.groupId && g?.groupName) map[g.groupId] = g.groupName;
         });
         setGroupNames(map);
@@ -130,16 +130,8 @@ export default function XpHistory() {
         <Tab label="每日趨勢" />
       </Tabs>
 
-      {tab === 0 && (
-        <Box>
-          <EventList events={events} showAll={showAll} groupLabel={groupLabel} />
-        </Box>
-      )}
-      {tab === 1 && (
-        <Box>
-          <DailyTrend days={days} range={dailyRange} onRangeChange={setDailyRange} />
-        </Box>
-      )}
+      {tab === 0 && <EventList events={events} showAll={showAll} groupLabel={groupLabel} />}
+      {tab === 1 && <DailyTrend days={days} range={dailyRange} onRangeChange={setDailyRange} />}
 
       <Drawer
         anchor="bottom"

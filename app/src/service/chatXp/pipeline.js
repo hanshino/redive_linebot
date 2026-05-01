@@ -6,9 +6,9 @@
 // The batch is popped from Redis exactly once, so re-running doesn't happen unless
 // the process crashes mid-batch — acceptable for v1 (eventual-consistency trade-off).
 
-const moment = require("moment");
 const config = require("config");
 const redis = require("../../util/redis");
+const { todayUtc8 } = require("../../util/date");
 const chatUserState = require("../../util/chatUserState");
 const ChatUserData = require("../../model/application/ChatUserData");
 const ChatExpDaily = require("../../model/application/ChatExpDaily");
@@ -91,7 +91,7 @@ async function processBatch(events) {
 
   const base = await getBaseXp();
   const expUnitRows = await ChatExpUnit.all();
-  const today = moment().utcOffset(480).format("YYYY-MM-DD");
+  const today = todayUtc8();
 
   const byUser = groupByUser(events);
   for (const [userId, userEvents] of byUser) {
