@@ -42,7 +42,7 @@
     "race": {
       "trackLength": 50,
       "runnerCount": 5,
-      "bettingDurationMinutes": 240,
+      "bettingDurationMinutes": 9360,
       "advanceIntervalMinutes": 1,
       "stamina": {
         "initial": 100,
@@ -64,7 +64,7 @@
         "feeRate": 0.1
       },
       "schedule": {
-        "startHours": [8, 14, 20]
+        "startHours": [8]
       }
     },
     "janken": {
