@@ -792,7 +792,79 @@ exports.generateRankCard = ({
   serverRank,
   maxBet,
   baseUrl,
+  seasonId,
+  seasonStartedAt,
+  lifetime,
+  todayReward,
 }) => {
+  const seasonBlock = seasonId
+    ? {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          { type: "text", text: "賽季", color: HERO_SURFACE.textMuted, size: "xs", flex: 1 },
+          {
+            type: "text",
+            text: `第 ${seasonId} 賽季`,
+            color: HERO_SURFACE.text,
+            size: "xs",
+            align: "end",
+            flex: 2,
+          },
+        ],
+      }
+    : null;
+
+  const lifetimeBlock = lifetime
+    ? {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "text",
+            text: "生涯戰績",
+            color: HERO_SURFACE.textMuted,
+            size: "xs",
+            flex: 1,
+          },
+          {
+            type: "text",
+            text: `${lifetime.win} 勝 / ${lifetime.lose} 敗 / ${lifetime.draw} 平`,
+            color: HERO_SURFACE.text,
+            size: "xs",
+            align: "end",
+            flex: 2,
+          },
+        ],
+      }
+    : null;
+
+  const todayRewardBlock = todayReward
+    ? {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "text",
+            text: "今日獎勵",
+            color: HERO_SURFACE.textMuted,
+            size: "xs",
+            flex: 1,
+          },
+          {
+            type: "text",
+            text: `+${todayReward.amount} 女神石`,
+            color: HERO_SURFACE.textAccent,
+            size: "xs",
+            align: "end",
+            flex: 2,
+          },
+        ],
+      }
+    : null;
+
+  const newRows = [seasonBlock, lifetimeBlock, todayRewardBlock].filter(Boolean);
+
   const bodyContents = [
     {
       type: "box",
@@ -972,6 +1044,7 @@ exports.generateRankCard = ({
               },
             ]
           : []),
+        ...newRows,
       ],
       margin: "lg",
       spacing: "sm",
