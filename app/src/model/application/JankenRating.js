@@ -13,6 +13,9 @@ const fillable = [
   "streak",
   "max_streak",
   "bounty",
+  "lifetime_win_count",
+  "lifetime_lose_count",
+  "lifetime_draw_count",
 ];
 
 const FALLBACK_TIERS = [
@@ -136,4 +139,25 @@ exports.getTopRankings = async function (limit = 20) {
     .leftJoin(subquery, "u.platform_id", "=", `${TABLE}.user_id`)
     .orderBy("elo", "desc")
     .limit(limit);
+};
+
+exports.getTopByElo = async function (limit = 50, trx) {
+  const db = trx || mysql;
+  return db(TABLE).orderBy("elo", "desc").orderBy("win_count", "desc").limit(limit);
+};
+
+exports.resetSeasonFields = async function (trx) {
+  const db = trx || mysql;
+  return db(TABLE).update({
+    lifetime_win_count: db.raw("lifetime_win_count + win_count"),
+    lifetime_lose_count: db.raw("lifetime_lose_count + lose_count"),
+    lifetime_draw_count: db.raw("lifetime_draw_count + draw_count"),
+    elo: 1000,
+    rank_tier: "beginner",
+    win_count: 0,
+    lose_count: 0,
+    draw_count: 0,
+    streak: 0,
+    bounty: 0,
+  });
 };
