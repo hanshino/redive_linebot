@@ -89,3 +89,6 @@ data
 
 # Playwright MCP
 .playwright-mcp
+
+# Designer prototypes (mockups only — production lives under frontend/src/pages/)
+/xp-history/

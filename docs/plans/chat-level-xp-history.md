@@ -60,9 +60,9 @@ The `modifiers` JSON currently carries **flags**, not numeric multipliers:
 
 Three sections, no per-message list (LIFF handles that):
 
-1. **Today summary** — raw → effective totals, message count, current daily-cap progress bar (re-uses tier1/tier2 caps from `resolveDiminishTiers`, same logic as `/me`).
-2. **Last event** — single line: `HH:mm · 群組名 · raw N → eff M`, plus tag chips for any active modifiers (`蜜月` / `★3 試煉` / `祝福·暖流` / `已遞減`).
-3. **CTA** — primary button to LIFF `/xp-history`, secondary text link to `/prestige`.
+1. **Today summary** — gradient header (cyan), shows `effective / raw_total raw` (raw is informational, not a cap), message count, and a **tier-segmented progress bar** colored amber (tier 1) → amberDeep (tier 2) → grey (tier 3). Bar widths computed from `today.daily_raw` against `tier1_upper` and `tier2_upper`. Below the bar, a status line states the current tier in plain text — examples: `滿速 0–600 · 尚未進入遞減` / `⚠ 已進入 tier 2 · XP ×0.30 · 840 raw` / `⚠ tier 3 · 幾乎不漲 · 1,540 raw`. Right corner shows date pill `05/01 五` or, if a trial is active, `⚔ ★N 試煉中`.
+2. **Last event card** — left-side 3px accent bar (cyan / amber / red by tier), card body with `HH:mm · 群組名` on first line, `raw N → eff M` on the right (eff colored amber when reduced, red when 0), then a chip row below: `🌱 蜜月 ×1.20` / `群組 ×1.10` / `已遞減 ×0.30` / `★5 ×0.50` / `🗣 暖流 ×1.08` / `永久 ×1.05`. When the event is older than the v2 deploy and lacks numeric breakdown, the chip row collapses to a single grey chip `舊版資料 · 無乘數明細`.
+3. **CTA** — primary amber button "📊 查看完整歷程" → LIFF `/xp-history`, secondary text link "→ 轉生狀態" below.
 
 `/me` profile bubble adds one CTA button "查看經驗歷程" → opens LIFF (single addition; layout untouched). This handles users who don't know the text command.
 
@@ -72,23 +72,26 @@ New top-level route, peer of `/prestige`. Two tabs:
 
 #### Tab 1 — 逐筆 (default)
 - Default time range: today + yesterday (≤2 days). Date picker can scroll back 7 days; rows older than 30 days are gone (retention).
-- Rows are auto-folded client-side by `(floor(ts to minute), group_id, modifier_hash)`, where `modifier_hash` is a stable hash of the multiplier set actually applied. Folded rows show `time · group · count · raw_total → eff_total · chips`. Click expands to per-message rows.
-- Each row in expanded view shows the full multiplier chain:
+- Rows are auto-folded client-side by `(floor(ts to minute), group_id, modifier_hash)`, where `modifier_hash` is a stable hash of the multiplier set actually applied. Folded rows show `time · group · count · raw_total → eff_total · chips`. Tap expands to per-message breakdown rows.
+- Each folded row has a 4px left-side **accent bar** colored by tier: cyan (tier 1) / amber (tier 2) / red (tier 3) / grey (degraded).
+- The expanded `BreakdownRow` shows the full multiplier chain. Multipliers equal to `1.000` are **hidden by default** to keep noise down; a single page-level toggle "顯示全部乘數" (default off) reveals them. Show-all is a prop, not a mutation onto the event object.
+- Example chain rendering (using example multipliers; values match what's persisted on a single row):
   ```
-  base 5.000 × cooldown 1.00 × group ×1.10 × blessing·激流 ×1.08
-       → raw 5
-       × honeymoon ×1.20
-       × diminish 0.30  (tier 2: 480/1000)
-       × trial    ×0.50  (★5)
-       × permanent ×1.05
-       → effective 1
+  base 5.000 × cooldown 1.00 × group ×1.10 × 暖流 ×1.08
+       → raw 6                                         (5.940 → round)
+       × 蜜月 ×1.20
+       × 遞減 tier 2 ×0.30   (840 / 1000 raw)
+       × 試煉 ★5 ×0.50
+       × 永久 ×1.05
+       → effective 1                                   (1.134 → round)
   ```
-- Values come straight from the row, not recomputed. Diminish tier label (tier 1/2/3) is derived from `diminish_factor` (1.0 → tier1, 0.3 → tier2, 0.03 → tier3) and rendered client-side. The `blessing·xxx` row collapses into the line label when `blessing1_mult === 1.000`.
+- Values come straight from the row, not recomputed. Diminish tier label is derived from `diminish_factor` (`1.0` → tier 1, `0.3` → tier 2, `0.03` → tier 3) and rendered client-side.
 
 #### Tab 2 — 每日趨勢
-- Stacked bar per day: lower stack `effective_exp`, upper stack `raw_exp - effective_exp` (loss to diminish/trial). Hover/tap shows numeric tooltip.
-- Each bar carries a small badge cluster underneath: `🌱 蜜月` if `honeymoon_active`, `⚔ ★N` if `trial_id` present that day.
-- Default range: 30 days. Range picker: 7 / 30 / 90 / since-prestige (uses `chat_user_data.prestige_count` change date — out of scope to thread through, just expose 7/30/90/365).
+- Stacked bar per day: lower stack `effective_exp` (amber), upper stack `raw_exp - effective_exp` (muted grey, loss to diminish/trial).
+- Interaction is **tap-to-select** (mobile-first). Tapping a bar pins it as the focused day; the read-out below the chart shows date / raw / effective / msg_count. Tapping the same bar or the empty area deselects. Desktop also supports hover, but hover is treated as a hint, not the primary path.
+- Each bar carries a small badge cluster underneath: `🌱` if `honeymoon_active`, `⚔★N` if `trial_id` present that day.
+- Default range: 30 days. Range picker: `7d / 30d / 90d / 1y`. (No `since-prestige` marker in v1 — fixed ranges only.)
 
 ### 5.3 Privacy
 
@@ -140,7 +143,7 @@ All under existing `/api` prefix, reusing the LIFF auth middleware (`validation.
 
 ### `GET /api/me/xp-events`
 Query: `?from=YYYY-MM-DD&to=YYYY-MM-DD` (max 7-day window; default = today)
-Response: `{ events: [{ id, ts, group_id, base_xp, cooldown_rate, group_bonus, honeymoon_mult, diminish_factor, trial_mult, permanent_mult, raw_exp, effective_exp, modifiers }] }`
+Response: `{ events: [{ id, ts, group_id, base_xp, cooldown_rate, group_bonus, blessing1_mult, honeymoon_mult, diminish_factor, trial_mult, permanent_mult, raw_exp, effective_exp, modifiers }] }`
 Order: `ts DESC`, capped at 1000 rows per request. Pagination via `before` cursor (`ts`+`id`).
 
 ### `GET /api/me/xp-daily`
@@ -149,18 +152,55 @@ Response: `{ days: [{ date, raw_exp, effective_exp, msg_count, honeymoon_active,
 Reads `chat_exp_daily` only. Cheap.
 
 ### `GET /api/me/xp-summary`
-For the Flex bubble. Returns: `{ today: { raw, effective, msg_count, cap_progress, tier1_upper, tier2_upper }, last_event: { ts, group_id, raw, effective, chips: [...] } | null }`. Single round-trip so the bubble builds in one query phase.
+For the Flex bubble. Single round-trip so the bubble builds in one query phase.
 
-Group display name resolution stays in front-end / template layer (controller already calls `LineClient.getGroupSummary`-style lookups elsewhere). API returns raw `group_id`.
+Response:
+```jsonc
+{
+  "today": {
+    "date": "2026-05-01",          // YYYY-MM-DD (UTC+8) — bot picks weekday label
+    "raw_exp": 1540,                // sum of raw_exp today (informational, not a cap)
+    "effective_exp": 418,
+    "msg_count": 287,
+    "daily_raw": 1540,              // alias of raw_exp; explicit so it's clear this drives tier UI
+    "tier": 3,                      // 1 / 2 / 3 derived from daily_raw vs tier1_upper / tier2_upper
+    "tier1_upper": 600,             // accounts for blessing 4 expansion
+    "tier2_upper": 1000,            // accounts for blessing 5 expansion
+    "honeymoon_active": false,
+    "active_trial_star": 5          // null if no active trial
+  },
+  "last_event": {                   // null if user has no events today
+    "ts": "2026-05-01T20:14:32",
+    "group_id": "C5i0j1",
+    "raw_exp": 5,
+    "effective_exp": 0,
+    "base_xp": 5.000,
+    "cooldown_rate": 1.000,
+    "group_bonus": 1.000,
+    "blessing1_mult": 1.000,
+    "honeymoon_mult": 1.000,
+    "diminish_factor": 0.030,
+    "trial_mult": 0.500,
+    "permanent_mult": 1.050,
+    "modifiers": { "active_trial_id": 5, "active_trial_star": 5, "blessings": [], "permanent_xp_multiplier": 0.05 }
+  }
+}
+```
+
+Note: `daily_raw` is **not** a cap — players continue earning past `tier2_upper` at ×0.03. The bubble must surface this clearly (e.g. `1,540 raw · 已過 tier 2 上限`) and never render text that implies a hard ceiling like `/1000`.
+
+Group display name resolution stays in front-end / template layer (controller already calls `LineClient.getGroupSummary`-style lookups elsewhere). API returns raw `group_id`; UI falls back to `…<last4>` when name lookup fails.
 
 ## 9. Front-end
 
 New page `frontend/src/pages/XpHistory/`:
-- `index.jsx` — page shell with two MUI Tabs (`逐筆` / `每日趨勢`), date range picker per tab, follows the modern card layout pattern (see `Pages: Bag / Trade Manage / Battle Signin`).
-- `EventList.jsx` — fetches `/api/me/xp-events`, performs client-side fold by `(minute, group, modifier_hash)`, renders collapsed/expanded rows.
-- `BreakdownRow.jsx` — single-event detailed multiplier chain.
-- `DailyTrend.jsx` — fetches `/api/me/xp-daily`, renders `recharts` `BarChart` with stacked `effective` + `loss` bars and badge cluster row.
+- `index.jsx` — page shell with two MUI Tabs (`逐筆` / `每日趨勢`), date range picker per tab, page-level toggle "顯示全部乘數" for breakdown rows. Follows the modern card layout pattern (see `Pages: Bag / Trade Manage / Battle Signin`).
+- `EventList.jsx` — fetches `/api/me/xp-events`, performs client-side fold by `(minute, group, modifier_hash)`, renders collapsed/expanded rows. Receives `showAll` as a prop and forwards to `BreakdownRow`.
+- `BreakdownRow.jsx` — single-event detailed multiplier chain. Hides `*_mult === 1.0` rows unless `showAll` prop is true. Degrades gracefully when numeric columns are null (renders an italic "此筆早於 v2，無乘數明細" placeholder).
+- `DailyTrend.jsx` — fetches `/api/me/xp-daily`. v1 ships a hand-rolled SVG stacked bar (one rect for `effective_exp`, one rect for `raw_exp - effective_exp`) — simpler than wiring `recharts` for one chart and gives full control over badge placement under each bar. Selection is **tap-pinned** with click-outside / re-tap to deselect; hover-to-preview is desktop-only sugar.
 - Auth flow re-uses `liff.init()` + existing utility (same as `Prestige` page).
+
+Prototype reference: `xp-history/` directory at repo root contains designer-produced mockups (`flex/*.json`, `xp-history-components.jsx`, etc.). Use as a visual / structural reference; do **not** ship the prototype code paths or the `tweaks-panel`/`ios-frame` host shells. Production lives under `frontend/src/pages/XpHistory/`. The prototype directory should be moved out of repo or added to `.gitignore` once implementation starts.
 
 Routing: add `/xp-history` to `App.jsx`; LIFF endpoint update is a config-only change in `make tunnel` (LIFF config holds a single endpoint base, sub-paths are routed by react-router).
 
