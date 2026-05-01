@@ -104,7 +104,6 @@ async function processUserEvents(userId, events, ctx) {
   const state = await chatUserState.load(userId);
   const dailyRow = await ChatExpDaily.findByUserDate(userId, ctx.today);
   const dailyRawBefore = dailyRow?.raw_exp ?? 0;
-  const honeymoonMult = state.prestige_count === 0 ? 1.2 : 1.0;
 
   let rawDelta = 0;
   let effectiveDelta = 0;
@@ -114,12 +113,26 @@ async function processUserEvents(userId, events, ctx) {
   for (const event of events) {
     const cooldownRate = selectCooldownRate(event.timeSinceLastMsg, state);
     const groupBonus = computeGroupBonus(event.groupCount, state);
-    const raw = computePerMsgXp({ base: ctx.base, cooldownRate, groupBonus, status: state });
+    const { raw, blessing1Mult } = computePerMsgXp({
+      base: ctx.base,
+      cooldownRate,
+      groupBonus,
+      status: state,
+    });
 
+    const honeymoonMult = state.prestige_count === 0 ? 1.2 : 1.0;
     const scaledIncoming = raw * honeymoonMult;
     const scaledBefore = (dailyRawBefore + rawDelta) * honeymoonMult;
-    const afterDiminish = applyDiminish(scaledIncoming, scaledBefore, state);
-    const finalEffective = applyTrialAndPermanent(afterDiminish, state);
+    const { result: afterDiminish, factor: diminishFactor } = applyDiminish(
+      scaledIncoming,
+      scaledBefore,
+      state
+    );
+    const {
+      result: finalEffective,
+      trialMult,
+      permanentMult,
+    } = applyTrialAndPermanent(afterDiminish, state);
     const effectiveInt = Math.max(0, Math.round(finalEffective));
 
     rawDelta += raw;
@@ -134,6 +147,12 @@ async function processUserEvents(userId, events, ctx) {
       effective_exp: effectiveInt,
       cooldown_rate: cooldownRate,
       group_bonus: groupBonus,
+      base_xp: ctx.base,
+      blessing1_mult: blessing1Mult,
+      honeymoon_mult: honeymoonMult,
+      diminish_factor: diminishFactor,
+      trial_mult: trialMult,
+      permanent_mult: permanentMult,
       modifiers: {
         honeymoon: state.prestige_count === 0,
         active_trial_id: state.active_trial_id,

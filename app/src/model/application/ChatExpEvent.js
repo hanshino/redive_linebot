@@ -10,6 +10,12 @@ const fillable = [
   "cooldown_rate",
   "group_bonus",
   "modifiers",
+  "base_xp",
+  "blessing1_mult",
+  "honeymoon_mult",
+  "diminish_factor",
+  "trial_mult",
+  "permanent_mult",
 ];
 
 class ChatExpEvent extends Base {}
