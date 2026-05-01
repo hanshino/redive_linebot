@@ -71,16 +71,76 @@
       "paper": "🖐️",
       "rock": "✊",
       "scissors": "✌️",
+      "season": {
+        "snapshotTopN": 50,
+        "enableSeasonEndRewards": false,
+        "endRewards": {
+          "top1": 50000,
+          "top2": 30000,
+          "top3": 20000,
+          "top4_10": 5000,
+          "top11_50": 1000
+        }
+      },
+      "daily_reward": {
+        "enableDailyRankReward": false,
+        "amounts": {
+          "top1": 500,
+          "top2": 300,
+          "top3": 200,
+          "top4_10": 50,
+          "legend": 100,
+          "master": 50,
+          "fighter": 25,
+          "challenger": 10,
+          "beginner": 0
+        }
+      },
       "bet": {
         "minAmount": 10,
         "maxAmountByRank": {
+          "beginner": 50000,
+          "challenger": 100000,
+          "fighter": 200000,
+          "master": 500000,
+          "legend": 1000000
+        },
+        "feeRate": 0.1
+      },
+      "streak": {
+        "maxBountyByRank": {
           "beginner": 20000,
           "challenger": 50000,
           "fighter": 100000,
           "master": 200000,
-          "legend": 500000
+          "legend": 300000
         },
-        "feeRate": 0.1
+        "bountyMinBet": 1000,
+        "bountyClaimMultiplier": 5
+      },
+      "elo": {
+        "initial": 1000,
+        "tiers": [
+          { "key": "beginner",   "name": "見習者", "minElo": 0    },
+          { "key": "challenger", "name": "挑戰者", "minElo": 1100 },
+          { "key": "fighter",    "name": "強者",   "minElo": 1250 },
+          { "key": "master",     "name": "達人",   "minElo": 1400 },
+          { "key": "legend",     "name": "傳說",   "minElo": 1550 }
+        ],
+        "kFactorTiers": [
+          { "minBet": 50000, "k": 80 },
+          { "minBet":  5000, "k": 60 },
+          { "minBet":  1000, "k": 32 },
+          { "minBet":   100, "k": 20 },
+          { "minBet":     0, "k": 12 }
+        ],
+        "lossFactor": 0.5,
+        "nonBetK": 0,
+        "streakBonus": [
+          { "minStreak": 7, "multiplier": 2.0 },
+          { "minStreak": 5, "multiplier": 1.5 },
+          { "minStreak": 3, "multiplier": 1.25 }
+        ]
       },
       "images": {
         "rock": "/assets/janken/rock.png",
@@ -90,32 +150,6 @@
         "lose": "/assets/janken/lose.png",
         "draw": "/assets/janken/draw.png",
         "vs": "/assets/janken/vs.png"
-      },
-      "streak": {
-        "maxBountyByRank": {
-          "beginner": 10000,
-          "challenger": 25000,
-          "fighter": 50000,
-          "master": 80000,
-          "legend": 120000
-        },
-        "bountyMinBet": 1000,
-        "bountyClaimMultiplier": 5
-      },
-      "elo": {
-        "initial": 1000,
-        "kFactorTiers": [
-          { "minBet": 10000, "k": 40 },
-          { "minBet": 3000, "k": 24 },
-          { "minBet": 500, "k": 16 },
-          { "minBet": 0, "k": 8 }
-        ],
-        "lossFactor": 0.5,
-        "streakBonus": [
-          { "minStreak": 7, "multiplier": 2.0 },
-          { "minStreak": 5, "multiplier": 1.5 },
-          { "minStreak": 3, "multiplier": 1.25 }
-        ]
       }
     }
   },
