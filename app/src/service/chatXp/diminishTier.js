@@ -3,7 +3,7 @@ const TIER2_RATE = 0.3;
 const TIER3_RATE = 0.03;
 
 function applyDiminish(incoming, dailyBefore, status) {
-  if (incoming <= 0) return 0;
+  if (incoming <= 0) return { result: 0, factor: 0 };
 
   const blessings = Array.isArray(status.blessings) ? status.blessings : [];
   const tier1Upper = blessings.includes(4) ? 600 : 400;
@@ -28,7 +28,7 @@ function applyDiminish(incoming, dailyBefore, status) {
     result += remaining * TIER3_RATE;
   }
 
-  return result;
+  return { result, factor: result / incoming };
 }
 
 module.exports = { applyDiminish };
