@@ -425,6 +425,25 @@ exports.build = ({
     contents: [buildStreak(signinDays)],
     paddingStart: "lg",
     paddingEnd: "lg",
+    paddingBottom: "md",
+  });
+  bodyContents.push({
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "button",
+        style: "secondary",
+        height: "sm",
+        action: {
+          type: "message",
+          label: "查看經驗歷程",
+          text: "#經驗歷程",
+        },
+      },
+    ],
+    paddingStart: "lg",
+    paddingEnd: "lg",
     paddingBottom: "lg",
   });
 

@@ -84,6 +84,11 @@ describe("Me/Profile.build", () => {
     expect(flagRow).toBe("★ 轉生 1 次");
   });
 
+  it("includes 經驗歷程 CTA button", () => {
+    const bubble = Profile.build(baseInput);
+    expect(JSON.stringify(bubble)).toMatch(/查看經驗歷程/);
+  });
+
   describe("daily cap bar", () => {
     it("omits the daily-cap bar when caps are missing", () => {
       const bubble = Profile.build(baseInput);
