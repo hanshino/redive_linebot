@@ -427,6 +427,9 @@ const JankenController = require("../controller/application/JankenController");
 
 router.get("/janken/rankings", JankenController.api.rankings);
 router.get("/janken/recent-matches", JankenController.api.recentMatches);
+router.get("/janken/seasons", JankenController.api.seasons);
+router.get("/janken/seasons/:id/top", JankenController.api.seasonTop);
+router.get("/janken/me/today-reward", JankenController.api.todayReward);
 
 const RaceRouter = require("./race");
 router.use("/race", RaceRouter);

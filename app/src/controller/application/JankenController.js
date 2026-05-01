@@ -529,8 +529,9 @@ exports.api = {};
 exports.api.rankings = async (req, res) => {
   try {
     const ratings = await JankenRating.getTopRankings(20);
+    const season = await JankenSeason.getActive();
 
-    const result = ratings.map((r, index) => {
+    const items = ratings.map((r, index) => {
       const total = r.win_count + r.lose_count + r.draw_count;
       const winRate = total > 0 ? Math.round((r.win_count / total) * 1000) / 10 : 0;
 
@@ -549,7 +550,7 @@ exports.api.rankings = async (req, res) => {
       };
     });
 
-    res.json(result);
+    res.json({ seasonId: season ? season.id : null, items });
   } catch (err) {
     console.error("[Janken Rankings API]", err);
     res.status(500).json({ message: "Failed to fetch rankings" });
@@ -585,5 +586,40 @@ exports.api.recentMatches = async (req, res) => {
   } catch (err) {
     console.error("[Janken Recent Matches API]", err);
     res.status(500).json({ message: "Failed to fetch recent matches" });
+  }
+};
+
+exports.api.seasons = async (req, res) => {
+  try {
+    const seasons = await JankenSeason.list(50);
+    res.json(seasons);
+  } catch (err) {
+    console.error("[Janken Seasons API]", err);
+    res.status(500).json({ message: "Failed to fetch seasons" });
+  }
+};
+
+exports.api.seasonTop = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ message: "Invalid season id" });
+    const rows = await JankenSeasonSnapshot.getBySeason(id);
+    res.json(rows);
+  } catch (err) {
+    console.error("[Janken Season Top API]", err);
+    res.status(500).json({ message: "Failed to fetch season top" });
+  }
+};
+
+exports.api.todayReward = async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    const today = new Date().toISOString().slice(0, 10);
+    const row = await JankenDailyRewardLog.getByUserAndDate(userId, today);
+    res.json(row || null);
+  } catch (err) {
+    console.error("[Janken Today Reward API]", err);
+    res.status(500).json({ message: "Failed to fetch today reward" });
   }
 };
