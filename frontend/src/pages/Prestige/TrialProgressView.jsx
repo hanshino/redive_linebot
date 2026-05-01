@@ -60,7 +60,7 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   // Client-side clock tick (every minute) for live countdown
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);

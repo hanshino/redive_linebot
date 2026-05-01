@@ -357,6 +357,7 @@ export default function Prestige() {
   const backoffRef = useRef(0);
   const timerRef = useRef(null);
   const statusRef = useRef(null);
+  const tickRef = useRef(null);
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
 
   // Keep statusRef in sync so tick() can read latest status without stale closure
@@ -376,7 +377,7 @@ export default function Prestige() {
       setConnError(false);
       backoffRef.current = 0;
       if (s.activeTrial) {
-        timerRef.current = setTimeout(tick, POLL_INTERVAL_MS);
+        timerRef.current = setTimeout(() => tickRef.current?.(), POLL_INTERVAL_MS);
       }
     } catch {
       backoffRef.current += 1;
@@ -385,12 +386,16 @@ export default function Prestige() {
       const prev = statusRef.current;
       if (prev?.activeTrial && backoffRef.current < 3) {
         const delay = POLL_INTERVAL_MS * Math.pow(2, Math.min(backoffRef.current, 2));
-        timerRef.current = setTimeout(tick, delay);
+        timerRef.current = setTimeout(() => tickRef.current?.(), delay);
       }
     } finally {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    tickRef.current = tick;
+  }, [tick]);
 
   const handleMutationError = useCallback(
     message => {
