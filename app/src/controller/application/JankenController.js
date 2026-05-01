@@ -15,6 +15,7 @@ const { notifyUnlocks } = require("../../service/achievementNotifier");
 const JankenSeason = require("../../model/application/JankenSeason");
 const JankenSeasonSnapshot = require("../../model/application/JankenSeasonSnapshot");
 const JankenDailyRewardLog = require("../../model/application/JankenDailyRewardLog");
+const { yesterdayUtc8 } = require("../../util/date");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
 const ASSET_VERSION = Date.now();
@@ -51,8 +52,9 @@ async function queryRank(context) {
   const winRate = totalGames > 0 ? Math.round((rating.win_count / totalGames) * 100) : 0;
 
   const season = await JankenSeason.getActive();
-  const today = new Date().toISOString().slice(0, 10);
-  const todayRewardRow = await JankenDailyRewardLog.getByUserAndDate(userId, today);
+  // Daily-reward cron stores reward_date = yesterday-TPE (the play day).
+  // "今日獎勵" means the reward credited today, which corresponds to that row.
+  const todayRewardRow = await JankenDailyRewardLog.getByUserAndDate(userId, yesterdayUtc8());
   const todayReward = todayRewardRow
     ? { type: todayRewardRow.reward_type, amount: todayRewardRow.amount }
     : null;
@@ -615,8 +617,7 @@ exports.api.todayReward = async (req, res) => {
   try {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ message: "userId required" });
-    const today = new Date().toISOString().slice(0, 10);
-    const row = await JankenDailyRewardLog.getByUserAndDate(userId, today);
+    const row = await JankenDailyRewardLog.getByUserAndDate(userId, yesterdayUtc8());
     res.json(row || null);
   } catch (err) {
     console.error("[Janken Today Reward API]", err);
