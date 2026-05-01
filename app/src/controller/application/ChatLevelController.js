@@ -1,5 +1,7 @@
 const ChatUserData = require("../../model/application/ChatUserData");
 const ChatExpUnit = require("../../model/application/ChatExpUnit");
+const XpHistoryService = require("../../service/XpHistoryService");
+const XpHistoryBubble = require("../../templates/application/XpHistory/Bubble");
 const ChatExpDaily = require("../../model/application/ChatExpDaily");
 const PrestigeTrial = require("../../model/application/PrestigeTrial");
 const UserBlessing = require("../../model/application/UserBlessing");
@@ -413,6 +415,36 @@ exports.showPrestigeStatus = async context => {
       liffUriSummary,
     });
 
+    context.replyFlex(flex.altText, flex.contents);
+  } catch (e) {
+    console.error(e);
+    DefaultLogger.error(e);
+  }
+};
+
+/**
+ * `#經驗歷程` — Flex bubble of today's XP summary + last event breakdown.
+ * @param {import("bottender").LineContext} context
+ */
+exports.showXpHistory = async context => {
+  try {
+    const userId = context.event.source.userId;
+    if (!userId) return;
+
+    const summary = await XpHistoryService.buildSummary(userId);
+    let groupName = null;
+    if (summary.last_event?.group_id && context.event.source.type !== "user") {
+      try {
+        const g = await LineClient.getGroupSummary(summary.last_event.group_id);
+        groupName = g?.groupName || null;
+      } catch {
+        groupName = null;
+      }
+    }
+
+    const liffUri = commonTemplate.getLiffUri("full", "/xp-history");
+    const prestigeLiffUri = commonTemplate.getLiffUri("full", "/prestige");
+    const flex = XpHistoryBubble.build({ summary, groupName, liffUri, prestigeLiffUri });
     context.replyFlex(flex.altText, flex.contents);
   } catch (e) {
     console.error(e);

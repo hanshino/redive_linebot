@@ -210,6 +210,7 @@ async function OrderBased(context, { next }) {
       return withProps(ChatLevelController.showStatus, { userId })(context);
     }),
     text(/^[#!！]轉生狀態$/, ChatLevelController.showPrestigeStatus),
+    text(/^[#!！]經驗歷程$/, ChatLevelController.showXpHistory),
     text(["#轉生", "/轉生"], context => {
       const bubble = commonTemplate.genActionBubble({
         icon: "🪄",
