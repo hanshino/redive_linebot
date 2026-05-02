@@ -12,6 +12,10 @@ const uuid = require("uuid-random");
 const { DefaultLogger } = require("../../util/Logger");
 const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
+const JankenSeason = require("../../model/application/JankenSeason");
+const JankenSeasonSnapshot = require("../../model/application/JankenSeasonSnapshot");
+const JankenDailyRewardLog = require("../../model/application/JankenDailyRewardLog");
+const { yesterdayUtc8 } = require("../../util/date");
 
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
 const ASSET_VERSION = Date.now();
@@ -51,6 +55,19 @@ async function queryRank(context) {
   const serverRank = totalGames > 0 ? await JankenRating.getServerRank(userId) : null;
   const winRate = totalGames > 0 ? Math.round((rating.win_count / totalGames) * 100) : 0;
 
+  const season = await JankenSeason.getActive();
+  // Daily-reward cron stores reward_date = yesterday-TPE (the play day).
+  // "今日獎勵" means the reward credited today, which corresponds to that row.
+  const todayRewardRow = await JankenDailyRewardLog.getByUserAndDate(userId, yesterdayUtc8());
+  const todayReward = todayRewardRow
+    ? { type: todayRewardRow.reward_type, amount: todayRewardRow.amount }
+    : null;
+  const lifetime = {
+    win: (rating.lifetime_win_count || 0) + rating.win_count,
+    lose: (rating.lifetime_lose_count || 0) + rating.lose_count,
+    draw: (rating.lifetime_draw_count || 0) + rating.draw_count,
+  };
+
   const rankCard = jankenTemplate.generateRankCard({
     rankLabel,
     rankImageKey,
@@ -66,6 +83,9 @@ async function queryRank(context) {
     serverRank,
     maxBet,
     baseUrl,
+    seasonId: season ? season.id : null,
+    lifetime,
+    todayReward,
   });
 
   await context.replyFlex("猜拳段位", rankCard);
@@ -514,8 +534,9 @@ exports.api = {};
 exports.api.rankings = async (req, res) => {
   try {
     const ratings = await JankenRating.getTopRankings(20);
+    const season = await JankenSeason.getActive();
 
-    const result = ratings.map((r, index) => {
+    const items = ratings.map((r, index) => {
       const total = r.win_count + r.lose_count + r.draw_count;
       const winRate = total > 0 ? Math.round((r.win_count / total) * 1000) / 10 : 0;
 
@@ -534,7 +555,7 @@ exports.api.rankings = async (req, res) => {
       };
     });
 
-    res.json(result);
+    res.json({ seasonId: season ? season.id : null, items });
   } catch (err) {
     console.error("[Janken Rankings API]", err);
     res.status(500).json({ message: "Failed to fetch rankings" });
@@ -570,5 +591,39 @@ exports.api.recentMatches = async (req, res) => {
   } catch (err) {
     console.error("[Janken Recent Matches API]", err);
     res.status(500).json({ message: "Failed to fetch recent matches" });
+  }
+};
+
+exports.api.seasons = async (req, res) => {
+  try {
+    const seasons = await JankenSeason.list(50);
+    res.json(seasons);
+  } catch (err) {
+    console.error("[Janken Seasons API]", err);
+    res.status(500).json({ message: "Failed to fetch seasons" });
+  }
+};
+
+exports.api.seasonTop = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ message: "Invalid season id" });
+    const rows = await JankenSeasonSnapshot.getBySeason(id);
+    res.json(rows);
+  } catch (err) {
+    console.error("[Janken Season Top API]", err);
+    res.status(500).json({ message: "Failed to fetch season top" });
+  }
+};
+
+exports.api.todayReward = async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    const row = await JankenDailyRewardLog.getByUserAndDate(userId, yesterdayUtc8());
+    res.json(row || null);
+  } catch (err) {
+    console.error("[Janken Today Reward API]", err);
+    res.status(500).json({ message: "Failed to fetch today reward" });
   }
 };

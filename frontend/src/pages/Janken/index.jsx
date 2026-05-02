@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Container, Typography, Divider, Alert } from "@mui/material";
+import { Container, Typography, Divider, Alert, Chip, Stack } from "@mui/material";
 import BattleFeed from "./BattleFeed";
 import RankingList from "./RankingList";
 import { getRankings, getRecentMatches } from "../../services/janken";
@@ -12,6 +12,7 @@ export default function Janken() {
   const [matches, setMatches] = useState([]);
   const [loadingRankings, setLoadingRankings] = useState(true);
   const [loadingMatches, setLoadingMatches] = useState(true);
+  const [seasonId, setSeasonId] = useState(null);
   const [error, setError] = useState(null);
   const matchTimerRef = useRef(null);
   const rankingTimerRef = useRef(null);
@@ -19,7 +20,8 @@ export default function Janken() {
   const fetchRankings = useCallback(async () => {
     try {
       const data = await getRankings();
-      setRankings(data);
+      setRankings(data.items || []);
+      setSeasonId(data.seasonId ?? null);
       setError(null);
     } catch (err) {
       console.error("Failed to fetch rankings", err);
@@ -77,9 +79,14 @@ export default function Janken() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 3 }}>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        猜拳競技場
-      </Typography>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          猜拳競技場
+        </Typography>
+        {seasonId != null && (
+          <Chip label={`第 ${seasonId} 賽季`} size="small" color="primary" variant="outlined" />
+        )}
+      </Stack>
       <Typography
         variant="body2"
         sx={{
