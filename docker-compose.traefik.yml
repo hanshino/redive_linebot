@@ -23,7 +23,7 @@ services:
       - infra
       - traefik
     volumes:
-      - /home/hanshino/workspace/redive_linebot/app/assets:/usr/src/app/assets
+      - ${ASSETS_HOST_PATH}:/usr/src/app/assets
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${PROJECT_NAME}_bot-secure.rule=Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/webhooks`) || PathPrefix(`/bot-assets`) || PathPrefix(`/socket.io`))"
@@ -46,7 +46,7 @@ services:
     networks:
       - infra
     volumes:
-      - /home/hanshino/workspace/redive_linebot/app/assets:/usr/src/app/assets
+      - ${ASSETS_HOST_PATH}:/usr/src/app/assets
     command: yarn worker
     logging:
       driver: "json-file"
