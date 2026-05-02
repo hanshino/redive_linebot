@@ -63,13 +63,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
 
   await recordSession(sourceId, `${displayName}:${replaceText}`);
   const chatSession = await getSession(sourceId);
-  console.log("=== PROMPT ===");
-  console.log(prompt);
-  console.log("=== CHAT SESSION ===");
-  console.log(chatSession);
-  console.log("=== FULL CONTENT ===");
   const fullContent = [...prompt, ...chatSession, "x"];
-  console.log(fullContent);
   const result = await model.generateContent(fullContent);
 
   const reponseText = result.response.text().replace(/bot:/gi, "").trim();

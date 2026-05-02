@@ -119,10 +119,6 @@ async function handleMessage(event) {
   let { userId, groupId } = event.source;
   if (!userId || !groupId) return;
 
-  if (event.message.type === "text") {
-    DefaultLogger.info(groupId, userId, event.message.text);
-  }
-
   userRecord(userId);
   await Promise.all([groupRecord(groupId), handleMemberJoined(event)]);
 

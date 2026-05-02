@@ -51,7 +51,7 @@ async function revokeCharm(context) {
     EX: 20,
   });
 
-  DefaultLogger.info(`${userId} 已詠唱 持續 20 秒`);
+  DefaultLogger.debug(`${userId} 已詠唱 持續 20 秒`);
 }
 
 /**
@@ -144,7 +144,7 @@ async function revokeAttack(context) {
     },
   ];
   const isSuccess = random(successSettings);
-  DefaultLogger.info(`${userId} 詠唱結果 ${isSuccess ? "成功" : "失敗"}`);
+  DefaultLogger.debug(`${userId} 詠唱結果 ${isSuccess ? "成功" : "失敗"}`);
   if (hasCharm == 1 && isSuccess) {
     cost = 0;
     messages.push(i18n.__("message.world_boss.revoke_attack_success"));
@@ -455,14 +455,14 @@ const attackOnBoss = async (context, props) => {
 
   // 沒有會員id，跳過不處理
   if (!id) {
-    DefaultLogger.info(`no member id ${userId}`);
+    DefaultLogger.warn(`no member id ${userId}`);
     return;
   }
 
   // 判斷是否可以攻擊
   const canAttack = await isUserCanAttack(id);
   if (!canAttack) {
-    DefaultLogger.info(
+    DefaultLogger.debug(
       `user ${displayName} can not attack ${userId}. Maybe cache or reach limit in this period.`
     );
 
@@ -481,7 +481,7 @@ const attackOnBoss = async (context, props) => {
 
   // 如果抓不到資料，跳過不處理
   if (!eventBoss) {
-    DefaultLogger.info(`no event boss ${worldBossEventId}`);
+    DefaultLogger.warn(`no event boss ${worldBossEventId}`);
     return;
   }
 
@@ -491,14 +491,14 @@ const attackOnBoss = async (context, props) => {
 
   // 如果這個活動已經結束，則不處理
   if (moment(end_time).isBefore(moment())) {
-    DefaultLogger.info(`event ${name} is ended.`);
+    DefaultLogger.debug(`event ${name} is ended.`);
     return;
   }
 
   // 如果此王已經死亡，則不處理
   let remainHp = eventBoss.hp - parseInt(totalDamage || 0);
   if (remainHp <= 0) {
-    DefaultLogger.info(
+    DefaultLogger.debug(
       `boss is dead ${displayName} skip, boss hp ${eventBoss.hp}, totaldamage ${totalDamage}`
     );
     return;
@@ -628,7 +628,7 @@ const attackOnBoss = async (context, props) => {
     );
   }
 
-  DefaultLogger.info(
+  DefaultLogger.debug(
     `${displayName} 造成了 ${calculateDamagePercentage(eventBoss.hp, damage)} ${JSON.stringify(
       sender
     )}`
@@ -674,7 +674,7 @@ async function handleKeepingMessage(worldBossEventId, context, keepMessage) {
         identify: groupId,
       }
     );
-    DefaultLogger.info(`keep message ${keepMessage}`);
+    DefaultLogger.debug(`keep message ${keepMessage}`);
     return;
   }
 
@@ -723,7 +723,7 @@ async function isUserCanAttack(userId) {
   }
 
   let canAttack = totalCost < config.get("worldboss.daily_limit");
-  console.log(`${userId} can attack ${canAttack}, currentCost ${totalCost}`);
+  DefaultLogger.debug(`${userId} can attack ${canAttack}, currentCost ${totalCost}`);
 
   // 不管是否可以攻擊，都要更新 redis 的資料
   await redis.set(key, 1, {
@@ -777,10 +777,8 @@ async function decideLevelResult({ level, exp, earnedExp }) {
     levelUp = true;
   }
 
-  console.log(
-    `${level} level up to ${newLevel}`,
-    { levelUp, levelUpCount },
-    { newExp, nextLevelExp }
+  DefaultLogger.debug(
+    `${level} level up to ${newLevel} levelUp=${levelUp} count=${levelUpCount} newExp=${newExp} nextLevelExp=${nextLevelExp}`
   );
 
   return {

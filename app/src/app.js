@@ -38,6 +38,7 @@ const { transfer } = require("./middleware/dcWebhook");
 const redis = require("./util/redis");
 const i18n = require("./util/i18n");
 const traffic = require("./util/traffic");
+const { DefaultLogger } = require("./util/Logger");
 const { showManagePlace } = require("./templates/application/Admin");
 const AdminModel = require("./model/application/Admin");
 const axios = require("axios");
@@ -138,7 +139,7 @@ async function HandlePostback(context, { next }) {
       route("*", next),
     ]);
   } catch (e) {
-    console.error(e);
+    DefaultLogger.error("HandlePostback failed", e);
     return next;
   }
 }
@@ -200,7 +201,6 @@ async function OrderBased(context, { next }) {
     ),
     text(/^[.#/](你的狀態|you)/, context => {
       const mentionees = context.event.message.mention.mentionees;
-      console.log(mentionees);
       if (mentionees.length === 0) {
         return context.replyText("請標記要查詢的對象");
       }
@@ -262,7 +262,7 @@ async function OrderBased(context, { next }) {
 
       context.replyFlex("實用連結", bubble);
     }),
-    text(".test", () => console.log("test")),
+    text(".test", () => DefaultLogger.debug("test")),
     text("/resetsession", OpenaiController.resetSession),
     route("*", next),
   ]);
@@ -347,7 +347,7 @@ async function recordLatestGroupUser(context, { next }) {
     // 保留 timestamp 在 30 分鐘內的資料
     await redis.zRemRangeByScore(key, 0, Date.now() - 30 * 60 * 1000);
   } catch (e) {
-    console.error(e);
+    DefaultLogger.error("recordLatestGroupUser zAdd failed", e);
   }
 
   return next;
