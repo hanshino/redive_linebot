@@ -1,4 +1,5 @@
-// Standalone-CLI dotenv preload (worker entry already calls dotenv).
+// Standalone-CLI dotenv preload — must run before the requires below, since
+// knex/config read process.env at import time. Gated so worker re-loads skip.
 if (require.main === module && process.env.NODE_ENV !== "production") {
   require("dotenv").config({ path: require("path").resolve(__dirname, "../../.env") });
 }

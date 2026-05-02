@@ -1,6 +1,5 @@
-// When run as a standalone CLI (not via the cron worker), load .env first so
-// downstream knex/config picks up DB credentials. Worker entry already calls
-// dotenv at startup, so this is gated to avoid a redundant second load there.
+// Standalone-CLI dotenv preload — must run before the requires below, since
+// knex/config read process.env at import time. Gated so worker re-loads skip.
 if (require.main === module && process.env.NODE_ENV !== "production") {
   require("dotenv").config({ path: require("path").resolve(__dirname, "../../.env") });
 }
