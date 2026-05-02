@@ -116,6 +116,10 @@
           { "minStreak": 5, "multiplier": 1.5 },
           { "minStreak": 3, "multiplier": 1.25 }
         ]
+      },
+      "pairDampening": {
+        "matchesThreshold": 3,
+        "biasMultiplier": 0.2
       }
     }
   },
