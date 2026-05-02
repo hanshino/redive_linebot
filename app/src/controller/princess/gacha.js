@@ -270,7 +270,7 @@ async function detectCanDaily(userId) {
     return acc + effectCount;
   }, dailyLimit);
 
-  CustomLogger.info(`detectCanDaily: ${userId} useCount: ${usedCount} bonusCount: ${bonusCount}`);
+  CustomLogger.debug(`detectCanDaily: ${userId} useCount: ${usedCount} bonusCount: ${bonusCount}`);
 
   if (usedCount >= bonusCount) {
     // 超過每日限制，設定 cache 1 天
