@@ -1,3 +1,10 @@
+// When run as a standalone CLI (not via the cron worker), load .env first so
+// downstream knex/config picks up DB credentials. Worker entry already calls
+// dotenv at startup, so this is gated to avoid a redundant second load there.
+if (require.main === module && process.env.NODE_ENV !== "production") {
+  require("dotenv").config({ path: require("path").resolve(__dirname, "../../.env") });
+}
+
 const JankenSeasonService = require("../src/service/JankenSeasonService");
 const { DefaultLogger } = require("../src/util/Logger");
 

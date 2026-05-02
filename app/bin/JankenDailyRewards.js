@@ -1,3 +1,8 @@
+// Standalone-CLI dotenv preload (worker entry already calls dotenv).
+if (require.main === module && process.env.NODE_ENV !== "production") {
+  require("dotenv").config({ path: require("path").resolve(__dirname, "../../.env") });
+}
+
 const JankenRewardService = require("../src/service/JankenRewardService");
 const { DefaultLogger } = require("../src/util/Logger");
 
