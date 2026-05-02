@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: hanshino/redive_frontend
+    image: hanshino/redive_frontend:${FRONTEND_IMAGE_TAG:-latest}
     restart: always
     networks:
       - traefik
@@ -14,7 +14,7 @@ services:
       - "traefik.docker.network=traefik"
 
   bot:
-    image: hanshino/redive_backend
+    image: hanshino/redive_backend:${BACKEND_IMAGE_TAG:-latest}
     env_file: stack.env
     restart: always
     expose:
@@ -40,7 +40,7 @@ services:
         max-file: "10"
 
   worker:
-    image: hanshino/redive_backend
+    image: hanshino/redive_backend:${BACKEND_IMAGE_TAG:-latest}
     env_file: stack.env
     restart: always
     networks:
