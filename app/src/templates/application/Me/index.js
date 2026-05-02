@@ -52,6 +52,7 @@ exports.buildBubbles = data => {
         dailyRaw: data.dailyRaw,
         tier1Upper: data.tier1Upper,
         tier2Upper: data.tier2Upper,
+        xpHistoryUri: data.xpHistoryUri,
       })
     );
   } else {
@@ -71,6 +72,7 @@ exports.buildBubbles = data => {
         dailyRaw: data.dailyRaw,
         tier1Upper: data.tier1Upper,
         tier2Upper: data.tier2Upper,
+        xpHistoryUri: data.xpHistoryUri,
       })
     );
     bubbles.push(Subscription.build({ panels: cards }));

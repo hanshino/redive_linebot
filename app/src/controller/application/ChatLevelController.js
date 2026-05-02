@@ -63,6 +63,8 @@ function resolveActiveTrialStar(activeTrialId, allTrials) {
 const { resolveTierUppers } = require("../../service/chatXp/diminishTier");
 const { todayUtc8 } = require("../../util/date");
 
+const XP_HISTORY_LIFF_PATH = "/xp-history";
+
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
  * @param {import("bottender").LineContext} context
@@ -187,6 +189,7 @@ exports.showStatus = async (context, props) => {
       dailyRaw,
       tier1Upper,
       tier2Upper,
+      xpHistoryUri: commonTemplate.getLiffUri("full", XP_HISTORY_LIFF_PATH),
     });
 
     context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
@@ -433,7 +436,7 @@ exports.showXpHistory = async context => {
       }
     }
 
-    const liffUri = commonTemplate.getLiffUri("full", "/xp-history");
+    const liffUri = commonTemplate.getLiffUri("full", XP_HISTORY_LIFF_PATH);
     const prestigeLiffUri = commonTemplate.getLiffUri("full", "/prestige");
     const flex = XpHistoryBubble.build({ summary, groupName, liffUri, prestigeLiffUri });
     context.replyFlex(flex.altText, flex.contents);

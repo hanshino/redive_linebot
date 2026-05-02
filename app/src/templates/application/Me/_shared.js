@@ -126,4 +126,41 @@ const buildSubPanel = ({ key, titleText, expireText, effects }) => {
   };
 };
 
-module.exports = { COLORS, buildAccentBar, buildSubPanel };
+const buildLinkPill = ({ label, action, size = "xxs", cornerRadius, alignItems, margin }) => {
+  const pill = {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: label,
+        size,
+        color: COLORS.cyan700,
+        weight: "bold",
+        flex: 1,
+        gravity: "center",
+      },
+      {
+        type: "text",
+        text: "›",
+        size: "md",
+        color: COLORS.cyan700,
+        weight: "bold",
+        align: "end",
+        flex: 0,
+      },
+    ],
+    backgroundColor: COLORS.cyanBg,
+    paddingStart: "md",
+    paddingEnd: "md",
+    paddingTop: "sm",
+    paddingBottom: "sm",
+  };
+  if (cornerRadius) pill.cornerRadius = cornerRadius;
+  if (alignItems) pill.alignItems = alignItems;
+  if (margin) pill.margin = margin;
+  if (action) pill.action = action;
+  return pill;
+};
+
+module.exports = { COLORS, buildAccentBar, buildSubPanel, buildLinkPill };
