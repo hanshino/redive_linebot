@@ -15,7 +15,7 @@ services:
 
   bot:
     image: hanshino/redive_backend
-    env_file: ./.env
+    env_file: stack.env
     restart: always
     expose:
       - 9527
@@ -23,7 +23,7 @@ services:
       - infra
       - traefik
     volumes:
-      - ./app/assets:/usr/src/app/assets
+      - /home/hanshino/workspace/redive_linebot/app/assets:/usr/src/app/assets
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${PROJECT_NAME}_bot-secure.rule=Host(`${APP_DOMAIN}`) && (PathPrefix(`/api`) || PathPrefix(`/webhooks`) || PathPrefix(`/bot-assets`) || PathPrefix(`/socket.io`))"
@@ -41,12 +41,12 @@ services:
 
   worker:
     image: hanshino/redive_backend
-    env_file: ./.env
+    env_file: stack.env
     restart: always
     networks:
       - infra
     volumes:
-      - ./app/assets:/usr/src/app/assets
+      - /home/hanshino/workspace/redive_linebot/app/assets:/usr/src/app/assets
     command: yarn worker
     logging:
       driver: "json-file"
