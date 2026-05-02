@@ -381,4 +381,192 @@ describe("JankenService", () => {
       expect(highBet).toBe(16);
     });
   });
+
+  describe("calculatePairDampening", () => {
+    it("returns 1 when below the matches threshold", () => {
+      expect(JankenService.calculatePairDampening({ matches: 0, a_wins: 0, b_wins: 0 })).toBe(1);
+      expect(JankenService.calculatePairDampening({ matches: 2, a_wins: 2, b_wins: 0 })).toBe(1);
+    });
+
+    it("returns 1 for balanced (50/50) pairs regardless of match count", () => {
+      expect(JankenService.calculatePairDampening({ matches: 10, a_wins: 5, b_wins: 5 })).toBe(1);
+      expect(JankenService.calculatePairDampening({ matches: 100, a_wins: 50, b_wins: 50 })).toBe(
+        1
+      );
+    });
+
+    it("decreases as a one-sided pair plays more matches (self-farm signature)", () => {
+      const d3 = JankenService.calculatePairDampening({ matches: 3, a_wins: 3, b_wins: 0 });
+      const d10 = JankenService.calculatePairDampening({ matches: 10, a_wins: 10, b_wins: 0 });
+      const d20 = JankenService.calculatePairDampening({ matches: 20, a_wins: 20, b_wins: 0 });
+      expect(d3).toBeCloseTo(1 / 1.6); // 0.625
+      expect(d10).toBeCloseTo(1 / 3); // 0.333
+      expect(d20).toBeCloseTo(1 / 5); // 0.2
+      expect(d20).toBeLessThan(d10);
+      expect(d10).toBeLessThan(d3);
+    });
+
+    it("only mildly dampens moderately skewed pairs (e.g. 67% winner)", () => {
+      // 4 wins / 6 matches = 67% winRate, bias = 2*(0.67-0.5) ≈ 0.333
+      const damp = JankenService.calculatePairDampening({ matches: 6, a_wins: 4, b_wins: 2 });
+      // 1 / (1 + 6 * 0.2 * 0.333) = 1 / 1.4 ≈ 0.714
+      expect(damp).toBeGreaterThan(0.7);
+      expect(damp).toBeLessThan(0.8);
+    });
+  });
+
+  describe("calculateEloChange with pairDampening", () => {
+    beforeEach(() => {
+      JankenRating.getKFactor.mockImplementation(betAmount => {
+        if (betAmount >= 10000) return 32;
+        if (betAmount >= 3000) return 16;
+        if (betAmount >= 500) return 8;
+        return 2;
+      });
+    });
+
+    it("dampens winner Elo gain when the same pair has a one-sided history", () => {
+      const dampening = JankenService.calculatePairDampening({
+        matches: 10,
+        a_wins: 10,
+        b_wins: 0,
+      });
+      const baseline = JankenService.calculateEloChange(1000, 1000, "win", 1000);
+      const dampened = JankenService.calculateEloChange(1000, 1000, "win", 1000, {
+        pairDampening: dampening,
+      });
+      // baseline = floor(8 * 0.5) = 4
+      // dampened = floor(4 * 0.333) = 1
+      expect(baseline).toBe(4);
+      expect(dampened).toBeLessThan(baseline);
+      expect(dampened).toBe(1);
+    });
+
+    it("does not change Elo for balanced pairs (50/50 dampening = 1)", () => {
+      const baseline = JankenService.calculateEloChange(1000, 1000, "win", 1000);
+      const balanced = JankenService.calculateEloChange(1000, 1000, "win", 1000, {
+        pairDampening: 1,
+      });
+      expect(balanced).toBe(baseline);
+    });
+
+    it("dampens loss path symmetrically so the loser's Elo is preserved too", () => {
+      const dampening = JankenService.calculatePairDampening({
+        matches: 10,
+        a_wins: 10,
+        b_wins: 0,
+      });
+      const baselineLoss = JankenService.calculateEloChange(1000, 1000, "lose", 1000);
+      const dampenedLoss = JankenService.calculateEloChange(1000, 1000, "lose", 1000, {
+        pairDampening: dampening,
+      });
+      // baseline = ceil(-4 * 0.5) = -2; dampened = ceil(-1.333) = 0 (Math.ceil → -0 in JS)
+      expect(baselineLoss).toBe(-2);
+      expect(dampenedLoss).toBeGreaterThanOrEqual(baselineLoss);
+      expect(Math.abs(dampenedLoss)).toBe(0);
+    });
+  });
+
+  describe("updateStreaks opponent-switch gating", () => {
+    let mockFirst;
+
+    beforeEach(() => {
+      mockFirst = jest.fn();
+      mockTrxQuery.mockImplementation(() => ({
+        where: jest.fn(() => ({
+          forUpdate: jest.fn(() => ({
+            first: mockFirst,
+          })),
+          update: mockUpdate,
+        })),
+      }));
+    });
+
+    it("does NOT increment streak when winner beats the same opponent as last streak win", () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 5,
+          max_streak: 5,
+          bounty: 100,
+          rank_tier: "beginner",
+          last_won_opponent_id: "loser",
+        })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
+
+      return JankenService.updateStreaks("winner", "loser", "win", {
+        betAmount: 1000,
+        fee: 200,
+      }).then(result => {
+        expect(result.winnerStreak).toBe(5); // gated
+      });
+    });
+
+    it("DOES increment streak when winner beats a different opponent", () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 5,
+          max_streak: 5,
+          bounty: 100,
+          rank_tier: "beginner",
+          last_won_opponent_id: "previousLoser",
+        })
+        .mockResolvedValueOnce({ user_id: "newLoser", streak: 0, max_streak: 2, bounty: 0 });
+
+      return JankenService.updateStreaks("winner", "newLoser", "win", {
+        betAmount: 1000,
+        fee: 200,
+      }).then(result => {
+        expect(result.winnerStreak).toBe(6);
+      });
+    });
+
+    it("starts a fresh streak (1) after a previous loss reset, even against the same opponent", () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      mockFirst
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 0, // streak got reset by an earlier loss
+          max_streak: 5,
+          bounty: 0,
+          rank_tier: "beginner",
+          last_won_opponent_id: null, // also cleared on loss
+        })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 0, bounty: 0 });
+
+      return JankenService.updateStreaks("winner", "loser", "win", {
+        betAmount: 1000,
+        fee: 200,
+      }).then(result => {
+        expect(result.winnerStreak).toBe(1);
+      });
+    });
+
+    it("gated repeat win does not accumulate bounty (streak < 2 trigger is preserved at the gate)", () => {
+      JankenRating.findOrCreate.mockResolvedValue(undefined);
+      // Winner has streak=1 from a single previous win against this same opponent.
+      // Repeat win should keep streak at 1, so bounty should NOT accumulate (needs streak >= 2).
+      mockFirst
+        .mockResolvedValueOnce({
+          user_id: "winner",
+          streak: 1,
+          max_streak: 1,
+          bounty: 0,
+          rank_tier: "beginner",
+          last_won_opponent_id: "loser",
+        })
+        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 0, bounty: 0 });
+
+      return JankenService.updateStreaks("winner", "loser", "win", {
+        betAmount: 5000,
+        fee: 1000,
+      }).then(result => {
+        expect(result.winnerStreak).toBe(1);
+        expect(result.winnerBounty).toBe(0); // gated → no bounty
+      });
+    });
+  });
 });

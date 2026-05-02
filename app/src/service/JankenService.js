@@ -16,7 +16,24 @@ const FEE_RATE = config.get("minigame.janken.bet.feeRate");
 const MIN_BET = config.get("minigame.janken.bet.minAmount");
 const BOUNTY_MIN_BET = config.get("minigame.janken.streak.bountyMinBet");
 const BOUNTY_CLAIM_MULTIPLIER = config.get("minigame.janken.streak.bountyClaimMultiplier");
+const PAIR_DAMP_THRESHOLD = config.get("minigame.janken.pairDampening.matchesThreshold");
+const PAIR_DAMP_BIAS_MULTIPLIER = config.get("minigame.janken.pairDampening.biasMultiplier");
 const MATCH_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+
+// LINE userIds are fixed-length (`U` + 32 hex chars), so byte-order ordering is canonical.
+const orderedPair = (uA, uB) => (uA < uB ? [uA, uB] : [uB, uA]);
+
+const upsertPairStats = (trx, playerA, playerB, { aWins = 0, bWins = 0, draws = 0 }) =>
+  trx.raw(
+    "INSERT INTO janken_pair_stats (player_a, player_b, matches, a_wins, b_wins, draws, last_match_at) " +
+      "VALUES (?, ?, 1, ?, ?, ?, NOW()) " +
+      "ON DUPLICATE KEY UPDATE matches = matches + 1, " +
+      "a_wins = a_wins + VALUES(a_wins), " +
+      "b_wins = b_wins + VALUES(b_wins), " +
+      "draws = draws + VALUES(draws), " +
+      "last_match_at = VALUES(last_match_at)",
+    [playerA, playerB, aWins, bWins, draws]
+  );
 
 const RESULT_MAP = {
   rock: { rock: "draw", paper: "lose", scissors: "win" },
@@ -101,7 +118,12 @@ exports.updateStreaks = async function (
       trx("janken_rating").where({ user_id: loserId }).forUpdate().first(),
     ]);
 
-    const newStreak = winnerRating.streak + 1;
+    // Streak only grows when the winner beats a different opponent than their previous streak win.
+    // This is the core anti-self-farm gate for streak/bounty: hammering the same alt account
+    // keeps the streak stuck.
+    const sameOpponentAsLastStreakWin =
+      winnerRating.streak > 0 && winnerRating.last_won_opponent_id === loserId;
+    const newStreak = sameOpponentAsLastStreakWin ? winnerRating.streak : winnerRating.streak + 1;
     const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
     // Bounty funded from match fee — no new money created
     const bountyIncrement =
@@ -116,10 +138,12 @@ exports.updateStreaks = async function (
         streak: newStreak,
         max_streak: newMaxStreak,
         bounty: newBounty,
+        last_won_opponent_id: loserId,
       }),
       trx("janken_rating").where({ user_id: loserId }).update({
         streak: 0,
         bounty: 0,
+        last_won_opponent_id: null,
       }),
     ]);
 
@@ -324,6 +348,8 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
           JankenRating.findOrCreate(p1UserId, trx),
           JankenRating.findOrCreate(p2UserId, trx),
         ]);
+        const [playerA, playerB] = orderedPair(p1UserId, p2UserId);
+        await upsertPairStats(trx, playerA, playerB, { draws: 1 });
         await Promise.all([
           trx("janken_rating")
             .where({ user_id: p1UserId })
@@ -350,6 +376,13 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
       JankenRating.findOrCreate(p2UserId, trx),
     ]);
 
+    const [playerA, playerB] = orderedPair(p1UserId, p2UserId);
+    const priorPairStats = await trx("janken_pair_stats")
+      .where({ player_a: playerA, player_b: playerB })
+      .forUpdate()
+      .first();
+    const pairDampening = exports.calculatePairDampening(priorPairStats);
+
     const [p1Rating, p2Rating] = await Promise.all([
       trx("janken_rating").where({ user_id: p1UserId }).forUpdate().first(),
       trx("janken_rating").where({ user_id: p2UserId }).forUpdate().first(),
@@ -362,9 +395,7 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
       p2Rating.elo,
       p1Result,
       betAmount,
-      {
-        streak: p1Streak,
-      }
+      { streak: p1Streak, pairDampening }
     );
     const p2Result = p1Result === "win" ? "lose" : "win";
     const p2EloChange = exports.calculateEloChange(
@@ -372,9 +403,7 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
       p1Rating.elo,
       p2Result,
       betAmount,
-      {
-        streak: p2Streak,
-      }
+      { streak: p2Streak, pairDampening }
     );
 
     const p1NewElo = Math.max(0, p1Rating.elo + p1EloChange);
@@ -382,6 +411,13 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
 
     const p1WinKey = p1Result === "win" ? "win_count" : "lose_count";
     const p2WinKey = p1Result === "win" ? "lose_count" : "win_count";
+
+    const winnerIsA =
+      (p1Result === "win" && p1UserId === playerA) || (p1Result === "lose" && p2UserId === playerA);
+    await upsertPairStats(trx, playerA, playerB, {
+      aWins: winnerIsA ? 1 : 0,
+      bWins: winnerIsA ? 0 : 1,
+    });
 
     await Promise.all([
       trx("janken_rating")
@@ -423,7 +459,33 @@ exports.getStreakMultiplier = function (streak) {
   return 1;
 };
 
-exports.calculateEloChange = function (myElo, opponentElo, result, betAmount, { streak = 0 } = {}) {
+/**
+ * Same-pair Elo dampening factor in [0, 1].
+ * Pure function of prior pair history (not including the current match).
+ * Returns 1 when the pair is below the threshold or play is balanced;
+ * shrinks toward 0 as the same pair plays more matches with one side dominating.
+ *
+ * Stats fields are pre-current-match.
+ *
+ * @param {{ matches?: number, a_wins?: number, b_wins?: number }} stats
+ * @returns {number}
+ */
+exports.calculatePairDampening = function ({ matches = 0, a_wins = 0, b_wins = 0 } = {}) {
+  if (matches < PAIR_DAMP_THRESHOLD) return 1;
+  const decided = a_wins + b_wins;
+  if (decided === 0) return 1;
+  const winRate = Math.max(a_wins, b_wins) / decided;
+  const winRateBias = Math.max(0, winRate * 2 - 1); // 0.5 → 0, 1.0 → 1.0
+  return 1 / (1 + matches * PAIR_DAMP_BIAS_MULTIPLIER * winRateBias);
+};
+
+exports.calculateEloChange = function (
+  myElo,
+  opponentElo,
+  result,
+  betAmount,
+  { streak = 0, pairDampening = 1 } = {}
+) {
   if (result === "draw") return 0;
   let K;
   if (!betAmount || betAmount <= 0) {
@@ -438,10 +500,10 @@ exports.calculateEloChange = function (myElo, opponentElo, result, betAmount, { 
   const raw = K * (actual - expected);
   if (raw >= 0) {
     const multiplier = result === "win" ? exports.getStreakMultiplier(streak) : 1;
-    return Math.floor(raw * multiplier);
+    return Math.floor(raw * multiplier * pairDampening);
   }
   const lossFactor = config.get("minigame.janken.elo.lossFactor");
-  return Math.ceil(raw * lossFactor);
+  return Math.ceil(raw * lossFactor * pairDampening);
 };
 
 exports.submitArenaChallenge = async function (groupId, holderUserId, challengerUserId, choice) {

@@ -150,6 +150,10 @@
         "lose": "/assets/janken/lose.png",
         "draw": "/assets/janken/draw.png",
         "vs": "/assets/janken/vs.png"
+      },
+      "pairDampening": {
+        "matchesThreshold": 3,
+        "biasMultiplier": 0.2
       }
     }
   },
