@@ -793,7 +793,6 @@ exports.generateRankCard = ({
   maxBet,
   baseUrl,
   seasonId,
-  seasonStartedAt,
   lifetime,
   todayReward,
 }) => {

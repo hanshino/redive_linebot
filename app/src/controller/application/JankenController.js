@@ -20,6 +20,10 @@ const { yesterdayUtc8 } = require("../../util/date");
 const baseUrl = `https://${process.env.APP_DOMAIN}`;
 const ASSET_VERSION = Date.now();
 const jankenAsset = name => `${baseUrl}/bot-assets/janken/${name}?v=${ASSET_VERSION}`;
+// Relative-path variant for browser-facing API responses. Same-origin in
+// dev (via Vite proxy) and prod (via Traefik), so it dodges the DNS issue
+// when APP_DOMAIN is a non-resolvable local hostname like `redivebot.local`.
+const webJankenAsset = name => `/bot-assets/janken/${name}?v=${ASSET_VERSION}`;
 const BountySender = { name: "懸賞官", iconUrl: jankenAsset("bounty.png") };
 
 exports.router = [
@@ -80,7 +84,6 @@ async function queryRank(context) {
     maxBet,
     baseUrl,
     seasonId: season ? season.id : null,
-    seasonStartedAt: season ? season.started_at : null,
     lifetime,
     todayReward,
   });
@@ -542,7 +545,7 @@ exports.api.rankings = async (req, res) => {
         displayName: r.display_name || `玩家${index + 1}`,
         rankLabel: JankenRating.getRankLabel(r.elo),
         rankTier: r.rank_tier,
-        rankImage: jankenAsset(`${JankenRating.getRankImageKey(r.elo)}.png`),
+        rankImage: webJankenAsset(`${JankenRating.getRankImageKey(r.elo)}.png`),
         elo: r.elo,
         winCount: r.win_count,
         loseCount: r.lose_count,
