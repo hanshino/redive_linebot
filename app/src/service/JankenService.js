@@ -337,7 +337,8 @@ exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
     return { p1EloChange: 0, p2EloChange: 0, p1NewElo: null, p2NewElo: null };
   }
 
-  if (!betAmount || betAmount <= 0) {
+  const nonBetK = config.get("minigame.janken.elo.nonBetK");
+  if ((!betAmount || betAmount <= 0) && (!nonBetK || nonBetK <= 0)) {
     return { p1EloChange: 0, p2EloChange: 0, p1NewElo: null, p2NewElo: null };
   }
 
@@ -424,7 +425,14 @@ exports.getStreakMultiplier = function (streak) {
 
 exports.calculateEloChange = function (myElo, opponentElo, result, betAmount, { streak = 0 } = {}) {
   if (result === "draw") return 0;
-  const K = JankenRating.getKFactor(betAmount);
+  let K;
+  if (!betAmount || betAmount <= 0) {
+    const nonBetK = config.get("minigame.janken.elo.nonBetK");
+    if (!nonBetK || nonBetK <= 0) return 0;
+    K = nonBetK;
+  } else {
+    K = JankenRating.getKFactor(betAmount);
+  }
   const expected = exports.calculateExpectedWinRate(myElo, opponentElo);
   const actual = result === "win" ? 1 : 0;
   const raw = K * (actual - expected);

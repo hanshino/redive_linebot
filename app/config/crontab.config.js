@@ -112,4 +112,11 @@ module.exports = [
     immediate: false,
     require_path: "./bin/AutoGacha",
   },
+  {
+    name: "Janken Daily Rewards",
+    description: "credit daily women-stones to active janken players (kill-switched in config)",
+    period: ["0", "10", "0", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/JankenDailyRewards",
+  },
 ];

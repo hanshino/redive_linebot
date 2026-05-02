@@ -21,6 +21,10 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      "/bot-assets": {
+        target: "http://localhost:9527",
+        changeOrigin: true,
+      },
     },
   },
 });
