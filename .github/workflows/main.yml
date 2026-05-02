@@ -65,40 +65,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     steps:
-      - name: Redeploy stack via Portainer
+      - name: Trigger redeploy via Portainer git webhook
         run: |
-          # Get current stack file content
-          STACK_FILE=$(curl -sf \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}/file" \
-            | jq -r '.StackFileContent')
-
-          # Get current env vars
-          STACK_ENV=$(curl -sf \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}" \
-            | jq '.Env')
-
-          # Redeploy stack with pullImage to get latest images
-          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-            -X PUT \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}?endpointId=${{ secrets.PORTAINER_ENDPOINT_ID }}" \
-            -d "$(jq -n \
-              --arg stackFile "$STACK_FILE" \
-              --argjson env "$STACK_ENV" \
-              '{stackFileContent: $stackFile, env: $env, prune: true, pullImage: true}')")
-
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "::error::Stack redeploy failed with HTTP $HTTP_STATUS"
+          # Stack is now git-managed; webhook makes Portainer pull main and
+          # recreate containers (forcePullImage is enabled at stack level).
+          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" -X POST \
+            "${{ secrets.PORTAINER_URL }}/api/stacks/webhooks/${{ secrets.PORTAINER_WEBHOOK_UUID }}")
+          if [ "$HTTP_STATUS" != "204" ]; then
+            echo "::error::Webhook trigger failed with HTTP $HTTP_STATUS"
             exit 1
           fi
-
-          echo "Stack redeployed successfully"
+          echo "Redeploy triggered"
 
       - name: Wait for containers to be ready
-        run: sleep 15
+        run: sleep 30
 
       - name: Run database migrations
         run: |
