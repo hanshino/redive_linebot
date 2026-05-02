@@ -25,7 +25,7 @@ There is no `job/` package — cron is `yarn worker` inside `app/` (see below).
 - `app/` and `frontend/` run on the host via `yarn dev`, **not** in containers.
 - The bot listens on `PORT=9527` (fallback default in `app/server.js`); frontend on `3000`.
 - Vite proxies `/api`, `/webhooks`, `/socket.io` from `3000` → `9527` (`frontend/vite.config.js`), so the frontend talks to the bot directly without nginx.
-- ngrok is launched manually on the host (`ngrok http 9527 --region ap`), then `make tunnel` syncs the public URL into LINE's webhook + LIFF endpoint.
+- For LINE webhook + LIFF testing, use Cloudflare quick tunnel: `make cf-go` (= `cf-up` + `cf-tunnel`) launches `cloudflared --url http://localhost:3000`, then syncs the trycloudflare URL into LINE's webhook, LIFF endpoint, and `.env`'s `APP_DOMAIN` in one shot. Restart the bot afterwards so Flex image URLs pick up the new `APP_DOMAIN`.
 - Root `.env` is the single env file — loaded by `app/server.js`, `app/tasks.js`, and `app/knexfile.js` via `dotenv` pointing at `../.env`.
 
 ### Production
@@ -80,7 +80,7 @@ Command routing in `OrderBased` composes routers from every domain controller (g
 - React 19, MUI 7 (`@mui/material`, `@mui/x-data-grid` v8), Emotion, `react-router-dom` v7, Framer Motion, Recharts, Socket.IO client.
 - Bundler: **Vite 8** (not CRA). Dev: `yarn dev`. Build: `yarn build`. No test runner currently configured.
 - Entry: `frontend/src/main.jsx` → `App.jsx`. Pages under `src/pages/` (Achievement, Admin, Auto{History,Settings}, Bag, CustomerOrder, Equipment, Gacha, Group, Home, Janken, Panel, Race, Rankings, Tools, Trade).
-- Auth uses LINE LIFF (`@line/liff`) — pages assume a LIFF context, and LIFF endpoint URLs are kept in sync by `make tunnel` in dev.
+- Auth uses LINE LIFF (`@line/liff`) — pages assume a LIFF context, and LIFF endpoint URLs are kept in sync by `make cf-tunnel` in dev.
 - Progressive redesign toward MUI card layouts is in progress; see memory for which pages are done.
 
 ## Common Commands
@@ -104,8 +104,11 @@ make infra-stop       # docker compose down
 make migrate          # cd app && yarn migrate
 make logs             # tail infra logs
 make bash-redis       # redis-cli into the redis container
-make ngrok-url        # fetch the current ngrok public URL from localhost:4040
-make tunnel           # push ngrok URL → LINE webhook + LIFF endpoint
+make cf-up            # start cloudflared quick tunnel (background, log → /tmp/cloudflared.log)
+make cf-down          # stop cloudflared
+make cf-url           # print current trycloudflare URL
+make cf-tunnel        # push cloudflared URL → LINE webhook + LIFF endpoint + .env APP_DOMAIN
+make cf-go            # cf-up + cf-tunnel one-shot
 make get-webhook      # print current LINE webhook endpoint
 make get-liff         # print LIFF app config
 make help             # list all targets
@@ -137,7 +140,7 @@ Tests currently live only in `app/` (Jest, `__tests__/` dirs alongside services/
 
 ## LINE Webhook Flow
 
-LINE channel is the only enabled webhook (`app/bottender.config.js`): `POST /webhooks/line`. Messenger / WhatsApp / Telegram / Slack / Viber blocks exist but are disabled. To update LINE after starting a new ngrok session: `make tunnel`.
+LINE channel is the only enabled webhook (`app/bottender.config.js`): `POST /webhooks/line`. Messenger / WhatsApp / Telegram / Slack / Viber blocks exist but are disabled. To rotate the public URL during development, run `make cf-go` (or just `make cf-tunnel` if cloudflared is already up) and restart the bot.
 
 ## Code Style
 
@@ -146,7 +149,7 @@ LINE channel is the only enabled webhook (`app/bottender.config.js`): `POST /web
 
 ## Environment
 
-Copy `.env.example` to root `.env`. Required: `LINE_ACCESS_TOKEN`, `LINE_CHANNEL_SECRET`, `DB_PASSWORD`, `DB_USER`, `DB_USER_PASSWORD`, `REDIS_PASSWORD`. Optional but commonly used: `LINE_LIFF_ID` + variants, `LINE_LOGIN_CHANNEL_ID/SECRET` (for `make tunnel`'s LIFF update), `GEMINI_API_KEY`, `PICTSHARE_URL` + `PICTSHARE_UPLOAD_CODE`, `UMAMI_URL` + `UMAMI_WEBSITE_ID`.
+Copy `.env.example` to root `.env`. Required: `LINE_ACCESS_TOKEN`, `LINE_CHANNEL_SECRET`, `DB_PASSWORD`, `DB_USER`, `DB_USER_PASSWORD`, `REDIS_PASSWORD`. Optional but commonly used: `LINE_LIFF_ID` + variants, `LINE_LOGIN_CHANNEL_ID/SECRET` (for `make cf-tunnel`'s LIFF update), `GEMINI_API_KEY`, `PICTSHARE_URL` + `PICTSHARE_UPLOAD_CODE`, `UMAMI_URL` + `UMAMI_WEBSITE_ID`. `APP_DOMAIN` is rewritten in-place by `make cf-tunnel` so Flex image URLs always point at the active tunnel host.
 
 ## Key Config Files
 

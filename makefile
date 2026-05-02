@@ -19,9 +19,6 @@ logs: ## 查看基礎設施日誌
 bash-redis: ## 開啟 Redis CLI
 	@docker compose exec -t redis redis-cli
 
-ngrok-url: ## 查詢 ngrok 公開網址
-	@curl -s http://localhost:4040/api/tunnels | python3 -c "import sys,json;print(json.load(sys.stdin)['tunnels'][0]['public_url'])" 2>/dev/null || echo "ngrok is not running"
-
 get-webhook: ## 查詢目前 LINE webhook 設定
 	@TOKEN=$$(grep '^LINE_ACCESS_TOKEN=' .env | cut -d'=' -f2-) && \
 	curl -s https://api.line.me/v2/bot/channel/webhook/endpoint \
@@ -31,11 +28,6 @@ get-liff: ## 查詢目前 LIFF 設定
 	@TOKEN=$$(grep '^LINE_ACCESS_TOKEN=' .env | cut -d'=' -f2-) && \
 	curl -s https://api.line.me/liff/v1/apps \
 		-H "Authorization: Bearer $$TOKEN" | python3 -m json.tool
-
-tunnel: ## 一鍵設定 ngrok URL 到 LINE webhook + LIFF + APP_DOMAIN
-	@NGROK_URL=$$(curl -s http://localhost:4040/api/tunnels | python3 -c "import sys,json;print(json.load(sys.stdin)['tunnels'][0]['public_url'])" 2>/dev/null) && \
-	if [ -z "$$NGROK_URL" ]; then echo "❌ ngrok is not running"; exit 1; fi && \
-	$(MAKE) -s _sync-line URL="$$NGROK_URL"
 
 cf-up: ## 啟動 Cloudflare Quick Tunnel（背景執行，log 寫到 /tmp/cloudflared.log）
 	@if pgrep -x cloudflared > /dev/null; then echo "⚠️  cloudflared is already running"; exit 0; fi && \
