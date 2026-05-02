@@ -11,32 +11,32 @@ const baseInput = {
   signinDays: 7,
   subscriptionPanel: null,
   subscriptionBadge: null,
+  xpHistoryUri: "https://liff.line.me/test-liff-id/xp-history",
 };
 
-/**
- * Recursively scan a flex bubble for any text element matching predicate.
- * Walks every plain-object property — handles bubble.body / .header /
- * box.contents / etc. uniformly.
- */
-function findText(node, predicate) {
+function findNode(node, predicate) {
   if (!node) return null;
   if (Array.isArray(node)) {
     for (const child of node) {
-      const found = findText(child, predicate);
+      const found = findNode(child, predicate);
       if (found) return found;
     }
     return null;
   }
   if (typeof node !== "object") return null;
-  if (node.type === "text" && typeof node.text === "string" && predicate(node.text)) {
-    return node.text;
-  }
+  const hit = predicate(node);
+  if (hit) return hit;
   for (const value of Object.values(node)) {
-    const found = findText(value, predicate);
+    const found = findNode(value, predicate);
     if (found) return found;
   }
   return null;
 }
+
+const findText = (root, pred) =>
+  findNode(root, n =>
+    n.type === "text" && typeof n.text === "string" && pred(n.text) ? n.text : null
+  );
 
 describe("Me/Profile.build", () => {
   it("renders Lv pill without legacy range/rank text", () => {
@@ -84,15 +84,22 @@ describe("Me/Profile.build", () => {
     expect(flagRow).toBe("★ 轉生 1 次");
   });
 
-  it("includes 經驗歷程 CTA button", () => {
+  it("renders 經驗歷程 CTA as a uri action pointing at the LIFF URL", () => {
     const bubble = Profile.build(baseInput);
-    expect(JSON.stringify(bubble)).toMatch(/查看經驗歷程/);
+    const action = findNode(bubble, n =>
+      n.action && n.action.label === "查看經驗歷程" ? n.action : null
+    );
+    expect(action).toEqual({
+      type: "uri",
+      label: "查看經驗歷程",
+      uri: baseInput.xpHistoryUri,
+    });
   });
 
   describe("daily cap bar", () => {
     it("omits the daily-cap bar when caps are missing", () => {
       const bubble = Profile.build(baseInput);
-      const capText = findText(bubble, t => t.includes("今日獲取上限"));
+      const capText = findText(bubble, t => t.includes("今日經驗區段"));
       expect(capText).toBeNull();
     });
 
@@ -103,10 +110,10 @@ describe("Me/Profile.build", () => {
         tier1Upper: 400,
         tier2Upper: 1000,
       });
-      const labelText = findText(bubble, t => t.startsWith("今日獲取"));
-      expect(labelText).toBe("今日獲取上限");
+      const labelText = findText(bubble, t => t.startsWith("今日經驗"));
+      expect(labelText).toBe("今日經驗區段");
       const valueText = findText(bubble, t => /^\d+\s*\/\s*\d+/.test(t));
-      expect(valueText).toBe("250 / 1000 · 🟢 滿速");
+      expect(valueText).toBe("250 / 400 · 🟢 滿速");
     });
 
     it("renders 30% zone when daily raw is between tier1 and tier2", () => {
@@ -120,15 +127,15 @@ describe("Me/Profile.build", () => {
       expect(valueText).toBe("700 / 1000 · 🟡 30%");
     });
 
-    it("renders 已封頂 zone when daily raw exceeds tier2", () => {
+    it("renders 3% 微量 zone without misleading divisor when daily raw exceeds tier2", () => {
       const bubble = Profile.build({
         ...baseInput,
         dailyRaw: 1500,
         tier1Upper: 400,
         tier2Upper: 1000,
       });
-      const valueText = findText(bubble, t => /^\d+\s*\/\s*\d+/.test(t));
-      expect(valueText).toBe("1500 / 1000 · 🔴 已封頂");
+      const valueText = findText(bubble, t => t.includes("微量"));
+      expect(valueText).toBe("1500 · 🔴 3% 微量");
     });
 
     it("uses expanded caps when blessings widen the tiers", () => {
@@ -139,7 +146,7 @@ describe("Me/Profile.build", () => {
         tier2Upper: 1200, // blessing 5
       });
       const valueText = findText(bubble, t => /^\d+\s*\/\s*\d+/.test(t));
-      expect(valueText).toBe("500 / 1200 · 🟢 滿速");
+      expect(valueText).toBe("500 / 600 · 🟢 滿速");
     });
   });
 });

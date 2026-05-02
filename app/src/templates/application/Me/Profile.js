@@ -1,5 +1,5 @@
 const humanNumber = require("human-number");
-const { buildSubPanel, COLORS } = require("./_shared");
+const { buildSubPanel, buildLinkPill, COLORS } = require("./_shared");
 
 const formatExp = n => humanNumber(n, v => Number.parseFloat(v).toFixed(1));
 
@@ -10,18 +10,26 @@ function buildDailyCap({ dailyRaw, tier1Upper, tier2Upper }) {
   const fillPct = Math.max(0, Math.min(100, Math.round((raw / tier2Upper) * 100)));
 
   let zoneLabel;
-  if (raw < tier1Upper) zoneLabel = "🟢 滿速";
-  else if (raw < tier2Upper) zoneLabel = "🟡 30%";
-  else zoneLabel = "🔴 已封頂";
+  let valueText;
+  if (raw < tier1Upper) {
+    zoneLabel = "🟢 滿速";
+    valueText = `${raw} / ${tier1Upper} · ${zoneLabel}`;
+  } else if (raw < tier2Upper) {
+    zoneLabel = "🟡 30%";
+    valueText = `${raw} / ${tier2Upper} · ${zoneLabel}`;
+  } else {
+    zoneLabel = "🔴 3% 微量";
+    valueText = `${raw} · ${zoneLabel}`;
+  }
 
   const head = {
     type: "box",
     layout: "horizontal",
     contents: [
-      { type: "text", text: "今日獲取上限", size: "xxs", color: "#FFFFFF", flex: 0 },
+      { type: "text", text: "今日經驗區段", size: "xxs", color: "#FFFFFF", flex: 0 },
       {
         type: "text",
-        text: `${raw} / ${tier2Upper} · ${zoneLabel}`,
+        text: valueText,
         size: "xxs",
         color: COLORS.amber300,
         weight: "bold",
@@ -218,36 +226,7 @@ function buildHero({
 }
 
 function buildSubBadge({ text }) {
-  return {
-    type: "box",
-    layout: "horizontal",
-    contents: [
-      {
-        type: "text",
-        text: `🎟 訂閱中 · ${text}`,
-        size: "xxs",
-        color: COLORS.cyan700,
-        weight: "bold",
-        flex: 1,
-        gravity: "center",
-      },
-      {
-        type: "text",
-        text: "›",
-        size: "md",
-        color: COLORS.cyan700,
-        weight: "bold",
-        align: "end",
-        flex: 0,
-      },
-    ],
-    backgroundColor: COLORS.cyanBg,
-    paddingStart: "md",
-    paddingEnd: "md",
-    paddingTop: "sm",
-    paddingBottom: "sm",
-    margin: "none",
-  };
+  return buildLinkPill({ label: `🎟 訂閱中 · ${text}`, margin: "none" });
 }
 
 function buildStat({ fraction, icon, label, tone }) {
@@ -389,6 +368,7 @@ exports.build = ({
   dailyRaw,
   tier1Upper,
   tier2Upper,
+  xpHistoryUri,
 }) => {
   const bodyContents = [
     buildHero({
@@ -431,16 +411,13 @@ exports.build = ({
     type: "box",
     layout: "vertical",
     contents: [
-      {
-        type: "button",
-        style: "secondary",
-        height: "sm",
-        action: {
-          type: "message",
-          label: "查看經驗歷程",
-          text: "#經驗歷程",
-        },
-      },
+      buildLinkPill({
+        label: "📈 查看經驗歷程",
+        size: "xs",
+        cornerRadius: "md",
+        alignItems: "center",
+        action: { type: "uri", label: "查看經驗歷程", uri: xpHistoryUri },
+      }),
     ],
     paddingStart: "lg",
     paddingEnd: "lg",
