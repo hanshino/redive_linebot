@@ -95,8 +95,8 @@ jobs:
             pullImage: true
           }')
 
-          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-            -X POST \
+          HTTP_STATUS=$(curl -s -o /tmp/redeploy-response -w "%{http_code}" \
+            -X PUT \
             -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
             -H "Content-Type: application/json" \
             "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}/git/redeploy?endpointId=${{ secrets.PORTAINER_ENDPOINT_ID }}" \
@@ -104,6 +104,8 @@ jobs:
 
           if [ "$HTTP_STATUS" != "200" ]; then
             echo "::error::git/redeploy failed with HTTP $HTTP_STATUS"
+            echo "Response body:"
+            cat /tmp/redeploy-response
             exit 1
           fi
           echo "Stack redeployed at SHA $SHA"
