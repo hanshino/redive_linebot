@@ -415,7 +415,7 @@ describe("JankenService", () => {
     });
   });
 
-  describe("calculateEloChange with pairStats", () => {
+  describe("calculateEloChange with pairDampening", () => {
     beforeEach(() => {
       JankenRating.getKFactor.mockImplementation(betAmount => {
         if (betAmount >= 10000) return 32;
@@ -426,9 +426,10 @@ describe("JankenService", () => {
     });
 
     it("dampens winner Elo gain when the same pair has a one-sided history", () => {
+      const dampening = JankenService.calculatePairDampening({ matches: 10, a_wins: 10, b_wins: 0 });
       const baseline = JankenService.calculateEloChange(1000, 1000, "win", 1000);
       const dampened = JankenService.calculateEloChange(1000, 1000, "win", 1000, {
-        pairStats: { matches: 10, a_wins: 10, b_wins: 0 },
+        pairDampening: dampening,
       });
       // baseline = floor(8 * 0.5) = 4
       // dampened = floor(4 * 0.333) = 1
@@ -440,15 +441,16 @@ describe("JankenService", () => {
     it("does not change Elo for balanced pairs (50/50 dampening = 1)", () => {
       const baseline = JankenService.calculateEloChange(1000, 1000, "win", 1000);
       const balanced = JankenService.calculateEloChange(1000, 1000, "win", 1000, {
-        pairStats: { matches: 20, a_wins: 10, b_wins: 10 },
+        pairDampening: 1,
       });
       expect(balanced).toBe(baseline);
     });
 
     it("dampens loss path symmetrically so the loser's Elo is preserved too", () => {
+      const dampening = JankenService.calculatePairDampening({ matches: 10, a_wins: 10, b_wins: 0 });
       const baselineLoss = JankenService.calculateEloChange(1000, 1000, "lose", 1000);
       const dampenedLoss = JankenService.calculateEloChange(1000, 1000, "lose", 1000, {
-        pairStats: { matches: 10, a_wins: 10, b_wins: 0 },
+        pairDampening: dampening,
       });
       // baseline = ceil(-4 * 0.5) = -2; dampened = ceil(-1.333) = 0 (Math.ceil → -0 in JS)
       expect(baselineLoss).toBe(-2);
