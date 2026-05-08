@@ -35,6 +35,7 @@ const SubscribeController = require("./controller/application/SubscribeControlle
 const OpenaiController = require("./controller/application/OpenaiController");
 const JobController = require("./controller/application/JobController");
 const { transfer } = require("./middleware/dcWebhook");
+const { withTiming, wrapChain } = require("./middleware/timing");
 const redis = require("./util/redis");
 const i18n = require("./util/i18n");
 const traffic = require("./util/traffic");
@@ -409,24 +410,26 @@ function Nothing(context) {
 
 async function App(context) {
   traffic.recordPeople(context);
-  return chain([
-    setProfile, // 設置各式用戶資料
-    statistics, // 數據蒐集
-    recordLatestGroupUser, // 紀錄最近群組用戶
-    lineEvent, // 事件處理
-    config, // 設置群組設定檔
-    transfer, // Discord Webhook轉發
-    HandlePostback, // 處理postback事件
-    rateLimit, // 限制使用者指令速度
-    alias,
-    umamiTrack, // Umami 事件追蹤
-    GlobalOrderBase, // 全群指令分析
-    OrderBased, // 指令分析
-    CustomerOrderBased, // 自訂指令分析
-    interactWithBot, // 標記機器人回應
-    OpenaiController.recordSession, // 記錄對話
-    Nothing, // 無符合事件
-  ]);
+  return wrapChain(
+    chain([
+      withTiming("setProfile", setProfile),
+      withTiming("statistics", statistics),
+      withTiming("recordLatestGroupUser", recordLatestGroupUser),
+      withTiming("lineEvent", lineEvent),
+      withTiming("config", config),
+      withTiming("transfer", transfer),
+      withTiming("HandlePostback", HandlePostback),
+      withTiming("rateLimit", rateLimit),
+      withTiming("alias", alias),
+      withTiming("umamiTrack", umamiTrack),
+      withTiming("GlobalOrderBase", GlobalOrderBase),
+      withTiming("OrderBased", OrderBased),
+      withTiming("CustomerOrderBased", CustomerOrderBased),
+      withTiming("interactWithBot", interactWithBot),
+      withTiming("recordSession", OpenaiController.recordSession),
+      Nothing,
+    ])
+  );
 }
 
 module.exports = App;
