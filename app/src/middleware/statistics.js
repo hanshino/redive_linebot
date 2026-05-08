@@ -8,10 +8,9 @@ const MessageIO = io.of("/admin/messages");
 
 const COMMAND_PREFIX_RE = /^[/#.]\p{L}/u;
 
-// 解鎖通知與主指令回應同樣依賴 LINE reply token，原本同步 await 會在
-// 「指令訊息又同時觸發成就解鎖」的少數情境下用掉 token，導致主指令回應失敗。
-// 改為 fire-and-forget 後失敗模式翻轉：主指令一定能回，少數成就通知可能丟。
-// 換來的好處是每則訊息的 reply 不再被成就 DB 評估卡住（觀察 p50 ~200ms）。
+// 成就評估在 background 跑，避免主回應被 DB 工作擋住。
+// Trade-off: 當指令訊息同時解鎖成就時，成就通知會與主回應搶同一個 reply token；
+// 這時通知會丟失，但主回應一定能送出（我們接受失去通知，不接受失去主回應）。
 const statistics = async (context, props) => {
   eventFire(context);
   runBackground(context).catch(err => DefaultLogger.error("statistics background error:", err));
@@ -68,13 +67,7 @@ async function runBackground(context) {
 
   await Promise.all(evaluations);
   for (const [uid, unlocked] of Object.entries(unlocksByUser)) {
-    if (unlocked.length) {
-      try {
-        await notifyUnlocks(context, uid, unlocked);
-      } catch (err) {
-        DefaultLogger.error("notifyUnlocks failed:", err);
-      }
-    }
+    if (unlocked.length) await notifyUnlocks(context, uid, unlocked);
   }
 }
 
