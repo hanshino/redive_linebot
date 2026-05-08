@@ -3,72 +3,80 @@ const { io } = require("../util/connection");
 const redis = require("../util/redis");
 const AchievementEngine = require("../service/AchievementEngine");
 const { notifyUnlocks } = require("../service/achievementNotifier");
+const { DefaultLogger } = require("../util/Logger");
 const MessageIO = io.of("/admin/messages");
 
 const COMMAND_PREFIX_RE = /^[/#.]\p{L}/u;
 
-/**
- * 數據紀錄
- * @param {Context} context
- * @param {Object} props
- */
+// 解鎖通知與主指令回應同樣依賴 LINE reply token，原本同步 await 會在
+// 「指令訊息又同時觸發成就解鎖」的少數情境下用掉 token，導致主指令回應失敗。
+// 改為 fire-and-forget 後失敗模式翻轉：主指令一定能回，少數成就通知可能丟。
+// 換來的好處是每則訊息的 reply 不再被成就 DB 評估卡住（觀察 p50 ~200ms）。
 const statistics = async (context, props) => {
   eventFire(context);
+  runBackground(context).catch(err => DefaultLogger.error("statistics background error:", err));
+  return props.next;
+};
+
+async function runBackground(context) {
   await eventEnqueue(context);
+  if (!context.event.isText) return;
 
-  if (context.event.isText) {
-    const userId = context.event.source.userId;
-    const groupId = context.event.source.groupId;
-    if (userId) {
-      const mentionees = get(context, "event.message.mention.mentionees", []);
-      const mentionedUserIds = mentionees.map(m => m && m.userId).filter(Boolean);
-      const text = context.event.text || "";
+  const userId = context.event.source.userId;
+  const groupId = context.event.source.groupId;
+  if (!userId) return;
 
-      const unlocksByUser = { [userId]: [] };
-      const evaluations = [
-        AchievementEngine.evaluate(userId, "chat_message", { groupId, text, feature: "chat" })
-          .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
-          .catch(() => {}),
-      ];
-      if (COMMAND_PREFIX_RE.test(text)) {
-        evaluations.push(
-          AchievementEngine.evaluate(userId, "command_use", {})
-            .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
-            .catch(() => {})
-        );
-      }
-      if (mentionedUserIds.length) {
-        evaluations.push(
-          AchievementEngine.evaluate(userId, "mention_keyword", {
-            mentionedUserIds,
-            text,
-          })
-            .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
-            .catch(() => {})
-        );
-        for (const mentioneeId of mentionedUserIds) {
-          unlocksByUser[mentioneeId] = unlocksByUser[mentioneeId] || [];
-          evaluations.push(
-            AchievementEngine.evaluate(mentioneeId, "received_mention", {
-              mentionedByUserId: userId,
-              text,
-              groupId,
-            })
-              .then(r => unlocksByUser[mentioneeId].push(...((r && r.unlocked) || [])))
-              .catch(() => {})
-          );
-        }
-      }
+  const mentionees = get(context, "event.message.mention.mentionees", []);
+  const mentionedUserIds = mentionees.map(m => m && m.userId).filter(Boolean);
+  const text = context.event.text || "";
 
-      await Promise.all(evaluations);
-      for (const [uid, unlocked] of Object.entries(unlocksByUser)) {
-        if (unlocked.length) await notifyUnlocks(context, uid, unlocked);
-      }
+  const unlocksByUser = { [userId]: [] };
+  const evaluations = [
+    AchievementEngine.evaluate(userId, "chat_message", { groupId, text, feature: "chat" })
+      .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
+      .catch(() => {}),
+  ];
+  if (COMMAND_PREFIX_RE.test(text)) {
+    evaluations.push(
+      AchievementEngine.evaluate(userId, "command_use", {})
+        .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
+        .catch(() => {})
+    );
+  }
+  if (mentionedUserIds.length) {
+    evaluations.push(
+      AchievementEngine.evaluate(userId, "mention_keyword", {
+        mentionedUserIds,
+        text,
+      })
+        .then(r => unlocksByUser[userId].push(...((r && r.unlocked) || [])))
+        .catch(() => {})
+    );
+    for (const mentioneeId of mentionedUserIds) {
+      unlocksByUser[mentioneeId] = unlocksByUser[mentioneeId] || [];
+      evaluations.push(
+        AchievementEngine.evaluate(mentioneeId, "received_mention", {
+          mentionedByUserId: userId,
+          text,
+          groupId,
+        })
+          .then(r => unlocksByUser[mentioneeId].push(...((r && r.unlocked) || [])))
+          .catch(() => {})
+      );
     }
   }
 
-  return props.next;
-};
+  await Promise.all(evaluations);
+  for (const [uid, unlocked] of Object.entries(unlocksByUser)) {
+    if (unlocked.length) {
+      try {
+        await notifyUnlocks(context, uid, unlocked);
+      } catch (err) {
+        DefaultLogger.error("notifyUnlocks failed:", err);
+      }
+    }
+  }
+}
 
 module.exports = statistics;
 

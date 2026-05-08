@@ -3,8 +3,12 @@ const { DefaultLogger } = require("../util/Logger");
 
 const ENABLED = process.env.TIMING_DISABLED !== "1";
 const SLOW_STAGE_MS = Number(process.env.TIMING_SLOW_STAGE_MS || 50);
-const SLOW_TOTAL_MS = Number(process.env.TIMING_SLOW_TOTAL_MS || 150);
-const SLOW_API_MS = Number(process.env.TIMING_SLOW_API_MS || 200);
+// 觀察期間預設 150ms 太高（setProfile 單一 stage 就常常 130ms+），導致 total
+// breakdown 永遠不印；降到 50ms 與 stage 對齊，這樣只要任何 stage 觸發就一定看到 total。
+const SLOW_TOTAL_MS = Number(process.env.TIMING_SLOW_TOTAL_MS || 50);
+// LINE reply API 在群組 reply 通常 50–150ms，舊閾值 200ms 幾乎不會觸發；
+// 降到 100ms 後可以及早發現 LINE 端慢化。
+const SLOW_API_MS = Number(process.env.TIMING_SLOW_API_MS || 100);
 const STAGE_REPORT_THRESHOLD_MS = 5;
 
 const timingMap = new WeakMap();
