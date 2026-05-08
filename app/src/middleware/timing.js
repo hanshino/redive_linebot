@@ -3,8 +3,10 @@ const { DefaultLogger } = require("../util/Logger");
 
 const ENABLED = process.env.TIMING_DISABLED !== "1";
 const SLOW_STAGE_MS = Number(process.env.TIMING_SLOW_STAGE_MS || 50);
-const SLOW_TOTAL_MS = Number(process.env.TIMING_SLOW_TOTAL_MS || 150);
-const SLOW_API_MS = Number(process.env.TIMING_SLOW_API_MS || 200);
+// 與 SLOW_STAGE_MS 對齊：任何 stage 觸發時，總時間 breakdown 也會印出。
+const SLOW_TOTAL_MS = Number(process.env.TIMING_SLOW_TOTAL_MS || 50);
+// LINE reply 在群組通常 50–150ms，超過此閾值代表 LINE 端疑似有延遲。
+const SLOW_API_MS = Number(process.env.TIMING_SLOW_API_MS || 100);
 const STAGE_REPORT_THRESHOLD_MS = 5;
 
 const timingMap = new WeakMap();
