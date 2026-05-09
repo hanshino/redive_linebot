@@ -21,7 +21,9 @@ import api from "../../services/api";
 import { fetchGroupSummarys } from "../../services/group";
 import EventList from "./EventList";
 import DailyTrend from "./DailyTrend";
+import TodayHeader from "./TodayHeader";
 import { makeGroupLabel } from "./groupLabel";
+import { addDaysTpe, todayTpe } from "./dateTpe";
 
 const GLOSSARY = [
   { term: "原始 XP", body: "每則訊息的帳面值（基礎 × 冷卻 × 群組 × 暖流）。" },
@@ -35,21 +37,6 @@ const GLOSSARY = [
   { term: "永久", body: "轉生獎勵或活動發出的永久 XP 加成，可累加。" },
 ];
 
-// Backend day boundary is Asia/Taipei (UTC+8); see XpHistoryService.todayDateUtc8.
-const DATE_FMT_TPE = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Taipei",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-const TODAY = () => DATE_FMT_TPE.format(new Date());
-
-function addDays(date, days) {
-  const d = new Date(`${date}T00:00:00+08:00`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return DATE_FMT_TPE.format(d);
-}
-
 export default function XpHistory() {
   const { loggedIn } = useLiff();
 
@@ -61,6 +48,7 @@ export default function XpHistory() {
   const [days, setDays] = useState([]);
   const [dailyRange, setDailyRange] = useState(30);
   const [groupNames, setGroupNames] = useState({});
+  const [summary, setSummary] = useState(null);
 
   useEffect(() => {
     document.title = "經驗歷程";
@@ -68,11 +56,19 @@ export default function XpHistory() {
 
   useEffect(() => {
     if (!loggedIn) return;
-    const to = TODAY();
-    const from = addDays(to, -1);
+    const to = todayTpe();
+    const from = addDaysTpe(to, -1);
     api
       .get(`/api/me/xp-events?from=${from}&to=${to}`)
       .then(res => setEvents(Array.isArray(res.data.events) ? res.data.events : []));
+  }, [loggedIn]);
+
+  useEffect(() => {
+    if (!loggedIn) return;
+    api
+      .get("/api/me/xp-summary")
+      .then(res => setSummary(res.data?.today || null))
+      .catch(() => setSummary(null));
   }, [loggedIn]);
 
   useEffect(() => {
@@ -92,8 +88,8 @@ export default function XpHistory() {
 
   useEffect(() => {
     if (!loggedIn) return;
-    const to = TODAY();
-    const from = addDays(to, -(dailyRange - 1));
+    const to = todayTpe();
+    const from = addDaysTpe(to, -(dailyRange - 1));
     api
       .get(`/api/me/xp-daily?from=${from}&to=${to}`)
       .then(res => setDays(Array.isArray(res.data.days) ? res.data.days : []));
@@ -130,8 +126,51 @@ export default function XpHistory() {
         <Tab label="每日趨勢" />
       </Tabs>
 
-      {tab === 0 && <EventList events={events} showAll={showAll} groupLabel={groupLabel} />}
-      {tab === 1 && <DailyTrend days={days} range={dailyRange} onRangeChange={setDailyRange} />}
+      {tab === 0 && (
+        <Stack gap={1.75}>
+          <TodayHeader summary={summary} />
+          <Typography
+            sx={{
+              fontFamily: "ui-monospace, Menlo, monospace",
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              color: "text.disabled",
+              pl: 0.5,
+            }}
+          >
+            訊息事件
+          </Typography>
+          <EventList
+            events={events}
+            showAll={showAll}
+            groupLabel={groupLabel}
+            defaultExpanded="first"
+          />
+        </Stack>
+      )}
+      {tab === 1 && (
+        <Stack gap={1.5}>
+          <DailyTrend days={days} range={dailyRange} onRangeChange={setDailyRange} />
+          <Box
+            sx={{
+              p: 1.5,
+              bgcolor: "background.paper",
+              borderRadius: 1.5,
+              border: 1,
+              borderColor: "divider",
+              fontSize: 12,
+              color: "text.secondary",
+              lineHeight: 1.7,
+            }}
+          >
+            <Box component="strong" sx={{ color: "text.primary" }}>
+              怎麼讀？
+            </Box>{" "}
+            金黃段 = 實得 XP；半透明灰 = 因遞減 / 試煉而流失。長條下方徽章標注該日狀態 — 🌱 蜜月、⚔
+            試煉中。
+          </Box>
+        </Stack>
+      )}
 
       <Drawer
         anchor="bottom"

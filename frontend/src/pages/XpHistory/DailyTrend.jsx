@@ -1,31 +1,116 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { Box, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceArea,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const COLORS = {
   amber: "#FBBF24",
   amberDeep: "#F59E0B",
   divider: "#E5E7EB",
   muted: "#94A3B8",
-  loss: "rgba(148,163,184,0.45)",
+  lossFg: "#94A3B8",
   text: "#3A2800",
+  green: "#16A34A",
+  greenDeep: "#15803D",
 };
 
+const RANGES = [1, 7, 30, 90, 365];
+
+function rangeLabel(r) {
+  if (r === 1) return "今天";
+  if (r === 365) return "最近一年";
+  return `最近 ${r} 天`;
+}
+
+function rangeButton(r) {
+  if (r === 1) return "今天";
+  if (r === 365) return "1 年";
+  return `${r} 天`;
+}
+
+function bandRanges(rows, predicate) {
+  const out = [];
+  let start = null;
+  rows.forEach((d, i) => {
+    if (predicate(d)) {
+      if (start === null) start = i;
+    } else if (start !== null) {
+      out.push([rows[start].date, rows[i - 1].date]);
+      start = null;
+    }
+  });
+  if (start !== null) out.push([rows[start].date, rows[rows.length - 1].date]);
+  return out;
+}
+
+function TrendTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <Box
+      sx={{
+        bgcolor: "#fff",
+        border: 1,
+        borderColor: "divider",
+        borderRadius: 1,
+        p: "8px 12px",
+        fontSize: 11,
+        fontFamily: "ui-monospace, Menlo, monospace",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+        lineHeight: 1.8,
+        minWidth: 120,
+      }}
+    >
+      <Box sx={{ color: COLORS.text, fontWeight: 700, mb: 0.25 }}>{d.date}</Box>
+      <Box>
+        原始{" "}
+        <Box component="span" sx={{ color: COLORS.muted }}>
+          {d.raw.toLocaleString()}
+        </Box>
+      </Box>
+      <Box>
+        實得{" "}
+        <Box component="span" sx={{ color: COLORS.amberDeep, fontWeight: 700 }}>
+          {d.effective.toLocaleString()}
+        </Box>
+      </Box>
+      <Box sx={{ color: COLORS.muted }}>訊息 {d.msg_count}</Box>
+      {d.honeymoon_active && <Box sx={{ color: COLORS.greenDeep, fontSize: 10 }}>🌱 蜜月期</Box>}
+      {d.trial_id && <Box sx={{ color: "#B45309", fontSize: 10 }}>⚔ 試煉中</Box>}
+    </Box>
+  );
+}
+
 export default function DailyTrend({ days, range, onRangeChange }) {
-  const W = 320;
-  const PAD_L = 28;
-  const PAD_R = 8;
-  const PAD_T = 12;
-  const PAD_B = 56;
-  const H = 240;
-  const innerW = W - PAD_L - PAD_R;
-  const innerH = H - PAD_T - PAD_B;
+  const { chartData, honeymoonBands, trialBands } = useMemo(() => {
+    const rows = days || [];
+    return {
+      chartData: rows.map(d => ({
+        date: d.date,
+        effective: d.effective_exp || 0,
+        loss: Math.max(0, (d.raw_exp || 0) - (d.effective_exp || 0)),
+        raw: d.raw_exp || 0,
+        msg_count: d.msg_count || 0,
+        honeymoon_active: d.honeymoon_active,
+        trial_id: d.trial_id,
+      })),
+      honeymoonBands: bandRanges(rows, d => d.honeymoon_active),
+      trialBands: bandRanges(rows, d => d.trial_id != null),
+    };
+  }, [days]);
 
-  const sliced = (days || []).slice(-range);
-  const maxRaw = Math.max(...sliced.map(d => d.raw_exp || 0), 100);
-  const barW = sliced.length > 0 ? innerW / sliced.length : 0;
-  const gap = Math.min(2, barW * 0.15);
-
-  const [picked, setPicked] = useState(null);
+  const rotateLabels = chartData.length > 10;
+  const tickInterval = chartData.length <= 7 ? 0 : Math.max(0, Math.ceil(chartData.length / 6) - 1);
+  const bottomMargin = rotateLabels ? 30 : 18;
 
   return (
     <Stack gap={1.5}>
@@ -36,9 +121,9 @@ export default function DailyTrend({ days, range, onRangeChange }) {
         onChange={(_, v) => v && onRangeChange(v)}
         fullWidth
       >
-        {[7, 30, 90, 365].map(r => (
+        {RANGES.map(r => (
           <ToggleButton key={r} value={r} sx={{ fontFamily: "ui-monospace, Menlo, monospace" }}>
-            {r === 365 ? "1y" : `${r}d`}
+            {rangeButton(r)}
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
@@ -49,183 +134,124 @@ export default function DailyTrend({ days, range, onRangeChange }) {
           borderRadius: 1.5,
           border: 1,
           borderColor: "divider",
-          p: 1.5,
+          p: "14px 12px 10px",
         }}
       >
-        <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 1 }}>
-          <Typography sx={{ fontWeight: 700, color: COLORS.text }}>raw vs effective</Typography>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="baseline"
+          sx={{ mb: 1.25 }}
+        >
+          <Typography sx={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>
+            原始{" "}
+            <Box component="span" sx={{ color: COLORS.muted, fontWeight: 400 }}>
+              vs
+            </Box>{" "}
+            實得
+          </Typography>
           <Typography
-            variant="caption"
-            sx={{ fontFamily: "ui-monospace, Menlo, monospace", color: COLORS.muted }}
+            sx={{
+              fontFamily: "ui-monospace, Menlo, monospace",
+              fontSize: 11,
+              color: COLORS.muted,
+            }}
           >
-            最近 {range === 365 ? "一年" : `${range} 天`}
+            {rangeLabel(range)}
           </Typography>
         </Stack>
 
-        <Box
-          component="svg"
-          viewBox={`0 0 ${W} ${H}`}
-          sx={{ width: "100%", display: "block", touchAction: "manipulation" }}
-          onClick={e => {
-            // click on empty area deselects
-            if (e.target.tagName === "svg") setPicked(null);
-          }}
-        >
-          {[0, 0.25, 0.5, 0.75, 1].map(p => (
-            <line
-              key={p}
-              x1={PAD_L}
-              x2={W - PAD_R}
-              y1={PAD_T + innerH * (1 - p)}
-              y2={PAD_T + innerH * (1 - p)}
-              stroke={COLORS.divider}
-              strokeWidth="1"
-              strokeDasharray={p === 0 ? "" : "2 3"}
-            />
-          ))}
-          {[0, 0.5, 1].map(p => (
-            <text
-              key={p}
-              x={PAD_L - 4}
-              y={PAD_T + innerH * (1 - p) + 3}
-              textAnchor="end"
-              fontSize="9"
-              fill={COLORS.muted}
-              fontFamily="ui-monospace, Menlo, monospace"
+        {chartData.length === 0 ? (
+          <Box
+            sx={{
+              py: 6,
+              textAlign: "center",
+              color: "text.secondary",
+              fontFamily: "ui-monospace, Menlo, monospace",
+              fontSize: 12,
+            }}
+          >
+            沒有資料
+          </Box>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart
+              data={chartData}
+              maxBarSize={36}
+              barCategoryGap="20%"
+              margin={{ top: 4, right: 4, bottom: bottomMargin, left: 0 }}
             >
-              {Math.round(maxRaw * p)}
-            </text>
-          ))}
-
-          {sliced.map((d, i) => {
-            const x = PAD_L + i * barW + gap / 2;
-            const w = Math.max(1, barW - gap);
-            const effH = ((d.effective_exp || 0) / maxRaw) * innerH;
-            const lossH =
-              (Math.max(0, (d.raw_exp || 0) - (d.effective_exp || 0)) / maxRaw) * innerH;
-            const yLoss = PAD_T + innerH - effH - lossH;
-            const yEff = PAD_T + innerH - effH;
-            const isPicked = picked && picked.date === d.date;
-            return (
-              <g
-                key={d.date}
-                onClick={e => {
-                  e.stopPropagation();
-                  setPicked(prev => (prev?.date === d.date ? null : d));
+              <CartesianGrid strokeDasharray="3 4" stroke={COLORS.divider} vertical={false} />
+              {honeymoonBands.map(([x1, x2], i) => (
+                <ReferenceArea
+                  key={`hm-${i}`}
+                  x1={x1}
+                  x2={x2}
+                  fill={COLORS.green}
+                  fillOpacity={0.08}
+                />
+              ))}
+              {trialBands.map(([x1, x2], i) => (
+                <ReferenceArea
+                  key={`tr-${i}`}
+                  x1={x1}
+                  x2={x2}
+                  fill={COLORS.amberDeep}
+                  fillOpacity={0.08}
+                />
+              ))}
+              <XAxis
+                dataKey="date"
+                tickFormatter={v => (v || "").slice(5).replace("-", "/")}
+                tick={{
+                  fontSize: 9,
+                  fontFamily: "ui-monospace, Menlo, monospace",
+                  fill: COLORS.muted,
                 }}
-                style={{ cursor: "pointer" }}
-              >
-                <rect x={x} y={yLoss} width={w} height={lossH} fill={COLORS.loss} />
-                <rect
-                  x={x}
-                  y={yEff}
-                  width={w}
-                  height={effH}
-                  fill={isPicked ? COLORS.amberDeep : COLORS.amber}
-                />
-                {d.honeymoon_active && (
-                  <text
-                    x={x + w / 2}
-                    y={PAD_T + innerH + 12}
-                    textAnchor="middle"
-                    fontSize="9"
-                    fill="#15803D"
-                  >
-                    🌱
-                  </text>
-                )}
-                {d.trial_id && (
-                  <text
-                    x={x + w / 2}
-                    y={PAD_T + innerH + (d.honeymoon_active ? 24 : 12)}
-                    textAnchor="middle"
-                    fontSize="9"
-                    fill="#B45309"
-                  >
-                    ⚔★{d.trial_star ?? ""}
-                  </text>
-                )}
-                {i % Math.max(1, Math.floor(sliced.length / 6)) === 0 && (
-                  <text
-                    x={x + w / 2}
-                    y={
-                      PAD_T +
-                      innerH +
-                      (d.honeymoon_active && d.trial_id
-                        ? 38
-                        : d.honeymoon_active || d.trial_id
-                          ? 26
-                          : 14)
-                    }
-                    textAnchor="middle"
-                    fontSize="9"
-                    fill={COLORS.muted}
-                    fontFamily="ui-monospace, Menlo, monospace"
-                  >
-                    {d.date.slice(5)}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-
-          {picked &&
-            (() => {
-              const i = sliced.findIndex(d => d.date === picked.date);
-              if (i < 0) return null;
-              const x = PAD_L + i * barW + barW / 2;
-              return (
-                <line
-                  x1={x}
-                  x2={x}
-                  y1={PAD_T}
-                  y2={PAD_T + innerH}
-                  stroke={COLORS.text}
-                  strokeWidth="1"
-                  strokeDasharray="2 2"
-                  opacity="0.35"
-                />
-              );
-            })()}
-        </Box>
-
-        <Box
-          sx={{
-            mt: 1,
-            p: "6px 8px",
-            bgcolor: "#F8FAFB",
-            borderRadius: 0.75,
-            fontFamily: "ui-monospace, Menlo, monospace",
-            fontSize: 11,
-            color: "text.secondary",
-            minHeight: 40,
-          }}
-        >
-          {picked ? (
-            <>
-              <Box sx={{ color: COLORS.text, fontWeight: 700 }}>{picked.date}</Box>
-              <Box>
-                raw{" "}
-                <Box component="span" sx={{ color: COLORS.muted }}>
-                  {picked.raw_exp}
-                </Box>{" "}
-                · eff{" "}
-                <Box component="span" sx={{ color: COLORS.amberDeep, fontWeight: 700 }}>
-                  {picked.effective_exp}
-                </Box>{" "}
-                · 訊息 {picked.msg_count}
-              </Box>
-            </>
-          ) : (
-            <Box sx={{ color: COLORS.muted }}>點選長條看單日數字</Box>
-          )}
-        </Box>
+                interval={tickInterval}
+                angle={rotateLabels ? -40 : 0}
+                textAnchor={rotateLabels ? "end" : "middle"}
+                axisLine={false}
+                tickLine={false}
+                dy={4}
+              />
+              <YAxis
+                tick={{
+                  fontSize: 9,
+                  fontFamily: "ui-monospace, Menlo, monospace",
+                  fill: COLORS.muted,
+                }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={v => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
+                width={28}
+              />
+              <Tooltip content={<TrendTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+              <Bar
+                dataKey="effective"
+                stackId="a"
+                fill={COLORS.amber}
+                radius={[0, 0, 2, 2]}
+                name="effective"
+              />
+              <Bar
+                dataKey="loss"
+                stackId="a"
+                fill={COLORS.lossFg}
+                fillOpacity={0.38}
+                radius={[2, 2, 0, 0]}
+                name="loss"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
 
         <Stack
           direction="row"
-          gap={1.5}
+          gap={1.25}
+          flexWrap="wrap"
           sx={{
-            mt: 1,
+            mt: 0.5,
             fontSize: 10,
             color: "text.secondary",
             fontFamily: "ui-monospace, Menlo, monospace",
@@ -233,14 +259,38 @@ export default function DailyTrend({ days, range, onRangeChange }) {
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <Box sx={{ width: 10, height: 10, bgcolor: COLORS.amber, borderRadius: 0.25 }} />
-            effective
+            實得
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Box sx={{ width: 10, height: 10, bgcolor: COLORS.loss, borderRadius: 0.25 }} />
-            loss
+            <Box
+              sx={{
+                width: 10,
+                height: 10,
+                bgcolor: COLORS.lossFg,
+                opacity: 0.38,
+                borderRadius: 0.25,
+              }}
+            />
+            流失
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>🌱 蜜月</Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>⚔★ 試煉</Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <Box
+              sx={{ width: 10, height: 8, bgcolor: COLORS.green, opacity: 0.2, borderRadius: 0.25 }}
+            />
+            蜜月
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <Box
+              sx={{
+                width: 10,
+                height: 8,
+                bgcolor: COLORS.amberDeep,
+                opacity: 0.2,
+                borderRadius: 0.25,
+              }}
+            />
+            試煉
+          </Box>
         </Stack>
       </Box>
     </Stack>
