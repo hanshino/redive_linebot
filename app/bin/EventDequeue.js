@@ -5,6 +5,12 @@ const replyTokenQueue = require("../src/util/replyTokenQueue");
 const broadcastQueue = require("../src/util/broadcastQueue");
 const { getClient } = require("bottender");
 
+// bottender 1.x getClient() is NOT memoized — every call constructs a fresh
+// LineBot whose RedisSessionStore opens a new ioredis socket that's never
+// quit() when the bot reference is GC'd. Resolve once at module load so the
+// hot per-event path doesn't leak a connection per call.
+const lineClient = getClient("line");
+
 module.exports = main;
 
 let running = false;
@@ -66,7 +72,6 @@ function tryDrainBroadcast(event) {
   const { type } = event.source;
   if (type !== "group" && type !== "room") return;
   const sourceId = event.source[`${type}Id`];
-  const lineClient = getClient("line");
   broadcastQueue
     .drain(sourceId, { lineClient, replyTokenQueue, logger: DefaultLogger })
     .catch(err => console.error("[EventDequeue.tryDrainBroadcast]", err));

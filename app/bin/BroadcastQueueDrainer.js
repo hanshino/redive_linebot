@@ -6,6 +6,12 @@ const replyTokenQueue = require("../src/util/replyTokenQueue");
 
 const KEY_PREFIX = "BROADCAST_QUEUE_";
 
+// bottender 1.x getClient() is NOT memoized — every call constructs a fresh
+// LineBot whose RedisSessionStore opens a new ioredis socket that's never
+// quit() when the bot reference is GC'd. Resolve once at module load so each
+// 30s drainAll tick doesn't leak a connection.
+const lineClient = getClient("line");
+
 let running = false;
 
 async function main() {
@@ -21,7 +27,6 @@ async function main() {
 }
 
 async function drainAll() {
-  const lineClient = getClient("line");
   const iterator = redis.scanIterator({ MATCH: `${KEY_PREFIX}*`, COUNT: 100 });
 
   for await (const key of iterator) {
