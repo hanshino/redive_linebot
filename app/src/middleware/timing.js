@@ -64,7 +64,14 @@ function wrapChain(chainAction) {
     const entry = ensureEntry(context);
     if (context && context.client) patchLineClient(context.client);
     try {
-      return await chainAction(context, props);
+      // Bottender's `chain()` is a builder, not a runner: it returns the
+      // first bound action and Bot.run drives the dialog loop. Replicate
+      // that loop here so this finally observes the real total.
+      let nextDialog = await chainAction(context, props);
+      while (typeof nextDialog === "function") {
+        nextDialog = await nextDialog(context, {});
+      }
+      return nextDialog;
     } finally {
       const total = performance.now() - entry.start;
       const stagesSum = entry.stages.reduce((sum, [, d]) => sum + d, 0);
