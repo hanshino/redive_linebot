@@ -359,7 +359,7 @@ export default function GachaBannerForm() {
                       sx={{ alignItems: "center", justifyContent: "space-between" }}
                     >
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                        🎲 機率預覽
+                        機率預覽
                       </Typography>
                       <Chip
                         size="small"
@@ -403,7 +403,7 @@ export default function GachaBannerForm() {
                           </Stack>
                         ) : (
                           <Typography variant="caption" color="warning.main">
-                            ⚠️ 不在預設公主池，預設每日抽不會生效
+                            不在預設公主池，預設每日抽不會生效
                           </Typography>
                         )}
                       </Box>
