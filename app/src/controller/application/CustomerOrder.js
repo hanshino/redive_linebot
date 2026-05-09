@@ -337,7 +337,7 @@ exports.api.fetchCustomerOrders = async (req, res) => {
   res.json(orderDatas);
 };
 
-exports.api.updateOrder = async (req, res) => {
+exports.api.updateOrder = async (req, res, next) => {
   const { sourceId } = req.params;
   const { userId } = req.profile;
 
@@ -353,11 +353,11 @@ exports.api.updateOrder = async (req, res) => {
         errMsg: e.message,
         code: e.code,
       });
-    } else throw e;
+    } else return next(e);
   }
 };
 
-exports.api.insertOrder = async (req, res) => {
+exports.api.insertOrder = async (req, res, next) => {
   const { sourceId } = req.params;
   const { body: orderDatas, profile } = req;
 
@@ -401,11 +401,11 @@ exports.api.insertOrder = async (req, res) => {
         errMsg: e.message,
         code: e.code,
       });
-    } else throw e;
+    } else return next(e);
   }
 };
 
-exports.api.setCustomerOrderStatus = async (req, res) => {
+exports.api.setCustomerOrderStatus = async (req, res, next) => {
   const { sourceId, orderKey } = req.params;
   const { status } = req.body;
   const { profile } = req;
@@ -421,6 +421,6 @@ exports.api.setCustomerOrderStatus = async (req, res) => {
         errMsg: e.message,
         code: e.code,
       });
-    } else throw e;
+    } else return next(e);
   }
 };

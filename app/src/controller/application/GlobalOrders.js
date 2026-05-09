@@ -3,7 +3,8 @@ const random = require("math-random");
 const { send } = require("../../templates/application/Order");
 const { recordSign } = require("../../util/traffic");
 const umami = require("../../util/umami");
-const allowParameter = ["orderKey", "replyDatas", "senderIcon", "senderName", "touchType"];
+const allowParameter = ["orderKey", "replyDatas", "senderIcon", "senderName", "touchType", "order"];
+const MAX_REPLIES = 5;
 
 function GlobalOrderException(message, code) {
   this.message = message;
@@ -65,6 +66,32 @@ function getRandom(max, min = 0) {
   return result;
 }
 
+/**
+ * Normalize incoming admin payload so `undefined` never reaches Knex
+ * (Knex throws "Undefined binding(s) detected" on undefined values) and
+ * NOT NULL columns always receive a sensible default.
+ */
+function sanitizePayload(body) {
+  const objDefault = {};
+  allowParameter.forEach(attr => {
+    objDefault[attr] = "";
+  });
+  const obj = { ...objDefault, ...body };
+
+  obj.replyDatas = Array.isArray(obj.replyDatas) ? obj.replyDatas.slice(0, MAX_REPLIES) : [];
+  obj.replyDatas = obj.replyDatas.map(d => ({
+    messageType:
+      typeof d?.messageType === "string" && d.messageType.trim() ? d.messageType : "text",
+    reply: typeof d?.reply === "string" ? d.reply : "",
+  }));
+
+  obj.senderName = obj.senderName === "" ? null : obj.senderName;
+  obj.senderIcon = obj.senderIcon === "" ? null : obj.senderIcon;
+  obj.touchType = obj.touchType || "1";
+
+  return obj;
+}
+
 exports.api = {};
 
 exports.api.showGlobalOrders = async (req, res) => {
@@ -72,68 +99,51 @@ exports.api.showGlobalOrders = async (req, res) => {
   res.json(GlobalOrders);
 };
 
-exports.api.deleteGlobalOrders = async (req, res) => {
+exports.api.deleteGlobalOrders = async (req, res, next) => {
   const { orderKey } = req.params;
-  var result = {};
 
   try {
     await OrderModel.deleteData(orderKey);
+    res.json({});
   } catch (e) {
-    if (!(e instanceof GlobalOrderException)) throw e;
-    res.status(400);
-    result = { message: e.message };
+    if (e instanceof GlobalOrderException) {
+      return res.status(400).json({ message: e.message });
+    }
+    return next(e);
   }
-
-  res.json(result);
 };
 
-exports.api.insertGlobalOrders = async (req, res) => {
-  var objData = req.body;
-  var result = {};
-
+exports.api.insertGlobalOrders = async (req, res, next) => {
   try {
-    var objDefault = {};
-    allowParameter.forEach(attr => {
-      objDefault[attr] = "";
-    });
-
-    objData = { ...objDefault, ...objData };
-    objData.replyDatas = objData.replyDatas.slice(0, 5);
-
-    if (objData.senderName === "") delete objData.senderName;
-    if (objData.senderIcon === "") delete objData.senderIcon;
-
+    const objData = sanitizePayload(req.body);
+    if (!objData.replyDatas.length) {
+      throw new GlobalOrderException("至少需要一筆回覆", 2);
+    }
     await OrderModel.insertData(objData);
+    res.json({});
   } catch (e) {
-    if (!(e instanceof GlobalOrderException)) throw e;
-    res.status(400);
-    result = { message: e.message };
+    if (e instanceof GlobalOrderException) {
+      return res.status(400).json({ message: e.message });
+    }
+    return next(e);
   }
-
-  res.json(result);
 };
 
-exports.api.updateGlobalOrders = async (req, res) => {
-  var objData = req.body;
-  var result = {};
-
+exports.api.updateGlobalOrders = async (req, res, next) => {
   try {
-    var objDefault = {};
-    allowParameter.forEach(attr => {
-      objDefault[attr] = "";
-    });
-
-    objData = { ...objDefault, ...objData };
-
-    if (objData.orderKey.trim() === "") throw new GlobalOrderException("Order Key Missing.", 1);
-    objData.replyDatas = objData.replyDatas.slice(0, 5);
-
+    const objData = sanitizePayload(req.body);
+    if (!objData.orderKey || objData.orderKey.trim() === "") {
+      throw new GlobalOrderException("Order Key Missing.", 1);
+    }
+    if (!objData.replyDatas.length) {
+      throw new GlobalOrderException("至少需要一筆回覆", 2);
+    }
     await OrderModel.updateData(objData);
+    res.json({});
   } catch (e) {
-    if (!(e instanceof GlobalOrderException)) throw e;
-    res.status(400);
-    result = { message: e.message };
+    if (e instanceof GlobalOrderException) {
+      return res.status(400).json({ message: e.message });
+    }
+    return next(e);
   }
-
-  res.json(result);
 };

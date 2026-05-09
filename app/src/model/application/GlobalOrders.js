@@ -2,86 +2,61 @@ const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
 const memKey = "GlobalOrders";
 const uuid = require("uuid-random");
-exports.table = "GlobalOrders";
+const TABLE = "GlobalOrders";
+exports.table = TABLE;
+
+function buildRows(objData, key) {
+  return objData.replyDatas.map((data, index) => ({
+    no: index,
+    messageType: data.messageType,
+    reply: data.reply,
+    senderName: objData.senderName,
+    senderIcon: objData.senderIcon,
+    keyword: objData.order,
+    touchType: objData.touchType,
+    modifyTS: new Date(),
+    key,
+  }));
+}
+
 /**
  * 新增指令
  * @param {Object} objData
  * @param {String} objData.order
- * @param {Number} objData.touchType 1: 全符合，2:關鍵字
+ * @param {String} objData.touchType 1: 全符合，2:關鍵字
  * @param {String?} objData.senderName
  * @param {String?} objData.senderIcon
  * @param {Array}  objData.replyDatas
- * @param {Object} replyData
  * @param {String} replyData.messageType
  * @param {String} replyData.reply
  */
-exports.insertData = objData => {
-  let key = uuid();
-  var params = objData.replyDatas.map((data, index) => {
-    return {
-      no: index,
-      messageType: data.messageType,
-      reply: data.reply,
-      senderName: objData.senderName,
-      senderIcon: objData.senderIcon,
-      keyword: objData.order,
-      touchType: objData.touchType,
-      modifyTS: new Date(),
-      key,
-    };
-  });
-
-  return mysql.insert(params).into(this.table).then(resetOrderCache);
+exports.insertData = async objData => {
+  const key = uuid();
+  await mysql.insert(buildRows(objData, key)).into(TABLE);
+  resetOrderCache();
 };
 
 /**
- * 修改指令資料
+ * 修改指令資料 — atomically replaces all rows for this key so that
+ * adding, removing, reordering, and editing replies all behave consistently.
  * @param {Object} objData
  * @param {String} objData.orderKey
  * @param {String} objData.order
- * @param {Number} objData.touchType 1: 全符合，2:關鍵字
+ * @param {String} objData.touchType 1: 全符合，2:關鍵字
  * @param {String?} objData.senderName
  * @param {String?} objData.senderIcon
  * @param {Array}  objData.replyDatas
- * @param {Object} replyData
- * @param {String} replyData.no
- * @param {String} replyData.messageType
- * @param {String} replyData.reply
  */
-exports.updateData = objData => {
-  let { orderKey, replyDatas, order, touchType, senderName, senderIcon } = objData;
-  return mysql
-    .transaction(trx => {
-      let updatePromise = Promise.all(
-        replyDatas.map((data, index) => {
-          let { messageType, reply } = data;
-          return trx(this.table)
-            .update({
-              messageType,
-              reply,
-              no: index,
-              senderName,
-              senderIcon,
-              keyword: order,
-              touchType,
-              modifyTS: new Date(),
-            })
-            .where({
-              no: index,
-              key: orderKey,
-            });
-        })
-      );
+exports.updateData = async objData => {
+  const { orderKey, replyDatas } = objData;
+  const rows = buildRows(objData, orderKey);
 
-      updatePromise
-        .then(() =>
-          trx(this.table).where({ key: orderKey }).where("no", ">=", replyDatas.length).del()
-        )
-        .then(trx.commit)
-        .then(resetOrderCache)
-        .catch(trx.rollback);
-    })
-    .catch(console.error);
+  await mysql.transaction(async trx => {
+    await trx(TABLE).where({ key: orderKey }).del();
+    if (rows.length) await trx(TABLE).insert(rows);
+  });
+
+  if (replyDatas.length) resetOrderCache();
 };
 
 /**
@@ -89,7 +64,7 @@ exports.updateData = objData => {
  * @param {String} orderKey 指令金鑰
  */
 exports.deleteData = orderKey => {
-  return mysql.from("GlobalOrders").where({ key: orderKey }).del().then(resetOrderCache);
+  return mysql.from(TABLE).where({ key: orderKey }).del().then(resetOrderCache);
 };
 
 exports.fetchAllData = async () => {
@@ -105,7 +80,7 @@ exports.fetchAllData = async () => {
       "senderName",
       "senderIcon",
     ])
-    .from(this.table)
+    .from(TABLE)
     .orderBy("key");
 
   var orders = await redis.get(memKey);
