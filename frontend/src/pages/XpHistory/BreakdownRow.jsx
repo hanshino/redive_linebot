@@ -1,51 +1,142 @@
-import { Box } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { tierLabelFromFactor } from "./diminishTier";
+
+const COLOR = {
+  deep: "#3A2800",
+  muted: "#5A6B7F",
+  mutedSoft: "#94A3B8",
+  cyan: "#00838F",
+  amberDeep: "#F59E0B",
+  amberText: "#B45309",
+  redDeep: "#B91C1C",
+  greenDeep: "#15803D",
+  purple: "#6B21A8",
+};
 
 const trim = n => {
   const num = Number(n);
   if (!Number.isFinite(num)) return "0";
   return Number(num.toFixed(2)).toString();
 };
+
 const mult = n => `×${trim(n)}`;
 
-function Row({ label, value, accent, total, dim }) {
+function ChainPart({ label, value, color, weight = 600 }) {
   return (
     <Box
+      component="span"
       sx={{
-        display: "flex",
+        display: "inline-flex",
         alignItems: "baseline",
-        justifyContent: "space-between",
-        gap: 1,
-        py: total ? 0.25 : 0,
+        gap: 0.5,
+        whiteSpace: "nowrap",
       }}
     >
-      <Box
-        component="span"
-        sx={{
-          color: dim ? "text.disabled" : total ? "text.primary" : "text.secondary",
-          fontWeight: total ? 700 : 500,
-          fontSize: total ? 13 : 12,
-        }}
-      >
+      <Box component="span" sx={{ color: COLOR.mutedSoft, fontWeight: 400 }}>
         {label}
       </Box>
-      <Box
-        component="span"
-        sx={{
-          fontFamily: "ui-monospace, Menlo, monospace",
-          fontWeight: total ? 700 : 600,
-          fontSize: total ? 14 : 12,
-          color: accent || (total ? "text.primary" : "text.primary"),
-        }}
-      >
+      <Box component="span" sx={{ color, fontWeight: weight }}>
         {value}
       </Box>
     </Box>
   );
 }
 
-function Divider() {
-  return <Box sx={{ height: "1px", bgcolor: "divider", my: 0.5 }} />;
+function ChainRow({ children }) {
+  return (
+    <Stack
+      direction="row"
+      flexWrap="wrap"
+      sx={{
+        rowGap: "4px",
+        columnGap: "8px",
+        alignItems: "baseline",
+        fontFamily: "ui-monospace, Menlo, monospace",
+        fontSize: 12,
+        lineHeight: 1.7,
+      }}
+    >
+      {children}
+    </Stack>
+  );
+}
+
+function shapeRawParts(ev) {
+  return [
+    { label: "基礎", val: trim(ev.base_xp), color: COLOR.deep, weight: 700, hide: false },
+    {
+      label: "冷卻",
+      val: mult(ev.cooldown_rate),
+      color: ev.cooldown_rate > 1 ? COLOR.amberDeep : COLOR.muted,
+      hide: ev.cooldown_rate === 1,
+    },
+    {
+      label: "群組",
+      val: mult(ev.group_bonus),
+      color: ev.group_bonus > 1 ? COLOR.cyan : COLOR.muted,
+      hide: ev.group_bonus === 1,
+    },
+    {
+      label: "暖流祝福",
+      val: mult(ev.blessing1_mult),
+      color: ev.blessing1_mult > 1 ? COLOR.cyan : COLOR.muted,
+      hide: ev.blessing1_mult === 1,
+    },
+  ];
+}
+
+function shapeEffParts(ev) {
+  return [
+    {
+      label: "蜜月",
+      val: mult(ev.honeymoon_mult),
+      color: ev.honeymoon_mult > 1 ? COLOR.greenDeep : COLOR.muted,
+      hide: ev.honeymoon_mult === 1,
+    },
+    {
+      label: tierLabelFromFactor(ev.diminish_factor),
+      val: mult(ev.diminish_factor),
+      color:
+        ev.diminish_factor === 1
+          ? COLOR.muted
+          : ev.diminish_factor === 0.3
+            ? COLOR.amberText
+            : COLOR.redDeep,
+      hide: ev.diminish_factor === 1,
+    },
+    {
+      label: "試煉",
+      val: mult(ev.trial_mult),
+      color:
+        ev.trial_mult < 1 ? COLOR.amberText : ev.trial_mult > 1 ? COLOR.greenDeep : COLOR.muted,
+      hide: ev.trial_mult === 1,
+    },
+    {
+      label: "永久",
+      val: mult(ev.permanent_mult),
+      color: ev.permanent_mult > 1 ? COLOR.purple : COLOR.muted,
+      hide: ev.permanent_mult === 1,
+    },
+  ];
+}
+
+function ChainArrow({ to, value, color = COLOR.deep, valueSize = 13 }) {
+  return (
+    <Box
+      sx={{
+        mt: 0.5,
+        ml: 1.75,
+        fontFamily: "ui-monospace, Menlo, monospace",
+        fontSize: 12,
+        color: COLOR.muted,
+      }}
+    >
+      → {to}{" "}
+      <Box component="span" sx={{ color, fontWeight: 700, fontSize: valueSize }}>
+        {value}
+      </Box>
+    </Box>
+  );
 }
 
 export default function BreakdownRow({ ev, showAll }) {
@@ -59,6 +150,7 @@ export default function BreakdownRow({ ev, showAll }) {
           fontStyle: "italic",
           color: "text.secondary",
           fontSize: 12,
+          lineHeight: 1.6,
         }}
       >
         此筆早於 v2，無乘數明細
@@ -66,59 +158,33 @@ export default function BreakdownRow({ ev, showAll }) {
     );
   }
 
-  const rawSteps = [
-    { label: "冷卻", val: mult(ev.cooldown_rate), hide: ev.cooldown_rate === 1 },
-    { label: "群組加成", val: mult(ev.group_bonus), hide: ev.group_bonus === 1 },
-    { label: "暖流祝福", val: mult(ev.blessing1_mult), hide: ev.blessing1_mult === 1 },
-  ];
-  const tierLabel = tierLabelFromFactor(ev.diminish_factor);
-  const effSteps = [
-    { label: "蜜月加成", val: mult(ev.honeymoon_mult), hide: ev.honeymoon_mult === 1 },
-    {
-      label: tierLabel,
-      val: mult(ev.diminish_factor),
-      hide: ev.diminish_factor === 1,
-      accent: ev.diminish_factor <= 0.05 ? "error.dark" : undefined,
-    },
-    { label: "試煉倍率", val: mult(ev.trial_mult), hide: ev.trial_mult === 1 },
-    { label: "永久加成", val: mult(ev.permanent_mult), hide: ev.permanent_mult === 1 },
-  ];
-
-  const visibleRaw = rawSteps.filter(s => showAll || !s.hide);
-  const visibleEff = effSteps.filter(s => showAll || !s.hide);
-  const effDimmed = ev.effective_exp === 0 || ev.effective_exp < ev.raw_exp / 2;
+  const rawParts = shapeRawParts(ev);
+  const effParts = shapeEffParts(ev);
+  const visibleRaw = rawParts.filter(p => showAll || !p.hide);
+  const visibleEff = effParts.filter(p => showAll || !p.hide);
 
   return (
-    <Box
-      sx={{
-        p: 1.5,
-        bgcolor: "#F8FAFB",
-        borderRadius: 1,
-        display: "flex",
-        flexDirection: "column",
-        gap: 0.25,
-      }}
-    >
-      <Row label="基礎 XP" value={trim(ev.base_xp)} />
-      {visibleRaw.map((s, i) => (
-        <Row key={`r${i}`} label={s.label} value={s.val} dim />
-      ))}
-      <Divider />
-      <Row label="原始 XP" value={ev.raw_exp} total />
+    <Box sx={{ p: 1.5, bgcolor: "#F8FAFB", borderRadius: 1 }}>
+      <ChainRow>
+        {visibleRaw.map((p, i) => (
+          <ChainPart key={i} {...p} />
+        ))}
+      </ChainRow>
+      <ChainArrow to="原始 XP" value={ev.raw_exp} />
+
       {visibleEff.length > 0 && (
-        <>
-          {visibleEff.map((s, i) => (
-            <Row key={`e${i}`} label={s.label} value={s.val} accent={s.accent} dim />
-          ))}
-          <Divider />
-        </>
+        <Box sx={{ mt: 1 }}>
+          <ChainRow>
+            <Box component="span" sx={{ color: COLOR.mutedSoft, fontWeight: 400 }}>
+              原始 {ev.raw_exp}
+            </Box>
+            {visibleEff.map((p, i) => (
+              <ChainPart key={i} {...p} />
+            ))}
+          </ChainRow>
+        </Box>
       )}
-      <Row
-        label="實得 XP"
-        value={ev.effective_exp}
-        total
-        accent={effDimmed ? "warning.dark" : "success.dark"}
-      />
+      <ChainArrow to="實得 XP" value={ev.effective_exp} color={COLOR.amberDeep} valueSize={14} />
     </Box>
   );
 }

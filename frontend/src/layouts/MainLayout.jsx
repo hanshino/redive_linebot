@@ -119,8 +119,9 @@ export default function MainLayout() {
           ModalProps={{ keepMounted: true }}
           sx={{
             "& .MuiDrawer-paper": {
-              width: DRAWER_WIDTH,
+              width: `min(${DRAWER_WIDTH}px, 86vw)`,
               boxSizing: "border-box",
+              overflowX: "hidden",
             },
           }}
         >

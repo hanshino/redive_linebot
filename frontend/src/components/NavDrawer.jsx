@@ -31,24 +31,34 @@ import LinkIcon from "@mui/icons-material/Link";
 import CelebrationIcon from "@mui/icons-material/Celebration";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import HistoryIcon from "@mui/icons-material/History";
+import InsightsIcon from "@mui/icons-material/Insights";
 
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
   { label: "排行榜", path: "/rankings", icon: EqualizerIcon },
+];
+
+const chatLevelItems = [
   { label: "轉生之路", path: "/prestige", icon: AutoAwesomeIcon },
+  { label: "經驗歷程", path: "/xp-history", icon: InsightsIcon },
+];
+
+const princessItems = [
+  { label: "轉蛋商店", path: "/gacha/exchange", icon: StorefrontIcon },
+  { label: "轉蛋包包", path: "/bag", icon: LocalMallIcon },
+  { label: "裝備管理", path: "/equipment", icon: FitnessCenterIcon },
+];
+
+const arenaItems = [
   { label: "猜拳競技場", path: "/janken", icon: EmojiEventsIcon },
   { label: "蘭德索爾盃", path: "/race", icon: EmojiEventsIcon },
 ];
-
-const princessItems = [{ label: "轉蛋商店", path: "/gacha/exchange", icon: StorefrontIcon }];
 
 const botItems = [{ label: "使用手冊", path: "/panel/manual", icon: LibraryBooksIcon }];
 
 const personalItems = [
   { label: "我的群組", path: "/groups", icon: GroupsIcon },
   { label: "交易管理", path: "/trade/manage", icon: ShoppingBasketIcon },
-  { label: "轉蛋包包", path: "/bag", icon: LocalMallIcon },
-  { label: "裝備管理", path: "/equipment", icon: FitnessCenterIcon },
   { label: "自動設定", path: "/auto/settings", icon: AutoAwesomeIcon },
   { label: "自動行為紀錄", path: "/auto/history", icon: HistoryIcon },
 ];
@@ -125,7 +135,9 @@ export default function NavDrawer({ onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState({
+    chatLevel: false,
     princess: false,
+    arena: false,
     bot: false,
     personal: false,
     admin: false,
@@ -142,7 +154,7 @@ export default function NavDrawer({ onClose }) {
   };
 
   return (
-    <Box sx={{ width: 260, pt: 1 }}>
+    <Box sx={{ width: "100%", pt: 1, overflowX: "hidden" }}>
       <List>
         {mainItems.map(({ label, path, icon: Icon }) => (
           <ListItem key={label} disablePadding>
@@ -162,10 +174,26 @@ export default function NavDrawer({ onClose }) {
       <Divider />
 
       <NavSection
+        title="聊天等級"
+        items={chatLevelItems}
+        open={openSections.chatLevel}
+        onToggle={() => toggleSection("chatLevel")}
+        onNavigate={handleNavigate}
+        currentPath={location.pathname}
+      />
+      <NavSection
         title="公主連結"
         items={princessItems}
         open={openSections.princess}
         onToggle={() => toggleSection("princess")}
+        onNavigate={handleNavigate}
+        currentPath={location.pathname}
+      />
+      <NavSection
+        title="競技場"
+        items={arenaItems}
+        open={openSections.arena}
+        onToggle={() => toggleSection("arena")}
         onNavigate={handleNavigate}
         currentPath={location.pathname}
       />
