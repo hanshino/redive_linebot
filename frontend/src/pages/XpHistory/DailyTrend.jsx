@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Box, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import {
   Bar,
@@ -73,13 +74,13 @@ function TrendTooltip({ active, payload }) {
       <Box>
         原始{" "}
         <Box component="span" sx={{ color: COLORS.muted }}>
-          {d.raw?.toLocaleString()}
+          {d.raw.toLocaleString()}
         </Box>
       </Box>
       <Box>
         實得{" "}
         <Box component="span" sx={{ color: COLORS.amberDeep, fontWeight: 700 }}>
-          {d.effective?.toLocaleString()}
+          {d.effective.toLocaleString()}
         </Box>
       </Box>
       <Box sx={{ color: COLORS.muted }}>訊息 {d.msg_count}</Box>
@@ -90,22 +91,25 @@ function TrendTooltip({ active, payload }) {
 }
 
 export default function DailyTrend({ days, range, onRangeChange }) {
-  const rows = (days || []).slice(-range);
-  const chartData = rows.map(d => ({
-    date: d.date,
-    effective: d.effective_exp || 0,
-    loss: Math.max(0, (d.raw_exp || 0) - (d.effective_exp || 0)),
-    raw: d.raw_exp || 0,
-    msg_count: d.msg_count || 0,
-    honeymoon_active: d.honeymoon_active,
-    trial_id: d.trial_id,
-  }));
+  const { chartData, honeymoonBands, trialBands } = useMemo(() => {
+    const rows = days || [];
+    return {
+      chartData: rows.map(d => ({
+        date: d.date,
+        effective: d.effective_exp || 0,
+        loss: Math.max(0, (d.raw_exp || 0) - (d.effective_exp || 0)),
+        raw: d.raw_exp || 0,
+        msg_count: d.msg_count || 0,
+        honeymoon_active: d.honeymoon_active,
+        trial_id: d.trial_id,
+      })),
+      honeymoonBands: bandRanges(rows, d => d.honeymoon_active),
+      trialBands: bandRanges(rows, d => d.trial_id != null),
+    };
+  }, [days]);
 
-  const honeymoonBands = bandRanges(rows, d => d.honeymoon_active);
-  const trialBands = bandRanges(rows, d => d.trial_id != null);
-
-  const rotateLabels = rows.length > 10;
-  const tickInterval = rows.length <= 7 ? 0 : Math.max(0, Math.ceil(rows.length / 6) - 1);
+  const rotateLabels = chartData.length > 10;
+  const tickInterval = chartData.length <= 7 ? 0 : Math.max(0, Math.ceil(chartData.length / 6) - 1);
   const bottomMargin = rotateLabels ? 30 : 18;
 
   return (

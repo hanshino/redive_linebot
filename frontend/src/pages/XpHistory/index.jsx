@@ -23,6 +23,7 @@ import EventList from "./EventList";
 import DailyTrend from "./DailyTrend";
 import TodayHeader from "./TodayHeader";
 import { makeGroupLabel } from "./groupLabel";
+import { addDaysTpe, todayTpe } from "./dateTpe";
 
 const GLOSSARY = [
   { term: "原始 XP", body: "每則訊息的帳面值（基礎 × 冷卻 × 群組 × 暖流）。" },
@@ -35,21 +36,6 @@ const GLOSSARY = [
   { term: "試煉", body: "★2 ×0.7、★5 ×0.5；★3 拉長冷卻、★4 關閉群組加成。" },
   { term: "永久", body: "轉生獎勵或活動發出的永久 XP 加成，可累加。" },
 ];
-
-// Backend day boundary is Asia/Taipei (UTC+8); see XpHistoryService.todayDateUtc8.
-const DATE_FMT_TPE = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Taipei",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-const TODAY = () => DATE_FMT_TPE.format(new Date());
-
-function addDays(date, days) {
-  const d = new Date(`${date}T00:00:00+08:00`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return DATE_FMT_TPE.format(d);
-}
 
 export default function XpHistory() {
   const { loggedIn } = useLiff();
@@ -70,8 +56,8 @@ export default function XpHistory() {
 
   useEffect(() => {
     if (!loggedIn) return;
-    const to = TODAY();
-    const from = addDays(to, -1);
+    const to = todayTpe();
+    const from = addDaysTpe(to, -1);
     api
       .get(`/api/me/xp-events?from=${from}&to=${to}`)
       .then(res => setEvents(Array.isArray(res.data.events) ? res.data.events : []));
@@ -102,8 +88,8 @@ export default function XpHistory() {
 
   useEffect(() => {
     if (!loggedIn) return;
-    const to = TODAY();
-    const from = addDays(to, -(dailyRange - 1));
+    const to = todayTpe();
+    const from = addDaysTpe(to, -(dailyRange - 1));
     api
       .get(`/api/me/xp-daily?from=${from}&to=${to}`)
       .then(res => setDays(Array.isArray(res.data.days) ? res.data.days : []));

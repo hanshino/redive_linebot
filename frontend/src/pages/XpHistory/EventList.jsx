@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import BreakdownRow from "./BreakdownRow";
 import { foldEvents } from "./foldEvents";
 import { tierAccentFromFactor } from "./diminishTier";
 import { EventChipRow } from "./EventChips";
 import { chipsFromEvent } from "./chipsFromEvent";
+import { addDaysTpe, todayTpe, tpeDate } from "./dateTpe";
 
 const TIME_FMT = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
@@ -19,13 +20,6 @@ const DETAIL_TIME_FMT = new Intl.DateTimeFormat(undefined, {
   hour12: false,
 });
 
-const TPE_DATE_FMT = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Taipei",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
 function localHHMM(ts) {
   const d = new Date(ts);
   return Number.isNaN(d.getTime()) ? "--:--" : TIME_FMT.format(d);
@@ -34,11 +28,6 @@ function localHHMM(ts) {
 function localHHMMSS(ts) {
   const d = new Date(ts);
   return Number.isNaN(d.getTime()) ? "--:--:--" : DETAIL_TIME_FMT.format(d);
-}
-
-function tpeDate(ts) {
-  const d = new Date(ts);
-  return Number.isNaN(d.getTime()) ? "" : TPE_DATE_FMT.format(d);
 }
 
 function dateHeading(date, today, yesterday) {
@@ -51,13 +40,28 @@ function accentFor(folded) {
   return tierAccentFromFactor(folded.events[0].diminish_factor, { degraded: folded.degraded });
 }
 
+function effTotalColor(eff, raw) {
+  if (eff === 0) return "error.main";
+  if (eff < raw / 2) return "warning.main";
+  return "text.primary";
+}
+
 export default function EventList({ events, showAll, groupLabel, defaultExpanded = "first" }) {
   const folded = useMemo(() => foldEvents(events || []), [events]);
   const [expanded, setExpanded] = useState(() => initialExpanded(folded, defaultExpanded));
 
-  useEffect(() => {
-    setExpanded(initialExpanded(folded, defaultExpanded));
-  }, [folded, defaultExpanded]);
+  const grouped = useMemo(() => {
+    const today = todayTpe();
+    const yesterday = addDaysTpe(today, -1);
+    const byDate = new Map();
+    folded.forEach(f => {
+      const date = tpeDate(f.ts) || f.minute.slice(0, 10);
+      if (!byDate.has(date)) byDate.set(date, []);
+      byDate.get(date).push(f);
+    });
+    const dates = [...byDate.keys()].sort().reverse();
+    return { today, yesterday, byDate, dates };
+  }, [folded]);
 
   const toggle = key =>
     setExpanded(prev => {
@@ -75,20 +79,7 @@ export default function EventList({ events, showAll, groupLabel, defaultExpanded
     );
   }
 
-  const today = TPE_DATE_FMT.format(new Date());
-  const yesterday = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return TPE_DATE_FMT.format(d);
-  })();
-
-  const byDate = new Map();
-  folded.forEach(f => {
-    const date = tpeDate(f.ts) || f.minute.slice(0, 10);
-    if (!byDate.has(date)) byDate.set(date, []);
-    byDate.get(date).push(f);
-  });
-  const dates = [...byDate.keys()].sort().reverse();
+  const { today, yesterday, byDate, dates } = grouped;
 
   return (
     <Stack gap={2}>
@@ -129,8 +120,7 @@ function initialExpanded(folded, mode) {
 }
 
 function FoldedRow({ folded, expanded, onToggle, showAll, groupLabel }) {
-  const chips = chipsFromEvent(folded.events[0]);
-  const effDimmed = folded.eff_total === 0 || folded.eff_total < folded.raw_total / 2;
+  const chips = useMemo(() => chipsFromEvent(folded.events[0]), [folded]);
   return (
     <Box
       sx={{
@@ -199,12 +189,7 @@ function FoldedRow({ folded, expanded, onToggle, showAll, groupLabel }) {
                 fontFamily: "ui-monospace, Menlo, monospace",
                 fontSize: 18,
                 fontWeight: 700,
-                color:
-                  folded.eff_total === 0
-                    ? "error.main"
-                    : effDimmed
-                      ? "warning.main"
-                      : "text.primary",
+                color: effTotalColor(folded.eff_total, folded.raw_total),
                 lineHeight: 1,
               }}
             >

@@ -1,4 +1,5 @@
 import { Box, Stack, Typography } from "@mui/material";
+import { formatDateBadge } from "./dateTpe";
 
 const COLOR = {
   cyan: "#00838F",
@@ -8,21 +9,6 @@ const COLOR = {
   amberText: "#FCD34D",
   redSoft: "#FCA5A5",
 };
-
-const DATE_FMT_TPE = new Intl.DateTimeFormat("zh-TW", {
-  timeZone: "Asia/Taipei",
-  month: "2-digit",
-  day: "2-digit",
-  weekday: "short",
-});
-
-function formatDateBadge(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(`${dateStr}T00:00:00+08:00`);
-  if (Number.isNaN(d.getTime())) return dateStr;
-  // e.g. "05/01 五"
-  return DATE_FMT_TPE.format(d).replace("週", "");
-}
 
 export default function TodayHeader({ summary }) {
   if (!summary) return null;

@@ -1,5 +1,6 @@
-import { Box, Stack, Typography } from "@mui/material";
-import { tierLabelFromFactor } from "./diminishTier";
+import { Box, Stack } from "@mui/material";
+import { TIER2_RATE, tierLabelFromFactor } from "./diminishTier";
+import { mult, trim } from "./format";
 
 const COLOR = {
   deep: "#3A2800",
@@ -13,13 +14,17 @@ const COLOR = {
   purple: "#6B21A8",
 };
 
-const trim = n => {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return "0";
-  return Number(num.toFixed(2)).toString();
-};
+function colorForDiminish(factor) {
+  if (factor === 1) return COLOR.muted;
+  if (factor === TIER2_RATE) return COLOR.amberText;
+  return COLOR.redDeep;
+}
 
-const mult = n => `×${trim(n)}`;
+function colorForTrial(m) {
+  if (m < 1) return COLOR.amberText;
+  if (m > 1) return COLOR.greenDeep;
+  return COLOR.muted;
+}
 
 function ChainPart({ label, value, color, weight = 600 }) {
   return (
@@ -96,19 +101,13 @@ function shapeEffParts(ev) {
     {
       label: tierLabelFromFactor(ev.diminish_factor),
       val: mult(ev.diminish_factor),
-      color:
-        ev.diminish_factor === 1
-          ? COLOR.muted
-          : ev.diminish_factor === 0.3
-            ? COLOR.amberText
-            : COLOR.redDeep,
+      color: colorForDiminish(ev.diminish_factor),
       hide: ev.diminish_factor === 1,
     },
     {
       label: "試煉",
       val: mult(ev.trial_mult),
-      color:
-        ev.trial_mult < 1 ? COLOR.amberText : ev.trial_mult > 1 ? COLOR.greenDeep : COLOR.muted,
+      color: colorForTrial(ev.trial_mult),
       hide: ev.trial_mult === 1,
     },
     {
