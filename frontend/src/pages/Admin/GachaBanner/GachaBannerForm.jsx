@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -13,6 +13,7 @@ import {
   Autocomplete,
   Switch,
   FormControlLabel,
+  Divider,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -58,6 +59,7 @@ export default function GachaBannerForm() {
 
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [characters, setCharacters] = useState([]);
+  const [pool, setPool] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
@@ -74,6 +76,7 @@ export default function GachaBannerForm() {
         .filter(c => parseInt(c.star, 10) === 3)
         .map(c => ({ id: c.id, name: c.name, imageUrl: c.imageUrl }));
       setCharacters(ssrCharacters);
+      setPool(poolData);
 
       if (banner) {
         setFormData({
@@ -143,6 +146,63 @@ export default function GachaBannerForm() {
       setSaving(false);
     }
   };
+
+  const ratePreview = useMemo(() => {
+    if (formData.type !== "rate_up") return null;
+    if (!pool || pool.length === 0) return null;
+
+    const parseRate = r => parseFloat((r || "0").toString().replace("%", "")) || 0;
+    const boost = parseFloat(formData.rate_boost) || 0;
+    const multiplier = (100 + boost) / 100;
+    const idSet = new Set(formData.characterIds);
+
+    // 預設每日抽會走 filterPool(undefined) → 只留 isPrincess === "1"
+    const princessPool = pool.filter(p => p.isPrincess === "1");
+    const totalPre = princessPool.reduce((s, p) => s + parseRate(p.rate), 0);
+    const totalPost = princessPool.reduce((s, p) => {
+      const r = parseRate(p.rate);
+      return s + (idSet.has(p.id) ? r * multiplier : r);
+    }, 0);
+    const threeStarPre = princessPool
+      .filter(p => parseInt(p.star, 10) === 3)
+      .reduce((s, p) => s + parseRate(p.rate), 0);
+    const threeStarPost = princessPool
+      .filter(p => parseInt(p.star, 10) === 3)
+      .reduce((s, p) => {
+        const r = parseRate(p.rate);
+        return s + (idSet.has(p.id) ? r * multiplier : r);
+      }, 0);
+
+    const charactersDetail = formData.characterIds.map(cid => {
+      const princessEntry = princessPool.find(p => p.id === cid);
+      const fullEntry = pool.find(p => p.id === cid);
+      const inPrincessPool = Boolean(princessEntry);
+      const baseRate = parseRate(fullEntry && fullEntry.rate);
+      const postRate = inPrincessPool ? baseRate * multiplier : 0;
+      const perPull = totalPost > 0 ? postRate / totalPost : 0;
+      return {
+        id: cid,
+        name: (fullEntry && fullEntry.name) || `#${cid}`,
+        inPrincessPool,
+        preRate: baseRate,
+        postRate,
+        perPullPct: perPull * 100,
+        expectedPer10: perPull * 10,
+        atLeastOnePer10Pct: (1 - Math.pow(1 - perPull, 10)) * 100,
+      };
+    });
+
+    return {
+      multiplier,
+      characters: charactersDetail,
+      totalPre,
+      totalPost,
+      threeStarPre,
+      threeStarPost,
+      threeStarPerPullPct: totalPost > 0 ? (threeStarPost / totalPost) * 100 : 0,
+      expectedThreeStarPer10: totalPost > 0 ? (threeStarPost / totalPost) * 10 : 0,
+    };
+  }, [formData.type, formData.rate_boost, formData.characterIds, pool]);
 
   if (loading) {
     return <FullPageLoading />;
@@ -248,8 +308,8 @@ export default function GachaBannerForm() {
                 value={formData.rate_boost}
                 onChange={handleChange("rate_boost")}
                 type="number"
-                helperText="輸入 100 → 角色機率 ×2 倍、150 → ×2.5 倍、200 → ×3 倍"
-                slotProps={{ htmlInput: { min: 0, max: 1000, step: 10 } }}
+                helperText="輸入 100 → ×2 倍、300 → ×4 倍、1000 → ×11 倍。實際機率 = 角色 base rate × 倍率，可在下方預覽確認"
+                slotProps={{ htmlInput: { min: 0, step: 10 } }}
               />
 
               <Autocomplete
@@ -282,6 +342,98 @@ export default function GachaBannerForm() {
                   />
                 )}
               />
+
+              {ratePreview && ratePreview.characters.length > 0 && (
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    border: 1,
+                    borderColor: "divider",
+                    bgcolor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                  }}
+                >
+                  <Stack spacing={1.25}>
+                    <Stack
+                      direction="row"
+                      sx={{ alignItems: "center", justifyContent: "space-between" }}
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        機率預覽
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={`活動倍率 ×${ratePreview.multiplier.toFixed(2)}`}
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </Stack>
+
+                    <Divider />
+
+                    {ratePreview.characters.map(c => (
+                      <Box key={c.id}>
+                        <Stack
+                          direction="row"
+                          sx={{ alignItems: "baseline", justifyContent: "space-between" }}
+                        >
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {c.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            base {c.preRate.toFixed(3)}% → {c.postRate.toFixed(3)}%
+                          </Typography>
+                        </Stack>
+                        {c.inPrincessPool ? (
+                          <Stack
+                            direction="row"
+                            sx={{
+                              alignItems: "baseline",
+                              justifyContent: "space-between",
+                              mt: 0.25,
+                            }}
+                          >
+                            <Typography variant="caption" color="text.secondary">
+                              單抽 {c.perPullPct.toFixed(3)}%・10 抽期望{" "}
+                              {c.expectedPer10.toFixed(3)} 隻
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                              10 抽至少 1 隻 {c.atLeastOnePer10Pct.toFixed(2)}%
+                            </Typography>
+                          </Stack>
+                        ) : (
+                          <Typography variant="caption" color="warning.main">
+                            不在預設公主池，預設每日抽不會生效
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+
+                    <Divider />
+
+                    <Stack
+                      direction="row"
+                      sx={{ alignItems: "baseline", justifyContent: "space-between" }}
+                    >
+                      <Typography variant="caption" color="text.secondary">
+                        套用後池子單抽 3 星機率
+                      </Typography>
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        {ratePreview.threeStarPerPullPct.toFixed(2)}%（10 抽期望{" "}
+                        {ratePreview.expectedThreeStarPer10.toFixed(2)} 隻）
+                      </Typography>
+                    </Stack>
+
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontStyle: "italic" }}
+                    >
+                      * 以預設公主池為基準計算，實際機率為「角色 base rate × (1 + boost/100)」
+                    </Typography>
+                  </Stack>
+                </Box>
+              )}
             </>
           )}
 

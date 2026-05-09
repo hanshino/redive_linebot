@@ -20,6 +20,9 @@ const {
   getRainbowCharater,
   makePickup,
   applyBannerRateUp,
+  summarizePool,
+  parseRate,
+  fmtRate,
 } = require("./gachaDrawUtil");
 const i18n = require("../util/i18n");
 const { DefaultLogger } = require("../util/Logger");
@@ -152,7 +155,71 @@ async function runDailyDraw(userId, opts = {}) {
 
   const cost = resolveCost(pickup, ensure, europe, activeEuropeBanner);
 
+  const debugEnabled = process.env.GACHA_DEBUG_LOG === "1";
+  let debugCtx = null;
+  if (debugEnabled) {
+    const mode = europe ? "europe" : ensure ? "ensure" : pickup ? "pickup" : "daily";
+    const bannerIdSet = new Set(rateUpBanners.flatMap(b => b.characterIds || []));
+    const prePool = summarizePool(filteredPool);
+    const postPool = summarizePool(dailyPool);
+    const bannerMeta = rateUpBanners.map(b => ({
+      id: b.id,
+      name: b.name,
+      rate_boost: b.rate_boost,
+      characters: (b.characterIds || []).length,
+    }));
+    // 在 sum-of-rate 權重池下，per-pull 命中機率 = rate / total，
+    // 因此 10 抽期望命中次數（不是百分比）= 10 × rate / total。
+    const expectedRainbowPer10 =
+      postPool.total > 0 ? fmtRate((postPool.byStar[3] / postPool.total) * times) : 0;
+    DefaultLogger.info(
+      `[gacha-draw] user=${userId} tag=${tag || "default"} mode=${mode} cost=${cost.amount} ` +
+        `banners=${rateUpBanners.length} bannerCharacters=${bannerIdSet.size} ` +
+        `bannerMeta=${JSON.stringify(bannerMeta)} ` +
+        `pre={"entries":${prePool.entries},"total":${fmtRate(prePool.total)},` +
+        `"star1":${fmtRate(prePool.byStar[1])},"star2":${fmtRate(prePool.byStar[2])},"star3":${fmtRate(prePool.byStar[3])}} ` +
+        `post={"entries":${postPool.entries},"total":${fmtRate(postPool.total)},` +
+        `"star1":${fmtRate(postPool.byStar[1])},"star2":${fmtRate(postPool.byStar[2])},"star3":${fmtRate(postPool.byStar[3])}} ` +
+        `expectedRainbowPer10=${expectedRainbowPer10}`
+    );
+
+    if (rateUpBanners.length > 0 && postPool.total > 0) {
+      const preMap = new Map(filteredPool.map(d => [d.id, d]));
+      const postMap = new Map(dailyPool.map(d => [d.id, d]));
+      const bannerDetails = rateUpBanners.map(b => ({
+        id: b.id,
+        name: b.name,
+        rate_boost: b.rate_boost,
+        characters: (b.characterIds || []).map(cid => {
+          const preR = parseRate(preMap.get(cid));
+          const postR = parseRate(postMap.get(cid));
+          return {
+            id: cid,
+            preRate: fmtRate(preR),
+            postRate: fmtRate(postR),
+            shareOfPool: fmtRate((postR / postPool.total) * 100),
+            expectedPer10: fmtRate((postR / postPool.total) * times),
+          };
+        }),
+      }));
+      DefaultLogger.info(
+        `[gacha-banner] user=${userId} mode=${mode} details=${JSON.stringify(bannerDetails)}`
+      );
+    }
+
+    debugCtx = { mode, bannerIdSet };
+  }
+
   const { rewards, rareCount } = drawRewards(dailyPool, times, { userId, ensure });
+
+  if (debugCtx) {
+    const bannerHits = rewards.filter(r => debugCtx.bannerIdSet.has(r.id)).length;
+    DefaultLogger.info(
+      `[gacha-result] user=${userId} mode=${debugCtx.mode} ` +
+        `silver=${rareCount[1] || 0} gold=${rareCount[2] || 0} rainbow=${rareCount[3] || 0} ` +
+        `bannerHits=${bannerHits}`
+    );
+  }
 
   const uniqRewards = uniqBy(rewards, "id");
   const rawRewardIds = rewards.map(r => r.id);

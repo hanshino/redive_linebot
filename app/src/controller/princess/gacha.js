@@ -18,7 +18,7 @@ const i18n = require("../../util/i18n");
 const commonTemplate = require("../../templates/common");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
 const GachaService = require("../../service/GachaService");
-const { play, filterPool } = require("../../service/gachaDrawUtil");
+const { play, filterPool, summarizePool, fmtRate } = require("../../service/gachaDrawUtil");
 
 function GachaException(message, code) {
   this.message = message;
@@ -95,6 +95,7 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   // needs the cost for the stone-balance gate and the early-return text.
   const allActiveBanners = await GachaBanner.getActiveBannersWithCharacters();
   const europeBanners = allActiveBanners.filter(b => b.type === "europe");
+  const rateUpBanners = allActiveBanners.filter(b => b.type === "rate_up");
 
   let activeEuropeBanner = null;
   if (europe) {
@@ -133,6 +134,22 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   const normalGacha = () => {
     const rewards = shuffle(play(filteredPool, times));
     const rareCount = countBy(rewards, "star");
+    if (process.env.GACHA_DEBUG_LOG === "1") {
+      const summary = summarizePool(filteredPool);
+      const bannerIdSet = new Set(rateUpBanners.flatMap(b => b.characterIds || []));
+      const bannerHits = rewards.filter(r => bannerIdSet.has(r.id)).length;
+      const expectedRainbowPer10 =
+        summary.total > 0 ? fmtRate((summary.byStar[3] / summary.total) * times) : 0;
+      DefaultLogger.info(
+        `[gacha-normal] user=${userId} tag=${tag || "default"} ` +
+          `banners=${rateUpBanners.length} bannerCharacters=${bannerIdSet.size} ` +
+          `note=banner-rate-up-not-applied ` +
+          `pool={"entries":${summary.entries},"total":${fmtRate(summary.total)},` +
+          `"star1":${fmtRate(summary.byStar[1])},"star2":${fmtRate(summary.byStar[2])},"star3":${fmtRate(summary.byStar[3])}} ` +
+          `silver=${rareCount[1] || 0} gold=${rareCount[2] || 0} rainbow=${rareCount[3] || 0} ` +
+          `bannerHits=${bannerHits} expectedRainbowPer10=${expectedRainbowPer10}`
+      );
+    }
     const bubble = GachaTemplate.line.generateGachaResult({
       rewards,
       tag,
@@ -221,6 +238,8 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
  * @returns {Promise<Boolean>}
  */
 async function detectCanDaily(userId) {
+  if (process.env.NODE_ENV !== "production") return true;
+
   const now = moment();
   const key = `daily_gacha_${userId}_${now.format("MMDD")}`;
   const content = await redis.get(key);
