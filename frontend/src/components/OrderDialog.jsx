@@ -43,8 +43,10 @@ const TOUCH_OPTIONS = [
   { v: "2", label: "關鍵字符合", sub: "訊息包含即觸發" },
 ];
 
-let _uid = 1;
-const uid = () => _uid++;
+const uid = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const emptyReply = () => ({ id: uid(), messageType: "text", reply: "" });
 
 function normalizeReplies(replyDatas) {
@@ -281,25 +283,22 @@ function StickerInputs({ value, onChange, showErr }) {
   );
 }
 
-function FlexInputs({ value, onChange, showErr }) {
-  const [alt, setAlt] = useState("");
-  const [body, setBody] = useState("");
-  const [parseErr, setParseErr] = useState(false);
+function parseFlexValue(raw) {
+  try {
+    const p = JSON.parse(raw || "{}");
+    return {
+      alt: p.altText || "",
+      body: p.contents ? JSON.stringify(p.contents, null, 2) : "",
+    };
+  } catch {
+    return { alt: "", body: "" };
+  }
+}
 
-  useEffect(() => {
-    try {
-      const p = JSON.parse(value || "{}");
-      setAlt(p.altText || "");
-      setBody(p.contents ? JSON.stringify(p.contents, null, 2) : "");
-      setParseErr(false);
-    } catch {
-      setAlt("");
-      setBody("");
-      setParseErr(false);
-    }
-    // run only on (re)mount; subsequent edits are user-driven
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+function FlexInputs({ value, onChange, showErr }) {
+  const [alt, setAlt] = useState(() => parseFlexValue(value).alt);
+  const [body, setBody] = useState(() => parseFlexValue(value).body);
+  const [parseErr, setParseErr] = useState(false);
 
   const push = (newAlt, newBody) => {
     try {
