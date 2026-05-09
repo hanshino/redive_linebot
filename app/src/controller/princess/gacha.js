@@ -19,6 +19,7 @@ const commonTemplate = require("../../templates/common");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
 const GachaService = require("../../service/GachaService");
 const { play, filterPool, summarizePool, fmtRate } = require("../../service/gachaDrawUtil");
+const { time } = require("../../middleware/timing");
 
 function GachaException(message, code) {
   this.message = message;
@@ -93,7 +94,9 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
 
   // Europe banner pre-check — service will re-fetch internally, but controller
   // needs the cost for the stone-balance gate and the early-return text.
-  const allActiveBanners = await GachaBanner.getActiveBannersWithCharacters();
+  const allActiveBanners = await time("gacha.banners", () =>
+    GachaBanner.getActiveBannersWithCharacters()
+  );
   const europeBanners = allActiveBanners.filter(b => b.type === "europe");
   const rateUpBanners = allActiveBanners.filter(b => b.type === "rate_up");
 
@@ -123,7 +126,7 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     return;
   }
 
-  const gachaPool = await GachaModel.getDatabasePool();
+  const gachaPool = await time("gacha.pool", () => GachaModel.getDatabasePool());
   const filteredPool = filterPool(gachaPool, tag);
   // 是否為公主池
   const isPrincessPool = filteredPool.findIndex(pool => pool.isPrincess == 0) === -1;
@@ -156,7 +159,7 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
       rareCount,
       hasCooldown: type === "group",
     });
-    return context.replyFlex("轉蛋結果", bubble);
+    return time("gacha.reply.normal", () => context.replyFlex("轉蛋結果", bubble));
   };
   // 非公主轉蛋池，無法進行每日一抽，直接抽完並且發送結果
   if (!isPrincessPool) {
@@ -189,7 +192,9 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
 
   let result;
   try {
-    result = await GachaService.runDailyDraw(userId, { tag, pickup, ensure, europe });
+    result = await time("gacha.runDaily", () =>
+      GachaService.runDailyDraw(userId, { tag, pickup, ensure, europe })
+    );
   } catch (err) {
     DefaultLogger.warn(`[gacha] runDailyDraw failed for ${userId}: ${err.message}`);
     console.log(err);
@@ -211,7 +216,9 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     })
   );
 
-  const allCharactersCount = await GachaModel.getPrincessCharacterCount();
+  const allCharactersCount = await time("gacha.allChars", () =>
+    GachaModel.getPrincessCharacterCount()
+  );
 
   bubbles.unshift(
     GachaTemplate.line.generateDailyGachaInfo({
@@ -224,12 +231,14 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     })
   );
 
-  await notifyUnlocks(context, userId, result.unlocks);
+  await time("gacha.notify", () => notifyUnlocks(context, userId, result.unlocks));
 
-  return context.replyFlex("每日一抽結果", {
-    type: "carousel",
-    contents: bubbles,
-  });
+  return time("gacha.reply.daily", () =>
+    context.replyFlex("每日一抽結果", {
+      type: "carousel",
+      contents: bubbles,
+    })
+  );
 }
 
 /**

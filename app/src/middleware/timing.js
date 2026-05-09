@@ -1,5 +1,7 @@
+const { AsyncLocalStorage } = require("async_hooks");
 const { performance } = require("perf_hooks");
 const { DefaultLogger } = require("../util/Logger");
+const queryProfiler = require("../util/queryProfiler");
 
 const ENABLED = process.env.TIMING_DISABLED !== "1";
 const SLOW_STAGE_MS = Number(process.env.TIMING_SLOW_STAGE_MS || 50);
@@ -10,6 +12,7 @@ const SLOW_API_MS = Number(process.env.TIMING_SLOW_API_MS || 100);
 const STAGE_REPORT_THRESHOLD_MS = 5;
 
 const timingMap = new WeakMap();
+const timingAls = new AsyncLocalStorage();
 const PATCHED = Symbol("timing.patched");
 
 function getEventLabel(context) {
@@ -33,7 +36,12 @@ function getEventLabel(context) {
 function ensureEntry(context) {
   let entry = timingMap.get(context);
   if (!entry) {
-    entry = { start: performance.now(), stages: [] };
+    entry = {
+      start: performance.now(),
+      stages: [],
+      steps: [],
+      label: getEventLabel(context),
+    };
     timingMap.set(context, entry);
   }
   return entry;
@@ -58,34 +66,78 @@ function withTiming(name, mw) {
   };
 }
 
-function wrapChain(chainAction) {
-  if (!ENABLED) return chainAction;
-  return async (context, props) => {
-    const entry = ensureEntry(context);
-    if (context && context.client) patchLineClient(context.client);
-    try {
-      // Bottender's `chain()` is a builder, not a runner: it returns the
-      // first bound action and Bot.run drives the dialog loop. Replicate
-      // that loop here so this finally observes the real total.
-      let nextDialog = await chainAction(context, props);
-      while (typeof nextDialog === "function") {
-        nextDialog = await nextDialog(context, {});
-      }
-      return nextDialog;
-    } finally {
-      const total = performance.now() - entry.start;
-      const stagesSum = entry.stages.reduce((sum, [, d]) => sum + d, 0);
-      const unaccounted = total - stagesSum;
-      if (total >= SLOW_TOTAL_MS) {
-        const breakdown = entry.stages
-          .filter(([, d]) => d >= STAGE_REPORT_THRESHOLD_MS)
-          .map(([n, d]) => `${n}=${d.toFixed(0)}`)
-          .join(" ");
-        DefaultLogger.info(
-          `[timing] total=${total.toFixed(0)}ms unaccounted=${unaccounted.toFixed(0)}ms event=${getEventLabel(context)} | ${breakdown}`
-        );
-      }
+/**
+ * 在 chain stage 內部對更細的 await 段落計時。
+ * 與 withTiming 不同：steps 不參與 unaccounted 計算（避免巢狀重複），
+ * 純粹做為 breakdown 輔助線。
+ *
+ * @param {string} label
+ * @param {() => Promise<T> | T} fn
+ * @returns {Promise<T>}
+ */
+async function time(label, fn) {
+  if (!ENABLED) return fn();
+  const store = timingAls.getStore();
+  const entry = store && store.entry;
+  if (!entry) return fn();
+  const start = performance.now();
+  try {
+    return await fn();
+  } finally {
+    const dur = performance.now() - start;
+    entry.steps.push([label, dur]);
+    if (dur >= SLOW_STAGE_MS) {
+      DefaultLogger.info(`[timing] step=${label} dur=${dur.toFixed(1)}ms event=${entry.label}`);
     }
+  }
+}
+
+function wrapChain(chainAction) {
+  if (!ENABLED && !queryProfiler.ENABLED) return chainAction;
+  return async (context, props) => {
+    const body = async () => {
+      const entry = ENABLED ? ensureEntry(context) : null;
+      if (ENABLED && context && context.client) patchLineClient(context.client);
+      const runChain = async () => {
+        try {
+          // Bottender's `chain()` is a builder, not a runner: it returns the
+          // first bound action and Bot.run drives the dialog loop. Replicate
+          // that loop here so this finally observes the real total.
+          let nextDialog = await chainAction(context, props);
+          while (typeof nextDialog === "function") {
+            nextDialog = await nextDialog(context, {});
+          }
+          return nextDialog;
+        } finally {
+          const label = getEventLabel(context);
+          if (ENABLED && entry) {
+            const total = performance.now() - entry.start;
+            const stagesSum = entry.stages.reduce((sum, [, d]) => sum + d, 0);
+            const unaccounted = total - stagesSum;
+            if (total >= SLOW_TOTAL_MS) {
+              const breakdown = entry.stages
+                .filter(([, d]) => d >= STAGE_REPORT_THRESHOLD_MS)
+                .map(([n, d]) => `${n}=${d.toFixed(0)}`)
+                .join(" ");
+              const stepsBreakdown =
+                entry.steps.length > 0
+                  ? " | steps: " +
+                    entry.steps
+                      .filter(([, d]) => d >= STAGE_REPORT_THRESHOLD_MS)
+                      .map(([n, d]) => `${n}=${d.toFixed(0)}`)
+                      .join(" ")
+                  : "";
+              DefaultLogger.info(
+                `[timing] total=${total.toFixed(0)}ms unaccounted=${unaccounted.toFixed(0)}ms event=${label} | ${breakdown}${stepsBreakdown}`
+              );
+            }
+          }
+          queryProfiler.emitSummary(label);
+        }
+      };
+      return ENABLED && entry ? timingAls.run({ entry }, runChain) : runChain();
+    };
+    return queryProfiler.ENABLED ? queryProfiler.run(body) : body();
   };
 }
 
@@ -112,4 +164,4 @@ function patchLineClient(client) {
   ["replyMessage", "pushMessage", "multicast", "broadcast"].forEach(wrap);
 }
 
-module.exports = { withTiming, wrapChain, patchLineClient };
+module.exports = { withTiming, wrapChain, patchLineClient, time };

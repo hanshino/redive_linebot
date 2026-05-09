@@ -10,6 +10,8 @@ const knex = require("knex")({
   pool: { min: 0, max: 10 },
 });
 
+require("./queryProfiler").attach(knex);
+
 /**
  * @returns { import("knex").Knex }
  */
