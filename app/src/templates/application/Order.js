@@ -22,13 +22,20 @@ exports.send = (context, replyDatas, sender = { name: null, iconUrl: null }) => 
     .sort((a, b) => a.no - b.no)
     .forEach(data => {
       const { reply, messageType, substitution } = data;
-      let content = handleText(reply, context);
       switch (messageType) {
         case "image":
-          _sendImage(context, content, sender);
+          _sendImage(context, handleText(reply, context), sender);
+          return;
+        case "sticker":
+          _sendSticker(context, reply, sender);
+          return;
+        case "flex":
+          _sendFlex(context, reply, sender);
           return;
         case "text":
-          if (substitution !== null) {
+        default: {
+          const content = handleText(reply, context);
+          if (substitution !== null && substitution !== undefined) {
             context.reply([
               {
                 type: "textV2",
@@ -41,9 +48,38 @@ exports.send = (context, replyDatas, sender = { name: null, iconUrl: null }) => 
             context.replyText(content, { sender });
           }
           return;
+        }
       }
     });
 };
+
+function _sendSticker(context, reply, sender) {
+  if (context.platform !== "line") return;
+  let parsed;
+  try {
+    parsed = JSON.parse(reply);
+  } catch {
+    return;
+  }
+  const packageId = parsed?.packageId;
+  const stickerId = parsed?.stickerId;
+  if (!packageId || !stickerId) return;
+  context.reply([{ type: "sticker", packageId, stickerId, sender }]);
+}
+
+function _sendFlex(context, reply, sender) {
+  if (context.platform !== "line") return;
+  let parsed;
+  try {
+    parsed = JSON.parse(reply);
+  } catch {
+    return;
+  }
+  const altText = parsed?.altText;
+  const contents = parsed?.contents;
+  if (!altText || !contents) return;
+  context.replyFlex(altText, contents, { sender });
+}
 
 /**
  * 處理字串中特殊關鍵字
