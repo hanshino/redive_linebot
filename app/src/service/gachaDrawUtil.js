@@ -82,10 +82,34 @@ function applyBannerRateUp(pool, characterIds, rateBoost) {
   return boostRate(pool, data => idSet.has(data.id), rateBoost);
 }
 
+function parseRate(value) {
+  if (value == null) return 0;
+  const raw = typeof value === "object" ? value.rate : value;
+  return parseFloat((raw || "0").toString().replace("%", "")) || 0;
+}
+
+function fmtRate(n) {
+  return Number(n.toFixed(4));
+}
+
+function summarizePool(pool) {
+  const byStar = { 1: 0, 2: 0, 3: 0 };
+  for (const data of pool) {
+    const rate = parseRate(data);
+    const star = parseInt(data.star, 10);
+    if (byStar[star] !== undefined) byStar[star] += rate;
+  }
+  const total = byStar[1] + byStar[2] + byStar[3];
+  return { entries: pool.length, total, byStar };
+}
+
 module.exports = {
   play,
   filterPool,
   getRainbowCharater,
   makePickup,
   applyBannerRateUp,
+  summarizePool,
+  parseRate,
+  fmtRate,
 };
