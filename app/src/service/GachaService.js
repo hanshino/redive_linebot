@@ -26,6 +26,7 @@ const {
 } = require("./gachaDrawUtil");
 const i18n = require("../util/i18n");
 const { DefaultLogger } = require("../util/Logger");
+const { time } = require("../middleware/timing");
 
 async function handleSignin(userId) {
   const userData = await signModel.first({ filter: { user_id: userId } });
@@ -144,12 +145,14 @@ async function runDailyDraw(userId, opts = {}) {
   const { tag, pickup = false, ensure = false, europe = false } = opts;
   const times = 10;
 
-  const allActiveBanners = await GachaBanner.getActiveBannersWithCharacters();
+  const allActiveBanners = await time("rd.banners", () =>
+    GachaBanner.getActiveBannersWithCharacters()
+  );
   const rateUpBanners = allActiveBanners.filter(b => b.type === "rate_up");
   const europeBanners = allActiveBanners.filter(b => b.type === "europe");
   const activeEuropeBanner = europe && europeBanners.length > 0 ? europeBanners[0] : null;
 
-  const gachaPool = await GachaModel.getDatabasePool();
+  const gachaPool = await time("rd.pool", () => GachaModel.getDatabasePool());
   const filteredPool = filterPool(gachaPool, tag);
   const dailyPool = buildDailyPool(filteredPool, rateUpBanners, { pickup, ensure, europe });
 
@@ -225,11 +228,13 @@ async function runDailyDraw(userId, opts = {}) {
   const rawRewardIds = rewards.map(r => r.id);
   const rewardIds = uniq(rawRewardIds);
 
-  const ownItems = await inventory.knex
-    .where({ userId })
-    .select("itemId")
-    .andWhereNot("itemId", 999)
-    .orderBy("itemId", "asc");
+  const ownItems = await time("rd.inventory", () =>
+    inventory.knex
+      .where({ userId })
+      .select("itemId")
+      .andWhereNot("itemId", 999)
+      .orderBy("itemId", "asc")
+  );
   const ownItemIds = ownItems.map(item => item.itemId);
   const ownCharactersCount = ownItemIds.length;
 
@@ -243,83 +248,88 @@ async function runDailyDraw(userId, opts = {}) {
   const repeatReward = computeRepeatReward(uniqRewards, duplicateItems);
   const newCharacters = uniqRewards.filter(r => newItemIds.includes(r.id));
 
-  const trx = await inventory.transaction();
-  let gachaRecordId;
-  try {
-    if (cost.amount > 0) {
-      await trx(inventory.table).insert({
-        userId,
-        itemId: 999,
-        itemAmount: -1 * cost.amount,
-        note: cost.note,
-      });
-    }
-
-    if (newCharacters.length > 0) {
-      await trx(inventory.table).insert(
-        newCharacters.map(character => ({
+  await time("rd.tx", async () => {
+    const trx = await inventory.transaction();
+    try {
+      if (cost.amount > 0) {
+        await trx(inventory.table).insert({
           userId,
-          itemId: character.id,
-          itemAmount: 1,
-          attributes: JSON.stringify([{ key: "star", value: parseInt(character.star) }]),
-          note: i18n.__("message.gacha.new_character_note"),
-        }))
-      );
-    }
+          itemId: 999,
+          itemAmount: -1 * cost.amount,
+          note: cost.note,
+        });
+      }
 
-    if (repeatReward > 0) {
-      await trx(inventory.table).insert({
-        userId,
-        itemId: 999,
-        itemAmount: repeatReward,
-        note: i18n.__("message.gacha.repeat_reward_note"),
+      if (newCharacters.length > 0) {
+        await trx(inventory.table).insert(
+          newCharacters.map(character => ({
+            userId,
+            itemId: character.id,
+            itemAmount: 1,
+            attributes: JSON.stringify([{ key: "star", value: parseInt(character.star) }]),
+            note: i18n.__("message.gacha.new_character_note"),
+          }))
+        );
+      }
+
+      if (repeatReward > 0) {
+        await trx(inventory.table).insert({
+          userId,
+          itemId: 999,
+          itemAmount: repeatReward,
+          note: i18n.__("message.gacha.repeat_reward_note"),
+        });
+      }
+
+      const [insertedId] = await trx(GachaRecord.table).insert({
+        user_id: userId,
+        silver: rareCount[1] || 0,
+        gold: rareCount[2] || 0,
+        rainbow: rareCount[3] || 0,
+        has_new: newCharacters.length > 0 ? 1 : 0,
       });
+      const gachaRecordId = insertedId;
+
+      if (rewards.length > 0 && gachaRecordId) {
+        const newIdSet = new Set(newCharacters.map(c => c.id));
+        await trx(GachaRecordDetail.table).insert(
+          rewards.map(r => ({
+            gacha_record_id: gachaRecordId,
+            user_id: userId,
+            character_id: r.id,
+            star: parseInt(r.star),
+            is_new: newIdSet.has(r.id) ? 1 : 0,
+          }))
+        );
+      }
+
+      await trx.commit();
+    } catch (err) {
+      await trx.rollback();
+      throw err;
     }
-
-    const [insertedId] = await trx(GachaRecord.table).insert({
-      user_id: userId,
-      silver: rareCount[1] || 0,
-      gold: rareCount[2] || 0,
-      rainbow: rareCount[3] || 0,
-      has_new: newCharacters.length > 0 ? 1 : 0,
-    });
-    gachaRecordId = insertedId;
-
-    if (rewards.length > 0 && gachaRecordId) {
-      const newIdSet = new Set(newCharacters.map(c => c.id));
-      await trx(GachaRecordDetail.table).insert(
-        rewards.map(r => ({
-          gacha_record_id: gachaRecordId,
-          user_id: userId,
-          character_id: r.id,
-          star: parseInt(r.star),
-          is_new: newIdSet.has(r.id) ? 1 : 0,
-        }))
-      );
-    }
-
-    await trx.commit();
-  } catch (err) {
-    await trx.rollback();
-    throw err;
-  }
-
-  await Promise.all([
-    handleSignin(userId),
-    EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId }),
-  ]);
-
-  const { unlocked } = await AchievementEngine.evaluate(userId, "gacha_pull", {
-    threeStarCount: rareCount[3] || 0,
-    uniqueCount: ownCharactersCount + newCharacters.length,
-    pullType: europe ? "europe" : ensure ? "ensure" : pickup ? "pickup" : undefined,
-    feature: "gacha",
-  }).catch(err => {
-    DefaultLogger.warn(
-      `GachaService.runDailyDraw achievement.evaluate failed user=${userId}: ${err && err.message}`
-    );
-    return { unlocked: [] };
   });
+
+  await time("rd.side", () =>
+    Promise.all([
+      handleSignin(userId),
+      EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId }),
+    ])
+  );
+
+  const { unlocked } = await time("rd.achievement", () =>
+    AchievementEngine.evaluate(userId, "gacha_pull", {
+      threeStarCount: rareCount[3] || 0,
+      uniqueCount: ownCharactersCount + newCharacters.length,
+      pullType: europe ? "europe" : ensure ? "ensure" : pickup ? "pickup" : undefined,
+      feature: "gacha",
+    }).catch(err => {
+      DefaultLogger.warn(
+        `GachaService.runDailyDraw achievement.evaluate failed user=${userId}: ${err && err.message}`
+      );
+      return { unlocked: [] };
+    })
+  );
 
   return {
     rewards,
