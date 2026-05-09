@@ -28,7 +28,7 @@ const NEW_ORDER_TEMPLATE = {
   senderIcon: "",
   senderName: "",
   orderKey: "",
-  replyDatas: [{ no: 0, messageType: "text", reply: "回覆內容" }],
+  replyDatas: [{ no: 0, messageType: "text", reply: "" }],
 };
 
 const TOUCH_TYPE_MAP = { 1: "全符合", 2: "關鍵字符合" };

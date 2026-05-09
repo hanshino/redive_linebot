@@ -471,6 +471,7 @@ function ReplyCard({ item, idx, total, onChange, onRemove, onMoveUp, onMoveDown,
           rows={3}
           fullWidth
           size="small"
+          placeholder="輸入回覆內容…"
           value={item.reply}
           onChange={e => onChange(item.id, "reply", e.target.value)}
           error={showErr && !item.reply.trim()}
