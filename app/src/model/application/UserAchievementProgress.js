@@ -14,6 +14,20 @@ exports.getProgress = async (userId, achievementId) => {
   return mysql(TABLE).where({ user_id: userId, achievement_id: achievementId }).first();
 };
 
+/**
+ * @param {string} userId
+ * @param {Array<number>} achievementIds
+ * @returns {Promise<Map<number, number>>} achievement_id → current_value
+ */
+exports.getProgressByIds = async (userId, achievementIds) => {
+  if (!Array.isArray(achievementIds) || achievementIds.length === 0) return new Map();
+  const rows = await mysql(TABLE)
+    .where("user_id", userId)
+    .whereIn("achievement_id", achievementIds)
+    .select("achievement_id", "current_value");
+  return new Map(rows.map(r => [r.achievement_id, r.current_value]));
+};
+
 exports.upsert = async (userId, achievementId, currentValue) => {
   return mysql.raw(
     `INSERT INTO ${TABLE} (user_id, achievement_id, current_value, updated_at)

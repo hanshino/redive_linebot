@@ -212,18 +212,20 @@ exports.evaluate = async (userId, eventType, context = {}) => {
       .filter(a => isEligible(userId, a));
     if (achievements.length === 0) return { unlocked };
 
-    const unlockedIds = await UserAchievementModel.getUnlockedIds(
-      userId,
-      achievements.map(a => a.id)
-    );
+    const allIds = achievements.map(a => a.id);
+    const [unlockedIds, progressMap] = await Promise.all([
+      UserAchievementModel.getUnlockedIds(userId, allIds),
+      UserProgressModel.getProgressByIds(userId, allIds),
+    ]);
 
     const ctx = { ...context, _userId: userId };
+    const candidates = achievements.filter(a => !unlockedIds.has(a.id));
 
-    for (const achievement of achievements) {
+    for (const achievement of candidates) {
       try {
-        if (unlockedIds.has(achievement.id)) continue;
-
-        const { currentValue, newValue } = await calculateProgress(userId, achievement, ctx);
+        const currentValue = progressMap.get(achievement.id) || 0;
+        const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
+        const newValue = strategy ? await strategy(currentValue, achievement, ctx) : currentValue;
         if (newValue === null || newValue === currentValue) continue;
 
         await UserProgressModel.upsert(userId, achievement.id, newValue);
@@ -244,16 +246,6 @@ exports.evaluate = async (userId, eventType, context = {}) => {
   }
   return { unlocked };
 };
-
-async function calculateProgress(userId, achievement, context) {
-  const progress = await UserProgressModel.getProgress(userId, achievement.id);
-  const currentValue = progress ? progress.current_value : 0;
-
-  const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
-  const newValue = strategy ? await strategy(currentValue, achievement, context) : currentValue;
-
-  return { currentValue, newValue };
-}
 
 async function handleTrackedSet(userId, achievementId, newItem, currentValue) {
   if (!newItem) return currentValue;

@@ -1,13 +1,19 @@
 const { getGroupSummary, getGroupCount } = require("../util/line");
 const UserModel = require("../model/application/UserModel");
 const redis = require("../util/redis");
+const { DefaultLogger } = require("../util/Logger");
+
+// Cross-session redis cache so a profile fetched in group X serves group Y.
+const PROFILE_CACHE_TTL_SEC = 30 * 60;
+// Cap LINE API stalls so total reply time stays under ~1s.
+const LINE_PROFILE_TIMEOUT_MS = 200;
 
 /**
  * 設置用戶、群組資料
  * @param {Context} context
  * @param {Object} props
  */
-module.exports = async (context, props) => {
+const middleware = async (context, props) => {
   switch (context.platform) {
     case "line":
       // 不處理無userId的用戶
@@ -26,25 +32,63 @@ module.exports = async (context, props) => {
 };
 
 /**
- * 設定Line個人資料至State
+ * 設定Line個人資料至State。三層 cache：in-session userDatas → redis
+ * `profile:{userId}` (30 分鐘) → LINE API（200ms timeout）。
  * @param {Context} context
  */
-function setLineProfile(context) {
+async function setLineProfile(context) {
   const { userDatas } = context.state;
   const { userId } = context.event.source;
 
-  if (Object.prototype.hasOwnProperty.call(userDatas, userId) === true) return;
+  if (Object.prototype.hasOwnProperty.call(userDatas, userId)) return;
 
-  return context.getUserProfile().then(profile => {
-    let temp = { ...userDatas };
-    temp[userId] = profile;
-    context.setState({
-      userDatas: temp,
-    });
+  let profile = await readProfileFromRedis(userId);
 
-    // Best-effort update profile in DB
-    UserModel.updateProfile(userId, profile).catch(() => {});
+  if (!profile) {
+    profile = await fetchLineProfileWithTimeout(context);
+    if (profile) writeProfileToRedis(userId, profile);
+  }
+
+  if (!profile) return;
+
+  context.setState({
+    userDatas: { ...userDatas, [userId]: profile },
   });
+
+  UserModel.updateProfile(userId, profile).catch(() => {});
+}
+
+async function readProfileFromRedis(userId) {
+  try {
+    const cached = await redis.get(`profile:${userId}`);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeProfileToRedis(userId, profile) {
+  redis
+    .set(`profile:${userId}`, JSON.stringify(profile), { EX: PROFILE_CACHE_TTL_SEC })
+    .catch(() => {});
+}
+
+async function fetchLineProfileWithTimeout(context) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`getUserProfile timeout (${LINE_PROFILE_TIMEOUT_MS}ms)`)),
+      LINE_PROFILE_TIMEOUT_MS
+    );
+  });
+  try {
+    return await Promise.race([context.getUserProfile(), timeout]);
+  } catch (err) {
+    DefaultLogger.warn(`setLineProfile: ${err && err.message}`);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function setLineGroupSummary(context) {
@@ -79,3 +123,6 @@ async function setUserId(context) {
   await redis.set(`user:${platformId}`, id);
   context.event._rawEvent.source = { ...context.event.source, id };
 }
+
+module.exports = middleware;
+module.exports._internal = { setLineProfile };
