@@ -3,14 +3,9 @@ const UserModel = require("../model/application/UserModel");
 const redis = require("../util/redis");
 const { DefaultLogger } = require("../util/Logger");
 
-// Cross-session profile cache. Bottender's per-session state cache only helps
-// for repeat messages from the SAME user within the SAME session — in busy
-// groups every new speaker pays an LINE API roundtrip. Keying on user id in
-// Redis lets a profile fetched in group X serve a request in group Y.
+// Cross-session redis cache so a profile fetched in group X serves group Y.
 const PROFILE_CACHE_TTL_SEC = 30 * 60;
-// Cap getUserProfile latency so a transient LINE API stall (observed up to
-// ~800ms on media events) doesn't pin total reply time at >1s. On miss we
-// drop the profile for this event; downstream renderers already fall back.
+// Cap LINE API stalls so total reply time stays under ~1s.
 const LINE_PROFILE_TIMEOUT_MS = 200;
 
 /**
@@ -130,8 +125,4 @@ async function setUserId(context) {
 }
 
 module.exports = middleware;
-module.exports._internal = {
-  setLineProfile,
-  PROFILE_CACHE_TTL_SEC,
-  LINE_PROFILE_TIMEOUT_MS,
-};
+module.exports._internal = { setLineProfile };

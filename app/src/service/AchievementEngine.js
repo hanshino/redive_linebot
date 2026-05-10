@@ -212,24 +212,17 @@ exports.evaluate = async (userId, eventType, context = {}) => {
       .filter(a => isEligible(userId, a));
     if (achievements.length === 0) return { unlocked };
 
-    const unlockedIds = await UserAchievementModel.getUnlockedIds(
-      userId,
-      achievements.map(a => a.id)
-    );
-
-    // Pre-fetch all progress rows in one whereIn query. Each chat_message used
-    // to re-issue `select * from user_achievement_progress where user_id=? and
-    // achievement_id=? limit 1` per achievement key — visible in production
-    // timing dups for ~60% of events.
-    const candidateIds = achievements.filter(a => !unlockedIds.has(a.id)).map(a => a.id);
-    const progressMap = await UserProgressModel.getProgressByIds(userId, candidateIds);
+    const allIds = achievements.map(a => a.id);
+    const [unlockedIds, progressMap] = await Promise.all([
+      UserAchievementModel.getUnlockedIds(userId, allIds),
+      UserProgressModel.getProgressByIds(userId, allIds),
+    ]);
 
     const ctx = { ...context, _userId: userId };
+    const candidates = achievements.filter(a => !unlockedIds.has(a.id));
 
-    for (const achievement of achievements) {
+    for (const achievement of candidates) {
       try {
-        if (unlockedIds.has(achievement.id)) continue;
-
         const currentValue = progressMap.get(achievement.id) || 0;
         const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
         const newValue = strategy ? await strategy(currentValue, achievement, ctx) : currentValue;

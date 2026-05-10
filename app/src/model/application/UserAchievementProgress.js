@@ -15,14 +15,9 @@ exports.getProgress = async (userId, achievementId) => {
 };
 
 /**
- * Batch fetch progress rows for one user across multiple achievements. Returns
- * a Map keyed by achievement_id → current_value. Used by AchievementEngine.evaluate
- * to collapse a per-event N+1 (was the dominant duplicate query in production
- * timing logs — every chat_message event re-issued the same single-row select 3+ times).
- *
  * @param {string} userId
  * @param {Array<number>} achievementIds
- * @returns {Promise<Map<number, number>>}
+ * @returns {Promise<Map<number, number>>} achievement_id → current_value
  */
 exports.getProgressByIds = async (userId, achievementIds) => {
   if (!Array.isArray(achievementIds) || achievementIds.length === 0) return new Map();
