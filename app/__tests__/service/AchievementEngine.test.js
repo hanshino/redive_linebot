@@ -15,6 +15,7 @@ jest.mock("../../src/model/application/UserAchievement", () => ({
 }));
 jest.mock("../../src/model/application/UserAchievementProgress", () => ({
   getProgress: jest.fn(),
+  getProgressByIds: jest.fn().mockResolvedValue(new Map()),
   upsert: jest.fn(),
   increment: jest.fn(),
   delete: jest.fn(),
@@ -81,7 +82,12 @@ describe("AchievementEngine", () => {
 
     it("should update progress and not unlock if below target", async () => {
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
-      UserProgressModel.getProgress.mockResolvedValue({ current_value: 50 });
+      UserProgressModel.getProgressByIds.mockResolvedValue(
+        new Map([
+          [1, 50],
+          [2, 50],
+        ])
+      );
       UserProgressModel.upsert.mockResolvedValue();
 
       await AchievementEngine.evaluate("user1", "chat_message", {});
@@ -95,7 +101,12 @@ describe("AchievementEngine", () => {
 
     it("should unlock when progress reaches target", async () => {
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
-      UserProgressModel.getProgress.mockResolvedValue({ current_value: 99 });
+      UserProgressModel.getProgressByIds.mockResolvedValue(
+        new Map([
+          [1, 99],
+          [2, 99],
+        ])
+      );
       UserProgressModel.upsert.mockResolvedValue();
       UserAchievementModel.unlock.mockResolvedValue();
       UserProgressModel.delete.mockResolvedValue();
@@ -128,7 +139,7 @@ describe("AchievementEngine", () => {
         },
       ]);
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
-      UserProgressModel.getProgress.mockResolvedValue({ current_value: 1 });
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[1, 1]]));
       UserProgressModel.upsert.mockResolvedValue();
 
       const result = await AchievementEngine.evaluate("user1", "chat_message", {});
@@ -150,7 +161,7 @@ describe("AchievementEngine", () => {
       };
       AchievementEngine._setCache([achievement]);
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
-      UserProgressModel.getProgress.mockResolvedValue({ current_value: 99 });
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[2, 99]]));
       UserProgressModel.upsert.mockResolvedValue();
       UserAchievementModel.unlock.mockResolvedValue();
       UserProgressModel.delete.mockResolvedValue();
@@ -178,7 +189,7 @@ describe("AchievementEngine", () => {
       };
       AchievementEngine._setCache([achievement]);
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
-      UserProgressModel.getProgress.mockResolvedValue({ current_value: 99 });
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[2, 99]]));
       UserProgressModel.upsert.mockResolvedValue();
       UserAchievementModel.unlock.mockResolvedValue();
       UserProgressModel.delete.mockResolvedValue();
@@ -503,7 +514,7 @@ describe("AchievementEngine", () => {
     });
 
     it("increments progress for the tagged mentionee when keywords match", async () => {
-      UserProgressModel.getProgress.mockResolvedValue({ current_value: 3 });
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[60, 3]]));
 
       await AchievementEngine.evaluate("Uadmin", "received_mention", {
         mentionedByUserId: "Ufan",
@@ -515,7 +526,7 @@ describe("AchievementEngine", () => {
     });
 
     it("unlocks when cumulative mentions reach target_value", async () => {
-      UserProgressModel.getProgress.mockResolvedValue({ current_value: 9 });
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[60, 9]]));
 
       const result = await AchievementEngine.evaluate("Uadmin", "received_mention", {
         mentionedByUserId: "Ufan",

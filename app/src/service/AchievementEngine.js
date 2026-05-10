@@ -217,13 +217,22 @@ exports.evaluate = async (userId, eventType, context = {}) => {
       achievements.map(a => a.id)
     );
 
+    // Pre-fetch all progress rows in one whereIn query. Each chat_message used
+    // to re-issue `select * from user_achievement_progress where user_id=? and
+    // achievement_id=? limit 1` per achievement key — visible in production
+    // timing dups for ~60% of events.
+    const candidateIds = achievements.filter(a => !unlockedIds.has(a.id)).map(a => a.id);
+    const progressMap = await UserProgressModel.getProgressByIds(userId, candidateIds);
+
     const ctx = { ...context, _userId: userId };
 
     for (const achievement of achievements) {
       try {
         if (unlockedIds.has(achievement.id)) continue;
 
-        const { currentValue, newValue } = await calculateProgress(userId, achievement, ctx);
+        const currentValue = progressMap.get(achievement.id) || 0;
+        const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
+        const newValue = strategy ? await strategy(currentValue, achievement, ctx) : currentValue;
         if (newValue === null || newValue === currentValue) continue;
 
         await UserProgressModel.upsert(userId, achievement.id, newValue);
@@ -244,16 +253,6 @@ exports.evaluate = async (userId, eventType, context = {}) => {
   }
   return { unlocked };
 };
-
-async function calculateProgress(userId, achievement, context) {
-  const progress = await UserProgressModel.getProgress(userId, achievement.id);
-  const currentValue = progress ? progress.current_value : 0;
-
-  const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
-  const newValue = strategy ? await strategy(currentValue, achievement, context) : currentValue;
-
-  return { currentValue, newValue };
-}
 
 async function handleTrackedSet(userId, achievementId, newItem, currentValue) {
   if (!newItem) return currentValue;
