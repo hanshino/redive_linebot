@@ -202,10 +202,13 @@ export default function DailyTrend({ days, range, onRangeChange }) {
               ))}
               <XAxis
                 dataKey="date"
-                tickFormatter={v => (v || "").slice(5).replace("-", "/")}
+                tickFormatter={v => {
+                  const dateOnly = (v || "").slice(0, 10);
+                  return dateOnly.slice(5).replace("-", "/");
+                }}
                 tick={{
                   fontSize: 9,
-                  fontFamily: "ui-monospace, Menlo, monospace",
+                  fontFamily: "system-ui, sans-serif",
                   fill: COLORS.muted,
                 }}
                 interval={tickInterval}
@@ -218,7 +221,7 @@ export default function DailyTrend({ days, range, onRangeChange }) {
               <YAxis
                 tick={{
                   fontSize: 9,
-                  fontFamily: "ui-monospace, Menlo, monospace",
+                  fontFamily: "system-ui, sans-serif",
                   fill: COLORS.muted,
                 }}
                 axisLine={false}
