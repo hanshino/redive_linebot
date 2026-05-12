@@ -29,6 +29,7 @@ const { get } = require("lodash");
 const moment = require("moment");
 const i18n = require("../../util/i18n");
 const { inventory } = require("../../model/application/Inventory");
+const { time } = require("../../middleware/timing");
 
 /**
  * Build the prestige status flags shown on the adventure card / queries.
@@ -75,7 +76,9 @@ exports.showStatus = async (context, props) => {
     const profile =
       context.event.source.type === "user"
         ? context.event.source
-        : await LineClient.getGroupMemberProfile(context.event.source.groupId, userId);
+        : await time("me.lineProfile", () =>
+            LineClient.getGroupMemberProfile(context.event.source.groupId, userId)
+          );
     let { displayName, pictureUrl } = profile;
     pictureUrl = pictureUrl || "https://i.imgur.com/NMl4z2u.png";
 
@@ -86,11 +89,11 @@ exports.showStatus = async (context, props) => {
 
     const today = todayUtc8();
     const [chatRow, expRows, allTrials, dailyRow, blessingIds] = await Promise.all([
-      ChatUserData.findByUserId(userId),
-      ChatExpUnit.all(),
-      PrestigeTrial.all(),
-      ChatExpDaily.findByUserDate(userId, today),
-      UserBlessing.listBlessingIdsByUserId(userId),
+      time("me.chatRow", () => ChatUserData.findByUserId(userId)),
+      time("me.expUnits", () => ChatExpUnit.all()),
+      time("me.trials", () => PrestigeTrial.all()),
+      time("me.dailyXp", () => ChatExpDaily.findByUserDate(userId, today)),
+      time("me.blessings", () => UserBlessing.listBlessingIdsByUserId(userId)),
     ]);
     const dailyRaw = dailyRow?.raw_exp ?? 0;
     const { tier1Upper, tier2Upper } = resolveTierUppers(blessingIds);
@@ -122,14 +125,14 @@ exports.showStatus = async (context, props) => {
       gachaHistory,
       gachaProgress,
     ] = await Promise.all([
-      GachaModel.getUserCollectedCharacterCount(userId),
-      GachaModel.getPrincessCharacterCount(),
-      GachaModel.getUserGodStoneCount(userId),
-      JankenResult.findUserGrade(userId),
-      SigninModel.first({ filter: { user_id: userId } }),
+      time("me.charOwned", () => GachaModel.getUserCollectedCharacterCount(userId)),
+      time("me.charTotal", () => GachaModel.getPrincessCharacterCount()),
+      time("me.godStone", () => GachaModel.getUserGodStoneCount(userId)),
+      time("me.janken", () => JankenResult.findUserGrade(userId)),
+      time("me.signin", () => SigninModel.first({ filter: { user_id: userId } })),
       getQuestInfo(userId),
-      DonateModel.getUserTotalAmount(userId),
-      getSubscribeInfo(userId),
+      time("me.donate", () => DonateModel.getUserTotalAmount(userId)),
+      time("me.subscribe", () => getSubscribeInfo(userId)),
       getGachaHistory(userId),
       getGachaCollectProgress(userId),
     ]);
@@ -192,7 +195,9 @@ exports.showStatus = async (context, props) => {
       xpHistoryUri: commonTemplate.getLiffUri("full", XP_HISTORY_LIFF_PATH),
     });
 
-    context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles });
+    await time("me.reply", () =>
+      context.replyFlex(`${displayName} 的狀態`, { type: "carousel", contents: bubbles })
+    );
   } catch (e) {
     console.error(e);
     DefaultLogger.error(e);
@@ -205,8 +210,10 @@ exports.showStatus = async (context, props) => {
  * @returns {Promise<{userTotalStar: Number, totalStarInGame: Number, progress: Number}>}
  */
 async function getGachaCollectProgress(userId) {
-  const ownItems = await inventory.getAllUserOwnCharacters(userId);
-  const princessCountInGame = await GachaModel.getPrincessCharacterCount();
+  const ownItems = await time("me.gachaProg.inv", () => inventory.getAllUserOwnCharacters(userId));
+  const princessCountInGame = await time("me.gachaProg.total", () =>
+    GachaModel.getPrincessCharacterCount()
+  );
   const userTotalStar = ownItems.reduce((acc, item) => {
     const attributes = item?.attributes;
     if (!Array.isArray(attributes)) return acc;
@@ -223,17 +230,21 @@ async function getGachaCollectProgress(userId) {
 
 async function getGachaHistory(userId) {
   const [lastRainbowRecord, lastHasNewRecord] = await Promise.all([
-    GachaRecord.first({
-      filter: {
-        user_id: userId,
-        rainbow: { operator: ">", value: 0 },
-      },
-      order: [{ column: "created_at", direction: "desc" }],
-    }),
-    GachaRecord.first({
-      filter: { user_id: userId, has_new: 1 },
-      order: [{ column: "created_at", direction: "desc" }],
-    }),
+    time("me.gachaHist.rainbow", () =>
+      GachaRecord.first({
+        filter: {
+          user_id: userId,
+          rainbow: { operator: ">", value: 0 },
+        },
+        order: [{ column: "created_at", direction: "desc" }],
+      })
+    ),
+    time("me.gachaHist.new", () =>
+      GachaRecord.first({
+        filter: { user_id: userId, has_new: 1 },
+        order: [{ column: "created_at", direction: "desc" }],
+      })
+    ),
   ]);
 
   const now = moment();
@@ -285,9 +296,11 @@ async function getQuestInfo(userId) {
   };
 
   let [gachaRecord, jankenResult, weekQuestRecord] = await Promise.all([
-    GachaRecord.first(signinOptions).andWhereBetween("created_at", [start, end]),
-    JankenResult.all(jankenOptions),
-    DailyQuestModel.all(userId, weeklyQuestOptions),
+    time("me.quest.gacha", () =>
+      GachaRecord.first(signinOptions).andWhereBetween("created_at", [start, end])
+    ),
+    time("me.quest.janken", () => JankenResult.all(jankenOptions)),
+    time("me.quest.weekly", () => DailyQuestModel.all(userId, weeklyQuestOptions)),
   ]);
 
   return {
