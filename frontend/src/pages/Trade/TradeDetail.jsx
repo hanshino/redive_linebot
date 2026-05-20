@@ -193,6 +193,13 @@ export default function TradeDetail() {
     manual: true,
   });
 
+  const isBuyer = market ? getViewerRole(market, liffContext?.userId) === "buyer" : false;
+  const [{ data: stoneData, loading: stoneLoading }] = useAxios("/api/inventory/total-god-stone", {
+    manual: !isLoggedIn || !isBuyer,
+  });
+
+  const balance = stoneData?.total ?? null;
+
   useEffect(() => {
     document.title = "交易詳情";
   }, []);
@@ -237,7 +244,16 @@ export default function TradeDetail() {
     >
       <Banner role={role} status={market.status} marketId={market.id} />
       <HeroCard market={market} />
-      <DetailsCard market={market} role={role} balance={null} balanceLoading={false} />
+      <DetailsCard market={market} role={role} balance={balance} balanceLoading={stoneLoading} />
+      {role === "buyer" &&
+        market.status === STATUS.PENDING &&
+        !stoneLoading &&
+        balance != null &&
+        balance < market.price && (
+          <Alert severity="error" sx={{ borderRadius: 3 }}>
+            女神石不足，無法完成這筆交易
+          </Alert>
+        )}
     </Box>
   );
 }
