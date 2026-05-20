@@ -6,6 +6,14 @@ const i18n = require("../../util/i18n");
 const { inventory: InventoryModel } = require("../../model/application/Inventory");
 const { DefaultLogger } = require("../../util/Logger");
 const moment = require("moment");
+const UserModel = require("../../model/application/UserModel");
+
+async function resolveDisplayName(userId) {
+  if (!userId) return null;
+  const profile = await UserModel.getProfile(userId).catch(() => null);
+  if (profile && profile.displayName) return profile.displayName;
+  return `User-${userId.slice(-4)}`;
+}
 
 /**
  * 顯示商品詳細資訊
@@ -30,7 +38,17 @@ exports.show = async (req, res) => {
     });
   }
 
-  res.json(marketDetail);
+  const buyerId = get(sellTargetList, "[0]", null);
+  const [sellerName, buyerName] = await Promise.all([
+    resolveDisplayName(marketDetail.seller_id),
+    resolveDisplayName(buyerId),
+  ]);
+
+  res.json({
+    ...marketDetail,
+    seller_display_name: sellerName,
+    buyer_display_name: buyerName,
+  });
 };
 
 /**
