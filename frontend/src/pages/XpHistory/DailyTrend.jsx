@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { formatDateBadge } from "./dateTpe";
 
 const COLORS = {
   amber: "#FBBF24",
@@ -70,7 +71,7 @@ function TrendTooltip({ active, payload }) {
         minWidth: 120,
       }}
     >
-      <Box sx={{ color: COLORS.text, fontWeight: 700, mb: 0.25 }}>{d.date}</Box>
+      <Box sx={{ color: COLORS.text, fontWeight: 700, mb: 0.25 }}>{formatDateBadge(d.date)}</Box>
       <Box>
         原始{" "}
         <Box component="span" sx={{ color: COLORS.muted }}>

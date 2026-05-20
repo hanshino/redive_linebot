@@ -1,8 +1,11 @@
+const moment = require("moment");
 const ChatExpEvent = require("../model/application/ChatExpEvent");
 const ChatExpDaily = require("../model/application/ChatExpDaily");
 const UserBlessing = require("../model/application/UserBlessing");
 const { resolveTierUppers } = require("./chatXp/diminishTier");
 const { todayUtc8 } = require("../util/date");
+
+const TPE_OFFSET_MIN = 480;
 
 function deriveTier(dailyRaw, tier1Upper, tier2Upper) {
   if (dailyRaw < tier1Upper) return 1;
@@ -97,7 +100,7 @@ async function buildDaily(userId, { from, to }) {
     .orderBy("date", "asc");
   return {
     days: rows.map(r => ({
-      date: r.date,
+      date: moment(r.date).utcOffset(TPE_OFFSET_MIN).format("YYYY-MM-DD"),
       raw_exp: r.raw_exp,
       effective_exp: r.effective_exp,
       msg_count: r.msg_count,
