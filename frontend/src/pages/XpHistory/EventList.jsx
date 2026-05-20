@@ -139,73 +139,84 @@ function FoldedRow({ folded, expanded, onToggle, showAll, groupLabel }) {
           sx={{
             p: 1.5,
             cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 1.25,
           }}
         >
-          <Box
-            sx={{
-              fontFamily: "ui-monospace, Menlo, monospace",
-              fontSize: 13,
-              fontWeight: 700,
-              minWidth: 42,
-            }}
-          >
-            {localHHMM(folded.ts)}
-          </Box>
-          <Stack sx={{ flex: 1, minWidth: 0 }} gap={0.5}>
-            <Typography
-              sx={{
-                fontSize: 12,
-                color: "text.secondary",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {groupLabel(folded.group_id)}
-              {folded.count > 1 && (
-                <Box component="span" sx={{ color: "warning.main", fontWeight: 700 }}>
-                  {" "}
-                  · ×{folded.count}
-                </Box>
-              )}
-            </Typography>
-            <EventChipRow chips={chips} />
-          </Stack>
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-            <Typography
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+            <Box
               sx={{
                 fontFamily: "ui-monospace, Menlo, monospace",
-                fontSize: 11,
-                color: "text.secondary",
-              }}
-            >
-              {folded.raw_total > 0 ? `${folded.raw_total} →` : "→"}
-            </Typography>
-            <Typography
-              sx={{
-                fontFamily: "ui-monospace, Menlo, monospace",
-                fontSize: 18,
+                fontSize: 13,
                 fontWeight: 700,
-                color: effTotalColor(folded.eff_total, folded.raw_total),
-                lineHeight: 1,
+                minWidth: 42,
               }}
             >
-              {folded.eff_total}
-            </Typography>
+              {localHHMM(folded.ts)}
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  color: "text.secondary",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {groupLabel(folded.group_id)}
+                {folded.count > 1 && (
+                  <Box component="span" sx={{ color: "warning.main", fontWeight: 700 }}>
+                    {" "}
+                    · ×{folded.count}
+                  </Box>
+                )}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+                flexShrink: 0,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: "ui-monospace, Menlo, monospace",
+                  fontSize: 11,
+                  color: "text.secondary",
+                }}
+              >
+                {folded.raw_total > 0 ? `${folded.raw_total} →` : "→"}
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: "ui-monospace, Menlo, monospace",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: effTotalColor(folded.eff_total, folded.raw_total),
+                  lineHeight: 1,
+                }}
+              >
+                {folded.eff_total}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                color: "text.disabled",
+                fontSize: 12,
+                transform: expanded ? "rotate(90deg)" : "none",
+                transition: "transform 0.15s",
+                flexShrink: 0,
+              }}
+            >
+              ›
+            </Box>
           </Box>
-          <Box
-            sx={{
-              color: "text.disabled",
-              fontSize: 12,
-              transform: expanded ? "rotate(90deg)" : "none",
-              transition: "transform 0.15s",
-            }}
-          >
-            ›
-          </Box>
+          {chips.length > 0 && (
+            <Box sx={{ mt: 0.75 }}>
+              <EventChipRow chips={chips} />
+            </Box>
+          )}
         </Box>
         {expanded && (
           <Stack gap={1} sx={{ px: 1.5, pb: 1.5 }}>
