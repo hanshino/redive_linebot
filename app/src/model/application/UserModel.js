@@ -35,6 +35,23 @@ exports.updateProfile = async (platformId, profile) => {
 };
 
 /**
+ * 取得用戶顯示資訊
+ * @param {String} platformId 平台ID
+ * @returns {Promise<{displayName: string, pictureUrl: string}|null>}
+ */
+exports.getProfile = async platformId => {
+  const rows = await mysql()
+    .select({ display_name: "display_name", picture_url: "picture_url" })
+    .from(USER_TABLE)
+    .where({ platform_id: platformId });
+
+  if (rows.length === 0) return null;
+  const { display_name, picture_url } = rows[0];
+  if (!display_name) return null;
+  return { displayName: display_name, pictureUrl: picture_url || null };
+};
+
+/**
  * 確保用戶存在，不存在則自動建立
  * @param {String} platformId 平台ID
  * @param {String} platform 平台名稱 (預設 "line")
