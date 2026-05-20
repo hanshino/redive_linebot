@@ -22,31 +22,7 @@ import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { Link } from "react-router-dom";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
-
-/* ---------- helpers ---------- */
-const fmtDate = ts => {
-  if (!ts) return "-";
-  const d = new Date(ts);
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-};
-
-const STATUS_MAP = {
-  0: {
-    label: "未交易",
-    color: "warning",
-    icon: <HourglassEmptyIcon sx={{ fontSize: "14px !important" }} />,
-  },
-  1: {
-    label: "已交易",
-    color: "success",
-    icon: <CheckCircleIcon sx={{ fontSize: "14px !important" }} />,
-  },
-  "-1": {
-    label: "已取消",
-    color: "default",
-    icon: <CancelIcon sx={{ fontSize: "14px !important" }} />,
-  },
-};
+import { STATUS_MAP, fmtDate } from "./_shared";
 
 /* ---------- SummaryBanner ---------- */
 function SummaryBanner({ trades }) {
