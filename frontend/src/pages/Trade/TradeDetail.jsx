@@ -313,21 +313,27 @@ export default function TradeDetail() {
     });
   };
 
-  const handleShare = () => {
-    liff.shareTargetPicker([
-      {
-        type: "flex",
-        altText: "交易邀請",
-        contents: genNotify({
-          marketId: market.id,
-          name: market.name,
-          image: market.image,
-          charge: market.price,
-          sellerName: liffContext?.displayName || "好友",
-          star: market.star ?? 0,
-        }),
-      },
-    ]);
+  const handleShare = async () => {
+    try {
+      const result = await liff.shareTargetPicker([
+        {
+          type: "flex",
+          altText: "交易邀請",
+          contents: genNotify({
+            marketId: market.id,
+            name: market.name,
+            image: market.image,
+            charge: market.price,
+            sellerName: liffContext?.displayName || "好友",
+            star: market.star ?? 0,
+          }),
+        },
+      ]);
+      if (result === null) openSnack("已取消分享", "info");
+      else openSnack("已發送邀請", "success");
+    } catch {
+      openSnack("分享失敗，請稍後再試", "error");
+    }
   };
 
   return (

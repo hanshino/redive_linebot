@@ -72,7 +72,7 @@ export default function TradeOrder() {
 
   const [{ data: targetProfile, loading: targetLoading }] = useAxios(
     targetId ? `/api/profile/${targetId}` : null,
-    { manual: !isLoggedIn || !targetId }
+    { manual: !isLoggedIn || !targetId || viewerId === targetId }
   );
   const [{ data: inventoryItems = [], loading: invLoading }, fetchItems] = useAxios(
     "/api/inventory",

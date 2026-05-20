@@ -22,7 +22,7 @@ import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { Link } from "react-router-dom";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
-import { STATUS_MAP, fmtDate } from "./_shared";
+import { STATUS, STATUS_MAP, fmtDate } from "./_shared";
 
 /* ---------- SummaryBanner ---------- */
 function SummaryBanner({ trades }) {
@@ -92,7 +92,7 @@ function SummaryBanner({ trades }) {
 
 /* ---------- TradeRow ---------- */
 function TradeRow({ trade }) {
-  const statusInfo = STATUS_MAP[trade.status] || STATUS_MAP["-1"];
+  const statusInfo = STATUS_MAP[trade.status] || STATUS_MAP[STATUS.CANCELLED];
 
   return (
     <Box sx={{ py: 2 }}>
@@ -134,7 +134,7 @@ function TradeRow({ trade }) {
                   size="small"
                   color="primary"
                   component={Link}
-                  to={`/trade/${trade.id}/detail`}
+                  to={`/trade/${trade.id}`}
                   sx={{ ml: 0.5 }}
                 >
                   <SettingsIcon fontSize="small" />
