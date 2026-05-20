@@ -2,7 +2,7 @@ const ChatExpEvent = require("../model/application/ChatExpEvent");
 const ChatExpDaily = require("../model/application/ChatExpDaily");
 const UserBlessing = require("../model/application/UserBlessing");
 const { resolveTierUppers } = require("./chatXp/diminishTier");
-const { todayUtc8 } = require("../util/date");
+const { todayUtc8, toUtc8Date } = require("../util/date");
 
 function deriveTier(dailyRaw, tier1Upper, tier2Upper) {
   if (dailyRaw < tier1Upper) return 1;
@@ -97,7 +97,7 @@ async function buildDaily(userId, { from, to }) {
     .orderBy("date", "asc");
   return {
     days: rows.map(r => ({
-      date: r.date,
+      date: toUtc8Date(r.date),
       raw_exp: r.raw_exp,
       effective_exp: r.effective_exp,
       msg_count: r.msg_count,
