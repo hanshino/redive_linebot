@@ -2,9 +2,8 @@ const { getGroupSummary, getGroupCount } = require("../util/line");
 const UserModel = require("../model/application/UserModel");
 const redis = require("../util/redis");
 const { DefaultLogger } = require("../util/Logger");
+const { readProfileFromRedis, writeProfileToRedis } = require("../service/ProfileService");
 
-// Cross-session redis cache so a profile fetched in group X serves group Y.
-const PROFILE_CACHE_TTL_SEC = 30 * 60;
 // Cap LINE API stalls so total reply time stays under ~1s.
 const LINE_PROFILE_TIMEOUT_MS = 200;
 
@@ -56,21 +55,6 @@ async function setLineProfile(context) {
   });
 
   UserModel.updateProfile(userId, profile).catch(() => {});
-}
-
-async function readProfileFromRedis(userId) {
-  try {
-    const cached = await redis.get(`profile:${userId}`);
-    return cached ? JSON.parse(cached) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeProfileToRedis(userId, profile) {
-  redis
-    .set(`profile:${userId}`, JSON.stringify(profile), { EX: PROFILE_CACHE_TTL_SEC })
-    .catch(() => {});
 }
 
 async function fetchLineProfileWithTimeout(context) {

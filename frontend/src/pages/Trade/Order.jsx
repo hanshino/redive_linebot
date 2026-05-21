@@ -1,198 +1,280 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useAxios from "axios-hooks";
-import { Grid, TextField, Button, Typography, Alert, AlertTitle } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Chip,
+  Avatar,
+  Alert,
+  Skeleton,
+} from "@mui/material";
+import HandshakeIcon from "@mui/icons-material/Handshake";
+import DiamondIcon from "@mui/icons-material/Diamond";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { get } from "lodash";
 import AlertLogin from "../../components/AlertLogin";
-import { FullPageLoading } from "../../components/Loading";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 import useQuery from "../../hooks/useQuery";
-import { genNotify } from "../../flex/TradeNotify";
-import liff from "@line/liff";
 import useLiff from "../../context/useLiff";
+import CharacterPickerDrawer from "./CharacterPickerDrawer";
+import { QUICK_PRICES } from "./_shared";
 
-export default function TradeOrder() {
-  const { loggedIn: isLoggedIn, liffContext } = useLiff();
-  const selectEl = useRef(null);
-  const chargeEl = useRef(null);
-  const [{ data = [], loading }, fetchItems] = useAxios("/api/inventory", { manual: true });
-  const [{ data: createResponse, loading: createLoading, error }, createOrder] = useAxios(
-    { url: "/api/trades", method: "POST" },
-    { manual: true }
-  );
-  const [{ open, message, severity }, { handleOpen, handleClose }] = useHintBar();
-  const query = useQuery();
-  const targetId = query.get("target_id");
-  const { userId } = liffContext;
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    fetchItems();
-  }, [isLoggedIn, fetchItems]);
-
-  useEffect(() => {
-    if (!targetId) {
-      handleOpen("未指定交易對象", "error");
-    }
-  }, [targetId, handleOpen]);
-
-  useEffect(() => {
-    if (!error) return;
-    handleOpen(get(error, "response.data.message"), "error");
-  }, [error]);
-
-  const pageLoading = loading || createLoading;
-
-  if (!isLoggedIn) {
-    return <AlertLogin />;
-  }
-
-  const handleCancel = () => {
-    if (liff.isInClient()) {
-      liff.closeWindow();
-    } else {
-      window.location.href = "/";
-    }
-  };
-
-  const handleSubmit = () => {
-    const payload = {
-      targetId,
-      itemId: parseInt(selectEl.current.value),
-      charge: parseInt(chargeEl.current.value),
-    };
-
-    if (get(payload, "charge", 0) <= 0) {
-      handleOpen("請輸入收費金額", "error");
-    } else {
-      createOrder({ data: payload });
-    }
-  };
-
-  if (createResponse) {
-    return <TradeCreateResult marketId={get(createResponse, "marketId")} />;
-  }
-
-  const isSelf = userId === targetId;
-
+function Banner({ targetName }) {
   return (
-    <Grid container direction="column" spacing={2}>
-      {pageLoading && <FullPageLoading />}
-      {isSelf && (
-        <Grid>
-          <Alert severity="error">
-            <AlertTitle>錯誤</AlertTitle>
-            您不能與自己進行交易
-          </Alert>
-        </Grid>
-      )}
-      <Grid>
-        <Alert severity="warning">
-          <AlertTitle>注意</AlertTitle>
-          <Typography variant="inherit" component="p">
-            1. 請確認您的交易對象是否已經在您的好友列表中，如果沒有，請先加入好友
+    <Paper sx={{ position: "relative", overflow: "hidden", borderRadius: 3 }}>
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          background: theme =>
+            `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+        }}
+      />
+      <Box
+        sx={{
+          position: "relative",
+          p: { xs: 3, sm: 4 },
+          display: "flex",
+          alignItems: "center",
+          gap: 2.5,
+          flexWrap: "wrap",
+        }}
+      >
+        <HandshakeIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.8)" }} />
+        <Box sx={{ color: "#fff", minWidth: 0 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            與 {targetName} 交易
           </Typography>
-          <Typography variant="inherit">
-            2. 交易對象為指令自動帶出，如果您不是要跟對方交易，請直接關閉視窗
+          <Typography variant="body2" sx={{ opacity: 0.85 }}>
+            選一個角色，設定女神石價格
           </Typography>
-        </Alert>
-      </Grid>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12 }}>
-          <TextField label="交易對象" value={targetId} disabled variant="outlined" fullWidth />
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <TextField
-            select
-            label="選擇商品"
-            SelectProps={{ native: true }}
-            inputRef={selectEl}
-            fullWidth
-            variant="outlined"
-            helperText="只會列出您擁有的商品"
-            autoFocus
-            disabled={isSelf}
-          >
-            {data.map(item => (
-              <option key={item.itemId} value={item.itemId}>
-                {item.name}
-              </option>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <TextField
-            label="要求女神石"
-            type="number"
-            variant="outlined"
-            defaultValue={0}
-            fullWidth
-            inputRef={chargeEl}
-            helperText="請輸入要求的女神石數量，對方將會支付相應的女神石"
-            disabled={isSelf}
-          />
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <Button
-            variant="contained"
-            color="secondary"
-            fullWidth
-            onClick={handleCancel}
-            disabled={isSelf}
-          >
-            取消交易
-          </Button>
-        </Grid>
-        <Grid size={{ xs: 6 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleSubmit}
-            disabled={isSelf}
-          >
-            送出交易
-          </Button>
-        </Grid>
-      </Grid>
-      <HintSnackBar open={open} message={message} severity={severity} onClose={handleClose} />
-    </Grid>
+        </Box>
+      </Box>
+    </Paper>
   );
 }
 
-function TradeCreateResult({ marketId }) {
-  const [{ data: marketData, loading }] = useAxios(`/api/market/${marketId}`);
+export default function TradeOrder() {
+  const { loggedIn: isLoggedIn, liffContext } = useLiff();
+  const navigate = useNavigate();
+  const query = useQuery();
+  const targetId = query.get("target_id");
+  const viewerId = liffContext?.userId;
 
-  const handleShare = () => {
-    liff.shareTargetPicker([
-      {
-        type: "flex",
-        altText: "交易邀請",
-        contents: genNotify({
-          marketId,
-          name: get(marketData, "name"),
-          charge: get(marketData, "price"),
-          image: get(marketData, "image"),
-        }),
-      },
-    ]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [charge, setCharge] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const [{ data: targetProfile, loading: targetLoading }] = useAxios(
+    targetId ? `/api/profile/${targetId}` : null,
+    { manual: !isLoggedIn || !targetId || viewerId === targetId }
+  );
+  const [{ data: inventoryItems = [], loading: invLoading }, fetchItems] = useAxios(
+    "/api/inventory",
+    { manual: true }
+  );
+  const [{ data: createResp, loading: createLoading, error: createErr }, createOrder] = useAxios(
+    { url: "/api/trades", method: "POST" },
+    { manual: true }
+  );
+  const [{ message, severity, open: snackOpen }, { handleOpen, handleClose }] = useHintBar();
+
+  useEffect(() => {
+    document.title = "交易申請";
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) fetchItems();
+  }, [isLoggedIn, fetchItems]);
+
+  useEffect(() => {
+    if (!targetId) handleOpen("未指定交易對象", "error");
+  }, [targetId, handleOpen]);
+
+  useEffect(() => {
+    if (createErr) handleOpen(get(createErr, "response.data.message"), "error");
+  }, [createErr, handleOpen]);
+
+  useEffect(() => {
+    if (createResp?.marketId) {
+      navigate(`/trade/${createResp.marketId}`);
+    }
+  }, [createResp, navigate]);
+
+  const selectedItem = useMemo(
+    () => inventoryItems.find(i => i.itemId === selectedId),
+    [inventoryItems, selectedId]
+  );
+
+  // /api/profile/:userId always returns a synthesised fallback name, so we
+  // only need a guard for the "no targetId in the URL" case.
+  const targetName = targetProfile?.displayName || "未知對象";
+
+  const isSelf = viewerId && targetId && viewerId === targetId;
+  const chargeNum = Number(charge);
+  const submittable =
+    !isSelf && selectedId != null && Number.isFinite(chargeNum) && chargeNum > 0 && !createLoading;
+
+  const handleSubmit = () => {
+    if (!submittable) return;
+    createOrder({
+      data: { targetId, itemId: selectedId, charge: chargeNum },
+    });
   };
 
-  if (loading) {
-    return <FullPageLoading />;
-  }
+  if (!isLoggedIn) return <AlertLogin />;
+
+  const bannerNode =
+    targetLoading || !targetProfile ? (
+      <Skeleton variant="rounded" height={120} animation="wave" />
+    ) : (
+      <Banner targetName={targetName} />
+    );
 
   return (
-    <Grid container direction="column" spacing={2}>
-      <Grid>
-        <Typography variant="h5">交易建立成功</Typography>
-        <Typography variant="subtitle2">您已經成功建立了一個交易，請等待對方回覆</Typography>
-      </Grid>
-      <Grid>
-        <Button variant="contained" color="primary" onClick={handleShare}>
-          通知對方
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 2.5,
+        pb: "calc(env(safe-area-inset-bottom) + 80px)",
+        minHeight: "100dvh",
+      }}
+    >
+      {bannerNode}
+
+      {isSelf && <Alert severity="error">您不能與自己進行交易。</Alert>}
+
+      <Alert severity="warning" sx={{ borderRadius: 3 }}>
+        <Typography variant="body2">1. 請確認交易對象已加入您的好友</Typography>
+        <Typography variant="body2">
+          2. 對方來自指令自動帶出，如果不是您要交易的對象請關閉視窗
+        </Typography>
+      </Alert>
+
+      <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+        <Typography variant="overline" color="text.secondary">
+          角色
+        </Typography>
+        <Button
+          fullWidth
+          variant="outlined"
+          size="large"
+          disabled={isSelf || invLoading}
+          onClick={() => setPickerOpen(true)}
+          endIcon={<ChevronRightIcon />}
+          sx={{
+            mt: 1,
+            justifyContent: "space-between",
+            py: 1.5,
+            textTransform: "none",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            {selectedItem ? (
+              <>
+                <Avatar
+                  variant="rounded"
+                  src={selectedItem.headImage}
+                  alt={selectedItem.name}
+                  sx={{ width: 40, height: 40 }}
+                />
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  {selectedItem.name}
+                </Typography>
+              </>
+            ) : (
+              <Typography variant="body1" color="text.secondary">
+                {invLoading ? "載入背包中…" : "點此選擇角色"}
+              </Typography>
+            )}
+          </Box>
         </Button>
-      </Grid>
-    </Grid>
+      </Paper>
+
+      <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+        <Typography variant="overline" color="text.secondary">
+          女神石
+        </Typography>
+        <TextField
+          fullWidth
+          value={charge}
+          onChange={e => setCharge(e.target.value.replace(/[^0-9]/g, ""))}
+          disabled={isSelf}
+          inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+          InputProps={{
+            startAdornment: <DiamondIcon sx={{ mr: 1, color: "text.secondary" }} />,
+          }}
+          placeholder="輸入要求金額"
+          sx={{ mt: 1 }}
+        />
+        <Box sx={{ display: "flex", gap: 1, mt: 1.5, flexWrap: "wrap" }}>
+          {QUICK_PRICES.map(p => (
+            <Chip
+              key={p}
+              label={p >= 1000 ? `${p / 1000}k` : `${p}`}
+              onClick={() => setCharge(String(p))}
+              clickable
+              disabled={isSelf}
+              variant={String(p) === charge ? "filled" : "outlined"}
+              color={String(p) === charge ? "primary" : "default"}
+            />
+          ))}
+        </Box>
+      </Paper>
+
+      <Box
+        sx={{
+          position: "fixed",
+          left: { xs: 0, md: "260px" },
+          right: 0,
+          bottom: 0,
+          bgcolor: "background.paper",
+          borderTop: "1px solid",
+          borderColor: "divider",
+          px: 2,
+          pt: 1.5,
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
+          display: "flex",
+          gap: 1.5,
+          zIndex: 10,
+        }}
+      >
+        <Button
+          fullWidth
+          variant="outlined"
+          color="secondary"
+          size="large"
+          onClick={() => window.history.back()}
+        >
+          取消
+        </Button>
+        <Button
+          fullWidth
+          variant="contained"
+          color="primary"
+          size="large"
+          disabled={!submittable}
+          onClick={handleSubmit}
+        >
+          送出交易
+        </Button>
+      </Box>
+
+      <CharacterPickerDrawer
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        items={inventoryItems}
+        initialId={selectedId}
+        onConfirm={id => setSelectedId(id)}
+      />
+
+      <HintSnackBar open={snackOpen} message={message} severity={severity} onClose={handleClose} />
+    </Box>
   );
 }

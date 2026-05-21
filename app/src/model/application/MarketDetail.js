@@ -11,8 +11,12 @@ class MarketDetail extends base {
         "quantity",
         "sell_target_list",
         "status",
+        "created_at",
+        "sold_at",
+        "closed_at",
         { name: "Name" },
         { image: "HeadImage_Url" },
+        { star: "GachaPool.star" },
       ])
       .leftJoin("GachaPool", "GachaPool.ID", "item_id")
       .where({ [`${this.table}.id`]: id })

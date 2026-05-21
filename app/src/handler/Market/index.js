@@ -6,6 +6,7 @@ const i18n = require("../../util/i18n");
 const { inventory: InventoryModel } = require("../../model/application/Inventory");
 const { DefaultLogger } = require("../../util/Logger");
 const moment = require("moment");
+const { resolveDisplayName } = require("../../service/ProfileService");
 
 /**
  * 顯示商品詳細資訊
@@ -30,7 +31,17 @@ exports.show = async (req, res) => {
     });
   }
 
-  res.json(marketDetail);
+  const buyerId = get(sellTargetList, "[0]", null);
+  const [sellerName, buyerName] = await Promise.all([
+    resolveDisplayName(marketDetail.seller_id),
+    resolveDisplayName(buyerId),
+  ]);
+
+  res.json({
+    ...marketDetail,
+    seller_display_name: sellerName,
+    buyer_display_name: buyerName,
+  });
 };
 
 /**
@@ -51,7 +62,7 @@ exports.transaction = async (req, res) => {
 
   // check market status
   if (get(marketDetail, "status", -1) !== 0) {
-    return res.status(403).json({
+    return res.status(409).json({
       message: i18n.__("api.error.forbidden"),
     });
   }
@@ -68,7 +79,7 @@ exports.transaction = async (req, res) => {
   // check current user has enough money
   const { amount = 0 } = await InventoryModel.getUserMoney(userId);
   if (isNull(amount) || parseInt(amount) < price) {
-    return res.status(403).json({
+    return res.status(409).json({
       message: i18n.__("api.error.transaction.notEnoughMoney"),
     });
   }
@@ -79,7 +90,7 @@ exports.transaction = async (req, res) => {
     get(marketDetail, "item_id")
   );
   if (parseInt(userOwnAmount) > 0) {
-    return res.status(403).json({
+    return res.status(409).json({
       message: i18n.__("api.error.transaction.alreadyBought"),
     });
   }
@@ -182,7 +193,7 @@ exports.cancel = async (req, res) => {
   }
 
   if (get(marketDetail, "status", -1) !== 0) {
-    return res.status(403).json({
+    return res.status(409).json({
       message: i18n.__("api.error.forbidden"),
     });
   }

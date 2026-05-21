@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import LiffLayout from "./layouts/LiffLayout";
 
@@ -14,8 +14,7 @@ import Bag from "./pages/Bag";
 import Equipment from "./pages/Equipment";
 import TradeOrder from "./pages/Trade/Order";
 import TradeManage from "./pages/Trade/Manage";
-import TradeDetail from "./pages/Trade/Detail";
-import TradeTransaction from "./pages/Trade/Transaction";
+import TradeDetail from "./pages/Trade/TradeDetail";
 import GroupList from "./pages/Group";
 import GroupRecord from "./pages/Group/Record";
 import GroupConfig from "./pages/Group/Config";
@@ -44,6 +43,11 @@ import AdminWorldbossMessageCreate from "./pages/Admin/WorldbossMessageCreate";
 import AdminWorldbossMessageUpdate from "./pages/Admin/WorldbossMessageUpdate";
 import RequireAdmin from "./components/RequireAdmin";
 
+function RedirectFromTransaction() {
+  const { marketId } = useParams();
+  return <Navigate to={`/trade/${marketId}`} replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -70,8 +74,9 @@ export default function App() {
           {/* Trade */}
           <Route path="trade/order" element={<TradeOrder />} />
           <Route path="trade/manage" element={<TradeManage />} />
+          <Route path="trade/:marketId" element={<TradeDetail />} />
           <Route path="trade/:marketId/detail" element={<TradeDetail />} />
-          <Route path="trade/:marketId/transaction" element={<TradeTransaction />} />
+          <Route path="trade/:marketId/transaction" element={<RedirectFromTransaction />} />
 
           {/* Group */}
           <Route path="groups" element={<GroupList />} />

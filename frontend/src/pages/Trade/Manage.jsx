@@ -22,37 +22,13 @@ import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { Link } from "react-router-dom";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
-
-/* ---------- helpers ---------- */
-const fmtDate = ts => {
-  if (!ts) return "-";
-  const d = new Date(ts);
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-};
-
-const STATUS_MAP = {
-  0: {
-    label: "未交易",
-    color: "warning",
-    icon: <HourglassEmptyIcon sx={{ fontSize: "14px !important" }} />,
-  },
-  1: {
-    label: "已交易",
-    color: "success",
-    icon: <CheckCircleIcon sx={{ fontSize: "14px !important" }} />,
-  },
-  "-1": {
-    label: "已取消",
-    color: "default",
-    icon: <CancelIcon sx={{ fontSize: "14px !important" }} />,
-  },
-};
+import { STATUS, STATUS_MAP, fmtDate } from "./_shared";
 
 /* ---------- SummaryBanner ---------- */
 function SummaryBanner({ trades }) {
-  const pending = trades.filter(t => t.status === 0).length;
-  const completed = trades.filter(t => t.status === 1).length;
-  const cancelled = trades.filter(t => t.status === -1).length;
+  const pending = trades.filter(t => t.status === STATUS.PENDING).length;
+  const completed = trades.filter(t => t.status === STATUS.COMPLETED).length;
+  const cancelled = trades.filter(t => t.status === STATUS.CANCELLED).length;
 
   return (
     <Paper
@@ -116,7 +92,7 @@ function SummaryBanner({ trades }) {
 
 /* ---------- TradeRow ---------- */
 function TradeRow({ trade }) {
-  const statusInfo = STATUS_MAP[trade.status] || STATUS_MAP["-1"];
+  const statusInfo = STATUS_MAP[trade.status] || STATUS_MAP[STATUS.CANCELLED];
 
   return (
     <Box sx={{ py: 2 }}>
@@ -126,9 +102,9 @@ function TradeRow({ trade }) {
             width: 40,
             height: 40,
             bgcolor:
-              trade.status === 0
+              trade.status === STATUS.PENDING
                 ? "warning.main"
-                : trade.status === 1
+                : trade.status === STATUS.COMPLETED
                   ? "success.main"
                   : "grey.400",
             fontSize: 16,
@@ -150,15 +126,15 @@ function TradeRow({ trade }) {
                 label={statusInfo.label}
                 size="small"
                 color={statusInfo.color}
-                variant={trade.status === 0 ? "filled" : "outlined"}
+                variant={trade.status === STATUS.PENDING ? "filled" : "outlined"}
                 sx={{ fontWeight: 600, fontSize: "0.75rem", height: 24 }}
               />
-              {trade.status === 0 && (
+              {trade.status === STATUS.PENDING && (
                 <IconButton
                   size="small"
                   color="primary"
                   component={Link}
-                  to={`/trade/${trade.id}/detail`}
+                  to={`/trade/${trade.id}`}
                   sx={{ ml: 0.5 }}
                 >
                   <SettingsIcon fontSize="small" />

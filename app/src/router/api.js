@@ -31,6 +31,7 @@ const { admin: AdminEquipmentRouter, player: PlayerEquipmentRouter } = require("
 const { router: InventoryRouter } = require("./Inventory");
 const { router: TradeRouter } = require("./Trade");
 const { router: MarketRouter } = require("./Market");
+const { getProfile } = require("../handler/Profile");
 const moment = require("moment");
 const XpHistoryService = require("../service/XpHistoryService");
 const { todayUtc8 } = require("../util/date");
@@ -57,6 +58,8 @@ router.get("/me", verifyToken, async (req, res) => {
     ...adminData,
   });
 });
+
+router.get("/profile/:userId", verifyToken, getProfile);
 
 router.get("/me/xp-summary", verifyToken, async (req, res) => {
   try {
