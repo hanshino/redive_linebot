@@ -51,6 +51,9 @@ export default function CharacterPickerDrawer({ open, onClose, items, initialId,
     >
       <Box
         sx={{
+          width: "100%",
+          maxWidth: { md: 720 },
+          mx: { md: "auto" },
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -66,7 +69,17 @@ export default function CharacterPickerDrawer({ open, onClose, items, initialId,
           <CloseIcon />
         </IconButton>
       </Box>
-      <Box sx={{ flex: 1, overflowY: "auto", px: 2, pb: 1 }}>
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: "auto",
+          width: "100%",
+          maxWidth: { md: 720 },
+          mx: { md: "auto" },
+          px: 2,
+          pb: 1,
+        }}
+      >
         {items.length === 0 ? (
           <Box sx={{ py: 6, textAlign: "center", color: "text.secondary" }}>
             您目前沒有可交易的角色
@@ -76,7 +89,7 @@ export default function CharacterPickerDrawer({ open, onClose, items, initialId,
             {items.map(item => {
               const selected = item.itemId === localId;
               return (
-                <Grid size={{ xs: 4, sm: 3 }} key={item.itemId}>
+                <Grid size={{ xs: 4, sm: 3, md: 2 }} key={item.itemId}>
                   <Card
                     sx={{
                       outline: selected ? "3px solid" : "1px solid",
@@ -124,15 +137,23 @@ export default function CharacterPickerDrawer({ open, onClose, items, initialId,
       </Box>
       <Box
         sx={{
-          p: 2,
           borderTop: "1px solid",
           borderColor: "divider",
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
         }}
       >
-        <Button fullWidth variant="contained" disabled={localId == null} onClick={handleConfirm}>
-          確定
-        </Button>
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: { md: 720 },
+            mx: { md: "auto" },
+            p: 2,
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
+          }}
+        >
+          <Button fullWidth variant="contained" disabled={localId == null} onClick={handleConfirm}>
+            確定
+          </Button>
+        </Box>
       </Box>
     </SwipeableDrawer>
   );

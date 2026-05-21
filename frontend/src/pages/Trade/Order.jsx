@@ -231,7 +231,7 @@ export default function TradeOrder() {
       <Box
         sx={{
           position: "fixed",
-          left: 0,
+          left: { xs: 0, md: "260px" },
           right: 0,
           bottom: 0,
           bgcolor: "background.paper",
