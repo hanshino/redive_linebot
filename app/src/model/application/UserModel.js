@@ -40,7 +40,7 @@ exports.updateProfile = async (platformId, profile) => {
  * @returns {Promise<{displayName: string, pictureUrl: string}|null>}
  */
 exports.getProfile = async platformId => {
-  const rows = await mysql()
+  const rows = await mysql
     .select({ display_name: "display_name", picture_url: "picture_url" })
     .from(USER_TABLE)
     .where({ platform_id: platformId });

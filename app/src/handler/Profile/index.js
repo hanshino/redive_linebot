@@ -1,11 +1,17 @@
 const { getClient } = require("bottender");
-const redis = require("../../util/redis");
 const UserModel = require("../../model/application/UserModel");
 const { DefaultLogger } = require("../../util/Logger");
+const {
+  readProfileFromRedis,
+  writeProfileToRedis,
+  fallbackProfile,
+  FALLBACK_CACHE_TTL_SEC,
+} = require("../../service/ProfileService");
 
-const REDIS_KEY = userId => `profile:${userId}`;
-const REDIS_TTL_SEC = 30 * 60;
-const LINE_PROFILE_TIMEOUT_MS = 200;
+// LINE profile latency is regularly 300-800ms from Asia regions. The
+// webhook-side middleware caps at 200ms to keep the reply budget tight,
+// but the API endpoint has a more relaxed budget and can afford to wait.
+const LINE_PROFILE_TIMEOUT_MS = 2000;
 
 function withTimeout(promise, ms) {
   return new Promise((resolve, reject) => {
@@ -23,23 +29,6 @@ function withTimeout(promise, ms) {
   });
 }
 
-function fallback(userId) {
-  return {
-    userId,
-    displayName: `User-${userId.slice(-4)}`,
-    pictureUrl: null,
-  };
-}
-
-function writeProfileToRedis(userId, profile) {
-  try {
-    const result = redis.set(REDIS_KEY(userId), JSON.stringify(profile), { EX: REDIS_TTL_SEC });
-    if (result && typeof result.catch === "function") result.catch(() => {});
-  } catch {
-    /* best effort */
-  }
-}
-
 /**
  * GET /api/profile/:userId
  * Three-layer cache resolver: Redis -> MySQL -> LINE API -> fallback.
@@ -53,14 +42,9 @@ exports.getProfile = async (req, res) => {
   }
 
   // Layer 1: Redis
-  try {
-    const cached = await redis.get(REDIS_KEY(userId));
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      return res.json({ userId, ...parsed });
-    }
-  } catch (e) {
-    DefaultLogger.warn(`Profile redis miss for ${userId}: ${e.message}`);
+  const cached = await readProfileFromRedis(userId);
+  if (cached) {
+    return res.json({ userId, ...cached });
   }
 
   // Layer 2: MySQL user table
@@ -71,7 +55,7 @@ exports.getProfile = async (req, res) => {
       return res.json({ userId, ...dbProfile });
     }
   } catch (e) {
-    DefaultLogger.warn(`Profile DB miss for ${userId}: ${e.message}`);
+    DefaultLogger.warn(`Profile DB error for ${userId}: ${e && e.message}`);
   }
 
   // Layer 3: LINE API (with timeout)
@@ -83,19 +67,15 @@ exports.getProfile = async (req, res) => {
       pictureUrl: profile.pictureUrl || null,
     };
     writeProfileToRedis(userId, result);
-    try {
-      const updateResult = UserModel.updateProfile(userId, profile);
-      if (updateResult && typeof updateResult.catch === "function") {
-        updateResult.catch(() => {});
-      }
-    } catch {
-      /* best effort */
-    }
+    Promise.resolve(UserModel.updateProfile(userId, profile)).catch(() => {});
     return res.json({ userId, ...result });
   } catch (e) {
-    DefaultLogger.warn(`Profile LINE API miss for ${userId}: ${e.message}`);
+    DefaultLogger.warn(`Profile LINE error for ${userId}: ${e && e.message}`);
   }
 
-  // Fallback
-  return res.json(fallback(userId));
+  // Fallback — cache briefly so a hammered unknown userId doesn't keep
+  // paying the full MySQL+LINE timeout budget on every retry.
+  const fallback = fallbackProfile(userId);
+  writeProfileToRedis(userId, fallback, FALLBACK_CACHE_TTL_SEC);
+  return res.json({ userId, ...fallback });
 };

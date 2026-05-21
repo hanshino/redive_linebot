@@ -111,8 +111,9 @@ export default function TradeOrder() {
     [inventoryItems, selectedId]
   );
 
-  const targetName =
-    targetProfile?.displayName || (targetId ? `User-${targetId.slice(-4)}` : "未知對象");
+  // /api/profile/:userId always returns a synthesised fallback name, so we
+  // only need a guard for the "no targetId in the URL" case.
+  const targetName = targetProfile?.displayName || "未知對象";
 
   const isSelf = viewerId && targetId && viewerId === targetId;
   const chargeNum = Number(charge);

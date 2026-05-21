@@ -26,9 +26,9 @@ import { STATUS, STATUS_MAP, fmtDate } from "./_shared";
 
 /* ---------- SummaryBanner ---------- */
 function SummaryBanner({ trades }) {
-  const pending = trades.filter(t => t.status === 0).length;
-  const completed = trades.filter(t => t.status === 1).length;
-  const cancelled = trades.filter(t => t.status === -1).length;
+  const pending = trades.filter(t => t.status === STATUS.PENDING).length;
+  const completed = trades.filter(t => t.status === STATUS.COMPLETED).length;
+  const cancelled = trades.filter(t => t.status === STATUS.CANCELLED).length;
 
   return (
     <Paper
@@ -102,9 +102,9 @@ function TradeRow({ trade }) {
             width: 40,
             height: 40,
             bgcolor:
-              trade.status === 0
+              trade.status === STATUS.PENDING
                 ? "warning.main"
-                : trade.status === 1
+                : trade.status === STATUS.COMPLETED
                   ? "success.main"
                   : "grey.400",
             fontSize: 16,
@@ -126,10 +126,10 @@ function TradeRow({ trade }) {
                 label={statusInfo.label}
                 size="small"
                 color={statusInfo.color}
-                variant={trade.status === 0 ? "filled" : "outlined"}
+                variant={trade.status === STATUS.PENDING ? "filled" : "outlined"}
                 sx={{ fontWeight: 600, fontSize: "0.75rem", height: 24 }}
               />
-              {trade.status === 0 && (
+              {trade.status === STATUS.PENDING && (
                 <IconButton
                   size="small"
                   color="primary"

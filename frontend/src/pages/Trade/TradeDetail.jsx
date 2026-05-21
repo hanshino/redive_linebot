@@ -8,7 +8,7 @@ import StarIcon from "@mui/icons-material/Star";
 import liff from "@line/liff";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
-import { STATUS, STATUS_MAP, fmtDate, getViewerRole } from "./_shared";
+import { STATUS, STATUS_MAP, ROLE, fmtDate, getViewerRole } from "./_shared";
 import { genNotify } from "../../flex/TradeNotify";
 import AlertDialog from "../../components/AlertDialog";
 import useAlertDialog from "../../hooks/useAlertDialog";
@@ -25,15 +25,16 @@ function PageSkeleton() {
   );
 }
 
+function closeOrNavigate(navigate, fallback = "/trade/manage") {
+  if (liff.isInClient()) liff.closeWindow();
+  else navigate(fallback);
+}
+
 function ClosePanel() {
   const navigate = useNavigate();
-  const handleClose = () => {
-    if (liff.isInClient()) liff.closeWindow();
-    else navigate("/trade/manage");
-  };
   return (
     <Paper sx={{ p: 2, borderRadius: 3, textAlign: "center" }}>
-      <Button variant="contained" onClick={handleClose}>
+      <Button variant="contained" onClick={() => closeOrNavigate(navigate)}>
         關閉
       </Button>
     </Paper>
@@ -46,14 +47,14 @@ function bannerCopy(role, status, marketId) {
   }
   if (status === STATUS.CANCELLED) {
     return {
-      title: role === "seller" ? `已取消 #${marketId}` : "交易已取消",
+      title: role === ROLE.SELLER ? `已取消 #${marketId}` : "交易已取消",
       chipLabel: "已取消",
     };
   }
   // pending
   return {
-    title: role === "seller" ? `委託 #${marketId}` : `交易邀請 #${marketId}`,
-    chipLabel: role === "seller" ? "等待對方回覆" : "等你回覆",
+    title: role === ROLE.SELLER ? `委託 #${marketId}` : `交易邀請 #${marketId}`,
+    chipLabel: role === ROLE.SELLER ? "等待對方回覆" : "等你回覆",
   };
 }
 
@@ -172,7 +173,7 @@ function DetailsCard({ market, role, balance, balanceLoading }) {
         }
       />
       <DetailRow label="建立於" value={fmtDate(market.created_at)} />
-      {role === "buyer" && (
+      {role === ROLE.BUYER && (
         <>
           <DetailRow
             label="你的女神石"
@@ -198,7 +199,7 @@ export default function TradeDetail() {
     manual: true,
   });
 
-  const isBuyer = market ? getViewerRole(market, liffContext?.userId) === "buyer" : false;
+  const isBuyer = market ? getViewerRole(market, liffContext?.userId) === ROLE.BUYER : false;
   const [{ data: stoneData, loading: stoneLoading }] = useAxios("/api/inventory/total-god-stone", {
     manual: !isLoggedIn || !isBuyer,
   });
@@ -208,6 +209,7 @@ export default function TradeDetail() {
   const navigate = useNavigate();
   const [{ loading: acceptLoading }, acceptTx] = useAxios({ method: "POST" }, { manual: true });
   const [{ loading: denyLoading }, denyTx] = useAxios({ method: "DELETE" }, { manual: true });
+  const [{ loading: cancelLoading }, cancelTx] = useAxios({ method: "DELETE" }, { manual: true });
   const [alertState, { handleOpen: openAlert, handleClose: closeAlert }] = useAlertDialog();
   const [
     { message, severity, open: snackOpen },
@@ -237,7 +239,7 @@ export default function TradeDetail() {
   }
 
   const role = getViewerRole(market, liffContext?.userId);
-  if (role === "guest") {
+  if (role === ROLE.GUEST) {
     return (
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
         <Alert severity="error">您無權檢視此交易</Alert>
@@ -247,10 +249,7 @@ export default function TradeDetail() {
   }
 
   const closeAfterSuccess = () => {
-    setTimeout(() => {
-      if (liff.isInClient()) liff.closeWindow();
-      else navigate("/trade/manage");
-    }, 1500);
+    setTimeout(() => closeOrNavigate(navigate), 1500);
   };
 
   const handleAccept = () => {
@@ -302,9 +301,9 @@ export default function TradeDetail() {
       onSubmit: async () => {
         closeAlert();
         try {
-          await denyTx({ url: `/api/market/${market.id}/transactions` });
+          await cancelTx({ url: `/api/market/${market.id}/transactions` });
           openSnack("已取消委託", "success");
-          setTimeout(() => navigate("/trade/manage"), 1000);
+          closeAfterSuccess();
         } catch (e) {
           openSnack(e.response?.data?.message || "操作失敗", "error");
         }
@@ -380,12 +379,12 @@ export default function TradeDetail() {
           <Button
             fullWidth
             variant="contained"
-            onClick={() => (liff.isInClient() ? liff.closeWindow() : navigate("/trade/manage"))}
+            onClick={() => closeOrNavigate(navigate)}
             size="large"
           >
             關閉
           </Button>
-        ) : role === "seller" ? (
+        ) : role === ROLE.SELLER ? (
           <>
             <Button
               fullWidth
@@ -393,7 +392,7 @@ export default function TradeDetail() {
               color="error"
               size="large"
               onClick={handleCancelOrder}
-              disabled={denyLoading}
+              disabled={cancelLoading}
             >
               取消委託
             </Button>
@@ -425,7 +424,12 @@ export default function TradeDetail() {
               color="primary"
               size="large"
               onClick={handleAccept}
-              disabled={acceptLoading || denyLoading || (balance != null && balance < market.price)}
+              disabled={
+                acceptLoading ||
+                denyLoading ||
+                stoneLoading ||
+                (balance != null && balance < market.price)
+              }
             >
               接受交易
             </Button>

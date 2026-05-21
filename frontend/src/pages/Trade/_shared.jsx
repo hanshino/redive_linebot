@@ -8,6 +8,12 @@ export const STATUS = {
   CANCELLED: -1,
 };
 
+export const ROLE = {
+  SELLER: "seller",
+  BUYER: "buyer",
+  GUEST: "guest",
+};
+
 export const STATUS_MAP = {
   [STATUS.PENDING]: {
     label: "未交易",
@@ -33,11 +39,11 @@ export function fmtDate(ts) {
 }
 
 export function getViewerRole(market, viewerUserId) {
-  if (!market || !viewerUserId) return "guest";
-  if (market.seller_id === viewerUserId) return "seller";
+  if (!market || !viewerUserId) return ROLE.GUEST;
+  if (market.seller_id === viewerUserId) return ROLE.SELLER;
   const targets = Array.isArray(market.sell_target_list) ? market.sell_target_list : [];
-  if (targets.includes(viewerUserId)) return "buyer";
-  return "guest";
+  if (targets.includes(viewerUserId)) return ROLE.BUYER;
+  return ROLE.GUEST;
 }
 
 export const QUICK_PRICES = [100, 500, 1000, 5000, 10000];

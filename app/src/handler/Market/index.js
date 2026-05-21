@@ -6,14 +6,7 @@ const i18n = require("../../util/i18n");
 const { inventory: InventoryModel } = require("../../model/application/Inventory");
 const { DefaultLogger } = require("../../util/Logger");
 const moment = require("moment");
-const UserModel = require("../../model/application/UserModel");
-
-async function resolveDisplayName(userId) {
-  if (!userId) return null;
-  const profile = await UserModel.getProfile(userId).catch(() => null);
-  if (profile && profile.displayName) return profile.displayName;
-  return `User-${userId.slice(-4)}`;
-}
+const { resolveDisplayName } = require("../../service/ProfileService");
 
 /**
  * 顯示商品詳細資訊

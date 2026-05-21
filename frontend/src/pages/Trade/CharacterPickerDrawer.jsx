@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   SwipeableDrawer,
   Box,
@@ -23,6 +23,12 @@ import CloseIcon from "@mui/icons-material/Close";
  */
 export default function CharacterPickerDrawer({ open, onClose, items, initialId, onConfirm }) {
   const [localId, setLocalId] = useState(initialId ?? null);
+
+  // Re-syncing on each open keeps the picker honest if the parent's
+  // selection changes between opens.
+  useEffect(() => {
+    if (open) setLocalId(initialId ?? null);
+  }, [open, initialId]);
 
   const handleConfirm = () => {
     onConfirm(localId);
