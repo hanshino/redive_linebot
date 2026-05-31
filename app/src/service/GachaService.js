@@ -145,14 +145,16 @@ async function runDailyDraw(userId, opts = {}) {
   const { tag, pickup = false, ensure = false, europe = false } = opts;
   const times = 10;
 
-  const allActiveBanners = await time("rd.banners", () =>
-    GachaBanner.getActiveBannersWithCharacters()
-  );
+  // banners and the gacha pool are independent reads — fetch them concurrently
+  // to save one DB round-trip on the hot daily-draw path.
+  const [allActiveBanners, gachaPool] = await Promise.all([
+    time("rd.banners", () => GachaBanner.getActiveBannersWithCharacters()),
+    time("rd.pool", () => GachaModel.getDatabasePool()),
+  ]);
   const rateUpBanners = allActiveBanners.filter(b => b.type === "rate_up");
   const europeBanners = allActiveBanners.filter(b => b.type === "europe");
   const activeEuropeBanner = europe && europeBanners.length > 0 ? europeBanners[0] : null;
 
-  const gachaPool = await time("rd.pool", () => GachaModel.getDatabasePool());
   const filteredPool = filterPool(gachaPool, tag);
   const dailyPool = buildDailyPool(filteredPool, rateUpBanners, { pickup, ensure, europe });
 

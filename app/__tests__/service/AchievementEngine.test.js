@@ -17,6 +17,7 @@ jest.mock("../../src/model/application/UserAchievementProgress", () => ({
   getProgress: jest.fn(),
   getProgressByIds: jest.fn().mockResolvedValue(new Map()),
   upsert: jest.fn(),
+  upsertMany: jest.fn().mockResolvedValue(),
   increment: jest.fn(),
   delete: jest.fn(),
   findByUser: jest.fn(),
@@ -76,7 +77,7 @@ describe("AchievementEngine", () => {
       await AchievementEngine.evaluate("user1", "chat_message", {});
 
       expect(UserAchievementModel.getUnlockedIds).toHaveBeenCalled();
-      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
     });
 
@@ -94,8 +95,14 @@ describe("AchievementEngine", () => {
 
       // Should not have logged any errors
       expect(DefaultLogger.error).not.toHaveBeenCalled();
+      // Progress writes are now batched into a single upsertMany call.
       // chat_100 progress: 50 + 1 = 51, below target of 100
-      expect(UserProgressModel.upsert).toHaveBeenCalledWith("user1", 1, 51);
+      expect(UserProgressModel.upsertMany).toHaveBeenCalledTimes(1);
+      expect(UserProgressModel.upsertMany).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ userId: "user1", achievementId: 1, currentValue: 51 }),
+        ])
+      );
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
     });
 
@@ -122,6 +129,94 @@ describe("AchievementEngine", () => {
     it("should not throw on event with no mapped achievements", async () => {
       await AchievementEngine.evaluate("user1", "unknown_event", {});
       expect(DefaultLogger.error).not.toHaveBeenCalled();
+    });
+
+    it("batches all changed achievements of one event into a single upsertMany call", async () => {
+      // chat_message maps to chat_100 (id1) and chat_1000 (id2); both advance.
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgressByIds.mockResolvedValue(
+        new Map([
+          [1, 50],
+          [2, 80],
+        ])
+      );
+
+      await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      // N+1 collapse: one write for the whole pass, carrying both rows.
+      expect(UserProgressModel.upsertMany).toHaveBeenCalledTimes(1);
+      expect(UserProgressModel.upsertMany).toHaveBeenCalledWith([
+        { userId: "user1", achievementId: 1, currentValue: 51 },
+        { userId: "user1", achievementId: 2, currentValue: 81 },
+      ]);
+    });
+
+    it("does not call upsertMany when no candidate value changes", async () => {
+      // instant-to-target achievement already at/over target → strategy returns
+      // currentValue unchanged, so nothing is collected to write.
+      AchievementEngine._setCache([
+        { id: 1, key: "gacha_first", type: "milestone", target_value: 1, reward_stones: 0 },
+      ]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[1, 1]]));
+
+      await AchievementEngine.evaluate("user1", "gacha_pull", {});
+
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
+    });
+
+    it("still unlocks when the batched progress write fails (write/unlock isolation)", async () => {
+      // chat_100 (id1) and chat_1000 (id2) both cross their target this pass.
+      AchievementEngine._setCache([
+        { id: 1, key: "chat_100", target_value: 100, reward_stones: 50, condition: null },
+        { id: 2, key: "chat_1000", target_value: 1000, reward_stones: 200, condition: null },
+      ]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgressByIds.mockResolvedValue(
+        new Map([
+          [1, 99],
+          [2, 999],
+        ])
+      );
+      UserProgressModel.upsertMany.mockRejectedValueOnce(new Error("deadlock"));
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.delete.mockResolvedValue();
+
+      const result = await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      // Batch failure is logged but does NOT abort the unlocks.
+      expect(DefaultLogger.error).toHaveBeenCalledWith(
+        "AchievementEngine.evaluate batch upsert error:",
+        expect.any(Error)
+      );
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 1);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 2);
+      expect(result.unlocked.map(a => a.key)).toEqual(["chat_100", "chat_1000"]);
+    });
+
+    it("isolates a failing unlock so the remaining achievements still unlock", async () => {
+      AchievementEngine._setCache([
+        { id: 1, key: "chat_100", target_value: 100, reward_stones: 50, condition: null },
+        { id: 2, key: "chat_1000", target_value: 1000, reward_stones: 200, condition: null },
+      ]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgressByIds.mockResolvedValue(
+        new Map([
+          [1, 99],
+          [2, 999],
+        ])
+      );
+      // First unlock (id1) blows up inside unlockAchievement; second must survive.
+      UserAchievementModel.unlock.mockRejectedValueOnce(new Error("write conflict"));
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.delete.mockResolvedValue();
+
+      const result = await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      expect(DefaultLogger.error).toHaveBeenCalledTimes(1);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 2);
+      // id1 threw before its push, so only chat_1000 ends up in the result.
+      expect(result.unlocked.map(a => a.key)).toEqual(["chat_1000"]);
     });
   });
 
@@ -479,7 +574,7 @@ describe("AchievementEngine", () => {
       });
 
       expect(result.unlocked).toEqual([]);
-      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
     });
   });
@@ -521,7 +616,11 @@ describe("AchievementEngine", () => {
         text: "大大鬆餅祝福你",
       });
 
-      expect(UserProgressModel.upsert).toHaveBeenCalledWith("Uadmin", 60, 4);
+      expect(UserProgressModel.upsertMany).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ userId: "Uadmin", achievementId: 60, currentValue: 4 }),
+        ])
+      );
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
     });
 
@@ -544,7 +643,7 @@ describe("AchievementEngine", () => {
         text: "鬆餅祝福",
       });
 
-      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
     });
 
     it("does not increment when keywords are missing", async () => {
@@ -555,7 +654,7 @@ describe("AchievementEngine", () => {
         text: "哈囉",
       });
 
-      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
     });
 
     it("does not fire for users outside includeUserIds (eligibility gate)", async () => {
@@ -567,7 +666,7 @@ describe("AchievementEngine", () => {
       });
 
       expect(result.unlocked).toEqual([]);
-      expect(UserProgressModel.upsert).not.toHaveBeenCalled();
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
     });
   });
 

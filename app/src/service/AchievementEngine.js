@@ -221,6 +221,12 @@ exports.evaluate = async (userId, eventType, context = {}) => {
     const ctx = { ...context, _userId: userId };
     const candidates = achievements.filter(a => !unlockedIds.has(a.id));
 
+    // Phase 1: compute the new value for every candidate. Strategy evaluation
+    // stays serial because some strategies (handleTrackedSet) do a Redis
+    // read-before-write that must not interleave. Per-candidate try/catch keeps
+    // one bad strategy from aborting the rest.
+    const updates = [];
+    const toUnlock = [];
     for (const achievement of candidates) {
       try {
         const currentValue = progressMap.get(achievement.id) || 0;
@@ -228,15 +234,38 @@ exports.evaluate = async (userId, eventType, context = {}) => {
         const newValue = strategy ? await strategy(currentValue, achievement, ctx) : currentValue;
         if (newValue === null || newValue === currentValue) continue;
 
-        await UserProgressModel.upsert(userId, achievement.id, newValue);
-
-        if (newValue >= achievement.target_value) {
-          await unlockAchievement(userId, achievement);
-          unlocked.push(achievement);
-        }
+        updates.push({ userId, achievementId: achievement.id, currentValue: newValue });
+        if (newValue >= achievement.target_value) toUnlock.push(achievement);
       } catch (innerErr) {
         DefaultLogger.error(
           `AchievementEngine.evaluate error for key ${achievement.key}:`,
+          innerErr
+        );
+      }
+    }
+
+    // Phase 2: collapse the per-candidate progress writes into one statement.
+    // Guarded on its own so a batch-write failure is logged but does NOT skip
+    // the unlocks below — this preserves the per-candidate failure isolation the
+    // original row-by-row loop had. unlockAchievement deletes the progress row
+    // regardless, so proceeding to unlock after a failed write is safe.
+    if (updates.length > 0) {
+      try {
+        await UserProgressModel.upsertMany(updates);
+      } catch (batchErr) {
+        DefaultLogger.error("AchievementEngine.evaluate batch upsert error:", batchErr);
+      }
+    }
+
+    // Phase 3: unlock serially — each unlock writes a stone-ledger row and
+    // deletes the progress row, and is order-sensitive, so it is not batched.
+    for (const achievement of toUnlock) {
+      try {
+        await unlockAchievement(userId, achievement);
+        unlocked.push(achievement);
+      } catch (innerErr) {
+        DefaultLogger.error(
+          `AchievementEngine.evaluate unlock error for key ${achievement.key}:`,
           innerErr
         );
       }
