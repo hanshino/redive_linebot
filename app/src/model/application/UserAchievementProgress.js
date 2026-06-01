@@ -37,6 +37,26 @@ exports.upsert = async (userId, achievementId, currentValue) => {
   );
 };
 
+/**
+ * Batch upsert progress for many achievements of a single evaluate() pass.
+ * Collapses the previous per-row N+1 writes into one multi-row statement.
+ * Relies on the UNIQUE(user_id, achievement_id) constraint for the upsert.
+ *
+ * @param {Array<{userId: string, achievementId: number, currentValue: number}>} updates
+ * @returns {Promise<*>|undefined} undefined when there is nothing to write
+ */
+exports.upsertMany = async updates => {
+  if (!Array.isArray(updates) || updates.length === 0) return;
+  const values = updates.map(() => "(?, ?, ?, NOW())").join(", ");
+  const bindings = updates.flatMap(u => [u.userId, u.achievementId, u.currentValue]);
+  return mysql.raw(
+    `INSERT INTO ${TABLE} (user_id, achievement_id, current_value, updated_at)
+     VALUES ${values}
+     ON DUPLICATE KEY UPDATE current_value = VALUES(current_value), updated_at = NOW()`,
+    bindings
+  );
+};
+
 exports.increment = async (userId, achievementId, amount = 1) => {
   return mysql.raw(
     `INSERT INTO ${TABLE} (user_id, achievement_id, current_value, updated_at)
