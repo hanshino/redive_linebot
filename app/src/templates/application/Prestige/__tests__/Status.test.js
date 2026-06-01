@@ -236,6 +236,46 @@ describe("Prestige/Status.build", () => {
     });
   });
 
+  // Regression: a trial can be passed as early as ~Lv.57 (completion is gated on
+  // trial XP, not level), but prestige requires Lv.100. The card must not fake a
+  // maxed level/exp readout nor offer the (non-functional) 立即轉生 CTA below cap.
+  describe("ready-but-below-cap scenario", () => {
+    const flex = Status.build({
+      ...baseInput,
+      prestigeCount: 1,
+      level: 57,
+      expCurrent: 4200,
+      expNext: 9300,
+      expRate: 45,
+      readyTrial: { star: 1, display_name: "啟程" },
+      ownedBlessings: [{ slug: "language_gift", display_name: "語言天賦" }],
+    });
+
+    it("shows the real level pill, not Lv.100 MAX", () => {
+      expect(findText(flex.contents, t => t === "Lv.57")).toBe("Lv.57");
+      expect(findText(flex.contents, t => /MAX/.test(t))).toBeNull();
+    });
+    it("hero flag defers prestige to Lv.100", () => {
+      expect(findText(flex.contents, t => t.includes("試煉通過"))).toBe(
+        "🪄 試煉通過 · 達 Lv.100 後可轉生  ·  ★ 轉生 1 次"
+      );
+    });
+    it("renders real EXP progress instead of MAX", () => {
+      expect(findText(flex.contents, t => t === "EXP")).toBe("EXP");
+      expect(findText(flex.contents, t => /\//.test(t) && !t.includes("7"))).toBeTruthy();
+    });
+    it("shows 達 Lv.100 即可轉生 footer with no action", () => {
+      expect(findText(flex.contents, t => t === "達 Lv.100 即可轉生")).toBe("達 Lv.100 即可轉生");
+      expect(findActionUri(flex.contents)).toBeNull();
+    });
+    it("ready card copy defers prestige to Lv.100 (no 即可轉生 promise)", () => {
+      expect(findText(flex.contents, t => t.includes("達 Lv.100 後轉生"))).toBe(
+        "通過記錄已保留 · 達 Lv.100 後轉生：等級歸零，再選一個祝福永久強化"
+      );
+      expect(findText(flex.contents, t => t.includes("消費這次通過記錄即可轉生"))).toBeNull();
+    });
+  });
+
   describe("awakened scenario", () => {
     const flex = Status.build({
       ...baseInput,

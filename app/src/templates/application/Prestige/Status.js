@@ -336,7 +336,7 @@ function buildTrialActiveCard({
   };
 }
 
-function buildTrialReadyCard({ readyTrial }) {
+function buildTrialReadyCard({ readyTrial, atMaxLevel = true }) {
   return {
     type: "box",
     layout: "vertical",
@@ -388,7 +388,9 @@ function buildTrialReadyCard({ readyTrial }) {
               },
               {
                 type: "text",
-                text: "消費這次通過記錄即可轉生 · 等級歸零，再選一個祝福永久強化",
+                text: atMaxLevel
+                  ? "消費這次通過記錄即可轉生 · 等級歸零，再選一個祝福永久強化"
+                  : "通過記錄已保留 · 達 Lv.100 後轉生：等級歸零，再選一個祝福永久強化",
                 size: "xxs",
                 color: COLORS.textMuted,
                 wrap: true,
@@ -655,7 +657,7 @@ function buildBlessingsSection({ ownedBlessings, isReady, isAwakened }) {
   };
 }
 
-function buildFooter({ scenario, liffUri, liffUriSummary }) {
+function buildFooter({ scenario, liffUri, liffUriSummary, atMaxLevel = true }) {
   if (scenario === "honeymoon" || scenario === "between") {
     return {
       type: "box",
@@ -686,6 +688,36 @@ function buildFooter({ scenario, liffUri, liffUriSummary }) {
   }
 
   if (scenario === "ready") {
+    // Passed the trial but not yet Lv.100: prestige() will reject (NOT_LEVEL_100),
+    // so don't offer the actionable CTA — point them at the remaining level grind.
+    if (!atMaxLevel) {
+      return {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "lg",
+        paddingTop: "md",
+        contents: [
+          {
+            type: "box",
+            layout: "vertical",
+            backgroundColor: "#E5E7EB",
+            cornerRadius: "md",
+            paddingTop: "md",
+            paddingBottom: "md",
+            contents: [
+              {
+                type: "text",
+                text: "達 Lv.100 即可轉生",
+                size: "sm",
+                color: COLORS.textMuted,
+                weight: "bold",
+                align: "center",
+              },
+            ],
+          },
+        ],
+      };
+    }
     return {
       type: "box",
       layout: "vertical",
@@ -783,13 +815,14 @@ function resolveScenario({ awakened, readyTrial, activeTrial, prestigeCount }) {
   return "between"; // prestige 1+ but no active trial yet
 }
 
-function buildFlag({ scenario, prestigeCount, activeTrial, readyTrial }) {
+function buildFlag({ scenario, prestigeCount, activeTrial, readyTrial, atMaxLevel = true }) {
   if (scenario === "awakened") {
     return "★★★★★ 轉生 5 次 · 試煉旅程已完成";
   }
   if (scenario === "ready" && readyTrial) {
     const stars = "★".repeat(Math.max(0, prestigeCount || 0));
-    return `🪄 試煉通過 · 可立即轉生${stars ? `  ·  ${stars} 轉生 ${prestigeCount} 次` : ""}`;
+    const lead = atMaxLevel ? "🪄 試煉通過 · 可立即轉生" : "🪄 試煉通過 · 達 Lv.100 後可轉生";
+    return `${lead}${stars ? `  ·  ${stars} 轉生 ${prestigeCount} 次` : ""}`;
   }
   if (scenario === "active" && activeTrial) {
     const stars = "★".repeat(Math.max(0, prestigeCount || 0));
@@ -831,19 +864,27 @@ function build(input) {
     prestigeCount: input.prestigeCount,
   });
 
+  const isReady = scenario === "ready";
+  const isAwakened = scenario === "awakened";
+  // A passed trial only becomes consumable at Lv.100 (PrestigeService.prestige
+  // throws NOT_LEVEL_100 below cap), yet a trial can be passed as early as ~Lv.57
+  // because completion is gated on trial XP (required_exp ~10k), not on level.
+  // So the "ready" scenario does NOT imply the player is maxed — gate every
+  // MAX/100 readout on the real level instead of on the scenario.
+  const atMaxLevel = (input.level || 0) >= 100;
+  const readyAtMax = isReady && atMaxLevel;
+
   const flagText = buildFlag({
     scenario,
     prestigeCount: input.prestigeCount,
     activeTrial: input.activeTrial,
     readyTrial: input.readyTrial,
+    atMaxLevel,
   });
-
-  const isReady = scenario === "ready";
-  const isAwakened = scenario === "awakened";
 
   const heroLevelDisplay = (() => {
     if (isAwakened) return "✨ 覺醒者";
-    if (isReady) return "Lv.100 MAX";
+    if (readyAtMax) return "Lv.100 MAX";
     return `Lv.${input.level || 0}`;
   })();
 
@@ -857,6 +898,7 @@ function build(input) {
     levelText: heroLevelDisplay,
     isReady,
     isAwakened,
+    readyAtMax,
   });
 
   const sections = [hero];
@@ -874,7 +916,7 @@ function build(input) {
       })
     );
   } else if (scenario === "ready") {
-    sections.push(buildTrialReadyCard({ readyTrial: input.readyTrial }));
+    sections.push(buildTrialReadyCard({ readyTrial: input.readyTrial, atMaxLevel }));
   } else if (scenario === "awakened") {
     sections.push(buildAwakenedChip());
   }
@@ -892,6 +934,7 @@ function build(input) {
       scenario,
       liffUri: input.liffUri,
       liffUriSummary: input.liffUriSummary,
+      atMaxLevel,
     })
   );
 
@@ -922,6 +965,7 @@ function buildHeroExplicit({
   levelText,
   isReady,
   isAwakened,
+  readyAtMax,
 }) {
   const avatarBorder = isReady || isAwakened ? COLORS.amber400 : "#FFFFFF";
 
@@ -933,12 +977,12 @@ function buildHeroExplicit({
   }
 
   const isMax = !expNext && expCurrent > 0;
-  const expText = isReady
+  const expText = readyAtMax
     ? `MAX · ${formatExp(expCurrent)} / ${formatExp(expCurrent || expNext || 0)}`
     : isMax
       ? "MAX"
       : `${formatExp(expCurrent)} / ${formatExp(expNext)}`;
-  const clampedRate = isReady ? 100 : Math.max(0, Math.min(100, expRate || 0));
+  const clampedRate = readyAtMax ? 100 : Math.max(0, Math.min(100, expRate || 0));
 
   const heroBg = isAwakened
     ? {
