@@ -5,7 +5,7 @@ module.exports = {
       code: {
         type: "string",
         minLength: 1,
-        maxLength: 10,
+        maxLength: 50,
       },
       startAt: {
         type: "string",
