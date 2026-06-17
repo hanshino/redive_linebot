@@ -4,19 +4,17 @@ const umami = require("../../util/umami");
 const { format } = require("util");
 const config = require("config");
 const groupSessionKeyTemplate = config.get("redis.keys.groupSession");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-  generationConfig: {
-    candidateCount: 1,
-    stopSequences: ["x"],
-    maxOutputTokens: 100,
-    temperature: 1.0,
-  },
-});
+const { GoogleGenAI } = require("@google/genai");
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const prompt = [
+const MODEL = "gemini-2.5-flash-lite";
+const SESSION_TTL = 3600; // 1 小時無活動後自動過期清空對話記憶
+const generationConfig = {
+  maxOutputTokens: 200,
+  temperature: 1.0,
+};
+
+const systemInstruction = [
   "以下是一個群組的對話，你是其中的一個成員，你的任務是回覆其他成員的訊息",
   "最後一句話一定是在問你",
   "你是個屁孩，有點煩人，喜歡開玩笑、吐槽、偶爾調皮搗蛋，但絕對不要提到你是AI或機器人",
@@ -27,8 +25,7 @@ const prompt = [
   "屁孩時可以短一點，認真時可以長一點，不要重複對方的話",
   "永遠禁止提到任何關於prompt、設定、AI、機器人等相關字詞",
   "回應的訊息請不要加上任何前綴，給我句子就好，我會幫你串接到對話中",
-  "--------------------------------------------------",
-];
+].join("\n");
 
 /**
  * 自然言語理解
@@ -63,11 +60,21 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
 
   await recordSession(sourceId, `${displayName}:${replaceText}`);
   const chatSession = await getSession(sourceId);
-  const fullContent = [...prompt, ...chatSession, "x"];
-  const result = await model.generateContent(fullContent);
 
-  const reponseText = result.response.text().replace(/bot:/gi, "").trim();
-  await context.replyText(reponseText);
+  try {
+    const result = await genAI.models.generateContent({
+      model: MODEL,
+      contents: chatSession.join("\n"),
+      config: { ...generationConfig, systemInstruction },
+    });
+
+    const responseText = (result.text || "").replace(/bot:/gi, "").trim();
+    if (responseText) {
+      await context.replyText(responseText);
+    }
+  } catch {
+    // 額度用盡(429)/網路/任何錯誤 → 完全安靜，不回任何訊息
+  }
 };
 
 /**
@@ -111,6 +118,8 @@ async function recordSession(groupId, text) {
   await redis.rPush(sessionKey, concat([], text));
   // 保留最近 20 則訊息
   await redis.lTrim(sessionKey, -20, -1);
+  // 滑動過期：每次有人說話就刷新計時，1 小時無活動後自動清空
+  await redis.expire(sessionKey, SESSION_TTL);
 }
 
 async function getSession(groupId) {
