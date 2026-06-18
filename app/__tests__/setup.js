@@ -12,6 +12,7 @@ jest.mock("../src/util/redis", () => ({
   exists: jest.fn().mockResolvedValue(0),
   expire: jest.fn().mockResolvedValue(1),
   lPush: jest.fn().mockResolvedValue(0),
+  rPush: jest.fn().mockResolvedValue(0),
   rPop: jest.fn().mockResolvedValue(null),
   lRange: jest.fn().mockResolvedValue([]),
   lTrim: jest.fn().mockResolvedValue("OK"),
