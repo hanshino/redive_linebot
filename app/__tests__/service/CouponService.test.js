@@ -37,7 +37,7 @@ describe("CouponService.create", () => {
     expect(id).toBe(7);
     const row = CouponCode.create.mock.calls[0][0];
     expect(row.code).toBe("XMAS");
-    expect(row.reward).toEqual({ type: "god_stone", value: 500 });
+    expect(row.reward).toBe(JSON.stringify({ type: "god_stone", value: 500 }));
     expect(row.start_at).toBeInstanceOf(Date);
     expect(row.end_at).toBeInstanceOf(Date);
   });
@@ -130,7 +130,7 @@ describe("CouponService.update", () => {
     await CouponService.update(1, valid);
     expect(CouponCode.update).toHaveBeenCalledWith(
       1,
-      expect.objectContaining({ reward: { type: "god_stone", value: 500 } })
+      expect.objectContaining({ reward: JSON.stringify({ type: "god_stone", value: 500 }) })
     );
     expect(CouponUsedHistory.countByCoupon).not.toHaveBeenCalled();
   });

@@ -25,7 +25,8 @@ function toRow({ code, startAt, endAt, reward }) {
     code,
     start_at: moment(startAt).toDate(),
     end_at: moment(endAt).toDate(),
-    reward: { type: "god_stone", value: reward },
+    // ponytail: knex auto-stringifies objects on insert but NOT on update; store JSON text so both paths work
+    reward: JSON.stringify({ type: "god_stone", value: reward }),
   };
 }
 
