@@ -2,7 +2,7 @@ const { text } = require("bottender/router");
 const { get } = require("lodash");
 const minimist = require("minimist");
 const i18n = require("../../util/i18n");
-const ajv = require("../../util/ajv");
+const CouponService = require("../../service/CouponService");
 const couponCode = require("../../model/application/CouponCode");
 const couponUsedHistory = require("../../model/application/CouponUsedHistory");
 const { inventory } = require("../../model/application/Inventory");
@@ -31,30 +31,16 @@ async function adminAdd(context) {
     get(args, "reward", get(args, "r")),
   ];
 
-  const data = { code, startAt, endAt, reward };
-  const validate = ajv.getSchema("couponAdd");
-  const valid = validate(data);
-
-  if (!valid) {
-    DefaultLogger.warn(
-      `[CouponController.addCoupon] Validation failed: ${JSON.stringify(validate.errors)}`
-    );
-    return context.replyText(i18n.__("message.coupon.admin_add_invalid_param"));
-  }
-
   try {
-    const id = await couponCode.create({
-      ...data,
-      reward: {
-        type: "god_stone",
-        value: reward,
-      },
-      start_at: moment(startAt).toDate(),
-      end_at: moment(endAt).toDate(),
-    });
-
+    const id = await CouponService.create({ code, startAt, endAt, reward });
     return context.replyText(i18n.__("message.coupon.admin_add_success", { id, code }));
   } catch (e) {
+    if (e.code === "COUPON_INVALID") {
+      DefaultLogger.warn(
+        `[CouponController.adminAdd] Validation failed: ${JSON.stringify(e.errors)}`
+      );
+      return context.replyText(i18n.__("message.coupon.admin_add_invalid_param"));
+    }
     DefaultLogger.error(e);
     return context.replyText(i18n.__("message.coupon.admin_add_failed"));
   }
