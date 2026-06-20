@@ -1,8 +1,8 @@
-# 世界王系統重構 — 腦力激盪進度（進行中）
+# 世界王系統重構 — 腦力激盪進度（完成,待 review）
 
-> **狀態:腦力激盪進行中。** 2026-05-31 起，2026-06-06 接續推進。
-> 本文是「恢復用」存檔：記錄已拍板的決策、決策理由、以及還沒討論的待辦。
-> **進度**:核心叢集 §A 獎勵定位 / §B 發放 / §C 生命週期 已定（**D1–D12**）；戰鬥叢集 §F 戰鬥數值與三職機制 已定（**D13–D21**）。**下次從 §4.B-餘 獎勵數值階梯 接續**（§F + 每日頻率已備齊,可算 faucet 速率）。
+> **狀態:腦力激盪完成（D1–D30 全拍板,含對抗式審查修正)。** 2026-05-31 起,2026-06-06、2026-06-20 接續,2026-06-20 一口氣收尾 + 6-lens 對抗式審查補強。
+> 本文是「恢復用」存檔:記錄已拍板的決策與理由。
+> **進度**:全部設計決策已定 — §A/§B/§C → D1–D12、§F → D13–D21、§B-餘/§D/§E/§G/§H/§I/§J → D22–D28、對抗式審查修正 → D29–D30 + D22/D24/D25/D27 補強。**下一步 = user review 本 spec → 通過後進 writing-plans 出實作計畫。**
 > **分支**:`feat/worldboss-redesign`（2026-06-06 從 worktree 改為主目錄正常開發；遠端 `origin/feat/worldboss-redesign` 待 force-push 更新）。
 
 ---
@@ -180,40 +180,136 @@
 
 > **§F 整包精神**:平靜期極簡(純打)、所有複雜度與三職同台全收進狂暴窗口;每個機制都綁在「玩家出手」或「Redis TTL」上、零 cron、零背景 tick。
 
+### D22. 獎勵階梯與 faucet（§B-餘,全可調）
+獎勵只在結算發(D10)、一次冪等批次(D11)、自動入袋(D11)。幣別:強化素材(主)+ 女神石(少量頂獎,D7)+ MVP 稱號(成就軌,近零成本)。
+- **強化素材 = 唯一通用素材**(D9),進 Inventory ledger,新 item id。
+- **sink(強化成本曲線)**:`cost(L) = L × 8`(線性遞增,可調 base=8)。+1=8、+2=16 … +10=80,**單件滿強 = Σ = 440 素材**;一套 3 件 = 1320。
+- **faucet(每日擊殺結算,每人按 role 在自己那張榜)**:
+  - 參與獎(有效出手 ≥1 且王被擊殺):**10 素材**。
+  - 名次獎(你 role 對應那張榜):#1 +50 / #2–3 +35 / #4–10 +20 / #11–30 +10 / #31+ +0。
+  - MVP(=該榜 #1):額外 **30 女神石 + MVP 稱號**(成就),素材已含在 #1。
+  - **逃跑日(到期沒打死,D3/D12)**:只發參與獎 5 素材,無名次/MVP/女神石。
+- **時間感**:頂尖玩家 ~60 素材/日 → 單件 ~7 天、整套 ~3 週;中段 ~30/日 → 單件 ~15 天、整套 ~6 週。女神石注入受控極小(每日僅 3 名 MVP × 30 = 90/全服),配合既有流出仍近中性。
+- **單一 role 只打單一榜**:DPS 永遠不會在治療/格擋榜,故每人結算 = 參與 + 自己榜名次(+ MVP 若 #1),三榜玩家不重疊,計算單純。
+
+### D23. 即時體驗 = **Socket.IO `/world-boss` namespace,debounced 快照廣播**（§D）
+- 新 namespace(現僅後台聊天用 socket);**伺服器每次有動作解算後,廣播「debounced 快照」(~2–4 Hz,非每動作一事件)**:當前王 HP%/階段、三榜 top、最近 K 筆戰報 feed。出手量再大,頻寬都被快照頻率 bound 住(ponytail)。
+- **LIFF 世界王頁**:大血條(平靜/狂暴變色)+ 三榜即時 + 滾動戰報 feed + 依 role 顯示動作鈕(攻擊/格擋 或 復活/護盾),鈕 POST `/api/world-boss/*`,**走與 LINE 指令同一條 service**(共用,不重寫)。
+- **狂暴瞬間**:階段翻 狂暴 時發特別事件 → LIFF 閃「狂暴!」橫幅 + 顯示倒下批次。這就是 no-push 下做出「即時感」的回報,也是玩家開著 LIFF 盯戰場的理由。
+- 只廣播**公開戰況**;私人狀態(你倒了沒)在你自己 load/出手時 pull。Auth 走既有 LIFF token / `/api` middleware。聊天維持 reply-only。
+
+### D24. 指令 / 動作 UX（§E）
+- **動詞**:DPS `#攻擊`(沿用);坦克 `#格擋`;補師 `#復活` + `#護盾`;查詢 `#世界王`(當前王 HP%/階段/自己貢獻/三榜 top,pull-based 發現性 §C)。
+- **倒下回饋**:no-push 下,你下次出手才知自己倒了 → `#攻擊` 時 reply「你已倒下,等補師復活或約 N 分後自然恢復(剩 ~M 分)」,**該次動作駁回、不扣精力**(不二次懲罰)。
+- **與群組 5 分鐘批次並存**:新動詞回覆**沿用既有群組批次 flush**(不開新的即時 push 例外,守 §5 硬限制)。群組玩家拿批次文字、LIFF 盯戰者拿即時 — 兩條並存。
+- **戰報 piggyback 積極度**:戰報卡只在**下次世界王互動或 LIFF 開啟**時前置一次(看過清未讀旗標),且與「今日新王公告」合一(D11/§C)。**不污染其他功能的指令**;完全不再碰世界王的休閒玩家收不到 = no-push 固有天花板,接受。
+
+### D25. 資料模型重構（§G）
+- **`world_boss_event` 加**:`status`(pending|active|killed|expired)、`killed_at`、`settled_at`(事件級結算冪等守衛,結算 cron 先檢查 NULL)。HP 仍動態算(不存),靠加索引加速。
+- **`world_boss_event_log` 加**:`role`(dps|healer|tank)、`contribution`(int,該動作在「自己榜單位」的點數)。**`damage` 只記對王傷害(僅 DPS 非 0,驅動 HP)**;`contribution` 驅動榜(傷害榜=SUM(damage)、治療/格擋榜=SUM(contribution) WHERE role)。狂暴 ×2 同時作用在 damage(DPS)與 contribution。
+- **待救池 = Redis ZSET(不開新 MySQL 表)**:`ZADD wb:pool:{event} {knocked_ts} {user}`;`#復活` = `ZPOPMIN` K;倒下檢查 = `ZSCORE`;自然恢復懶評估 = 出手時若 `ts+T<now` → `ZREM` + 放行。救援/護盾動作本身記進 LOG(供治療榜計分 + 結算),故池可純暫態。Redis 掉 = 全員恢復(對玩家寬容,可接受)。
+- **護盾 token / 坦克格擋窗口 = Redis**:`wb:shield:{event}:{user}`(擊倒時消耗)、`wb:block:{event}`(TTL 窗口)。
+- **獎勵冪等表 `world_boss_reward_log`**(抄 `JankenDailyRewardLog`):unique **`(user_id, world_boss_event_id)`**(每人每 event 一筆,因單 role → 一次算完參與+名次+MVP),`tryInsert` 撞鍵跳過 + **同一 trx 內發 Inventory ledger**;存 `materials/stones/board/rank/is_mvp` 供戰報卡與稽核。
+- **`player_equipment` 加 `enhance_level`**(int default 0,D9);有效屬性 = base ×(1 + 0.05 × enhance_level)。
+- **新 item id = 強化素材**(進 Inventory ledger,如 `ENHANCEMENT_MATERIAL_ITEM_ID`,impl 時確認未占用的 id + 註冊 config/item meta)。
+- **新表 `world_boss_role`**:`user_id PK, role, chosen_at, reselect_count`。DPS 子風格(劍士/法師/盜賊)沿用既有職業(D15);補/坦戰鬥不看職業。
+- **補索引**(§2「全程無索引」):log 上 `(world_boss_event_id)`、`(world_boss_event_id, user_id)`、`(world_boss_event_id, role)`、`(world_boss_event_id, created_at)`(狂暴「最近 N 攻擊者」批次查詢用)。
+- **死欄位重新賦意義(取代淘汰)**:`world_boss.attack` → 狂暴反擊機率%、`defense` → 進場批次大小 N、`speed` → 狂暴血量門檻%、`luck` → 自然恢復分鐘 override(0/null 時回退 D21 預設)。→ 變成**每隻王的戰鬥調性旋鈕**,撐起 D12 王圖鑑多樣性。`gold` 仍棄用(結算數字放 config,不放 boss row,好調)。
+
+### D26. 既有 bug 清理（§H,隨重構順手清)
+- `#worldrank` 呼叫不存在的 `getTopTen()` → 改打新榜查詢。
+- `boss_top_damage` 永遠解不開 → 結算時把「傷害榜 MVP」當 `isTopDamage` 餵給 `AchievementEngine.evaluate`,正式接上。
+- `revokeAttack` sort 錯對象(`:161`)→ 隨 §J 夢幻回歸去留處理(下方 D28 = 砍,連 bug 一起消失)。
+- `destory` 拼錯(`:62`)→ 正名 `destroy` + 改 admin caller。
+- `/worldrank /allevent /bosslist` 原始 JSON dump → 換正式 Flex 或退役(debug 指令)。
+- `WorldBossUserAttackMessage.all()` INNER join → LEFT join + 去重(隨 §J 自訂訊息保留一起修)。
+
+### D27. 遷移（§I）
+- **角色預設**:現有玩家全 `role=dps`(向前相容,D5);新玩家首選 role 免費。
+- **一次免費重選**:所有玩家(含現有)一次免費改 role → 能無痛轉補/坦;之後再改要付女神石(金額可調,守 D5「永久、付代價才換」)。
+- **歷史 log 相容**:新欄位 `role` default `'dps'`、`contribution` default 0;舊資料不重洗,查詢用 `COALESCE`(懶遷移)。
+- **裝備**:`enhance_level` default 0,既有 gear 全 +0 起跳。
+
+### D28. 既有機制去留（§J）
+- **夢幻回歸 `#夢幻回歸` → 砍**。它是木樁時代「優化自己傷害 log」的遺物(當時 contribution 就是一切、又沒別的事做);新迴圈(共殺王/三榜/成長)不需要,而且它 buggy(§2)。砍掉連 bug 一起消失。未來若需女神石 sink,role 重選費 / 素材換石已覆蓋。
+- **自訂攻擊訊息 → 留 + 修**。純風格、玩家愛、與新模型不衝突,還能豐富 D23 戰報 feed 的個性;順手修 INNER join bug(D26)。
+
+### 對抗式審查修正（2026-06-20）
+
+6-lens 對抗式審查(已對程式碼查證)後,下列確認為真並依推薦定案。骨架(無血條 / settlement-only / 分職榜 / 抄 Janken + RaceAdvance 範本)經確認自洽,以下為補強;審查駁回的(懶評估自然恢復、no-push 天花板等)確認非問題,不動。
+
+**[修 D25/D27] 結算身分邊界（blocker,已對 code 證實)**
+`world_boss_event_log.user_id` 存內部數字 `user.id`,但 Inventory/裝備/成就全吃 LINE `platform_id` 字串 → 照抄 Janken 會**靜默發錯人**(餘額歸到不存在帳號)。定案:
+- LOG 維持數字 `user.id`(向後相容)。
+- `reward_log.user_id` 與所有發放(`increaseGodStone`/`addToInventory`/`AchievementEngine.evaluate`)一律用 **platform_id**。
+- 結算 cron:用數字 id 從 log 聚合算榜 → 進獎勵迴圈前一個明確的 **`resolveUserIds`** 步驟(JOIN user 表,沿用 `getTopRank` 既有 `user.id`→`platform_id` 路徑)轉 platform_id → 才發。impl plan 必含 resolveUserIds。
+
+**[修 D25/D3/D12] 擊殺→結算觸發路徑（blocker)**
+舊碼 `remainHp<=0` 只 log 後 return、零副作用,且只有「到時」cron 沒有「打死即結算」。定案:
+- 致命刀:status CAS `active→killed` + 寫 `killed_at`,與該刀 log insert 同 trx。
+- 結算 = 對齊 `RaceAdvance` 的**高頻 cron(每分鐘)**:撈 `status='killed' AND settled_at IS NULL` → 發擊殺獎;撈 `status='active' AND end_time<now` → 設 `expired` → 發參與獎。`settled_at` 為冪等守衛。
+- `attackOnBoss` 偵測 `status≠active` → 駁回該刀、不扣精力(D24 契約)。
+
+**[修 D25] 多 item 結算真冪等**
+一次結算對一人發 素材(新 itemId)+ MVP 女神石(999)= 兩筆 ledger,Janken 單筆原子性不適用。定案:`tryInsert` + 全部 ledger insert(素材/女神石/底裝)在**同一 `mysql.transaction`**,`reward_log` 為 trx **最後一步** → 任一筆失敗整個 rollback(含 reward_log)→ 安全重試。不留 impl 自由發揮。
+
+**[修 D25/D21] 索引與狂暴批次語意**
+- 補最高頻查詢索引:`countCostByDate` 是 `WHERE user_id=? AND created_at BETWEEN`(不帶 event_id,因每日換王)→ 加 **`(user_id, created_at)`**。
+- 進場批次語意定死 = **「最近 10 分鐘內最後 20 筆攻擊」(以 log 列計,不做應用層去重)** → 走 `(event_id, created_at)` 索引。
+- 三榜結算 `ORDER BY SUM` 走 filesort,單日單 event 量有限,已知可接受。
+
+**[修 D25/§F D16/D17] 貢獻落帳時序契約**
+護盾/格擋的「實際救/擋幾個」在動作當下未知,只在未來擊倒解算才確定。定案:
+- contribution 在**效果實際解算成功後**才以真實數量寫 append-only LOG(復活 = `ZPOPMIN` 實際彈出數;格擋 = 由觸發批次那一刀的 handler **代寫**坦克吸收數 → 故 Redis `wb:block`/`wb:shield` 值必須存 `owner_user_id` 才知記功給誰)。
+- 三榜 = `SUM(contribution) FROM log`;**Redis 只驅動即時互動、絕不作計分來源**。Redis 掉 = 該段即時互動丟失,但已落帳 contribution 不丟。
+
+**[修 D24] 即時 bypass:本人狀態回饋 / 狂暴公告 / 戰報卡**
+群組 5 分批次是 reply-driven 無 timer,把這些塞進批次體感極差。定案分兩類:
+- **戰況廣播** → 進既有批次(防洗版)。
+- **針對本人的一次性狀態回饋**(倒下駁回 / 精力耗盡 / 未選 role)→ **bypass 批次,即時 `replyText`**。
+- **狂暴進場**(低頻高訊號)→ 觸發那一刀的群組回覆 bypass 廣播一次「王進入狂暴!坦克格擋、補師待命」(一場王僅一次)。格擋/護盾窗口(~5 分)設計成 ≥ 批次延遲 + 反應時間 → LIFF 即時加成、群組批次保底協調通道。
+- **戰報卡**:`#攻擊` 也是載體 —— 玩家隔天第一次 `#攻擊` 新王時前置昨日戰報(與新王公告合一,bypass 批次、一天最多一次);未讀旗標只在戰報**真的送達**後才清。
+
+**[修 D22] 經濟數值校正（修自相矛盾 + 縮放 + 稀缺溢價)**
+原 D22「時間感」把前段(#4–10, 30/日)誤標成中段,長尾(#31+, 10/日)實際整套 ~132 天、低估多數玩家 4–6 倍(真．自相矛盾)。定案:
+- **時間感分三層對齊名次表**:#1 ~60/日 → 整套 ~22 天;前段 ~30/日 → ~44 天;長尾(調整後)~23/日 → ~57 天(~8 週)。
+- **名次帶改百分位**(隨全服人數縮放,避免「越多人玩長尾越被擠到 0」):**top 1% / 5% / 20% / 其餘**,取代絕對 #1/#2–3/#4–10/#11–30/#31+。
+- **長尾保底上調**:參與獎 10→**15**;最低名次帶(其餘)+0 → **+8**。
+- **有效出手 = role-aware 動作計次**:該 event 內 ≥1 筆「吃了精力的合法動作」(攻擊/格擋/復活/護盾)即給參與獎,**與最終 contribution 是否 >0 脫鉤**(否則補/坦沒趕上狂暴窗口會連參與獎都沒)。
+- **稀缺溢價(讓 D5 自我平衡市場真的啟動)**:治療/格擋榜名次獎隨**該榜有效參與人數反比縮放**(榜越空、單位貢獻換素材越高);遷移頭兩週給補/坦轉職限時加成。目標配比 DPS:補:坦 ≈ **7:2:1** 當調節錨點。
+
+**[新增 D29] 底裝取得管道**
+強化迴圈(D8/D9/D20/D22)假設玩家已有可強化底裝,但現況唯一路徑 `addToInventory`、無掉落/商店,且 D7/D8 已排除掉整件裝 → 遷移後全服可能 0 裝、素材空堆;補/坦 gear 在圖鑑根本不存在。定案:
+- **選 role(D27)時自動發該 role 的 +0 三件底裝**(走既有 `addToInventory`,撞 unique 跳過 = 天然冪等)。
+- **圖鑑補入帶 `support_power`/`block_power` 的 healer/tank 底裝**(seed)。
+- v1 成長軸 = **強化**(D8/D9),不是「換更好的裝」;高稀有度裝取得維持現狀(addToInventory/admin),不進 v1 打王迴圈。
+
+**[新增 D30] 冷啟動安全閥（守 D5「輔助是加成不是門檻」)**
+遷移後全服 100% DPS,狂暴擊倒壓力是為「有補師撈池」設計 → 無補師時王可能卡在 35% 連日 expired、成長迴圈第一週就斷。定案:
+- **狂暴擊倒壓力(進場批次 N + 反擊機率)隨全服 healer+tank 有效動作比例動態下調**(tick-free,出手當下用 `(event_id, role)` 索引解算)→ 沒補沒坦時狂暴「可生還但較慢」,而非硬牆。
+- **自然恢復 T 預設下調(~15 分,可調)**,讓純 DPS 也能自我續戰。
+- **writing-plans 硬性驗收**:蒙地卡羅模擬(全 DPS、預設反擊/批次/恢復、N 玩家、每人 ~10 刀)必須確認「當日王 HP 能歸零」才放行進實作。
+
+> **§3 全數拍板(D1–D30,含 2026-06-20 對抗式審查修正)。** §F 之後的 §B-餘/§D/§E/§G/§H/§I/§J 皆已轉為決策,全照「最小可行 + 守 §5 硬限制 + 抄既有冪等/生命週期範本」的原則定;審查補強了結算身分邊界、擊殺觸發、真冪等、底裝取得與冷啟動安全閥。
+
 ---
 
 ## 4. 待討論（下次從這裡接續）
 
-> **§A/§B/§C 已轉為 D7–D12;§F 戰鬥數值與三職機制已轉為 D13–D21（見 §3）。** 下次從 **§B-餘 獎勵數值階梯** 接續(§F 戰鬥規模 + §C 每日頻率都備齊了,可算 faucet 速率),再往下 §D 即時體驗 / §E 指令 UX / §G 資料模型。
+> **全部待討論項目已轉為決策(D1–D30,含對抗式審查修正,見 §3)。** 腦力激盪階段完成。**下一步 = 待 user review 本 spec → 通過後進 writing-plans 出實作計畫。**
 
-### F. 戰鬥數值與三職機制細節 ✅ 已定 → D13–D21（見 §3）
-
-### B-餘. 獎勵數值階梯〔下次起點〕
-- 參與獎 vs 三榜名次獎 vs MVP 的素材/女神石階梯數字（= faucet 速率,§F 戰鬥規模 + §C 每日頻率已備齊,可開算）。
-
-### D. 即時體驗（LIFF + Socket.IO）
-- 玩家端世界王 LIFF 頁：即時血條、三榜即時跳動、攻擊/治療/格擋按鈕（呼叫 REST）。
-- 新 Socket.IO namespace + `io.emit`（目前只有後台聊天用）。聊天維持 reply-only。
-- 這是繞過 push 限制做出「即時感」的正解，也給玩家開著 LIFF 盯戰場的理由。
-
-### E. 指令 / 動作 UX
-- 三職指令動詞（`#攻擊` / `#治療` / `#復活` / `#格擋` …）。
-- 被擊倒狀態的回饋（下次出手才知道自己倒了 → reply 提示「你已倒下，等補師復活或自然恢復」）。
-- 與現有群組 5 分鐘批次節流如何並存。
-- **戰報 piggyback 的積極度**（每次互動前置 vs 只在相關指令/LIFF；牽涉群組批次節流）。
-
-### G. 資料模型重構
-- event 加 `status/killed_at/結算` 欄位；log 加 `role`/動作種類；待救池表；**獎勵發放冪等表**（unique `(user_id, world_boss_event_id[, board])`，套 `JankenDailyRewardLog` 式）；`player_equipment` 加 `enhance_level`；**新增「強化素材」item id**（進 Inventory ledger）；補齊索引 `(world_boss_event_id)/(user_id)/(created_at)`。
-- 死欄位 `attack/defense/speed/luck` 淘汰或重新賦予意義（boss 還手數值？）。
-
-### H. 既有 bug 清理（見 §2 清單）
-
-### I. 遷移
-- 現有玩家全是 DPS（永久職業已鎖 `classAdv`）；新增補/坦角色要不要給一次免費重選。
-- 既有 `world_boss_event_log` 歷史資料相容。
-
-### J. 既有機制去留
-- 「夢幻回歸」「自訂攻擊訊息」在新系統的去留 / 改造。
+| 原待辦 | 決策 |
+|---|---|
+| §A/§B/§C 獎勵定位/發放/生命週期 | D7–D12 |
+| §F 戰鬥數值與三職機制 | D13–D21 |
+| §B-餘 獎勵數值階梯 | D22 |
+| §D 即時體驗(LIFF + Socket.IO) | D23 |
+| §E 指令 / 動作 UX | D24 |
+| §G 資料模型重構 | D25 |
+| §H 既有 bug 清理 | D26 |
+| §I 遷移 | D27 |
+| §J 既有機制去留 | D28 |
+| 對抗式審查修正(2026-06-20) | 補強 D22/D24/D25/D27 + 新增 D29 底裝取得、D30 冷啟動安全閥 |
 
 ---
 
@@ -232,4 +328,4 @@
 
 ## 6. 接續方式
 
-下次新對話：載入專案記憶後會看到 `project_worldboss_redesign` 指向本文。**核心經濟/生命週期(D7–D12)+ 戰鬥叢集(D13–D21)已定,直接從 §4.B-餘 獎勵數值階梯 接續**一次一題的腦力激盪即可。本文 §2 系統地圖 + 裝備/道具探勘可省去重新摸 code 的功夫。分支 `feat/worldboss-redesign`（主目錄正常開發）。
+下次新對話：載入專案記憶後會看到 `project_worldboss_redesign` 指向本文。**全部設計決策已拍板(D1–D30,含對抗式審查修正)。下一步 = user review 本 spec → 通過後 invoke writing-plans 出實作計畫(milestone 拆解)。** writing-plans 需內含兩個硬驗收:① resolveUserIds(結算 platform_id 邊界,見審查修正);② 蒙地卡羅冷啟動模擬(D30,全 DPS 可擊殺當日王)。本文 §2 系統地圖 + 裝備/道具探勘可省去重新摸 code 的功夫。分支 `feat/worldboss-redesign`（主目錄正常開發）。
