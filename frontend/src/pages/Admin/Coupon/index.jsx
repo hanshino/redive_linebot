@@ -185,9 +185,19 @@ export default function Coupon() {
         <ToggleButtonGroup
           exclusive
           size="small"
+          color="primary"
           value={statusFilter}
           onChange={(e, v) => v && setStatusFilter(v)}
-          sx={{ "& .MuiToggleButton-root": { borderRadius: "8px !important" } }}
+          sx={{
+            flexWrap: "wrap",
+            gap: 1,
+            "& .MuiToggleButtonGroup-grouped": {
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: "8px !important",
+              "&:not(:first-of-type)": { ml: 0, borderLeft: "1px solid", borderColor: "divider" },
+            },
+          }}
         >
           <ToggleButton value="all">全部</ToggleButton>
           <ToggleButton value="active">進行中</ToggleButton>

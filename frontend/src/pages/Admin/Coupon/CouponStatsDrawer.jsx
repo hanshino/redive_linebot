@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Drawer,
+  Toolbar,
   Box,
   Typography,
   Divider,
@@ -44,6 +45,7 @@ export default function CouponStatsDrawer({ couponId, onClose }) {
 
   return (
     <Drawer anchor="right" open={couponId != null} onClose={onClose}>
+      <Toolbar />
       <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
         {loading || !data ? (
           <Skeleton variant="rounded" height={200} />
