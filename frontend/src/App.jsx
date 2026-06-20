@@ -41,6 +41,7 @@ import AdminWorldbossEvent from "./pages/Admin/WorldbossEvent";
 import AdminWorldbossMessage from "./pages/Admin/WorldbossMessage";
 import AdminWorldbossMessageCreate from "./pages/Admin/WorldbossMessageCreate";
 import AdminWorldbossMessageUpdate from "./pages/Admin/WorldbossMessageUpdate";
+import AdminCoupons from "./pages/Admin/Coupon";
 import RequireAdmin from "./components/RequireAdmin";
 
 function RedirectFromTransaction() {
@@ -124,6 +125,7 @@ export default function App() {
               path="admin/worldboss-message/update/:id"
               element={<AdminWorldbossMessageUpdate />}
             />
+            <Route path="admin/coupons" element={<AdminCoupons />} />
           </Route>
         </Route>
       </Routes>

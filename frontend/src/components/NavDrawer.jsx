@@ -32,6 +32,7 @@ import CelebrationIcon from "@mui/icons-material/Celebration";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import HistoryIcon from "@mui/icons-material/History";
 import InsightsIcon from "@mui/icons-material/Insights";
+import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
@@ -72,6 +73,7 @@ const adminItems = [
   { label: "世界王設定", path: "/admin/worldboss", icon: PetsIcon },
   { label: "世界王活動", path: "/admin/worldboss-event", icon: SportsHandballIcon },
   { label: "世界王訊息", path: "/admin/worldboss-message", icon: FitnessCenterIcon },
+  { label: "優惠券管理", path: "/admin/coupons", icon: ConfirmationNumberIcon },
 ];
 
 const linkItems = [
