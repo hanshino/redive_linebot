@@ -21,7 +21,7 @@ class CouponUsedHistory extends base {
   dailyByCoupon(couponCodeId) {
     return this.knex
       .where({ coupon_code_id: couponCodeId })
-      .select(this.connection.raw("DATE(created_at) as date"))
+      .select(this.connection.raw("DATE_FORMAT(created_at, '%Y-%m-%d') as date"))
       .count("* as count")
       .groupBy("date")
       .orderBy("date", "asc");

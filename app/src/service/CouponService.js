@@ -55,7 +55,7 @@ async function find(id) {
     redeemedCount,
     redemptions,
     dailyRedemptions: daily.map(r => ({
-      date: moment(r.date).format("YYYY-MM-DD"),
+      date: r.date,
       count: Number(r.count),
     })),
   };
