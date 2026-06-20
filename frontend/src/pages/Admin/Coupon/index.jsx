@@ -82,10 +82,7 @@ export default function Coupon() {
     [coupons, search, statusFilter]
   );
 
-  const activeCount = useMemo(
-    () => coupons.filter(c => deriveStatus(c) === "active").length,
-    [coupons]
-  );
+  const activeCount = coupons.filter(c => deriveStatus(c) === "active").length;
 
   const handleSave = async payload => {
     try {

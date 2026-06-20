@@ -11,33 +11,20 @@ import {
   Skeleton,
   Chip,
 } from "@mui/material";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import * as couponService from "../../../services/coupon";
 
 export default function CouponStatsDrawer({ couponId, onClose }) {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (couponId == null) {
-      setData(null);
-      return;
-    }
+    setData(null);
+    if (couponId == null) return;
     let alive = true;
-    setLoading(true);
     couponService
       .fetchCoupon(couponId)
       .then(d => alive && setData(d))
-      .catch(() => alive && setData(null))
-      .finally(() => alive && setLoading(false));
+      .catch(() => alive && setData(null));
     return () => {
       alive = false;
     };
@@ -47,7 +34,7 @@ export default function CouponStatsDrawer({ couponId, onClose }) {
     <Drawer anchor="right" open={couponId != null} onClose={onClose}>
       <Toolbar />
       <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }}>
-        {loading || !data ? (
+        {!data ? (
           <Skeleton variant="rounded" height={200} />
         ) : (
           <>
