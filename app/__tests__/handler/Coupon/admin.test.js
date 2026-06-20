@@ -5,7 +5,7 @@ jest.mock("../../../src/service/CouponService", () => ({
   update: jest.fn(),
   destroy: jest.fn(),
 }));
-jest.mock("../../../src/util/i18n", () => ({ t: jest.fn(k => k) }));
+jest.mock("../../../src/util/i18n", () => ({ __: jest.fn(k => k) }));
 
 const CouponService = require("../../../src/service/CouponService");
 const handler = require("../../../src/handler/Coupon/admin");
