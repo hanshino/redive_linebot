@@ -1,8 +1,9 @@
-# 世界王系統重構 — 腦力激盪進度（暫停存檔）
+# 世界王系統重構 — 腦力激盪進度（進行中）
 
-> **狀態:腦力激盪進行中、尚未完成。** 2026-05-31 暫停，過陣子接續。
+> **狀態:腦力激盪進行中。** 2026-05-31 起，2026-06-06 接續推進。
 > 本文是「恢復用」存檔：記錄已拍板的決策、決策理由、以及還沒討論的待辦。
-> 下次接續時，從 §4「待討論」第一項（A. 獎勵定位哲學）開始即可。
+> **進度**:核心叢集 §A 獎勵定位 / §B 發放 / §C 生命週期 已定（決策 **D1–D12**）。**下次從 §4.F 戰鬥數值與三職機制 接續**（§4 待辦由上而下）。
+> **分支**:`feat/worldboss-redesign`（2026-06-06 從 worktree 改為主目錄正常開發；遠端 `origin/feat/worldboss-redesign` 待 force-push 更新）。
 
 ---
 
@@ -56,6 +57,13 @@
 - `/worldrank /allevent /bosslist` 回原始 `JSON.stringify` dump（debug 指令？）。
 - `WorldBossUserAttackMessage.all()` 用 INNER join tags → 零標籤訊息隱形、N 標籤訊息回 N 筆重複。
 
+### 裝備系統 & 道具經濟現況（2026-06-06 探勘，獎勵設計地基）
+- **裝備（兩表）**：`equipment`（圖鑑：`id/name/slot[weapon|armor|accessory]/job_id/rarity[common→rare→epic→legendary]/attributes(JSON)/image_url`）+ `player_equipment`（玩家擁有：`user_id/equipment_id/slot/is_equipped`，**unique `(user_id, equipment_id)` → 每件只能擁有一件，重複給會 throw「已擁有此裝備」**）。屬性 JSON 欄位：`atk_percent / crit_rate / cost_reduction / exp_bonus / gold_bonus`。**無等級/星/強化機制（屬性建立後永久不變）**；只有 3 格、各裝一件。
+- **取得管道**：唯一程式路徑 `EquipmentService.addToInventory(userId, equipmentId)`。**沒有合成/商店/掉落/材料系統**。裝備**不在** Inventory ledger，是獨立表。
+- **戰鬥整合**：`EquipmentService.getEquipmentBonuses()` 在 `WorldBossController.attack` 時讀；`atk_percent` 乘傷害、`cost_reduction` 減成本、`exp_bonus` 加經驗。
+- **道具經濟**：`Inventory` 是 **append ledger**（餘額 = `SUM(itemAmount)`，負值=扣）；女神石 `itemId=999`（`increaseGodStone/decreaseGodStone({userId, amount, note, trx})`）；角色 = GachaPool id；**目前無「材料」item 類別（需新增 item id）**。`(userId,itemId)` 索引已於 #727 補上。
+- **冪等黃金範本** = Janken 每日獎勵：`JankenDailyRewardLog.tryInsert()` 撞 unique key `(user_id, reward_date)` 回 `false` 跳過 + 同一 `trx` 內發 ledger（`JankenRewardService.js:21-110`）。**世界王結算照抄此式**：建 reward-log 表 unique `(user_id, world_boss_event_id[, board])`。其他前例：Race（查 `payout` NOT NULL）、Achievement（unique `user_achievements`）、Coupon（查使用歷史）。
+
 ---
 
 ## 3. 已拍板決策（含理由）
@@ -96,28 +104,55 @@
 - 使用者原始願望（補血也算貢獻、能競爭、能拿獎）**依然成立** — 補師在治療榜競爭拿獎，只是不跟 DPS 數字硬擠同一行。
 - **獎勵結構** = 參與/擊殺獎（共同，人人有份）+ 各榜名次獎（個人榮耀）。代價：沒有單一「全場 MVP」，但一職一個 MVP，反而更多人有舞台。
 
+### D7. 獎勵幣別 = **成長迴圈（裝備向），不直接送聊天經驗**
+- 主軸定位選「成長迴圈為主」：boss 主要吐**裝備相關**資源；女神石只當**少量點綴頂獎**；榮耀靠各榜 MVP 稱號（沿用現成成就/稱號軌道，近乎零成本）。
+- **關鍵修正（使用者）**：**不直接送聊天經驗**——那是轉生那套系統（[[chat-level-prestige]]），兩套養成解耦。裝備可帶 `exp_bonus` **間接**加成聊天經驗，但那是裝備被動效果，不是「打贏王→領 X 經驗」的直接掛鉤。
+
+### D8. 加**裝備強化層（可堆疊材料）** — 解掉裝備系統太淺的飽和死局
+- 問題：現有裝備系統很淺（見 §2 探勘）——3 格、每件 unique-owned、無強化。**純掉「整件裝備」會快速飽和**（裝滿 3 格後掉落無用或被系統拒收），撐不起「打王→變強→打更兇」的成長迴圈。
+- 解法：**boss 掉可堆疊「強化素材」**（新 item id，進 Inventory ledger）→ 花素材強化已有裝備。**可堆疊素材永不飽和**，且完美套用現有 ledger + Janken 冪等模式。
+
+### D9. 強化層規格（v1）
+- **決定性 +1**：花 N 個素材保證升一級，sink 在「成本曲線」而非失敗挫折（不做 RNG 掉級）。成本隨等級遞增。
+- **單一通用素材**：v1 只有一種強化素材；架構保留未來分階（低/中/高階）空間。
+- **上限 +10 × 每級 +5%**：有效屬性 = base ×(1 + enhance_level×5%)，滿強 = base ×1.5（數值可細調）。
+- `player_equipment` 新增 `enhance_level`（int, default 0）。
+- **三職共用同一素材**：DPS 強化 `atk_percent`；補師/坦克的 gear 屬性（治療力/格擋力）待 §F 戰鬥定案後補上。同素材通用 → 確保稀缺輔助職也有成長迴圈。
+
+### D10. 經濟獎勵 = **只在結算發**（settlement-only）
+- 每刀回饋 = **戰鬥本身**（傷害數字 / 三榜排名跳動 / 階段·狂暴公告），**不滴經濟**。
+- 素材 + 女神石在**擊殺或逃跑結算**一次發 → 一次結算 = 一個乾淨的**冪等批次**（套 Janken `tryInsert`，每人每 event 一筆 unique key），天然防 ×N 漏發。
+- 素材作為成長貨幣**保持稀缺**（每刀滴會狂吐通膨 + ledger 寫入量爆）。
+- 成就系統不受影響（仍每刀 `evaluate`）。
+
+### D11. 發放方式 = **自動入袋 + 下次互動戰報揭曉**（no claim）
+- 結算直接把獎勵寫進 Inventory（冪等 ledger，就是那筆 reward-log）。
+- 揭曉走 pull-based：(1) 玩家**下次互動**時 reply 前置「戰報卡」（看過清一次性未讀旗標），(2) LIFF 結算頁回顧。
+- **不做 claim**：休閒玩家常忘領 → 參與獎流失 → 客訴；auto-credit 不會漏領、狀態也更單純。
+
+### D12. 開王節奏 = **每日輪替王**（cron 自動開）
+- cron 每天固定時間自動開**一隻全服共王**，HP 調到「全服當天合力打得死」；打死 → 結算 + 隔天開下一隻；到期沒打死 → 王逃跑、只發參與獎。
+- **單一活動**（沿用現有 `getHoldingEventId` 單王限制）；管理員維護**王圖鑑/排程**但不必逐隻手動開（痛點 #2 解）。
+- 與每日攻擊上限對齊（`daily_limit=100`、普攻成本 10 → 約每日 10 刀的「精力」按日結算）。
+
+### §C 補充. 發現性（no-push 下，pull-based 全用上）
+- **LIFF 世界王頁**（常駐當前王：血條/三榜/攻擊鈕）+ **`#世界王` 群組/個人指令**（查當前王/自己貢獻/三榜前段）+ **戰報卡兼新王公告**（下次互動時「揭曉昨日獎 + 宣告今日新王」合一，一次 pull-based 觸達）。
+- 冷啟動限制（完全不互動者收不到）是 no-push 固有天花板，靠習慣 + LIFF + 指令覆蓋積極玩家，接受。
+
 ---
 
-## 4. 待討論（下次從這裡接續，由上而下）
+## 4. 待討論（下次從這裡接續）
 
-> **A 是被中斷的那一題，請從這裡開始。**
+> **§A 獎勵定位 / §B 發放 / §C 生命週期 已轉為決策 D7–D12（見 §3）。** 下次從 **§F 戰鬥數值與三職機制細節** 接續（它是 §B 數字、§D/§E 呈現、§G 資料模型的上游）。
 
-### A. 獎勵定位哲學（痛點 #3 正面對決）
-世界王在遊戲經濟裡扮演什麼？候選：
-1. **成長迴圈為主（裝備/材料/經驗）** — 打王→變強→打更兇的王。裝備現已加世界王傷害（`atk_percent`），迴圈是現成的。低通膨、最黏。女神石只當少量點綴。〔當時我的推薦〕
-2. **女神石水龍頭** — 大方發女神石。誘因最強但衝擊經濟、會通膨（memory 標了石頭帳本 ×N 漏發風險）。需嚴格冪等與產出上限。
-3. **榮耀為主（稱號/排名/紀念）** — 多給面子獎、實質資源少。零通膨但長期誘因可能不足。
+### F. 戰鬥數值與三職機制細節〔下次起點〕
+- **三職動作機制**：DPS 輸出風格；補師 = 復活（撈待救池）+ 補血/護盾；坦克 = 格擋窗口/吸收狂暴反擊。各自的技能組與生效方式。
+- **待救池**：擊倒進池、補師撈「最久沒被救」的人、復活上限/冷卻。
+- **數值**：玩家血量 / 被擊倒判定 / 反擊機率 / 階段（含狂暴）血量門檻 / 狂暴倍率 / 復活與護盾數值 / 每日上限與成本。
+- **補/坦的 gear 屬性**：治療力 / 格擋力等新屬性（接 D9 強化層；補完三職成長迴圈）。
 
-### B. 獎勵細項 + 自動發放 + 冪等
-- 具體發什麼（依 A 的定位）；參與獎 vs 名次獎的數值階梯。
-- **自動結算**：擊殺（`remainHp<=0`）或活動到期時觸發；建議標記 event 為「已結算」狀態，async/cron 算完寫入。
-- **冪等**：必須防重複發（參考 memory「Stone Ledger Refactor / reward ×N leak」）— 需要發放紀錄表 + unique 約束。
-- **no-push 下怎麼領/得知**：auto-credit 進背包 vs 「待領取」claim（下次互動 reply 提示「世界王已討伐，戰利品已送達/點此領取」、或 LIFF 領取頁）。claim 有揭曉感且天然 pull-based。
-
-### C. 生命週期 & 自動化 & 發現性（痛點 #2）
-- cron 自動開王/輪替/結算（參考 `RaceAdvance.js`）；管理員是否仍能手動開/排程/調整。
-- **no-push 下玩家怎麼知道王開了**：LIFF 即時頁 + 下次互動 reply 提示 + 群組查詢指令。
-- event 是否要支援並行 / 自動接續下一隻王。
+### B-餘. 獎勵數值階梯〔暫掛，待 §F + 開王頻率定案〕
+- 參與獎 vs 三榜名次獎 vs MVP 的素材/女神石階梯數字（= faucet 速率，需 §F 戰鬥規模 + §C 每日頻率才能算）。
 
 ### D. 即時體驗（LIFF + Socket.IO）
 - 玩家端世界王 LIFF 頁：即時血條、三榜即時跳動、攻擊/治療/格擋按鈕（呼叫 REST）。
@@ -128,14 +163,10 @@
 - 三職指令動詞（`#攻擊` / `#治療` / `#復活` / `#格擋` …）。
 - 被擊倒狀態的回饋（下次出手才知道自己倒了 → reply 提示「你已倒下，等補師復活或自然恢復」）。
 - 與現有群組 5 分鐘批次節流如何並存。
-
-### F. 戰鬥數值細節
-- 玩家血量 / 被擊倒判定 / 反擊機率 / 階段門檻 / 狂暴倍率。
-- 待救池機制（撈最久沒被救的？復活上限？）。
-- 復活與護盾的數值；每日上限與成本（現 `daily_limit=100`、cost）。
+- **戰報 piggyback 的積極度**（每次互動前置 vs 只在相關指令/LIFF；牽涉群組批次節流）。
 
 ### G. 資料模型重構
-- event 加 `status/killed_at/結算` 欄位；log 加 `role`/動作種類；待救池；獎勵發放冪等表；補齊索引 `(world_boss_event_id)/(user_id)/(created_at)`。
+- event 加 `status/killed_at/結算` 欄位；log 加 `role`/動作種類；待救池表；**獎勵發放冪等表**（unique `(user_id, world_boss_event_id[, board])`，套 `JankenDailyRewardLog` 式）；`player_equipment` 加 `enhance_level`；**新增「強化素材」item id**（進 Inventory ledger）；補齊索引 `(world_boss_event_id)/(user_id)/(created_at)`。
 - 死欄位 `attack/defense/speed/luck` 淘汰或重新賦予意義（boss 還手數值？）。
 
 ### H. 既有 bug 清理（見 §2 清單）
@@ -164,4 +195,4 @@
 
 ## 6. 接續方式
 
-下次新對話：載入專案記憶後會看到 `project_worldboss_redesign` 指向本文。直接從 **§4.A 獎勵定位哲學** 繼續一次一題的腦力激盪即可。本文 §2 系統地圖可省去重新摸 code 的功夫。
+下次新對話：載入專案記憶後會看到 `project_worldboss_redesign` 指向本文。**核心經濟/生命週期已定（D7–D12），直接從 §4.F 戰鬥數值與三職機制 接續**一次一題的腦力激盪即可。本文 §2 系統地圖 + 裝備/道具探勘可省去重新摸 code 的功夫。分支 `feat/worldboss-redesign`（主目錄正常開發）。
