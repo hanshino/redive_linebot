@@ -1,6 +1,7 @@
 jest.mock("../redis", () => ({
   zAdd: jest.fn(),
   zPopMin: jest.fn(),
+  zPopMinCount: jest.fn(),
   zScore: jest.fn(),
   zRem: jest.fn(),
   set: jest.fn(),
@@ -46,22 +47,22 @@ describe("worldBossRedis (LOCK §C — eight platform_id-keyed helpers)", () => 
   });
 
   test("poolPopMin ZPOPMIN count and returns member strings", async () => {
-    redis.zPopMin.mockResolvedValue([
+    redis.zPopMinCount.mockResolvedValue([
       { value: "U1", score: 1 },
       { value: "U2", score: 2 },
     ]);
     const popped = await wbRedis.poolPopMin(7, 2);
-    expect(redis.zPopMin).toHaveBeenCalledWith("wb:pool:7", 2);
+    expect(redis.zPopMinCount).toHaveBeenCalledWith("wb:pool:7", 2);
     expect(popped).toEqual(["U1", "U2"]);
   });
 
   test("poolPopMin normalizes a single (non-array) reply", async () => {
-    redis.zPopMin.mockResolvedValue({ value: "U1", score: 1 });
+    redis.zPopMinCount.mockResolvedValue({ value: "U1", score: 1 });
     expect(await wbRedis.poolPopMin(7, 1)).toEqual(["U1"]);
   });
 
   test("poolPopMin returns [] on empty reply", async () => {
-    redis.zPopMin.mockResolvedValue(null);
+    redis.zPopMinCount.mockResolvedValue(null);
     expect(await wbRedis.poolPopMin(7, 3)).toEqual([]);
   });
 

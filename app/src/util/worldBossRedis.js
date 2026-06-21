@@ -25,7 +25,7 @@ async function poolAdd(eventId, platformId, ts) {
  * @returns {Promise<String[]>}
  */
 async function poolPopMin(eventId, count) {
-  const reply = await redis.zPopMin(keys.pool(eventId), count);
+  const reply = await redis.zPopMinCount(keys.pool(eventId), count);
   if (!reply) {
     return [];
   }
