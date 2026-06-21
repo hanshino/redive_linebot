@@ -74,8 +74,50 @@ exports.settleEvent = async function (eventId) {
 
   const isExpired = event.status === "expired";
 
-  // faucet computed in Task 2; real grant trx in Task 3. Skeleton: grant zeroed.
-  for (const [numericId, platformId] of idMap) {
+  // shared support ratio (addendum §15) - the SAME value M5 uses for enrage
+  // down-scaling; here it drives the D22 support-board scarcity premium.
+  const supportRatio = await WorldBossLog.getSupportRatio(eventId);
+
+  const { perUser, dpsMvpNumericId } = exports._computeFaucet({
+    dpsBoard,
+    healerBoard,
+    tankBoard,
+    isExpired,
+    supportRatio,
+  });
+
+  // participation-only players: anyone with >=1 action (getParticipants) who never
+  // reached a ranked board row. Their reward row is added at the base participation
+  // tier, and their identity is resolved through the GATE (resolveUserIds skips
+  // deleted accounts). Ranked players already carry platform_id in idMap.
+  const participants = await WorldBossLog.getParticipants(eventId);
+  const participationOnly = [];
+  for (const p of participants) {
+    if (!perUser.has(p.user_id)) {
+      perUser.set(p.user_id, {
+        materials: isExpired
+          ? config.get("worldboss.reward.expired_participation")
+          : config.get("worldboss.reward.participation"),
+        stones: 0,
+        board: "participation",
+        rank: null,
+        isMvp: false,
+      });
+    }
+    if (!idMap.has(p.user_id)) {
+      idMap.set(p.user_id, p.platform_id);
+      if (!p.platform_id) participationOnly.push(p.user_id);
+    }
+  }
+  if (participationOnly.length > 0) {
+    const resolved = await WorldBossLog.resolveUserIds(participationOnly);
+    for (const [numericId, platformId] of resolved) idMap.set(numericId, platformId);
+  }
+
+  const dpsMvpPlatformId = dpsMvpNumericId ? idMap.get(dpsMvpNumericId) : null;
+
+  for (const [numericId, faucet] of perUser) {
+    const platformId = idMap.get(numericId);
     if (!platformId) {
       DefaultLogger.warn(
         `[WorldBossSettlement] event ${eventId}: numeric id ${numericId} has no platform_id; skipping`
@@ -85,17 +127,16 @@ exports.settleEvent = async function (eventId) {
     await grantOne({
       eventId,
       platformId,
-      materials: 0,
-      stones: 0,
-      board: "none",
-      rank: null,
-      isMvp: false,
+      materials: faucet.materials,
+      stones: faucet.stones,
+      board: faucet.board,
+      rank: faucet.rank,
+      isMvp: faucet.isMvp,
     });
+    void dpsMvpPlatformId; // wired to AchievementEngine in Task 3
   }
 
-  void config;
   void ENHANCEMENT_MATERIAL_ITEM_ID;
-  void isExpired;
 };
 
 async function grantOne({ eventId, platformId, materials, stones, board, rank, isMvp }) {
@@ -112,3 +153,104 @@ async function grantOne({ eventId, platformId, materials, stones, board, rank, i
 }
 
 exports._grantOne = grantOne;
+
+// Healthy support share at the 7:2:1 target (3 support / 10 total) - the anchor
+// for the D22 scarcity premium. Shared input is WorldBossLog.getSupportRatio.
+const SUPPORT_TARGET_SHARE = 0.3;
+const SUPPORT_RATIO_EPS = 0.001;
+
+function bandForPercentile(rankIndex, total, bands) {
+  // rankIndex is 0-based. Percentile = rankIndex / max(total-1, 1) so that
+  // rank-1 always maps to 0% (p1) and rank-last maps to 100% (rest).
+  const pct = rankIndex / Math.max(total - 1, 1);
+  if (pct <= 0.01) return bands.p1;
+  if (pct <= 0.05) return bands.p5;
+  if (pct <= 0.2) return bands.p20;
+  return bands.rest;
+}
+
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+/**
+ * Scarcity multiplier for support boards (D22, addendum §15). Scales the band
+ * bonus UP as the live support ratio -> 0 (cold start), x1 at/above the target
+ * share, capped at x3. Consumes the SAME getSupportRatio M5 uses for enrage
+ * down-scaling - no parallel proxy.
+ * @param {Number} supportRatio
+ * @returns {Number}
+ */
+function scarcityMultiplier(supportRatio) {
+  return clamp(SUPPORT_TARGET_SHARE / Math.max(supportRatio, SUPPORT_RATIO_EPS), 1, 3);
+}
+
+/**
+ * Pure faucet math. No I/O. Rows carry user_id (numeric); perUser keys on the
+ * numeric id. supportRatio is supplied by settleEvent (WorldBossLog.getSupportRatio).
+ * @returns {{ perUser: Map, dpsMvpNumericId: (Number|null) }}
+ */
+exports._computeFaucet = function ({ dpsBoard, healerBoard, tankBoard, isExpired, supportRatio }) {
+  const participation = config.get("worldboss.reward.participation");
+  const expiredParticipation = config.get("worldboss.reward.expired_participation");
+  const bands = {
+    p1: config.get("worldboss.reward.rank_bands.p1"),
+    p5: config.get("worldboss.reward.rank_bands.p5"),
+    p20: config.get("worldboss.reward.rank_bands.p20"),
+    rest: config.get("worldboss.reward.rank_bands.rest"),
+  };
+  const mvpStones = config.get("worldboss.reward.mvp_stones");
+  const supportMult = scarcityMultiplier(supportRatio);
+
+  const perUser = new Map();
+  let dpsMvpNumericId = null;
+
+  // Assign each player to their single best board (highest score).
+  const best = new Map(); // numericId -> { board, score, rankIndex, count }
+  function consider(board, rows, scoreKey) {
+    rows.forEach((r, i) => {
+      const score = r[scoreKey] || 0;
+      const prev = best.get(r.user_id);
+      if (!prev || score > prev.score) {
+        best.set(r.user_id, { board, score, rankIndex: i, count: rows.length });
+      }
+    });
+  }
+  consider("dps", dpsBoard, "total_damage");
+  consider("healer", healerBoard, "total_contribution");
+  consider("tank", tankBoard, "total_contribution");
+
+  for (const [numericId, info] of best) {
+    if (isExpired) {
+      perUser.set(numericId, {
+        materials: expiredParticipation,
+        stones: 0,
+        board: info.board,
+        rank: null,
+        isMvp: false,
+      });
+      continue;
+    }
+
+    const bandBonus = bandForPercentile(info.rankIndex, info.count, bands);
+    let bonus = bandBonus;
+    if (info.board === "healer" || info.board === "tank") {
+      bonus = Math.round(bandBonus * supportMult);
+    }
+    const isMvp = info.rankIndex === 0;
+    let stones = 0;
+    if (info.board === "dps" && isMvp) {
+      stones = mvpStones;
+      dpsMvpNumericId = numericId;
+    }
+    perUser.set(numericId, {
+      materials: participation + bonus,
+      stones,
+      board: info.board,
+      rank: info.rankIndex + 1,
+      isMvp,
+    });
+  }
+
+  return { perUser, dpsMvpNumericId };
+};
