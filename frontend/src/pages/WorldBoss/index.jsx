@@ -174,12 +174,7 @@ function WorldBossInner() {
           ) : (
             <Stack direction="row" spacing={1}>
               {actions.map(a => (
-                <Button
-                  key={a.label}
-                  variant="contained"
-                  onClick={() => runAction(a.fn)}
-                  fullWidth
-                >
+                <Button key={a.label} variant="contained" onClick={() => runAction(a.fn)} fullWidth>
                   {a.label}
                 </Button>
               ))}
