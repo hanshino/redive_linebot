@@ -286,6 +286,54 @@ exports._setRng = fn => {
  * 結果 shape 鎖定：{ rejected, reason, revived: [platformId...], contribution }（lock §D）。
  * @param {{platformId: String, numericUserId: Number, eventId: Number}} param0
  */
+/**
+ * 補師護盾：對最近的攻擊者開立免疫 token（shieldSet，owner = 補師 platform_id），最多 K 個。
+ * 本動作不立刻寫貢獻——當護盾真的擋下擊倒時，由 M4 暴走處理器回寫貢獻並計給 OWNER（lock §D 時序契約）。
+ * K = getShieldCountK() + 裝備 support_power。TTL = getNaturalRecoveryMinutes()*60。
+ * 仍寫一筆 D22 參與列（contribution:0、計費），讓補師通過參與門檻。
+ * 結果 shape 鎖定：{ rejected, reason, shielded: [platformId...], contribution }（lock §D）。
+ * @param {{platformId: String, numericUserId: Number, eventId: Number}} param0
+ */
+exports.healerShield = async ({ platformId, numericUserId, eventId }) => {
+  const result = { rejected: false, reason: null, shielded: [], contribution: 0 };
+
+  const active = await WorldBossEvent.getActive();
+  if (!active || active.id !== eventId) {
+    result.rejected = true;
+    result.reason = "not_active";
+    return result;
+  }
+
+  const bonuses = await EquipmentService.getEquipmentBonuses(platformId);
+  const k = WorldBossConfig.getShieldCountK() + (bonuses.support_power || 0);
+  const minutes = WorldBossConfig.getNaturalRecoveryMinutes();
+  const ttlSec = minutes * 60;
+
+  const recent = (await WorldBossLog.getRecentAttackers({ eventId, minutes, limit: k })).slice(
+    0,
+    k
+  );
+  for (const row of recent) {
+    // getRecentAttackers rows carry platform_id; pool/shield identity is platform_id (lock §B/§E).
+    const target = row.platform_id;
+    await wbRedis.shieldSet(eventId, target, platformId, ttlSec);
+    result.shielded.push(target);
+  }
+
+  // D22 participation row. Absorb credit is back-written to the OWNER by M4's enrage handler.
+  await WorldBossLog.createWithRole({
+    user_id: numericUserId, // numeric user.id of the healer
+    world_boss_event_id: eventId,
+    role: "healer",
+    action_type: "shield",
+    damage: 0,
+    cost: WorldBossConfig.getNormalAttackCost(),
+    contribution: 0,
+  });
+
+  return result;
+};
+
 exports.healerRevive = async ({ platformId, numericUserId, eventId }) => {
   const result = { rejected: false, reason: null, revived: [], contribution: 0 };
 
