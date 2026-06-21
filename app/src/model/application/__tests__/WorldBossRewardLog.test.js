@@ -11,7 +11,7 @@ describe("WorldBossRewardLog", () => {
       await mysql.raw("select 1");
     } catch (err) {
       dbUp = false;
-      // eslint-disable-next-line no-console
+
       console.warn(
         'SKIP: WorldBossRewardLog tests need a live MySQL — run "make infra" first.',
         err.code || err.message
