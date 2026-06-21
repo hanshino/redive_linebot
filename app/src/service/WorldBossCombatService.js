@@ -279,3 +279,41 @@ exports.dpsAttack = dpsAttack;
 exports._setRng = fn => {
   rng = fn;
 };
+
+/**
+ * 補師復活：從救援池 ZPOPMIN K 個最舊的擊倒玩家（platform_id），立刻寫入自己的 contribution。
+ * K = getReviveCountK() + 裝備 support_power。即使救活 0 人仍計費並寫參與列（D22）。
+ * 結果 shape 鎖定：{ rejected, reason, revived: [platformId...], contribution }（lock §D）。
+ * @param {{platformId: String, numericUserId: Number, eventId: Number}} param0
+ */
+exports.healerRevive = async ({ platformId, numericUserId, eventId }) => {
+  const result = { rejected: false, reason: null, revived: [], contribution: 0 };
+
+  const active = await WorldBossEvent.getActive();
+  if (!active || active.id !== eventId) {
+    result.rejected = true;
+    result.reason = "not_active";
+    return result;
+  }
+
+  const bonuses = await EquipmentService.getEquipmentBonuses(platformId);
+  const k = WorldBossConfig.getReviveCountK() + (bonuses.support_power || 0);
+
+  // poolPopMin returns platform_id strings ([] when empty); pool identity is platform_id (lock §B).
+  const revived = await wbRedis.poolPopMin(eventId, k);
+  result.revived = revived;
+  result.contribution = revived.length; // contribution = ACTUAL popped count (resolve-time, addendum §11)
+
+  // D22: attempted action always costs + writes a row, even when it revived nobody.
+  await WorldBossLog.createWithRole({
+    user_id: numericUserId, // numeric user.id of the healer (caller-resolved via UserModel.getId)
+    world_boss_event_id: eventId,
+    role: "healer",
+    action_type: "revive",
+    damage: 0,
+    cost: WorldBossConfig.getNormalAttackCost(),
+    contribution: revived.length,
+  });
+
+  return result;
+};
