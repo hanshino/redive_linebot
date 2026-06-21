@@ -3,7 +3,6 @@ const { Context, getClient, withProps } = require("bottender");
 const { text } = require("bottender/router");
 const moment = require("moment");
 const ajv = require("../../util/ajv");
-const worldBossModel = require("../../model/application/WorldBoss");
 const worldBossEventService = require("../../service/WorldBossEventService");
 const worldBossEventLogService = require("../../service/WorldBossEventLogService");
 const minigameService = require("../../service/MinigameService");
@@ -28,9 +27,7 @@ const { table, getBorderCharacters } = require("table");
 
 exports.router = [
   text("#冒險小卡", myStatus),
-  text("/bosslist", bosslist),
   text(["/worldboss", "#世界王"], bossEvent),
-  text("/allevent", all),
   text("/worldrank", worldRank),
   text(/^[.#/](攻擊|attack)$/, withProps(attack, { attackType: "normal" })),
   text(/^[#]傷害[紀記]錄/, todayLogs),
@@ -216,27 +213,6 @@ async function worldRank(context) {
   );
 
   context.replyText(JSON.stringify(topTenData));
-}
-
-/**
- * @param {Context} context
- */
-async function all(context) {
-  const data = await worldBossEventService.all({
-    filters: [
-      ["start_time", "<", new Date()],
-      ["end_time", ">", new Date()],
-    ],
-  });
-  context.replyText(JSON.stringify(data));
-}
-
-/**
- * @param {Context} context
- */
-async function bosslist(context) {
-  const data = await worldBossModel.all();
-  context.replyText(JSON.stringify(data));
 }
 
 /**

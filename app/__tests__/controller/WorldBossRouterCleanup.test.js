@@ -48,3 +48,26 @@ describe("WorldBossController — 夢幻回歸 removal (D28)", () => {
 });
 
 module.exports = { loadControllerVerbs };
+
+describe("WorldBossController — raw JSON dump commands retired (D26)", () => {
+  it("registers no /allevent route", () => {
+    const { flat } = loadControllerVerbs();
+    expect(flat.some(v => v.includes("/allevent"))).toBe(false);
+  });
+
+  it("registers no /bosslist route", () => {
+    const { flat } = loadControllerVerbs();
+    expect(flat.some(v => v.includes("/bosslist"))).toBe(false);
+  });
+
+  it("no longer exports all / bosslist debug handlers", () => {
+    const { controller } = loadControllerVerbs();
+    expect(controller.all).toBeUndefined();
+    expect(controller.bosslist).toBeUndefined();
+  });
+
+  it("POSITIVE CONTROL: /worldrank survives (it is fixed, not retired)", () => {
+    const { flat } = loadControllerVerbs();
+    expect(flat.some(v => v.includes("/worldrank"))).toBe(true);
+  });
+});
