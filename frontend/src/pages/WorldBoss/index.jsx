@@ -48,7 +48,7 @@ function Board({ title, rows, valueKey }) {
         {rows.map((r, i) => (
           <Box key={i} display="flex" justifyContent="space-between" alignItems="center" py={0.25}>
             <Typography variant="body2" color="text.secondary">
-              #{i + 1} {r.platformId}
+              #{i + 1} {r.platform_id}
             </Typography>
             <Typography variant="body2" fontWeight={600}>
               {r[valueKey] ?? 0}
@@ -210,7 +210,7 @@ function WorldBossInner() {
           <Stack spacing={0.5}>
             {feed.map((f, i) => (
               <Typography key={i} variant="caption" color="text.secondary">
-                {f.message || `${f.platformId ?? "玩家"} 對世界王發動了攻擊`}
+                {f.message || `${f.platform_id ?? "玩家"} 對世界王發動了攻擊`}
               </Typography>
             ))}
           </Stack>
