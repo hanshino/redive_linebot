@@ -186,7 +186,8 @@ async function myStatus(context) {
 }
 
 /**
- * @param {Context} context
+ * 顯示目前世界王的傷害排行榜（D26：取代失效的 getTopTen + JSON dump）
+ * @param {import ("bottender").LineContext} context
  */
 async function worldRank(context) {
   // 取得正在進行中的世界事件
@@ -201,19 +202,32 @@ async function worldRank(context) {
     return;
   }
 
-  let topTenData = await worldBossEventLogService.getTopTen(events[0].id);
-  topTenData = await Promise.all(
-    topTenData.map(async data => {
-      let profile = await LineClient.getUserProfile(data.userId);
-      return {
-        ...data,
-        ...profile,
-      };
+  const eventId = events[0].id;
+  // MODEL access path (same as M8 broadcast). Rows: { user_id, platform_id, total_damage }.
+  const ranked = await worldBossLogModel.getDamageRank({ eventId, limit: 10 });
+
+  const rankBoxes = await Promise.all(
+    ranked.map(async (row, index) => {
+      let displayName = `路人${index + 1}`;
+      try {
+        const profile = await LineClient.getUserProfile(row.platform_id);
+        displayName = get(profile, "displayName", displayName);
+      } catch (e) {
+        DefaultLogger.debug(`worldRank profile miss ${row.platform_id}: ${e.message}`);
+      }
+      return worldBossTemplate.generateRankBox({
+        name: displayName,
+        damage: row.total_damage,
+        rank: index + 1,
+      });
     })
   );
 
-  context.replyText(JSON.stringify(topTenData));
+  const rankBubble = worldBossTemplate.generateTopTenRank(rankBoxes);
+  context.replyFlex("世界王傷害排行", rankBubble);
 }
+
+exports.worldRank = worldRank;
 
 /**
  * @param {Context} context
