@@ -26,7 +26,7 @@ describe("WorldBossConfig", () => {
     expect(WorldBossConfig.getBlockWindowMinutes()).toBe(5);
     expect(WorldBossConfig.getReselectStoneCost()).toBe(5000);
     expect(WorldBossConfig.getOpenHour()).toBe(4);
-    expect(WorldBossConfig.getColdStartMaxHp()).toBe(0);
+    expect(WorldBossConfig.getColdStartMaxHp()).toBe(1500000);
     expect(Array.isArray(WorldBossConfig.getBossPool())).toBe(true);
     expect(WorldBossConfig.getReward().participation).toBe(15);
     expect(WorldBossConfig.getReward().mvp_stones).toBe(30);
