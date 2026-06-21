@@ -5,6 +5,10 @@ const WorldBossEvent = require("../model/application/WorldBossEvent");
 const WorldBossLog = require("../model/application/WorldBossLog");
 const WorldBossRewardLog = require("../model/application/WorldBossRewardLog");
 const { DefaultLogger } = require("../util/Logger");
+const mysql = require("../util/mysql");
+const { inventory } = require("../model/application/Inventory");
+const AchievementEngine = require("./AchievementEngine");
+const WorldBossReportService = require("./WorldBossReportService");
 
 const ENHANCEMENT_MATERIAL_ITEM_ID = 1001;
 
@@ -133,22 +137,68 @@ exports.settleEvent = async function (eventId) {
       rank: faucet.rank,
       isMvp: faucet.isMvp,
     });
-    void dpsMvpPlatformId; // wired to AchievementEngine in Task 3
+
+    // best-effort, non-transactional: D26 boss_top_damage repair + report unread
+    // flag (M8's WorldBossReportService). NO LINE push - surfaces on next reply /
+    // LIFF pull.
+    const userDamage = dpsBoard.find(r => r.user_id === numericId);
+    await AchievementEngine.evaluate(platformId, "boss_attack", {
+      feature: "world_boss",
+      damage: userDamage ? userDamage.total_damage : 0,
+      isTopDamage: platformId === dpsMvpPlatformId,
+    });
+    await WorldBossReportService.setUnread(platformId);
   }
 
-  void ENHANCEMENT_MATERIAL_ITEM_ID;
+  DefaultLogger.info(
+    `[WorldBossSettlement] settled event ${eventId}: ${perUser.size} participants`
+  );
 };
 
+/**
+ * Grant one player's reward in its OWN transaction. Idempotency: reward-log
+ * tryInsert is the FIRST write and the dedupe key - a dup (false) short-circuits
+ * before any ledger write; any throw rolls back ONLY this user's trx. settleEvent
+ * is therefore re-runnable: a re-run re-grants only un-granted users (the unique
+ * key on world_boss_reward_log dedupes the rest). itemAmount is a positive NUMBER
+ * (addendum §13 - grants are positive; matching increaseGodStone's convention).
+ */
 async function grantOne({ eventId, platformId, materials, stones, board, rank, isMvp }) {
-  // replaced by the real idempotent per-user trx in Task 3.
-  return WorldBossRewardLog.tryInsert({
-    user_id: platformId,
-    world_boss_event_id: eventId,
-    materials,
-    stones,
-    board,
-    rank,
-    is_mvp: isMvp,
+  await mysql.transaction(async trx => {
+    const inserted = await WorldBossRewardLog.tryInsert(
+      {
+        user_id: platformId,
+        world_boss_event_id: eventId,
+        materials,
+        stones,
+        board,
+        rank,
+        is_mvp: isMvp,
+      },
+      trx
+    );
+    if (!inserted) return; // duplicate - already granted; no ledger writes.
+
+    if (materials > 0) {
+      // insertItems has NO trx param; use the trx-bound builder. itemId 1001 is
+      // registered by M3/M4's seeded item-master migration (M7 only grants it).
+      await trx("Inventory").insert([
+        {
+          userId: platformId,
+          itemId: ENHANCEMENT_MATERIAL_ITEM_ID,
+          itemAmount: materials,
+          note: "world_boss_reward",
+        },
+      ]);
+    }
+    if (stones > 0) {
+      await inventory.increaseGodStone({
+        userId: platformId,
+        amount: stones,
+        note: "world_boss_mvp",
+        trx,
+      });
+    }
   });
 }
 
