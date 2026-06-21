@@ -41,6 +41,7 @@
     "enrage_damage_multiplier": 2,
     "enrage_contribution_multiplier": 2,
     "natural_recovery_minutes": 15,
+    "cold_start_max_hp": 1500000,
     "revive_count_k": 2,
     "shield_count_k": 2,
     "block_window_minutes": 5,
