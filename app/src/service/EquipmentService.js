@@ -135,7 +135,7 @@ exports.getEquipmentBonuses = async userId => {
     const item = equipped[slot];
     if (!item || !item.attributes) continue;
     const attrs = item.attributes;
-    const level = item.enhance_level || 0;
+    const level = Math.min(item.enhance_level || 0, WorldBossConfig.getEnhanceMaxLevel());
     const multiplier = 1 + perLevelPct * level;
 
     for (const key of Object.keys(bonuses)) {

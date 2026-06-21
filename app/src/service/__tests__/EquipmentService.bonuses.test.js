@@ -12,6 +12,7 @@ jest.mock("../../util/redis", () => ({
 }));
 jest.mock("../WorldBossConfig", () => ({
   getEnhancePerLevelPct: jest.fn(() => 0.05),
+  getEnhanceMaxLevel: jest.fn(() => 10),
 }));
 
 const PlayerEquipmentModel = require("../../model/application/PlayerEquipment");
@@ -130,5 +131,52 @@ describe("EquipmentService.getEquipmentBonuses with enhance_level", () => {
     const b = await EquipmentService.getEquipmentBonuses("U1");
     // floor(1.05)=1 plus 2 = 3 (NOT floor(1.05+2)=3 by coincidence; floor is per-piece)
     expect(b.support_power).toBe(3);
+  });
+
+  it("floors each piece before summing (distinguishing fixture): 2 healer pieces support_power:1 @+10 -> 2 not 3", async () => {
+    PlayerEquipmentModel.getByUserId.mockResolvedValue([
+      {
+        slot: "accessory",
+        equipment_id: 5,
+        name: "healer-a",
+        rarity: "rare",
+        image_url: "",
+        enhance_level: 10,
+        // floor(1 * 1.5) = 1
+        attributes: JSON.stringify({ support_power: 1 }),
+      },
+      {
+        slot: "armor",
+        equipment_id: 6,
+        name: "healer-b",
+        rarity: "rare",
+        image_url: "",
+        enhance_level: 10,
+        // floor(1 * 1.5) = 1
+        attributes: JSON.stringify({ support_power: 1 }),
+      },
+    ]);
+    const b = await EquipmentService.getEquipmentBonuses("U1");
+    // per-piece floor: floor(1.5)+floor(1.5) = 1+1 = 2
+    // floor-of-sum would give: floor(1.5+1.5) = floor(3) = 3
+    expect(b.support_power).toBe(2);
+  });
+
+  it("clamps enhance_level at max (10): level 20 yields same bonus as level 10", async () => {
+    PlayerEquipmentModel.getByUserId.mockResolvedValue([
+      {
+        slot: "weapon",
+        equipment_id: 7,
+        name: "overleveled",
+        rarity: "epic",
+        image_url: "",
+        enhance_level: 20,
+        // if NOT clamped: 0.1 * (1 + 0.05*20) = 0.1 * 2.0 = 0.2
+        // if clamped to 10: 0.1 * (1 + 0.05*10) = 0.1 * 1.5 = 0.15
+        attributes: JSON.stringify({ atk_percent: 0.1 }),
+      },
+    ]);
+    const b = await EquipmentService.getEquipmentBonuses("U1");
+    expect(b.atk_percent).toBeCloseTo(0.15, 5);
   });
 });
