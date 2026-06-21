@@ -36,7 +36,34 @@
       "可以使用 #冒險小卡 查看自己的進度",
       "每一次攻擊都會依照技能來消耗 cost",
       "每一次攻擊都會間隔 5 秒"
-    ]
+    ],
+    "normal_attack_cost": 10,
+    "enrage_threshold_pct": 35,
+    "enrage_batch_size": 20,
+    "enrage_recent_minutes": 10,
+    "enrage_counter_rate": 0.15,
+    "enrage_damage_multiplier": 2,
+    "enrage_contribution_multiplier": 2,
+    "natural_recovery_minutes": 15,
+    "revive_count_k": 2,
+    "shield_count_k": 2,
+    "block_window_minutes": 5,
+    "reselect_stone_cost": 5000,
+    "enhance": { "max_level": 10, "per_level_pct": 0.05, "cost_base": 8 },
+    "reward": {
+      "participation": 15,
+      "expired_participation": 5,
+      "rank_bands": { "p1": 50, "p5": 35, "p20": 20, "rest": 8 },
+      "mvp_stones": 30
+    },
+    "open_hour": 4,
+    "boss_pool": [],
+    "stone_item_id": 999,
+    "enhancement_material_item_id": 1001
+  },
+  "items": {
+    "goddess_stone": { "itemId": 999, "name": "女神石" },
+    "enhancement_material": { "itemId": 1001, "name": "強化素材" }
   },
   "minigame": {
     "race": {
