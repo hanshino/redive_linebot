@@ -95,7 +95,6 @@ function rejectAttack(reason) {
  */
 async function resolveHit({ platformId, numericUserId, eventId, attackType, level, event }) {
   void enumSkills;
-  void rng;
 
   const jobKey = String(attackType).split("|")[0];
   const character = makeCharacter(jobKey, { level });
@@ -115,15 +114,8 @@ async function resolveHit({ platformId, numericUserId, eventId, attackType, leve
   const dmgRow = await WorldBossLog.getTotalDamageByEventId(eventId);
   const totalDamage = parseInt((dmgRow && dmgRow.total_damage) || 0, 10);
   const remainHpBefore = event.hp - totalDamage;
-  const enraged =
-    remainHpBefore <= (event.hp * WorldBossConfig.readEnrageThresholdPct(event)) / 100;
-
-  // getRecentAttackers 供 M4.5 狂暴觸發批次倒地使用，calm 路徑暫留備用
-  void WorldBossLog.getRecentAttackers({
-    eventId,
-    minutes: WorldBossConfig.readEnrageRecentMinutes(),
-    limit: WorldBossConfig.readEnrageBatchSize(event),
-  });
+  const enrageThreshold = (event.hp * WorldBossConfig.readEnrageThresholdPct(event)) / 100;
+  const enraged = remainHpBefore <= enrageThreshold;
 
   // 狂暴帶（本刀「開始時」就在帶內）：傷害 ×2（LOCK §D，於寫帳前套用）。
   // 跨越門檻的那一刀因起始在 calm（enraged=false）不在此放大——它改為觸發進場批次（Task 5）。
@@ -145,22 +137,112 @@ async function resolveHit({ platformId, numericUserId, eventId, attackType, leve
     contribution,
   });
 
-  // 致命刀：剩餘血量扣掉本刀 <= 0 → CAS active→killed（結算交給 M7 cron，stamp killed_at）
   const remainHpAfter = remainHpBefore - damage;
+  const now = Date.now();
+
+  let didEnrageTrigger = false;
+  let knockedBatch = [];
+  let selfKnocked = false;
+
+  // 致命刀：CAS active→killed（結算交給 M7，stamp killed_at）。死王不觸發進場批次（沒有戰場可信用）。
   if (remainHpAfter <= 0) {
     await WorldBossEvent.casStatus(eventId, "active", "killed", { killed_at: new Date() });
+  } else {
+    // 跨越門檻的那「一刀」觸發進場批次（之後的狂暴刀不再重觸發；此刀起始在 calm，故未被 ×2）。
+    const crossed = remainHpBefore > enrageThreshold && remainHpAfter <= enrageThreshold;
+    if (crossed) {
+      didEnrageTrigger = true;
+      knockedBatch = await runEnrageBatch({ eventId, event, now });
+    }
+
+    // 狂暴期持續反擊：本刀「開始時」就在狂暴帶且骰中反擊機率 → 自己被擊倒進池（member = platform_id）
+    if (enraged && rng() < WorldBossConfig.readEnrageCounterRate(event)) {
+      await wbRedis.poolAdd(eventId, platformId, now);
+      selfKnocked = true;
+    }
   }
 
   return {
     damage,
     contribution,
     enraged,
-    didEnrageTrigger: false,
-    knockedBatch: [],
-    selfKnocked: false,
+    didEnrageTrigger,
+    knockedBatch,
+    selfKnocked,
     rejected: false,
     reason: null,
   };
+}
+
+/**
+ * 進場批次：撈最近 N 個攻擊者，逐一嘗試被坦克牆/護盾吸收，否則打進待救池。
+ * 被吸收時為 owner 代寫一筆貢獻 LOG（LOCK §B/§D 落帳時序）。
+ * pool / shield / block 的 member 與 owner 一律為 platform_id（LOCK §B）；
+ * 代寫 LOG 前一律以 UserModel.getId 將 owner 的 platform_id 轉成數字 user_id（LOCK §D）；
+ * 找不到 user 列（已刪帳號）則略過該筆代寫（不誤算）。
+ * @param {Object} param0
+ * @param {Number} param0.eventId
+ * @param {Object} param0.event
+ * @param {Number} param0.now
+ * @returns {Promise<String[]>} 實際被打進池的 platformId 清單
+ */
+async function runEnrageBatch({ eventId, event, now }) {
+  const minutes = WorldBossConfig.readEnrageRecentMinutes();
+  const limit = WorldBossConfig.readEnrageBatchSize(event); // 整數，非任何浮點裝備值
+  const candidates = await WorldBossLog.getRecentAttackers({ eventId, minutes, limit });
+
+  const knockedBatch = [];
+  let blockUsed = false;
+  const owner = await wbRedis.blockOwner(eventId);
+
+  for (const candidate of candidates) {
+    const target = candidate.platform_id;
+
+    // 坦克牆吸收（v1 單一名額）
+    if (owner && !blockUsed) {
+      blockUsed = true;
+      await writeAbsorbContribution(eventId, "tank", "block_absorb", owner);
+      continue;
+    }
+
+    // 護盾吸收（per-target token，GETDEL 消耗即刪）
+    const shieldOwner = await wbRedis.shieldConsume(eventId, target);
+    if (shieldOwner) {
+      await writeAbsorbContribution(eventId, "healer", "shield_absorb", shieldOwner);
+      continue;
+    }
+
+    // 沒被吸收 → 打進待救池（member = platform_id）
+    await wbRedis.poolAdd(eventId, target, now);
+    knockedBatch.push(target);
+  }
+
+  return knockedBatch;
+}
+
+/**
+ * 為被吸收的擊倒代寫一筆 +1 貢獻 LOG。owner 以 platform_id 給入，於此處經 UserModel.getId
+ * 轉數字 user_id；找不到 user 列則略過（LOCK §B/§D，不誤算）。
+ * @param {Number} eventId
+ * @param {String} role  "tank" | "healer"
+ * @param {String} actionType
+ * @param {String} ownerPlatformId
+ * @returns {Promise<void>}
+ */
+async function writeAbsorbContribution(eventId, role, actionType, ownerPlatformId) {
+  const ownerNumericId = await UserModel.getId(ownerPlatformId);
+  if (ownerNumericId === null) {
+    return;
+  }
+  await WorldBossLog.createWithRole({
+    user_id: ownerNumericId,
+    world_boss_event_id: eventId,
+    role,
+    action_type: actionType,
+    damage: 0,
+    cost: 0,
+    contribution: 1,
+  });
 }
 
 module.exports = {
