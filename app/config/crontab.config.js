@@ -106,6 +106,14 @@ module.exports = [
     require_path: "./bin/RaceAdvance",
   },
   {
+    name: "World Boss Advance",
+    description:
+      "open daily boss / settle killed / expire+settle overdue (no push; reply/LIFF surfacing)",
+    period: ["0", "*", "*", "*", "*", "*"],
+    immediate: true,
+    require_path: "./bin/WorldBossAdvance",
+  },
+  {
     name: "Auto Gacha",
     description: "nightly auto daily-draw for subscribers with auto_daily_gacha opt-in",
     period: require("config").get("autoGacha.schedule"),
