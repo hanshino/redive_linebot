@@ -12,6 +12,7 @@ import RaceDetail from "./pages/Race/Detail";
 import GachaExchange from "./pages/Gacha/Exchange";
 import Bag from "./pages/Bag";
 import Equipment from "./pages/Equipment";
+import WorldBoss from "./pages/WorldBoss";
 import TradeOrder from "./pages/Trade/Order";
 import TradeManage from "./pages/Trade/Manage";
 import TradeDetail from "./pages/Trade/TradeDetail";
@@ -71,6 +72,7 @@ export default function App() {
           {/* Inventory */}
           <Route path="bag" element={<Bag />} />
           <Route path="equipment" element={<Equipment />} />
+          <Route path="world-boss" element={<WorldBoss />} />
 
           {/* Trade */}
           <Route path="trade/order" element={<TradeOrder />} />
