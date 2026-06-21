@@ -103,7 +103,7 @@ exports.settleEvent = async function (eventId) {
           ? config.get("worldboss.reward.expired_participation")
           : config.get("worldboss.reward.participation"),
         stones: 0,
-        board: "participation",
+        board: "none",
         rank: null,
         isMvp: false,
       });
@@ -128,7 +128,7 @@ exports.settleEvent = async function (eventId) {
       );
       continue;
     }
-    await grantOne({
+    const granted = await grantOne({
       eventId,
       platformId,
       materials: faucet.materials,
@@ -137,6 +137,7 @@ exports.settleEvent = async function (eventId) {
       rank: faucet.rank,
       isMvp: faucet.isMvp,
     });
+    if (!granted) continue; // already granted on a prior run; skip side-effects.
 
     // best-effort, non-transactional: D26 boss_top_damage repair + report unread
     // flag (M8's WorldBossReportService). NO LINE push - surfaces on next reply /
@@ -164,8 +165,9 @@ exports.settleEvent = async function (eventId) {
  * (addendum §13 - grants are positive; matching increaseGodStone's convention).
  */
 async function grantOne({ eventId, platformId, materials, stones, board, rank, isMvp }) {
+  let inserted = false;
   await mysql.transaction(async trx => {
-    const inserted = await WorldBossRewardLog.tryInsert(
+    inserted = await WorldBossRewardLog.tryInsert(
       {
         user_id: platformId,
         world_boss_event_id: eventId,
@@ -200,6 +202,7 @@ async function grantOne({ eventId, platformId, materials, stones, board, rank, i
       });
     }
   });
+  return inserted;
 }
 
 exports._grantOne = grantOne;

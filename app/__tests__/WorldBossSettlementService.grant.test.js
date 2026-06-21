@@ -99,4 +99,53 @@ describe("settleEvent - per-user grant trx + achievement + unread flag", () => {
     );
     expect(WorldBossReportService.setUnread).toHaveBeenCalledWith("U1");
   });
+
+  test("participation-only user writes board='none' (valid enum) to tryInsert", async () => {
+    // user 2 appears only in participants, not on any ranked board.
+    WorldBossLog.getDamageRank = jest
+      .fn()
+      .mockResolvedValue([{ user_id: 1, total_damage: 5000, platform_id: "U1" }]);
+    WorldBossLog.getParticipants = jest.fn().mockResolvedValue([
+      { user_id: 1, platform_id: "U1" },
+      { user_id: 2, platform_id: "U2" },
+    ]);
+
+    await Settlement.settleEvent(7);
+
+    const participationCall = WorldBossRewardLog.tryInsert.mock.calls.find(
+      c => c[0].user_id === "U2"
+    );
+    expect(participationCall).toBeDefined();
+    expect(participationCall[0].board).toBe("none");
+  });
+
+  test("expired event: participation-only user writes board='none' to tryInsert", async () => {
+    WorldBossEvent.findRaw = jest.fn().mockResolvedValue({
+      id: 7,
+      status: "expired",
+      settled_at: null,
+    });
+    WorldBossLog.getDamageRank = jest.fn().mockResolvedValue([]);
+    WorldBossLog.getParticipants = jest.fn().mockResolvedValue([{ user_id: 2, platform_id: "U2" }]);
+
+    await Settlement.settleEvent(7);
+
+    const call = WorldBossRewardLog.tryInsert.mock.calls.find(c => c[0].user_id === "U2");
+    expect(call).toBeDefined();
+    expect(call[0].board).toBe("none");
+  });
+
+  test("tryInsert=false (already-granted): AchievementEngine and setUnread are NOT called", async () => {
+    WorldBossRewardLog.tryInsert.mockResolvedValue(false);
+    await Settlement.settleEvent(7);
+    expect(AchievementEngine.evaluate).not.toHaveBeenCalled();
+    expect(WorldBossReportService.setUnread).not.toHaveBeenCalled();
+  });
+
+  test("tryInsert=true (fresh grant): AchievementEngine and setUnread ARE called", async () => {
+    WorldBossRewardLog.tryInsert.mockResolvedValue(true);
+    await Settlement.settleEvent(7);
+    expect(AchievementEngine.evaluate).toHaveBeenCalled();
+    expect(WorldBossReportService.setUnread).toHaveBeenCalled();
+  });
 });
