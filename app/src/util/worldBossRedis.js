@@ -107,4 +107,6 @@ module.exports = {
   shieldConsume,
   blockSet,
   blockOwner,
+  snapshotKey: eventId => `wb:snapshot:${eventId}`,
+  reportUnreadKey: platformId => `wb:report_unread:${platformId}`,
 };

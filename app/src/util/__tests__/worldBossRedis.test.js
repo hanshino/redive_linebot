@@ -26,8 +26,10 @@ describe("worldBossRedis (LOCK §C — eight platform_id-keyed helpers)", () => 
         "poolPopMin",
         "poolRemove",
         "poolScore",
+        "reportUnreadKey",
         "shieldConsume",
         "shieldSet",
+        "snapshotKey",
       ].sort()
     );
     [
@@ -101,5 +103,15 @@ describe("worldBossRedis (LOCK §C — eight platform_id-keyed helpers)", () => 
     expect(await wbRedis.blockOwner(7)).toBe("Uowner");
     redis.get.mockResolvedValueOnce(null);
     expect(await wbRedis.blockOwner(7)).toBeNull();
+  });
+});
+
+describe("worldBossRedis M8 key helpers", () => {
+  it("snapshotKey embeds the eventId", () => {
+    expect(wbRedis.snapshotKey(42)).toBe("wb:snapshot:42");
+  });
+
+  it("reportUnreadKey embeds the platformId", () => {
+    expect(wbRedis.reportUnreadKey("Ualice")).toBe("wb:report_unread:Ualice");
   });
 });
