@@ -19,6 +19,7 @@ jest.mock("../../../service/achievementNotifier", () => ({
 const WorldBossCombatService = require("../../../service/WorldBossCombatService");
 const WorldBossRoleService = require("../../../service/WorldBossRoleService");
 const minigameService = require("../../../service/MinigameService");
+const i18n = require("../../../util/i18n");
 const controller = require("../WorldBossController");
 
 function makeContext({ type = "user" } = {}) {
@@ -100,8 +101,10 @@ describe("attackOnBoss DPS routing", () => {
       payload: { worldBossEventId: 7, attackType: "standard" },
     });
     expect(ctx.replyText).toHaveBeenCalled();
-    const msg = ctx.replyText.mock.calls[0][0];
-    expect(String(msg)).toContain("3000");
+    expect(i18n.__).toHaveBeenCalledWith(
+      "message.world_boss.dps_hit",
+      expect.objectContaining({ damage: 3000 })
+    );
   });
 
   test("group enrage-trigger hit emits a one-time immediate enrage announce", async () => {

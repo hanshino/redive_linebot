@@ -514,14 +514,10 @@ const attackOnBoss = async (context, props) => {
     .then(({ unlocked }) => notifyUnlocks(context, userId, unlocked))
     .catch(() => {});
 
-  const narrationTemplate = i18n.__("message.world_boss.dps_hit", {
+  const narration = i18n.__("message.world_boss.dps_hit", {
     display_name: displayName,
     damage: result.damage,
   });
-  // 若 i18n 插值生效則直接用，否則（測試環境 mock 返回 key）補上數值讓內容可辨識
-  const narration = narrationTemplate.includes(String(result.damage))
-    ? narrationTemplate
-    : `${narrationTemplate} ${result.damage}`;
 
   if (isGroup) {
     await handleKeepingMessage(worldBossEventId, context, narration);
