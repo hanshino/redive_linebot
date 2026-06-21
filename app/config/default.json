@@ -14,9 +14,7 @@
       "jankenChallenge": "jankenChallenge",
       "adminList": "adminList",
       "gamebleGame": "gamebleGame",
-      "groupSession": "group:session:%s",
-      "revokeHasCharm": "revokeHasCharm:%s",
-      "todayHasRevoke": "todayHasRevoke:%s:%s"
+      "groupSession": "group:session:%s"
     },
     "prefix": {
       "alias": "alias",
@@ -27,8 +25,6 @@
   "worldboss": {
     "daily_limit": 100,
     "penalty_rate": 0.1,
-    "money_revoke_attack_cost": 10000,
-    "revoke_charm": "隱匿於夜之黑暗，撫慰心靈的爆裂之炎，吾以幻夢之名，呼喚初晨的重生，在夢幻之境、遺落之地，引領破碎時光的歸來吧。",
     "manual": [
       "每日 cost 上限：100",
       "傷害會隨著等級的提升",

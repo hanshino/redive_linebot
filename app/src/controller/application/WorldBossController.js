@@ -14,19 +14,16 @@ const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
 const { model: worldBossLogModel } = require("../../model/application/WorldBossLog");
 const UserModel = require("../../model/application/UserModel");
-const { inventory: Inventory } = require("../../model/application/Inventory");
 const { make: makeCharacter, enumSkills } = require("../../model/application/RPGCharacter");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
-const { delay, random } = require("../../util/index");
 const WorldBossCombatService = require("../../service/WorldBossCombatService");
 const WorldBossRoleService = require("../../service/WorldBossRoleService");
 const LineClient = getClient("line");
 const config = require("config");
-const { get, sample, sortBy, isNull } = require("lodash");
+const { get, isNull } = require("lodash");
 const humanNumber = require("human-number");
-const { format } = require("util");
 const { table, getBorderCharacters } = require("table");
 
 exports.router = [
@@ -36,26 +33,10 @@ exports.router = [
   text("/allevent", all),
   text("/worldrank", worldRank),
   text(/^[.#/](攻擊|attack)$/, withProps(attack, { attackType: "normal" })),
-  text("#夢幻回歸", revokeAttack),
   text(/^[#]傷害[紀記]錄/, todayLogs),
-  text(config.get("worldboss.revoke_charm"), revokeCharm),
   text(/^[#＃]裝備$/, showEquipment),
   text(/^[#＃]強化(\s+\d+)?$/, enhanceCmd),
 ];
-
-/**
- * 詠唱
- * @param {import ("bottender").LineContext} context
- */
-async function revokeCharm(context) {
-  const { userId } = context.event.source;
-  const redisKey = format(config.get("redis.keys.revokeHasCharm"), userId);
-  await redis.set(redisKey, 1, {
-    EX: 20,
-  });
-
-  DefaultLogger.debug(`${userId} 已詠唱 持續 20 秒`);
-}
 
 /**
  * 取得今日傷害紀錄
@@ -81,98 +62,6 @@ async function todayLogs(context) {
   const output = table(data, { border: getBorderCharacters("ramac") });
 
   context.replyText(output, { quoteToken });
-}
-
-/**
- * 撤回一次攻擊
- * @param {import ("bottender").LineContext} context
- */
-async function revokeAttack(context) {
-  const revokeCost = config.get("worldboss.money_revoke_attack_cost");
-  const today = moment().format("MMDD");
-  const { userId, id } = context.event.source;
-  const { quoteToken } = context.event.message;
-  const redisTodayHasRevokeKey = format(config.get("redis.keys.todayHasRevoke"), today, userId);
-
-  const isTodayHasRevoke = await redis.get(redisTodayHasRevokeKey);
-  if (isTodayHasRevoke) {
-    context.replyText(sample(i18n.__("message.world_boss.not_enough_power")), {
-      quoteToken,
-    });
-    return;
-  }
-
-  // 確認使用者是否有足夠的金錢
-  const { amount: userOwnMoney } = await Inventory.getUserMoney(userId);
-  if (userOwnMoney < revokeCost) {
-    context.replyText(i18n.__("message.world_boss.revoke_attack_not_enough_money"), {
-      quoteToken,
-    });
-    return;
-  }
-
-  // 確認是否已出完刀
-  const result = await worldBossEventLogService.getTodayCost(id);
-  const totalCost = isNull(result.totalCost) ? 0 : parseInt(result.totalCost);
-  if (totalCost < config.get("worldboss.daily_limit")) {
-    context.replyText(i18n.__("message.world_boss.revoke_attack_not_enough_times"), {
-      quoteToken,
-    });
-    return;
-  }
-
-  // 完成驗證，設定今日已經詠唱過
-  await redis.set(redisTodayHasRevokeKey, 1, {
-    EX: 86400,
-  });
-
-  const messages = [];
-  const redisKey = format(config.get("redis.keys.revokeHasCharm"), userId);
-  // 給予5秒的時間詠唱，有機會可以免除花費
-  await delay(5000);
-
-  // 是否詠唱過
-  const hasCharm = await redis.get(redisKey);
-  let cost = revokeCost;
-
-  // 即使有詠唱，也有機率會詠唱失敗
-  const successSettings = [
-    {
-      rate: 80,
-      value: true,
-    },
-    {
-      rate: 20,
-      value: false,
-    },
-  ];
-  const isSuccess = random(successSettings);
-  DefaultLogger.debug(`${userId} 詠唱結果 ${isSuccess ? "成功" : "失敗"}`);
-  if (hasCharm == 1 && isSuccess) {
-    cost = 0;
-    messages.push(i18n.__("message.world_boss.revoke_attack_success"));
-  }
-
-  // 扣除金錢
-  await Inventory.decreaseGodStone({
-    userId,
-    amount: cost,
-    note: "撤回攻擊",
-  });
-
-  // 取得最低的一筆攻擊紀錄
-  const sortedByDamage = sortBy(todayLogs, ["damage"]);
-  const { id: logId, damage } = sortedByDamage[0];
-
-  // 刪除最低的一筆攻擊紀錄
-  await worldBossLogModel.delete(logId);
-
-  // 回傳訊息
-  messages.push(i18n.__("message.world_boss.revoke_attack", { damage }));
-
-  messages.forEach(message => {
-    context.replyText(message, { quoteToken });
-  });
 }
 
 /**
