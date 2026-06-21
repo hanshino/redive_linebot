@@ -2,6 +2,8 @@ const EquipmentModel = require("../model/application/Equipment");
 const PlayerEquipmentModel = require("../model/application/PlayerEquipment");
 const redis = require("../util/redis");
 const WorldBossConfig = require("./WorldBossConfig");
+const Inventory = require("../model/application/Inventory");
+const mysql = require("../util/mysql");
 
 const VALID_SLOTS = ["weapon", "armor", "accessory"];
 const CACHE_TTL = 60 * 60; // 1 hour
@@ -147,4 +149,61 @@ exports.getEquipmentBonuses = async userId => {
   }
 
   return bonuses;
+};
+
+/**
+ * Deterministically enhance one owned equipment by +1.
+ * cost(target) = getEnhanceCost(target) materials (item 1001); cap at max level; no RNG, no downgrade.
+ * Material decrement (NEGATIVE ledger insert), the in-trx negative-balance guard, and the level bump
+ * all run in one transaction. A concurrent double-enhance is caught by the in-trx re-sum guard.
+ * @param {String} userId platform_id
+ * @param {Number} equipmentId
+ * @returns {Promise<{equipmentId, fromLevel, toLevel, cost, remainingMaterials}>}
+ */
+exports.enhanceEquipment = async (userId, equipmentId) => {
+  const owned = await PlayerEquipmentModel.getWithEnhance(userId, equipmentId);
+  if (!owned) throw new Error("裝備不存在");
+
+  const fromLevel = owned.enhance_level || 0;
+  const maxLevel = WorldBossConfig.getEnhanceMaxLevel();
+  if (fromLevel >= maxLevel) throw new Error("已達強化上限");
+
+  const toLevel = fromLevel + 1;
+  const cost = WorldBossConfig.getEnhanceCost(toLevel);
+  const materialId = WorldBossConfig.ENHANCEMENT_MATERIAL_ITEM_ID;
+
+  // Fast pre-check (no trx) for a friendly early rejection in the common case.
+  const preRow = await Inventory.inventory.getUserOwnCountByItemId(userId, materialId);
+  const preBalance = (preRow && preRow.amount) || 0;
+  if (preBalance < cost) throw new Error("強化素材不足");
+
+  let remainingMaterials;
+  await mysql.transaction(async trx => {
+    // 1. NEGATIVE ledger insert (spend; string form mirrors Inventory.decreaseGodStone).
+    await trx("Inventory").insert([
+      {
+        userId,
+        itemId: materialId,
+        itemAmount: `${-cost}`,
+        note: "world_boss_enhance",
+      },
+    ]);
+
+    // 2. Authoritative double-spend guard: re-sum the balance INSIDE the trx (sees the negative row
+    //    plus any concurrent uncommitted decrement under the engine's isolation).
+    const postRow = await trx("Inventory")
+      .sum({ amount: "itemAmount" })
+      .where({ userId, itemId: materialId })
+      .first();
+    remainingMaterials = (postRow && postRow.amount) || 0;
+    if (remainingMaterials < 0) throw new Error("強化素材不足");
+
+    // 3. Bump level in the same trx; a thrown guard above already rolled the insert back.
+    await PlayerEquipmentModel.setEnhanceLevel(userId, equipmentId, toLevel, trx);
+  });
+
+  // Invalidate the cached equipment so combat reads the new enhance_level (addendum §3).
+  await redis.del(`playerEquipment:${userId}`);
+
+  return { equipmentId, fromLevel, toLevel, cost, remainingMaterials };
 };
