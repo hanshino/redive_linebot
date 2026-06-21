@@ -1,6 +1,6 @@
 const config = require("config");
 const WorldBossEvent = require("../model/application/WorldBossEvent");
-require("./WorldBossSettlementService");
+const settlement = require("./WorldBossSettlementService");
 
 const EVENT_WINDOW_HOURS = 24;
 
@@ -40,4 +40,44 @@ exports.createDailyBoss = async () => {
   });
 
   return eventId || null;
+};
+
+/**
+ * 每分鐘生命週期掃描（對齊 RaceAdvance）。只做兩件事，符合「cron 不打人、不推播」：
+ *   1. 撈 status='killed' AND settled_at IS NULL → 交給 settleEvent 發擊殺獎（致命刀已在 M4 做過
+ *      active→killed CAS，故此處不再 CAS，直接結算；settleEvent 以 settled_at 做冪等守衛）。
+ *   2. 撈 status='active' AND end_time<now → casStatus(active→expired, {}) 原子過期；贏得轉移者才
+ *      呼叫 settleEvent 發參與獎。extra={}：settled_at 由 settleEvent 寫、killed_at 對逾時王維持 NULL。
+ * 單筆結算失敗不中斷整批（下一分鐘重試；settleEvent 冪等）。
+ * @returns {Promise<{settledKilled: Number, expired: Number}>}
+ */
+exports.advance = async () => {
+  let settledKilled = 0;
+  let expired = 0;
+
+  const killed = await WorldBossEvent.getKilledUnsettled();
+  for (const event of killed) {
+    try {
+      await settlement.settleEvent(event.id);
+      settledKilled += 1;
+    } catch (err) {
+      console.error(`[WorldBoss] settle killed event #${event.id} failed:`, err);
+    }
+  }
+
+  const overdue = await WorldBossEvent.getOverdueActive();
+  for (const event of overdue) {
+    try {
+      const won = await WorldBossEvent.casStatus(event.id, "active", "expired", {});
+      if (!won) {
+        continue;
+      }
+      await settlement.settleEvent(event.id);
+      expired += 1;
+    } catch (err) {
+      console.error(`[WorldBoss] expire+settle event #${event.id} failed:`, err);
+    }
+  }
+
+  return { settledKilled, expired };
 };
