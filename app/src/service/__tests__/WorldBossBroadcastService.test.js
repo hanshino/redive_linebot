@@ -61,12 +61,29 @@ describe("WorldBossBroadcastService", () => {
     expect(snap.eventId).toBe(7);
     expect(snap.hpPct).toBe(35);
     expect(snap.phase).toBe("enrage");
-    expect(snap.boards.dps).toEqual([{ total_damage: 500, user_id: 1, platform_id: "Ua" }]);
+
+    // Boards must expose platform_id + score only — numeric user_id must NOT leak to clients.
+    expect(snap.boards.dps).toEqual([{ platform_id: "Ua", total_damage: 500 }]);
+    expect(snap.boards.dps[0]).not.toHaveProperty("user_id");
+
     expect(snap.boards.healer).toHaveLength(1);
+    expect(snap.boards.healer[0]).toEqual({ platform_id: "Ub", total_contribution: 12 });
+    expect(snap.boards.healer[0]).not.toHaveProperty("user_id");
+
     expect(snap.boards.tank).toHaveLength(1);
+    expect(snap.boards.tank[0]).toEqual({ platform_id: "Uc", total_contribution: 8 });
+    expect(snap.boards.tank[0]).not.toHaveProperty("user_id");
+
     expect(snap.feed).toHaveLength(2);
-    // feed carries platform_id, never a raw numeric id only
-    expect(snap.feed[0].platform_id).toBe("Ua");
+    expect(snap.feed[0]).toEqual({ platform_id: "Ua" });
+    expect(snap.feed[0]).not.toHaveProperty("user_id");
+    expect(snap.feed[1]).toEqual({ platform_id: "Ub" });
+    expect(snap.feed[1]).not.toHaveProperty("user_id");
+
+    // Full snapshot JSON must contain no user_id key anywhere in boards or feed.
+    const allBoardRows = [...snap.boards.dps, ...snap.boards.healer, ...snap.boards.tank];
+    allBoardRows.forEach(row => expect(row).not.toHaveProperty("user_id"));
+    snap.feed.forEach(row => expect(row).not.toHaveProperty("user_id"));
   });
 
   it("phase is calm above the threshold", async () => {

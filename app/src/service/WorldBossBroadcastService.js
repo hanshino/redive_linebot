@@ -51,12 +51,24 @@ exports.buildSnapshot = async eventId => {
   const phase = hpPct <= threshold ? "enrage" : "calm";
 
   const recentMinutes = WorldBossConfig.readEnrageRecentMinutes();
-  const [dps, healer, tank, feed] = await Promise.all([
+  const [rawDps, rawHealer, rawTank, rawFeed] = await Promise.all([
     WorldBossLog.getDamageRank({ eventId, limit: BOARD_LIMIT }),
     WorldBossLog.getContributionRank({ eventId, role: "healer", limit: BOARD_LIMIT }),
     WorldBossLog.getContributionRank({ eventId, role: "tank", limit: BOARD_LIMIT }),
     WorldBossLog.getRecentAttackers({ eventId, minutes: recentMinutes, limit: FEED_LIMIT }),
   ]);
+
+  // Strip internal numeric user_id — clients must only see platform_id. (addendum §8)
+  const dps = rawDps.map(r => ({ platform_id: r.platform_id, total_damage: r.total_damage }));
+  const healer = rawHealer.map(r => ({
+    platform_id: r.platform_id,
+    total_contribution: r.total_contribution,
+  }));
+  const tank = rawTank.map(r => ({
+    platform_id: r.platform_id,
+    total_contribution: r.total_contribution,
+  }));
+  const feed = rawFeed.map(r => ({ platform_id: r.platform_id }));
 
   return {
     eventId: Number(eventId),
