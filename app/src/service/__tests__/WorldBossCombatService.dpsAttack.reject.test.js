@@ -24,15 +24,13 @@ jest.mock("../EquipmentService", () => ({
   getEquipmentBonuses: jest.fn(),
 }));
 jest.mock("../WorldBossConfig", () => ({
-  normalAttackCost: jest.fn(() => 10),
   getNormalAttackCost: jest.fn(() => 10),
-  enrageDamageMultiplier: jest.fn(() => 2),
-  enrageContributionMultiplier: jest.fn(() => 2),
-  enrageThresholdPct: jest.fn(() => 35),
-  enrageBatchSize: jest.fn(() => 20),
-  enrageRecentMinutes: jest.fn(() => 10),
-  enrageCounterRate: jest.fn(() => 0.15),
-  naturalRecoveryMinutes: jest.fn(() => 15),
+  getEnrageDamageMultiplier: jest.fn(() => 2),
+  getEnrageContributionMultiplier: jest.fn(() => 2),
+  readEnrageThresholdPct: jest.fn(() => 35),
+  readEnrageBatchSize: jest.fn(() => 20),
+  readEnrageRecentMinutes: jest.fn(() => 10),
+  readEnrageCounterRate: jest.fn(() => 0.15),
   readNaturalRecoveryMinutes: jest.fn(() => 15),
 }));
 

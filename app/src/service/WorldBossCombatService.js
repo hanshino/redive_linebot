@@ -89,55 +89,57 @@ function rejectAttack(reason) {
 }
 
 /**
- * 實際命中解算（Task 3-5 接續實作）。
+ * 命中解算（calm 階段傷害；Task 4/5 補上狂暴 ×2、致命 CAS 與進場觸發）。
+ * @param {Object} param0
+ * @returns {Promise<Object>}
  */
 async function resolveHit({ platformId, numericUserId, eventId, attackType, level, event }) {
   void enumSkills;
   void rng;
 
-  const [equipBonuses, dmgRow] = await Promise.all([
-    EquipmentService.getEquipmentBonuses(platformId),
-    WorldBossLog.getTotalDamageByEventId(eventId),
-  ]);
-
-  const [jobKey] = attackType.split("|");
+  const jobKey = String(attackType).split("|")[0];
   const character = makeCharacter(jobKey, { level });
-  const baseDamage = character.getStandardDamage();
-  const atkPct = (equipBonuses && equipBonuses.atk_percent) || 0;
-  const damage = Math.floor(baseDamage * (1 + atkPct));
+  // v1 DPS 一律使用 getStandardDamage（skill-specific 留待 M9，LOCK §D）
+  let damage = character.getStandardDamage();
 
+  // atk_percent 為「小數比例」（addendum §2），直接 *(1+atk_percent)
+  const bonuses = await EquipmentService.getEquipmentBonuses(platformId);
+  const atkPercent = (bonuses && bonuses.atk_percent) || 0;
+  if (atkPercent > 0) {
+    damage = Math.floor(damage * (1 + atkPercent));
+  }
+
+  const cost = WorldBossConfig.getNormalAttackCost();
+
+  // 階段判定：剩餘血量是否已進狂暴帶（HP 動態計算，無 remain_hp 欄位，addendum §6）
+  const dmgRow = await WorldBossLog.getTotalDamageByEventId(eventId);
   const totalDamage = parseInt((dmgRow && dmgRow.total_damage) || 0, 10);
   const remainHpBefore = event.hp - totalDamage;
   const enraged =
-    remainHpBefore <=
-    event.hp *
-      (WorldBossConfig.readEnrageThresholdPct
-        ? WorldBossConfig.readEnrageThresholdPct(event) / 100
-        : 0.35);
+    remainHpBefore <= (event.hp * WorldBossConfig.readEnrageThresholdPct(event)) / 100;
 
-  const recentAttackers = await WorldBossLog.getRecentAttackers({
+  // getRecentAttackers 供 M4.4/M4.5 狂暴觸發批次倒地使用，calm 路徑暫留備用
+  void WorldBossLog.getRecentAttackers({
     eventId,
-    minutes: WorldBossConfig.readEnrageRecentMinutes
-      ? WorldBossConfig.readEnrageRecentMinutes()
-      : 10,
-    limit: WorldBossConfig.readEnrageBatchSize ? WorldBossConfig.readEnrageBatchSize(event) : 20,
+    minutes: WorldBossConfig.readEnrageRecentMinutes(),
+    limit: WorldBossConfig.readEnrageBatchSize(event),
   });
 
-  void recentAttackers;
+  const contribution = damage; // DPS 榜：contribution 鏡像 damage
 
   await WorldBossLog.createWithRole({
     user_id: numericUserId,
     world_boss_event_id: eventId,
     role: "dps",
-    action_type: "attack",
+    action_type: attackType,
     damage,
-    cost: 0,
-    contribution: damage,
+    cost,
+    contribution,
   });
 
   return {
     damage,
-    contribution: damage,
+    contribution,
     enraged,
     didEnrageTrigger: false,
     knockedBatch: [],
