@@ -38,6 +38,7 @@ exports.router = [
   text(/^[#]傷害[紀記]錄/, todayLogs),
   text(config.get("worldboss.revoke_charm"), revokeCharm),
   text(/^[#＃]裝備$/, showEquipment),
+  text(/^[#＃]強化(\s+\d+)?$/, enhanceCmd),
 ];
 
 /**
@@ -930,3 +931,33 @@ api.updateAttackMessage = async (req, res) => {
     message: "success",
   });
 };
+
+/**
+ * #強化 <equipmentId> — 強化一件已擁有的裝備 +1（個人即時回覆，不進群組批次）
+ * @param {import("bottender").LineContext} context
+ */
+async function enhanceCmd(context) {
+  const text = context.event.message.text || "";
+  // "#強化 7" / "＃強化 7" -> 7 ; bare "#強化" -> usage hint
+  const match = text.replace(/＃/g, "#").match(/^#強化(?:\s+(\d+))?$/);
+  if (!match || !match[1]) {
+    await context.sendText("請指定要強化的裝備編號，例如：#強化 7");
+    return;
+  }
+
+  const equipmentId = parseInt(match[1], 10);
+  const userId = context.event.source.userId;
+
+  try {
+    const result = await EquipmentService.enhanceEquipment(userId, equipmentId);
+    await context.sendText(
+      `強化成功！裝備 #${result.equipmentId} ` +
+        `+${result.fromLevel} → +${result.toLevel}\n` +
+        `消耗素材：${result.cost}（剩餘 ${result.remainingMaterials}）`
+    );
+  } catch (err) {
+    await context.sendText(`強化失敗：${err.message}`);
+  }
+}
+
+exports.enhanceCmd = enhanceCmd;
