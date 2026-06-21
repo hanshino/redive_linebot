@@ -2,7 +2,15 @@ const mysql = require("../../util/mysql");
 const WorldBoss = require("./WorldBoss");
 const WorldBossLog = require("./WorldBossLog");
 const TABLE = "world_boss_event";
-const fillable = ["world_boss_id", "announcement", "start_time", "end_time"];
+const fillable = [
+  "world_boss_id",
+  "announcement",
+  "start_time",
+  "end_time",
+  "status",
+  "killed_at",
+  "settled_at",
+];
 const pick = require("lodash/pick");
 
 exports.table = TABLE;
