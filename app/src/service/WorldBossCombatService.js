@@ -118,14 +118,22 @@ async function resolveHit({ platformId, numericUserId, eventId, attackType, leve
   const enraged =
     remainHpBefore <= (event.hp * WorldBossConfig.readEnrageThresholdPct(event)) / 100;
 
-  // getRecentAttackers 供 M4.4/M4.5 狂暴觸發批次倒地使用，calm 路徑暫留備用
+  // getRecentAttackers 供 M4.5 狂暴觸發批次倒地使用，calm 路徑暫留備用
   void WorldBossLog.getRecentAttackers({
     eventId,
     minutes: WorldBossConfig.readEnrageRecentMinutes(),
     limit: WorldBossConfig.readEnrageBatchSize(event),
   });
 
-  const contribution = damage; // DPS 榜：contribution 鏡像 damage
+  // 狂暴帶（本刀「開始時」就在帶內）：傷害 ×2（LOCK §D，於寫帳前套用）。
+  // 跨越門檻的那一刀因起始在 calm（enraged=false）不在此放大——它改為觸發進場批次（Task 5）。
+  if (enraged) {
+    damage = damage * WorldBossConfig.getEnrageDamageMultiplier();
+  }
+
+  // contribution 鏡像 damage：狂暴時 damage 已含 ×2，等同 contribution 也 ×2（LOCK §D）。
+  // getEnrageContributionMultiplier() 與 getEnrageDamageMultiplier() 相等，故僅套用一次、不二次相乘。
+  const contribution = damage;
 
   await WorldBossLog.createWithRole({
     user_id: numericUserId,
@@ -136,6 +144,12 @@ async function resolveHit({ platformId, numericUserId, eventId, attackType, leve
     cost,
     contribution,
   });
+
+  // 致命刀：剩餘血量扣掉本刀 <= 0 → CAS active→killed（結算交給 M7 cron，stamp killed_at）
+  const remainHpAfter = remainHpBefore - damage;
+  if (remainHpAfter <= 0) {
+    await WorldBossEvent.casStatus(eventId, "active", "killed", { killed_at: new Date() });
+  }
 
   return {
     damage,
