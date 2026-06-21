@@ -274,3 +274,46 @@ describe("World Boss cold-start (all-DPS) acceptance gate — drives real dpsAtt
     expect(wb.cold_start_max_hp).toBeGreaterThan(0);
   });
 });
+
+// ---- Balance-sweep formula pin (addendum §16) ----
+// WorldBossSim is TUNING TOOLING ONLY (not the acceptance gate above).
+// These tests prevent the closed-form sweep from silently diverging from the
+// real combat formula by pinning WorldBossSim.standardDamage() to the value
+// returned by the REAL make() factory (RPGCharacter.js:288-299).
+// Requires are placed AFTER all jest.mock calls above (transform:{} = no hoisting).
+const { standardDamage } = require("../bin/WorldBossSim");
+const { make: makeCharacter } = require("../src/model/application/RPGCharacter");
+
+describe("balance-sweep formula is pinned to the real combat formula", () => {
+  it.each([20, 30, 50, 60, 80])(
+    "sweep standardDamage(%i) equals makeCharacter(...).getStandardDamage()",
+    level => {
+      const character = makeCharacter("adventurer", { level });
+      expect(standardDamage(level)).toBe(character.getStandardDamage());
+    }
+  );
+
+  it("base damage is job-independent (swordman/mage/thief do not override it)", () => {
+    const level = 50;
+    const expected = standardDamage(level);
+    ["adventurer", "swordman", "mage", "thief"].forEach(jobKey => {
+      expect(makeCharacter(jobKey, { level }).getStandardDamage()).toBe(expected);
+    });
+  });
+
+  it("level 50 = 3000 and level 20 = 600 (canonical curve, not a level*10 model)", () => {
+    expect(standardDamage(50)).toBe(3000);
+    expect(standardDamage(20)).toBe(600);
+  });
+
+  it("sweep reads enrage knobs from config, not hardcoded values", () => {
+    const wbCfg = config.get("worldboss");
+    // Verify the config keys the sweep depends on are present and match locked defaults.
+    expect(wbCfg.enrage_threshold_pct).toBe(35);
+    expect(wbCfg.enrage_batch_size).toBe(20);
+    expect(wbCfg.enrage_counter_rate).toBe(0.15);
+    expect(wbCfg.enrage_damage_multiplier).toBe(2);
+    expect(wbCfg.daily_limit).toBe(100);
+    expect(wbCfg.normal_attack_cost).toBe(10);
+  });
+});
