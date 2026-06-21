@@ -9,6 +9,17 @@ jest.mock("../../../src/handler/WorldBoss", () => ({
     updateWorldBoss: jest.fn((req, res) => res.json({ success: true })),
     deleteWorldBoss: jest.fn((req, res) => res.json({ success: true })),
   },
+  player: {
+    getSnapshot: jest.fn(),
+    getMe: jest.fn(),
+    attack: jest.fn(),
+    block: jest.fn(),
+    revive: jest.fn(),
+    shield: jest.fn(),
+    role: jest.fn(),
+    enhance: jest.fn(),
+    getReport: jest.fn(),
+  },
 }));
 
 let app;

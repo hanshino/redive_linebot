@@ -45,7 +45,6 @@ const commandMap = [
   { pattern: /^[.#/](攻擊|attack)$/, name: "worldboss_attack", category: "application" },
   { pattern: /^[#]傷害[紀記]錄/, name: "worldboss_logs", category: "application" },
   { pattern: /^[#＃]裝備$/, name: "worldboss_equipment", category: "application" },
-  { pattern: /^#夢幻回歸$/, name: "worldboss_revoke", category: "application" },
   { pattern: /^\/worldrank$/, name: "worldboss_rank", category: "application" },
 
   // === application: janken ===

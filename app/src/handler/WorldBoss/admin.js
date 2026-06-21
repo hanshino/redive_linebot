@@ -40,7 +40,7 @@ exports.updateWorldBoss = async (req, res) => {
 exports.deleteWorldBoss = async (req, res) => {
   const { id } = req.params;
   try {
-    await WorldBossModel.destory(id);
+    await WorldBossModel.destroy(id);
     res.json({});
   } catch {
     res.status(500).json({

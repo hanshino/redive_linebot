@@ -14,9 +14,7 @@
       "jankenChallenge": "jankenChallenge",
       "adminList": "adminList",
       "gamebleGame": "gamebleGame",
-      "groupSession": "group:session:%s",
-      "revokeHasCharm": "revokeHasCharm:%s",
-      "todayHasRevoke": "todayHasRevoke:%s:%s"
+      "groupSession": "group:session:%s"
     },
     "prefix": {
       "alias": "alias",
@@ -27,8 +25,6 @@
   "worldboss": {
     "daily_limit": 100,
     "penalty_rate": 0.1,
-    "money_revoke_attack_cost": 10000,
-    "revoke_charm": "隱匿於夜之黑暗，撫慰心靈的爆裂之炎，吾以幻夢之名，呼喚初晨的重生，在夢幻之境、遺落之地，引領破碎時光的歸來吧。",
     "manual": [
       "每日 cost 上限：100",
       "傷害會隨著等級的提升",
@@ -36,7 +32,35 @@
       "可以使用 #冒險小卡 查看自己的進度",
       "每一次攻擊都會依照技能來消耗 cost",
       "每一次攻擊都會間隔 5 秒"
-    ]
+    ],
+    "normal_attack_cost": 10,
+    "enrage_threshold_pct": 35,
+    "enrage_batch_size": 20,
+    "enrage_recent_minutes": 10,
+    "enrage_counter_rate": 0.15,
+    "enrage_damage_multiplier": 2,
+    "enrage_contribution_multiplier": 2,
+    "natural_recovery_minutes": 15,
+    "cold_start_max_hp": 1500000,
+    "revive_count_k": 2,
+    "shield_count_k": 2,
+    "block_window_minutes": 5,
+    "reselect_stone_cost": 5000,
+    "enhance": { "max_level": 10, "per_level_pct": 0.05, "cost_base": 8 },
+    "reward": {
+      "participation": 15,
+      "expired_participation": 5,
+      "rank_bands": { "p1": 50, "p5": 35, "p20": 20, "rest": 8 },
+      "mvp_stones": 30
+    },
+    "open_hour": 4,
+    "boss_pool": [],
+    "stone_item_id": 999,
+    "enhancement_material_item_id": 1001
+  },
+  "items": {
+    "goddess_stone": { "itemId": 999, "name": "女神石" },
+    "enhancement_material": { "itemId": 1001, "name": "強化素材" }
   },
   "minigame": {
     "race": {

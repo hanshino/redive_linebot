@@ -9,3 +9,4 @@ AdminRouter.put("/world-bosses/:id", adminHandler.updateWorldBoss);
 AdminRouter.delete("/world-bosses/:id", adminHandler.deleteWorldBoss);
 
 exports.admin = AdminRouter;
+exports.player = require("./player").player;

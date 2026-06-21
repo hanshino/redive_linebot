@@ -3,7 +3,6 @@ const { Context, getClient, withProps } = require("bottender");
 const { text } = require("bottender/router");
 const moment = require("moment");
 const ajv = require("../../util/ajv");
-const worldBossModel = require("../../model/application/WorldBoss");
 const worldBossEventService = require("../../service/WorldBossEventService");
 const worldBossEventLogService = require("../../service/WorldBossEventLogService");
 const minigameService = require("../../service/MinigameService");
@@ -14,45 +13,27 @@ const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
 const { model: worldBossLogModel } = require("../../model/application/WorldBossLog");
 const UserModel = require("../../model/application/UserModel");
-const { inventory: Inventory } = require("../../model/application/Inventory");
 const { make: makeCharacter, enumSkills } = require("../../model/application/RPGCharacter");
 const redis = require("../../util/redis");
 const i18n = require("../../util/i18n");
 const { DefaultLogger } = require("../../util/Logger");
-const { delay, random } = require("../../util/index");
+const WorldBossCombatService = require("../../service/WorldBossCombatService");
+const WorldBossRoleService = require("../../service/WorldBossRoleService");
 const LineClient = getClient("line");
 const config = require("config");
-const { get, sample, sortBy, isNull } = require("lodash");
+const { get, isNull } = require("lodash");
 const humanNumber = require("human-number");
-const { format } = require("util");
 const { table, getBorderCharacters } = require("table");
 
 exports.router = [
   text("#冒險小卡", myStatus),
-  text("/bosslist", bosslist),
   text(["/worldboss", "#世界王"], bossEvent),
-  text("/allevent", all),
   text("/worldrank", worldRank),
   text(/^[.#/](攻擊|attack)$/, withProps(attack, { attackType: "normal" })),
-  text("#夢幻回歸", revokeAttack),
   text(/^[#]傷害[紀記]錄/, todayLogs),
-  text(config.get("worldboss.revoke_charm"), revokeCharm),
   text(/^[#＃]裝備$/, showEquipment),
+  text(/^[#＃]強化(\s+\d+)?$/, enhanceCmd),
 ];
-
-/**
- * 詠唱
- * @param {import ("bottender").LineContext} context
- */
-async function revokeCharm(context) {
-  const { userId } = context.event.source;
-  const redisKey = format(config.get("redis.keys.revokeHasCharm"), userId);
-  await redis.set(redisKey, 1, {
-    EX: 20,
-  });
-
-  DefaultLogger.debug(`${userId} 已詠唱 持續 20 秒`);
-}
 
 /**
  * 取得今日傷害紀錄
@@ -78,98 +59,6 @@ async function todayLogs(context) {
   const output = table(data, { border: getBorderCharacters("ramac") });
 
   context.replyText(output, { quoteToken });
-}
-
-/**
- * 撤回一次攻擊
- * @param {import ("bottender").LineContext} context
- */
-async function revokeAttack(context) {
-  const revokeCost = config.get("worldboss.money_revoke_attack_cost");
-  const today = moment().format("MMDD");
-  const { userId, id } = context.event.source;
-  const { quoteToken } = context.event.message;
-  const redisTodayHasRevokeKey = format(config.get("redis.keys.todayHasRevoke"), today, userId);
-
-  const isTodayHasRevoke = await redis.get(redisTodayHasRevokeKey);
-  if (isTodayHasRevoke) {
-    context.replyText(sample(i18n.__("message.world_boss.not_enough_power")), {
-      quoteToken,
-    });
-    return;
-  }
-
-  // 確認使用者是否有足夠的金錢
-  const { amount: userOwnMoney } = await Inventory.getUserMoney(userId);
-  if (userOwnMoney < revokeCost) {
-    context.replyText(i18n.__("message.world_boss.revoke_attack_not_enough_money"), {
-      quoteToken,
-    });
-    return;
-  }
-
-  // 確認是否已出完刀
-  const result = await worldBossEventLogService.getTodayCost(id);
-  const totalCost = isNull(result.totalCost) ? 0 : parseInt(result.totalCost);
-  if (totalCost < config.get("worldboss.daily_limit")) {
-    context.replyText(i18n.__("message.world_boss.revoke_attack_not_enough_times"), {
-      quoteToken,
-    });
-    return;
-  }
-
-  // 完成驗證，設定今日已經詠唱過
-  await redis.set(redisTodayHasRevokeKey, 1, {
-    EX: 86400,
-  });
-
-  const messages = [];
-  const redisKey = format(config.get("redis.keys.revokeHasCharm"), userId);
-  // 給予5秒的時間詠唱，有機會可以免除花費
-  await delay(5000);
-
-  // 是否詠唱過
-  const hasCharm = await redis.get(redisKey);
-  let cost = revokeCost;
-
-  // 即使有詠唱，也有機率會詠唱失敗
-  const successSettings = [
-    {
-      rate: 80,
-      value: true,
-    },
-    {
-      rate: 20,
-      value: false,
-    },
-  ];
-  const isSuccess = random(successSettings);
-  DefaultLogger.debug(`${userId} 詠唱結果 ${isSuccess ? "成功" : "失敗"}`);
-  if (hasCharm == 1 && isSuccess) {
-    cost = 0;
-    messages.push(i18n.__("message.world_boss.revoke_attack_success"));
-  }
-
-  // 扣除金錢
-  await Inventory.decreaseGodStone({
-    userId,
-    amount: cost,
-    note: "撤回攻擊",
-  });
-
-  // 取得最低的一筆攻擊紀錄
-  const sortedByDamage = sortBy(todayLogs, ["damage"]);
-  const { id: logId, damage } = sortedByDamage[0];
-
-  // 刪除最低的一筆攻擊紀錄
-  await worldBossLogModel.delete(logId);
-
-  // 回傳訊息
-  messages.push(i18n.__("message.world_boss.revoke_attack", { damage }));
-
-  messages.forEach(message => {
-    context.replyText(message, { quoteToken });
-  });
 }
 
 /**
@@ -297,7 +186,8 @@ async function myStatus(context) {
 }
 
 /**
- * @param {Context} context
+ * 顯示目前世界王的傷害排行榜（D26：取代失效的 getTopTen + JSON dump）
+ * @param {import ("bottender").LineContext} context
  */
 async function worldRank(context) {
   // 取得正在進行中的世界事件
@@ -312,40 +202,32 @@ async function worldRank(context) {
     return;
   }
 
-  let topTenData = await worldBossEventLogService.getTopTen(events[0].id);
-  topTenData = await Promise.all(
-    topTenData.map(async data => {
-      let profile = await LineClient.getUserProfile(data.userId);
-      return {
-        ...data,
-        ...profile,
-      };
+  const eventId = events[0].id;
+  // MODEL access path (same as M8 broadcast). Rows: { user_id, platform_id, total_damage }.
+  const ranked = await worldBossLogModel.getDamageRank({ eventId, limit: 10 });
+
+  const rankBoxes = await Promise.all(
+    ranked.map(async (row, index) => {
+      let displayName = `路人${index + 1}`;
+      try {
+        const profile = await LineClient.getUserProfile(row.platform_id);
+        displayName = get(profile, "displayName", displayName);
+      } catch (e) {
+        DefaultLogger.debug(`worldRank profile miss ${row.platform_id}: ${e.message}`);
+      }
+      return worldBossTemplate.generateRankBox({
+        name: displayName,
+        damage: row.total_damage,
+        rank: index + 1,
+      });
     })
   );
 
-  context.replyText(JSON.stringify(topTenData));
+  const rankBubble = worldBossTemplate.generateTopTenRank(rankBoxes);
+  context.replyFlex("世界王傷害排行", rankBubble);
 }
 
-/**
- * @param {Context} context
- */
-async function all(context) {
-  const data = await worldBossEventService.all({
-    filters: [
-      ["start_time", "<", new Date()],
-      ["end_time", ">", new Date()],
-    ],
-  });
-  context.replyText(JSON.stringify(data));
-}
-
-/**
- * @param {Context} context
- */
-async function bosslist(context) {
-  const data = await worldBossModel.all();
-  context.replyText(JSON.stringify(data));
-}
+exports.worldRank = worldRank;
 
 /**
  * @param {Context} context
@@ -447,197 +329,79 @@ async function showEquipment(context) {
  */
 const attackOnBoss = async (context, props) => {
   const { worldBossEventId, attackType = "standard" } = props.payload;
-  // 從事件的 source 取得用戶資料
-  const { displayName, id, userId, pictureUrl } = context.event.source;
+  const { displayName, id, userId } = context.event.source;
   const isGroup = context.event.source.type === "group";
-  // 決定要不要把訊息儲存起來，等待一段時間才一次發送
-  const keepMessage = isGroup;
 
-  // 沒有會員id，跳過不處理
+  // 沒有會員 id，跳過不處理
   if (!id) {
     DefaultLogger.warn(`no member id ${userId}`);
     return;
   }
 
-  // 判斷是否可以攻擊
-  const canAttack = await isUserCanAttack(id);
-  if (!canAttack) {
-    DefaultLogger.debug(
-      `user ${displayName} can not attack ${userId}. Maybe cache or reach limit in this period.`
-    );
-
-    if (context.event.isText) {
-      context.replyText(
-        i18n.__("message.world_boss.can_not_attack", {
-          name: displayName,
-        })
-      );
-    }
-
+  // 角色 gating：未選 role 一律先當 dps（D27 向前相容）。補/坦動詞由 M9 接入。
+  const role = (await WorldBossRoleService.getRole(userId)) || "dps";
+  if (role !== "dps") {
+    context.replyText(i18n.__("message.world_boss.wrong_role_for_attack"));
     return;
   }
 
-  const eventBoss = await worldBossEventService.getBossInformation(worldBossEventId);
-
-  // 如果抓不到資料，跳過不處理
-  if (!eventBoss) {
-    DefaultLogger.warn(`no event boss ${worldBossEventId}`);
-    return;
-  }
-
-  const { name, end_time } = eventBoss;
-  let { total_damage: totalDamage = 0 } =
-    await worldBossEventLogService.getRemainHpByEventId(worldBossEventId);
-
-  // 如果這個活動已經結束，則不處理
-  if (moment(end_time).isBefore(moment())) {
-    DefaultLogger.debug(`event ${name} is ended.`);
-    return;
-  }
-
-  // 如果此王已經死亡，則不處理
-  let remainHp = eventBoss.hp - parseInt(totalDamage || 0);
-  if (remainHp <= 0) {
-    DefaultLogger.debug(
-      `boss is dead ${displayName} skip, boss hp ${eventBoss.hp}, totaldamage ${totalDamage}`
-    );
-    return;
-  }
-
-  // 取得用戶等級
+  // 取得聊天等級與職業（defaultData 無 job_key，缺漏時退回 adventurer）
   let levelData = await minigameService.findByUserId(userId);
   if (!levelData) {
-    DefaultLogger.info(`no level data ${userId}. Create One.`);
     await minigameService.createByUserId(userId, minigameService.defaultData);
     levelData = minigameService.defaultData;
-    !keepMessage && context.replyText(i18n.__("message.minigame_level_not_found"));
   }
-  const { level, job_key: jobKey } = levelData;
-  const rpgCharacter = makeCharacter(jobKey, { level });
-  const equipBonuses = await EquipmentService.getEquipmentBonuses(userId);
+  const { level, job_key: jobKey = "adventurer" } = levelData;
 
-  // 新增對 boss 攻擊紀錄
-  let damage = rpgCharacter.getStandardDamage(); // 預設使用基礎攻擊
-  let cost = 10; // 預設消耗的扣打
-  const [attackJobKey, attackSkill] = attackType.split("|");
+  // 建立 canonical attackType "<jobKey>|<skill>"（skill 預設 standard）
+  const [, rawSkill] = String(attackType).split("|");
+  const skill = rawSkill === enumSkills.SKILL_ONE ? enumSkills.SKILL_ONE : enumSkills.STANDARD;
+  const resolvedAttackType = `${jobKey}|${skill}`;
 
-  if (attackJobKey !== rpgCharacter.key) {
-    // 如果攻擊職業不同，則不處理
+  // numericUserId = 既有 handler 已持有的數字 user.id（context.event.source.id）
+  const result = await WorldBossCombatService.dpsAttack({
+    platformId: userId,
+    numericUserId: id,
+    eventId: worldBossEventId,
+    attackType: resolvedAttackType,
+    level,
+  });
+
+  // 駁回（status≠active / 倒下）→ 即時回覆，bypass 批次，不扣精力（D24）
+  if (result.rejected) {
+    const rejectMessages = {
+      not_active: i18n.__("message.world_boss_event_no_ongoing"),
+      knocked_down: i18n.__("message.world_boss.knocked_down"),
+    };
+    context.replyText(
+      rejectMessages[result.reason] || i18n.__("message.world_boss_event_no_ongoing")
+    );
     return;
   }
 
-  if (attackSkill === enumSkills.SKILL_ONE) {
-    damage = rpgCharacter.getSkillOneDamage();
-    cost = rpgCharacter.skillOne.cost;
+  // 狂暴觸發 → 一次性即時公告（bypass 批次，一場王僅一次，因只有跨門檻刀會 true）
+  if (result.didEnrageTrigger && isGroup) {
+    context.replyText(i18n.__("message.world_boss.enrage_announce"));
   }
 
-  // 裝備加成：攻擊力百分比
-  if (equipBonuses.atk_percent > 0) {
-    damage = Math.floor(damage * (1 + equipBonuses.atk_percent));
-  }
-
-  // 裝備加成：cost 減少
-  if (equipBonuses.cost_reduction > 0) {
-    cost = Math.max(1, cost - equipBonuses.cost_reduction);
-  }
-
-  let attributes = {
-    user_id: id,
-    world_boss_event_id: worldBossEventId,
-    action_type: attackType,
-    damage,
-    cost,
-  };
-  await worldBossEventLogService.create(attributes);
-
+  // 成就：每刀照舊評估（沿用既有掛鉤）
   AchievementEngine.evaluate(userId, "boss_attack", {
     level,
-    damage,
+    damage: result.damage,
     feature: "world_boss",
   })
     .then(({ unlocked }) => notifyUnlocks(context, userId, unlocked))
     .catch(() => {});
 
-  // 隨機取得此次攻擊的訊息樣板
-  const messageTemplates = await worldBossUserAttackMessageService.all();
-  const tags = await worldBossUserAttackMessageService.getTags();
-  // 先抽取 tag
-  const tag = sample(tags);
-  // 再根據 tag 抽取訊息樣板
-  const templateData = sample(messageTemplates.filter(data => data.tag === tag)) ||
-    sample(messageTemplates) || {
-      template: "{display_name} 對 {boss_name} 造成了 {damage} 傷害！",
-    };
-
-  let causedDamagePercent = calculateDamagePercentage(eventBoss.hp, damage);
-  let earnedExp = (eventBoss.exp * causedDamagePercent) / 100;
-  // 計算因等級差距的關係是否進行經驗值懲罰
-  let penaltyInfo = decidePenalty({ level: eventBoss.level, userLevel: level });
-  if (penaltyInfo.isPenalty) {
-    earnedExp = Math.round(earnedExp * penaltyInfo.expRate);
-  }
-
-  // 裝備加成：額外經驗值
-  earnedExp += equipBonuses.exp_bonus || 0;
-
-  // 計算獲得經驗後的等級狀況
-  let newLevelData = await decideLevelResult({ ...levelData, earnedExp });
-  // 將計算後的結果更新至資料庫
-  await minigameService.updateByUserId(userId, {
-    level: newLevelData.newLevel,
-    exp: newLevelData.newExp,
+  const narration = i18n.__("message.world_boss.dps_hit", {
+    display_name: displayName,
+    damage: result.damage,
   });
 
-  if (newLevelData.levelUp && !keepMessage) {
-    context.replyText(
-      i18n.__("message.minigame_level_up", { level: newLevelData.newLevel, displayName })
-    );
-  }
-
-  // 獲取今日花費 cost 並且在訊息中提示
-  const { totalCost: todayCost } = await worldBossEventLogService.getTodayCost(id);
-  const dailyLimit = config.get("worldboss.daily_limit");
-
-  let iconUrl = get(templateData, "icon_url", pictureUrl);
-  let messages = [
-    i18n
-      .__(templateData.template, {
-        name,
-        damage,
-        display_name: displayName,
-        boss_name: eventBoss.name,
-      })
-      .trim() +
-      `\n_目前 cost: ${todayCost}/${dailyLimit}_` +
-      (function () {
-        const parts = [];
-        if (equipBonuses.atk_percent > 0)
-          parts.push(`ATK+${Math.round(equipBonuses.atk_percent * 100)}%`);
-        if (equipBonuses.cost_reduction > 0) parts.push(`Cost-${equipBonuses.cost_reduction}`);
-        if (equipBonuses.exp_bonus > 0) parts.push(`EXP+${equipBonuses.exp_bonus}`);
-        return parts.length > 0 ? `\n_裝備加成: ${parts.join(", ")}_` : "";
-      })(),
-  ];
-  let sender = { name: displayName.substr(0, 20), iconUrl };
-
-  if (penaltyInfo.isPenalty) {
-    messages.push(
-      i18n.__("message.minigame_penalty", {
-        penaltyRate: penaltyInfo.expRate * 100,
-      })
-    );
-  }
-
-  DefaultLogger.debug(
-    `${displayName} 造成了 ${calculateDamagePercentage(eventBoss.hp, damage)} ${JSON.stringify(
-      sender
-    )}`
-  );
-
-  if (keepMessage) {
-    await handleKeepingMessage(worldBossEventId, context, messages.join("\n"));
+  if (isGroup) {
+    await handleKeepingMessage(worldBossEventId, context, narration);
   } else {
-    context.replyText(messages.join("\n"), { sender });
+    context.replyText(narration);
   }
 };
 
@@ -701,6 +465,7 @@ async function handleKeepingMessage(worldBossEventId, context, keepMessage) {
  * @param {String} userId
  * @returns {Promise<Boolean>}
  */
+// eslint-disable-next-line no-unused-vars
 async function isUserCanAttack(userId) {
   const key = `${userId}_can_attack`;
   const cooldownSeconds = 5;
@@ -736,6 +501,7 @@ async function isUserCanAttack(userId) {
 /**
  * 計算攻擊傷害占比
  */
+// eslint-disable-next-line no-unused-vars
 function calculateDamagePercentage(bossHp, damage) {
   return (damage / bossHp) * 100;
 }
@@ -754,6 +520,7 @@ function calculateDamagePercentage(bossHp, damage) {
  * @param {Number} param0.earnedExp 已獲得經驗值
  * @returns {Promise<LevelResult>}
  */
+// eslint-disable-next-line no-unused-vars
 async function decideLevelResult({ level, exp, earnedExp }) {
   let newLevel = level;
   let newExp = exp + earnedExp;
@@ -797,6 +564,7 @@ async function decideLevelResult({ level, exp, earnedExp }) {
  * @param {Number} param0.userLevel 玩家等級
  * @returns {Object<{isPenalty: Boolean, expRate: Number}>} 懲罰資訊
  */
+// eslint-disable-next-line no-unused-vars
 function decidePenalty({ level, userLevel }) {
   // 將會按照懲罰倍率，隨著等級差距越大，懲罰倍率越大，呈線性增加
   let penaltyRate = config.get("worldboss.penalty_rate");
@@ -930,3 +698,33 @@ api.updateAttackMessage = async (req, res) => {
     message: "success",
   });
 };
+
+/**
+ * #強化 <equipmentId> — 強化一件已擁有的裝備 +1（個人即時回覆，不進群組批次）
+ * @param {import("bottender").LineContext} context
+ */
+async function enhanceCmd(context) {
+  const text = context.event.message.text || "";
+  // "#強化 7" / "＃強化 7" -> 7 ; bare "#強化" -> usage hint
+  const match = text.replace(/＃/g, "#").match(/^#強化(?:\s+(\d+))?$/);
+  if (!match || !match[1]) {
+    await context.sendText("請指定要強化的裝備編號，例如：#強化 7");
+    return;
+  }
+
+  const equipmentId = parseInt(match[1], 10);
+  const userId = context.event.source.userId;
+
+  try {
+    const result = await EquipmentService.enhanceEquipment(userId, equipmentId);
+    await context.sendText(
+      `強化成功！裝備 #${result.equipmentId} ` +
+        `+${result.fromLevel} → +${result.toLevel}\n` +
+        `消耗素材：${result.cost}（剩餘 ${result.remainingMaterials}）`
+    );
+  } catch (err) {
+    await context.sendText(`強化失敗：${err.message}`);
+  }
+}
+
+exports.enhanceCmd = enhanceCmd;

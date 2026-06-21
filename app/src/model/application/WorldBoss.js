@@ -59,6 +59,6 @@ exports.update = async (id, attributes = {}) => {
   return await mysql(TABLE).update(data).where({ id });
 };
 
-exports.destory = async id => {
+exports.destroy = async id => {
   return await mysql(TABLE).delete().where({ id });
 };

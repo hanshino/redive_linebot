@@ -71,11 +71,29 @@ class PlayerEquipment extends Base {
     const row = await this.knex.where({ user_id: userId, equipment_id: equipmentId }).first();
     return !!row;
   }
+
+  async setEnhanceLevel(userId, equipmentId, level, trx) {
+    const db = trx ? trx(TABLE) : mysql(TABLE);
+    return await db
+      .where({ user_id: userId, equipment_id: equipmentId })
+      .update({ enhance_level: level, updated_at: mysql.fn.now() });
+  }
+
+  async getWithEnhance(userId, equipmentId) {
+    return await mysql(TABLE)
+      .select(...EQUIPMENT_COLUMNS)
+      .leftJoin("equipment", "player_equipment.equipment_id", "equipment.id")
+      .where({
+        "player_equipment.user_id": userId,
+        "player_equipment.equipment_id": equipmentId,
+      })
+      .first();
+  }
 }
 
 const model = new PlayerEquipment({
   table: TABLE,
-  fillable: ["user_id", "equipment_id", "slot", "is_equipped"],
+  fillable: ["user_id", "equipment_id", "slot", "is_equipped", "enhance_level"],
 });
 
 exports.table = TABLE;
@@ -87,3 +105,6 @@ exports.unequipSlot = (userId, slot) => model.unequipSlot(userId, slot);
 exports.getInventory = userId => model.getInventory(userId);
 exports.addToInventory = (userId, equipmentId) => model.addToInventory(userId, equipmentId);
 exports.hasItem = (userId, equipmentId) => model.hasItem(userId, equipmentId);
+exports.setEnhanceLevel = (userId, equipmentId, level, trx) =>
+  model.setEnhanceLevel(userId, equipmentId, level, trx);
+exports.getWithEnhance = (userId, equipmentId) => model.getWithEnhance(userId, equipmentId);

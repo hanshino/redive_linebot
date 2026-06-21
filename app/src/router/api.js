@@ -24,7 +24,7 @@ const AnnounceController = require("../controller/application/AnnounceController
 const WorldBossController = require("../controller/application/WorldBossController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
 const AdminModel = require("../model/application/Admin");
-const { admin: AdminWorldBossRouter } = require("./WorldBoss");
+const { admin: AdminWorldBossRouter, player: PlayerWorldBossRouter } = require("./WorldBoss");
 const ImgurRouter = require("./Imgur");
 const { admin: AdminWorldBossEventRouter } = require("./WorldBossEvent");
 const { admin: AdminEquipmentRouter, player: PlayerEquipmentRouter } = require("./Equipment");
@@ -50,6 +50,7 @@ router.use("/admin", AdminCouponRouter);
 
 router.use(GodStoneShopRouter);
 router.use("/game", verifyToken, PlayerEquipmentRouter);
+router.use("/game", verifyToken, PlayerWorldBossRouter);
 
 router.get("/me", verifyToken, async (req, res) => {
   const { userId } = req.profile;

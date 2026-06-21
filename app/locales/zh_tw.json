@@ -86,7 +86,11 @@
         "自分にもっと力があれば結果は変わった...",
         "我還需要更多的力量..."
       ],
-      "revoke_attack": "時間線已重置，已將今日最低的傷害 {{ damage }} 移除"
+      "revoke_attack": "時間線已重置，已將今日最低的傷害 {{ damage }} 移除",
+      "knocked_down": "你已被擊倒，需等待救援或自然恢復後才能再次行動",
+      "enrage_announce": "⚠️ 世界王進入狂暴狀態！最近出手的勇者被擊飛，傷害翻倍！",
+      "wrong_role_for_attack": "你目前的職業無法直接攻擊，請改用對應的職業指令",
+      "dps_hit": "{{display_name}} 造成了 {{damage}} 點傷害！"
     },
     "admin_attack_on_world_boss": "創造神路過敲了一下... 造成 {{ damage }} 傷害...",
     "world_boss_event_completed": "世界王已被討伐..別再鞭屍了QwQ",
