@@ -8,6 +8,7 @@ jest.mock("../../model/application/WorldBossEvent", () => ({
 jest.mock("../../model/application/WorldBossLog", () => ({
   createWithRole: jest.fn(),
   getRecentAttackers: jest.fn(),
+  getSupportRatio: jest.fn().mockResolvedValue(0),
   getTotalDamageByEventId: jest.fn(),
 }));
 jest.mock("../../util/worldBossRedis", () => ({

@@ -155,10 +155,17 @@ async function resolveHit({ platformId, numericUserId, eventId, attackType, leve
       knockedBatch = await runEnrageBatch({ eventId, event, now });
     }
 
-    // 狂暴期持續反擊：本刀「開始時」就在狂暴帶且骰中反擊機率 → 自己被擊倒進池（member = platform_id）
-    if (enraged && rng() < WorldBossConfig.readEnrageCounterRate(event)) {
-      await wbRedis.poolAdd(eventId, platformId, now);
-      selfKnocked = true;
+    // 狂暴期持續反擊：本刀「開始時」就在狂暴帶且骰中縮放後反擊機率 → 自己被擊倒進池（member = platform_id）
+    // D30 cold-start: scaledCounterRate = baseCounterRate * (1 - supportRatio)；ratio=0 → full rate
+    if (enraged) {
+      const { scaledCounterRate } = await exports.getEnrageScaling(eventId, {
+        baseBatch: WorldBossConfig.readEnrageBatchSize(event),
+        baseCounterRate: WorldBossConfig.readEnrageCounterRate(event),
+      });
+      if (rng() < scaledCounterRate) {
+        await wbRedis.poolAdd(eventId, platformId, now);
+        selfKnocked = true;
+      }
     }
   }
 
@@ -188,8 +195,14 @@ async function resolveHit({ platformId, numericUserId, eventId, attackType, leve
  */
 async function runEnrageBatch({ eventId, event, now }) {
   const minutes = WorldBossConfig.readEnrageRecentMinutes();
-  const limit = WorldBossConfig.readEnrageBatchSize(event); // 整數，非任何浮點裝備值
-  const candidates = await WorldBossLog.getRecentAttackers({ eventId, minutes, limit });
+  const baseBatch = WorldBossConfig.readEnrageBatchSize(event);
+  const baseCounterRate = WorldBossConfig.readEnrageCounterRate(event);
+  const { scaledBatch } = await exports.getEnrageScaling(eventId, { baseBatch, baseCounterRate });
+  const candidates = await WorldBossLog.getRecentAttackers({
+    eventId,
+    minutes,
+    limit: scaledBatch,
+  });
 
   const knockedBatch = [];
   let blockUsed = false;
@@ -245,10 +258,24 @@ async function writeAbsorbContribution(eventId, role, actionType, ownerPlatformI
   });
 }
 
-module.exports = {
-  dpsAttack,
-  // 測試專用 RNG 注入縫（production 用 Math.random）
-  _setRng: fn => {
-    rng = fn;
-  },
+/**
+ * D30 冷啟動壓力縮放（addendum §15 共用 support ratio）。
+ * M4 的暴走處理器以 baseBatch / baseCounterRate 呼叫此函式，依「活躍補/坦比例」縮小批次與反擊率。
+ * supportRatio 來自 M1 的 WorldBossLog.getSupportRatio（distinct-user 定義，與 M7 經濟層共用同一定義）。
+ * ratio → 0（全 DPS 冷啟動伺服器）⇒ 全批次（最大壓力）；ratio 升高 ⇒ 批次縮小（支援獎勵的一環）。
+ * @param {Number} eventId
+ * @param {{baseBatch: Number, baseCounterRate: Number}} knobs  M4 由 world_boss 欄位/config 讀出的基礎值
+ * @returns {Promise<{supportRatio: Number, scaledBatch: Number, scaledCounterRate: Number}>}
+ */
+exports.getEnrageScaling = async (eventId, { baseBatch, baseCounterRate }) => {
+  const supportRatio = await WorldBossLog.getSupportRatio(eventId);
+  const scaledBatch = Math.max(1, Math.round(baseBatch * (1 - supportRatio)));
+  const scaledCounterRate = baseCounterRate * (1 - supportRatio);
+  return { supportRatio, scaledBatch, scaledCounterRate };
+};
+
+exports.dpsAttack = dpsAttack;
+// 測試專用 RNG 注入縫（production 用 Math.random）
+exports._setRng = fn => {
+  rng = fn;
 };
