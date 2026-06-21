@@ -6,13 +6,20 @@ exports.table = TABLE;
 
 exports.all = async () => {
   return await mysql
-    .select("*")
+    .select(
+      "world_boss_user_attack_message.id",
+      "world_boss_user_attack_message.icon_url",
+      "world_boss_user_attack_message.template",
+      "world_boss_user_attack_message.creator_id",
+      mysql.raw("MAX(`attack_message_has_tags`.`tag`) as `tag`")
+    )
     .from(TABLE)
-    .join(
+    .leftJoin(
       "attack_message_has_tags",
       "world_boss_user_attack_message.id",
       "attack_message_has_tags.attack_message_id"
-    );
+    )
+    .groupBy("world_boss_user_attack_message.id");
 };
 
 exports.find = async id => {
