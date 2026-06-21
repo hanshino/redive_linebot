@@ -29,7 +29,7 @@ jest.mock("../../src/service/WorldBossConfig", () => ({
   getShieldCountK: jest.fn(),
   getBlockWindowMinutes: jest.fn(),
   getNormalAttackCost: jest.fn(),
-  getNaturalRecoveryMinutes: jest.fn(),
+  readNaturalRecoveryMinutes: jest.fn(),
 }));
 
 const wbRedis = require("../../src/util/worldBossRedis");
@@ -45,7 +45,7 @@ describe("WorldBossCombatService.healerShield", () => {
     WorldBossEvent.getActive.mockResolvedValue({ id: 7, status: "active" });
     WorldBossConfig.getShieldCountK.mockReturnValue(2);
     WorldBossConfig.getNormalAttackCost.mockReturnValue(10);
-    WorldBossConfig.getNaturalRecoveryMinutes.mockReturnValue(15);
+    WorldBossConfig.readNaturalRecoveryMinutes.mockReturnValue(15);
     EquipmentService.getEquipmentBonuses.mockResolvedValue({ support_power: 0 });
     WorldBossLog.createWithRole.mockResolvedValue(1);
   });

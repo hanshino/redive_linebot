@@ -306,7 +306,7 @@ exports.healerShield = async ({ platformId, numericUserId, eventId }) => {
 
   const bonuses = await EquipmentService.getEquipmentBonuses(platformId);
   const k = WorldBossConfig.getShieldCountK() + (bonuses.support_power || 0);
-  const minutes = WorldBossConfig.getNaturalRecoveryMinutes();
+  const minutes = WorldBossConfig.readNaturalRecoveryMinutes(active);
   const ttlSec = minutes * 60;
 
   const recent = (await WorldBossLog.getRecentAttackers({ eventId, minutes, limit: k })).slice(
