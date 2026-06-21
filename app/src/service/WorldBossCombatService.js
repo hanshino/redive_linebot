@@ -334,6 +334,29 @@ exports.healerShield = async ({ platformId, numericUserId, eventId }) => {
   return result;
 };
 
+/**
+ * 坦克格擋：只開立本場唯一的格擋視窗（blockSet，owner = 坦克 platform_id，TTL = getBlockWindowMinutes()*60）。
+ * 不寫任何貢獻列——格擋實際擋下擊倒時，由 M4 暴走處理器消費此視窗並把 contribution 回寫計給 OWNER（lock §D 時序契約）。
+ * 坦克的 D22 參與/計費列由 M8/M9 動作包裝層寫入（本服務保持純 Redis、可決定性）。
+ * 結果 shape 鎖定：{ rejected, reason, windowMinutes }（lock §D）。
+ * @param {{platformId: String, numericUserId: Number, eventId: Number}} param0
+ */
+exports.tankBlock = async ({ platformId, eventId }) => {
+  const result = { rejected: false, reason: null, windowMinutes: 0 };
+
+  const active = await WorldBossEvent.getActive();
+  if (!active || active.id !== eventId) {
+    result.rejected = true;
+    result.reason = "not_active";
+    return result;
+  }
+
+  const windowMinutes = WorldBossConfig.getBlockWindowMinutes();
+  await wbRedis.blockSet(eventId, platformId, windowMinutes * 60);
+  result.windowMinutes = windowMinutes;
+  return result;
+};
+
 exports.healerRevive = async ({ platformId, numericUserId, eventId }) => {
   const result = { rejected: false, reason: null, revived: [], contribution: 0 };
 
