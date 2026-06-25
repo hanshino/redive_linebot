@@ -11,6 +11,10 @@ const { getClient } = require("bottender");
 // hot per-event path doesn't leak a connection per call.
 const lineClient = getClient("line");
 
+// Mirrors src/middleware/statistics.js — leading /, # or . followed by a
+// letter marks a command; those messages never feed the word cloud.
+const COMMAND_PREFIX_RE = /^[/#.]\p{L}/u;
+
 module.exports = main;
 
 let running = false;
@@ -33,7 +37,11 @@ async function eventDequeue() {
     let data = await redis.rPop("ChatBotEvent");
     if (!data) break;
     let botEvent = JSON.parse(data);
-    await Promise.all([eventHandle(botEvent), handleChatExp(botEvent)]);
+    await Promise.all([
+      eventHandle(botEvent),
+      handleChatExp(botEvent),
+      handleTopicAnalysis(botEvent),
+    ]);
     processCount++;
   }
 }
@@ -193,6 +201,48 @@ async function handleChatExp(botEvent) {
   );
 }
 
+// --- Topic analysis ingest (chat word cloud, see
+// docs/plans/2026-06-22-topic-heat-keywords-concept.md) ---
+
+// Sibling of handleChatExp: pushes the minimal payload onto
+// TOPIC_ANALYSIS_RECORD for the TopicAnalysisUpdate cron to jieba-cut later.
+// Commands and too-short text are filtered here so the heavy CPU work never
+// even sees them.
+//
+// ISOLATION: jieba lives in a separate cron precisely so it can never delay a
+// reply token landing. This producer mirrors that contract — the whole body is
+// wrapped so a redis hiccup (or any throw) is logged and swallowed, never
+// allowed to escape into the reply-token-critical Promise.all in eventDequeue.
+async function handleTopicAnalysis(botEvent) {
+  try {
+    const source = botEvent && botEvent.source;
+    if (!source || source.type !== "group") return;
+    if (botEvent.type !== "message" || !botEvent.message || botEvent.message.type !== "text") {
+      return;
+    }
+
+    const { userId, groupId } = source;
+    if (!userId || !groupId) return;
+
+    const text = botEvent.message.text || "";
+    // Skip commands (sync, no redis) and too-short text before touching redis.
+    if (COMMAND_PREFIX_RE.test(text)) return;
+    if (text.trim().length < 2) return;
+
+    // TOPIC_ANALYSIS_PAUSED kill-switch — mirrors CHAT_XP_PAUSED. Set during a
+    // maintenance window to freeze ingest while the cron drains the backlog.
+    const paused = await redis.get("TOPIC_ANALYSIS_PAUSED");
+    if (paused === "1") return;
+
+    await redis.lPush(
+      "TOPIC_ANALYSIS_RECORD",
+      JSON.stringify({ userId, groupId, text, ts: botEvent.timestamp })
+    );
+  } catch (err) {
+    DefaultLogger.error("[EventDequeue.handleTopicAnalysis]", err);
+  }
+}
+
 // --- Data helpers ---
 
 async function getUserData(userId) {
@@ -331,7 +381,12 @@ async function getGroupMemberCount(groupId) {
   }
 }
 
-module.exports.__testing = { handleChatExp, saveReplyToken, tryDrainBroadcast };
+module.exports.__testing = {
+  handleChatExp,
+  handleTopicAnalysis,
+  saveReplyToken,
+  tryDrainBroadcast,
+};
 
 if (require.main === module) {
   main().then(() => process.exit(0));

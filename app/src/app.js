@@ -34,6 +34,7 @@ const RaceController = require("./controller/application/RaceController");
 const SubscribeController = require("./controller/application/SubscribeController");
 const OpenaiController = require("./controller/application/OpenaiController");
 const JobController = require("./controller/application/JobController");
+const TopicController = require("./controller/application/topic");
 const { transfer } = require("./middleware/dcWebhook");
 const { withTiming, wrapChain } = require("./middleware/timing");
 const redis = require("./util/redis");
@@ -170,6 +171,8 @@ async function OrderBased(context, { next }) {
     ...ImageController.router,
     ...StatusController.router,
     ...SubscribeController.router,
+    ...TopicController.router,
+    ...TopicController.groupRouter,
     ...CharacterController.router,
     ...(type === "user" ? JobController.router : []),
     ...(type === "user" ? SubscribeController.privateRouter : []),

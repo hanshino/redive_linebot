@@ -464,6 +464,46 @@ router.post("/prestige/trial/start", verifyToken, PrestigeController.api.startTr
 router.post("/prestige/trial/forfeit", verifyToken, PrestigeController.api.forfeitTrial);
 router.post("/prestige/prestige", verifyToken, PrestigeController.api.prestige);
 
+/**
+ * 文字雲（topic word-cloud）LIFF 資料來源。
+ * userId 一律取自驗證過的 LIFF token（req.profile），不接受 client 傳入。
+ * days 只允許 7 或 30，其餘一律歸 30。
+ */
+const TopicQuery = require("../service/topic/query");
+
+function clampTopicDays(raw) {
+  return Number(raw) === 7 ? 7 : 30;
+}
+
+router.get("/topic/me", verifyToken, async (req, res) => {
+  try {
+    const { userId } = req.profile;
+    const days = clampTopicDays(req.query.days);
+    const groupId = /^C[a-f0-9]{32}$/.test(req.query.groupId || "") ? req.query.groupId : null;
+    const rows = await TopicQuery.topUserKeywords(userId, { groupId, days });
+    res.json(rows);
+  } catch (e) {
+    console.error("[topic/me]", e);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.get(
+  "/topic/group/:groupId",
+  (req, res, next) => verifyLineGroupId(req.params.groupId, res, next),
+  verifyToken,
+  async (req, res) => {
+    try {
+      const days = clampTopicDays(req.query.days);
+      const rows = await TopicQuery.topGroupKeywords(req.params.groupId, { days });
+      res.json(rows);
+    } catch (e) {
+      console.error("[topic/group]", e);
+      res.status(500).json({ error: "internal_error" });
+    }
+  }
+);
+
 router.all("*", (_, res) => {
   res.status(404).json({ message: "invalid api url." });
 });

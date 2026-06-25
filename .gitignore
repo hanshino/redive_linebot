@@ -92,3 +92,6 @@ data
 
 # Designer prototypes (mockups only — production lives under frontend/src/pages/)
 /xp-history/
+
+# Throwaway POCs (validation scratch — not shipped)
+/poc/
