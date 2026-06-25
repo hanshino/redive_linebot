@@ -488,6 +488,7 @@ exports.api.queryRank = async (req, res) => {
   const rows = await mysql("chat_user_data")
     .select("user_id", "current_level", "current_exp", "prestige_count")
     .where("current_exp", ">", 0)
+    .orderBy("prestige_count", "desc")
     .orderBy("current_exp", "desc")
     .orderBy("user_id", "asc")
     .limit(10);
