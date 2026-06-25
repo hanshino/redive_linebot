@@ -14,6 +14,13 @@ module.exports = [
     require_path: "./bin/ChatExpUpdate",
   },
   {
+    name: "Topic Analysis Update",
+    description: "jieba-aggregate chat word-cloud keyword counts into topic_daily",
+    period: ["0", "*/5", "*", "*", "*", "*"],
+    immediate: true,
+    require_path: "./bin/TopicAnalysisUpdate",
+  },
+  {
     name: "Trial Expiry Check",
     description: "expire 60-day-old active trials to failed status",
     period: ["0", "5", "0", "*", "*", "*"],
@@ -41,6 +48,13 @@ module.exports = [
     period: ["0", "0", "3", "*", "*", "*"],
     immediate: false,
     require_path: "./bin/ChatExpEventsPrune",
+  },
+  {
+    name: "Topic Daily Prune",
+    description: "drop topic_daily rows older than 90 days (word-cloud retention)",
+    period: ["0", "0", "3", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/TopicDailyPrune",
   },
   {
     name: "Daily Ration",

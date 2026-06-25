@@ -772,7 +772,7 @@
   dependencies:
     make-plural "^7.0.0"
 
-"@napi-rs/wasm-runtime@^0.2.11":
+"@napi-rs/wasm-runtime@^0.2.11", "@napi-rs/wasm-runtime@^0.2.5":
   version "0.2.12"
   resolved "https://registry.yarnpkg.com/@napi-rs/wasm-runtime/-/wasm-runtime-0.2.12.tgz#3e78a8b96e6c33a6c517e1894efbd5385a7cb6f2"
   integrity sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==
@@ -785,6 +785,98 @@
   version "1.8.0"
   resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.8.0.tgz#cee43d801fcef9644b11b8194857695acd5f815a"
   integrity sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==
+
+"@node-rs/jieba-android-arm-eabi@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-android-arm-eabi/-/jieba-android-arm-eabi-2.0.1.tgz#65a0dce955718f03e89d6516facd731aa5490757"
+  integrity sha512-tavsIaxybnlA9tRbJ+oc3NW3zhx0d5rNiCGdpIdGWjflwS7HyeUTVAZmAFDlg58Mc6EjTdVKZH+RolBbAJtgcQ==
+
+"@node-rs/jieba-android-arm64@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-android-arm64/-/jieba-android-arm64-2.0.1.tgz#321c3d8f804f4232ea0f03dcf8b2287b9fa9d1c3"
+  integrity sha512-AwdyqKvVNuSDnDq3anUfq+nJ5J/kzXjkfbr/1WY6TfaAlTNuuGVskuQv72/wIx/jn7NoXfm/UPuJrWYG16NC6w==
+
+"@node-rs/jieba-darwin-arm64@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-darwin-arm64/-/jieba-darwin-arm64-2.0.1.tgz#37d61fa5f11ab614cee6bb145f968f3eb61beefe"
+  integrity sha512-10+nwGQ6KzXXJlIL/sELA6Fi6m7eJ7xJksBiKuw1kxKUgaJwtVfAG0iqRF+NRQv0Sdq7r3k5ew9K9y0+IYaEcA==
+
+"@node-rs/jieba-darwin-x64@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-darwin-x64/-/jieba-darwin-x64-2.0.1.tgz#7f520141630d734fe4c4dd69e6c8017258851464"
+  integrity sha512-IJ5RK0X/uPQa1XRmTvwKSieya+w1IJeiKLw0EekoBFJKybXQdvo8/uqM/8z2eVJ8vQxW9X6K2vkVGFvYQa9dYA==
+
+"@node-rs/jieba-freebsd-x64@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-freebsd-x64/-/jieba-freebsd-x64-2.0.1.tgz#4354e2d274d35c39fcabcd2977dfce6b9f6af1db"
+  integrity sha512-yg7vyhqzP2weJu5DJ3q9q4pb0b4GWWRwcv54zK7MSSA6KNJ/uQv2a4R9/qmptLU/fZv14gWuJBEMFdL7y1Dv2w==
+
+"@node-rs/jieba-linux-arm-gnueabihf@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-linux-arm-gnueabihf/-/jieba-linux-arm-gnueabihf-2.0.1.tgz#f45588f3e21d4d01119b4c81adc426f2684c57ec"
+  integrity sha512-fxQYunS7w2tv8XV9GigkWJPzHnbcw6tjrUdDu5/qU0FdQVEzGuEYG85DjlNf8lZTDGSUKHBVyAQs7bBIvq8yqg==
+
+"@node-rs/jieba-linux-arm64-gnu@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-linux-arm64-gnu/-/jieba-linux-arm64-gnu-2.0.1.tgz#9743b082ab1850bf92cc3c0264b97a1dfd070a4e"
+  integrity sha512-VnLU630hQIyO/fwyxh2vqZi72mO+hXkVUC3jVLPfOAlppinmsGX9N81tpTPUK3840hbV8WLtbYTWN1XodI38eg==
+
+"@node-rs/jieba-linux-arm64-musl@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-linux-arm64-musl/-/jieba-linux-arm64-musl-2.0.1.tgz#7f6f2b461a32d4604f0176d5ba51ecbd7bc497b1"
+  integrity sha512-K4EDyNixSLVdTNYnHwD+7I/ytvzpo7tt+vdCLqwQViiek2PMpL/FFRvA39uU2tk99jXIxvkczdxARG20BRZppg==
+
+"@node-rs/jieba-linux-x64-gnu@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-linux-x64-gnu/-/jieba-linux-x64-gnu-2.0.1.tgz#5552787b477baa40e3c451902049599f10b424ac"
+  integrity sha512-sq3J6L2ANTE25I9eVFq/nb57OtXcvUIeUD1CTKJxwgTKIVmcB2LyOZpWf20AjHRUfbMER9Klqg5dgyyO+Six+w==
+
+"@node-rs/jieba-linux-x64-musl@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-linux-x64-musl/-/jieba-linux-x64-musl-2.0.1.tgz#b7da60664421c7b1fe3272c4bd3a961d94bf535d"
+  integrity sha512-0zfP9Qy68yEXrhBFknfhF6WUJDPU/8eRuyIrkMGdMjfRpxhpSbr2fMfnsqhOQLvhuK4w3iDFvTy4t5d0s6JKMA==
+
+"@node-rs/jieba-wasm32-wasi@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-wasm32-wasi/-/jieba-wasm32-wasi-2.0.1.tgz#9d95ac2471eb47667e18f26d3df31b628b545d2f"
+  integrity sha512-7I5rJya5rlQNJIhv8PvPzIVT1/gVc0vFzHmlfRGwCPGDJ3tHVxkSPW34dDx3OgDmbIeadNpmgIyC1RaS9djPJg==
+  dependencies:
+    "@napi-rs/wasm-runtime" "^0.2.5"
+
+"@node-rs/jieba-win32-arm64-msvc@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-win32-arm64-msvc/-/jieba-win32-arm64-msvc-2.0.1.tgz#c88e200f5dfc205cbd2b3e336d39320005a181a8"
+  integrity sha512-Aj/2EwYSaPgAbKnSl+vKM/2kOaZNMZWnShiZzbSNyzlLy3eIOyOYVLbYRDno4547KngRxer8uzROhIQIwXwkvw==
+
+"@node-rs/jieba-win32-ia32-msvc@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-win32-ia32-msvc/-/jieba-win32-ia32-msvc-2.0.1.tgz#466bcd37bb38ea288869997eebaf560745266cea"
+  integrity sha512-tpJt3uuBlGrcOInQLTYvcgamQgfadl5cwExLYU+CX9rXKpXLDO31dIujUDBgNWoiQq3tOiU1/AKbT7ZdNd4lBQ==
+
+"@node-rs/jieba-win32-x64-msvc@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba-win32-x64-msvc/-/jieba-win32-x64-msvc-2.0.1.tgz#907734774cff8e73e7034d0ab06e7fcbdaf2a4b0"
+  integrity sha512-LDOyo2/2CO8UnpSGLJdgqtH8mOnsABPhNxkfIky7UT9cyLEzOaU44nbA5YzPGpBI3qzMbWcwJYQsjBcgK2VqAg==
+
+"@node-rs/jieba@^2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/jieba/-/jieba-2.0.1.tgz#58c7236c17031e80ab7a2dd81323c68e225c9634"
+  integrity sha512-tnfzXOMqzVQF2dSKMhPC9HrHzzWmN6KheL/zYtGenhOpq/bCKHJWVASSggEnHlkmHgXGeIJHR2N/IuPzewz1BQ==
+  optionalDependencies:
+    "@node-rs/jieba-android-arm-eabi" "2.0.1"
+    "@node-rs/jieba-android-arm64" "2.0.1"
+    "@node-rs/jieba-darwin-arm64" "2.0.1"
+    "@node-rs/jieba-darwin-x64" "2.0.1"
+    "@node-rs/jieba-freebsd-x64" "2.0.1"
+    "@node-rs/jieba-linux-arm-gnueabihf" "2.0.1"
+    "@node-rs/jieba-linux-arm64-gnu" "2.0.1"
+    "@node-rs/jieba-linux-arm64-musl" "2.0.1"
+    "@node-rs/jieba-linux-x64-gnu" "2.0.1"
+    "@node-rs/jieba-linux-x64-musl" "2.0.1"
+    "@node-rs/jieba-wasm32-wasi" "2.0.1"
+    "@node-rs/jieba-win32-arm64-msvc" "2.0.1"
+    "@node-rs/jieba-win32-ia32-msvc" "2.0.1"
+    "@node-rs/jieba-win32-x64-msvc" "2.0.1"
 
 "@paralleldrive/cuid2@^2.2.2":
   version "2.3.1"
