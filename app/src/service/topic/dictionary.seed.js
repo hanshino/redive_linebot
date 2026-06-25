@@ -12,6 +12,8 @@ const aliases = {
   世界王: ["世王"],
   賽馬: ["蘭德索爾盃"],
   猜拳: ["剪刀石頭布"],
+  // 角色暱稱範例：官方名很饒口、社群幾乎只講暱稱的才收。其餘暱稱依群風氣自行補。
+  貪吃佩可: ["佩可", "佩可莉姆"],
 };
 
 // Slang / colloquial / game terms jieba's standard dict doesn't know and would
@@ -34,4 +36,26 @@ const slang = [
   "大佬",
 ];
 
-module.exports = { aliases, slang };
+// Official playable-character names from assets/redive_tw.db (unit_data, id
+// 100000-199999), reduced to base names: costume/combo suffixes (「（夏日）」、
+// 「＆」) stripped, single-char names dropped (analyzer drops <2-char tokens).
+// Kept whole so jieba doesn't shred transliterated names (拉比林斯達 -> 拉/比/林…).
+// ponytail: static snapshot, not a live DB read — re-extract when the game DB
+// refreshes (rare). A live read would couple this module to the DB + break CI.
+const characters = [
+  "七七香", "亞里莎", "伊緒", "伊莉亞", "似似花", "依里", "優妮", "優花梨",
+  "優衣", "克莉絲提娜", "克蕾琪塔", "克蘿依", "克蘿茜", "凱留", "初音", "剎鬼",
+  "千歌", "卯月", "厄莉絲", "古蕾婭", "可可蘿", "可璃亞", "吉塔", "和正",
+  "咲戀", "嘉夜", "埃拉", "妮諾", "安涅默涅", "宮子", "帆稀", "庫露露",
+  "彩羽", "志那都", "惠理子", "愛梅斯", "愛蜜莉雅", "拉姆", "拉比林斯達", "拿娜",
+  "日和", "普蕾西亞", "未央", "杏奈", "格蕾斯", "梅杜莎", "步未", "流夏",
+  "涅妃‧涅羅", "涅婭", "涅比亞", "深月", "烏爾姆", "珠希", "班比", "琪愛兒",
+  "琳德", "璃乃", "真步", "真琴", "真陽", "矛依未", "碧卡拉", "祈梨",
+  "秋乃", "空花", "紡希", "綾音", "美冬", "美咲", "美空", "美美",
+  "美里", "胡桃", "艾姬多娜", "花凜", "若菜", "茉莉", "茜里", "莉瑪",
+  "莉莉", "莫妮卡", "華音", "菲歐", "萊拉耶爾", "薇歐莉特", "蘭法", "貝特魯吉烏斯",
+  "貪吃佩可", "鈴奈", "鈴莓", "鏡華", "阿剌克涅", "雪菲", "雪野", "雷姆",
+  "露娜", "露易絲瑪莉", "霸瞳皇帝", "靜流", "香織", "鳳凰",
+];
+
+module.exports = { aliases, slang, characters };

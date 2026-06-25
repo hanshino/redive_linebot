@@ -27,7 +27,7 @@ const INSERT_CHUNK = 500;
 // loading the user dict is not free, so it must not happen per batch.
 const analyzer = createAnalyzer({
   aliases: seed.aliases,
-  slang: seed.slang,
+  slang: [...seed.slang, ...seed.characters], // character names are kept whole, no normalization
   stopwords: loadStopwords(),
 });
 
