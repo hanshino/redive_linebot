@@ -6,18 +6,16 @@
 // keyword cardinality is open-vocabulary, so callers always cap the result;
 // LIMIT_CAP keeps a single giga bubble under ~10KB (12 rows ≈ 8.5KB).
 
-const moment = require("moment");
 const mysql = require("../../util/mysql");
+const { daysAgoUtc8 } = require("../../util/date");
 
 const TABLE = "topic_daily";
-const TPE_OFFSET_MIN = 480;
 const LIMIT_CAP = 12;
 
 // First day (inclusive) of an N-day window ending today, on the UTC+8 calendar.
 // days=30 -> [today-29 .. today]; days=7 -> [today-6 .. today].
 function windowStartDate(days) {
-  const span = Math.max(1, days) - 1;
-  return moment().utcOffset(TPE_OFFSET_MIN).subtract(span, "day").format("YYYY-MM-DD");
+  return daysAgoUtc8(Math.max(1, days) - 1);
 }
 
 function capLimit(limit) {

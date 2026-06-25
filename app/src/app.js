@@ -172,7 +172,6 @@ async function OrderBased(context, { next }) {
     ...StatusController.router,
     ...SubscribeController.router,
     ...TopicController.router,
-    ...TopicController.groupRouter,
     ...CharacterController.router,
     ...(type === "user" ? JobController.router : []),
     ...(type === "user" ? SubscribeController.privateRouter : []),

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Container,
   Box,
@@ -63,37 +63,42 @@ function CloudState({ loading, isEmpty, emptyText, children }) {
   return children;
 }
 
+// Fetch a cloud's data when `enabled`, drop a stale resolve if deps change
+// mid-flight, and clear when disabled. Shared by the personal and group clouds.
+function useTopicCloud(fetcher, enabled, deps) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!enabled) {
+      setItems([]);
+      return undefined;
+    }
+    let active = true;
+    setLoading(true);
+    fetcher()
+      .then(data => active && setItems(Array.isArray(data) ? data : []))
+      .catch(() => active && setItems([]))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return { items, loading };
+}
+
 export default function Topics() {
   const { loggedIn } = useLiff();
 
   const [tab, setTab] = useState(0); // 0 = 個人, 1 = 群組
   const [days, setDays] = useState(30);
 
-  const [myItems, setMyItems] = useState([]);
-  const [myLoading, setMyLoading] = useState(false);
-
   const [groups, setGroups] = useState([]);
   const [groupId, setGroupId] = useState("");
-  const [groupItems, setGroupItems] = useState([]);
-  const [groupLoading, setGroupLoading] = useState(false);
 
   useEffect(() => {
     document.title = "聊天文字雲";
   }, []);
-
-  // 個人文字雲（主視圖）
-  useEffect(() => {
-    if (!loggedIn) return;
-    let active = true;
-    setMyLoading(true);
-    fetchMyTopics(days)
-      .then(data => active && setMyItems(Array.isArray(data) ? data : []))
-      .catch(() => active && setMyItems([]))
-      .finally(() => active && setMyLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [loggedIn, days]);
 
   // 使用者的群組清單（群組文字雲的選單來源）
   useEffect(() => {
@@ -107,27 +112,18 @@ export default function Topics() {
       .catch(() => setGroups([]));
   }, [loggedIn]);
 
-  // 群組文字雲
-  useEffect(() => {
-    if (!loggedIn || !groupId) {
-      setGroupItems([]);
-      return undefined;
-    }
-    let active = true;
-    setGroupLoading(true);
-    fetchGroupTopics(groupId, days)
-      .then(data => active && setGroupItems(Array.isArray(data) ? data : []))
-      .catch(() => active && setGroupItems([]))
-      .finally(() => active && setGroupLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [loggedIn, groupId, days]);
-
-  const periodLabel = useMemo(
-    () => PERIODS.find(p => p.value === days)?.label ?? "近 30 天",
-    [days]
+  const { items: myItems, loading: myLoading } = useTopicCloud(
+    () => fetchMyTopics(days),
+    loggedIn,
+    [loggedIn, days]
   );
+  const { items: groupItems, loading: groupLoading } = useTopicCloud(
+    () => fetchGroupTopics(groupId, days),
+    loggedIn && Boolean(groupId),
+    [loggedIn, groupId, days]
+  );
+
+  const periodLabel = PERIODS.find(p => p.value === days)?.label ?? "近 30 天";
 
   return (
     <Container maxWidth="md" sx={{ py: 2 }}>

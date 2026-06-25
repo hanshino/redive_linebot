@@ -66,12 +66,6 @@ async function popQueue(max = 1000) {
   return events;
 }
 
-// ts (ms epoch) -> UTC+8 calendar date "YYYY-MM-DD". Derived PER EVENT because
-// the queue can lag across a day boundary; "today" would mis-bucket backlog.
-function statDateUtc8(ts) {
-  return toUtc8Date(ts);
-}
-
 // Pure in-memory aggregation: events -> Map keyed "group|user|date|keyword"
 // -> message_count. The analyzer already dedupes keywords within a single
 // message, so each distinct keyword a message yields contributes +1.
@@ -85,7 +79,9 @@ function aggregate(events, agg) {
     const keywords = agg.extract(text || "");
     if (keywords.length === 0) continue;
 
-    const statDate = statDateUtc8(ts);
+    // Bucket PER EVENT (not "today") because the queue can lag across a day
+    // boundary; toUtc8Date derives the UTC+8 calendar date from the event ts.
+    const statDate = toUtc8Date(ts);
     for (const keyword of keywords) {
       const key = `${groupId}|${userId}|${statDate}|${keyword}`;
       counts.set(key, (counts.get(key) || 0) + 1);
@@ -94,20 +90,18 @@ function aggregate(events, agg) {
   return counts;
 }
 
-// Map -> insert rows. Keys are split from the LEFT for the first three fixed
-// fields and the remainder is the keyword, so keywords that themselves contain
-// "|" survive intact.
+// Map -> insert rows. The first three "|"-delimited segments are the fixed
+// group/user/date fields; everything after them is the keyword, so keywords
+// that themselves contain "|" survive intact.
 function buildRows(counts) {
   const rows = [];
   for (const [key, message_count] of counts) {
-    const first = key.indexOf("|");
-    const second = key.indexOf("|", first + 1);
-    const third = key.indexOf("|", second + 1);
+    const [group_id, user_id, stat_date, ...rest] = key.split("|");
     rows.push({
-      group_id: key.slice(0, first),
-      user_id: key.slice(first + 1, second),
-      stat_date: key.slice(second + 1, third),
-      keyword: key.slice(third + 1),
+      group_id,
+      user_id,
+      stat_date,
+      keyword: rest.join("|"),
       message_count,
     });
   }
@@ -129,7 +123,7 @@ async function upsertRows(rows, db = knex) {
   }
 }
 
-module.exports.__testing = { aggregate, buildRows, popQueue, statDateUtc8, upsertRows };
+module.exports.__testing = { aggregate, buildRows, popQueue, upsertRows };
 
 if (require.main === module) {
   main().then(() => process.exit(0));

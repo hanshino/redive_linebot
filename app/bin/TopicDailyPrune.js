@@ -1,6 +1,6 @@
 const mysql = require("../src/util/mysql");
 const { DefaultLogger } = require("../src/util/Logger");
-const moment = require("moment");
+const { daysAgoUtc8 } = require("../src/util/date");
 
 module.exports = main;
 
@@ -9,14 +9,9 @@ module.exports = main;
 // display window.
 const RETENTION_DAYS = 90;
 
-const TPE_OFFSET_MIN = 480; // UTC+8
-
 async function main() {
   try {
-    const cutoff = moment()
-      .utcOffset(TPE_OFFSET_MIN)
-      .subtract(RETENTION_DAYS, "days")
-      .format("YYYY-MM-DD");
+    const cutoff = daysAgoUtc8(RETENTION_DAYS);
     const deleted = await mysql("topic_daily").where("stat_date", "<", cutoff).del();
     if (DefaultLogger && DefaultLogger.info) {
       DefaultLogger.info(

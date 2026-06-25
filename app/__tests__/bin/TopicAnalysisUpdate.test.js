@@ -1,18 +1,20 @@
 const redis = require("../../src/util/redis");
 const TopicAnalysisUpdate = require("../../bin/TopicAnalysisUpdate");
-const { aggregate, buildRows, popQueue, statDateUtc8 } = TopicAnalysisUpdate.__testing;
+const { toUtc8Date } = require("../../src/util/date");
+const { aggregate, buildRows, popQueue } = TopicAnalysisUpdate.__testing;
 
-describe("TopicAnalysisUpdate.statDateUtc8", () => {
+// aggregate buckets each event by toUtc8Date(ts); these guard that UTC+8 day boundary.
+describe("toUtc8Date (per-event day bucketing)", () => {
   it("derives the UTC+8 calendar date from a ms-epoch ts", () => {
     // 2026-06-22T00:00:00Z → 2026-06-22 08:00 in UTC+8 → 2026-06-22
-    expect(statDateUtc8(Date.UTC(2026, 5, 22, 0, 0, 0))).toBe("2026-06-22");
+    expect(toUtc8Date(Date.UTC(2026, 5, 22, 0, 0, 0))).toBe("2026-06-22");
   });
 
   it("rolls to the next day across the UTC+8 midnight boundary", () => {
     // 2026-06-22T16:00:00Z = 2026-06-23T00:00 in UTC+8 → next day
-    expect(statDateUtc8(Date.UTC(2026, 5, 22, 16, 0, 0))).toBe("2026-06-23");
+    expect(toUtc8Date(Date.UTC(2026, 5, 22, 16, 0, 0))).toBe("2026-06-23");
     // one minute before the boundary still belongs to 2026-06-22
-    expect(statDateUtc8(Date.UTC(2026, 5, 22, 15, 59, 0))).toBe("2026-06-22");
+    expect(toUtc8Date(Date.UTC(2026, 5, 22, 15, 59, 0))).toBe("2026-06-22");
   });
 });
 

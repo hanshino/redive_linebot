@@ -14,9 +14,13 @@ const TopicCloudTemplate = require("../../templates/application/TopicCloud");
 const DEFAULT_DAYS = 30;
 const SHORT_DAYS = 7;
 
-exports.router = [text(/^[/#.]我的文字雲(\s*(?<days>\d+))?$/, showMyWordCloud)];
-
-exports.groupRouter = [text(/^[/#.]群組話題(\s*(?<days>\d+))?$/, showGroupTopics)];
+// 群組話題 is group-only, enforced inside showGroupTopics (so a 1:1 chat still
+// gets a helpful reply), hence it lives in the same router rather than a
+// separately type-gated one.
+exports.router = [
+  text(/^[/#.]我的文字雲(\s*(?<days>\d+))?$/, showMyWordCloud),
+  text(/^[/#.]群組話題(\s*(?<days>\d+))?$/, showGroupTopics),
+];
 
 // "7" -> 7 天，其餘（含未填）-> 30 天。
 function resolveDays(props) {
@@ -76,4 +80,4 @@ async function showGroupTopics(context, props) {
   return context.replyFlex("群組話題", bubble);
 }
 
-exports._internal = { showMyWordCloud, showGroupTopics, resolveDays, periodLabel };
+exports._internal = { showMyWordCloud, showGroupTopics, resolveDays };
