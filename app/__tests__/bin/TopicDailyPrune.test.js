@@ -37,7 +37,11 @@ describe("TopicDailyPrune", () => {
     expect(tableSpy).toHaveBeenCalledWith("topic_daily");
 
     // where called with column, operator, cutoff date
-    expect(whereSpy).toHaveBeenCalledWith("stat_date", "<", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(whereSpy).toHaveBeenCalledWith(
+      "stat_date",
+      "<",
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+    );
 
     // Cutoff is exactly 90 days before today (UTC+8)
     const cutoffArg = whereSpy.mock.calls[0][2];
