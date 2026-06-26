@@ -1,31 +1,5 @@
--- phpMyAdmin SQL Dump
--- version 5.0.4
--- https://www.phpmyadmin.net/
---
--- 主機： mysql
--- 產生時間： 2021 年 04 月 26 日 18:09
--- 伺服器版本： 8.0.23
--- PHP 版本： 7.4.15
-
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
-SET time_zone = "+00:00";
-
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
-
---
--- 資料庫： `Princess`
---
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `Admin`
---
+-- AUTO-GENERATED from migration/Princess.sql (schema only, NO data).
+-- 由 baseline migration 讀取執行；勿手改。資料種子交給 app/seeds/*。
 
 CREATE TABLE IF NOT EXISTS `Admin` (
   `ID` int NOT NULL AUTO_INCREMENT,
@@ -33,12 +7,6 @@ CREATE TABLE IF NOT EXISTS `Admin` (
   `privilege` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `arena_like_records`
---
 
 CREATE TABLE IF NOT EXISTS `arena_like_records` (
   `merge_hash` varchar(255) NOT NULL,
@@ -51,12 +19,6 @@ CREATE TABLE IF NOT EXISTS `arena_like_records` (
   PRIMARY KEY (`attack_hash`,`defense_hash`,`userId`),
   KEY `IDX_MERGE_HASH` (`merge_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `arena_records`
---
 
 CREATE TABLE IF NOT EXISTS `arena_records` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -77,12 +39,6 @@ CREATE TABLE IF NOT EXISTS `arena_records` (
   KEY `right_hash` (`right_hash`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='紀錄競技場勝負';
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `BulletIn`
---
-
 CREATE TABLE IF NOT EXISTS `BulletIn` (
   `id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
@@ -93,207 +49,11 @@ CREATE TABLE IF NOT EXISTS `BulletIn` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='公主公告儲存';
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `chat_exp_unit`
---
-
 CREATE TABLE IF NOT EXISTS `chat_exp_unit` (
   `unit_level` int NOT NULL,
   `total_exp` int NOT NULL,
   PRIMARY KEY (`unit_level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天經驗單位';
-
---
--- 資料表新增資料前，先清除舊資料 `chat_exp_unit`
---
-
-TRUNCATE TABLE `chat_exp_unit`;
---
--- 傾印資料表的資料 `chat_exp_unit`
---
-
-INSERT INTO `chat_exp_unit` (`unit_level`, `total_exp`) VALUES
-(1, 0),
-(2, 240),
-(3, 720),
-(4, 1200),
-(5, 1680),
-(6, 2160),
-(7, 2880),
-(8, 3600),
-(9, 4320),
-(10, 5040),
-(11, 5760),
-(12, 6480),
-(13, 7200),
-(14, 7920),
-(15, 8640),
-(16, 9560),
-(17, 10680),
-(18, 12000),
-(19, 13520),
-(20, 15240),
-(21, 17160),
-(22, 19280),
-(23, 21420),
-(24, 23580),
-(25, 25760),
-(26, 27960),
-(27, 30190),
-(28, 32450),
-(29, 34740),
-(30, 37060),
-(31, 39480),
-(32, 42000),
-(33, 44620),
-(34, 47340),
-(35, 50160),
-(36, 53080),
-(37, 56100),
-(38, 59620),
-(39, 63640),
-(40, 68160),
-(41, 73180),
-(42, 78700),
-(43, 86220),
-(44, 95740),
-(45, 107260),
-(46, 120780),
-(47, 136300),
-(48, 153820),
-(49, 175340),
-(50, 200860),
-(51, 230380),
-(52, 263900),
-(53, 301420),
-(54, 343940),
-(55, 391460),
-(56, 443980),
-(57, 501500),
-(58, 564020),
-(59, 631540),
-(60, 704060),
-(61, 781580),
-(62, 864100),
-(63, 951620),
-(64, 1045140),
-(65, 1144660),
-(66, 1250180),
-(67, 1361700),
-(68, 1479220),
-(69, 1602740),
-(70, 1732260),
-(71, 1867780),
-(72, 2009300),
-(73, 2156820),
-(74, 2310340),
-(75, 2469860),
-(76, 2635380),
-(77, 2806900),
-(78, 2984420),
-(79, 3167940),
-(80, 3357460),
-(81, 3552980),
-(82, 3754500),
-(83, 3962020),
-(84, 4175540),
-(85, 4395060),
-(86, 4620580),
-(87, 4852100),
-(88, 5089620),
-(89, 5333140),
-(90, 5582660),
-(91, 5838180),
-(92, 6099700),
-(93, 6367220),
-(94, 6640740),
-(95, 6920260),
-(96, 7205780),
-(97, 7497300),
-(98, 7794820),
-(99, 8098340),
-(100, 8407860),
-(101, 8723380),
-(102, 9044900),
-(103, 9372420),
-(104, 9705940),
-(105, 10045460),
-(106, 10390980),
-(107, 10742500),
-(108, 11100020),
-(109, 11463540),
-(110, 11833060),
-(111, 12208580),
-(112, 12590100),
-(113, 12977620),
-(114, 13371140),
-(115, 13770660),
-(116, 14176180),
-(117, 14587700),
-(118, 15005220),
-(119, 15428740),
-(120, 15858260),
-(121, 16293780),
-(122, 16735300),
-(123, 17182820),
-(124, 17636340),
-(125, 18095860),
-(126, 18561380),
-(127, 19032900),
-(128, 19510420),
-(129, 19993940),
-(130, 20483460),
-(131, 20978980),
-(132, 21480500),
-(133, 21988020),
-(134, 22501540),
-(135, 23021060),
-(136, 23546580),
-(137, 24078100),
-(138, 24615620),
-(139, 25159140),
-(140, 25708660),
-(141, 26264180),
-(142, 26825700),
-(143, 27393220),
-(144, 27966740),
-(145, 28546260),
-(146, 29131780),
-(147, 29723300),
-(148, 30320820),
-(149, 30924340),
-(150, 31533860),
-(151, 32149380),
-(152, 32770900),
-(153, 33398420),
-(154, 34031940),
-(155, 34671460),
-(156, 35316980),
-(157, 35968500),
-(158, 36626020),
-(159, 37289540),
-(160, 37959060),
-(161, 38634580),
-(162, 39316100),
-(163, 40003620),
-(164, 40697140),
-(165, 41396660),
-(166, 42102180),
-(167, 42813700),
-(168, 43531220),
-(169, 44254740),
-(170, 44984260),
-(171, 45719780),
-(172, 46461300),
-(173, 47208820);
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `chat_level_title`
---
 
 CREATE TABLE IF NOT EXISTS `chat_level_title` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -302,69 +62,11 @@ CREATE TABLE IF NOT EXISTS `chat_level_title` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天等級稱號';
 
---
--- 資料表新增資料前，先清除舊資料 `chat_level_title`
---
-
-TRUNCATE TABLE `chat_level_title`;
---
--- 傾印資料表的資料 `chat_level_title`
---
-
-INSERT INTO `chat_level_title` (`id`, `title`, `title_range`) VALUES
-(1, '小屁孩', 1),
-(2, '村民', 3),
-(3, '見習冒險者', 6),
-(4, '冒險者', 10),
-(5, '魔族殺手', 10),
-(6, '龍族殺手', 10),
-(7, '神族殺手', 10),
-(8, '異世界少年', 6),
-(9, '見習勇者', 6),
-(10, '實習勇者', 6),
-(11, '遊俠', 3),
-(12, '吟遊詩人', 3),
-(13, '神官', 3),
-(14, '騎士', 3);
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `chat_range_title`
---
-
 CREATE TABLE IF NOT EXISTS `chat_range_title` (
   `id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='級距頭銜前贅';
-
---
--- 資料表新增資料前，先清除舊資料 `chat_range_title`
---
-
-TRUNCATE TABLE `chat_range_title`;
---
--- 傾印資料表的資料 `chat_range_title`
---
-
-INSERT INTO `chat_range_title` (`id`, `title`) VALUES
-(1, '初級'),
-(2, '中級'),
-(3, '高級'),
-(4, '銅級'),
-(5, '銀級'),
-(6, '金級'),
-(7, '白金級'),
-(8, '秘銀級'),
-(9, '山銅級'),
-(10, '精鋼級');
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `chat_user_data`
---
 
 CREATE TABLE IF NOT EXISTS `chat_user_data` (
   `id` int NOT NULL,
@@ -373,12 +75,6 @@ CREATE TABLE IF NOT EXISTS `chat_user_data` (
   `rank` int NOT NULL DEFAULT '99999',
   UNIQUE KEY `id` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天制度用戶經驗';
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `CustomerOrder`
---
 
 CREATE TABLE IF NOT EXISTS `CustomerOrder` (
   `ID` int NOT NULL AUTO_INCREMENT,
@@ -401,12 +97,6 @@ CREATE TABLE IF NOT EXISTS `CustomerOrder` (
   KEY `IDX_CustOrderSource` (`SourceId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `GachaPool`
---
-
 CREATE TABLE IF NOT EXISTS `GachaPool` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `Name` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -419,24 +109,12 @@ CREATE TABLE IF NOT EXISTS `GachaPool` (
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `GachaSignin`
---
-
 CREATE TABLE IF NOT EXISTS `GachaSignin` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `userId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `signinDate` datetime NOT NULL,
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `GlobalOrders`
---
 
 CREATE TABLE IF NOT EXISTS `GlobalOrders` (
   `ID` int NOT NULL AUTO_INCREMENT,
@@ -453,12 +131,6 @@ CREATE TABLE IF NOT EXISTS `GlobalOrders` (
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `Guild`
---
-
 CREATE TABLE IF NOT EXISTS `Guild` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `GuildId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -468,12 +140,6 @@ CREATE TABLE IF NOT EXISTS `Guild` (
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `GuildBattleConfig`
---
-
 CREATE TABLE IF NOT EXISTS `GuildBattleConfig` (
   `GuildId` varchar(45) NOT NULL,
   `NotifyToken` varchar(255) NOT NULL,
@@ -481,12 +147,6 @@ CREATE TABLE IF NOT EXISTS `GuildBattleConfig` (
   `modify_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`GuildId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='紀錄戰隊系統設定';
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `GuildBattleFinish`
---
 
 CREATE TABLE IF NOT EXISTS `GuildBattleFinish` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -496,12 +156,6 @@ CREATE TABLE IF NOT EXISTS `GuildBattleFinish` (
   PRIMARY KEY (`id`),
   KEY `idxUserId` (`UserId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `GuildConfig`
---
 
 CREATE TABLE IF NOT EXISTS `GuildConfig` (
   `ID` int NOT NULL AUTO_INCREMENT,
@@ -516,12 +170,6 @@ CREATE TABLE IF NOT EXISTS `GuildConfig` (
   UNIQUE KEY `GuildId_UNIQUE` (`GuildId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `GuildMembers`
---
-
 CREATE TABLE IF NOT EXISTS `GuildMembers` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `GuildId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -535,12 +183,6 @@ CREATE TABLE IF NOT EXISTS `GuildMembers` (
   UNIQUE KEY `GM_Unique` (`GuildId`,`UserId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `Inventory`
---
-
 CREATE TABLE IF NOT EXISTS `Inventory` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `userId` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -549,12 +191,6 @@ CREATE TABLE IF NOT EXISTS `Inventory` (
   `createDTM` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `MessageRecord`
---
 
 CREATE TABLE IF NOT EXISTS `MessageRecord` (
   `ID` int NOT NULL,
@@ -567,12 +203,6 @@ CREATE TABLE IF NOT EXISTS `MessageRecord` (
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='訊息數據紀錄';
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `notify_list`
---
-
 CREATE TABLE IF NOT EXISTS `notify_list` (
   `id` int NOT NULL COMMENT '跟User編號一樣',
   `type` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '類型，1:Line Notify、2:Discord Webhook',
@@ -582,12 +212,6 @@ CREATE TABLE IF NOT EXISTS `notify_list` (
   `modify_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改時間',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='訂閱系統token紀錄';
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `PrincessUID`
---
 
 CREATE TABLE IF NOT EXISTS `PrincessUID` (
   `userId` varchar(45) NOT NULL COMMENT 'Line使用者ID',
@@ -599,23 +223,11 @@ CREATE TABLE IF NOT EXISTS `PrincessUID` (
   UNIQUE KEY `userId_UNIQUE` (`userId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='提供使用者綁定公主連結UID';
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `sent_bulletin`
---
-
 CREATE TABLE IF NOT EXISTS `sent_bulletin` (
   `id` int NOT NULL,
   `create_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='紀錄已發送的公告';
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `subscribe_type`
---
 
 CREATE TABLE IF NOT EXISTS `subscribe_type` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -624,26 +236,6 @@ CREATE TABLE IF NOT EXISTS `subscribe_type` (
   `description` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- 資料表新增資料前，先清除舊資料 `subscribe_type`
---
-
-TRUNCATE TABLE `subscribe_type`;
---
--- 傾印資料表的資料 `subscribe_type`
---
-
-INSERT INTO `subscribe_type` (`id`, `type`, `title`, `description`) VALUES
-(1, 'PrincessNews', '公主連結消息', '可以接收公主連結最新公告。'),
-(2, 'BotNews', '最新消息', '可以接收機器人功能最新消息更新，包括功能的修正、新增、刪除。'),
-(3, 'ChatInfo', '等級系統消息', '可以接收等級系統的消息，例如：獲得了XX經驗、恭喜晉升為 36等 金級的龍族殺手。');
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `TotalEventTimes`
---
 
 CREATE TABLE IF NOT EXISTS `TotalEventTimes` (
   `TET_DATE` varchar(6) NOT NULL,
@@ -654,12 +246,6 @@ CREATE TABLE IF NOT EXISTS `TotalEventTimes` (
   `TET_UNSEND` int NOT NULL COMMENT '收回次數',
   PRIMARY KEY (`TET_DATE`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='每月份事件總數紀錄';
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `User`
---
 
 CREATE TABLE IF NOT EXISTS `User` (
   `No` int NOT NULL AUTO_INCREMENT,
@@ -672,12 +258,6 @@ CREATE TABLE IF NOT EXISTS `User` (
   UNIQUE KEY `platformId` (`platformId`,`platform`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- --------------------------------------------------------
-
---
--- 資料表結構 `web_announcement`
---
-
 CREATE TABLE IF NOT EXISTS `web_announcement` (
   `id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
@@ -686,8 +266,3 @@ CREATE TABLE IF NOT EXISTS `web_announcement` (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
