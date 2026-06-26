@@ -161,6 +161,13 @@
     "exp": {
       "rate": {
         "default": 90
+      },
+      "catchup": {
+        "enabled": true,
+        "targetRate": 722,
+        "maxBoost": 2.0,
+        "graceDays": 7,
+        "floor": 100
       }
     }
   },

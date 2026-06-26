@@ -33,6 +33,7 @@ describe("chatUserState", () => {
         prestige_count: 0,
         current_level: 0,
         current_exp: 0,
+        created_at: null,
         blessings: [],
         active_trial_id: null,
         active_trial_star: null,
