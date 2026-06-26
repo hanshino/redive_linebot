@@ -69,7 +69,7 @@ Command routing in `OrderBased` composes routers from every domain controller (g
 
 - **MySQL** via Knex (`app/knexfile.js`) — database is hardcoded `Princess`. Host-run migrations read the root `.env` (`DB_HOST=mysql` maps to the docker-exposed port 3306 on localhost).
 - **Redis** — Bottender session store + general cache (`app/src/util/redis.js`). Session TTL 60 min, state TTL 15 min (`app/bottender.config.js`).
-- **SQLite** — read-only game data (`app/assets/redive_tw.db`) and a local task log (`app/assets/task.db`); accessed via `better-sqlite3` through `app/src/model/princess/GameSqlite.js`.
+- **SQLite** — read-only game data (`app/assets/redive_tw.db`) and a local task log (`app/assets/task.db`); accessed via `better-sqlite3` through `app/src/model/princess/character/index.js`, with `app/src/util/sqlite.js` as the connection factory.
 - **Migrations** — `app/migrations/`. Create new ones with `cd app && yarn knex migrate:make <name>` — never hand-write. knex is the single schema source (the old docker `Princess.sql` init was folded into the `20210101000000_baseline_initial_schema` migration). **Fresh DB bootstrap**: `cd app && yarn migrate && yarn knex seed:run` (migrate builds all tables, seeders fill `chat_exp_unit` / `GachaPool` / etc.) — there is no more SQL injected at container first-boot.
 
 ### Socket.IO
