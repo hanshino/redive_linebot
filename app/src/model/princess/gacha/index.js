@@ -4,7 +4,7 @@ const LineClient = getClient("line");
 const redis = require("../../../util/redis");
 const { get } = require("lodash");
 const base = require("../../base");
-exports.table = "GachaPool";
+exports.table = "gacha_pool";
 
 exports.all = async (options = {}) => {
   let query = mysql.from(this.table);
@@ -40,7 +40,7 @@ exports.getDatabasePool = () => {
  * @returns {Promise}
  */
 exports.insertNewData = objData => {
-  return mysql.insert({ ...objData, modify_ts: new Date() }).into("GachaPool");
+  return mysql.insert({ ...objData, modify_ts: new Date() }).into("gacha_pool");
 };
 
 /**
@@ -58,7 +58,7 @@ exports.insertNewData = objData => {
 exports.updateData = (id, objData) => {
   return mysql
     .update({ ...objData, modify_ts: new Date() })
-    .from("GachaPool")
+    .from("gacha_pool")
     .where({ id })
     .then(res => res);
 };
@@ -69,7 +69,7 @@ exports.updateData = (id, objData) => {
  * @returns {Promise}
  */
 exports.deleteData = id => {
-  return mysql.from("GachaPool").where({ id }).del();
+  return mysql.from("gacha_pool").where({ id }).del();
 };
 
 /**
@@ -104,8 +104,8 @@ exports.getUserCollectedCharacterCount = userId => {
   return mysql
     .select()
     .count("*", { as: "count" })
-    .from("Inventory")
-    .join(this.table, "Inventory.itemId", "=", "GachaPool.id")
+    .from("inventory")
+    .join(this.table, "inventory.itemId", "=", "gacha_pool.id")
     .where({
       userId,
     })
@@ -115,7 +115,7 @@ exports.getUserCollectedCharacterCount = userId => {
 exports.getUserGodStoneCount = userId => {
   return mysql
     .select()
-    .from("Inventory")
+    .from("inventory")
     .sum({ total: "itemAmount" })
     .where({ itemId: 999, userId })
     .then(res => (res.length === 0 ? 0 : res[0].total || 0));
@@ -151,7 +151,7 @@ exports.getCollectedRank = async options => {
 
   var query = mysql
     .select("userId")
-    .from("Inventory")
+    .from("inventory")
     .count({ cnt: "itemId" })
     .where("itemId", "<>", 999)
     .groupBy("userId")
@@ -189,5 +189,5 @@ exports.getCollectedRank = async options => {
 class GachaPool extends base {}
 
 exports.model = new GachaPool({
-  table: "GachaPool",
+  table: "gacha_pool",
 });

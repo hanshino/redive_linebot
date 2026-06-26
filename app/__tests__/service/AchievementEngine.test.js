@@ -701,7 +701,7 @@ describe("AchievementEngine", () => {
       expect(result.unlocked).toBe(true);
       expect(result.achievement.key).toBe("prestige_departure");
       expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Uabc", 101);
-      expect(mysql).toHaveBeenCalledWith("Inventory");
+      expect(mysql).toHaveBeenCalledWith("inventory");
     });
 
     it("is a no-op when already unlocked", async () => {
@@ -778,7 +778,7 @@ describe("AchievementEngine", () => {
             where: jest.fn().mockResolvedValue([]),
           };
         }
-        if (table === "Inventory") {
+        if (table === "inventory") {
           return { insert: jest.fn().mockResolvedValue() };
         }
         return { where: jest.fn().mockResolvedValue([]) };

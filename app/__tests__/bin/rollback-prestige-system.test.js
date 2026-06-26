@@ -89,7 +89,7 @@ describe("rollback-prestige-system", () => {
             del: userAchievementsDelMock,
           };
         }
-        if (table === "Inventory") {
+        if (table === "inventory") {
           return {
             where: jest.fn().mockReturnThis(),
             del: inventoryDelMock,

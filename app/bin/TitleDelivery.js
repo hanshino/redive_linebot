@@ -29,7 +29,7 @@ async function deliveryGachaTitles(trx) {
   const collectKeys = ["gacha_king_1", "gacha_king_2", "gacha_king_3"];
   const collectUsers = await trx
     .select("userId")
-    .from("Inventory")
+    .from("inventory")
     .count({ count: "itemId" })
     .whereNot("itemId", 999)
     .orderBy("count", "desc")
@@ -47,7 +47,7 @@ async function deliveryGachaTitles(trx) {
   const richKeys = ["gacha_rich_1", "gacha_rich_2", "gacha_rich_3"];
   const richUsers = await trx
     .select("userId")
-    .from("Inventory")
+    .from("inventory")
     .sum({ sum: "itemAmount" })
     .where("itemId", 999)
     .orderBy("sum", "desc")

@@ -70,7 +70,7 @@ async function handle(payload) {
   try {
     DefaultLogger.info(`[DailyQuest] ${userId} complete. Give reward`);
     await trx("daily_quest").insert({ user_id: userId });
-    await trx("Inventory").insert({
+    await trx("inventory").insert({
       userId,
       itemId: config.get("daily_quest.reward.itemId"),
       itemAmount: config.get("daily_quest.reward.itemAmount"),
@@ -88,7 +88,7 @@ async function handle(payload) {
     .where("user_id", userId);
 
   if (weeklyRecords.length === 7) {
-    await mysql("Inventory").insert({
+    await mysql("inventory").insert({
       userId,
       itemId: config.get("daily_quest.weekly_reward.itemId"),
       itemAmount: config.get("daily_quest.weekly_reward.itemAmount"),

@@ -44,7 +44,7 @@ async function consume() {
   CustomLogger.info(`關閉 ${markIds.length} 個 群組會員資料`);
 
   if (markIds.length > 0) {
-    await mysql("GuildMembers").update({ status: 0, LeftDTM: new Date() }).whereIn("ID", markIds);
+    await mysql("guild_members").update({ status: 0, LeftDTM: new Date() }).whereIn("ID", markIds);
   }
 }
 

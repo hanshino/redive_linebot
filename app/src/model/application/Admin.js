@@ -3,11 +3,11 @@ const redis = require("../../util/redis");
 const config = require("config");
 
 exports.getList = () => {
-  return mysql.select().from("Admin");
+  return mysql.select().from("admin");
 };
 
 exports.find = async userId => {
-  return await mysql.from("Admin").where({ userId }).first();
+  return await mysql.from("admin").where({ userId }).first();
 };
 
 /**
@@ -17,7 +17,7 @@ exports.find = async userId => {
 exports.isAdmin = userId => {
   return mysql
     .select("ID")
-    .from("Admin")
+    .from("admin")
     .where({ userId })
     .then(res => (res.length > 0 ? true : false));
 };
@@ -27,7 +27,7 @@ exports.isAdminFromCache = async userId => {
   let adminList = await redis.get(key);
 
   if (!adminList) {
-    let result = await mysql("Admin").select("userId");
+    let result = await mysql("admin").select("userId");
     adminList = result.map(item => item.userId);
     await redis.set(key, JSON.stringify(adminList), {
       EX: 60 * 60,

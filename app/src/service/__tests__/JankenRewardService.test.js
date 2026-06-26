@@ -9,7 +9,7 @@ describe("JankenRewardService.payoutDaily", () => {
       mysql("janken_daily_reward_log").delete(),
       mysql("janken_records").delete(),
       mysql("janken_rating").delete(),
-      mysql("Inventory").where({ note: "janken_daily_rank_reward" }).delete(),
+      mysql("inventory").where({ note: "janken_daily_rank_reward" }).delete(),
       mysql("janken_seasons").delete(),
     ]);
     await mysql("janken_seasons").insert({ id: 1, started_at: new Date(), status: "active" });
@@ -33,7 +33,7 @@ describe("JankenRewardService.payoutDaily", () => {
     const result = await JankenRewardService.payoutDaily(yesterdayDateString());
     expect(result.dryRun).toBe(true);
     expect(result.candidates).toHaveLength(1);
-    const stones = await mysql("Inventory").where({ note: "janken_daily_rank_reward" });
+    const stones = await mysql("inventory").where({ note: "janken_daily_rank_reward" });
     expect(stones).toHaveLength(0);
     const logs = await mysql("janken_daily_reward_log");
     expect(logs).toHaveLength(0);
@@ -65,7 +65,7 @@ describe("JankenRewardService.payoutDaily", () => {
     expect(result.dryRun).toBe(false);
     const log = await mysql("janken_daily_reward_log").where({ user_id: "U_FlagOn" }).first();
     expect(log.amount).toBe(500); // top1
-    const stones = await mysql("Inventory")
+    const stones = await mysql("inventory")
       .where({ note: "janken_daily_rank_reward", userId: "U_FlagOn" })
       .first();
     expect(Number(stones.itemAmount)).toBe(500);

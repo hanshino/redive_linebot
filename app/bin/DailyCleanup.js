@@ -16,7 +16,7 @@ async function removeDeletedOrders() {
   let expireDates = new Date();
   expireDates.setDate(expireDates.getDate() - 3);
   await mysql
-    .from("CustomerOrder")
+    .from("customer_order")
     .where("status", 0)
     .where("ModifyDTM", "<", expireDates)
     .delete();
@@ -27,7 +27,7 @@ async function markUselessOrders() {
   expireDates.setMonth(expireDates.getMonth() - 2);
 
   let affectedRows = await mysql
-    .from("CustomerOrder")
+    .from("customer_order")
     .where("status", 1)
     .where("touchDTM", "<", expireDates)
     .delete();
@@ -42,7 +42,7 @@ async function clearClosed() {
 
   let delGuilds = await mysql
     .select("guildId")
-    .from("Guild")
+    .from("guild")
     .where("status", 0)
     .where("CloseDTM", "<", expireDates)
     .then(res => res.map(data => data.guildId));
@@ -53,16 +53,16 @@ async function clearClosed() {
   }
 
   await mysql.transaction(async trx => {
-    let r1 = await trx.from("Guild").whereIn("GuildId", delGuilds).delete();
+    let r1 = await trx.from("guild").whereIn("GuildId", delGuilds).delete();
     records.push(`刪除了 ${r1} 個群組`);
 
-    let r2 = await trx.from("GuildMembers").whereIn("GuildId", delGuilds).delete();
+    let r2 = await trx.from("guild_members").whereIn("GuildId", delGuilds).delete();
     records.push(`刪除了 ${r2} 個群組會員資料`);
 
-    let r3 = await trx.from("GuildConfig").whereIn("GuildId", delGuilds).delete();
+    let r3 = await trx.from("guild_config").whereIn("GuildId", delGuilds).delete();
     records.push(`刪除了 ${r3} 個群組設定`);
 
-    let r4 = await trx.from("CustomerOrder").whereIn("SourceId", delGuilds).delete();
+    let r4 = await trx.from("customer_order").whereIn("SourceId", delGuilds).delete();
     records.push(`刪除了 ${r4} 個群組自訂指令`);
   });
 
@@ -72,7 +72,7 @@ async function clearClosed() {
 async function clearLeftMembers() {
   let expireDates = new Date();
   expireDates.setDate(expireDates.getDate() - 7);
-  let affectedRows = await mysql("GuildMembers")
+  let affectedRows = await mysql("guild_members")
     .where("LeftDTM", "<", expireDates)
     .where("status", "=", 0)
     .delete();

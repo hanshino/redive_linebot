@@ -22,7 +22,7 @@ async function recordTotalTimes() {
   let [affectedRows] = await mysql
     .from(
       mysql.raw("?? (??, ??, ??, ??, ??, ??)", [
-        "TotalEventTimes",
+        "total_event_times",
         "TET_DATE",
         "TET_TEXT",
         "TET_IMAGE",
@@ -32,7 +32,7 @@ async function recordTotalTimes() {
       ])
     )
     .insert(function () {
-      this.from("MessageRecord")
+      this.from("message_record")
         .select({ date: mysql.raw(str) })
         .sum({ textCnt: "MR_TEXT" })
         .sum({ imageCnt: "MR_IMAGE" })
@@ -46,8 +46,8 @@ async function recordTotalTimes() {
 
 async function clearRecords() {
   await mysql.transaction(async trx => {
-    await mysql("GuildMembers").update({ SpeakTimes: 0 }).transacting(trx);
-    await mysql("MessageRecord")
+    await mysql("guild_members").update({ SpeakTimes: 0 }).transacting(trx);
+    await mysql("message_record")
       .update({
         MR_TEXT: 0,
         MR_IMAGE: 0,

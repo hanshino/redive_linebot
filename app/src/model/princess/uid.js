@@ -3,7 +3,7 @@ const redis = require("../../util/redis");
 const axios = require("axios").default;
 const nicknameAPI = "https://www.pay.so-net.tw/exchange/checkUser";
 
-exports.table = "PrincessUID";
+exports.table = "princess_uid";
 
 /**
  * 綁定遊戲ID

@@ -3,14 +3,14 @@ const _ = require("lodash");
 
 exports.seed = function (knex) {
   // Deletes ALL existing entries
-  return knex("GachaPool")
+  return knex("gacha_pool")
     .del()
     .then(function () {
       // Inserts seed entries
 
       return Promise.all(
         _.chunk(characters, 50).map(data => {
-          return knex("GachaPool").insert(
+          return knex("gacha_pool").insert(
             data.map(char => ({
               Name: char.Name,
               HeadImage_Url: char.HeadImage,

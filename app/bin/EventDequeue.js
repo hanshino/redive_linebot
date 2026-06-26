@@ -100,7 +100,7 @@ function handleJoin(event) {
 function handleLeave(event) {
   return mysql
     .update({ status: 0, closeDTM: new Date() })
-    .from("Guild")
+    .from("guild")
     .where({ status: 1, GuildId: event.source.groupId });
 }
 
@@ -113,7 +113,7 @@ async function handleMemberJoined(event) {
   let guildData = userData.groupList.find(list => list.guildId === groupId);
 
   if (!guildData) {
-    await mysql.insert({ guildId: groupId, userId, JoinedDTM: new Date() }).into("GuildMembers");
+    await mysql.insert({ guildId: groupId, userId, JoinedDTM: new Date() }).into("guild_members");
     clearUserCache(userId);
   } else if (guildData.status === 0) {
     await setMemberStatus(userId, groupId, 1);
@@ -140,7 +140,7 @@ async function handleMessage(event) {
   if (!member) return;
 
   if (event.message.type === "text") {
-    await mysql("GuildMembers")
+    await mysql("guild_members")
       .update({ LastSpeakDTM: new Date() })
       .increment("SpeakTimes", 1)
       .where({ userId, guildId: groupId });
@@ -258,7 +258,7 @@ async function getUserData(userId) {
 
   if (userData.length !== 0) {
     result = { ...result, ...userData[0] };
-    let groupData = await mysql.select("*").from("GuildMembers").where({ userId });
+    let groupData = await mysql.select("*").from("guild_members").where({ userId });
     result.groupList = groupData.map(data => ({
       id: data.ID,
       guildId: data.GuildId,
@@ -290,15 +290,15 @@ async function userRecord(userId) {
 }
 
 async function groupRecord(groupId) {
-  let groupData = await mysql.select("*").from("Guild").where({ guildId: groupId });
+  let groupData = await mysql.select("*").from("guild").where({ guildId: groupId });
   let data = groupData.length === 0 ? false : groupData[0];
 
   if (data === false) {
-    await mysql.insert({ guildId: groupId, createDTM: new Date() }).into("Guild");
+    await mysql.insert({ guildId: groupId, createDTM: new Date() }).into("guild");
   } else if (data.Status === 0) {
     await mysql
       .update({ status: 1, closeDTM: null })
-      .from("Guild")
+      .from("guild")
       .where({ status: 0, guildId: groupId });
   }
 }
@@ -313,7 +313,7 @@ function closeUser(userId) {
 
 async function setMemberStatus(userId, groupId, status) {
   clearUserCache(userId);
-  return mysql("GuildMembers")
+  return mysql("guild_members")
     .update({ status, leftDTM: status === 1 ? null : new Date() })
     .where({ guildId: groupId, userId });
 }
@@ -339,13 +339,13 @@ async function recordMessageTimes(botEvent, id) {
   }
   if (!increaseCol) return;
 
-  let affectedRow = await mysql("MessageRecord")
+  let affectedRow = await mysql("message_record")
     .update({ MR_MODIFYDTM: new Date() })
     .increment(increaseCol)
     .where({ id });
 
   if (affectedRow === 0) {
-    await mysql.insert({ id, MR_MODIFYDTM: new Date(), [increaseCol]: 1 }).into("MessageRecord");
+    await mysql.insert({ id, MR_MODIFYDTM: new Date(), [increaseCol]: 1 }).into("message_record");
   }
 }
 
@@ -369,7 +369,7 @@ async function getGroupMemberCount(groupId) {
   if (cached !== null) return parseInt(cached, 10);
 
   try {
-    let result = await mysql("GuildMembers")
+    let result = await mysql("guild_members")
       .where({ GuildId: groupId, status: 1 })
       .count({ count: "*" })
       .first();

@@ -1,5 +1,5 @@
 const mysql = require("../../../util/mysql");
-const GUILD_BATTLE_CONFIG_TABLE = "GuildBattleConfig";
+const GUILD_BATTLE_CONFIG_TABLE = "guild_battle_config";
 
 /**
  * 獲取群組戰隊設定

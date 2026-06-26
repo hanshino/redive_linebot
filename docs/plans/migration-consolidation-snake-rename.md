@@ -7,7 +7,7 @@
 
 - **Phase 0 線上審計：完成**（2026-06-26）。關鍵結論：`User` 已於 batch 38 改名為 `user`（移出改名清單，14→13）；5 張空表是新功能待啟用（不砍）；13 張 legacy 表全活躍（全改名）；12 條 FK 全在 snake_case 表間、零指向 legacy 表、零 trigger（DB 層改名安全）；線上共 77 表。
 - **Phase 1 收攏：完成、未 commit**（分支 `chore/consolidate-migrations-knex`）。空庫 throwaway 驗證：`yarn migrate` → 132 支跑完 = **77 表（與線上一致）**、冪等、`Admin` 修復；`yarn knex seed:run` → 6 seeders OK。待 review 後 commit/PR。
-- **Phase 2 改名：未開始**，需部署窗口決策。
+- **Phase 2 改名：完成、未部署**（分支 `chore/rename-legacy-tables-snake`，stacked on PR#1）。改名 migration + 30 檔 code/test（13 表）；空庫驗證 → 77 表全 snake、PascalCase 殘留 0、冪等；離線測試 62 pass。**需 PR#1 先 merge+部署，再於部署窗口上這支（migration + code 同一 release）。**
 
 ## 背景事實（已驗證）
 

@@ -175,7 +175,7 @@ exports.memberLeft = (userId, groupId) => {
  */
 exports.setMemberStatus = (userId, groupId, status) => {
   return setStatus(
-    "GuildMembers",
+    "guild_members",
     {
       status: status,
       leftDTM: status === 1 ? null : new Date(),
@@ -188,8 +188,8 @@ exports.setMemberStatus = (userId, groupId, status) => {
 };
 
 exports.table = {
-  Guild: "Guild",
-  GuildMembers: "GuildMembers",
+  Guild: "guild",
+  GuildMembers: "guild_members",
   User: "user",
 };
 
@@ -197,7 +197,7 @@ exports.increaseSpeakTimes = (userId, guildId) => {
   mysql
     .update({ LastSpeakDTM: new Date() })
     .increment("SpeakTimes", 1)
-    .from("GuildMembers")
+    .from("guild_members")
     .where({ userId, guildId })
     .then();
 };
@@ -209,7 +209,7 @@ exports.increaseSpeakTimes = (userId, guildId) => {
 exports.getGroupSpeakRank = groupId => {
   return mysql
     .from(this.table.GuildMembers)
-    .join("MessageRecord", "MessageRecord.id", "=", `${this.table.GuildMembers}.id`)
+    .join("message_record", "message_record.id", "=", `${this.table.GuildMembers}.id`)
     .select([
       "userId",
       "status",

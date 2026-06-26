@@ -11,12 +11,12 @@ exports.setFinishBattle = (guildId, userId) => {
     .transaction(trx => {
       trx
         .select("id")
-        .from("GuildBattleFinish")
+        .from("guild_battle_finish")
         .where({ guildId, userId })
         .whereBetween("CreateDTM", [start, end])
         .then(res => {
           if (res.length === 0) {
-            return trx("GuildBattleFinish").insert({
+            return trx("guild_battle_finish").insert({
               guildId,
               userId,
             });
@@ -32,7 +32,7 @@ exports.setFinishBattle = (guildId, userId) => {
 exports.resetFinishBattle = (guildId, userId) => {
   let { start, end } = getBattleDate(new Date());
   return mysql
-    .from("GuildBattleFinish")
+    .from("guild_battle_finish")
     .where({ guildId, userId })
     .whereBetween("CreateDTM", [start, end])
     .delete();
@@ -46,13 +46,13 @@ exports.resetFinishBattle = (guildId, userId) => {
 exports.getFinishList = async (guildId, objDate) => {
   let { start, end } = getBattleDate(objDate);
 
-  let rows = await mysql.select("userId").from("GuildMembers").where({ guildId, status: 1 });
+  let rows = await mysql.select("userId").from("guild_members").where({ guildId, status: 1 });
 
   const memberIds = rows.map(row => row.userId);
 
   let GBFrows = await mysql
     .select(["userId", "createDTM"])
-    .from("GuildBattleFinish")
+    .from("guild_battle_finish")
     .where({ guildId })
     .whereBetween("createDTM", [start, end]);
 
@@ -73,7 +73,7 @@ exports.getFinishList = async (guildId, objDate) => {
 exports.getMonthFinishList = (guildId, month) => {
   return mysql
     .select(["userId", "createDTM"])
-    .from("GuildBattleFinish")
+    .from("guild_battle_finish")
     .where({ guildId })
     .whereRaw("month(createDTM) = ?", [month]);
 };

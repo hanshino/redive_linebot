@@ -295,7 +295,7 @@ async function unlockAchievement(userId, achievement) {
     // Append a new ledger row — balance is SUM(itemAmount) across rows.
     // The prior UPDATE-without-row-ID version multiplied the reward by the
     // user's existing row count (see project_stone_ledger_refactor memo).
-    await mysql("Inventory").insert({
+    await mysql("inventory").insert({
       userId,
       itemId: GODDESS_STONE_ITEM_ID,
       itemAmount: achievement.reward_stones,
