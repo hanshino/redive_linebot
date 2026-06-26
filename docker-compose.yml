@@ -2,7 +2,6 @@ services:
   mysql:
     image: mysql
     volumes:
-      - ./migration:/docker-entrypoint-initdb.d
       - type: volume
         source: dbdata
         target: /var/lib/mysql

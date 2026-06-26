@@ -12,8 +12,9 @@ Yarn workspaces root; two packages plus shared dev tooling:
 
 - **app/** — Bottender bot + Express API + Socket.IO + cron worker. All backend code lives here.
 - **frontend/** — React 19 + MUI 7 + Vite admin dashboard, embedded as LINE LIFF.
-- **migration/** — MySQL init scripts (mounted into the mysql container on first boot).
 - **docs/** — Design specs (e.g. `docs/superpowers/specs/`).
+
+The legacy `migration/Princess.sql` docker init was folded into knex (`app/migrations/20210101000000_baseline_initial_schema.{js,sql}`); knex is now the single schema source.
 
 There is no `job/` package — cron is `yarn worker` inside `app/` (see below).
 
@@ -69,7 +70,7 @@ Command routing in `OrderBased` composes routers from every domain controller (g
 - **MySQL** via Knex (`app/knexfile.js`) — database is hardcoded `Princess`. Host-run migrations read the root `.env` (`DB_HOST=mysql` maps to the docker-exposed port 3306 on localhost).
 - **Redis** — Bottender session store + general cache (`app/src/util/redis.js`). Session TTL 60 min, state TTL 15 min (`app/bottender.config.js`).
 - **SQLite** — read-only game data (`app/assets/redive_tw.db`) and a local task log (`app/assets/task.db`); accessed via `better-sqlite3` through `app/src/model/princess/GameSqlite.js`.
-- **Migrations** — `app/migrations/`. Create new ones with `cd app && yarn knex migrate:make <name>` — never hand-write.
+- **Migrations** — `app/migrations/`. Create new ones with `cd app && yarn knex migrate:make <name>` — never hand-write. knex is the single schema source (the old docker `Princess.sql` init was folded into the `20210101000000_baseline_initial_schema` migration). **Fresh DB bootstrap**: `cd app && yarn migrate && yarn knex seed:run` (migrate builds all tables, seeders fill `chat_exp_unit` / `GachaPool` / etc.) — there is no more SQL injected at container first-boot.
 
 ### Socket.IO
 
@@ -157,5 +158,5 @@ Copy `.env.example` to root `.env`. Required: `LINE_ACCESS_TOKEN`, `LINE_CHANNEL
 - `app/knexfile.js` — single MySQL connection config for app + worker + migrations.
 - `app/config/default.json` — game logic constants, external link URLs, color palette; read via `config` package (`require("config").get(...)`).
 - `app/config/crontab.config.js` — cron schedule → `app/bin/<Script>.js` mapping (edit here when adding background jobs).
-- `docker-compose.yml` — infra only (mysql, redis, phpmyadmin). Dev reality; bot/frontend run on the host.
+- `docker-compose.yml` — infra only (mysql, redis, phpmyadmin). Dev reality; bot/frontend run on the host. No longer mounts any SQL init — schema is bootstrapped purely by knex (`yarn migrate`).
 - `docker-compose.traefik.yml` — production service + Traefik routing labels. Not used locally.
