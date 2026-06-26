@@ -8,7 +8,7 @@ const redis = require("../../util/redis");
  * @returns {Promise<{ID: Number, GuildId: String}>}
  */
 exports.findByGroupId = async groupId => {
-  return await mysql.select("*").from("Guild").where({ GuildId: groupId }).first();
+  return await mysql.select("*").from("guild").where({ GuildId: groupId }).first();
 };
 
 /**
@@ -25,12 +25,12 @@ exports.fetchGuildInfoByUser = userId => {
       "speakTimes",
       "lastSpeakDTM",
     ])
-    .from("GuildMembers")
+    .from("guild_members")
     .where({ userId, status: 1 });
 };
 
 exports.fetchGuildMembers = guildId => {
-  return mysql.select(["guildId", "userId"]).from("GuildMembers").where({ guildId, status: 1 });
+  return mysql.select(["guildId", "userId"]).from("guild_members").where({ guildId, status: 1 });
 };
 
 /**
@@ -45,4 +45,4 @@ exports.clearLineSession = guildId => {
 /**
  * @returns {Knex}
  */
-exports.query = () => mysql("Guild");
+exports.query = () => mysql("guild");

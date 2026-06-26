@@ -1,7 +1,7 @@
 const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
 
-exports.table = "CustomerOrder";
+exports.table = "customer_order";
 exports.columnsAlias = [
   "no",
   "sourceId",

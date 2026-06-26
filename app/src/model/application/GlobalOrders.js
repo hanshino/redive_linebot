@@ -2,7 +2,7 @@ const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
 const memKey = "GlobalOrders";
 const uuid = require("uuid-random");
-const TABLE = "GlobalOrders";
+const TABLE = "global_orders";
 exports.table = TABLE;
 
 function buildRows(objData, key) {

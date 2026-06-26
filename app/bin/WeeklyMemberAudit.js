@@ -11,7 +11,7 @@ async function main() {
 async function provideCleanUpMembers() {
   let memberDatas = await mysql
     .select(["id", { groupId: "GuildId" }, { userId: "UserId" }])
-    .from("GuildMembers")
+    .from("guild_members")
     .where({ status: 1 });
 
   CustomLogger.info(`七天固定盤點會員資料，此次處理筆數 ${memberDatas.length}`);

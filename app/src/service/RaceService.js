@@ -82,7 +82,7 @@ exports.placeBet = async function (userId, raceId, runnerId, amount) {
 
   // Atomic balance check + deduction inside transaction
   return mysql.transaction(async trx => {
-    const balRow = await trx("Inventory")
+    const balRow = await trx("inventory")
       .where({ userId, itemId: 999 })
       .sum("itemAmount as total")
       .first();
@@ -98,7 +98,7 @@ exports.placeBet = async function (userId, raceId, runnerId, amount) {
       runner_id: runnerId,
       amount,
     });
-    await trx("Inventory").insert({
+    await trx("inventory").insert({
       userId,
       itemId: 999,
       itemAmount: -amount,
@@ -223,7 +223,7 @@ exports.settleBets = async function (raceId) {
     await mysql.transaction(async trx => {
       for (const bet of allBets) {
         await trx("race_bet").where("id", bet.id).update({ payout: bet.amount });
-        await trx("Inventory").insert([
+        await trx("inventory").insert([
           { userId: bet.user_id, itemId: 999, itemAmount: bet.amount, note: "race_refund" },
         ]);
       }
@@ -240,7 +240,7 @@ exports.settleBets = async function (raceId) {
     for (const bet of winnerBets) {
       const payout = Math.floor(prizePool * (bet.amount / winnerTotal));
       await trx("race_bet").where("id", bet.id).update({ payout });
-      await trx("Inventory").insert([
+      await trx("inventory").insert([
         { userId: bet.user_id, itemId: 999, itemAmount: payout, note: "race_payout" },
       ]);
     }

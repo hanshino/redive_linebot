@@ -29,7 +29,7 @@ let currentTrx;
 
 jest.mock("../../src/model/application/Inventory", () => {
   const inventory = {
-    table: "Inventory",
+    table: "inventory",
     transaction: jest.fn(async () => {
       currentTrx = makeTrxBuilder();
       return currentTrx;
@@ -191,7 +191,7 @@ describe("GachaService.runDailyDraw", () => {
     const result = await GachaService.runDailyDraw("Ufree");
     expect(result.godStoneCost).toBe(0);
     const costInserts = txInserts.filter(
-      t => t.table === "Inventory" && t.rows.itemId === 999 && t.rows.itemAmount < 0
+      t => t.table === "inventory" && t.rows.itemId === 999 && t.rows.itemAmount < 0
     );
     expect(costInserts.length).toBe(0);
   });
@@ -204,7 +204,7 @@ describe("GachaService.runDailyDraw", () => {
       expect(result.rareCount["3"]).toBe(10);
 
       const costInsert = txInserts.find(
-        t => t.table === "Inventory" && t.rows.itemId === 999 && t.rows.itemAmount === -5000
+        t => t.table === "inventory" && t.rows.itemId === 999 && t.rows.itemAmount === -5000
       );
       expect(costInsert).toBeDefined();
     });

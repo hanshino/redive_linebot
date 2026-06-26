@@ -16,9 +16,9 @@ class MarketDetail extends base {
         "closed_at",
         { name: "Name" },
         { image: "HeadImage_Url" },
-        { star: "GachaPool.star" },
+        { star: "gacha_pool.star" },
       ])
-      .leftJoin("GachaPool", "GachaPool.ID", "item_id")
+      .leftJoin("gacha_pool", "gacha_pool.ID", "item_id")
       .where({ [`${this.table}.id`]: id })
       .first();
   }

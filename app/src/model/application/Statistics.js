@@ -12,7 +12,7 @@ exports.getGuildCount = async () => {
 
   count = await mysql
     .select()
-    .from("Guild")
+    .from("guild")
     .count({ cnt: "*" })
     .then(data => data[0].cnt);
 
@@ -52,7 +52,7 @@ exports.getCustomerOrderCount = async () => {
 
   count = await mysql
     .select()
-    .from("CustomerOrder")
+    .from("customer_order")
     .count({ cnt: "*" })
     .then(data => data[0].cnt);
 
@@ -74,12 +74,12 @@ exports.getSpeakTimesCount = async () => {
   times = await mysql
     .select()
     .sum({ times: "SpeakTimes" })
-    .from("GuildMembers")
+    .from("guild_members")
     .then(data => parseInt(data[0].times) || 0);
 
   let historyTimes = await mysql
     .sum({ times: "TET_TEXT" })
-    .from("TotalEventTimes")
+    .from("total_event_times")
     .then(data => parseInt(data[0].times) || 0);
 
   times += historyTimes;
@@ -101,7 +101,7 @@ exports.getGuildDataByUser = async userId => {
 
   guildData = await mysql
     .select()
-    .from("GuildMembers")
+    .from("guild_members")
     .sum({ times: "SpeakTimes" })
     .count({ cnt: "*" })
     .where({ userId })

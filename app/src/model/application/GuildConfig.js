@@ -1,12 +1,12 @@
 const mysql = require("../../util/mysql");
 const redis = require("../../util/redis");
-exports.table = "GuildConfig";
+exports.table = "guild_config";
 
 exports.fetchConfig = async groupId => {
   var GroupConfig = await redis.get(`GuildConfig_${groupId}`);
 
   if (GroupConfig === null) {
-    var query = mysql.select("*").from("GuildConfig").where({ GuildId: groupId });
+    var query = mysql.select("*").from("guild_config").where({ GuildId: groupId });
     return query.then(res => {
       if (res.length === 0) {
         res = {
@@ -56,7 +56,7 @@ exports.getDiscordWebhook = async groupId => {
   let webhook = await redis.get(memoryKey);
   if (webhook !== null) return webhook;
 
-  let query = mysql.select("DiscordWebhook").from("GuildConfig").where({ GuildId: groupId });
+  let query = mysql.select("DiscordWebhook").from("guild_config").where({ GuildId: groupId });
 
   let [data] = await query;
   if (data !== undefined) {
@@ -81,7 +81,7 @@ exports.setDiscordWebhook = (groupId, webhook) => {
     .update({
       DiscordWebhook: webhook,
     })
-    .into("GuildConfig")
+    .into("guild_config")
     .where({
       GuildId: groupId,
     })
@@ -99,7 +99,7 @@ exports.removeDicordWebhook = groupId => {
     .update({
       DiscordWebhook: null,
     })
-    .into("GuildConfig")
+    .into("guild_config")
     .where({
       GuildId: groupId,
     })
@@ -121,7 +121,7 @@ exports.setWelcomeMessage = (groupId, message) => {
     .update({
       WelcomeMessage: message,
     })
-    .into("GuildConfig")
+    .into("guild_config")
     .where({
       GuildId: groupId,
     })
@@ -136,7 +136,7 @@ exports.setWelcomeMessage = (groupId, message) => {
 exports.getWelcomeMessage = groupId => {
   return mysql
     .select("WelcomeMessage")
-    .from("GuildConfig")
+    .from("guild_config")
     .where({ GuildId: groupId })
     .whereNotNull("WelcomeMessage")
     .where("WelcomeMessage", "<>", "")
@@ -158,7 +158,7 @@ function saveConfig(groupId, config) {
       Config: JSON.stringify(config),
       modifyDTM: new Date(),
     })
-    .into("GuildConfig")
+    .into("guild_config")
     .where({
       GuildId: groupId,
     })
@@ -172,7 +172,7 @@ function insertConfig(groupId, config) {
       Config: JSON.stringify(config),
       modifyDTM: new Date(),
     })
-    .into("GuildConfig")
+    .into("guild_config")
     .then();
 }
 

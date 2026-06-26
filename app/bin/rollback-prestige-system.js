@@ -74,7 +74,7 @@ async function revokeTierAchievements(achievementIds) {
 }
 
 async function deleteSentinelInventory() {
-  return mysql("Inventory").where({ note: SENTINEL_NOTE }).del();
+  return mysql("inventory").where({ note: SENTINEL_NOTE }).del();
 }
 
 function writeAuditLog(audit) {

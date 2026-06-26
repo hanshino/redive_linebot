@@ -1,7 +1,7 @@
 const mysql = require("../../util/mysql");
 const base = require("../base");
 
-exports.tableName = "Inventory";
+exports.tableName = "inventory";
 
 exports.query = () => mysql(this.tableName);
 
@@ -55,19 +55,19 @@ class Inventory extends base {
       .select([
         "itemId",
         { amount: this.connection.raw("SUM(itemAmount)") },
-        { name: "GachaPool.Name" },
+        { name: "gacha_pool.Name" },
         { headImage: "HeadImage_Url" },
       ])
       .where({ userId })
-      .join("GachaPool", "GachaPool.ID", "itemId")
+      .join("gacha_pool", "gacha_pool.ID", "itemId")
       .groupBy("itemId");
   }
 
   getAllUserOwnCharacters(userId) {
     return this.knex
-      .select(["itemId", { name: "GachaPool.Name" }, { headImage: "HeadImage_Url" }, "attributes"])
+      .select(["itemId", { name: "gacha_pool.Name" }, { headImage: "HeadImage_Url" }, "attributes"])
       .where({ userId })
-      .join("GachaPool", "GachaPool.ID", "itemId")
+      .join("gacha_pool", "gacha_pool.ID", "itemId")
       .whereNot({ itemId: 999 });
   }
 
@@ -124,6 +124,6 @@ class Inventory extends base {
 }
 
 exports.inventory = new Inventory({
-  table: "Inventory",
+  table: "inventory",
   fillable: ["userId", "itemId", "itemAmount", "attributes", "note"],
 });

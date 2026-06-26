@@ -29,7 +29,7 @@ exports.all = async function () {
       { headImage: "HeadImage_Url" },
       { star: "Star" },
     ])
-    .join("GachaPool", "GachaPool.id", "=", "god_stone_shop.item_id");
+    .join("gacha_pool", "gacha_pool.id", "=", "god_stone_shop.item_id");
 };
 
 exports.create = async function (attributes) {

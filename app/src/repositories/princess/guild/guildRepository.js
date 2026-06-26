@@ -27,5 +27,5 @@ exports.findByGuildId = (guildId, relation) => {
 };
 
 function princess(query) {
-  return query.join("PrincessUID", "Guild.uid", "=", "PrincessUID.uid");
+  return query.join("princess_uid", "guild.uid", "=", "princess_uid.uid");
 }
