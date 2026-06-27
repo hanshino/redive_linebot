@@ -107,7 +107,12 @@ function createMockQueryBuilder() {
   qb.avg = jest.fn().mockResolvedValue([{ avg: null }]);
   qb.raw = jest.fn().mockResolvedValue([]);
   qb.transactionProvider = jest.fn().mockReturnValue(jest.fn().mockResolvedValue(qb));
-  qb.transaction = jest.fn().mockResolvedValue(qb);
+  // Support both knex transaction forms: callback `transaction(async trx => ...)`
+  // (runs the callback with the builder as trx) and promise `await transaction()`
+  // (resolves to the builder for manual commit/rollback).
+  qb.transaction = jest.fn(cb =>
+    typeof cb === "function" ? Promise.resolve(cb(qb)) : Promise.resolve(qb)
+  );
   qb.isCompleted = jest.fn().mockReturnValue(false);
   qb.commit = jest.fn().mockResolvedValue();
   qb.rollback = jest.fn().mockResolvedValue();

@@ -4,6 +4,7 @@ const { countBy, shuffle, uniqBy, difference, sum, uniq, pullAt } = require("lod
 
 const GachaModel = require("../model/princess/gacha");
 const InventoryModel = require("../model/application/Inventory");
+const mysql = require("../util/mysql");
 const { inventory } = InventoryModel;
 const GachaRecord = require("../model/princess/GachaRecord");
 const GachaRecordDetail = require("../model/princess/GachaRecordDetail");
@@ -251,8 +252,7 @@ async function runDailyDraw(userId, opts = {}) {
   const newCharacters = uniqRewards.filter(r => newItemIds.includes(r.id));
 
   await time("rd.tx", async () => {
-    const trx = await inventory.transaction();
-    try {
+    await mysql.transaction(async trx => {
       if (cost.amount > 0) {
         await trx(inventory.table).insert({
           userId,
@@ -304,12 +304,7 @@ async function runDailyDraw(userId, opts = {}) {
           }))
         );
       }
-
-      await trx.commit();
-    } catch (err) {
-      await trx.rollback();
-      throw err;
-    }
+    });
   });
 
   await time("rd.side", () =>

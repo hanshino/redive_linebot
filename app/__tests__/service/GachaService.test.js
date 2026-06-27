@@ -87,6 +87,7 @@ jest.mock("config", () => ({
 const GachaModel = require("../../src/model/princess/gacha");
 const GachaBanner = require("../../src/model/princess/GachaBanner");
 const GachaService = require("../../src/service/GachaService");
+const mysql = require("../../src/util/mysql");
 const EventCenterService = require("../../src/service/EventCenterService");
 const AchievementEngine = require("../../src/service/AchievementEngine");
 const signModel = require("../../src/model/application/SigninDays");
@@ -103,6 +104,12 @@ describe("GachaService.runDailyDraw", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     txInserts.length = 0;
+    // The write path now runs inside `mysql.transaction(async trx => ...)`.
+    // Invoke the callback with a capturing trx so inserts land in `txInserts`.
+    currentTrx = makeTrxBuilder();
+    mysql.transaction.mockImplementation(async cb =>
+      typeof cb === "function" ? cb(currentTrx) : currentTrx
+    );
     GachaModel.getDatabasePool.mockResolvedValue(makePool());
     GachaBanner.getActiveBannersWithCharacters.mockResolvedValue([]);
   });
@@ -177,10 +184,13 @@ describe("GachaService.runDailyDraw", () => {
     }
   });
 
-  it("commits the transaction on success and does not rollback", async () => {
-    await GachaService.runDailyDraw("Ucommit");
-    expect(currentTrx.commit).toHaveBeenCalledTimes(1);
-    expect(currentTrx.rollback).not.toHaveBeenCalled();
+  it("runs the write path inside a single transaction and resolves on success", async () => {
+    const result = await GachaService.runDailyDraw("Ucommit");
+    // knex's callback form auto-commits on resolve; we assert the path ran once
+    // to completion (the gacha_record write was captured inside the trx).
+    expect(mysql.transaction).toHaveBeenCalledTimes(1);
+    expect(result).toBeDefined();
+    expect(txInserts.some(t => t.table === "gacha_record")).toBe(true);
   });
 
   it("accepts only a userId (no bottender context) without throwing", async () => {

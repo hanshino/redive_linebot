@@ -4,6 +4,7 @@ const { model: GachaPoolModel } = require("../../model/princess/gacha");
 const { get, isNull } = require("lodash");
 const i18n = require("../../util/i18n");
 const { inventory: InventoryModel } = require("../../model/application/Inventory");
+const mysql = require("../../util/mysql");
 const { DefaultLogger } = require("../../util/Logger");
 const moment = require("moment");
 const { resolveDisplayName } = require("../../service/ProfileService");
@@ -95,61 +96,69 @@ exports.transaction = async (req, res) => {
     });
   }
 
-  const trx = await InventoryModel.transaction();
+  const { seller_id: sellerId, item_id: itemId } = marketDetail;
 
   try {
-    // 1. 從賣方身上扣除該商品
-    const { seller_id: sellerId, item_id: itemId } = marketDetail;
-    const delResult = await InventoryModel.deleteUserItem(sellerId, itemId);
-    if (!delResult) throw i18n.__("api.error.transaction.removeItemFailed");
-
+    // 靜態查表，先讀好再開交易，避免持鎖期間還在等這筆讀取
     const character = await GachaPoolModel.find(itemId);
 
-    // 2. 從買方身上新增該商品
-    const invId = await InventoryModel.create({
-      userId,
-      itemId,
-      itemAmount: 1,
-      attributes: JSON.stringify([{ key: "star", value: get(character, "star", 1) }]),
+    await mysql.transaction(async trx => {
+      // 1. 從賣方身上扣除該商品
+      const delResult = await InventoryModel.deleteUserItem(sellerId, itemId, trx);
+      if (!delResult) throw i18n.__("api.error.transaction.removeItemFailed");
+
+      // 2. 從買方身上新增該商品
+      const invId = await InventoryModel.create(
+        {
+          userId,
+          itemId,
+          itemAmount: 1,
+          attributes: JSON.stringify([{ key: "star", value: get(character, "star", 1) }]),
+        },
+        trx
+      );
+      if (!invId) throw i18n.__("api.error.transaction.addItemFailed");
+
+      // 3. 從買方身上扣除該商品的價格
+      const decreaseId = await InventoryModel.create(
+        {
+          userId,
+          itemId: 999,
+          itemAmount: price * -1,
+        },
+        trx
+      );
+      if (!decreaseId) throw i18n.__("api.error.transaction.decreaseMoneyFailed");
+
+      // 4. 將買方的價錢轉給賣方
+      const increaseId = await InventoryModel.create(
+        {
+          userId: sellerId,
+          itemId: 999,
+          itemAmount: price,
+        },
+        trx
+      );
+      if (!increaseId) throw i18n.__("api.error.transaction.increaseMoneyFailed");
+
+      // 5. 更新交易狀態
+      const updateResult = await MarketDetailModel.setSold(id, trx);
+      if (!updateResult) throw i18n.__("api.error.transaction.updateMarketFailed");
+
+      // 6. 寫入交易歷史紀錄
+      const tradeHistoryId = await TradeHistoryModel.create(
+        {
+          seller_id: sellerId,
+          buyer_id: userId,
+          item_id: itemId,
+          price,
+          quantity: 1,
+        },
+        trx
+      );
+      if (!tradeHistoryId) throw i18n.__("api.error.transaction.createTradeHistoryFailed");
     });
-    if (!invId) throw i18n.__("api.error.transaction.addItemFailed");
 
-    // 3. 從買方身上扣除該商品的價格
-    const decreaseId = await InventoryModel.create({
-      userId,
-      itemId: 999,
-      itemAmount: price * -1,
-    });
-    if (!decreaseId) throw i18n.__("api.error.transaction.decreaseMoneyFailed");
-
-    // 4. 將買方的價錢轉給賣方
-    const increaseId = await InventoryModel.create({
-      userId: sellerId,
-      itemId: 999,
-      itemAmount: price,
-    });
-    if (!increaseId) throw i18n.__("api.error.transaction.increaseMoneyFailed");
-
-    // 設定 MarketDetailModel 的連線
-    MarketDetailModel.setTransaction(trx);
-
-    // 5. 更新交易狀態
-    const updateResult = await MarketDetailModel.setSold(id);
-    if (!updateResult) throw i18n.__("api.error.transaction.updateMarketFailed");
-
-    // 6. 寫入交易歷史紀錄
-    TradeHistoryModel.setTransaction(trx);
-    const tradeHistoryId = await TradeHistoryModel.create({
-      seller_id: sellerId,
-      buyer_id: userId,
-      item_id: itemId,
-      price,
-      quantity: 1,
-    });
-    if (!tradeHistoryId) throw i18n.__("api.error.transaction.createTradeHistoryFailed");
-
-    // commit
-    await trx.commit();
     DefaultLogger.info("success transaction item", {
       userId,
       itemId,
@@ -162,7 +171,6 @@ exports.transaction = async (req, res) => {
     });
   } catch (e) {
     DefaultLogger.error(e);
-    await trx.rollback();
     return res.status(500).json({
       message: i18n.__("api.error.transaction.failed"),
     });

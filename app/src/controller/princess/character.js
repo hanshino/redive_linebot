@@ -7,6 +7,7 @@ const i18n = require("../../util/i18n");
 const characterTemplate = require("../../templates/princess/Character");
 const Inventory = require("../../model/application/Inventory");
 const { inventory: inventoryModel } = Inventory;
+const mysql = require("../../util/mysql");
 
 const showFullRankupManual = context =>
   context.replyText(i18n.__("message.character.full_rank_up_manual"));
@@ -76,19 +77,16 @@ async function fullRankup(context, props) {
     );
   }
 
-  const trx = await inventoryModel.transaction();
-
   try {
-    await inventoryModel.decreaseGodStone({ userId, amount: cost, note: "rank up" });
-    const itemAttributes = character.attributes;
-    const restAttributes = itemAttributes.filter(attr => attr.key !== "star");
-    const newAttributes = [...restAttributes, { key: "star", value: 5 }];
-    await inventoryModel.editAttributesByItemId(userId, character.itemId, newAttributes);
-
-    await trx.commit();
+    await mysql.transaction(async trx => {
+      await inventoryModel.decreaseGodStone({ userId, amount: cost, note: "rank up", trx });
+      const itemAttributes = character.attributes;
+      const restAttributes = itemAttributes.filter(attr => attr.key !== "star");
+      const newAttributes = [...restAttributes, { key: "star", value: 5 }];
+      await inventoryModel.editAttributesByItemId(userId, character.itemId, newAttributes, trx);
+    });
   } catch (e) {
     console.error(e);
-    trx.rollback();
   }
 
   context.replyText(
@@ -164,19 +162,16 @@ async function rankup(context, props) {
     );
   }
 
-  const trx = await inventoryModel.transaction();
-
   try {
-    await inventoryModel.decreaseGodStone({ userId, amount: cost, note: "rank up" });
-    const itemAttributes = character.attributes;
-    const restAttributes = itemAttributes.filter(attr => attr.key !== "star");
-    const newAttributes = [...restAttributes, { key: "star", value: costConfig.rank + 1 }];
-    await inventoryModel.editAttributesByItemId(userId, character.itemId, newAttributes);
-
-    await trx.commit();
+    await mysql.transaction(async trx => {
+      await inventoryModel.decreaseGodStone({ userId, amount: cost, note: "rank up", trx });
+      const itemAttributes = character.attributes;
+      const restAttributes = itemAttributes.filter(attr => attr.key !== "star");
+      const newAttributes = [...restAttributes, { key: "star", value: costConfig.rank + 1 }];
+      await inventoryModel.editAttributesByItemId(userId, character.itemId, newAttributes, trx);
+    });
   } catch (e) {
     console.error(e);
-    trx.rollback();
   }
 
   context.replyText(
