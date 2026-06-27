@@ -19,6 +19,7 @@ const { computeGroupBonus } = require("./groupBonus");
 const { computePerMsgXp } = require("./perMsgXp");
 const { applyDiminish } = require("./diminishTier");
 const { applyTrialAndPermanent } = require("./trialAndPermanent");
+const { computeCatchupMult } = require("./catchupMult");
 const PrestigeService = require("../PrestigeService");
 const PrestigeTrial = require("../../model/application/PrestigeTrial");
 const UserPrestigeTrial = require("../../model/application/UserPrestigeTrial");
@@ -68,6 +69,14 @@ async function resolveUnconsumedPassedTrialName(userId) {
 
 const { LV_MAX_TOTAL_EXP: LEVEL_CAP_EXP } = require("../../../seeds/ChatExpUnitSeeder");
 
+const CATCHUP_CFG = (() => {
+  try {
+    return { ...config.get("chat_level.exp.catchup"), lvMaxExp: LEVEL_CAP_EXP };
+  } catch {
+    return { enabled: false, lvMaxExp: LEVEL_CAP_EXP };
+  }
+})();
+
 async function getBaseXp() {
   const redisRate = await redis.get("CHAT_GLOBAL_RATE");
   if (redisRate !== null && redisRate !== undefined) {
@@ -104,6 +113,9 @@ async function processUserEvents(userId, events, ctx) {
   const state = await chatUserState.load(userId);
   const dailyRow = await ChatExpDaily.findByUserDate(userId, ctx.today);
   const dailyRawBefore = dailyRow?.raw_exp ?? 0;
+  // Silent catch-up: a per-account scalar (slowly varying), computed once per
+  // batch. 1.0 for on-track players and whales, so it changes nothing for them.
+  const catchupMult = computeCatchupMult(state, CATCHUP_CFG, Date.now());
 
   let rawDelta = 0;
   let effectiveDelta = 0;
@@ -129,10 +141,11 @@ async function processUserEvents(userId, events, ctx) {
       state
     );
     const {
-      result: finalEffective,
+      result: afterTrialPermanent,
       trialMult,
       permanentMult,
     } = applyTrialAndPermanent(afterDiminish, state);
+    const finalEffective = afterTrialPermanent * catchupMult;
     const effectiveInt = Math.max(0, Math.round(finalEffective));
 
     rawDelta += raw;
@@ -159,6 +172,7 @@ async function processUserEvents(userId, events, ctx) {
         active_trial_star: state.active_trial_star,
         blessings: state.blessings,
         permanent_xp_multiplier: state.permanent_xp_multiplier,
+        catchup_mult: catchupMult,
       },
     });
   }
@@ -179,6 +193,7 @@ async function processUserEvents(userId, events, ctx) {
     `[chatXp] user=${userId.slice(0, 8)} msgs=${msgCount} raw=+${rawDelta.toFixed(1)} ` +
       `eff=+${effectiveDelta} ${result.prevLevel}→${result.newLevel} ` +
       `exp=${result.prevExp}→${result.newExp}` +
+      (catchupMult > 1 ? ` catchup=×${catchupMult.toFixed(2)}` : "") +
       (result.hadActiveTrial ? ` trial+=${effectiveDelta}` : "")
   );
 
