@@ -23,8 +23,8 @@ class MarketDetail extends base {
       .first();
   }
 
-  setSold(id) {
-    return this.update(id, { status: 1, sold_at: new Date() });
+  setSold(id, trx) {
+    return this.update(id, { status: 1, sold_at: new Date() }, {}, trx);
   }
 
   setClosed(id) {

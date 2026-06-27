@@ -5,6 +5,7 @@ const SubscribeCard = require("../../model/application/SubscribeCard");
 const SubscribeCardCoupon = require("../../model/application/SubscribeCardCoupon");
 const SubscribeUser = require("../../model/application/SubscribeUser");
 const { inventory: inventoryModel } = require("../../model/application/Inventory");
+const mysql = require("../../util/mysql");
 const DailyRation = require("../../../bin/DailyRation");
 const mement = require("moment");
 const i18n = require("../../util/i18n");
@@ -54,9 +55,6 @@ async function buyMonthCard(context, props) {
     return;
   }
 
-  const trx = await inventoryModel.transaction();
-  SubscribeCardCoupon.setTransaction(trx);
-
   try {
     const coupons = Array.from({ length: number }).map(() => ({
       serial_number: uuid(),
@@ -64,12 +62,15 @@ async function buyMonthCard(context, props) {
       status: SubscribeCardCoupon.status.unused,
       issued_by: "system",
     }));
-    await SubscribeCardCoupon.insert(coupons);
 
-    await inventoryModel.decreaseGodStone({
-      userId,
-      amount: cost,
-      note: "buy_month_card",
+    await mysql.transaction(async trx => {
+      await SubscribeCardCoupon.insert(coupons, trx);
+      await inventoryModel.decreaseGodStone({
+        userId,
+        amount: cost,
+        note: "buy_month_card",
+        trx,
+      });
     });
 
     context.replyText(i18n.__("message.subscribe.buy_month_card_success"));
@@ -82,14 +83,11 @@ async function buyMonthCard(context, props) {
 
     await context.replyText(serialMessages.join("\n"));
 
-    trx.commit();
-
     const { unlocked } = await AchievementEngine.evaluate(userId, "subscribe").catch(() => ({
       unlocked: [],
     }));
     await notifyUnlocks(context, userId, unlocked);
   } catch (e) {
-    trx.rollback();
     console.error(e);
     await context.replyText(
       i18n.__("message.error_contact_admin", {
@@ -188,29 +186,26 @@ async function subscribeCouponExchange(context, props) {
     };
   }
 
-  const trx = await SubscribeCardCoupon.transaction();
   try {
-    SubscribeUser.setTransaction(trx);
-    if (needCreate) {
-      await SubscribeUser.create(userData);
-    } else {
-      await SubscribeUser.update(get(user, "id"), userData);
-    }
+    await mysql.transaction(async trx => {
+      if (needCreate) {
+        await SubscribeUser.create(userData, trx);
+      } else {
+        await SubscribeUser.update(get(user, "id"), userData, {}, trx);
+      }
 
-    await trx
-      .update({
-        status: SubscribeCardCoupon.status.used,
-        used_at: mement().toDate(),
-        used_by: userId,
-      })
-      .table(SubscribeCardCoupon.table)
-      .where({
-        id: get(coupon, "id"),
-      });
-
-    trx.commit();
+      await trx
+        .update({
+          status: SubscribeCardCoupon.status.used,
+          used_at: mement().toDate(),
+          used_by: userId,
+        })
+        .table(SubscribeCardCoupon.table)
+        .where({
+          id: get(coupon, "id"),
+        });
+    });
   } catch (e) {
-    trx.rollback();
     await context.replyText(
       i18n.__("message.error_contact_admin", {
         user_id: userId,

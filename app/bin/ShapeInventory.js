@@ -1,4 +1,5 @@
 const { inventory: inventoryModel } = require("../src/model/application/Inventory");
+const mysql = require("../src/util/mysql");
 const { DefaultLogger } = require("../src/util/Logger");
 
 async function main() {
@@ -18,27 +19,24 @@ async function main() {
   }
 
   for (let i = 0; i < processList.length; i++) {
-    const trx = await inventoryModel.transaction();
+    const { userId, amount, count } = processList[i];
     try {
-      const { userId, amount, count } = processList[i];
-
-      await trx.delete().from(inventoryModel.table).where({ userId, itemId: 999 });
-      await trx
-        .insert({
-          userId,
-          itemId: 999,
-          itemAmount: amount,
-        })
-        .into(inventoryModel.table);
+      await mysql.transaction(async trx => {
+        await trx.delete().from(inventoryModel.table).where({ userId, itemId: 999 });
+        await trx
+          .insert({
+            userId,
+            itemId: 999,
+            itemAmount: amount,
+          })
+          .into(inventoryModel.table);
+      });
 
       DefaultLogger.info(
         `處理用戶 ${userId} 女神石瘦身成功，共處理 ${count} 筆數據，女神石總數 ${amount}`
       );
-
-      trx.commit();
     } catch (e) {
       console.log(e);
-      trx.rollback();
     }
   }
 }

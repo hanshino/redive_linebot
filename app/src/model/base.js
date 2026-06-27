@@ -1,24 +1,28 @@
 const mysql = require("../util/mysql");
 const { get, pick } = require("lodash");
-const trxProvider = mysql.transactionProvider();
 
 class Base {
   constructor({ table, fillable }) {
     this.table = table;
     this.fillable = fillable;
-    this.trx = null;
-    this.trxProvider = trxProvider;
   }
 
   /**
-   * @returns { import("knex").Knex }
+   * 取得綁定本表的 query builder。
+   * 交易一律由呼叫端用 `mysql.transaction(async trx => ...)` 建立並把 `trx` 往下傳，
+   * 不再存在實例上 —— 否則 model 是行程級單例，並發請求會共用同一條交易而互相汙染。
+   * @param {import("knex").Knex.Transaction} [trx] 選填；傳入則在該交易內執行
+   * @returns {import("knex").Knex.QueryBuilder}
+   */
+  qb(trx) {
+    return (trx || mysql)(this.table);
+  }
+
+  /**
+   * @returns { import("knex").Knex.QueryBuilder }
    */
   get knex() {
-    if (this.trx && !this.trx.isCompleted()) {
-      return this.trx(this.table);
-    } else {
-      return mysql(this.table);
-    }
+    return mysql(this.table);
   }
 
   /**
@@ -26,18 +30,6 @@ class Base {
    */
   get connection() {
     return mysql;
-  }
-
-  setTransaction(trx) {
-    this.trx = trx;
-  }
-
-  /**
-   * @returns {Promise<import("knex").Knex.Transaction>}
-   */
-  async transaction() {
-    this.trx = await mysql.transaction();
-    return this.trx;
   }
 
   /**
@@ -50,16 +42,17 @@ class Base {
    * @param {Array<{column: String, direction: String}>} options.order 排序設定
    * @param {Array}  options.select 選擇欄位
    * @param {Number} options.limit  限制數量
+   * @param {import("knex").Knex.Transaction} [trx] 選填交易
    * @returns {import("knex").Knex.QueryBuilder}
    */
-  all(options = {}) {
+  all(options = {}, trx) {
     const filter = get(options, "filter", {});
     const pagination = get(options, "pagination", {});
     const order = get(options, "order", []);
     const select = get(options, "select", ["*"]);
     const limit = get(options, "limit", null);
 
-    let query = this.knex;
+    let query = this.qb(trx);
 
     Object.keys(filter).forEach(key => {
       query = query.where(
@@ -90,14 +83,15 @@ class Base {
    * @param {Object} options.filter 過濾條件
    * @param {Array<{column: String, direction: String}>} options.order 排序設定
    * @param {Array}  options.select 選擇欄位
+   * @param {import("knex").Knex.Transaction} [trx] 選填交易
    * @returns {import("knex").Knex.QueryBuilder}
    */
-  first(options = {}) {
+  first(options = {}, trx) {
     const filter = get(options, "filter", {});
     const order = get(options, "order", []);
     const select = get(options, "select", ["*"]);
 
-    let query = this.knex;
+    let query = this.qb(trx);
 
     Object.keys(filter).forEach(key => {
       query = query.where(
@@ -119,35 +113,38 @@ class Base {
   /**
    * 查找單筆資料
    * @param {Number} id
+   * @param {import("knex").Knex.Transaction} [trx] 選填交易
    * @returns {Promise<?Object>}
    */
-  async find(id) {
-    return await this.knex.first().where({ id });
+  async find(id, trx) {
+    return await this.qb(trx).first().where({ id });
   }
 
   /**
    * Alias of `find`
    * @param {Number} id
+   * @param {import("knex").Knex.Transaction} [trx] 選填交易
    * @returns {Promise<?Object>}
    */
-  findById(id) {
-    return this.find(id);
+  findById(id, trx) {
+    return this.find(id, trx);
   }
 
   /**
    * 新增資料
    * @param {Object} attributes 屬性
+   * @param {import("knex").Knex.Transaction} [trx] 選填交易
    * @returns {Promise<Number>}
    */
-  async create(attributes = {}) {
+  async create(attributes = {}, trx) {
     let data = pick(attributes, this.fillable);
-    const [id] = await this.knex.insert(data);
+    const [id] = await this.qb(trx).insert(data);
 
     return id;
   }
 
-  async insert(data = []) {
-    return await this.knex.insert(data);
+  async insert(data = [], trx) {
+    return await this.qb(trx).insert(data);
   }
 
   /**
@@ -155,11 +152,12 @@ class Base {
    * @param {Number} id
    * @param {Object} attributes
    * @param {Object} options
+   * @param {import("knex").Knex.Transaction} [trx] 選填交易
    * @returns {Promise<Number>}
    */
-  async update(id, attributes = {}, options = {}) {
+  async update(id, attributes = {}, options = {}, trx) {
     let data = pick(attributes, this.fillable);
-    const query = this.knex.update(data);
+    const query = this.qb(trx).update(data);
 
     const pk = get(options, "pk", "id");
     query.where({
@@ -172,10 +170,11 @@ class Base {
   /**
    * 刪除資料
    * @param {Number} id
+   * @param {import("knex").Knex.Transaction} [trx] 選填交易
    * @returns {Promise<Number>}
    */
-  async delete(id) {
-    return await this.knex.delete().where({ id });
+  async delete(id, trx) {
+    return await this.qb(trx).delete().where({ id });
   }
 
   getColumnName(column) {

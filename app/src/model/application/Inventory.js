@@ -71,8 +71,10 @@ class Inventory extends base {
       .whereNot({ itemId: 999 });
   }
 
-  editAttributesByItemId(userId, itemId, attributes) {
-    return this.knex.where({ userId, itemId }).update({ attributes: JSON.stringify(attributes) });
+  editAttributesByItemId(userId, itemId, attributes, trx) {
+    return this.qb(trx)
+      .where({ userId, itemId })
+      .update({ attributes: JSON.stringify(attributes) });
   }
 
   getUserOwnCountByItemId(userId, itemId) {
@@ -83,8 +85,8 @@ class Inventory extends base {
     return this.getUserOwnCountByItemId(userId, 999);
   }
 
-  deleteUserItem(userId, itemId) {
-    return this.knex.where({ userId, itemId }).del();
+  deleteUserItem(userId, itemId, trx) {
+    return this.qb(trx).where({ userId, itemId }).del();
   }
 
   getGodStoneRank({ limit }) {
@@ -113,13 +115,11 @@ class Inventory extends base {
   }
 
   async increaseGodStone({ userId, amount, note, trx }) {
-    const db = trx ? trx(this.table) : this.knex;
-    return db.insert([{ userId, itemId: 999, itemAmount: amount, note }]);
+    return this.qb(trx).insert([{ userId, itemId: 999, itemAmount: amount, note }]);
   }
 
   async decreaseGodStone({ userId, amount, note, trx }) {
-    const db = trx ? trx(this.table) : this.knex;
-    return db.insert([{ userId, itemId: 999, itemAmount: `${-amount}`, note }]);
+    return this.qb(trx).insert([{ userId, itemId: 999, itemAmount: `${-amount}`, note }]);
   }
 }
 
