@@ -107,8 +107,8 @@ class Inventory extends base {
    * @param {Number} param0.amount
    * @returns {Promise}
    */
-  async transferGodStone({ sourceId, targetId, amount }) {
-    return this.knex.insert([
+  async transferGodStone({ sourceId, targetId, amount, trx }) {
+    return this.qb(trx).insert([
       { userId: sourceId, itemId: 999, itemAmount: `${-amount}`, note: "atm" },
       { userId: targetId, itemId: 999, itemAmount: amount, note: "atm" },
     ]);

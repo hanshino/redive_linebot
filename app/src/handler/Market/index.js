@@ -99,12 +99,13 @@ exports.transaction = async (req, res) => {
   const { seller_id: sellerId, item_id: itemId } = marketDetail;
 
   try {
+    // 靜態查表，先讀好再開交易，避免持鎖期間還在等這筆讀取
+    const character = await GachaPoolModel.find(itemId);
+
     await mysql.transaction(async trx => {
       // 1. 從賣方身上扣除該商品
       const delResult = await InventoryModel.deleteUserItem(sellerId, itemId, trx);
       if (!delResult) throw i18n.__("api.error.transaction.removeItemFailed");
-
-      const character = await GachaPoolModel.find(itemId);
 
       // 2. 從買方身上新增該商品
       const invId = await InventoryModel.create(
