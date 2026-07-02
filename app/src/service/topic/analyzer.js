@@ -9,11 +9,14 @@
 const fs = require("fs");
 const path = require("path");
 const { Jieba } = require("@node-rs/jieba");
-const { dict } = require("@node-rs/jieba/dict");
 
 const HAN_RE = /\p{Script=Han}/u;
 const URL_RE = /https?:\/\/\S+/g;
 const STOPWORDS_FILE = path.join(__dirname, "stopwords.zh-tw.txt");
+// Taiwan-Mandarin base dictionary (vendored from APCLab/jieba-tw, MIT). The
+// dict bundled with @node-rs/jieba is Simplified-Chinese-oriented and shreds
+// common zh-TW words into single chars, which the >=2-char filter then drops.
+const DICT_FILE = path.join(__dirname, "dict.zh-tw.txt");
 
 // Reads the bundled Traditional-Chinese stopword list as a string[]. The
 // analyzer accepts injected stopwords too, so this is just the default source.
@@ -45,7 +48,7 @@ function createAnalyzer({ aliases = {}, slang = [], stopwords = [] } = {}) {
     for (const surface of surfaces) surfaceToCanonical.set(surface, canonical);
   }
 
-  const jieba = Jieba.withDict(dict);
+  const jieba = Jieba.withDict(fs.readFileSync(DICT_FILE));
   const userWords = [...new Set([...surfaceToCanonical.keys(), ...slang])];
   if (userWords.length > 0) {
     const userDict = userWords.map(w => `${w} 1000`).join("\n");
@@ -66,6 +69,15 @@ function createAnalyzer({ aliases = {}, slang = [], stopwords = [] } = {}) {
   function extract(text) {
     if (!text || !text.trim()) return [];
     const clean = text.replace(URL_RE, " ");
+
+    // 整句只講一個字（「哦」「讚！！」）→ 收那個字。單字混在句子裡
+    // （「哦，我知道啊！」）仍被 keep() 的 >=2 字規則擋掉；這裡只放行
+    // 「那個字本身就是完整發言」的情境。以漢字數判斷，標點/emoji 不算。
+    const bare = [...clean.replace(/[^\p{Script=Han}]/gu, "")];
+    if (bare.length === 1 && !stopwordSet.has(bare[0])) {
+      return [surfaceToCanonical.get(bare[0]) || bare[0]];
+    }
+
     const seen = new Set();
     for (let tok of jieba.cut(clean)) {
       tok = tok.trim();

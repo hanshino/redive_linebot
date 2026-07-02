@@ -14,6 +14,9 @@ const aliases = {
   猜拳: ["剪刀石頭布"],
   // 角色暱稱範例：官方名很饒口、社群幾乎只講暱稱的才收。其餘暱稱依群風氣自行補。
   貪吃佩可: ["佩可", "佩可莉姆"],
+  // 官方名內含「‧」：jieba 斷詞前先按標點切塊，含標點的詞永遠匹配不到，
+  // 只能收兩半當 surface 歸戶回全名。
+  "涅妃‧涅羅": ["涅妃", "涅羅"],
 };
 
 // Slang / colloquial / game terms jieba's standard dict doesn't know and would
@@ -91,7 +94,6 @@ const characters = [
   "梅杜莎",
   "步未",
   "流夏",
-  "涅妃‧涅羅",
   "涅婭",
   "涅比亞",
   "深月",

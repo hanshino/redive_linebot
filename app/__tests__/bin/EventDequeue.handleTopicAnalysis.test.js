@@ -95,11 +95,17 @@ describe("EventDequeue.handleTopicAnalysis", () => {
     expect(redis.lPush).not.toHaveBeenCalled();
   });
 
-  it("skips too-short text (trimmed length < 2)", async () => {
-    for (const text of ["", " ", "嗨", "  a  "]) {
+  it("skips empty / whitespace-only text", async () => {
+    for (const text of ["", " ", "\t\n"]) {
       await handleTopicAnalysis(groupTextEvent({ text }));
     }
     expect(redis.lPush).not.toHaveBeenCalled();
+  });
+
+  it("enqueues single-char messages (lone 「哦」 is a countable utterance)", async () => {
+    await handleTopicAnalysis(groupTextEvent({ text: "哦" }));
+    expect(redis.lPush).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(redis.lPush.mock.calls[0][1]).text).toBe("哦");
   });
 
   it("enqueues when trimmed length is exactly 2", async () => {
