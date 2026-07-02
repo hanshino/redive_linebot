@@ -225,9 +225,11 @@ async function handleTopicAnalysis(botEvent) {
     if (!userId || !groupId) return;
 
     const text = botEvent.message.text || "";
-    // Skip commands (sync, no redis) and too-short text before touching redis.
+    // Skip commands (sync, no redis) and empty text before touching redis.
+    // Single-char messages DO pass: a lone 「哦」/「讚」 is a countable
+    // utterance — the analyzer decides whether it becomes a keyword.
     if (COMMAND_PREFIX_RE.test(text)) return;
-    if (text.trim().length < 2) return;
+    if (!text.trim()) return;
 
     // TOPIC_ANALYSIS_PAUSED kill-switch — mirrors CHAT_XP_PAUSED. Set during a
     // maintenance window to freeze ingest while the cron drains the backlog.

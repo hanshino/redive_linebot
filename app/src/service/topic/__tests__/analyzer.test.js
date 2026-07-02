@@ -40,10 +40,23 @@ describe("topic analyzer", () => {
     expect(analyzer.extract("我抽到臭鼬了")).toContain("凱留");
   });
 
-  it("drops single-char tokens", () => {
+  it("keeps a single char when it is the whole message (lone utterance)", () => {
     const analyzer = makeAnalyzer();
-    const out = analyzer.extract("錢");
-    expect(out).toEqual([]);
+    expect(analyzer.extract("哦")).toEqual(["哦"]);
+    // Punctuation / emoji around the lone char don't disqualify it.
+    expect(analyzer.extract("讚！！")).toEqual(["讚"]);
+  });
+
+  it("still drops single-char tokens inside a sentence", () => {
+    const analyzer = makeAnalyzer();
+    const out = analyzer.extract("哦，我知道啊！");
+    expect(out).not.toContain("哦");
+    expect(out).not.toContain("啊");
+  });
+
+  it("drops a lone single char that is a stopword", () => {
+    const analyzer = createAnalyzer({ stopwords: ["哦"] });
+    expect(analyzer.extract("哦")).toEqual([]);
   });
 
   it("drops non-Han tokens (fancy unicode, latin, numbers)", () => {
