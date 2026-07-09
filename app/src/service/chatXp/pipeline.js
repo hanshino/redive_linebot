@@ -14,12 +14,10 @@ const ChatUserData = require("../../model/application/ChatUserData");
 const ChatExpDaily = require("../../model/application/ChatExpDaily");
 const ChatExpEvent = require("../../model/application/ChatExpEvent");
 const ChatExpUnit = require("../../model/application/ChatExpUnit");
-const { selectCooldownRate } = require("./cooldownTable");
-const { computeGroupBonus } = require("./groupBonus");
-const { computePerMsgXp } = require("./perMsgXp");
-const { applyDiminish } = require("./diminishTier");
-const { applyTrialAndPermanent } = require("./trialAndPermanent");
 const { computeCatchupMult } = require("./catchupMult");
+const { computeEventXp } = require("./computeEventXp");
+const { resolveEffectiveEffects } = require("./weatherEffects");
+const ChatWeatherService = require("../ChatWeatherService");
 const PrestigeService = require("../PrestigeService");
 const PrestigeTrial = require("../../model/application/PrestigeTrial");
 const UserPrestigeTrial = require("../../model/application/UserPrestigeTrial");
@@ -101,11 +99,12 @@ async function processBatch(events) {
   const base = await getBaseXp();
   const expUnitRows = await ChatExpUnit.all();
   const today = todayUtc8();
+  const weather = await ChatWeatherService.getWeatherForDate(today);
 
   const byUser = groupByUser(events);
   for (const [userId, userEvents] of byUser) {
     userEvents.sort((a, b) => a.ts - b.ts);
-    await processUserEvents(userId, userEvents, { base, expUnitRows, today });
+    await processUserEvents(userId, userEvents, { base, expUnitRows, today, weather });
   }
 }
 
@@ -116,6 +115,9 @@ async function processUserEvents(userId, events, ctx) {
   // Silent catch-up: a per-account scalar (slowly varying), computed once per
   // batch. 1.0 for on-track players and whales, so it changes nothing for them.
   const catchupMult = computeCatchupMult(state, CATCHUP_CFG, Date.now());
+  const protection = ctx.weather
+    ? await ChatWeatherService.getUserProtection(userId, ctx.today)
+    : null;
 
   let rawDelta = 0;
   let effectiveDelta = 0;
@@ -123,30 +125,31 @@ async function processUserEvents(userId, events, ctx) {
   const eventRecords = [];
 
   for (const event of events) {
-    const cooldownRate = selectCooldownRate(event.timeSinceLastMsg, state);
-    const groupBonus = computeGroupBonus(event.groupCount, state);
-    const { raw, blessing1Mult } = computePerMsgXp({
-      base: ctx.base,
+    const { effects: wEffects, protected: wProtected } = resolveEffectiveEffects(
+      ctx.weather,
+      protection,
+      event.ts
+    );
+
+    const {
+      raw,
+      effectiveInt,
       cooldownRate,
       groupBonus,
-      status: state,
-    });
-
-    const honeymoonMult = state.prestige_count === 0 ? 1.2 : 1.0;
-    const scaledIncoming = raw * honeymoonMult;
-    const scaledBefore = (dailyRawBefore + rawDelta) * honeymoonMult;
-    const { result: afterDiminish, factor: diminishFactor } = applyDiminish(
-      scaledIncoming,
-      scaledBefore,
-      state
-    );
-    const {
-      result: afterTrialPermanent,
+      blessing1Mult,
+      honeymoonMult,
+      diminishFactor,
       trialMult,
       permanentMult,
-    } = applyTrialAndPermanent(afterDiminish, state);
-    const finalEffective = afterTrialPermanent * catchupMult;
-    const effectiveInt = Math.max(0, Math.round(finalEffective));
+    } = computeEventXp({
+      event,
+      state,
+      base: ctx.base,
+      effects: wEffects,
+      dailyRawBefore,
+      rawDeltaSoFar: rawDelta,
+      catchupMult,
+    });
 
     rawDelta += raw;
     effectiveDelta += effectiveInt;
@@ -166,6 +169,9 @@ async function processUserEvents(userId, events, ctx) {
       diminish_factor: diminishFactor,
       trial_mult: trialMult,
       permanent_mult: permanentMult,
+      weather_key: ctx.weather ? ctx.weather.weather_key : null,
+      weather_effects: ctx.weather ? wEffects : null,
+      weather_protected: wProtected,
       modifiers: {
         honeymoon: state.prestige_count === 0,
         active_trial_id: state.active_trial_id,
@@ -173,6 +179,17 @@ async function processUserEvents(userId, events, ctx) {
         blessings: state.blessings,
         permanent_xp_multiplier: state.permanent_xp_multiplier,
         catchup_mult: catchupMult,
+        weather: ctx.weather
+          ? {
+              key: ctx.weather.weather_key,
+              name: ctx.weather.name,
+              category: ctx.weather.category,
+              effects: ctx.weather.effects,
+              protected: wProtected,
+              protection_type: ctx.weather.protection_type,
+              protection_name: ctx.weather.protection_name,
+            }
+          : undefined,
       },
     });
   }
