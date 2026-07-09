@@ -16,6 +16,9 @@ const fillable = [
   "diminish_factor",
   "trial_mult",
   "permanent_mult",
+  "weather_key",
+  "weather_effects",
+  "weather_protected",
 ];
 
 class ChatExpEvent extends Base {}
@@ -32,6 +35,9 @@ exports.insertEvent = params => {
   const payload = { ...params };
   if (payload.modifiers && typeof payload.modifiers !== "string") {
     payload.modifiers = JSON.stringify(payload.modifiers);
+  }
+  if (payload.weather_effects && typeof payload.weather_effects !== "string") {
+    payload.weather_effects = JSON.stringify(payload.weather_effects);
   }
   return model.create(payload);
 };
