@@ -321,11 +321,11 @@ Public methods:
 
 ### 10.3 Config
 
-Add to `app/config/default.json`:
+Add to `app/config/default.json`, nested inside the existing `chat_level` object as a sibling of `exp` (read via `config.get("chat_level.dailyWeather")` — the repo has no `chatXp` config key; the `chatXp` name is only the service directory):
 
 ```json
 {
-  "chatXp": {
+  "chat_level": {
     "dailyWeather": {
       "enabled": false,
       "purchaseEnabled": false,
@@ -421,9 +421,12 @@ Returns:
 Responses:
 
 - `200` purchased
-- `400` today's weather has no protection
-- `402` insufficient 女神石
-- `409` already protected
+- `400 { code: "NO_PROTECTION" }` today's weather has no protection
+- `400 { code: "INSUFFICIENT_STONE" }` insufficient 女神石
+- `400 { code: "ALREADY_PROTECTED" }` already protected
+- `400 { code: "DISABLED" }` purchases disabled (flag off)
+
+All business errors use HTTP 400 + a machine `code` (the repo has no 402/409 anywhere); this supersedes the earlier 402/409 draft.
 
 ## 12. XP History
 
@@ -455,7 +458,7 @@ When protected:
 - **Queued events crossing midnight:** V1 uses the same `ctx.today` as current `chat_exp_daily` writes. If a message is processed after midnight, it belongs to the new processing date and weather. This matches the current batch architecture.
 - **Protection purchased after speaking:** protection applies only when `event.ts >= purchased_at`. It should not retroactively protect earlier messages still in queue.
 - **Weather generated late:** if no row exists at first access, generate lazily and persist. A future cron can pre-generate at 00:00 UTC+8.
-- **Feature disabled:** if `chatXp.dailyWeather.enabled = false`, pipeline treats weather as neutral and commands can return "今日天氣觀測暫停".
+- **Feature disabled:** if `chat_level.dailyWeather.enabled = false`, pipeline treats weather as neutral and commands can return "今日天氣觀測暫停".
 - **Purchase disabled:** if `purchaseEnabled = false`, weather still displays and applies, but no new protections can be bought. Use only during staging or emergency rollback.
 - **Insufficient 女神石:** no protection row is created.
 - **Pure buff weather:** no protection purchase shown.
@@ -494,7 +497,7 @@ When protected:
 
 - `#今天天氣` returns today's weather and effect text.
 - `GET /api/me/chat-weather/today` returns weather, protection, and balance.
-- `POST /api/me/chat-weather/protection/purchase` returns 200 / 400 / 402 / 409 correctly.
+- `POST /api/me/chat-weather/protection/purchase` returns 200 / 400 (with machine `code`) correctly.
 
 ## 15. Rollout Plan
 
@@ -512,7 +515,7 @@ When protected:
 
 Rollback:
 
-- Set `chatXp.dailyWeather.enabled = false` to neutralize pipeline effects.
+- Set `chat_level.dailyWeather.enabled = false` to neutralize pipeline effects.
 - Set `purchaseEnabled = false` to stop new purchases.
 - Keep `#今天天氣` available if useful, but show observation paused.
 - Do not delete historical weather rows; XP history depends on them.
