@@ -169,6 +169,59 @@
         "graceDays": 7,
         "floor": 100
       }
+    },
+    "dailyWeather": {
+      "enabled": false,
+      "purchaseEnabled": false,
+      "weights": { "buff": 60, "debuff": 40 },
+      "defaultProtectionCost": 30,
+      "pool": {
+        "noisy_wind": {
+          "category": "debuff",
+          "name": "風異常的喧囂",
+          "flavorText": "風聲把話語吹散，你需要花費更多力氣才讓大家聽見。",
+          "effects": { "cooldown_required_mult": 1.1 },
+          "protectionType": "windproof",
+          "protectionName": "防風耳飾",
+          "protectionCost": 30
+        },
+        "silent_fog": {
+          "category": "debuff",
+          "name": "沉默霧氣",
+          "flavorText": "霧氣吞掉句尾，話語抵達時少了一點重量。",
+          "effects": { "raw_xp_mult": 0.9 },
+          "protectionType": "defog",
+          "protectionName": "破霧鈴",
+          "protectionCost": 30
+        },
+        "low_pressure": {
+          "category": "debuff",
+          "name": "魔力低壓",
+          "flavorText": "空氣中的魔力變薄，聊天帶來的成長稍微遲鈍。",
+          "effects": { "effective_xp_mult": 0.9 },
+          "protectionType": "clearsky",
+          "protectionName": "晴空護符",
+          "protectionCost": 30
+        },
+        "mana_tailwind": {
+          "category": "buff",
+          "name": "魔力順風",
+          "flavorText": "話語順著魔力流動，今天的交流特別順。",
+          "effects": { "effective_xp_mult": 1.1 }
+        },
+        "clear_echo": {
+          "category": "buff",
+          "name": "晴空回音",
+          "flavorText": "每句話都被清楚地接住。",
+          "effects": { "cooldown_required_mult": 0.95 }
+        },
+        "bustling_square": {
+          "category": "buff",
+          "name": "熱鬧廣場",
+          "flavorText": "人越多越熱鬧，話題被氣氛推著跑。",
+          "effects": { "group_bonus_mult": 1.1 }
+        }
+      }
     }
   },
   "event_center": {
