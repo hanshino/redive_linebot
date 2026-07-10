@@ -43,6 +43,7 @@ function shapeEvent(row) {
     trial_mult: decimalOrNull(row.trial_mult),
     permanent_mult: decimalOrNull(row.permanent_mult),
     modifiers: parseModifiers(row.modifiers),
+    weather_protected: Boolean(row.weather_protected),
   };
 }
 
@@ -107,4 +108,4 @@ async function buildDaily(userId, { from, to }) {
   };
 }
 
-module.exports = { buildSummary, buildEvents, buildDaily };
+module.exports = { buildSummary, buildEvents, buildDaily, shapeEvent };
