@@ -1,13 +1,24 @@
 const WeatherService = require("../../service/ChatWeatherService");
 const { DefaultLogger } = require("../../util/Logger");
+const { getLiffUri } = require("../../templates/common");
+const { generateWeatherBubble } = require("../../templates/application/Weather");
+
+const XP_HISTORY_LIFF_PATH = "/xp-history";
 
 exports.showToday = async context => {
   const { userId } = context.event.source;
   if (!userId) {
     return context.replyText("獲取失敗，無法辨識用戶");
   }
-  const text = await WeatherService.describeToday(userId);
-  return context.replyText(text);
+  const status = await WeatherService.getTodayStatus(userId);
+  if (!status.weather) {
+    return context.replyText("今日天氣觀測暫停");
+  }
+  const bubble = generateWeatherBubble({
+    ...status,
+    liffUri: getLiffUri("full", XP_HISTORY_LIFF_PATH),
+  });
+  return context.replyFlex("今日天氣", bubble);
 };
 
 // API: GET /api/me/chat-weather/today
