@@ -90,22 +90,54 @@ async function buildEvents(userId, { from, to, limit = 1000, beforeId, beforeTs 
   return { events: rows.map(shapeEvent) };
 }
 
-async function buildDaily(userId, { from, to }) {
-  const rows = await ChatExpDaily.model.knex
-    .where({ user_id: userId })
-    .andWhere("date", ">=", from)
-    .andWhere("date", "<=", to)
-    .orderBy("date", "asc");
+function shapeDay(row) {
   return {
-    days: rows.map(r => ({
-      date: toUtc8Date(r.date),
-      raw_exp: r.raw_exp,
-      effective_exp: r.effective_exp,
-      msg_count: r.msg_count,
-      honeymoon_active: Boolean(r.honeymoon_active),
-      trial_id: r.trial_id ?? null,
-    })),
+    date: toUtc8Date(row.date),
+    raw_exp: row.raw_exp,
+    effective_exp: row.effective_exp,
+    msg_count: row.msg_count,
+    honeymoon_active: Boolean(row.honeymoon_active),
+    trial_id: row.trial_id ?? null,
+    weather: row.weather_key
+      ? {
+          key: row.weather_key,
+          name: row.weather_name,
+          category: row.weather_category,
+          effects: parseModifiers(row.weather_effects),
+        }
+      : null,
+    weather_protected: Boolean(row.protection_id) && row.weather_category === "debuff",
   };
 }
 
-module.exports = { buildSummary, buildEvents, buildDaily, shapeEvent };
+async function buildDaily(userId, { from, to }) {
+  const rows = await ChatExpDaily.model.knex
+    .leftJoin("chat_daily_weather", "chat_exp_daily.date", "chat_daily_weather.date")
+    .leftJoin("user_weather_protections", function () {
+      this.on("user_weather_protections.weather_date", "=", "chat_exp_daily.date").andOn(
+        "user_weather_protections.user_id",
+        "=",
+        "chat_exp_daily.user_id"
+      );
+    })
+    .where("chat_exp_daily.user_id", userId)
+    .andWhere("chat_exp_daily.date", ">=", from)
+    .andWhere("chat_exp_daily.date", "<=", to)
+    .orderBy("chat_exp_daily.date", "asc")
+    .select(
+      "chat_exp_daily.date as date",
+      "chat_exp_daily.raw_exp as raw_exp",
+      "chat_exp_daily.effective_exp as effective_exp",
+      "chat_exp_daily.msg_count as msg_count",
+      "chat_exp_daily.honeymoon_active as honeymoon_active",
+      "chat_exp_daily.trial_id as trial_id",
+      "chat_daily_weather.weather_key as weather_key",
+      "chat_daily_weather.name as weather_name",
+      "chat_daily_weather.category as weather_category",
+      "chat_daily_weather.effects as weather_effects",
+      "user_weather_protections.id as protection_id"
+    );
+  return { days: rows.map(shapeDay) };
+}
+
+module.exports = { buildSummary, buildEvents, buildDaily, shapeEvent, shapeDay };
