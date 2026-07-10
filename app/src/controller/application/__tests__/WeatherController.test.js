@@ -43,4 +43,11 @@ describe("WeatherController.showToday", () => {
     expect(altText).toBe("今日天氣");
     expect(bubble.type).toBe("bubble");
   });
+
+  it("replies an identification-failure text when userId is missing", async () => {
+    const c = ctx(null);
+    await Controller.showToday(c);
+    expect(c.replyText).toHaveBeenCalledWith("獲取失敗，無法辨識用戶");
+    expect(c.replyFlex).not.toHaveBeenCalled();
+  });
 });
