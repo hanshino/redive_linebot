@@ -1,0 +1,100 @@
+const {
+  resolveEffectiveEffects,
+  mult,
+  pickWeather,
+  describeEffects,
+} = require("../weatherEffects");
+
+// rand that yields the given values in order, then repeats the last.
+const mkRand = vals => {
+  let i = 0;
+  return () => vals[Math.min(i++, vals.length - 1)];
+};
+
+describe("resolveEffectiveEffects", () => {
+  const debuff = { category: "debuff", effects: { cooldown_required_mult: 1.1 } };
+  const buff = { category: "buff", effects: { effective_xp_mult: 1.1 } };
+  const prot = { purchased_at: new Date("2026-07-09T02:00:00Z") };
+  const before = new Date("2026-07-09T01:00:00Z").getTime();
+  const after = new Date("2026-07-09T03:00:00Z").getTime();
+
+  it("no weather → neutral", () => {
+    expect(resolveEffectiveEffects(null, null, after)).toEqual({ effects: {}, protected: false });
+  });
+  it("debuff + protection + event after purchase → neutralised", () => {
+    expect(resolveEffectiveEffects(debuff, prot, after)).toEqual({ effects: {}, protected: true });
+  });
+  it("debuff + protection + event exactly at purchase time → protected (>= boundary)", () => {
+    const at = new Date("2026-07-09T02:00:00Z").getTime();
+    expect(resolveEffectiveEffects(debuff, prot, at)).toEqual({ effects: {}, protected: true });
+  });
+  it("debuff + protection + event before purchase → not protected", () => {
+    expect(resolveEffectiveEffects(debuff, prot, before)).toEqual({
+      effects: { cooldown_required_mult: 1.1 },
+      protected: false,
+    });
+  });
+  it("debuff + no protection → original effects", () => {
+    expect(resolveEffectiveEffects(debuff, null, after)).toEqual({
+      effects: { cooldown_required_mult: 1.1 },
+      protected: false,
+    });
+  });
+  it("buff is never protected even if a protection row exists", () => {
+    expect(resolveEffectiveEffects(buff, prot, after)).toEqual({
+      effects: { effective_xp_mult: 1.1 },
+      protected: false,
+    });
+  });
+});
+
+describe("mult", () => {
+  it("returns the field when a positive number", () => {
+    expect(mult({ raw_xp_mult: 0.9 }, "raw_xp_mult")).toBe(0.9);
+  });
+  it("returns 1 for missing / non-positive / non-number", () => {
+    expect(mult({}, "raw_xp_mult")).toBe(1);
+    expect(mult({ raw_xp_mult: 0 }, "raw_xp_mult")).toBe(1);
+    expect(mult(null, "raw_xp_mult")).toBe(1);
+    expect(mult({ x: -1 }, "x")).toBe(1);
+    expect(mult({ x: "1.1" }, "x")).toBe(1);
+  });
+});
+
+describe("pickWeather", () => {
+  // pool order: 3 debuff then 3 buff; weights buff:60 debuff:40 → categories ["debuff","buff"]
+  const pool = {
+    noisy_wind: { category: "debuff" },
+    silent_fog: { category: "debuff" },
+    low_pressure: { category: "debuff" },
+    mana_tailwind: { category: "buff" },
+    clear_echo: { category: "buff" },
+    bustling_square: { category: "buff" },
+  };
+  const weights = { buff: 60, debuff: 40 };
+
+  it("r<0.4 → debuff category, index picks within it", () => {
+    expect(pickWeather(pool, weights, null, mkRand([0.1, 0.1]))).toBe("noisy_wind");
+  });
+  it("r>=0.4 → buff category", () => {
+    expect(pickWeather(pool, weights, null, mkRand([0.9, 0.9]))).toBe("bustling_square");
+  });
+  it("skips avoidKey when the category has an alternative", () => {
+    expect(pickWeather(pool, weights, "noisy_wind", mkRand([0.1, 0.1]))).toBe("silent_fog");
+  });
+  it("returns avoidKey when it is the only member of the chosen category", () => {
+    expect(
+      pickWeather({ solo: { category: "debuff" } }, { debuff: 100 }, "solo", mkRand([0.5, 0.5]))
+    ).toBe("solo");
+  });
+});
+
+describe("describeEffects", () => {
+  it("formats penalty and bonus with signed percentages", () => {
+    expect(describeEffects({ cooldown_required_mult: 1.1 })).toEqual(["冷卻時間需求 +10%"]);
+    expect(describeEffects({ raw_xp_mult: 0.9 })).toEqual(["原始經驗 -10%"]);
+  });
+  it("empty effects → empty list", () => {
+    expect(describeEffects({})).toEqual([]);
+  });
+});

@@ -22,6 +22,7 @@ const { showStatistics, showUserStatistics } = require("../controller/applicatio
 const ChatLevelController = require("../controller/application/ChatLevelController");
 const AnnounceController = require("../controller/application/AnnounceController");
 const WorldBossController = require("../controller/application/WorldBossController");
+const WeatherController = require("../controller/application/WeatherController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
 const AdminModel = require("../model/application/Admin");
 const { admin: AdminWorldBossRouter } = require("./WorldBoss");
@@ -125,6 +126,9 @@ router.get("/me/xp-daily", verifyToken, async (req, res) => {
     res.status(500).json({ error: "internal_error" });
   }
 });
+
+router.get("/me/chat-weather/today", verifyToken, WeatherController.apiGetToday);
+router.post("/me/chat-weather/protection/purchase", verifyToken, WeatherController.apiPurchase);
 
 router.get("/liff-ids", (req, res) => {
   const { size } = req.query || "full";

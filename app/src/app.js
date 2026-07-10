@@ -18,6 +18,7 @@ const groupTemplate = require("./templates/application/Group/line");
 const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const ChatLevelController = require("./controller/application/ChatLevelController");
+const WeatherController = require("./controller/application/WeatherController");
 const WorldBossController = require("./controller/application/WorldBossController");
 const AdvertisementController = require("./controller/application/AdvertisementController");
 const GodStoneShopController = require("./controller/princess/GodStoneShop");
@@ -214,6 +215,7 @@ async function OrderBased(context, { next }) {
     }),
     text(/^[#!！]轉生狀態$/, ChatLevelController.showPrestigeStatus),
     text(/^[#!！]經驗歷程$/, ChatLevelController.showXpHistory),
+    text(/^[#!！]今天天氣$/, WeatherController.showToday),
     text(["#轉生", "/轉生"], context => {
       const bubble = commonTemplate.genActionBubble({
         icon: "🪄",
