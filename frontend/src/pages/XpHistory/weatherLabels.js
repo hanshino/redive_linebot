@@ -11,7 +11,7 @@ const FULL = {
   group_bonus_mult: "群組加成",
 };
 
-export function effectPct(v) {
+function effectPct(v) {
   const p = Math.round((Number(v) - 1) * 100);
   return `${p > 0 ? "+" : ""}${p}%`;
 }

@@ -90,6 +90,18 @@ async function buildEvents(userId, { from, to, limit = 1000, beforeId, beforeTs 
   return { events: rows.map(shapeEvent) };
 }
 
+// Daily protection coverage from the per-day protected-message count (which the
+// pipeline accumulates from the time-gated per-event flag). "full" = every
+// message that day was protected, "partial" = protection was bought mid-day so
+// only some were, null = took the full hit (or not a debuff day).
+function protectionState(row) {
+  if (row.weather_category !== "debuff") return null;
+  const total = Number(row.msg_count) || 0;
+  const covered = Number(row.protected_msg_count) || 0;
+  if (covered <= 0) return null;
+  return covered >= total ? "full" : "partial";
+}
+
 function shapeDay(row) {
   return {
     date: toUtc8Date(row.date),
@@ -106,20 +118,13 @@ function shapeDay(row) {
           effects: parseModifiers(row.weather_effects),
         }
       : null,
-    weather_protected: Boolean(row.protection_id) && row.weather_category === "debuff",
+    weather_protection: protectionState(row),
   };
 }
 
 async function buildDaily(userId, { from, to }) {
   const rows = await ChatExpDaily.model.knex
     .leftJoin("chat_daily_weather", "chat_exp_daily.date", "chat_daily_weather.date")
-    .leftJoin("user_weather_protections", function () {
-      this.on("user_weather_protections.weather_date", "=", "chat_exp_daily.date").andOn(
-        "user_weather_protections.user_id",
-        "=",
-        "chat_exp_daily.user_id"
-      );
-    })
     .where("chat_exp_daily.user_id", userId)
     .andWhere("chat_exp_daily.date", ">=", from)
     .andWhere("chat_exp_daily.date", "<=", to)
@@ -129,13 +134,13 @@ async function buildDaily(userId, { from, to }) {
       "chat_exp_daily.raw_exp as raw_exp",
       "chat_exp_daily.effective_exp as effective_exp",
       "chat_exp_daily.msg_count as msg_count",
+      "chat_exp_daily.protected_msg_count as protected_msg_count",
       "chat_exp_daily.honeymoon_active as honeymoon_active",
       "chat_exp_daily.trial_id as trial_id",
       "chat_daily_weather.weather_key as weather_key",
       "chat_daily_weather.name as weather_name",
       "chat_daily_weather.category as weather_category",
-      "chat_daily_weather.effects as weather_effects",
-      "user_weather_protections.id as protection_id"
+      "chat_daily_weather.effects as weather_effects"
     );
   return { days: rows.map(shapeDay) };
 }

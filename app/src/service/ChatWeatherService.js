@@ -8,7 +8,7 @@ const ChatDailyWeather = require("../model/application/ChatDailyWeather");
 const UserWeatherProtection = require("../model/application/UserWeatherProtection");
 const { inventory } = require("../model/application/Inventory");
 const gacha = require("../model/princess/gacha");
-const { pickWeather, describeEffects } = require("./chatXp/weatherEffects");
+const { pickWeather } = require("./chatXp/weatherEffects");
 const { DefaultLogger } = require("../util/Logger");
 
 function cfg() {
@@ -121,30 +121,10 @@ async function purchaseTodayProtection(userId, now = Date.now()) {
   return { ok: true, protection };
 }
 
-async function describeToday(userId) {
-  if (!cfg().enabled) return "今日天氣觀測暫停";
-  const { weather, protection, godStoneBalance } = await getTodayStatus(userId);
-  if (!weather) return "今日天氣觀測暫停";
-
-  const effectText = describeEffects(weather.effects);
-  const lines = [
-    `今日天氣：${weather.name}`,
-    weather.flavor_text,
-    "",
-    `效果：${effectText.length ? effectText.join("、") : "無"}`,
-  ];
-  if (weather.protection_type) {
-    lines.push(`防護：${weather.protection_name}（${weather.protection_cost} 女神石，今日有效）`);
-    lines.push(protection ? "狀態：已防護" : `狀態：尚未防護（你有 ${godStoneBalance} 女神石）`);
-  }
-  return lines.join("\n");
-}
-
 module.exports = {
   getWeatherForDate,
   generateWeatherForDate,
   getUserProtection,
   getTodayStatus,
   purchaseTodayProtection,
-  describeToday,
 };

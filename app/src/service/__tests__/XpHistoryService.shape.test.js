@@ -22,43 +22,57 @@ describe("shapeEvent weather", () => {
 });
 
 describe("shapeDay weather", () => {
-  it("maps joined weather + protection columns", () => {
-    const d = shapeDay({
-      date: "2026-07-10",
-      raw_exp: 100,
-      effective_exp: 80,
-      msg_count: 5,
-      honeymoon_active: 0,
-      trial_id: null,
-      weather_key: "silent_fog",
-      weather_name: "沉默霧氣",
-      weather_category: "debuff",
-      weather_effects: JSON.stringify({ raw_xp_mult: 0.9 }),
-      protection_id: 42,
-    });
-    expect(d.weather).toEqual({
+  const debuffDay = extra => ({
+    date: "2026-07-10",
+    raw_exp: 100,
+    effective_exp: 80,
+    msg_count: 5,
+    protected_msg_count: 0,
+    honeymoon_active: 0,
+    trial_id: null,
+    weather_key: "silent_fog",
+    weather_name: "沉默霧氣",
+    weather_category: "debuff",
+    weather_effects: JSON.stringify({ raw_xp_mult: 0.9 }),
+    ...extra,
+  });
+
+  it("maps joined weather columns", () => {
+    expect(shapeDay(debuffDay()).weather).toEqual({
       key: "silent_fog",
       name: "沉默霧氣",
       category: "debuff",
       effects: { raw_xp_mult: 0.9 },
     });
-    expect(d.weather_protected).toBe(true);
   });
 
-  it("null weather for days without a weather row", () => {
-    const d = shapeDay({ date: "2026-01-01", weather_key: null, protection_id: null });
-    expect(d.weather).toBeNull();
-    expect(d.weather_protected).toBe(false);
+  it("weather_protection 'full' when every message was covered", () => {
+    expect(shapeDay(debuffDay({ protected_msg_count: 5 })).weather_protection).toBe("full");
   });
 
-  it("weather_protected false on a buff day even if a protection row exists", () => {
+  it("weather_protection 'partial' when a mid-day purchase covered only some", () => {
+    expect(shapeDay(debuffDay({ protected_msg_count: 2 })).weather_protection).toBe("partial");
+  });
+
+  it("weather_protection null when the day took the full hit (bought too late / not at all)", () => {
+    expect(shapeDay(debuffDay({ protected_msg_count: 0 })).weather_protection).toBeNull();
+  });
+
+  it("weather_protection null on a buff day regardless of count", () => {
     const d = shapeDay({
       date: "x",
+      msg_count: 5,
+      protected_msg_count: 5,
       weather_key: "mana_tailwind",
       weather_category: "buff",
       weather_effects: "{}",
-      protection_id: 7,
     });
-    expect(d.weather_protected).toBe(false);
+    expect(d.weather_protection).toBeNull();
+  });
+
+  it("null weather + null protection for days without a weather row", () => {
+    const d = shapeDay({ date: "2026-01-01", weather_key: null });
+    expect(d.weather).toBeNull();
+    expect(d.weather_protection).toBeNull();
   });
 });

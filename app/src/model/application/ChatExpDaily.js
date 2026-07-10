@@ -8,6 +8,7 @@ const fillable = [
   "raw_exp",
   "effective_exp",
   "msg_count",
+  "protected_msg_count",
   "honeymoon_active",
   "trial_id",
 ];
@@ -25,9 +26,10 @@ exports.findByUserDate = (userId, date) => model.first({ filter: { user_id: user
  * @param {object} params
  * @param {string} params.userId
  * @param {string} params.date          YYYY-MM-DD (UTC+8)
- * @param {number} params.rawExp        增量 (add to raw_exp)
- * @param {number} params.effectiveExp  增量 (add to effective_exp)
- * @param {number} params.msgCount      增量 (add to msg_count)
+ * @param {number} params.rawExp         增量 (add to raw_exp)
+ * @param {number} params.effectiveExp   增量 (add to effective_exp)
+ * @param {number} params.msgCount       增量 (add to msg_count)
+ * @param {number} params.protectedCount 增量 (add to protected_msg_count)
  * @param {boolean} params.honeymoonActive
  * @param {number|null} params.trialId
  */
@@ -37,19 +39,21 @@ exports.upsertByUserDate = async ({
   rawExp,
   effectiveExp,
   msgCount,
+  protectedCount = 0,
   honeymoonActive,
   trialId,
 }) => {
   return mysql.raw(
     `INSERT INTO ${TABLE}
-       (user_id, date, raw_exp, effective_exp, msg_count, honeymoon_active, trial_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+       (user_id, date, raw_exp, effective_exp, msg_count, protected_msg_count, honeymoon_active, trial_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        raw_exp = raw_exp + VALUES(raw_exp),
        effective_exp = effective_exp + VALUES(effective_exp),
        msg_count = msg_count + VALUES(msg_count),
+       protected_msg_count = protected_msg_count + VALUES(protected_msg_count),
        honeymoon_active = VALUES(honeymoon_active),
        trial_id = VALUES(trial_id)`,
-    [userId, date, rawExp, effectiveExp, msgCount, honeymoonActive, trialId]
+    [userId, date, rawExp, effectiveExp, msgCount, protectedCount, honeymoonActive, trialId]
   );
 };

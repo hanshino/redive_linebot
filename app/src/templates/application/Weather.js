@@ -7,6 +7,8 @@ function textNode(text, extra = {}) {
   return { type: "text", text, wrap: true, size: "sm", color: SURFACE.text, ...extra };
 }
 
+const MUTED_NOTE = { margin: "md", size: "xs", color: SURFACE.textMuted };
+
 /**
  * @param {object} p
  * @param {string} p.date
@@ -44,11 +46,10 @@ function generateWeatherBubble({ date, weather, protection, godStoneBalance, lif
       );
     } else {
       body.push(
-        textNode(`防護：${weather.protection_name} · ${weather.protection_cost} 女神石`, {
-          margin: "md",
-          size: "xs",
-          color: SURFACE.textMuted,
-        }),
+        textNode(
+          `防護：${weather.protection_name} · ${weather.protection_cost} 女神石`,
+          MUTED_NOTE
+        ),
         textNode(`尚未防護（你有 ${godStoneBalance} 女神石）`, {
           size: "xs",
           color: accent.main,
@@ -57,17 +58,11 @@ function generateWeatherBubble({ date, weather, protection, godStoneBalance, lif
       );
     }
   } else {
-    body.push(
-      textNode("今日為增益天氣，無需防護。", {
-        margin: "md",
-        size: "xs",
-        color: SURFACE.textMuted,
-      })
-    );
+    body.push(textNode("今日為增益天氣，無需防護。", MUTED_NOTE));
   }
 
-  const cta = isDebuff && !isProtected ? "前往購買防護" : "查看經驗歷程";
-  const filled = isDebuff && !isProtected;
+  const needsProtection = isDebuff && !isProtected;
+  const cta = needsProtection ? "前往購買防護" : "查看經驗歷程";
 
   return {
     type: "bubble",
@@ -97,8 +92,8 @@ function generateWeatherBubble({ date, weather, protection, godStoneBalance, lif
       contents: [
         {
           type: "button",
-          style: filled ? "primary" : "link",
-          color: filled ? accent.main : SEMANTIC.info.main,
+          style: needsProtection ? "primary" : "link",
+          color: needsProtection ? accent.main : SEMANTIC.info.main,
           height: "sm",
           action: { type: "uri", label: cta, uri: liffUri },
         },

@@ -68,6 +68,12 @@ export default function TodayWeather() {
       .finally(() => setBusy(false));
   };
 
+  const errorAlert = error ? (
+    <Alert severity="error" sx={{ mt: 1.5 }}>
+      {error}
+    </Alert>
+  ) : null;
+
   return (
     <Card variant="outlined" sx={{ borderTop: 4, borderTopColor: `${cat.color}.main` }}>
       <CardContent>
@@ -136,11 +142,7 @@ export default function TodayWeather() {
           </Box>
         )}
 
-        {error && !confirmOpen && (
-          <Alert severity="error" sx={{ mt: 1.5 }}>
-            {error}
-          </Alert>
-        )}
+        {!confirmOpen && errorAlert}
       </CardContent>
 
       <Dialog open={confirmOpen} onClose={() => !busy && setConfirmOpen(false)}>
@@ -150,11 +152,7 @@ export default function TodayWeather() {
             花費 {weather.protection_cost} 女神石購買「{weather.protection_name}」，抵銷今日
             {weather.name}的減益（僅對購買後的發言生效）。
           </DialogContentText>
-          {error && (
-            <Alert severity="error" sx={{ mt: 1.5 }}>
-              {error}
-            </Alert>
-          )}
+          {errorAlert}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)} disabled={busy}>
