@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatDateBadge } from "./dateTpe";
+import { weatherEffectLabels } from "./weatherLabels";
 
 const COLORS = {
   amber: "#FBBF24",
@@ -87,6 +88,19 @@ function TrendTooltip({ active, payload }) {
       <Box sx={{ color: COLORS.muted }}>訊息 {d.msg_count}</Box>
       {d.honeymoon_active && <Box sx={{ color: COLORS.greenDeep, fontSize: 10 }}>🌱 蜜月期</Box>}
       {d.trial_id && <Box sx={{ color: "#B45309", fontSize: 10 }}>⚔ 試煉中</Box>}
+      {d.weather && (
+        <Box
+          sx={{
+            color: d.weather.category === "buff" ? COLORS.greenDeep : "#B96322",
+            fontSize: 10,
+          }}
+        >
+          {d.weather.category === "buff" ? "☀" : "🌫"} {d.weather.name}
+          {d.weather_protected
+            ? " · 已防護"
+            : ` · ${weatherEffectLabels(d.weather.effects).join(" ")}`}
+        </Box>
+      )}
     </Box>
   );
 }
@@ -103,6 +117,8 @@ export default function DailyTrend({ days, range, onRangeChange }) {
         msg_count: d.msg_count || 0,
         honeymoon_active: d.honeymoon_active,
         trial_id: d.trial_id,
+        weather: d.weather,
+        weather_protected: d.weather_protected,
       })),
       honeymoonBands: bandRanges(rows, d => d.honeymoon_active),
       trialBands: bandRanges(rows, d => d.trial_id != null),
