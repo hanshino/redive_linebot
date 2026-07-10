@@ -73,7 +73,7 @@ async function getTodayStatus(userId) {
 }
 
 function isDuplicate(e) {
-  return e && (e.code === "ER_DUP_ENTRY" || /Duplicate entry/.test(e.message || ""));
+  return e?.code === "ER_DUP_ENTRY";
 }
 
 async function purchaseTodayProtection(userId, now = Date.now()) {

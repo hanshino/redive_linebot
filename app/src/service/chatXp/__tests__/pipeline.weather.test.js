@@ -64,7 +64,7 @@ describe("pipeline weather snapshot", () => {
     expect(rows[0].weather_protected).toBe(0); // no protection bought
     const mods =
       typeof rows[0].modifiers === "string" ? JSON.parse(rows[0].modifiers) : rows[0].modifiers;
-    expect(mods.weather.key).toBe("noisy_wind");
-    expect(mods.weather.protected).toBe(false);
+    expect(mods.weather.name).toBe("風異常的喧囂");
+    expect(mods.weather.category).toBe("debuff");
   });
 });

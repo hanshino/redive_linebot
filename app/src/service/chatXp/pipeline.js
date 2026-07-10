@@ -96,10 +96,12 @@ function groupByUser(events) {
 async function processBatch(events) {
   if (!Array.isArray(events) || events.length === 0) return;
 
-  const base = await getBaseXp();
-  const expUnitRows = await ChatExpUnit.all();
   const today = todayUtc8();
-  const weather = await ChatWeatherService.getWeatherForDate(today);
+  const [base, expUnitRows, weather] = await Promise.all([
+    getBaseXp(),
+    ChatExpUnit.all(),
+    ChatWeatherService.getWeatherForDate(today),
+  ]);
 
   const byUser = groupByUser(events);
   for (const [userId, userEvents] of byUser) {
@@ -109,15 +111,15 @@ async function processBatch(events) {
 }
 
 async function processUserEvents(userId, events, ctx) {
-  const state = await chatUserState.load(userId);
-  const dailyRow = await ChatExpDaily.findByUserDate(userId, ctx.today);
+  const [state, dailyRow, protection] = await Promise.all([
+    chatUserState.load(userId),
+    ChatExpDaily.findByUserDate(userId, ctx.today),
+    ctx.weather ? ChatWeatherService.getUserProtection(userId, ctx.today) : null,
+  ]);
   const dailyRawBefore = dailyRow?.raw_exp ?? 0;
   // Silent catch-up: a per-account scalar (slowly varying), computed once per
   // batch. 1.0 for on-track players and whales, so it changes nothing for them.
   const catchupMult = computeCatchupMult(state, CATCHUP_CFG, Date.now());
-  const protection = ctx.weather
-    ? await ChatWeatherService.getUserProtection(userId, ctx.today)
-    : null;
 
   let rawDelta = 0;
   let effectiveDelta = 0;
@@ -179,13 +181,13 @@ async function processUserEvents(userId, events, ctx) {
         blessings: state.blessings,
         permanent_xp_multiplier: state.permanent_xp_multiplier,
         catchup_mult: catchupMult,
+        // key/protected live in the dedicated weather_key/weather_protected
+        // columns; modifiers only carries display fields with no column.
         weather: ctx.weather
           ? {
-              key: ctx.weather.weather_key,
               name: ctx.weather.name,
               category: ctx.weather.category,
               effects: ctx.weather.effects,
-              protected: wProtected,
               protection_type: ctx.weather.protection_type,
               protection_name: ctx.weather.protection_name,
             }

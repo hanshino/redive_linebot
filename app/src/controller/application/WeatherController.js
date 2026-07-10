@@ -1,4 +1,5 @@
 const WeatherService = require("../../service/ChatWeatherService");
+const { DefaultLogger } = require("../../util/Logger");
 
 exports.showToday = async context => {
   const { userId } = context.event.source;
@@ -21,7 +22,7 @@ exports.apiGetToday = async (req, res) => {
       god_stone_balance: status.godStoneBalance,
     });
   } catch (e) {
-    console.error("[chat-weather/today]", e);
+    DefaultLogger.error("[chat-weather/today]", e);
     res.status(500).json({ error: "internal_error" });
   }
 };
@@ -46,7 +47,7 @@ exports.apiPurchase = async (req, res) => {
       message: PURCHASE_MESSAGES[result.code] || "購買失敗",
     });
   } catch (e) {
-    console.error("[chat-weather/purchase]", e);
+    DefaultLogger.error("[chat-weather/purchase]", e);
     res.status(500).json({ error: "internal_error" });
   }
 };
