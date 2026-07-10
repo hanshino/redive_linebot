@@ -1,5 +1,6 @@
 import { mult } from "./format";
 import { TIER2_RATE } from "./diminishTier";
+import { weatherEffectLabels } from "./weatherLabels";
 
 const BLESSING_WARM_CURRENT = 1;
 
@@ -32,6 +33,16 @@ export function chipsFromEvent(ev) {
   }
   if (m.permanent_xp_multiplier > 0) {
     chips.push({ kind: "perm", label: "永久", value: fmtMult(1 + m.permanent_xp_multiplier) });
+  }
+  const w = m.weather;
+  if (w) {
+    const wkind = w.category === "buff" ? "weatherBuff" : "weatherDebuff";
+    chips.push({ kind: wkind, label: `天氣：${w.name}` });
+    if (ev.weather_protected) {
+      chips.push({ kind: "weatherProtect", label: `已防護：${w.protection_name || "已抵銷"}` });
+    } else {
+      weatherEffectLabels(w.effects).forEach(l => chips.push({ kind: wkind, label: l }));
+    }
   }
   return chips;
 }

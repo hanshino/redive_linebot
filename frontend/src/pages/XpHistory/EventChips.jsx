@@ -8,6 +8,9 @@ const STYLES = {
   dim2: { bg: "#FFF7E6", fg: "#B45309" },
   dim3: { bg: "#FDECEC", fg: "#B91C1C", border: "#DC2626" },
   perm: { bg: "#F3E8FF", fg: "#6B21A8" },
+  weatherDebuff: { bg: "#FBEEE1", fg: "#B96322" },
+  weatherBuff: { bg: "#E4F2EA", fg: "#2B8C63" },
+  weatherProtect: { bg: "#E6EDFB", fg: "#3767CF" },
 };
 
 export function EventChip({ kind, label, value }) {
