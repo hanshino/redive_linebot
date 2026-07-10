@@ -111,34 +111,37 @@ export default function TodayWeather() {
         </Stack>
 
         {isDebuff && !protectedActive && (
-          <Box sx={{ mt: 2 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {weather.protection_name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  防護今日減益 · {weather.protection_cost} 女神石
-                </Typography>
-              </Box>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => {
-                  setError("");
-                  setConfirmOpen(true);
-                }}
-              >
-                購買防護
-              </Button>
-            </Stack>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", textAlign: "right", mt: 1 }}
-            >
-              女神石餘額 {god_stone_balance}
+          <Box
+            sx={{
+              mt: 2,
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: "action.hover",
+              border: 1,
+              borderColor: "divider",
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {weather.protection_name}
             </Typography>
+            <Typography variant="caption" color="text.secondary">
+              防護今日減益 · {weather.protection_cost} 女神石
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+              女神石餘額 {Number(god_stone_balance).toLocaleString()}
+            </Typography>
+            <Button
+              fullWidth
+              variant="contained"
+              size="small"
+              onClick={() => {
+                setError("");
+                setConfirmOpen(true);
+              }}
+              sx={{ mt: 1.5 }}
+            >
+              購買防護
+            </Button>
           </Box>
         )}
 
