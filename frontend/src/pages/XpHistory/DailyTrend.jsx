@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatDateBadge } from "./dateTpe";
+import { weatherEffectLabels } from "./weatherLabels";
 
 const COLORS = {
   amber: "#FBBF24",
@@ -21,6 +22,7 @@ const COLORS = {
   text: "#3A2800",
   green: "#16A34A",
   greenDeep: "#15803D",
+  weatherDebuff: "#B96322",
 };
 
 const RANGES = [1, 7, 30, 90, 365];
@@ -56,6 +58,7 @@ function TrendTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
+  const isBuffDay = d.weather?.category === "buff";
   return (
     <Box
       sx={{
@@ -87,6 +90,16 @@ function TrendTooltip({ active, payload }) {
       <Box sx={{ color: COLORS.muted }}>訊息 {d.msg_count}</Box>
       {d.honeymoon_active && <Box sx={{ color: COLORS.greenDeep, fontSize: 10 }}>🌱 蜜月期</Box>}
       {d.trial_id && <Box sx={{ color: "#B45309", fontSize: 10 }}>⚔ 試煉中</Box>}
+      {d.weather && (
+        <Box sx={{ color: isBuffDay ? COLORS.greenDeep : COLORS.weatherDebuff, fontSize: 10 }}>
+          {isBuffDay ? "☀" : "🌫"} {d.weather.name}
+          {d.weather_protection === "full"
+            ? " · 已防護"
+            : ` · ${d.weather_protection === "partial" ? "部分防護 " : ""}${weatherEffectLabels(
+                d.weather.effects
+              ).join(" ")}`}
+        </Box>
+      )}
     </Box>
   );
 }
@@ -103,6 +116,8 @@ export default function DailyTrend({ days, range, onRangeChange }) {
         msg_count: d.msg_count || 0,
         honeymoon_active: d.honeymoon_active,
         trial_id: d.trial_id,
+        weather: d.weather,
+        weather_protection: d.weather_protection,
       })),
       honeymoonBands: bandRanges(rows, d => d.honeymoon_active),
       trialBands: bandRanges(rows, d => d.trial_id != null),

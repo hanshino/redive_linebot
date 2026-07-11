@@ -66,5 +66,47 @@ describe("pipeline weather snapshot", () => {
       typeof rows[0].modifiers === "string" ? JSON.parse(rows[0].modifiers) : rows[0].modifiers;
     expect(mods.weather.name).toBe("風異常的喧囂");
     expect(mods.weather.category).toBe("debuff");
+
+    const daily = await mysql("chat_exp_daily").where({ user_id: USER }).first();
+    expect(daily.msg_count).toBe(1);
+    expect(daily.protected_msg_count).toBe(0);
+  });
+
+  it("counts messages sent after purchase into chat_exp_daily.protected_msg_count", async () => {
+    // Weather is generated inside processBatch; pre-insert it so we can attach a
+    // protection purchased *before* the message (event ts >= purchased_at → protected).
+    await mysql("chat_daily_weather").insert({
+      date: TODAY,
+      weather_key: "noisy_wind",
+      category: "debuff",
+      name: "風異常的喧囂",
+      flavor_text: "風。",
+      effects: JSON.stringify({ effective_xp_mult: 0.9 }),
+      protection_type: "windproof",
+      protection_name: "防風耳飾",
+      protection_cost: 30,
+      generated_at: new Date(),
+    });
+    await mysql("user_weather_protections").insert({
+      user_id: USER,
+      weather_date: TODAY,
+      weather_key: "noisy_wind",
+      protection_type: "windproof",
+      protection_name: "防風耳飾",
+      stone_cost: 30,
+      purchased_at: new Date(Date.now() - 60000),
+    });
+
+    await processBatch([
+      { userId: USER, groupId: GROUP, ts: Date.now(), timeSinceLastMsg: 10000, groupCount: 1 },
+    ]);
+
+    const rows = await mysql("chat_exp_events").where({ user_id: USER });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].weather_protected).toBe(1);
+
+    const daily = await mysql("chat_exp_daily").where({ user_id: USER }).first();
+    expect(daily.msg_count).toBe(1);
+    expect(daily.protected_msg_count).toBe(1);
   });
 });

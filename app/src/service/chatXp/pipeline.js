@@ -124,6 +124,7 @@ async function processUserEvents(userId, events, ctx) {
   let rawDelta = 0;
   let effectiveDelta = 0;
   let msgCount = 0;
+  let protectedCount = 0;
   const eventRecords = [];
 
   for (const event of events) {
@@ -156,6 +157,7 @@ async function processUserEvents(userId, events, ctx) {
     rawDelta += raw;
     effectiveDelta += effectiveInt;
     msgCount += 1;
+    if (wProtected) protectedCount += 1;
 
     eventRecords.push({
       user_id: userId,
@@ -205,6 +207,7 @@ async function processUserEvents(userId, events, ctx) {
     rawDelta,
     effectiveDelta,
     msgCount,
+    protectedCount,
     eventRecords,
   });
 
@@ -245,6 +248,7 @@ async function writeBatch(userId, state, batch) {
     rawExp: batch.rawDelta,
     effectiveExp: batch.effectiveDelta,
     msgCount: batch.msgCount,
+    protectedCount: batch.protectedCount,
     honeymoonActive: state.prestige_count === 0,
     trialId: activeTrialId,
   });

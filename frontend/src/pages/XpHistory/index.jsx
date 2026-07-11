@@ -22,6 +22,7 @@ import { fetchGroupSummarys } from "../../services/group";
 import EventList from "./EventList";
 import DailyTrend from "./DailyTrend";
 import TodayHeader from "./TodayHeader";
+import TodayWeather from "./TodayWeather";
 import { makeGroupLabel } from "./groupLabel";
 import { addDaysTpe, todayTpe } from "./dateTpe";
 
@@ -120,6 +121,12 @@ export default function XpHistory() {
       </Stack>
 
       {!loggedIn && <AlertLogin />}
+
+      {loggedIn && (
+        <Box sx={{ mb: 2 }}>
+          <TodayWeather />
+        </Box>
+      )}
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
         <Tab label="逐筆" />

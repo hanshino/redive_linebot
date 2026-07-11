@@ -43,6 +43,7 @@ function shapeEvent(row) {
     trial_mult: decimalOrNull(row.trial_mult),
     permanent_mult: decimalOrNull(row.permanent_mult),
     modifiers: parseModifiers(row.modifiers),
+    weather_protected: Boolean(row.weather_protected),
   };
 }
 
@@ -89,22 +90,59 @@ async function buildEvents(userId, { from, to, limit = 1000, beforeId, beforeTs 
   return { events: rows.map(shapeEvent) };
 }
 
-async function buildDaily(userId, { from, to }) {
-  const rows = await ChatExpDaily.model.knex
-    .where({ user_id: userId })
-    .andWhere("date", ">=", from)
-    .andWhere("date", "<=", to)
-    .orderBy("date", "asc");
+// Daily protection coverage from the per-day protected-message count (which the
+// pipeline accumulates from the time-gated per-event flag). "full" = every
+// message that day was protected, "partial" = protection was bought mid-day so
+// only some were, null = took the full hit (or not a debuff day).
+function protectionState(row) {
+  if (row.weather_category !== "debuff") return null;
+  const total = Number(row.msg_count) || 0;
+  const covered = Number(row.protected_msg_count) || 0;
+  if (covered <= 0) return null;
+  return covered >= total ? "full" : "partial";
+}
+
+function shapeDay(row) {
   return {
-    days: rows.map(r => ({
-      date: toUtc8Date(r.date),
-      raw_exp: r.raw_exp,
-      effective_exp: r.effective_exp,
-      msg_count: r.msg_count,
-      honeymoon_active: Boolean(r.honeymoon_active),
-      trial_id: r.trial_id ?? null,
-    })),
+    date: toUtc8Date(row.date),
+    raw_exp: row.raw_exp,
+    effective_exp: row.effective_exp,
+    msg_count: row.msg_count,
+    honeymoon_active: Boolean(row.honeymoon_active),
+    trial_id: row.trial_id ?? null,
+    weather: row.weather_key
+      ? {
+          key: row.weather_key,
+          name: row.weather_name,
+          category: row.weather_category,
+          effects: parseModifiers(row.weather_effects),
+        }
+      : null,
+    weather_protection: protectionState(row),
   };
 }
 
-module.exports = { buildSummary, buildEvents, buildDaily };
+async function buildDaily(userId, { from, to }) {
+  const rows = await ChatExpDaily.model.knex
+    .leftJoin("chat_daily_weather", "chat_exp_daily.date", "chat_daily_weather.date")
+    .where("chat_exp_daily.user_id", userId)
+    .andWhere("chat_exp_daily.date", ">=", from)
+    .andWhere("chat_exp_daily.date", "<=", to)
+    .orderBy("chat_exp_daily.date", "asc")
+    .select(
+      "chat_exp_daily.date as date",
+      "chat_exp_daily.raw_exp as raw_exp",
+      "chat_exp_daily.effective_exp as effective_exp",
+      "chat_exp_daily.msg_count as msg_count",
+      "chat_exp_daily.protected_msg_count as protected_msg_count",
+      "chat_exp_daily.honeymoon_active as honeymoon_active",
+      "chat_exp_daily.trial_id as trial_id",
+      "chat_daily_weather.weather_key as weather_key",
+      "chat_daily_weather.name as weather_name",
+      "chat_daily_weather.category as weather_category",
+      "chat_daily_weather.effects as weather_effects"
+    );
+  return { days: rows.map(shapeDay) };
+}
+
+module.exports = { buildSummary, buildEvents, buildDaily, shapeEvent, shapeDay };
