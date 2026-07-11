@@ -31,6 +31,7 @@ exports.apiGetToday = async (req, res) => {
       weather: status.weather,
       protection: status.protection,
       god_stone_balance: status.godStoneBalance,
+      purchase_enabled: status.purchaseEnabled,
     });
   } catch (e) {
     DefaultLogger.error("[chat-weather/today]", e);

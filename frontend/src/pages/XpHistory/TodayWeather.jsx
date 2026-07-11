@@ -49,7 +49,7 @@ export default function TodayWeather() {
 
   if (!data || !data.weather) return null;
 
-  const { weather, protection, god_stone_balance } = data;
+  const { weather, protection, god_stone_balance, purchase_enabled } = data;
   const cat = CATEGORY[weather.category] || CATEGORY.buff;
   const isDebuff = weather.category === "debuff";
   const protectedActive = isDebuff && Boolean(protection);
@@ -110,7 +110,7 @@ export default function TodayWeather() {
           )}
         </Stack>
 
-        {isDebuff && !protectedActive && (
+        {isDebuff && !protectedActive && purchase_enabled && (
           <Box
             sx={{
               mt: 2,

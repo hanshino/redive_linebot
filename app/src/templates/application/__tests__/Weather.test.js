@@ -53,6 +53,15 @@ describe("generateWeatherBubble", () => {
     expect(collectVisibleStrings(b)).not.toContain("前往購買防護");
   });
 
+  it("hides purchase copy and CTA on an unprotected debuff when purchaseEnabled is false", () => {
+    const b = generateWeatherBubble({ ...debuff, purchaseEnabled: false });
+    const texts = collect(b, "text").join("");
+    expect(texts).toContain("沉默霧氣"); // weather still shown
+    expect(texts).not.toContain("破霧鈴"); // protection name hidden
+    expect(collectVisibleStrings(b)).not.toContain("前往購買防護");
+    expect(collectVisibleStrings(b)).toContain("查看經驗歷程"); // CTA falls back to history link
+  });
+
   it("shows no protection section on a buff day", () => {
     const b = generateWeatherBubble({
       ...debuff,

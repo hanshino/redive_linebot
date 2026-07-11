@@ -16,8 +16,16 @@ const MUTED_NOTE = { margin: "md", size: "xs", color: SURFACE.textMuted };
  * @param {object|null} p.protection 使用者當日防護列或 null
  * @param {number} p.godStoneBalance
  * @param {string} p.liffUri 由 controller 傳入的 LIFF 連結
+ * @param {boolean} [p.purchaseEnabled=true] 防護購買總開關；關閉時隱藏購買相關文案/CTA
  */
-function generateWeatherBubble({ date, weather, protection, godStoneBalance, liffUri }) {
+function generateWeatherBubble({
+  date,
+  weather,
+  protection,
+  godStoneBalance,
+  liffUri,
+  purchaseEnabled = true,
+}) {
   const accent = ACCENT[weather.category] || SEMANTIC.success;
   const isDebuff = weather.category === "debuff";
   const isProtected = isDebuff && Boolean(protection);
@@ -44,7 +52,7 @@ function generateWeatherBubble({ date, weather, protection, godStoneBalance, lif
           weight: "bold",
         })
       );
-    } else {
+    } else if (purchaseEnabled) {
       body.push(
         textNode(
           `防護：${weather.protection_name} · ${weather.protection_cost} 女神石`,
@@ -56,12 +64,14 @@ function generateWeatherBubble({ date, weather, protection, godStoneBalance, lif
           weight: "bold",
         })
       );
+    } else {
+      body.push(textNode("今日為減益天氣。", MUTED_NOTE));
     }
   } else {
     body.push(textNode("今日為增益天氣，無需防護。", MUTED_NOTE));
   }
 
-  const needsProtection = isDebuff && !isProtected;
+  const needsProtection = isDebuff && !isProtected && purchaseEnabled;
   const cta = needsProtection ? "前往購買防護" : "查看經驗歷程";
 
   return {
