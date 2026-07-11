@@ -171,7 +171,7 @@
       }
     },
     "dailyWeather": {
-      "enabled": false,
+      "enabled": true,
       "purchaseEnabled": false,
       "weights": { "buff": 60, "debuff": 40 },
       "defaultProtectionCost": 30,

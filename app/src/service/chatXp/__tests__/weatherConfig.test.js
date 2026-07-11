@@ -3,8 +3,8 @@ const config = require("config");
 describe("chat_level.dailyWeather config", () => {
   const cfg = config.get("chat_level.dailyWeather");
 
-  it("is present and defaults to disabled", () => {
-    expect(cfg.enabled).toBe(false);
+  it("has weather enabled with protection purchase still gated off", () => {
+    expect(cfg.enabled).toBe(true);
     expect(cfg.purchaseEnabled).toBe(false);
     expect(cfg.weights).toEqual({ buff: 60, debuff: 40 });
   });

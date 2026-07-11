@@ -69,6 +69,7 @@ async function getTodayStatus(userId) {
     weather,
     protection: protection || null,
     godStoneBalance: Number(godStoneBalance),
+    purchaseEnabled: Boolean(cfg().enabled && cfg().purchaseEnabled),
   };
 }
 

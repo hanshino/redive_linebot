@@ -23,6 +23,7 @@ describe("apiGetToday", () => {
       weather: { weather_key: "noisy_wind" },
       protection: null,
       godStoneBalance: 860,
+      purchaseEnabled: false,
     });
     const res = makeRes();
     await WeatherController.apiGetToday(req, res);
@@ -31,6 +32,7 @@ describe("apiGetToday", () => {
       weather: { weather_key: "noisy_wind" },
       protection: null,
       god_stone_balance: 860,
+      purchase_enabled: false,
     });
   });
 });
