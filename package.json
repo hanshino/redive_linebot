@@ -11,6 +11,7 @@
   },
   "scripts": {
     "prepare": "husky",
+    "setup": "yarn --cwd app install && yarn --cwd frontend install",
     "dev": "yarn dev:app & yarn dev:frontend & wait",
     "dev:app": "yarn --cwd app dev",
     "dev:frontend": "yarn --cwd frontend dev",
