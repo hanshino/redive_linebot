@@ -6,6 +6,45 @@ const V1_ACHIEVEMENT_KEYS = [
 ];
 const V1_TITLE_KEYS = ["progressors", "leechers"];
 
+function hasExactlyKeys(actualKeys, expectedKeys) {
+  return (
+    actualKeys.length === expectedKeys.length &&
+    actualKeys.every((key, index) => key === expectedKeys[index])
+  );
+}
+
+async function getV1TeardownState(knex) {
+  const expectedAchievementKeys = [...V1_ACHIEVEMENT_KEYS].sort();
+  const expectedTitleKeys = [...V1_TITLE_KEYS].sort();
+  const category = await knex("achievement_categories").where({ key: "world_boss" }).first("id");
+  const achievementKeys = await knex("achievements")
+    .whereIn("key", V1_ACHIEVEMENT_KEYS)
+    .orderBy("key")
+    .pluck("key");
+  const titleKeys = await knex("titles").whereIn("key", V1_TITLE_KEYS).orderBy("key").pluck("key");
+
+  if (!category) {
+    if (!achievementKeys.length && !titleKeys.length) {
+      return { metadataAlreadyPurged: true };
+    }
+    throw new Error("Cannot teardown v1 World Boss: v1 metadata is partially removed.");
+  }
+
+  const categoryAchievementKeys = await knex("achievements")
+    .where({ category_id: category.id })
+    .orderBy("key")
+    .pluck("key");
+  if (
+    !hasExactlyKeys(categoryAchievementKeys, expectedAchievementKeys) ||
+    !hasExactlyKeys(achievementKeys, expectedAchievementKeys) ||
+    !hasExactlyKeys(titleKeys, expectedTitleKeys)
+  ) {
+    throw new Error("Cannot teardown v1 World Boss: world_boss metadata does not match v1.");
+  }
+
+  return { metadataAlreadyPurged: false };
+}
+
 function createV1Tables(knex) {
   return knex.schema
     .createTable("world_boss", table => {
@@ -58,6 +97,24 @@ function createV1Tables(knex) {
 }
 
 exports.up = async knex => {
+  const { metadataAlreadyPurged } = await getV1TeardownState(knex);
+
+  if (!metadataAlreadyPurged) {
+    const achievementIds = (
+      await knex("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS).select("id")
+    ).map(row => row.id);
+    await knex("user_achievement_progress").whereIn("achievement_id", achievementIds).del();
+    await knex("user_achievements").whereIn("achievement_id", achievementIds).del();
+    await knex("achievements").whereIn("id", achievementIds).del();
+    await knex("achievement_categories").where({ key: "world_boss" }).del();
+
+    const titleIds = (await knex("titles").whereIn("key", V1_TITLE_KEYS).select("id")).map(
+      row => row.id
+    );
+    await knex("user_titles").whereIn("title_id", titleIds).del();
+    await knex("titles").whereIn("id", titleIds).del();
+  }
+
   for (const table of [
     "attack_message_has_tags",
     "world_boss_event_log",
@@ -66,24 +123,6 @@ exports.up = async knex => {
     "world_boss",
   ]) {
     await knex.schema.dropTableIfExists(table);
-  }
-
-  const achievementIds = (
-    await knex("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS).select("id")
-  ).map(row => row.id);
-  if (achievementIds.length) {
-    await knex("user_achievement_progress").whereIn("achievement_id", achievementIds).del();
-    await knex("user_achievements").whereIn("achievement_id", achievementIds).del();
-    await knex("achievements").whereIn("id", achievementIds).del();
-  }
-  await knex("achievement_categories").where({ key: "world_boss" }).del();
-
-  const titleIds = (await knex("titles").whereIn("key", V1_TITLE_KEYS).select("id")).map(
-    row => row.id
-  );
-  if (titleIds.length) {
-    await knex("user_titles").whereIn("title_id", titleIds).del();
-    await knex("titles").whereIn("id", titleIds).del();
   }
 };
 
