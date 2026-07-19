@@ -1,89 +1,81 @@
-# 世界王 v2（全服共鬥賽季制）Implementation Plan
+# World Boss v2 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 拆除舊世界王功能全件，重建為全服共鬥賽季制 v2：手動開季、無限輪滾動王、on-hit 原子扣血、溢傷連清、賽季末冪等結算（女神石＋稱號）、聊天 Flex ＋ LIFF 戰況板。
+**Goal:** 拆除舊世界王全件，重建全服共鬥賽季制 v2：管理員立即開季、無限輪滾動王、原子攻擊與每日 quota、賽季末冪等結算、聊天 Flex 與 LIFF 戰況／個人結算結果。
 
-**Architecture:** 五張新表（`world_boss` 圖鑑 / `world_boss_season` / `world_boss_round` / `world_boss_contribution` / `world_boss_season_reward` ledger）。戰鬥核心 `WorldBossBattleService.attack()` 在單一 DB 交易內 `SELECT ... FOR UPDATE` 鎖當前輪、扣血、清輪開新輪（溢傷 loop）、寫貢獻、發 RPG 職業經驗。賽季生命週期 `draft →(管理頁手動)→ active →(讀取推導 ended)→(cron)→ settled`，結算仿 Janken `tryInsert` + UNIQUE ledger 冪等。Spec: `docs/superpowers/specs/2026-07-19-worldboss-v2-design.md`。
+**Architecture:** v2 使用五張新表：王圖鑑、賽季、輪次、貢獻、reward ledger。攻擊在單一 transaction 依序鎖 active season、玩家 `user` row、`minigame_level` 與 active round，權威判定每日 quota，扣血／開輪、寫貢獻與 RPG 職業 EXP 一起 commit；結算鎖同一個 season row，在單一 transaction 依 competition ranking `1,1,3` 完成 ledger、女神石、稱號後才標 settled。資料庫 UNIQUE active slot 保證全服最多一個 active season、每季最多一個 active round；聊天和 LIFF 都能同時顯示 active 戰況與玩家最近 settled reward。
 
-**Tech Stack:** Bottender (LINE) + Express + Knex/MySQL + node-redis v4 + Jest（真實 DB 整合測試）；前端 React 19 + MUI 7 + axios-hooks + Vite。
+**Tech Stack:** Bottender + Express + Knex/MySQL + Jest（真實 DB 整合測試）；React 19 + MUI 7 + axios-hooks + Vite。
 
 ## Global Constraints
 
-- 分支 `feat/worldboss-v2`，**絕不 commit 到 main**。
-- Husky pre-commit 已失效（不會自動 format）：**每次 commit 前**對改到的 `.js/.jsx` 跑 `app/node_modules/.bin/prettier --write <files>`，否則 CI `format:check` 會 fail。
-- **無 LINE Push API**：所有結果只能靠 reply（下一次互動）與 LIFF 呈現，不得引入任何 push/multicast 呼叫。
-- 所有 v2 新表的 `user_id` 一律存 **LINE platform userId**，`string(33)`（與 janken / inventory / user_titles 一致）。
-- Migration 一律 `cd app && yarn knex migrate:make <name>` 產生，**不得手寫檔名**。
-- `app/jest.config.js` 是 `transform: {}` → **`jest.mock(...)` 不會 hoist**：mock 宣告必須寫在 `require` 被 mock 模組之前（本 repo 既有慣例，見 `app/src/service/__tests__/ChatWeatherService.test.js`）。
-- 整合測試打**本機真實 MySQL**（`make infra` 起的 Princess DB），測試自行清理自己的資料列；測試檔開頭載入根目錄 `.env`（同 ChatWeatherService.test.js 模式），`afterAll(() => mysql.destroy())`。
-- **worldboss 測試落地後，全套測試一律 `yarn test -- --runInBand`**：`findActive`/`findSettleable` 是全域 DB 讀取，平行 jest worker 會互踩（A 檔 seed 的 active 賽季被 B 檔的結算掃走）。前提：本機 DB 不得有真實 active 賽季（測試 beforeEach 有防呆會直接 fail）。
-- 分層鐵則：model 不懂遊戲規則、service 不懂 LINE（不 require bottender/context）、controller 不懂資料庫（不 require model）、template 只做純 Flex JSON。
-- LIFF 前端路由一律小寫（戰況板 = `worldboss`），且後端 `getLiffUri(size, "/worldboss")` 字串必須與 `App.jsx` 的 route path 完全一致。
-- 測試指令：`cd app && yarn test -- <path>`（單檔）、`yarn test`（全部）；lint：`cd app && yarn lint`、root `yarn lint:frontend`。
-- Config 數值（HP tier、per_hit_exp、獎勵階梯）是**可調預設值**，上線前使用者可能再調 — 實作時照本計畫的數字寫，不要自行發明。
+- v2 greenfield：不搬 v1 資料、不向前相容；只退役 v1 controller 內的聊天指令 `#冒險小卡` 與 `#裝備`，Task 14 必須確認沒有殘留 chat route／copy／test expectation。獨立 Equipment API、LIFF 裝備頁、`EquipmentService` 與 RPG 裝備加成必須保留，v2 攻擊繼續使用。
+- 手動開季立即生效：API 不收 future start；`openSeason()` 在 transaction 內以 server clock 寫 `start_time=now`，且只接受可解析、`end_time > now` 的 draft。
+- 相同總傷害使用 competition ranking `1,1,3`；同 rank 寫相同 reward tier（石頭與稱號），接受同 tier 人數增加造成的少量額外發放。
+- 無 LINE Push API：玩家下一次 `#世界王`／世界王攻擊聊天互動以及 LIFF 都要讀到最近 settled reward；不得引入 push/multicast。
+- 所有 v2 `user_id` 都是 LINE platform userId，`string(33)`；RPG `minigame_level.user_id` 仍是內部 `user.id`。
+- 所有 API datetime 都是 UTC ISO 8601（含 `Z`）；`app/knexfile.js` 的 mysql2 connection 固定 `timezone: "Z"`，server 以 UTC 儲存／比較並以真實 DB round-trip test 證明 instant 不漂移；frontend 只在顯示時 locale format。不得留下 datetime-local 字串直送或時區延期註記。
+- Input validation 是 server/service 的責任：boss name `trim()` 後 1–64；`hp_weight` finite 且 `>0`；日期可解析且 `end_time>now`；attack type 只能 `standard|skill`，damage/cost/exp finite 且 `>0`；leaderboard limit 為 1–100 整數；產生輪次時 `maxHp>0`。
+- Production active season slot 固定為 `1`。service 以 dependency injection 提供 test-only slot；整合測試使用自己的 slot，不能要求共享 DB 沒有真實 active season。
+- 每日上限只能在 attack transaction 中判定：先 `FOR UPDATE` 鎖該玩家 `user` row（同時保護不存在時建立 `minigame_level`），再依 injected clock 計算台灣日界 `Asia/Taipei` 的 `[00:00, next 00:00)` UTC instants，於相同 trx 加總該半開區間 contribution；controller precheck 只改善 UX。禁止依 DB/session timezone 或 `DATE(created_at)` 猜「今日」。
+- 攻擊與結算都 `FOR UPDATE` 鎖並重查同一個 season row；`now >= end_time` 時攻擊失敗、結算可執行，兩邊共用相同 boundary helper。
+- 結算每季一個 transaction：對**每位 contributor**建立 authoritative reward ledger；無 configured tier 者也寫 `stone_amount=0,title_key=null,paid_at=clock()`。有獎者的 Inventory 女神石、UserTitle、`paid_at` 與 season settled 同生共死；付款失敗不得留下 ledger／付款或 settled，重試／併發不得 double-pay。
+- Migration 必須由 `cd app && yarn knex migrate:make <name>` 產生。v1 teardown `down()` 必須重建空 v1 schema，不能空函式假裝成功；v2 `up()` 在任何 DDL 前檢查 title key collision 並拒絕覆用非本 migration 資料，`down()` 才能安全先刪依賴 v2 titles 的 `user_titles`、再刪自己建立的 titles 與 v2 tables。v1 資料不恢復是刻意限制，migration 前必須備份。
+- 真實 DB 測試只能改 test-owned rows（`__wbtest_` prefix、注入 test slot），或在 transaction 中驗證後 rollback；不得 truncate、全表刪 `user_titles`、覆寫整張 boss catalog，或依賴全域空狀態。每個 suite 必須 deterministic cleanup 並 `afterAll(() => mysql.destroy())`。
+- `app/jest.config.js` 為 `transform: {}`；`jest.mock(...)` 必須在被 mock module 的第一個 `require` 前。
+- worldboss 測試落地後，窄測試用 `cd app && yarn test -- <path> --runInBand`；任何 full app suite 一律 `cd app && yarn test -- --runInBand`，不能使用裸 `yarn test`。
+- 每個改 `.js/.jsx` 的 task 在 test/lint 與 commit 前，對該 task changed JS/JSX 跑 `app/node_modules/.bin/prettier --write <files>`。不得為追求 grep 0 改寫無關註解。
+- Frontend 沒有 test runner：Task 12/13 以 lint + build +明列人工瀏覽器檢查驗收；真實 LINE E2E 需要 LIFF／reply token，標為不可自動化，不得宣稱已自動驗證。
+- Task 14 只做 local verification 與 fresh review；不得 push、建立 PR 或部署，這些 outward-facing 行為另待使用者授權。
 
-## File Structure（最終狀態）
+## File Structure（完成後）
 
-```
+```text
 app/
 ├── migrations/
-│   ├── <ts>_drop_world_boss_v1.js            # Task 3：drop 舊 5 表 + 清成就/稱號資料列
-│   └── <ts>_create_world_boss_v2.js          # Task 4：新 5 表 + 2 個 v2 賽季稱號資料列
-├── seeds/WorldBossCatalogSeeder.js           # Task 4：圖鑑初始 4 隻王
-├── config/default.json                       # Task 4：新 worldboss 區塊
-├── config/crontab.config.js                  # Task 8：結算 cron 條目
-├── bin/WorldBossSeasonSettle.js              # Task 8：唯一 cron script
+│   ├── <ts>_drop_world_boss_v1.js
+│   └── <ts>_create_world_boss_v2.js
+├── seeds/WorldBossCatalogSeeder.js
+├── config/default.json
+├── config/crontab.config.js
+├── bin/WorldBossSeasonSettle.js
 └── src/
     ├── model/application/
-    │   ├── WorldBoss.js                      # Task 5：圖鑑 CRUD（Base 薄殼）
-    │   ├── WorldBossSeason.js                # Task 5：賽季 CRUD + findActive/findSettleable
-    │   ├── WorldBossRound.js                 # Task 5：輪次 CRUD + FOR UPDATE 查詢
-    │   ├── WorldBossContribution.js          # Task 5：貢獻 CRUD + 排名/每日 cost 聚合
-    │   └── WorldBossSeasonReward.js          # Task 5：結算 ledger（tryInsert，仿 JankenDailyRewardLog）
+    │   ├── WorldBoss.js
+    │   ├── WorldBossSeason.js
+    │   ├── WorldBossRound.js
+    │   ├── WorldBossContribution.js
+    │   └── WorldBossSeasonReward.js
     ├── service/
-    │   ├── WorldBossBattleService.js         # Task 6：攻擊交易（唯一改王血的地方）+ hpForRound + 發職業經驗
-    │   └── WorldBossSeasonService.js         # Task 7：開季/狀態/排名/冪等結算
-    ├── controller/application/WorldBossController.js  # Task 10：薄殼（指令 + postback）
-    ├── templates/application/WorldBoss.js    # Task 9：純 Flex builder
-    ├── router/WorldBoss/index.js             # Task 11：admin + public express router
-    └── handler/WorldBoss/{index,admin,public}.js      # Task 11
+    │   ├── WorldBossCatalogService.js
+    │   ├── WorldBossBattleService.js
+    │   └── WorldBossSeasonService.js
+    ├── controller/application/WorldBossController.js
+    ├── templates/application/WorldBoss.js
+    ├── router/WorldBoss/index.js
+    ├── handler/WorldBoss/{index,admin,public}.js
+    └── __tests__/helpers/worldBossFixture.js
 frontend/src/
-    ├── pages/Admin/Worldboss.jsx             # Task 12：圖鑑 + 賽季管理（單頁）
-    └── pages/Worldboss/index.jsx             # Task 13：LIFF 戰況板
+├── pages/Admin/Worldboss.jsx
+└── pages/Worldboss/index.jsx
 ```
 
-拆除（Task 1–3）：舊 controller/services/models/template/router/handler/schema、`app.js`/`api.js`/`ajv.js`/`TitleDelivery.js`/`AchievementEngine.js`/`umamiTrack.js`/`zh_tw.json`/`default.json` 的世界王段落、前端 5 個 Admin 頁 + 路由 + NavDrawer、5 張舊表、舊成就/稱號資料列。
+Exact dependency order is Task 1 → … → Task 14. Do not start a task until the prior task has passed its gate and committed.
 
 ---
 
-### Task 1: 後端拆除（程式碼）
+### Task 1: Retire World Boss v1 backend and its two commands
 
 **Files:**
-- Delete（整檔/整目錄）:
-  - `app/src/controller/application/WorldBossController.js`
-  - `app/src/service/WorldBossEventService.js`
-  - `app/src/service/WorldBossEventLogService.js`
-  - `app/src/service/WorldBossUserAttackMessageService.js`
-  - `app/src/model/application/WorldBoss.js`
-  - `app/src/model/application/WorldBossEvent.js`
-  - `app/src/model/application/WorldBossLog.js`
-  - `app/src/model/application/WorldBossUserAttackMessage.js`
-  - `app/src/model/application/AttackMessageTags.js`（注意：檔名不含 boss 字樣，別漏）
-  - `app/src/templates/application/WorldBoss.js`
-  - `app/src/router/WorldBoss/`、`app/src/router/WorldBossEvent/`（整目錄）
-  - `app/src/handler/WorldBoss/`、`app/src/handler/WorldBossEvent/`（整目錄）
-  - `app/src/schema/WorldBoss/`（整目錄）
-  - `app/__tests__/api/admin/world-bosses.test.js`
-  - `app/__tests__/api/admin/world-boss-events.test.js`
-  - `app/__tests__/api/world-boss-messages.test.js`
-- Modify: `app/src/app.js`、`app/src/router/api.js`、`app/src/util/ajv.js`、`app/bin/TitleDelivery.js`、`app/src/service/AchievementEngine.js`、`app/src/middleware/umamiTrack.js`、`app/locales/zh_tw.json`、`app/config/default.json`
+- Delete: `app/src/controller/application/WorldBossController.js`, v1 services/models/template/schema, `app/src/router/WorldBoss*`, `app/src/handler/WorldBoss*`, and v1 API tests listed below.
+- Modify: `app/src/app.js`, `app/src/router/api.js`, `app/src/util/ajv.js`, `app/bin/TitleDelivery.js`, `app/src/service/AchievementEngine.js`, `app/src/middleware/umamiTrack.js`, `app/locales/zh_tw.json`, `app/config/default.json`.
 
 **Interfaces:**
-- Consumes: 無（純刪除）。
-- Produces: 一個沒有任何世界王程式碼、lint/test 全綠的 backend。`AchievementEngine` 保留 `boss_attack: ["social_all_features"]` 事件（Task 10 的 v2 controller 會重新 emit，讓「全能玩家」成就存活）。`templates/common/theme.js` 的 `worldBoss: SEMANTIC.danger`（line 169）**保留**，Task 9 模板要用。
+- Produces a backend with no v1 worldboss wiring. Keep `AchievementEngine` event `boss_attack: ["social_all_features"]` for Task 10 and keep `templates/common/theme.js` `FEATURE.worldBoss` for Task 9.
+- Intentionally removes `text("#冒險小卡", ...)` and `text(/^[#＃]裝備$/, ...)`; no replacement is added in v2.
 
-- [ ] **Step 1: 刪除整檔**
+- [ ] **Step 1: Delete v1 files**
 
 ```bash
 cd /home/hanshino/workspace/redive_linebot
@@ -104,205 +96,288 @@ git rm -r app/src/router/WorldBoss app/src/router/WorldBossEvent \
   app/src/handler/WorldBoss app/src/handler/WorldBossEvent app/src/schema/WorldBoss
 ```
 
-- [ ] **Step 2: `app/src/app.js` 移除 4 處**
+- [ ] **Step 2: Remove only the v1 call sites**
 
-1. line ~22：`const WorldBossController = require("./controller/application/WorldBossController");` — 整行刪。
-2. line ~105：`if (!isExist && action !== "adminBossAttack") return;` → 改為 `if (!isExist) return;`
-3. line ~108-111：postback route 整段刪：
-```js
-    route(
-      () => action === "worldBossAttack",
-      withProps(WorldBossController.attackOnBoss, { payload })
-    ),
+Remove these exact behaviors, without touching unrelated comments:
+
+```text
+app/src/app.js
+- v1 WorldBossController require
+- adminBossAttack bypass in HandlePostback
+- worldBossAttack postback route
+- ...WorldBossController.router
+
+app/src/router/api.js
+- v1 controller/admin router requires and mounts
+- /game/world-boss/feature-messages CRUD block
+
+app/src/util/ajv.js
+- createUserAttackMessage schema require/register
+
+app/bin/TitleDelivery.js
+- deliveryWorldBossTitles call and function only; keep the gacha/janken title job
+
+app/src/service/AchievementEngine.js
+- boss_first_kill/boss_level_10/boss_level_50/boss_top_damage strategies
+- keep boss_attack: ["social_all_features"]
+
+app/src/middleware/umamiTrack.js, app/locales/zh_tw.json, app/config/default.json
+- remove v1-only worldboss tracking/copy/config
 ```
-4. line ~163：OrderBased 中 `...WorldBossController.router,` — 整行刪。
 
-- [ ] **Step 3: `app/src/router/api.js` 移除三組**
-
-1. requires（line ~24, 28, 30）：`WorldBossController`、`AdminWorldBossRouter`、`AdminWorldBossEventRouter` 三行刪。
-2. mounts（line ~47-48）：`router.use("/admin", AdminWorldBossRouter);` 與 `router.use("/admin", AdminWorldBossEventRouter);` 刪。
-3. line ~391-433：整個 `/game/world-boss/feature-messages` 區塊（註解 + 5 條 CRUD route）刪。
-
-- [ ] **Step 4: `app/src/util/ajv.js`**：刪 line 3 `require(".../schema/WorldBoss/userAttackMessage.json")` 與 line 14 `ajv.addSchema(userAttackSchema.create, "createUserAttackMessage")`。
-
-- [ ] **Step 5: `app/bin/TitleDelivery.js`**：刪 line ~17 `await deliveryWorldBossTitles(trx);` 與整個 `deliveryWorldBossTitles` 函式（line ~89-130）。刪完檢查 `config` import 是否仍被其他函式使用（`deliveryGachaTitles`/`deliveryJankenTitles` 也讀 config 就保留；若 unused，eslint 會抓，刪 import）。**不要動** `crontab.config.js` 的 Title Delivery 條目（gacha/janken 稱號仍靠它）。
-
-- [ ] **Step 6: `app/src/service/AchievementEngine.js`**
-
-1. 事件表（line ~84-90）：`boss_attack` 陣列改為只剩共用成就：
-```js
-  boss_attack: ["social_all_features"],
-```
-2. 刪 `boss_first_kill` / `boss_level_10` / `boss_level_50` / `boss_top_damage` 四個 strategy handler（line ~176-179）。
-3. 改完 `grep -n "boss_" app/src/service/AchievementEngine.js`，僅允許剩 `boss_attack` 一個 key。
-
-- [ ] **Step 7: 其餘 partial edits**
-
-1. `app/src/middleware/umamiTrack.js` line ~42-49：`// === application: world boss ===` 註解 + 7 個 tracking pattern 刪。
-2. `app/locales/zh_tw.json` line ~71-92：`user_attack_on_world_boss`、`world_boss_event_multiple_ongoing`、`world_boss_event_no_ongoing`、巢狀 `"world_boss": {...}` 物件、`admin_attack_on_world_boss`、`world_boss_event_completed` 全刪（注意 JSON 逗號）。
-3. `app/config/default.json`：刪 line ~12 `redis.keys.worldBossAttackMessageKeeping`、line ~27-40 頂層 `"worldboss"` 區塊、line ~240-251 `title_delivery.world_boss` 區塊（同樣注意逗號）。
-4. `app/locales/zh_tw.json` 的 `template.*` 區塊（line ~27-34）：`attend_times`、`chaos_attack`、`money_attack`、`money_chaos_attack` 是 v1 世界王模板字串 — 刪除前 grep 確認已無引用（v1 template 刪掉後應為 0）；**`boss_name` 先 grep**，若公會戰模板仍引用就保留。
-5. `app/src/service/topic/__tests__/query.integration.test.js:3` 註解含 "worldboss" 字樣 — 順手改寫該句註解（非功能性殘留，不影響測試）。
-6. **不要碰**：`app/src/templates/common/theme.js:169`（`worldBoss` 色票保留）、`app/src/repositories/princess/guild/ConfigRepository.js`、`frontend` 的公主戰隊 `{week}周{boss}王` 相關（那是戰隊功能，不是世界王）。
-
-- [ ] **Step 8: 驗證**
+- [ ] **Step 3: Format and verify**
 
 ```bash
-cd app && yarn lint && yarn test
-grep -rin "worldboss\|world_boss" src/ bin/ config/ locales/ --include="*.js*" -l
+app/node_modules/.bin/prettier --write \
+  app/src/app.js app/src/router/api.js app/src/util/ajv.js app/bin/TitleDelivery.js \
+  app/src/service/AchievementEngine.js app/src/middleware/umamiTrack.js
+cd app
+node -e "JSON.parse(require('fs').readFileSync('locales/zh_tw.json'));JSON.parse(require('fs').readFileSync('config/default.json'))"
+yarn lint
+yarn test -- --runInBand
+cd ..
+if rg -n 'adminBossAttack|deliveryWorldBossTitles|world-boss/feature-messages|#冒險小卡|\^\[#＃\]裝備' \
+  app/src app/bin app/config app/locales; then
+  echo "v1 worldboss backend residual found" >&2
+  exit 1
+fi
 ```
-Expected: lint/test 全綠；grep 只剩 `src/templates/common/theme.js`（色票）與 `src/service/AchievementEngine.js`（`boss_attack` key 不含 world 字樣，不應出現在此 grep 結果）。若出現其他檔案，回頭清乾淨。另跑 `node -e "JSON.parse(require('fs').readFileSync('locales/zh_tw.json'))" && node -e "JSON.parse(require('fs').readFileSync('config/default.json'))"` 確認 JSON 沒改壞。
 
-- [ ] **Step 9: Commit**
-
-```bash
-cd /home/hanshino/workspace/redive_linebot
-app/node_modules/.bin/prettier --write app/src/app.js app/src/router/api.js app/src/util/ajv.js app/bin/TitleDelivery.js app/src/service/AchievementEngine.js app/src/middleware/umamiTrack.js
-git add -A && git commit -m "refactor(worldboss): tear down v1 backend (controllers, services, models, routes, wiring)"
-```
-
----
-
-### Task 2: 前端拆除
-
-**Files:**
-- Delete: `frontend/src/pages/Admin/Worldboss.jsx`、`WorldbossEvent.jsx`、`WorldbossMessage.jsx`、`WorldbossMessageCreate.jsx`、`WorldbossMessageUpdate.jsx`
-- Modify: `frontend/src/App.jsx`（imports line ~40-44、routes line ~121-131）、`frontend/src/components/NavDrawer.jsx`（line ~73-75）、`frontend/src/pages/Achievement/index.jsx`（line ~66-69, 86）
-
-**Interfaces:**
-- Consumes: 無。
-- Produces: `yarn build:frontend` 可過的乾淨前端；`admin/worldboss` 路徑空出來給 Task 12 重用。
-
-- [ ] **Step 1: 刪頁面 + 斷路由**
-
-```bash
-git rm frontend/src/pages/Admin/Worldboss.jsx frontend/src/pages/Admin/WorldbossEvent.jsx \
-  frontend/src/pages/Admin/WorldbossMessage.jsx frontend/src/pages/Admin/WorldbossMessageCreate.jsx \
-  frontend/src/pages/Admin/WorldbossMessageUpdate.jsx
-```
-`App.jsx`：刪 5 個 `import AdminWorldboss*`（line ~40-44）與 5 條 `<Route path="admin/worldboss*">`（line ~121-131）。
-
-- [ ] **Step 2: NavDrawer 與成就頁**
-
-1. `NavDrawer.jsx` line ~73-75：刪 `世界王設定`、`世界王活動`、`世界王訊息` 三個 adminItems。
-2. `pages/Achievement/index.jsx`：刪 line ~66-69 的 `boss_first_kill/boss_level_10/boss_level_50/boss_top_damage` icon 映射與 line ~86 的 `world_boss: ShieldIcon,` 類別 icon（若 `ShieldIcon` 因此 unused，刪 import）。
-
-- [ ] **Step 3: 驗證**
-
-```bash
-yarn lint:frontend && yarn build:frontend
-grep -rin "worldboss" frontend/src/
-```
-Expected: lint/build 綠、grep 0 hits（公主戰隊頁的 `boss` 單字不在此 pattern 內）。
+Expected: JSON parse, lint, and full suite pass; residual assertion exits 0 because it finds no hit. `app/src/templates/common/theme.js` remains unchanged.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add -A && git commit -m "refactor(worldboss): tear down v1 admin frontend pages and routes"
+git add -A
+git commit -m "refactor(worldboss): retire v1 backend and commands"
 ```
 
 ---
 
-### Task 3: DB 拆除 migration
+### Task 2: Retire World Boss v1 frontend
 
 **Files:**
-- Create: `app/migrations/<timestamp>_drop_world_boss_v1.js`（用 `yarn knex migrate:make drop_world_boss_v1` 產生）
+- Delete: `frontend/src/pages/Admin/Worldboss.jsx`, `WorldbossEvent.jsx`, `WorldbossMessage.jsx`, `WorldbossMessageCreate.jsx`, `WorldbossMessageUpdate.jsx`.
+- Modify: `frontend/src/App.jsx`, `frontend/src/components/NavDrawer.jsx`, `frontend/src/pages/Achievement/index.jsx`.
 
 **Interfaces:**
-- Consumes: Task 1/2 已移除所有引用（表此刻無人使用）。
-- Produces: 5 張舊表消失；舊成就（4 筆）與 category、progressors/leechers 稱號及其使用者資料列消失。`world_boss` 表名空出來給 Task 4 的新圖鑑表。**Task 4 依賴本 task 先跑完**。
+- Produces clean route slots `/admin/worldboss` and `/worldboss` for Task 12/13.
 
-- [ ] **Step 1: 產生 migration**
+- [ ] **Step 1: Delete pages and exact v1 routes/nav items**
 
 ```bash
-cd app && yarn knex migrate:make drop_world_boss_v1
+git rm frontend/src/pages/Admin/Worldboss.jsx \
+  frontend/src/pages/Admin/WorldbossEvent.jsx \
+  frontend/src/pages/Admin/WorldbossMessage.jsx \
+  frontend/src/pages/Admin/WorldbossMessageCreate.jsx \
+  frontend/src/pages/Admin/WorldbossMessageUpdate.jsx
 ```
 
-- [ ] **Step 2: 填入內容**
+Remove their imports/routes, three v1 worldboss admin nav items, and four removed achievement icon mappings. Remove imports only if ESLint reports them unused.
+
+- [ ] **Step 2: Format and verify**
+
+```bash
+app/node_modules/.bin/prettier --write frontend/src/App.jsx \
+  frontend/src/components/NavDrawer.jsx frontend/src/pages/Achievement/index.jsx
+yarn lint:frontend
+yarn build:frontend
+if rg -n 'WorldbossEvent|WorldbossMessage|boss_first_kill|boss_level_10|boss_level_50|boss_top_damage' frontend/src; then
+  echo "v1 worldboss frontend residual found" >&2
+  exit 1
+fi
+```
+
+Expected: lint/build pass and the negative residual assertion exits 0 because it finds no hit.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add -A
+git commit -m "refactor(worldboss): retire v1 frontend"
+```
+
+---
+
+### Task 3: Add truthful v1 teardown migration
+
+**Files:**
+- Create: `app/migrations/<timestamp>_drop_world_boss_v1.js` using `yarn knex migrate:make`.
+
+**Interfaces:**
+- `up()` drops the five still-live v1 tables and removes v1 achievement/title rows.
+- `down()` recreates the five **empty** schemas at their final v1 shape. It does not restore deleted rows and says so in the migration comment.
+
+- [ ] **Step 1: Back up before destructive migration and generate the file**
+
+```bash
+cd /home/hanshino/workspace/redive_linebot
+make infra
+stamp=$(date +%Y%m%d-%H%M%S)
+backup="/tmp/Princess-before-worldboss-v2-${stamp}.sql"
+docker compose exec -T mysql sh -c \
+  'exec mysqldump --single-transaction --routines --triggers -uroot -p"$MYSQL_ROOT_PASSWORD" Princess' \
+  > "$backup"
+test -s "$backup"
+sha256sum "$backup" > "${backup}.sha256"
+sha256sum -c "${backup}.sha256"
+cd app
+yarn knex migrate:make drop_world_boss_v1
+```
+
+The host intentionally has no `mysqldump`; the client runs inside the MySQL container and shell redirection persists the dump at the absolute host path. Local restore drill/command (only after explicitly choosing to discard the current local DB state):
+
+```bash
+cd /home/hanshino/workspace/redive_linebot
+sha256sum -c "${backup}.sha256"
+docker compose exec -T mysql sh -c \
+  'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" Princess' < "$backup"
+```
+
+Record the backup path in the task handoff. Do not run `up()` if `test -s` fails.
+
+- [ ] **Step 2: Implement `up()` and complete empty-schema `down()`**
+
+Use these exact final v1 shapes, preserving all columns added after initial creation:
 
 ```js
-/**
- * World Boss v2 teardown: drop all v1 tables and purge v1 achievement/title rows.
- * Irreversible by design (v2 is a greenfield rewrite; spec docs/superpowers/specs/2026-07-19-worldboss-v2-design.md).
- */
-const V1_TABLES = [
-  "world_boss_event_log",
-  "world_boss_event",
-  "world_boss_user_attack_message",
-  "attack_message_has_tags",
-  "world_boss",
+const V1_ACHIEVEMENT_KEYS = [
+  "boss_first_kill",
+  "boss_level_10",
+  "boss_level_50",
+  "boss_top_damage",
 ];
-
-const V1_ACHIEVEMENT_KEYS = ["boss_first_kill", "boss_level_10", "boss_level_50", "boss_top_damage"];
 const V1_TITLE_KEYS = ["progressors", "leechers"];
 
-exports.up = async function (knex) {
-  for (const table of V1_TABLES) {
+function createV1Tables(knex) {
+  return knex.schema
+    .createTable("world_boss", table => {
+      table.increments("id").primary();
+      table.string("name").notNullable();
+      table.string("description");
+      table.string("image");
+      table.integer("level").notNullable();
+      table.integer("hp").notNullable();
+      table.integer("attack").notNullable().defaultTo(0);
+      table.integer("defense").notNullable().defaultTo(0);
+      table.integer("speed").notNullable().defaultTo(0);
+      table.integer("luck").notNullable().defaultTo(0);
+      table.integer("exp").notNullable();
+      table.integer("gold").notNullable();
+      table.timestamp("created_at").defaultTo(knex.fn.now());
+      table.timestamp("updated_at").defaultTo(knex.fn.now());
+    })
+    .createTable("world_boss_event", table => {
+      table.increments("id").primary();
+      table.integer("world_boss_id").notNullable();
+      table.string("announcement").notNullable();
+      table.timestamp("start_time").notNullable();
+      table.timestamp("end_time").notNullable();
+      table.timestamp("created_at").defaultTo(knex.fn.now());
+      table.timestamp("updated_at").defaultTo(knex.fn.now());
+    })
+    .createTable("world_boss_event_log", table => {
+      table.increments("id").primary();
+      table.integer("world_boss_event_id").notNullable();
+      table.integer("user_id").notNullable();
+      table.string("action_type").notNullable();
+      table.integer("damage").notNullable();
+      table.integer("cost").notNullable().defaultTo(0);
+      table.timestamp("created_at").defaultTo(knex.fn.now());
+    })
+    .createTable("world_boss_user_attack_message", table => {
+      table.increments("id").primary();
+      table.string("icon_url");
+      table.string("template").notNullable();
+      table.integer("creator_id").notNullable();
+      table.timestamp("created_at").defaultTo(knex.fn.now());
+      table.timestamp("updated_at").defaultTo(knex.fn.now());
+    })
+    .createTable("attack_message_has_tags", table => {
+      table.increments("id").primary();
+      table.integer("attack_message_id").unsigned().notNullable();
+      table.string("tag").notNullable();
+    });
+}
+
+exports.up = async knex => {
+  for (const table of [
+    "attack_message_has_tags",
+    "world_boss_event_log",
+    "world_boss_event",
+    "world_boss_user_attack_message",
+    "world_boss",
+  ]) {
     await knex.schema.dropTableIfExists(table);
   }
-
   const achievementIds = (
     await knex("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS).select("id")
-  ).map(r => r.id);
-  if (achievementIds.length > 0) {
+  ).map(row => row.id);
+  if (achievementIds.length) {
     await knex("user_achievement_progress").whereIn("achievement_id", achievementIds).del();
     await knex("user_achievements").whereIn("achievement_id", achievementIds).del();
     await knex("achievements").whereIn("id", achievementIds).del();
   }
   await knex("achievement_categories").where({ key: "world_boss" }).del();
-
   const titleIds = (await knex("titles").whereIn("key", V1_TITLE_KEYS).select("id")).map(
-    r => r.id
+    row => row.id
   );
-  if (titleIds.length > 0) {
+  if (titleIds.length) {
     await knex("user_titles").whereIn("title_id", titleIds).del();
     await knex("titles").whereIn("id", titleIds).del();
   }
 };
 
-exports.down = async function () {
-  // v1 schemas remain in historical migrations; data teardown is intentionally irreversible.
+exports.down = async knex => {
+  // Restores schema only. v1 rows are intentionally recoverable only from the required backup.
+  await createV1Tables(knex);
 };
 ```
 
-- [ ] **Step 3: 執行並驗證**
+- [ ] **Step 3: Format, exercise up/down/up, and inspect tables**
 
 ```bash
-cd app && yarn migrate
-node -e "const k=require('knex')(require('./knexfile'));k.raw('SHOW TABLES LIKE \'world_boss%\'').then(([r])=>{console.log(r);return k.destroy()})"
+app/node_modules/.bin/prettier --write app/migrations/*_drop_world_boss_v1.js
+cd app
+yarn migrate
+yarn knex migrate:down
+node -e "const k=require('knex')(require('./knexfile'));Promise.all(['world_boss','world_boss_event','world_boss_event_log','world_boss_user_attack_message','attack_message_has_tags'].map(t=>k.schema.hasTable(t))).then(x=>{if(x.some(v=>!v))process.exitCode=1;return k.destroy()})"
+yarn migrate
 ```
-Expected: migrate OK；SHOW TABLES 結果為空陣列。
+
+Expected: down recreates all five empty schemas and exits 0; final migrate drops them again.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add -A && git commit -m "refactor(worldboss): drop v1 tables and purge v1 achievement/title rows"
+git add app/migrations/*_drop_world_boss_v1.js
+git commit -m "refactor(worldboss): add reversible v1 schema teardown"
 ```
 
 ---
 
-### Task 4: v2 schema migration + config + 圖鑑 seed
+### Task 4: Create v2 schema, constraints, config, and non-destructive seed
 
 **Files:**
-- Create: `app/migrations/<timestamp>_create_world_boss_v2.js`（`yarn knex migrate:make create_world_boss_v2`）
-- Create: `app/seeds/WorldBossCatalogSeeder.js`
-- Modify: `app/config/default.json`（新 `worldboss` 區塊，插回原本 `redis` 區塊之後的位置）
+- Create: `app/migrations/<timestamp>_create_world_boss_v2.js`, `app/seeds/WorldBossCatalogSeeder.js`.
+- Modify: `app/config/default.json`, `app/knexfile.js`.
+- Test: `app/__tests__/migration/worldBossV2Schema.test.js` (real DB constraint, title ownership, and UTC round-trip checks).
 
 **Interfaces:**
-- Consumes: Task 3 已 drop 舊表（`world_boss` 表名可重用）。
-- Produces: 5 張新表；`titles` 多 2 筆 `worldboss_annihilator`／`worldboss_vanguard`；config key `worldboss.daily_cost_limit`、`worldboss.attack_cooldown_seconds`、`worldboss.per_hit_exp`、`worldboss.hp_tiers`、`worldboss.season_rewards`。後續所有 task 依賴這些名字。
+- Five tables only. `world_boss_season.active_slot` is `1` for production active and null otherwise, UNIQUE globally. `world_boss_round.active_slot` is `1` for active and null for cleared, UNIQUE with `season_id`.
+- Statuses use MySQL ENUM: season `draft|active|settled`, round `active|cleared`.
+- Reward ledger includes `ranking`, `total_damage`, `stone_amount`, `title_key`, `paid_at`, UNIQUE `(season_id,user_id)`.
 
-- [ ] **Step 1: 產生並填入 migration**
+- [ ] **Step 1: Generate migration and write schema**
 
 ```bash
 cd app && yarn knex migrate:make create_world_boss_v2
 ```
 
-```js
-// eslint-disable-next-line no-unused-vars
-const { Knex } = require("knex");
+The migration must create these columns and constraints:
 
-const V2_TITLES = [
+```js
+const TITLES = [
   {
     key: "worldboss_annihilator",
     name: "殲滅之王",
@@ -318,55 +393,68 @@ const V2_TITLES = [
     rarity: 2,
   },
 ];
+const TITLE_KEYS = TITLES.map(title => title.key);
 
-/**
- * @param {Knex} knex
- */
-exports.up = async function (knex) {
+exports.up = async knex => {
+  // These keys are owned by this migration. Refuse before DDL so down never deletes pre-existing data.
+  const collisions = await knex("titles").whereIn("key", TITLE_KEYS).select("key");
+  if (collisions.length) {
+    throw new Error(`WORLD_BOSS_TITLE_KEY_COLLISION:${collisions.map(row => row.key).join(",")}`);
+  }
+
   await knex.schema.createTable("world_boss", table => {
     table.bigIncrements("id").primary();
     table.string("name", 64).notNullable();
-    table.string("image", 255).nullable().comment("Flex hero 圖 URL；null 時前端/模板用預設圖");
-    table.text("description").nullable();
-    table.float("hp_weight").notNullable().defaultTo(1).comment("個體血量權重，乘上 tier 公式");
+    table.string("image", 255);
+    table.text("description");
+    table.decimal("hp_weight", 8, 3).notNullable().defaultTo(1);
     table.timestamps(true, true);
+    table.check("?? > 0", ["hp_weight"], "chk_wb_hp_weight_positive");
   });
-
   await knex.schema.createTable("world_boss_season", table => {
     table.bigIncrements("id").primary();
     table.string("name", 64).notNullable();
-    table.text("announcement").nullable();
-    table
-      .string("status", 16)
-      .notNullable()
-      .defaultTo("draft")
-      .comment("draft | active | settled；ended 為讀取時推導（active 且 now > end_time）");
+    table.text("announcement");
+    table.enu("status", ["draft", "active", "settled"]).notNullable().defaultTo("draft");
+    table.integer("active_slot").unsigned().nullable();
     table.datetime("start_time").nullable();
-    table.datetime("end_time").nullable().comment("開季時必填；cron 依此判定到期");
+    table.datetime("end_time").notNullable();
     table.datetime("settled_at").nullable();
     table.timestamps(true, true);
-    table.index(["status"], "idx_wbs_status");
+    table.unique(["active_slot"], "uq_wbs_active_slot");
+    table.index(["status", "end_time"], "idx_wbs_settleable");
+    table.check(
+      "(`status` = 'active' AND `active_slot` IS NOT NULL) OR (`status` <> 'active' AND `active_slot` IS NULL)",
+      [],
+      "chk_wbs_active_slot_status"
+    );
   });
-
   await knex.schema.createTable("world_boss_round", table => {
     table.bigIncrements("id").primary();
     table.bigInteger("season_id").unsigned().notNullable();
     table.integer("round_no").unsigned().notNullable();
     table.bigInteger("world_boss_id").unsigned().notNullable();
-    table.bigInteger("max_hp").notNullable();
-    table.bigInteger("current_hp").notNullable().comment("唯一熱寫入欄位，只由攻擊交易更新");
-    table.string("status", 16).notNullable().defaultTo("active").comment("active | cleared");
+    table.bigInteger("max_hp").unsigned().notNullable();
+    table.bigInteger("current_hp").unsigned().notNullable();
+    table.enu("status", ["active", "cleared"]).notNullable().defaultTo("active");
+    table.integer("active_slot").unsigned().nullable();
     table.datetime("cleared_at").nullable();
     table.timestamps(true, true);
     table.unique(["season_id", "round_no"], "uq_wbr_season_round");
-    table.index(["season_id", "status"], "idx_wbr_season_status");
+    table.unique(["season_id", "active_slot"], "uq_wbr_season_active_slot");
+    table.check("?? > 0", ["max_hp"], "chk_wbr_max_hp_positive");
+    table.check("?? <= ??", ["current_hp", "max_hp"], "chk_wbr_current_lte_max");
+    table.check(
+      "(`status` = 'active' AND `active_slot` = 1) OR (`status` = 'cleared' AND `active_slot` IS NULL)",
+      [],
+      "chk_wbr_active_slot_status"
+    );
   });
-
   await knex.schema.createTable("world_boss_contribution", table => {
     table.bigIncrements("id").primary();
     table.bigInteger("season_id").unsigned().notNullable();
-    table.bigInteger("round_id").unsigned().notNullable().comment("這一刀打在哪一輪（溢傷仍記在起始輪）");
-    table.string("user_id", 33).notNullable().comment("LINE User ID");
+    table.bigInteger("round_id").unsigned().notNullable();
+    table.string("user_id", 33).notNullable();
     table.bigInteger("damage").unsigned().notNullable();
     table.integer("cost").unsigned().notNullable();
     table.timestamps(true, true);
@@ -374,45 +462,45 @@ exports.up = async function (knex) {
     table.index(["round_id"], "idx_wbc_round");
     table.index(["user_id", "created_at"], "idx_wbc_user_created");
   });
-
   await knex.schema.createTable("world_boss_season_reward", table => {
     table.bigIncrements("id").primary();
     table.bigInteger("season_id").unsigned().notNullable();
-    table.string("user_id", 33).notNullable().comment("LINE User ID");
-    table.integer("ranking").unsigned().notNullable().comment("賽季總傷排名（rank 是保留字，用 ranking）");
+    table.string("user_id", 33).notNullable();
+    table.integer("ranking").unsigned().notNullable();
     table.bigInteger("total_damage").unsigned().notNullable();
     table.integer("stone_amount").unsigned().notNullable().defaultTo(0);
     table.string("title_key", 64).nullable();
+    table.datetime("paid_at").nullable();
     table.timestamps(true, true);
     table.unique(["season_id", "user_id"], "uq_wbsr_season_user");
   });
 
-  const { m: maxOrder } = await knex("titles").max({ m: "order" }).first();
+  const { maxOrder } = await knex("titles").max({ maxOrder: "order" }).first();
   await knex("titles").insert(
-    V2_TITLES.map((t, i) => ({ ...t, order: (maxOrder || 0) + i + 1 }))
+    TITLES.map((title, index) => ({
+      ...title,
+      order: Number(maxOrder || 0) + index + 1,
+    }))
   );
 };
 
-/**
- * @param {Knex} knex
- */
-exports.down = async function (knex) {
-  await knex("titles").whereIn("key", V2_TITLES.map(t => t.key)).del();
+exports.down = async knex => {
+  const titleIds = (await knex("titles").whereIn("key", TITLE_KEYS).select("id")).map(r => r.id);
+  if (titleIds.length) await knex("user_titles").whereIn("title_id", titleIds).del();
+  await knex("titles").whereIn("key", TITLE_KEYS).del();
   for (const table of [
     "world_boss_season_reward",
     "world_boss_contribution",
     "world_boss_round",
     "world_boss_season",
     "world_boss",
-  ]) {
-    await knex.schema.dropTableIfExists(table);
-  }
+  ]) await knex.schema.dropTableIfExists(table);
 };
 ```
 
-- [ ] **Step 2: `app/config/default.json` 新增 v2 區塊**
+If the installed Knex version emits invalid MySQL SQL for named `table.check`, use `knex.raw("ALTER TABLE ... ADD CONSTRAINT ... CHECK (...)")` with the same names and predicates; do not omit a constraint.
 
-插在 `"redis"` 區塊之後（v1 舊區塊原本的位置）。數值為可調預設值（Global Constraints）：
+- [ ] **Step 2: Add config and an additive seed**
 
 ```json
 "worldboss": {
@@ -431,2410 +519,989 @@ exports.down = async function (knex) {
     { "min_rank": 4, "max_rank": 10, "stone": 30, "title_key": null },
     { "min_rank": 11, "max_rank": 50, "stone": 10, "title_key": null }
   ]
-},
+}
 ```
 
-血量公式（`hpForRound`，Task 6 實作）：取 `from_round <= round_no` 的**最後一段** tier，`hp = floor((base_hp + (round_no - from_round) * per_round) * hp_weight)`。round 1 = 30K（單一 Lv.100 玩家十刀內可清）、round 10 = 165K、round 11 跳 200K、round 30 = 960K。`per_hit_exp` 120 需在上線前對照 `minigame_level_unit` 曲線驗證手感——標記為待調參數，不阻塞實作。
-
-- [ ] **Step 3: 圖鑑 seed `app/seeds/WorldBossCatalogSeeder.js`**
+`WorldBossCatalogSeeder.js` exports four rows and inserts only missing stable IDs:
 
 ```js
 const BOSSES = [
-  { id: 1, name: "山嶺巨像", description: "盤踞於蘭德索爾山脈的古老魔像，行動遲緩卻堅不可摧。", hp_weight: 1.0, image: null },
-  { id: 2, name: "深淵雙頭犬", description: "來自地底裂縫的看門猛獸，兩顆頭顱輪流值夜。", hp_weight: 0.9, image: null },
-  { id: 3, name: "暴風飛龍", description: "翼展遮天的暴風化身，掠過之處寸草不生。", hp_weight: 1.1, image: null },
-  { id: 4, name: "冥府騎士", description: "披著破碎鎧甲的無言騎士，任何攻擊都無法使其後退。", hp_weight: 1.25, image: null },
+  { id: 1, name: "山嶺巨像", description: "盤踞於蘭德索爾山脈的古老魔像。", hp_weight: 1, image: null },
+  { id: 2, name: "深淵雙頭犬", description: "來自地底裂縫的看門猛獸。", hp_weight: 0.9, image: null },
+  { id: 3, name: "暴風飛龍", description: "翼展遮天的暴風化身。", hp_weight: 1.1, image: null },
+  { id: 4, name: "冥府騎士", description: "披著破碎鎧甲的無言騎士。", hp_weight: 1.25, image: null },
 ];
-
 exports.buildRows = () => BOSSES;
-
-exports.seed = async function (knex) {
-  // 全量替換式 seeder：只在全新環境跑；prod 若管理員已自行建立圖鑑，切勿重跑
-  await knex("world_boss").del();
-  await knex("world_boss").insert(BOSSES);
-};
+exports.seed = knex => knex("world_boss").insert(BOSSES).onConflict("id").ignore();
 ```
 
-- [ ] **Step 4: 執行並驗證**
+- [ ] **Step 3: Pin UTC and write failing real-schema tests**
+
+Add `timezone: "Z"` to `app/knexfile.js`'s mysql2 connection. The real-DB test must:
+- seed a pre-existing title with either reserved key, assert migration `up()` rejects **before any v2 table exists**, and prove the title plus its `user_titles` sentinel survives; remove the sentinel, then migrate successfully;
+- inspect `SHOW CREATE TABLE` for both ENUM domains and every named UNIQUE/CHECK predicate, then attempt invalid inserts for non-positive `hp_weight/max_hp`, `current_hp>max_hp`, and status/active-slot mismatches and assert MySQL rejects them;
+- insert a known JS `Date` instant, read it through Knex, and assert `toISOString()` exactly matches—this proves `timezone:"Z"`, not merely serializer formatting;
+- run `down()` and prove only the two migration-owned title keys/dependent test rows are removed.
+
+- [ ] **Step 4: Format and verify schema, UTC, and additive seed**
 
 ```bash
-cd app && yarn migrate && yarn knex seed:run --specific=WorldBossCatalogSeeder.js
-node -e "const k=require('knex')(require('./knexfile'));Promise.all([k('world_boss').count({c:'*'}).first(),k('titles').whereIn('key',['worldboss_annihilator','worldboss_vanguard']).count({c:'*'}).first()]).then(r=>{console.log(r);return k.destroy()})"
+app/node_modules/.bin/prettier --write app/migrations/*_create_world_boss_v2.js \
+  app/seeds/WorldBossCatalogSeeder.js app/config/default.json app/knexfile.js \
+  app/__tests__/migration/worldBossV2Schema.test.js
+cd app
+yarn test -- __tests__/migration/worldBossV2Schema.test.js --runInBand
+yarn migrate
+yarn knex seed:run --specific=WorldBossCatalogSeeder.js
+yarn knex seed:run --specific=WorldBossCatalogSeeder.js
+node - <<'NODE'
+const k=require('knex')(require('./knexfile'));
+k('world_boss').whereIn('id',[1,2,3,4]).count({count:'id'}).first()
+ .then(({count})=>{if(Number(count)!==4)throw new Error(`expected four bosses, got ${count}`);})
+ .finally(()=>k.destroy());
+NODE
 ```
-Expected: migrate/seed OK；輸出 `[ { c: 4 }, { c: 2 } ]`。另跑 `node -e "console.log(require('config').get('worldboss.hp_tiers').length)"`（在 `app/` 下）expect `4`。
+
+Expected: ownership/invalid-insert/UTC tests pass, migration succeeds, and running seed twice leaves exactly the four stable IDs without overwriting admin rows.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add -A && git commit -m "feat(worldboss): v2 schema (5 tables), season titles, config, catalog seeder"
+git add app/migrations/*_create_world_boss_v2.js app/seeds/WorldBossCatalogSeeder.js \
+  app/config/default.json app/knexfile.js app/__tests__/migration/worldBossV2Schema.test.js
+git commit -m "feat(worldboss): add v2 schema and catalog"
 ```
 
 ---
 
-### Task 5: Models（5 支）＋聚合/ledger 測試
+### Task 5: Implement models, catalog validation, reward lookup, and isolated fixtures
 
 **Files:**
-- Create: `app/src/model/application/WorldBoss.js`
-- Create: `app/src/model/application/WorldBossSeason.js`
-- Create: `app/src/model/application/WorldBossRound.js`
-- Create: `app/src/model/application/WorldBossContribution.js`
-- Create: `app/src/model/application/WorldBossSeasonReward.js`
-- Test: `app/src/model/application/__tests__/WorldBossModels.test.js`
+- Create five model files under `app/src/model/application/`.
+- Create `app/src/service/WorldBossCatalogService.js`.
+- Create `app/src/__tests__/helpers/worldBossFixture.js`.
+- Test: `app/src/model/application/__tests__/WorldBossModels.test.js`, `app/src/service/__tests__/WorldBossCatalogService.test.js`.
 
 **Interfaces:**
-- Consumes: `app/src/model/base.js`（`qb(trx)` 慣例：**所有方法收 optional trailing `trx`**，交易由呼叫端 `mysql.transaction()` 開啟下傳；Base 沒有 setTransaction）；`app/src/util/date.js` 的 `todayUtc8()`。
-- Produces（後續 task 依賴的精確簽名）:
-  - `WorldBoss`: Base instance，`fillable: ["name", "image", "description", "hp_weight"]`
-  - `WorldBossSeason.findActive(trx) → Promise<row|undefined>`；`findSettleable(trx) → Promise<row[]>`（active 且 end_time < now）
-  - `WorldBossRound.findActiveForUpdate(seasonId, trx) → Promise<row|undefined>`（**必須在 trx 內呼叫**）；`findActiveBySeason(seasonId, trx)`
-  - `WorldBossContribution.sumTodayCost(userId, trx) → Promise<number>`；`seasonRanking(seasonId, limit=50) → Promise<[{user_id, display_name, total_damage}]>`（`limit=null` 撈全部；`display_name` left join 自 `user` 表，可能 null）；`sumSeasonDamage(seasonId, userId, trx) → Promise<number>`
-  - `WorldBossSeasonReward.tryInsert({season_id, user_id, ranking, total_damage, stone_amount, title_key}, trx) → Promise<boolean>`（false = ER_DUP_ENTRY 已發放）；`countBySeason(seasonId) → Promise<number>`
-
-- [ ] **Step 1: 先寫 failing test**
-
-`app/src/model/application/__tests__/WorldBossModels.test.js`（真實 DB；`__wbtest_` 前綴當測試資料標記）：
 
 ```js
-require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../../.env") });
-jest.unmock("../../../util/mysql");
-const mysql = jest.requireActual("../../../util/mysql");
-
-const contributionModel = require("../WorldBossContribution");
-const rewardModel = require("../WorldBossSeasonReward");
-
-const U1 = "__wbtest_model_u1";
-const U2 = "__wbtest_model_u2";
-const SEASON_ID = 987654301;
-
-async function cleanup() {
-  await mysql("world_boss_contribution").where({ season_id: SEASON_ID }).del();
-  await mysql("world_boss_season_reward").where({ season_id: SEASON_ID }).del();
-}
-
-describe("WorldBoss v2 models", () => {
-  beforeEach(cleanup);
-  afterAll(async () => {
-    await cleanup();
-    await mysql.destroy();
-  });
-
-  it("sumTodayCost sums only today's rows for the user", async () => {
-    await contributionModel.create({ season_id: SEASON_ID, round_id: 1, user_id: U1, damage: 100, cost: 10 });
-    await contributionModel.create({ season_id: SEASON_ID, round_id: 1, user_id: U1, damage: 100, cost: 15 });
-    await contributionModel.create({ season_id: SEASON_ID, round_id: 1, user_id: U2, damage: 100, cost: 99 });
-    // 一筆昨天的，不應被計入
-    const [oldId] = await mysql("world_boss_contribution").insert({
-      season_id: SEASON_ID, round_id: 1, user_id: U1, damage: 1, cost: 50,
-    });
-    await mysql("world_boss_contribution")
-      .where({ id: oldId })
-      .update({ created_at: new Date(Date.now() - 48 * 3600 * 1000) });
-
-    expect(await contributionModel.sumTodayCost(U1)).toBe(25);
-  });
-
-  it("seasonRanking orders by total damage desc and respects limit", async () => {
-    await contributionModel.create({ season_id: SEASON_ID, round_id: 1, user_id: U1, damage: 100, cost: 1 });
-    await contributionModel.create({ season_id: SEASON_ID, round_id: 1, user_id: U1, damage: 50, cost: 1 });
-    await contributionModel.create({ season_id: SEASON_ID, round_id: 2, user_id: U2, damage: 400, cost: 1 });
-
-    const ranking = await contributionModel.seasonRanking(SEASON_ID, null);
-    expect(ranking.map(r => r.user_id)).toEqual([U2, U1]);
-    expect(Number(ranking[0].total_damage)).toBe(400);
-    expect(Number(ranking[1].total_damage)).toBe(150);
-    expect(await contributionModel.seasonRanking(SEASON_ID, 1)).toHaveLength(1);
-  });
-
-  it("tryInsert returns true once then false on duplicate (season_id, user_id)", async () => {
-    const payload = { season_id: SEASON_ID, user_id: U1, ranking: 1, total_damage: 150, stone_amount: 100, title_key: null };
-    expect(await rewardModel.tryInsert(payload)).toBe(true);
-    expect(await rewardModel.tryInsert(payload)).toBe(false);
-    expect(await rewardModel.countBySeason(SEASON_ID)).toBe(1);
-  });
-});
+WorldBossCatalogService.normalizeBossInput(input)
+WorldBossCatalogService.listBosses() // id ASC, deterministic admin order
+WorldBossCatalogService.createBoss(input, trx)
+WorldBossCatalogService.updateBoss(id, input, trx)
+WorldBossCatalogService.deleteBoss(id, trx) // BOSS_IN_USE
+WorldBossSeason.findActive(activeSlot = 1, trx)
+WorldBossSeason.findActiveForUpdate(activeSlot, trx)
+WorldBossSeason.findForUpdate(id, trx)
+WorldBossSeason.findSettleable(now, activeSlot = 1, trx)
+WorldBossRound.findActiveForUpdate(seasonId, trx)
+WorldBossRound.findActiveBySeason(seasonId, trx)
+WorldBossContribution.sumCostInRange(userId, startUtc, endUtc, trx)
+WorldBossContribution.seasonRanking(seasonId, limit, trx) // public bounded 1..100
+WorldBossContribution.seasonRankingAll(seasonId, trx)     // internal unbounded settlement query
+WorldBossContribution.sumSeasonDamage(seasonId, userId, trx)
+WorldBossSeasonReward.tryInsert(payload, trx)
+WorldBossSeasonReward.findForUpdate(seasonId, userId, trx)
+WorldBossSeasonReward.findLatestSettledByUser(userId, trx)
 ```
 
-- [ ] **Step 2: 跑測試確認 fail**
+`seasonRanking` returns rows ordered by `total_damage DESC, user_id ASC`; service computes competition rank from equal adjacent `total_damage`. `findLatestSettledByUser` joins season/titles and returns `{rewardId, seasonId, seasonName, ranking, totalDamage, stoneAmount, titleKey, titleName, paidAt, settledAt}` only for `paid_at IS NOT NULL`, even if a newer active season exists. `rewardId` + `paidAt` are the client-visible proof that the result came from the authoritative reward ledger.
 
-Run: `cd app && yarn test -- src/model/application/__tests__/WorldBossModels.test.js`
-Expected: FAIL — `Cannot find module '../WorldBossContribution'`。
+- [ ] **Step 1: Write failing tests using only test-owned rows**
 
-- [ ] **Step 3: 實作 5 支 model**
-
-`app/src/model/application/WorldBoss.js`:
-```js
-const Base = require("../base");
-
-class WorldBoss extends Base {}
-
-module.exports = new WorldBoss({
-  table: "world_boss",
-  fillable: ["name", "image", "description", "hp_weight"],
-});
-```
-
-`app/src/model/application/WorldBossSeason.js`:
-```js
-const Base = require("../base");
-
-class WorldBossSeason extends Base {
-  /** 目前唯一 active 賽季（是否過期由 service 讀取推導） */
-  findActive(trx) {
-    return this.qb(trx).where({ status: "active" }).first();
-  }
-
-  /** 已到期未結算的賽季（結算 cron 的掃描對象） */
-  findSettleable(trx) {
-    return this.qb(trx).where({ status: "active" }).where("end_time", "<", new Date());
-  }
-}
-
-module.exports = new WorldBossSeason({
-  table: "world_boss_season",
-  fillable: ["name", "announcement", "status", "start_time", "end_time", "settled_at"],
-});
-```
-
-`app/src/model/application/WorldBossRound.js`:
-```js
-const Base = require("../base");
-
-class WorldBossRound extends Base {
-  /** 攻擊交易用：鎖住當前輪 row。必須在 trx 內呼叫。 */
-  findActiveForUpdate(seasonId, trx) {
-    return trx(this.table).where({ season_id: seasonId, status: "active" }).forUpdate().first();
-  }
-
-  findActiveBySeason(seasonId, trx) {
-    return this.qb(trx).where({ season_id: seasonId, status: "active" }).first();
-  }
-}
-
-module.exports = new WorldBossRound({
-  table: "world_boss_round",
-  fillable: ["season_id", "round_no", "world_boss_id", "max_hp", "current_hp", "status", "cleared_at"],
-});
-```
-
-`app/src/model/application/WorldBossContribution.js`:
-```js
-const Base = require("../base");
-const { todayUtc8 } = require("../../util/date");
-
-class WorldBossContribution extends Base {
-  /** 今日（UTC+8 日界）cost 加總，每日上限判定用 */
-  async sumTodayCost(userId, trx) {
-    const day = todayUtc8();
-    const start = new Date(`${day}T00:00:00+08:00`);
-    const end = new Date(`${day}T23:59:59.999+08:00`);
-    const row = await this.qb(trx)
-      .sum({ totalCost: "cost" })
-      .where({ user_id: userId })
-      .whereBetween("created_at", [start, end])
-      .first();
-    return Number(row.totalCost) || 0;
-  }
-
-  /**
-   * 賽季排名：Σdamage desc ＋玩家暱稱（LIFF 排行榜用；結算忽略 display_name）。
-   * 暱稱 join 抄 JankenRating.getTopRankings 的 user 表 max 子查詢 pattern。
-   * limit=null 撈全部（結算用）。
-   */
-  seasonRanking(seasonId, limit = 50) {
-    const users = this.connection("user")
-      .select("platform_id")
-      .max("display_name as display_name")
-      .groupBy("platform_id")
-      .as("u");
-    const query = this.knex
-      .select("user_id")
-      .max({ display_name: "u.display_name" })
-      .sum({ total_damage: "damage" })
-      .leftJoin(users, "u.platform_id", `${this.table}.user_id`)
-      .where({ season_id: seasonId })
-      .groupBy("user_id")
-      .orderBy("total_damage", "desc");
-    return limit ? query.limit(limit) : query;
-  }
-
-  async sumSeasonDamage(seasonId, userId, trx) {
-    const row = await this.qb(trx)
-      .sum({ total: "damage" })
-      .where({ season_id: seasonId, user_id: userId })
-      .first();
-    return Number(row.total) || 0;
-  }
-}
-
-module.exports = new WorldBossContribution({
-  table: "world_boss_contribution",
-  fillable: ["season_id", "round_id", "user_id", "damage", "cost"],
-});
-```
-
-`app/src/model/application/WorldBossSeasonReward.js`（仿 `JankenDailyRewardLog` 的 free-function 風格）:
-```js
-const mysql = require("../../util/mysql");
-
-const TABLE = "world_boss_season_reward";
-
-/**
- * 冪等結算 ledger：UNIQUE(season_id, user_id) 擋重複發放。
- * @returns {Promise<boolean>} true = 首次寫入（應發獎）；false = 已發放過
- */
-exports.tryInsert = async function (
-  { season_id, user_id, ranking, total_damage, stone_amount, title_key },
-  trx
-) {
-  const db = trx || mysql;
-  try {
-    await db(TABLE).insert({ season_id, user_id, ranking, total_damage, stone_amount, title_key });
-    return true;
-  } catch (err) {
-    if (err && err.code === "ER_DUP_ENTRY") return false;
-    throw err;
-  }
-};
-
-exports.findBySeasonUser = (seasonId, userId) =>
-  mysql(TABLE).where({ season_id: seasonId, user_id: userId }).first();
-
-exports.countBySeason = async seasonId => {
-  const row = await mysql(TABLE).count({ c: "*" }).where({ season_id: seasonId }).first();
-  return Number(row.c);
-};
-```
-
-- [ ] **Step 4: 跑測試確認 pass**
-
-Run: `cd app && yarn test -- src/model/application/__tests__/WorldBossModels.test.js`
-Expected: PASS（3 tests）。
-
-- [ ] **Step 5: Commit**
-
-```bash
-app/node_modules/.bin/prettier --write app/src/model/application/WorldBoss*.js app/src/model/application/__tests__/WorldBossModels.test.js
-git add -A && git commit -m "feat(worldboss): v2 models with ranking/daily-cost aggregates and idempotent reward ledger"
-```
-
----
-
-### Task 6: WorldBossBattleService（攻擊交易核心）
-
-**Files:**
-- Create: `app/src/service/WorldBossBattleService.js`
-- Modify: `app/src/model/application/MinigameLevel.js`（`updateByUserId` 加 optional `trx`）
-- Test: `app/src/service/__tests__/WorldBossBattleService.test.js`
-
-**Interfaces:**
-- Consumes: Task 5 全部 model；`MinigameService.findByUserId/createByUserId/updateByUserId/getLevelUnit/defaultData`（`app/src/service/MinigameService.js`，直接 re-export model 函式）；config `worldboss.hp_tiers`、`worldboss.daily_cost_limit`。
-- Produces（Task 7/10 依賴）:
-  - `class WorldBossError extends Error`，`err.code ∈ {"NO_ACTIVE_SEASON","SEASON_ENDED","NO_ACTIVE_ROUND","EMPTY_CATALOG","SEASON_NOT_FOUND","SEASON_NOT_DRAFT","ANOTHER_SEASON_ACTIVE","SEASON_NO_END_TIME"}`（後四個 Task 7 用）
-  - `hpForRound(roundNo, hpWeight=1) → number`（純函式）
-  - `createRound(trx, seasonId, roundNo, excludeBossId) → Promise<{id, season_id, round_no, world_boss_id, max_hp, current_hp, status, boss}>`
-  - `attack({userId, damage, cost, exp}) → Promise<{season, round, boss, clearedRounds: [{round_no, world_boss_id}], damage, cost, levelResult, seasonTotalDamage}>`；`round` 為攻擊後的當前 active 輪（含最新 `current_hp`）；`seasonTotalDamage` = 該玩家本季累計傷害（spec §2.5 攻擊回覆要顯示）
-  - `getRemainingDailyCost(userId) → Promise<{used, limit, remaining}>`
-  - `applyJobExp(userId, earnedExp, trx) → Promise<{levelUp, levelUpCount, newLevel, newExp, earnedExp}>`
-  - `MinigameLevel.updateByUserId(userId, attributes, trx)`（第三參數新增，不影響既有呼叫端）
-
-- [ ] **Step 1: `MinigameLevel.updateByUserId` 加 trx**
-
-`app/src/model/application/MinigameLevel.js`（現為 `mysql(TABLE)` 直連）改成：
+The shared helper must:
 
 ```js
-exports.updateByUserId = (userId, attributes, trx) => {
-  attributes = pick(attributes, ["level", "exp"]);
-  const query = (trx || mysql)(TABLE)
-    .where({ user_id: getWhere(userId) })
-    .update(attributes);
-  return query;
-};
-```
-（`getWhere(userId)` 是子查詢 builder，會被編進外層 SQL、在 trx 連線上執行，照舊即可。）
-
-- [ ] **Step 2: 先寫 failing test**
-
-`app/src/service/__tests__/WorldBossBattleService.test.js`。真實 DB；**mock `config`（tier 用小數值好算）與 `MinigameService`（職業經驗另以 applyJobExp 單元測，attack 整合測只驗有被呼叫且吃到 trx）**。`jest.mock` 不 hoist，必須放在 require service 之前：
-
-```js
-require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../.env") });
-jest.unmock("../../util/mysql");
-const mysql = jest.requireActual("../../util/mysql");
-
-jest.mock("config", () => {
-  const orig = jest.requireActual("config");
-  return {
-    get: jest.fn(key => {
-      if (key.startsWith("worldboss.")) {
-        const cfg = {
-          "worldboss.daily_cost_limit": 100,
-          "worldboss.hp_tiers": global.__WB_TIERS__,
-        };
-        if (key in cfg) return cfg[key];
-      }
-      return orig.get(key);
-    }),
-  };
-});
-
-jest.mock("../MinigameService", () => ({
-  findByUserId: jest.fn(),
-  createByUserId: jest.fn(),
-  updateByUserId: jest.fn(),
-  getLevelUnit: jest.fn(),
-  defaultData: { level: 1, exp: 0 },
-}));
-
-const minigameService = require("../MinigameService");
-const BattleService = require("../WorldBossBattleService");
-
-const USER = "__wbtest_battle_u1";
-const USER2 = "__wbtest_battle_u2";
-const SEASON_NAME = "__wbtest_battle_season";
-
-const DEFAULT_TIERS = [
-  { from_round: 1, base_hp: 1000, per_round: 100 },
-  { from_round: 11, base_hp: 5000, per_round: 500 },
-];
-
-let bossIds = [];
-let bossWeightBackup = [];
-
-async function cleanup() {
-  const seasons = await mysql("world_boss_season").where({ name: SEASON_NAME }).select("id");
+const PREFIX = "__wbtest_";
+function slotFor(suiteNumber) { return 900000 + suiteNumber; }
+async function cleanupByPrefix(mysql, prefix, slot) {
+  const seasons = await mysql("world_boss_season").where({ active_slot: slot }).orWhere("name", "like", `${prefix}%`).select("id");
   const ids = seasons.map(r => r.id);
-  if (ids.length) {
-    await mysql("world_boss_contribution").whereIn("season_id", ids).del();
-    await mysql("world_boss_round").whereIn("season_id", ids).del();
-    await mysql("world_boss_season").whereIn("id", ids).del();
-  }
-}
-
-async function seedSeason({ endInFuture = true, roundHp = 1000 } = {}) {
-  const [seasonId] = await mysql("world_boss_season").insert({
-    name: SEASON_NAME,
-    status: "active",
-    start_time: new Date(Date.now() - 3600 * 1000),
-    end_time: new Date(Date.now() + (endInFuture ? 1 : -1) * 24 * 3600 * 1000),
-  });
-  const [roundId] = await mysql("world_boss_round").insert({
-    season_id: seasonId,
-    round_no: 1,
-    world_boss_id: bossIds[0],
-    max_hp: roundHp,
-    current_hp: roundHp,
-    status: "active",
-  });
-  return { seasonId, roundId };
-}
-
-describe("WorldBossBattleService", () => {
-  beforeAll(async () => {
-    // 圖鑑至少兩隻，測「換王不連重」
-    const existing = await mysql("world_boss").select("id");
-    bossIds = existing.map(r => r.id);
-    while (bossIds.length < 2) {
-      const [id] = await mysql("world_boss").insert({ name: `__wbtest_boss_${bossIds.length}`, hp_weight: 1 });
-      bossIds.push(id);
-    }
-    // 血量斷言要可決定：seed 圖鑑帶混合 hp_weight（0.9/1.1/1.25），且 pickBoss 會換王，
-    // 不正規化的話 round 2+ 的 max_hp 取決於隨機選到哪隻。備份後全設 1，afterAll 還原。
-    bossWeightBackup = await mysql("world_boss").select("id", "hp_weight");
-    await mysql("world_boss").update({ hp_weight: 1 });
-  });
-
-  beforeEach(async () => {
-    global.__WB_TIERS__ = DEFAULT_TIERS;
-    await cleanup();
-    // 測試前提：本機 DB 不得有真實 active 賽季（findActive 是全域讀取，會撿到它而不是測試 seed 的）
-    const stray = await mysql("world_boss_season").where({ status: "active" }).first();
-    if (stray) throw new Error(`測試前提失敗：DB 存在真實 active 賽季 id=${stray.id}，先結束它再跑測試`);
-    jest.clearAllMocks();
-    minigameService.findByUserId.mockResolvedValue({ level: 10, exp: 0, job_key: "swordman" });
-    minigameService.getLevelUnit.mockResolvedValue(
-      Array.from({ length: 100 }, (_, i) => ({ level: i + 1, max_exp: 1000 }))
-    );
-    minigameService.updateByUserId.mockResolvedValue(1);
-  });
-
-  afterAll(async () => {
-    await cleanup();
-    for (const row of bossWeightBackup) {
-      await mysql("world_boss").where({ id: row.id }).update({ hp_weight: row.hp_weight });
-    }
-    await mysql("world_boss").where("name", "like", "__wbtest_boss_%").del();
-    await mysql.destroy();
-  });
-
-  describe("hpForRound", () => {
-    it("uses the last tier whose from_round <= roundNo, with hp_weight", () => {
-      expect(BattleService.hpForRound(1)).toBe(1000);
-      expect(BattleService.hpForRound(10)).toBe(1000 + 9 * 100);
-      expect(BattleService.hpForRound(11)).toBe(5000);
-      expect(BattleService.hpForRound(12, 1.5)).toBe(Math.floor(5500 * 1.5));
-    });
-  });
-
-  describe("attack", () => {
-    it("decrements hp, records contribution, grants job exp in the same flow", async () => {
-      const { seasonId, roundId } = await seedSeason({ roundHp: 1000 });
-      const result = await BattleService.attack({ userId: USER, damage: 300, cost: 10, exp: 120 });
-
-      expect(result.round.current_hp).toBe(700);
-      expect(result.clearedRounds).toHaveLength(0);
-      const dbRound = await mysql("world_boss_round").where({ id: roundId }).first();
-      expect(Number(dbRound.current_hp)).toBe(700);
-      const contrib = await mysql("world_boss_contribution").where({ season_id: seasonId, user_id: USER }).first();
-      expect(Number(contrib.damage)).toBe(300);
-      expect(Number(contrib.cost)).toBe(10);
-      expect(Number(contrib.round_id)).toBe(roundId);
-      expect(result.seasonTotalDamage).toBe(300);
-      expect(minigameService.updateByUserId).toHaveBeenCalledWith(USER, { level: 10, exp: 120 }, expect.anything());
-    });
-
-    it("clears the round on lethal damage and spawns next round with a different boss and overflow hp", async () => {
-      const { seasonId, roundId } = await seedSeason({ roundHp: 1000 });
-      const result = await BattleService.attack({ userId: USER, damage: 1300, cost: 10, exp: 120 });
-
-      expect(result.clearedRounds).toEqual([{ round_no: 1, world_boss_id: bossIds[0] }]);
-      const cleared = await mysql("world_boss_round").where({ id: roundId }).first();
-      expect(cleared.status).toBe("cleared");
-      expect(Number(cleared.current_hp)).toBe(0);
-      expect(cleared.cleared_at).not.toBeNull();
-
-      const next = await mysql("world_boss_round").where({ season_id: seasonId, status: "active" }).first();
-      expect(next.round_no).toBe(2);
-      expect(Number(next.world_boss_id)).not.toBe(Number(bossIds[0]));
-      // hp_weight 已於 beforeAll 正規化為 1：round 2 max = 1000 + 100 = 1100，溢傷 300 → 剩 800
-      expect(Number(next.max_hp)).toBe(1100);
-      expect(Number(next.current_hp)).toBe(800);
-      expect(result.round.current_hp).toBe(800);
-    });
-
-    it("one hit can clear multiple low-hp rounds (overflow loop)", async () => {
-      global.__WB_TIERS__ = [{ from_round: 1, base_hp: 100, per_round: 0 }];
-      const { seasonId } = await seedSeason({ roundHp: 100 });
-      const result = await BattleService.attack({ userId: USER, damage: 250, cost: 10, exp: 120 });
-
-      expect(result.clearedRounds.map(r => r.round_no)).toEqual([1, 2]);
-      const active = await mysql("world_boss_round").where({ season_id: seasonId, status: "active" }).first();
-      expect(active.round_no).toBe(3);
-      expect(Number(active.current_hp)).toBe(50);
-    });
-
-    it("rejects with NO_ACTIVE_SEASON when nothing is active", async () => {
-      await expect(BattleService.attack({ userId: USER, damage: 1, cost: 1, exp: 1 })).rejects.toMatchObject({
-        code: "NO_ACTIVE_SEASON",
-      });
-    });
-
-    it("rejects with SEASON_ENDED when past end_time", async () => {
-      await seedSeason({ endInFuture: false });
-      await expect(BattleService.attack({ userId: USER, damage: 1, cost: 1, exp: 1 })).rejects.toMatchObject({
-        code: "SEASON_ENDED",
-      });
-    });
-
-    it("two concurrent attacks serialize on the row lock and both land", async () => {
-      const { seasonId } = await seedSeason({ roundHp: 100000 });
-      await Promise.all([
-        BattleService.attack({ userId: USER, damage: 111, cost: 10, exp: 1 }),
-        BattleService.attack({ userId: USER2, damage: 222, cost: 10, exp: 1 }),
-      ]);
-      const round = await mysql("world_boss_round").where({ season_id: seasonId, status: "active" }).first();
-      expect(Number(round.current_hp)).toBe(100000 - 333);
-      const rows = await mysql("world_boss_contribution").where({ season_id: seasonId });
-      expect(rows).toHaveLength(2);
-    });
-
-    it("UNIQUE(season_id, round_no) blocks a duplicate round row (safety net)", async () => {
-      const { seasonId } = await seedSeason();
-      await expect(
-        mysql("world_boss_round").insert({
-          season_id: seasonId, round_no: 1, world_boss_id: bossIds[0], max_hp: 1, current_hp: 1,
-        })
-      ).rejects.toMatchObject({ code: "ER_DUP_ENTRY" });
-    });
-  });
-
-  describe("applyJobExp", () => {
-    it("carries exp across multiple level-ups", async () => {
-      minigameService.findByUserId.mockResolvedValue({ level: 1, exp: 900, job_key: "mage" });
-      const r = await BattleService.applyJobExp(USER, 2200, null);
-      expect(r).toMatchObject({ levelUp: true, levelUpCount: 3, newLevel: 4, newExp: 100 });
-    });
-
-    it("caps at max level instead of crashing (v1 bug fixed)", async () => {
-      minigameService.findByUserId.mockResolvedValue({ level: 100, exp: 500, job_key: "mage" });
-      const r = await BattleService.applyJobExp(USER, 99999, null);
-      expect(r).toMatchObject({ levelUp: false, newLevel: 100, newExp: 0 });
-    });
-
-    it("creates the minigame row for brand-new users", async () => {
-      minigameService.findByUserId.mockResolvedValueOnce(null).mockResolvedValue({ level: 1, exp: 0, job_key: "adventurer" });
-      await BattleService.applyJobExp(USER, 10, null);
-      expect(minigameService.createByUserId).toHaveBeenCalledWith(USER, { level: 1, exp: 0 });
-    });
-  });
-});
-```
-
-- [ ] **Step 3: 跑測試確認 fail**
-
-Run: `cd app && yarn test -- src/service/__tests__/WorldBossBattleService.test.js`
-Expected: FAIL — `Cannot find module '../WorldBossBattleService'`。
-
-- [ ] **Step 4: 實作 `app/src/service/WorldBossBattleService.js`**
-
-```js
-const config = require("config");
-const mysql = require("../util/mysql");
-const seasonModel = require("../model/application/WorldBossSeason");
-const roundModel = require("../model/application/WorldBossRound");
-const contributionModel = require("../model/application/WorldBossContribution");
-const bossModel = require("../model/application/WorldBoss");
-const minigameService = require("./MinigameService");
-
-class WorldBossError extends Error {
-  constructor(code) {
-    super(code);
-    this.name = "WorldBossError";
-    this.code = code;
-  }
-}
-
-/**
- * 分段線性血量曲線：取 from_round <= roundNo 的最後一段 tier。
- * hp = floor((base_hp + (roundNo - from_round) * per_round) * hpWeight)
- */
-function hpForRound(roundNo, hpWeight = 1) {
-  const tiers = config.get("worldboss.hp_tiers");
-  let tier = tiers[0];
-  for (const t of tiers) {
-    if (roundNo >= t.from_round) tier = t;
-  }
-  return Math.floor((tier.base_hp + (roundNo - tier.from_round) * tier.per_round) * hpWeight);
-}
-
-/** 隨機挑王，圖鑑 >1 隻時避免與上一輪重複 */
-async function pickBoss(excludeBossId, trx) {
-  const db = trx || mysql;
-  let query = db("world_boss");
-  if (excludeBossId) {
-    const { c } = await db("world_boss").count({ c: "*" }).first();
-    if (Number(c) > 1) query = query.whereNot({ id: excludeBossId });
-  }
-  const boss = await query.orderByRaw("RAND()").first();
-  if (!boss) throw new WorldBossError("EMPTY_CATALOG");
-  return boss;
-}
-
-async function createRound(trx, seasonId, roundNo, excludeBossId) {
-  const boss = await pickBoss(excludeBossId, trx);
-  const maxHp = hpForRound(roundNo, boss.hp_weight);
-  const attributes = {
-    season_id: seasonId,
-    round_no: roundNo,
-    world_boss_id: boss.id,
-    max_hp: maxHp,
-    current_hp: maxHp,
-    status: "active",
-  };
-  const id = await roundModel.create(attributes, trx);
-  return { id, ...attributes, boss };
-}
-
-/**
- * 發 RPG 職業經驗（v1 decideLevelResult 搬入 + 滿級封頂 guard）。
- * 職業等級是傷害公式的輸入，這裡是 v2 唯一的職業經驗來源。
- */
-async function applyJobExp(userId, earnedExp, trx) {
-  let levelData = await minigameService.findByUserId(userId);
-  if (!levelData) {
-    await minigameService.createByUserId(userId, minigameService.defaultData);
-    levelData = await minigameService.findByUserId(userId);
-  }
-  const levelUnits = await minigameService.getLevelUnit();
-
-  let newLevel = levelData.level;
-  let newExp = levelData.exp + earnedExp;
-  let levelUpCount = 0;
-
-  let next = levelUnits.find(u => u.level === newLevel + 1);
-  while (next && newExp >= next.max_exp) {
-    newExp -= next.max_exp;
-    newLevel++;
-    levelUpCount++;
-    next = levelUnits.find(u => u.level === newLevel + 1);
-  }
-  if (!next) newExp = 0; // 滿級：v1 在這裡會 crash（find 回 undefined），v2 直接封頂
-
-  await minigameService.updateByUserId(userId, { level: newLevel, exp: newExp }, trx);
-  return { levelUp: levelUpCount > 0, levelUpCount, newLevel, newExp, earnedExp };
-}
-
-/**
- * 攻擊交易（spec §4.1）：鎖當前輪 → 扣血 → 清輪開新輪（溢傷 loop）→ 寫貢獻 → 發職業經驗。
- * 傷害計算在 controller（LINE 層邊界），本函式只收計好的數字。
- */
-async function attack({ userId, damage, cost, exp }) {
-  return mysql.transaction(async trx => {
-    const season = await seasonModel.findActive(trx);
-    if (!season) throw new WorldBossError("NO_ACTIVE_SEASON");
-    if (season.end_time && new Date(season.end_time) < new Date()) {
-      throw new WorldBossError("SEASON_ENDED");
-    }
-
-    let round = await roundModel.findActiveForUpdate(season.id, trx);
-    if (!round) throw new WorldBossError("NO_ACTIVE_ROUND");
-
-    const hitRoundId = round.id;
-    const clearedRounds = [];
-    let remaining = damage;
-
-    while (remaining >= Number(round.current_hp)) {
-      remaining -= Number(round.current_hp);
-      await roundModel.update(
-        round.id,
-        { current_hp: 0, status: "cleared", cleared_at: new Date() },
-        {},
-        trx
-      );
-      clearedRounds.push({ round_no: round.round_no, world_boss_id: round.world_boss_id });
-      round = await createRound(trx, season.id, round.round_no + 1, round.world_boss_id);
-    }
-    if (remaining > 0) {
-      const newHp = Number(round.current_hp) - remaining;
-      await roundModel.update(round.id, { current_hp: newHp }, {}, trx);
-      round = { ...round, current_hp: newHp };
-    }
-
-    await contributionModel.create(
-      { season_id: season.id, round_id: hitRoundId, user_id: userId, damage, cost },
-      trx
-    );
-
-    const levelResult = await applyJobExp(userId, exp, trx);
-    const seasonTotalDamage = await contributionModel.sumSeasonDamage(season.id, userId, trx);
-    const boss = round.boss || (await bossModel.find(round.world_boss_id, trx));
-
-    return { season, round, boss, clearedRounds, damage, cost, levelResult, seasonTotalDamage };
-  });
-}
-
-async function getRemainingDailyCost(userId) {
-  const limit = config.get("worldboss.daily_cost_limit");
-  const used = await contributionModel.sumTodayCost(userId);
-  return { used, limit, remaining: Math.max(0, limit - used) };
-}
-
-module.exports = {
-  WorldBossError,
-  hpForRound,
-  pickBoss,
-  createRound,
-  applyJobExp,
-  attack,
-  getRemainingDailyCost,
-};
-```
-
-- [ ] **Step 5: 跑測試確認 pass**
-
-Run: `cd app && yarn test -- src/service/__tests__/WorldBossBattleService.test.js`
-Expected: PASS（11 tests）。再跑 `yarn test -- --runInBand`（全套）確認 MinigameLevel 改動沒破壞既有測試。
-
-- [ ] **Step 6: Commit**
-
-```bash
-app/node_modules/.bin/prettier --write app/src/service/WorldBossBattleService.js app/src/model/application/MinigameLevel.js app/src/service/__tests__/WorldBossBattleService.test.js
-git add -A && git commit -m "feat(worldboss): battle service — atomic on-hit transaction with overflow rounds and job exp"
-```
-
----
-
-### Task 7: WorldBossSeasonService（開季／狀態／冪等結算）＋稱號保護
-
-**Files:**
-- Create: `app/src/service/WorldBossSeasonService.js`
-- Modify: `app/src/model/application/UserTitle.js`（加 `clearAllExcept`）
-- Modify: `app/bin/TitleDelivery.js`（`clearAll` → `clearAllExcept("worldboss_")`）
-- Test: `app/src/service/__tests__/WorldBossSeasonService.test.js`
-
-**Interfaces:**
-- Consumes: Task 5/6 全部；`inventory.increaseGodStone({userId, amount, note, trx})`（`app/src/model/application/Inventory.js:117`，女神石 = itemId 999 ledger）；`UserTitleModel.grant(userId, titleId, trx)`（有防重複檢查；`user_titles.user_id` 存的就是 LINE platform id）；config `worldboss.season_rewards`。
-- Produces（Task 8/10/11 依賴）:
-  - `createSeason({name, announcement, start_time, end_time}) → Promise<seasonId>`（status=draft）
-  - `openSeason(seasonId) → Promise<{seasonId, round}>`（draft→active + 建第 1 輪；違規丟 `WorldBossError`：`SEASON_NOT_FOUND`/`SEASON_NOT_DRAFT`/`ANOTHER_SEASON_ACTIVE`/`SEASON_NO_END_TIME`）
-  - `getBattleStatus() → Promise<null | {season, round, boss, ended}>`（`ended` = active 但 now > end_time 的推導態）
-  - `getRanking(seasonId, limit=50) → Promise<[{user_id, display_name, total_damage}]>`
-  - `settleExpiredSeasons() → Promise<[{seasonId, granted}]>`（冪等；全數發完才標 settled）
-  - `UserTitleModel.clearAllExcept(keyPrefix, trx)` — TitleDelivery 每日重算改用此函式，`worldboss_` 前綴稱號（永久性賽季獎勵）不再被每日清除
-  - 女神石 note 固定字串：`"worldboss_season_reward"`
-
-**🚩 本 task 修的隱藏地雷**：`bin/TitleDelivery.js` 每日 `UserTitleModel.clearAll(trx)` 會清空**整張** `user_titles` 再重發 gacha/janken 稱號 — 不改的話，v2 結算發的賽季稱號活不過下一次 cron。
-
-- [ ] **Step 1: 先寫 failing test**
-
-`app/src/service/__tests__/WorldBossSeasonService.test.js`：
-
-```js
-require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../.env") });
-jest.unmock("../../util/mysql");
-const mysql = jest.requireActual("../../util/mysql");
-
-jest.mock("config", () => {
-  const orig = jest.requireActual("config");
-  return {
-    get: jest.fn(key => {
-      if (key === "worldboss.season_rewards") return global.__WB_REWARDS__;
-      if (key === "worldboss.hp_tiers") return [{ from_round: 1, base_hp: 1000, per_round: 100 }];
-      return orig.get(key);
-    }),
-  };
-});
-
-const SeasonService = require("../WorldBossSeasonService");
-const UserTitleModel = require("../../model/application/UserTitle");
-
-const SEASON_NAME = "__wbtest_season_svc";
-const U = n => `__wbtest_ssvc_u${n}`;
-
-async function cleanup() {
-  const ids = (await mysql("world_boss_season").where({ name: SEASON_NAME }).select("id")).map(r => r.id);
   if (ids.length) {
     await mysql("world_boss_season_reward").whereIn("season_id", ids).del();
     await mysql("world_boss_contribution").whereIn("season_id", ids).del();
     await mysql("world_boss_round").whereIn("season_id", ids).del();
     await mysql("world_boss_season").whereIn("id", ids).del();
   }
-  await mysql("inventory").where({ note: "worldboss_season_reward" }).where("userId", "like", "__wbtest_ssvc_%").del();
-  await mysql("user_titles").where("user_id", "like", "__wbtest_ssvc_%").del();
+  await mysql("world_boss").where("name", "like", `${prefix}%`).del();
 }
-
-async function seedContribution(seasonId, userId, damage) {
-  await mysql("world_boss_contribution").insert({ season_id: seasonId, round_id: 1, user_id: userId, damage, cost: 10 });
-}
-
-describe("WorldBossSeasonService", () => {
-  beforeAll(async () => {
-    // openSeason → createRound → pickBoss 需要圖鑑至少一隻（全新 DB 也要能跑）
-    const { c } = await mysql("world_boss").count({ c: "*" }).first();
-    if (Number(c) === 0) {
-      await mysql("world_boss").insert({ name: "__wbtest_boss_ssvc", hp_weight: 1 });
-    }
-  });
-  beforeEach(async () => {
-    global.__WB_REWARDS__ = [
-      { min_rank: 1, max_rank: 1, stone: 100, title_key: "worldboss_annihilator" },
-      { min_rank: 2, max_rank: 3, stone: 50, title_key: null },
-    ];
-    await cleanup();
-    // 測試前提：DB 不得有真實 active 賽季（openSeason 的 ANOTHER_SEASON_ACTIVE 檢查與
-    // settleExpiredSeasons 的全域掃描都會被它污染）
-    const stray = await mysql("world_boss_season").where({ status: "active" }).first();
-    if (stray) throw new Error(`測試前提失敗：DB 存在真實 active 賽季 id=${stray.id}，先結束它再跑測試`);
-  });
-  afterAll(async () => {
-    await cleanup();
-    await mysql("world_boss").where({ name: "__wbtest_boss_ssvc" }).del();
-    await mysql.destroy();
-  });
-
-  it("openSeason activates a draft and creates round 1; only one active season allowed", async () => {
-    const id = await SeasonService.createSeason({
-      name: SEASON_NAME,
-      announcement: "test",
-      start_time: null,
-      end_time: new Date(Date.now() + 24 * 3600 * 1000),
-    });
-    const { round } = await SeasonService.openSeason(id);
-    expect(round.round_no).toBe(1);
-    expect(Number(round.current_hp)).toBe(Number(round.max_hp));
-
-    const season = await mysql("world_boss_season").where({ id }).first();
-    expect(season.status).toBe("active");
-    expect(season.start_time).not.toBeNull();
-
-    const id2 = await SeasonService.createSeason({
-      name: SEASON_NAME, announcement: null, start_time: null,
-      end_time: new Date(Date.now() + 24 * 3600 * 1000),
-    });
-    await expect(SeasonService.openSeason(id2)).rejects.toMatchObject({ code: "ANOTHER_SEASON_ACTIVE" });
-    await expect(SeasonService.openSeason(id)).rejects.toMatchObject({ code: "SEASON_NOT_DRAFT" });
-  });
-
-  it("settleExpiredSeasons pays stones/titles by rank, idempotently, then marks settled", async () => {
-    const [seasonId] = await mysql("world_boss_season").insert({
-      name: SEASON_NAME, status: "active",
-      start_time: new Date(Date.now() - 48 * 3600 * 1000),
-      end_time: new Date(Date.now() - 3600 * 1000),
-    });
-    await seedContribution(seasonId, U(1), 400);
-    await seedContribution(seasonId, U(2), 300);
-    await seedContribution(seasonId, U(3), 200);
-    await seedContribution(seasonId, U(4), 100); // rank 4 → 超出階梯，無獎
-
-    const results = await SeasonService.settleExpiredSeasons();
-    expect(results.find(r => r.seasonId === seasonId)).toMatchObject({ seasonId, granted: 3 });
-
-    const rewards = await mysql("world_boss_season_reward").where({ season_id: seasonId }).orderBy("ranking");
-    expect(rewards.map(r => [r.user_id, r.ranking, r.stone_amount])).toEqual([
-      [U(1), 1, 100],
-      [U(2), 2, 50],
-      [U(3), 3, 50],
-    ]);
-
-    const stones = await mysql("inventory").where({ note: "worldboss_season_reward" }).where("userId", "like", "__wbtest_ssvc_%");
-    expect(stones).toHaveLength(3);
-
-    const titles = await UserTitleModel.findByUser(U(1));
-    expect(titles.map(t => t.key)).toContain("worldboss_annihilator");
-
-    const season = await mysql("world_boss_season").where({ id: seasonId }).first();
-    expect(season.status).toBe("settled");
-    expect(season.settled_at).not.toBeNull();
-
-    // settled 的賽季不會被再次撈起（狀態機：settled 不重結算）
-    const again = await SeasonService.settleExpiredSeasons();
-    expect(again.filter(r => r.seasonId === seasonId)).toEqual([]);
-
-    // 冪等：即使被強制重跑（模擬中途 crash 後 status 還是 active）也不重複發
-    await mysql("world_boss_season").where({ id: seasonId }).update({ status: "active" });
-    const rerun = await SeasonService.settleExpiredSeasons();
-    expect(rerun.find(r => r.seasonId === seasonId)).toMatchObject({ seasonId, granted: 0 });
-    const stonesAfter = await mysql("inventory").where({ note: "worldboss_season_reward" }).where("userId", "like", "__wbtest_ssvc_%");
-    expect(stonesAfter).toHaveLength(3);
-  });
-
-  it("clearAllExcept keeps worldboss_ titles and wipes the rest", async () => {
-    const annihilator = await mysql("titles").where({ key: "worldboss_annihilator" }).first();
-    const otherTitle = await mysql("titles").whereNot("key", "like", "worldboss_%").first();
-    await UserTitleModel.grant(U(9), annihilator.id);
-    await UserTitleModel.grant(U(9), otherTitle.id);
-
-    await UserTitleModel.clearAllExcept("worldboss_");
-
-    const kept = await mysql("user_titles").where({ user_id: U(9) });
-    expect(kept).toHaveLength(1);
-    expect(Number(kept[0].title_id)).toBe(Number(annihilator.id));
-  });
-});
+module.exports = { PREFIX, slotFor, cleanupByPrefix };
 ```
 
-⚠️ `clearAllExcept` 測試會清掉整張 `user_titles` 的非 worldboss 資料列 — 本機 DB 這張表每日由 TitleDelivery cron 重建，可接受；不要在意外環境跑。
+Tests must cover:
+- catalog rejects `""`, 65 chars, `hp_weight` 0/negative/NaN/Infinity and trims a valid name; `listBosses()` returns deterministic `id ASC` rows;
+- deleting an in-use boss returns `BOSS_IN_USE`;
+- public ranking order and limit validation 1/100 accepted, 0/101/fraction/NaN rejected; internal `seasonRankingAll` returns **all** contributors (seed 101+, assert rank 101 exists) and has no public limit parameter;
+- tied totals remain adjacent and deterministic;
+- `sumCostInRange` uses `created_at >= startUtc AND created_at < endUtc`; seed just before, exactly at, and just after an `Asia/Taipei` midnight boundary and assert only the intended civil day is counted;
+- reward duplicate returns false; latest settled lookup returns paid rank/stones/title from the latest settled season while a newer active row exists;
+- fixture cleanup deletes only its prefix/slot and leaves a sentinel non-test row untouched.
 
-- [ ] **Step 2: 跑測試確認 fail**
+- [ ] **Step 2: Run tests and confirm the missing-module failure**
 
-Run: `cd app && yarn test -- src/service/__tests__/WorldBossSeasonService.test.js`
-Expected: FAIL — `Cannot find module '../WorldBossSeasonService'`。
+```bash
+cd app
+yarn test -- src/model/application/__tests__/WorldBossModels.test.js \
+  src/service/__tests__/WorldBossCatalogService.test.js --runInBand
+```
 
-- [ ] **Step 3: 實作**
+Expected: FAIL because v2 model/service modules do not exist.
 
-`app/src/model/application/UserTitle.js` 加：
+- [ ] **Step 3: Implement thin models and service validation**
+
+All model methods accept a trailing `trx`; use `(trx || mysql)` consistently. Locking methods must use `.forUpdate()`. `findSettleable` uses `end_time <= now`. Catalog service owns all name/weight validation; handlers in Task 11 call it rather than calling Base directly. `listBosses()` delegates to the model and orders by `id ASC`. Quota range conversion is a pure helper in BattleService (Task 6); the model receives explicit UTC boundaries and never derives a timezone day itself.
+
+Competition-rank helper used later must follow:
 
 ```js
-/**
- * 清除 user_titles，但保留 key 以 keyPrefix 開頭的稱號（永久性稱號，例如 worldboss_ 賽季獎勵）。
- * TitleDelivery 每日重算用這支取代 clearAll。
- */
-exports.clearAllExcept = async (keyPrefix, trx) => {
-  const db = trx || mysql;
-  return db(TABLE)
-    .whereNotIn("title_id", db("titles").select("id").where("key", "like", `${keyPrefix}%`))
-    .delete();
-};
-```
-
-`app/bin/TitleDelivery.js` main() 內：
-
-```js
-    // worldboss_ 前綴 = 結算發放的永久性賽季稱號，不參與每日重算
-    await UserTitleModel.clearAllExcept("worldboss_", trx);
-```
-（取代原本的 `await UserTitleModel.clearAll(trx);`）
-
-`app/src/service/WorldBossSeasonService.js`：
-
-```js
-const config = require("config");
-const mysql = require("../util/mysql");
-const seasonModel = require("../model/application/WorldBossSeason");
-const roundModel = require("../model/application/WorldBossRound");
-const contributionModel = require("../model/application/WorldBossContribution");
-const bossModel = require("../model/application/WorldBoss");
-const rewardModel = require("../model/application/WorldBossSeasonReward");
-const UserTitleModel = require("../model/application/UserTitle");
-const { inventory } = require("../model/application/Inventory");
-const BattleService = require("./WorldBossBattleService");
-const { DefaultLogger } = require("../util/Logger");
-
-const { WorldBossError } = BattleService;
-const STONE_NOTE = "worldboss_season_reward";
-
-function createSeason({ name, announcement, start_time, end_time }) {
-  return seasonModel.create({ name, announcement, status: "draft", start_time, end_time });
-}
-
-/** 管理頁「開季」：draft → active + 建第 1 輪。系統唯一的手動生命週期動作。 */
-async function openSeason(seasonId) {
-  return mysql.transaction(async trx => {
-    const season = await seasonModel.find(seasonId, trx);
-    if (!season) throw new WorldBossError("SEASON_NOT_FOUND");
-    if (season.status !== "draft") throw new WorldBossError("SEASON_NOT_DRAFT");
-    if (!season.end_time) throw new WorldBossError("SEASON_NO_END_TIME");
-    const active = await seasonModel.findActive(trx);
-    if (active) throw new WorldBossError("ANOTHER_SEASON_ACTIVE");
-
-    await seasonModel.update(
-      seasonId,
-      { status: "active", start_time: season.start_time || new Date() },
-      {},
-      trx
-    );
-    const round = await BattleService.createRound(trx, seasonId, 1, null);
-    return { seasonId, round };
+function withCompetitionRank(rows) {
+  let previousDamage = null;
+  let previousRank = 0;
+  return rows.map((row, index) => {
+    const damage = Number(row.total_damage);
+    const ranking = previousDamage === damage ? previousRank : index + 1;
+    previousDamage = damage;
+    previousRank = ranking;
+    return { ...row, total_damage: damage, ranking };
   });
 }
-
-/** 聊天卡／LIFF 用的當前戰況。null = 沒有 active 賽季。ended = 到期未結算（推導態）。 */
-async function getBattleStatus() {
-  const season = await seasonModel.findActive();
-  if (!season) return null;
-  const ended = Boolean(season.end_time && new Date(season.end_time) < new Date());
-  const round = await roundModel.findActiveBySeason(season.id);
-  const boss = round ? await bossModel.find(round.world_boss_id) : null;
-  return { season, round, boss, ended };
-}
-
-function getRanking(seasonId, limit = 50) {
-  return contributionModel.seasonRanking(seasonId, limit);
-}
-
-function rewardForRank(position) {
-  const ladder = config.get("worldboss.season_rewards");
-  return ladder.find(r => position >= r.min_rank && position <= r.max_rank) || null;
-}
-
-async function settleSeason(season) {
-  const ranking = await contributionModel.seasonRanking(season.id, null);
-  const titleRows = await mysql("titles").where("key", "like", "worldboss_%");
-  const titleIdByKey = Object.fromEntries(titleRows.map(r => [r.key, r.id]));
-
-  let granted = 0;
-  for (let i = 0; i < ranking.length; i++) {
-    const position = i + 1;
-    const reward = rewardForRank(position);
-    if (!reward) break; // ranking 依傷害 desc，超出階梯的名次都無獎
-
-    const { user_id, total_damage } = ranking[i];
-    await mysql.transaction(async trx => {
-      const inserted = await rewardModel.tryInsert(
-        {
-          season_id: season.id,
-          user_id,
-          ranking: position,
-          total_damage,
-          stone_amount: reward.stone,
-          title_key: reward.title_key || null,
-        },
-        trx
-      );
-      if (!inserted) return; // 重跑：這名玩家已發放過
-
-      if (reward.stone > 0) {
-        await inventory.increaseGodStone({ userId: user_id, amount: reward.stone, note: STONE_NOTE, trx });
-      }
-      if (reward.title_key && titleIdByKey[reward.title_key]) {
-        await UserTitleModel.grant(user_id, titleIdByKey[reward.title_key], trx);
-      }
-      granted++;
-    });
-  }
-
-  await seasonModel.update(season.id, { status: "settled", settled_at: new Date() });
-  DefaultLogger.info(`[WorldBossSeason] season ${season.id} settled, ${granted} rewards granted`);
-  return { seasonId: season.id, granted };
-}
-
-/** cron 進入點：掃到期賽季逐一結算。逐人小交易 + ledger 冪等，中途掛掉重跑即可。 */
-async function settleExpiredSeasons() {
-  const seasons = await seasonModel.findSettleable();
-  const results = [];
-  for (const season of seasons) {
-    results.push(await settleSeason(season));
-  }
-  return results;
-}
-
-module.exports = {
-  createSeason,
-  openSeason,
-  getBattleStatus,
-  getRanking,
-  settleExpiredSeasons,
-};
 ```
 
-- [ ] **Step 4: 跑測試確認 pass**
+- [ ] **Step 4: Format and verify**
 
-Run: `cd app && yarn test -- src/service/__tests__/WorldBossSeasonService.test.js`
-Expected: PASS（3 tests）。再全跑 `yarn test -- --runInBand` 確認 TitleDelivery/UserTitle 改動無回歸。
+```bash
+app/node_modules/.bin/prettier --write app/src/model/application/WorldBoss*.js \
+  app/src/service/WorldBossCatalogService.js app/src/__tests__/helpers/worldBossFixture.js \
+  app/src/model/application/__tests__/WorldBossModels.test.js \
+  app/src/service/__tests__/WorldBossCatalogService.test.js
+cd app
+yarn test -- src/model/application/__tests__/WorldBossModels.test.js \
+  src/service/__tests__/WorldBossCatalogService.test.js --runInBand
+yarn lint
+```
+
+Expected: all named tests pass, sentinel survives, lint passes.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-app/node_modules/.bin/prettier --write app/src/service/WorldBossSeasonService.js app/src/model/application/UserTitle.js app/bin/TitleDelivery.js app/src/service/__tests__/WorldBossSeasonService.test.js
-git add -A && git commit -m "feat(worldboss): season lifecycle + idempotent settlement; protect permanent season titles from daily title sweep"
+git add app/src/model/application/WorldBoss*.js app/src/service/WorldBossCatalogService.js \
+  app/src/__tests__/helpers/worldBossFixture.js \
+  app/src/model/application/__tests__/WorldBossModels.test.js \
+  app/src/service/__tests__/WorldBossCatalogService.test.js
+git commit -m "feat(worldboss): add models and catalog validation"
 ```
 
 ---
 
-### Task 8: 結算 cron
+### Task 6: Implement atomic attack, quota, round recovery, and RPG EXP
 
 **Files:**
-- Create: `app/bin/WorldBossSeasonSettle.js`
-- Modify: `app/config/crontab.config.js`（append 一個條目）
+- Create: `app/src/service/WorldBossBattleService.js`.
+- Modify: `app/src/model/application/MinigameLevel.js`.
+- Test: `app/src/service/__tests__/WorldBossBattleService.test.js`.
 
 **Interfaces:**
-- Consumes: `WorldBossSeasonService.settleExpiredSeasons()`（Task 7）。
-- Produces: worker（`yarn worker`）每小時第 10 分自動結算到期賽季。薄殼不寫測試（邏輯已在 Task 7 測完）。
-
-- [ ] **Step 1: `app/bin/WorldBossSeasonSettle.js`**（仿 `app/bin/AchievementCron.js` 骨架）
 
 ```js
-const WorldBossSeasonService = require("../src/service/WorldBossSeasonService");
-const { DefaultLogger } = require("../src/util/Logger");
-
-module.exports = main;
-
-async function main() {
-  try {
-    const results = await WorldBossSeasonService.settleExpiredSeasons();
-    if (results.length > 0) {
-      DefaultLogger.info(`World boss season settle: ${JSON.stringify(results)}`);
-    }
-  } catch (err) {
-    DefaultLogger.error("World boss season settle failed:", err);
-  }
-}
-
-if (require.main === module) {
-  main().then(() => process.exit(0));
-}
+createBattleService({ activeSlot = 1, clock = () => new Date(), hooks = {} })
+defaultService.attack({ userId, attackType, damage, cost, exp })
+defaultService.getRemainingDailyCost(userId)
+defaultService.hpForRound(roundNo, hpWeight)
+defaultService.createRound(trx, seasonId, roundNo, excludeBossId)
+defaultService.calculateJobExpTransition(progress, earnedExp, levelUnits)
+defaultService.applyJobExp({ userId, progress, earnedExp, levelUnits, trx })
+defaultService.taipeiDayRange(now) -> { startUtc, endUtc }
+MinigameLevel.lockUserAndProgress(userId, defaults, trx)
+MinigameLevel.updateByUserId(userId, attributes, trx)
 ```
 
-- [ ] **Step 2: `app/config/crontab.config.js` 加條目**（陣列尾端 append，形狀比照既有條目）
+Test-only hooks have exact signatures and production defaults are no-ops:
 
 ```js
-  {
-    name: "World Boss Season Settle",
-    description: "settle expired world boss seasons (idempotent reward ledger)",
-    period: ["0", "10", "*", "*", "*", "*"],
-    immediate: false,
-    require_path: "./bin/WorldBossSeasonSettle",
-  },
+onAttackStarted({ userId })
+afterSeasonLock({ trx, userId, season })
+beforeRoundInsert({ trx, seasonId, roundNo, payload })
+onRoundConflict({ trx, seasonId, roundNo, error })
+beforeExpUpdate({ trx, userId, progress, levelResult })
 ```
 
-- [ ] **Step 3: 驗證（直接執行一次）**
+All hooks may return a Promise and are awaited. Tests coordinate deferred Promises/spies; they must not use sleeps or timing guesses.
+
+Because both attacks first lock the same season row, they cannot both reach round insertion simultaneously. The deterministic test therefore starts two real `attack()` calls concurrently, pauses the first at `beforeRoundInsert`, proves the second call has started and is waiting on the season lock, then has the hook insert the competing next-round row **with the first attack's same trx** before normal insertion resumes. The normal insert hits the named UNIQUE, `onRoundConflict` observes recovery, and the second attack continues after the first commits. This avoids a test-only cross-transaction deadlock while exercising both real concurrent service calls and the actual recovery branch. Production still recovers only known `ER_DUP_ENTRY` for `uq_wbr_season_round|uq_wbr_season_active_slot`. `attack()` returns `{season, round, boss, clearedRounds, damage, cost, levelResult, seasonTotalDamage, daily}`.
+
+- [ ] **Step 1: Write real-DB failing tests**
+
+Use a dedicated slot from `slotFor(6)`, test-owned users/boss/seasons, and real `MinigameLevel` rows. Do not mock the EXP model. Cover:
+
+1. normal hit atomically changes HP, inserts contribution, increments real job EXP, and returns daily;
+2. `standard|skill` accepted; unknown attack type, damage/cost/exp 0/negative/NaN/Infinity rejected before DB writes;
+3. `hpForRound` rejects non-finite/non-positive output and `createRound` rejects `maxHp<=0`;
+4. `now === end_time` returns `SEASON_ENDED`, with no quota/HP/contribution/EXP changes;
+5. forced `beforeExpUpdate` throw rolls back quota evidence (contribution), HP, round changes, and EXP;
+6. brand-new player progress is created once in the same trx after locking the parent `user` row;
+7. `taipeiDayRange()` and quota query include a contribution exactly at Taipei 00:00, exclude one immediately before and exactly at next 00:00, independent of MySQL/session TZ;
+8. `calculateJobExpTransition` covers exact fixtures: `{level:1,exp:100}+200` with next threshold 1000 → `{newLevel:1,newExp:300,levelUpCount:0,nextLevelExp:1000}`; `{level:1,exp:900}+2200` with level-2/3/4 thresholds 1000/1000/1000 → `{newLevel:4,newExp:100,levelUpCount:3}`; `{level:maxLevel,exp:500}+120` → `{newLevel:maxLevel,newExp:620,levelUpCount:0,nextLevelExp:null}`. The pure function never dereferences a missing next row; `applyJobExp` persists that exact result to the already-locked progress row with the same trx.
+9. near daily limit: seed cost 90, run two concurrent cost-10 attacks for the same user, assert exactly one fulfills, one rejects `DAILY_LIMIT_EXCEEDED`, total cost is 100, HP/EXP changed once;
+10. start two lethal `attack()` calls without awaiting either, so they are separate concurrent service transactions. Pause the first in `beforeRoundInsert`, assert the second call has started but has not reached its post-season-lock hook, insert the competing next-round row with the first call's trx, then resume the normal insert. Assert the first catches the named `ER_DUP_ENTRY`, calls `onRoundConflict` once, reloads the sole active round, commits, and the second then completes against persisted state. Assert one active round, no duplicate `(season_id,round_no)`, and no lost contribution.
+
+The test for item 10 must assert the first `beforeRoundInsert` hook and second-call-start signal both fired, `onRoundConflict` fired exactly once with the named constraint error, and the recovery branch returned the single persisted active round; a direct DB UNIQUE test does not satisfy this gate.
+
+- [ ] **Step 2: Run and confirm failure**
 
 ```bash
-cd app && node bin/WorldBossSeasonSettle.js
-```
-Expected: 正常結束（本機無到期賽季 → 無輸出、exit 0）。
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add -A && git commit -m "feat(worldboss): hourly season settlement cron"
+cd app && yarn test -- src/service/__tests__/WorldBossBattleService.test.js --runInBand
 ```
 
----
+Expected: FAIL because service/locking methods are missing.
 
-### Task 9: Flex 模板
+- [ ] **Step 3: Add transactional minigame locking**
 
-**Files:**
-- Create: `app/src/templates/application/WorldBoss.js`
-
-**Interfaces:**
-- Consumes: `app/src/templates/common/theme.js` 的 `{ SEMANTIC, SURFACE, FEATURE }`（`FEATURE.worldBoss = SEMANTIC.danger`，Task 1 特意保留）；config `defaultUserIcon`、`worldboss.attack_cooldown_seconds`。
-- Produces（Task 10 依賴的簽名；純函式、不查資料、不 require model/service）:
-  - `generateBattleStatusBubble({ season, round, boss, daily, liffUri }) → bubble`
-  - `generateAttackResultBubble({ result, daily }) → bubble`（`result` = `BattleService.attack()` 回傳值）
-  - `generateNoActiveSeasonBubble({ ended }) → bubble`（`ended=true` → 「賽季結算中」文案；否則「目前沒有進行中的賽季」）
-  - 攻擊鈕 postback data = `JSON.stringify({ action: "worldBossAttack", attackType: "standard"|"skill", cooldown: <config 秒數> })` — `cooldown` 由 `app.js#HandlePostback` 的 redis SETNX 全域機制執行，controller 不用自己做冷卻。
-
-- [ ] **Step 1: 實作 `app/src/templates/application/WorldBoss.js`**（風格仿 `templates/application/Weather.js`：theme 常數 + 小 helper + builder）
+`lockUserAndProgress` must lock the parent user first so two first-ever attacks cannot create duplicate progress rows:
 
 ```js
-const config = require("config");
-const { SEMANTIC, SURFACE, FEATURE } = require("../common/theme");
-
-const ACCENT = FEATURE.worldBoss || SEMANTIC.danger;
-const BAR_TRACK = "#E0E0E0";
-
-function textNode(text, extra = {}) {
-  return { type: "text", text: String(text), wrap: true, size: "sm", color: SURFACE.text, ...extra };
-}
-
-/** LINE Flex 血條：外層當軌道、內層寬度百分比 + filler */
-function hpBar(current, max) {
-  const percent = Math.max(0, Math.min(100, Math.round((Number(current) / Number(max)) * 100)));
-  return {
-    type: "box",
-    layout: "vertical",
-    height: "8px",
-    backgroundColor: BAR_TRACK,
-    cornerRadius: "4px",
-    contents: [
-      {
-        type: "box",
-        layout: "vertical",
-        width: `${Math.max(percent, 1)}%`,
-        backgroundColor: ACCENT,
-        cornerRadius: "4px",
-        contents: [{ type: "filler" }],
-      },
-    ],
-  };
-}
-
-function attackPostback(label, attackType) {
-  return {
-    type: "button",
-    style: attackType === "skill" ? "secondary" : "primary",
-    height: "sm",
-    color: attackType === "skill" ? undefined : ACCENT,
-    action: {
-      type: "postback",
-      label,
-      displayText: label,
-      data: JSON.stringify({
-        action: "worldBossAttack",
-        attackType,
-        cooldown: config.get("worldboss.attack_cooldown_seconds"),
-      }),
-    },
-  };
-}
-
-function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
-  return {
-    type: "bubble",
-    size: "mega",
-    hero: {
-      type: "image",
-      url: boss.image || config.get("defaultUserIcon"),
-      size: "full",
-      aspectRatio: "20:13",
-      aspectMode: "cover",
-    },
-    body: {
-      type: "box",
-      layout: "vertical",
-      spacing: "md",
-      contents: [
-        textNode(season.name, { size: "xs", color: SEMANTIC.primary }),
-        textNode(`第 ${round.round_no} 輪 — ${boss.name}`, { size: "lg", weight: "bold" }),
-        hpBar(round.current_hp, round.max_hp),
-        textNode(
-          `HP ${Number(round.current_hp).toLocaleString()} / ${Number(round.max_hp).toLocaleString()}`,
-          { size: "xs", align: "end" }
-        ),
-        textNode(`今日 cost：${daily.used}/${daily.limit}`, { size: "xs" }),
-      ],
-    },
-    footer: {
-      type: "box",
-      layout: "vertical",
-      spacing: "sm",
-      contents: [
-        attackPostback("⚔️ 一般攻擊", "standard"),
-        attackPostback("✨ 技能攻擊", "skill"),
-        {
-          type: "button",
-          style: "link",
-          height: "sm",
-          action: { type: "uri", label: "📊 戰況板", uri: liffUri },
-        },
-      ],
-    },
-  };
-}
-
-function generateAttackResultBubble({ result, daily }) {
-  const { damage, clearedRounds, round, boss, levelResult, seasonTotalDamage } = result;
-  const contents = [
-    textNode(`⚔️ 造成 ${Number(damage).toLocaleString()} 傷害！`, { size: "md", weight: "bold" }),
-  ];
-  for (const cleared of clearedRounds) {
-    contents.push(
-      textNode(`🎉 第 ${cleared.round_no} 輪討伐成功！`, { size: "sm", color: SEMANTIC.success })
-    );
+exports.lockUserAndProgress = async (userId, defaults, trx) => {
+  const user = await trx("user").where({ platform_id: userId }).forUpdate().first();
+  if (!user) throw Object.assign(new Error("USER_NOT_FOUND"), { code: "USER_NOT_FOUND" });
+  let row = await trx(TABLE).where({ user_id: user.id }).forUpdate().first();
+  if (!row) {
+    await trx(TABLE).insert({ user_id: user.id, level: defaults.level, exp: defaults.exp });
+    row = await trx(TABLE).where({ user_id: user.id }).forUpdate().first();
   }
-  contents.push(
-    textNode(`第 ${round.round_no} 輪 — ${boss.name}`, { size: "sm" }),
-    hpBar(round.current_hp, round.max_hp),
-    textNode(
-      `剩餘 HP ${Number(round.current_hp).toLocaleString()} / ${Number(round.max_hp).toLocaleString()}`,
-      { size: "xs", align: "end" }
-    )
-  );
-  if (levelResult.levelUp) {
-    contents.push(
-      textNode(`🆙 職業等級提升至 Lv.${levelResult.newLevel}！`, {
-        size: "sm",
-        color: SEMANTIC.warning,
-      })
-    );
-  }
-  contents.push(
-    textNode(`本季累計 ${Number(seasonTotalDamage).toLocaleString()} 傷害`, { size: "xxs" }),
-    textNode(`今日 cost：${daily.used}/${daily.limit}`, { size: "xxs" })
-  );
-
-  return {
-    type: "bubble",
-    size: "kilo",
-    body: { type: "box", layout: "vertical", spacing: "sm", contents },
-  };
-}
-
-function generateNoActiveSeasonBubble({ ended = false } = {}) {
-  return {
-    type: "bubble",
-    size: "kilo",
-    body: {
-      type: "box",
-      layout: "vertical",
-      spacing: "sm",
-      contents: [
-        textNode(ended ? "⏳ 本賽季已結束" : "💤 目前沒有進行中的賽季", {
-          size: "md",
-          weight: "bold",
-        }),
-        textNode(
-          ended
-            ? "結算作業進行中，獎勵稍後入帳，請留意下一季公告！"
-            : "等待管理員開啟新賽季，敬請期待！",
-          { size: "sm" }
-        ),
-      ],
-    },
-  };
-}
-
-module.exports = {
-  generateBattleStatusBubble,
-  generateAttackResultBubble,
-  generateNoActiveSeasonBubble,
+  return row;
 };
 ```
 
-- [ ] **Step 2: 驗證（語法 + lint；外觀不寫測試，spec §7）**
+Update `findByUserId`, `createByUserId`, and `updateByUserId` to accept optional `trx` without breaking existing callers. Implement the EXP transition as this pure function, then have `applyJobExp` update the already-locked row exactly once with the same trx:
+
+```js
+function calculateJobExpTransition(progress, earnedExp, levelUnits) {
+  const thresholds = new Map(
+    [...levelUnits]
+      .sort((a, b) => Number(a.level) - Number(b.level))
+      .map(row => [Number(row.level), Number(row.max_exp)])
+  );
+  let newLevel = Number(progress.level);
+  let newExp = Number(progress.exp) + Number(earnedExp);
+  let levelUpCount = 0;
+  let nextLevelExp = thresholds.get(newLevel + 1) ?? null;
+  while (nextLevelExp !== null && newExp >= nextLevelExp) {
+    newExp -= nextLevelExp;
+    newLevel += 1;
+    levelUpCount += 1;
+    nextLevelExp = thresholds.get(newLevel + 1) ?? null;
+  }
+  return {
+    levelUp: levelUpCount > 0,
+    newLevel,
+    newExp,
+    levelUpCount,
+    nextLevelExp,
+  };
+}
+```
+
+Validate `progress.level`, `progress.exp`, `earnedExp`, every unit level, and every `max_exp` as finite non-negative integers (thresholds strictly `>0`); reject duplicate/missing current progression data with a domain error. At the highest configured level `nextLevelExp=null` and extra EXP remains in `newExp`.
+
+- [ ] **Step 4: Implement attack lock order and recovery**
+
+Inside one `mysql.transaction`:
+
+```text
+validate attack input
+findActiveForUpdate(activeSlot, trx); recheck status and now < end_time
+lockUserAndProgress(userId, defaultData, trx)
+{startUtc,endUtc}=taipeiDayRange(now); sumCostInRange(userId,startUtc,endUtc,trx); reject when used + cost > limit
+findActiveForUpdate(season.id, trx); verify max_hp > 0
+apply damage; for lethal rounds clear with active_slot=null
+create next round with active_slot=1
+  on ER_DUP_ENTRY reload findActiveForUpdate(season.id, trx); throw if absent
+insert contribution
+applyJobExp using the already-locked progress row and same trx
+read totals/daily using same trx
+commit
+```
+
+Never catch and continue after a non-duplicate insert error. Both attack and settlement use `isExpired(season, now) => now >= end_time` semantics.
+
+`taipeiDayRange(now)` needs no dependency: add eight hours to obtain the Taipei civil Y/M/D, construct UTC midnight for those fields, then subtract eight hours for `startUtc`; `endUtc` is exactly 24 hours later. Validate `now` is a finite Date. Taiwan has no current DST; this fixed UTC+8 rule is the product boundary. The test cases must use explicit UTC instants around 15:59:59.999Z/16:00:00.000Z.
+
+- [ ] **Step 5: Format and verify narrow + full suite**
 
 ```bash
-cd app && node -e "const t=require('./src/templates/application/WorldBoss');console.log(Object.keys(t))" && yarn lint
-```
-Expected: 印出三個 builder 名稱、lint 綠。
-
-- [ ] **Step 3: Commit**
-
-```bash
-app/node_modules/.bin/prettier --write app/src/templates/application/WorldBoss.js
-git add -A && git commit -m "feat(worldboss): flex templates (battle status / attack result / no-season)"
+app/node_modules/.bin/prettier --write app/src/model/application/MinigameLevel.js \
+  app/src/service/WorldBossBattleService.js \
+  app/src/service/__tests__/WorldBossBattleService.test.js
+cd app
+yarn test -- src/service/__tests__/WorldBossBattleService.test.js --runInBand
+yarn test -- --runInBand
+yarn lint
 ```
 
----
-
-### Task 10: Controller ＋ app.js 接線
-
-**Files:**
-- Create: `app/src/controller/application/WorldBossController.js`
-- Modify: `app/src/app.js`（require + postback route + OrderBased spread，即 Task 1 拆掉的三個位置）
-- Test: `app/src/controller/application/__tests__/WorldBossController.test.js`
-
-**Interfaces:**
-- Consumes: Task 6/7/9 全部；`makeCharacter`（`app/src/model/application/RPGCharacter.js` 的 `exports.make(jobKey, {level})`，純領域物件無 DB）；`EquipmentService.getEquipmentBonuses(userId) → {atk_percent, crit_rate, cost_reduction, exp_bonus, gold_bonus}`；`MinigameService.findByUserId/createByUserId/defaultData`；`notifyUnlocks`（`app/src/service/achievementNotifier`）；`commonTemplate.getLiffUri(type, path)`（`app/src/templates/common/index.js:105`）。
-- Produces:
-  - `exports.router = [text(/^[.#/](世界王|worldboss)$/i, showBattleStatus)]`
-  - `exports.attackOnBoss(context, { payload })` — `payload.attackType ∈ {"standard","skill"}`
-  - LIFF 路徑字串 **`"/worldboss"`**（與 Task 13 的 route path 完全一致 — 小寫，repo 慣例）
-  - 攻擊冷卻：不自己實作 — postback payload 帶 `cooldown`（Task 9），由 `HandlePostback` 的 redis SETNX 執行；冷卻中重按 = 靜默忽略（與 janken 等既有 postback 一致）
-  - 深意保留：v1 的 umami 追蹤條目不重加（v2 追蹤另議）；成就只重新 emit `boss_attack` + `feature: "world_boss"` 讓「全能玩家」存活（v2 專屬成就 out of scope）
-
-- [ ] **Step 1: 先寫 failing test**
-
-`app/src/controller/application/__tests__/WorldBossController.test.js`（mock 全部 service，用真模板驗 Flex 內容；`jest.mock` 不 hoist，全部放 require 前）：
-
-```js
-jest.mock("../../../service/WorldBossBattleService", () => {
-  class WorldBossError extends Error {
-    constructor(code) {
-      super(code);
-      this.code = code;
-    }
-  }
-  return {
-    WorldBossError,
-    attack: jest.fn(),
-    getRemainingDailyCost: jest.fn(),
-  };
-});
-jest.mock("../../../service/WorldBossSeasonService", () => ({ getBattleStatus: jest.fn() }));
-jest.mock("../../../service/MinigameService", () => ({
-  findByUserId: jest.fn(),
-  createByUserId: jest.fn(),
-  defaultData: { level: 1, exp: 0 },
-}));
-jest.mock("../../../service/EquipmentService", () => ({ getEquipmentBonuses: jest.fn() }));
-jest.mock("../../../service/achievementNotifier", () => ({ notifyUnlocks: jest.fn() }));
-jest.mock("../../../service/AchievementEngine", () => ({
-  evaluate: jest.fn().mockResolvedValue({ unlocked: [] }),
-}));
-jest.mock("config", () => {
-  const orig = jest.requireActual("config");
-  return {
-    get: jest.fn(key => {
-      const cfg = {
-        "worldboss.per_hit_exp": 120,
-        "worldboss.attack_cooldown_seconds": 5,
-        defaultUserIcon: "https://example.com/icon.png",
-      };
-      if (key in cfg) return cfg[key];
-      return orig.get(key);
-    }),
-  };
-});
-
-const BattleService = require("../../../service/WorldBossBattleService");
-const SeasonService = require("../../../service/WorldBossSeasonService");
-const minigameService = require("../../../service/MinigameService");
-const EquipmentService = require("../../../service/EquipmentService");
-const controller = require("../WorldBossController");
-
-const USER = "U_test_wb_controller";
-
-function makeContext() {
-  return {
-    event: { source: { userId: USER } },
-    replyText: jest.fn(),
-    replyFlex: jest.fn(),
-  };
-}
-
-const STATUS = {
-  season: { id: 1, name: "S1", end_time: null },
-  round: { id: 9, round_no: 3, current_hp: 500, max_hp: 1000, world_boss_id: 2 },
-  boss: { id: 2, name: "測試王", image: null, hp_weight: 1 },
-  ended: false,
-};
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  SeasonService.getBattleStatus.mockResolvedValue(STATUS);
-  BattleService.getRemainingDailyCost.mockResolvedValue({ used: 0, limit: 100, remaining: 100 });
-  minigameService.findByUserId.mockResolvedValue({ level: 10, exp: 0, job_key: "swordman" });
-  EquipmentService.getEquipmentBonuses.mockResolvedValue({
-    atk_percent: 0, crit_rate: 0, cost_reduction: 0, exp_bonus: 0, gold_bonus: 0,
-  });
-  BattleService.attack.mockResolvedValue({
-    season: STATUS.season,
-    round: STATUS.round,
-    boss: STATUS.boss,
-    clearedRounds: [],
-    damage: 123,
-    cost: 10,
-    levelResult: { levelUp: false, levelUpCount: 0, newLevel: 10, newExp: 120, earnedExp: 120 },
-    seasonTotalDamage: 300,
-  });
-});
-
-describe("showBattleStatus (#世界王)", () => {
-  it("replies status bubble with LIFF uri /worldboss", async () => {
-    const context = makeContext();
-    await controller.showBattleStatus(context);
-    expect(context.replyFlex).toHaveBeenCalled();
-    const bubble = context.replyFlex.mock.calls[0][1];
-    expect(JSON.stringify(bubble)).toContain("/worldboss");
-    expect(JSON.stringify(bubble)).toContain("第 3 輪");
-  });
-
-  it("replies no-season bubble when nothing active", async () => {
-    SeasonService.getBattleStatus.mockResolvedValue(null);
-    const context = makeContext();
-    await controller.showBattleStatus(context);
-    const bubble = context.replyFlex.mock.calls[0][1];
-    expect(JSON.stringify(bubble)).toContain("沒有進行中的賽季");
-  });
-});
-
-describe("attackOnBoss", () => {
-  it("computes damage/cost/exp and calls BattleService.attack", async () => {
-    const context = makeContext();
-    await controller.attackOnBoss(context, { payload: { attackType: "standard" } });
-    // swordman Lv.10 標準攻擊由 RPGCharacter real 實作決定，這裡只驗結構
-    expect(BattleService.attack).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: USER, cost: 10, exp: 120 })
-    );
-    expect(context.replyFlex).toHaveBeenCalled();
-    expect(JSON.stringify(context.replyFlex.mock.calls[0][1])).toContain("123");
-  });
-
-  it("blocks when daily cost exhausted", async () => {
-    BattleService.getRemainingDailyCost.mockResolvedValue({ used: 100, limit: 100, remaining: 0 });
-    const context = makeContext();
-    await controller.attackOnBoss(context, { payload: { attackType: "standard" } });
-    expect(BattleService.attack).not.toHaveBeenCalled();
-    expect(context.replyText).toHaveBeenCalled();
-  });
-
-  it("replies friendly bubble on NO_ACTIVE_SEASON instead of throwing", async () => {
-    BattleService.attack.mockRejectedValue(new BattleService.WorldBossError("NO_ACTIVE_SEASON"));
-    const context = makeContext();
-    await controller.attackOnBoss(context, { payload: { attackType: "standard" } });
-    expect(context.replyFlex).toHaveBeenCalled();
-    expect(JSON.stringify(context.replyFlex.mock.calls[0][1])).toContain("沒有進行中的賽季");
-  });
-});
-```
-
-- [ ] **Step 2: 跑測試確認 fail**
-
-Run: `cd app && yarn test -- src/controller/application/__tests__/WorldBossController.test.js`
-Expected: FAIL — `Cannot find module '../WorldBossController'`。
-
-- [ ] **Step 3: 實作 `app/src/controller/application/WorldBossController.js`**
-
-```js
-const { text } = require("bottender/router");
-const config = require("config");
-const BattleService = require("../../service/WorldBossBattleService");
-const SeasonService = require("../../service/WorldBossSeasonService");
-const minigameService = require("../../service/MinigameService");
-const EquipmentService = require("../../service/EquipmentService");
-const AchievementEngine = require("../../service/AchievementEngine");
-const { notifyUnlocks } = require("../../service/achievementNotifier");
-const { make: makeCharacter } = require("../../model/application/RPGCharacter");
-const worldBossTemplate = require("../../templates/application/WorldBoss");
-const commonTemplate = require("../../templates/common");
-
-const LIFF_PATH = "/worldboss"; // 必須與 frontend/src/App.jsx 的 route path 完全一致
-
-/** `#世界王`：當前戰況快照卡 */
-async function showBattleStatus(context) {
-  const status = await SeasonService.getBattleStatus();
-  if (!status || status.ended || !status.round) {
-    return context.replyFlex(
-      "世界王",
-      worldBossTemplate.generateNoActiveSeasonBubble({ ended: Boolean(status && status.ended) })
-    );
-  }
-  const { userId } = context.event.source;
-  const daily = await BattleService.getRemainingDailyCost(userId);
-  return context.replyFlex(
-    "世界王戰況",
-    worldBossTemplate.generateBattleStatusBubble({
-      season: status.season,
-      round: status.round,
-      boss: status.boss,
-      daily,
-      liffUri: commonTemplate.getLiffUri("full", LIFF_PATH),
-    })
-  );
-}
-
-/**
- * 攻擊 postback。冷卻由 HandlePostback 的 redis SETNX（payload.cooldown）擋，
- * 這裡只做每日上限與傷害計算（LINE 邊界層），數字算好丟給 BattleService。
- */
-async function attackOnBoss(context, { payload }) {
-  const { userId } = context.event.source;
-  if (!userId) return;
-
-  const daily = await BattleService.getRemainingDailyCost(userId);
-  if (daily.remaining <= 0) {
-    return context.replyText(`今日的討伐 cost 已用完（${daily.used}/${daily.limit}），明天再來吧！`);
-  }
-
-  let levelData = await minigameService.findByUserId(userId);
-  if (!levelData) {
-    await minigameService.createByUserId(userId, minigameService.defaultData);
-    levelData = await minigameService.findByUserId(userId);
-  }
-  const character = makeCharacter(levelData.job_key, { level: levelData.level });
-  const equipBonuses = await EquipmentService.getEquipmentBonuses(userId);
-
-  let damage;
-  let cost;
-  if (payload.attackType === "skill") {
-    damage = character.getSkillOneDamage();
-    cost = character.skillOne.cost;
-  } else {
-    damage = character.getStandardDamage();
-    cost = 10;
-  }
-  if (equipBonuses.atk_percent > 0) damage = Math.floor(damage * (1 + equipBonuses.atk_percent));
-  if (equipBonuses.cost_reduction > 0) cost = Math.max(1, cost - equipBonuses.cost_reduction);
-
-  if (cost > daily.remaining) {
-    return context.replyText(`cost 不足：本次攻擊需要 ${cost}，今日僅剩 ${daily.remaining}。`);
-  }
-
-  const exp = config.get("worldboss.per_hit_exp") + (equipBonuses.exp_bonus || 0);
-
-  let result;
-  try {
-    result = await BattleService.attack({ userId, damage, cost, exp });
-  } catch (err) {
-    if (err instanceof BattleService.WorldBossError) {
-      return context.replyFlex(
-        "世界王",
-        worldBossTemplate.generateNoActiveSeasonBubble({ ended: err.code === "SEASON_ENDED" })
-      );
-    }
-    throw err;
-  }
-
-  const { unlocked } = await AchievementEngine.evaluate(userId, "boss_attack", {
-    feature: "world_boss",
-  }).catch(() => ({ unlocked: [] }));
-  await notifyUnlocks(context, userId, unlocked);
-
-  const dailyAfter = await BattleService.getRemainingDailyCost(userId);
-  return context.replyFlex(
-    "世界王攻擊結果",
-    worldBossTemplate.generateAttackResultBubble({ result, daily: dailyAfter })
-  );
-}
-
-exports.router = [text(/^[.#/](世界王|worldboss)$/i, showBattleStatus)];
-exports.showBattleStatus = showBattleStatus;
-exports.attackOnBoss = attackOnBoss;
-```
-
-- [ ] **Step 4: `app/src/app.js` 接回三個位置**（Task 1 拆掉的地方）
-
-1. imports 區（其他 controller require 旁）:
-```js
-const WorldBossController = require("./controller/application/WorldBossController");
-```
-2. `HandlePostback` 的 `router([...])` 內（janken route 旁）:
-```js
-      route(
-        () => action === "worldBossAttack",
-        withProps(WorldBossController.attackOnBoss, { payload })
-      ),
-```
-3. `OrderBased` 的 `router([...])` 內（其他 `.router` spread 旁）:
-```js
-      ...WorldBossController.router,
-```
-
-- [ ] **Step 5: 跑測試確認 pass**
-
-Run: `cd app && yarn test -- src/controller/application/__tests__/WorldBossController.test.js`
-Expected: PASS（5 tests）。接著 `yarn lint && yarn test -- --runInBand` 全綠，並啟動冒煙測試：`cd app && timeout 15 yarn dev` 看啟動 log 無 require error（Ctrl-C 或 timeout 自然結束）。
+Expected: concurrency, rollback, boundary, validation, and full suite pass.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-app/node_modules/.bin/prettier --write app/src/controller/application/WorldBossController.js app/src/app.js app/src/controller/application/__tests__/WorldBossController.test.js
-git add -A && git commit -m "feat(worldboss): chat controller (#世界王 + attack postback) wired into bot"
+git add app/src/model/application/MinigameLevel.js \
+  app/src/service/WorldBossBattleService.js \
+  app/src/service/__tests__/WorldBossBattleService.test.js
+git commit -m "feat(worldboss): add atomic attack and quota flow"
 ```
 
 ---
 
-### Task 11: Admin API ＋ LIFF 讀取 API
+### Task 7: Implement draft CRUD, immediate open, ranking, and safe settlement
 
 **Files:**
-- Create: `app/src/router/WorldBoss/index.js`
-- Create: `app/src/handler/WorldBoss/index.js`、`app/src/handler/WorldBoss/admin.js`、`app/src/handler/WorldBoss/public.js`
-- Modify: `app/src/router/api.js`（掛回 admin router + 新增 public router）
-- Modify: `app/src/model/application/WorldBossRound.js`（加 `countByBoss`）
-- Test: `app/src/handler/WorldBoss/__tests__/handlers.test.js`
+- Create: `app/src/service/WorldBossSeasonService.js`.
+- Modify: `app/src/model/application/UserTitle.js`, `app/bin/TitleDelivery.js`.
+- Test: `app/src/service/__tests__/WorldBossSeasonService.test.js`.
 
 **Interfaces:**
-- Consumes: Task 5/6/7 的 model/service；`api.js` 既有的 `router.use("/admin", verifyToken, verifyAdmin, verifyPrivilege(5))` 前置守門（admin 子 router 掛在其後即自動受保護）；`verifyToken`（`middleware/validation.js`，成功後 `req.profile = { userId, displayName, pictureUrl }`）。
-- Produces（Task 12/13 前端依賴的 API 合約）:
-  - `GET  /api/admin/world-bosses` → 圖鑑列表；`POST /api/admin/world-bosses` `{name, image?, description?, hp_weight?}` → `{id}`；`PUT /api/admin/world-bosses/:id`；`DELETE /api/admin/world-bosses/:id`（被任何輪次引用過 → 400 `{error:"BOSS_IN_USE"}`）
-  - `GET  /api/admin/world-boss-seasons` → 賽季列表（desc）；`POST /api/admin/world-boss-seasons` `{name, announcement?, start_time?, end_time}` → `{id}`；`POST /api/admin/world-boss-seasons/:id/open` → `{seasonId, round}` 或 400 `{error:<WorldBossError.code>}`
-  - `GET /api/world-boss/status`（verifyToken）→ `null | {season, round, boss, ended}`
-  - `GET /api/world-boss/leaderboard?limit=50`（verifyToken）→ `[{user_id, display_name, total_damage}]`（limit 上限 100；`display_name` 可能為 null，前端 fallback「神秘冒險者」）
-  - `GET /api/world-boss/me`（verifyToken）→ `null | {seasonId, totalDamage, daily:{used,limit,remaining}}`
-
-- [ ] **Step 1: 先寫 failing test**
-
-`app/src/handler/WorldBoss/__tests__/handlers.test.js`（fake req/res 直呼 handler，全 mock，不起 express）：
 
 ```js
-jest.mock("../../../service/WorldBossSeasonService", () => ({
-  getBattleStatus: jest.fn(),
-  getRanking: jest.fn(),
-  createSeason: jest.fn(),
-  openSeason: jest.fn(),
-}));
-jest.mock("../../../service/WorldBossBattleService", () => {
-  class WorldBossError extends Error {
-    constructor(code) {
-      super(code);
-      this.code = code;
-    }
-  }
-  return { WorldBossError, getRemainingDailyCost: jest.fn() };
-});
-jest.mock("../../../model/application/WorldBossContribution", () => ({
-  sumSeasonDamage: jest.fn(),
-}));
-jest.mock("../../../model/application/WorldBoss", () => ({
-  all: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  delete: jest.fn(),
-}));
-jest.mock("../../../model/application/WorldBossSeason", () => ({ all: jest.fn() }));
-jest.mock("../../../model/application/WorldBossRound", () => ({ countByBoss: jest.fn() }));
+createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks = {} })
+// hooks.beforeOpenMutation({attempt,trx,season}) is awaited; production default is a no-op
+listSeasons() -> rows ordered created_at DESC, id DESC
+createSeason(input) -> seasonId
+updateSeason(id, input) -> id                 // draft only
+deleteSeason(id) -> id                        // draft only
+openSeason(id) -> { seasonId, round }         // start_time = server now
+getBattleStatus() -> null | {season,round,boss,ended}
+getRanking(seasonId, limit) -> rows with competition ranking
+getLatestSettledResult(userId) -> latest paid reward or null
+settleSeason(id) -> {seasonId,contributors,rewarded,zeroTier}
+settleExpiredSeasons() -> Array<{seasonId,contributors,rewarded,zeroTier}>
+```
 
-const SeasonService = require("../../../service/WorldBossSeasonService");
-const BattleService = require("../../../service/WorldBossBattleService");
-const contributionModel = require("../../../model/application/WorldBossContribution");
-const roundModel = require("../../../model/application/WorldBossRound");
-const bossModel = require("../../../model/application/WorldBoss");
-const adminHandler = require("../admin");
-const publicHandler = require("../public");
+Errors include `SEASON_NOT_FOUND`, `SEASON_NOT_DRAFT`, `ANOTHER_SEASON_ACTIVE`, `INVALID_NAME`, `INVALID_END_TIME`, `SEASON_NOT_EXPIRED`, and `SETTLEMENT_INCOMPLETE`.
 
-function makeRes() {
-  const res = {};
-  res.status = jest.fn(() => res);
-  res.json = jest.fn(() => res);
-  return res;
+- [ ] **Step 1: Write isolated real-DB tests**
+
+Use `createSeasonService({activeSlot: slotFor(7), clock})`. Cover:
+
+- `listSeasons()` returns deterministic `created_at DESC, id DESC`; create/update/delete accept only draft; active and settled update/delete reject and rows remain unchanged;
+- invalid/empty/65-char name, invalid date, `end_time<=now`, and caller-supplied future `start_time` handling: create ignores start_time and stores null; open always overwrites with exact injected server now;
+- two drafts opened concurrently with the same injected slot: exactly one fulfills, one returns `ANOTHER_SEASON_ACTIVE`, exactly one season has that slot, and exactly one round is active;
+- deadlock retry is deterministic: `beforeOpenMutation` records `attempt` and throws an error with `code="ER_LOCK_DEADLOCK"` on attempt 1 only; assert attempt 2 receives a different trx object, re-runs all reads/validation, commits one active season/round, and no driver error escapes. A second fixture throws on every attempt while a winner row is injected between attempts; after the two-attempt cap, service re-reads the slot and maps to `ANOTHER_SEASON_ACTIVE`;
+- `now===end_time` reports ended and can settle;
+- totals `[500,500,300]` produce ranks `[1,1,3]`; tied players receive exactly identical stone/title tier;
+- seed 101+ contributors including rank 51; settlement uses unbounded ranking, creates a paid ledger for every contributor, rank 51 receives `stone_amount=0,title_key=null` while still being visible via latest reward, and the result counts satisfy `contributors === rewarded + zeroTier`;
+- two concurrent `settleSeason(id)` calls produce one payment per player and one paid ledger per player;
+- a player who already owns the same worldboss title settles successfully in a later season: title grant is idempotent, stones pay once, ledger becomes paid, no `ER_DUP_ENTRY` escapes;
+- injected Inventory failure rolls back all reward rows, stones, titles, `paid_at`, and settled status;
+- inject a pre-existing unpaid ledger for one test-owned player: settlement completes it once, requires **every contributor** row `paid_at != null`, then marks settled;
+- latest settled lookup returns rank/stones/title/ledger proof after a newer active season is created;
+- `UserTitle.clearAllExcept("worldboss_", trx)` is tested inside an explicit transaction that is rolled back in `finally`; assert test-owned rows inside trx, then assert shared sentinel rows are unchanged outside it. Never call the global delete and commit in a test.
+
+- [ ] **Step 2: Run and confirm failure**
+
+```bash
+cd app && yarn test -- src/service/__tests__/WorldBossSeasonService.test.js --runInBand
+```
+
+Expected: FAIL because the service is missing.
+
+- [ ] **Step 3: Implement validation, CRUD, and open locking**
+
+`openSeason` transaction order:
+
+```text
+findForUpdate(id)
+require draft
+now = clock(); validate end_time parses and end_time > now
+findActive(activeSlot, trx) and reject if found; do not FOR UPDATE a missing-key gap
+update {status:'active',active_slot:activeSlot,start_time:now}
+create round 1 with active_slot=1
+commit
+```
+
+The UNIQUE `world_boss_season.active_slot` is the authoritative arbitration for concurrent open. Map named `ER_DUP_ENTRY` to `ANOTHER_SEASON_ACTIVE` after re-reading the winner. MySQL may choose `ER_LOCK_DEADLOCK` when two drafts are locked in opposite order: retry the **entire** transaction at most twice, then re-read `findActive(activeSlot)` and return `ANOTHER_SEASON_ACTIVE` if a winner exists; otherwise rethrow. Never continue a deadlocked transaction. `updateSeason` only permits `{name,announcement,end_time}`; no start_time/status/active_slot mass assignment.
+
+- [ ] **Step 4: Implement one-transaction settlement**
+
+`settleSeason(id)` must run one outer transaction:
+
+```text
+findForUpdate(id)
+recheck status=active and clock() >= end_time
+seasonRankingAll(season.id,trx), add competition ranks (never use public 1..100 limit)
+for every contributor row:
+  resolve configured tier or {stone:0,title_key:null}
+  find ledger FOR UPDATE or insert UNIQUE unpaid ledger with rank/damage/tier values
+  if unpaid and stone>0: increaseGodStone(...,trx)
+  if unpaid and title_key: grant title idempotently in trx (existing same user/title is success)
+  if unpaid: update paid_at=clock()
+verify contributor count equals paid ledger count
+update season {status:'settled',active_slot:null,settled_at:clock()}
+commit
+```
+
+`hooks.beforePayment` provides the forced failure test. Do not use per-player nested transactions. Do not mark settled if any contributor ledger is absent/unpaid. Duplicate paid ledger means skip payment, not repay.
+
+Add `UserTitle.grantByPlatformId(userId,titleId,trx)` transaction support and make it idempotent for the existing UNIQUE `(user_id,title_id)` constraint (`onConflict(["user_id","title_id"]).ignore()` or named duplicate handling). A pre-owned same title is success; other DB errors rethrow. Implement `clearAllExcept` with optional `trx` and change TitleDelivery to preserve `worldboss_`; production behavior stays the same for gacha/janken recalculation.
+
+- [ ] **Step 5: Format and verify narrow + full suite**
+
+```bash
+app/node_modules/.bin/prettier --write app/src/service/WorldBossSeasonService.js \
+  app/src/model/application/UserTitle.js app/bin/TitleDelivery.js \
+  app/src/service/__tests__/WorldBossSeasonService.test.js
+cd app
+yarn test -- src/service/__tests__/WorldBossSeasonService.test.js --runInBand
+yarn test -- --runInBand
+yarn lint
+```
+
+Expected: CRUD, open concurrency, tie ranking, settlement concurrency/failure/retry, and shared-row sentinel tests pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add app/src/service/WorldBossSeasonService.js app/src/model/application/UserTitle.js \
+  app/bin/TitleDelivery.js app/src/service/__tests__/WorldBossSeasonService.test.js
+git commit -m "feat(worldboss): add season lifecycle and safe settlement"
+```
+
+---
+
+### Task 8: Add cron with truthful nonzero CLI failure
+
+**Files:**
+- Create: `app/bin/WorldBossSeasonSettle.js`, `app/bin/__tests__/WorldBossSeasonSettle.test.js`.
+- Modify: `app/config/crontab.config.js`.
+
+**Interfaces:**
+- Worker calls exported `main()` hourly at minute 10.
+- Direct CLI calls exported `runCli(mainFn=main)`. Rejection is logged and sets exit code 1; success exits 0. No catch-and-exit-0 path.
+
+- [ ] **Step 1: Write failing runnable CLI test**
+
+Use `spawnSync(process.execPath, ["-e", script], {cwd: appRoot})` with:
+
+```js
+const cron = require("./bin/WorldBossSeasonSettle");
+cron.runCli(async () => { throw new Error("forced cron failure"); });
+```
+
+Assert `status === 1` and stderr/log capture contains `forced cron failure`. Add a success spawn asserting status 0.
+
+- [ ] **Step 2: Run and confirm failure**
+
+```bash
+cd app && yarn test -- bin/__tests__/WorldBossSeasonSettle.test.js --runInBand
+```
+
+Expected: FAIL because cron module is absent.
+
+- [ ] **Step 3: Implement cron and schedule**
+
+```js
+const service = require("../src/service/WorldBossSeasonService");
+const { DefaultLogger } = require("../src/util/Logger");
+
+async function main() {
+  const results = await service.settleExpiredSeasons();
+  if (results.length) DefaultLogger.info(`World boss season settle: ${JSON.stringify(results)}`);
+  return results;
 }
 
-beforeEach(() => jest.clearAllMocks());
-
-describe("public handlers", () => {
-  it("getStatus passes battle status through", async () => {
-    const status = { season: { id: 1 }, round: {}, boss: {}, ended: false };
-    SeasonService.getBattleStatus.mockResolvedValue(status);
-    const res = makeRes();
-    await publicHandler.getStatus({}, res);
-    expect(res.json).toHaveBeenCalledWith(status);
-  });
-
-  it("getLeaderboard clamps limit to 100 and returns [] with no season", async () => {
-    SeasonService.getBattleStatus.mockResolvedValue(null);
-    let res = makeRes();
-    await publicHandler.getLeaderboard({ query: {} }, res);
-    expect(res.json).toHaveBeenCalledWith([]);
-
-    SeasonService.getBattleStatus.mockResolvedValue({ season: { id: 7 } });
-    SeasonService.getRanking.mockResolvedValue([]);
-    res = makeRes();
-    await publicHandler.getLeaderboard({ query: { limit: "9999" } }, res);
-    expect(SeasonService.getRanking).toHaveBeenCalledWith(7, 100);
-  });
-
-  it("getMyStats reads userId from req.profile", async () => {
-    SeasonService.getBattleStatus.mockResolvedValue({ season: { id: 7 } });
-    contributionModel.sumSeasonDamage.mockResolvedValue(555);
-    BattleService.getRemainingDailyCost.mockResolvedValue({ used: 10, limit: 100, remaining: 90 });
-    const res = makeRes();
-    await publicHandler.getMyStats({ profile: { userId: "Uxyz" } }, res);
-    expect(contributionModel.sumSeasonDamage).toHaveBeenCalledWith(7, "Uxyz");
-    expect(res.json).toHaveBeenCalledWith({
-      seasonId: 7,
-      totalDamage: 555,
-      daily: { used: 10, limit: 100, remaining: 90 },
+function runCli(mainFn = main) {
+  return Promise.resolve()
+    .then(mainFn)
+    .catch(err => {
+      DefaultLogger.error("World boss season settle failed:", err);
+      process.exitCode = 1;
     });
-  });
-});
+}
 
-describe("admin handlers", () => {
-  it("storeWorldBoss validates name", async () => {
-    const res = makeRes();
-    await adminHandler.storeWorldBoss({ body: {} }, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-
-    bossModel.create.mockResolvedValue(3);
-    const ok = makeRes();
-    await adminHandler.storeWorldBoss({ body: { name: "新王" } }, ok);
-    expect(ok.json).toHaveBeenCalledWith({ id: 3 });
-  });
-
-  it("deleteWorldBoss refuses when referenced by rounds", async () => {
-    roundModel.countByBoss.mockResolvedValue(2);
-    const res = makeRes();
-    await adminHandler.deleteWorldBoss({ params: { id: "1" } }, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(bossModel.delete).not.toHaveBeenCalled();
-  });
-
-  it("openSeason maps WorldBossError to 400 with code", async () => {
-    SeasonService.openSeason.mockRejectedValue(new BattleService.WorldBossError("ANOTHER_SEASON_ACTIVE"));
-    const res = makeRes();
-    await adminHandler.openSeason({ params: { id: "5" } }, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: "ANOTHER_SEASON_ACTIVE" });
-  });
-});
+module.exports = main;
+module.exports.main = main;
+module.exports.runCli = runCli;
+if (require.main === module) runCli();
 ```
 
-- [ ] **Step 2: 跑測試確認 fail**
+Append crontab entry with `period: ["0","10","*","*","*","*"]`, `immediate:false`, `require_path:"./bin/WorldBossSeasonSettle"`.
 
-Run: `cd app && yarn test -- src/handler/WorldBoss/__tests__/handlers.test.js`
-Expected: FAIL — `Cannot find module '../admin'`。
+- [ ] **Step 4: Format and verify**
 
-- [ ] **Step 3: 實作**
-
-先在 `app/src/model/application/WorldBossRound.js` 的 class 內加一個查詢（Task 5 的檔案）：
-
-```js
-  /** admin 刪圖鑑前的引用檢查 */
-  async countByBoss(worldBossId, trx) {
-    const row = await this.qb(trx).count({ c: "*" }).where({ world_boss_id: worldBossId }).first();
-    return Number(row.c);
-  }
+```bash
+app/node_modules/.bin/prettier --write app/bin/WorldBossSeasonSettle.js \
+  app/bin/__tests__/WorldBossSeasonSettle.test.js app/config/crontab.config.js
+cd app
+yarn test -- bin/__tests__/WorldBossSeasonSettle.test.js --runInBand
+node bin/WorldBossSeasonSettle.js
+yarn lint
 ```
 
-`app/src/handler/WorldBoss/admin.js`:
-```js
-const bossModel = require("../../model/application/WorldBoss");
-const seasonModel = require("../../model/application/WorldBossSeason");
-const roundModel = require("../../model/application/WorldBossRound");
-const SeasonService = require("../../service/WorldBossSeasonService");
-const { WorldBossError } = require("../../service/WorldBossBattleService");
-
-exports.getAllWorldBoss = async (req, res) => {
-  const rows = await bossModel.all({ order: [{ column: "id", direction: "desc" }] });
-  res.json(rows);
-};
-
-exports.storeWorldBoss = async (req, res) => {
-  const { name } = req.body || {};
-  if (!name) return res.status(400).json({ error: "NAME_REQUIRED" });
-  const id = await bossModel.create(req.body);
-  res.json({ id });
-};
-
-exports.updateWorldBoss = async (req, res) => {
-  await bossModel.update(req.params.id, req.body || {});
-  res.json({ id: Number(req.params.id) });
-};
-
-exports.deleteWorldBoss = async (req, res) => {
-  const used = await roundModel.countByBoss(req.params.id);
-  if (used > 0) return res.status(400).json({ error: "BOSS_IN_USE" });
-  await bossModel.delete(req.params.id);
-  res.json({ id: Number(req.params.id) });
-};
-
-exports.getAllSeasons = async (req, res) => {
-  const rows = await seasonModel.all({ order: [{ column: "id", direction: "desc" }] });
-  res.json(rows);
-};
-
-exports.storeSeason = async (req, res) => {
-  const { name, end_time } = req.body || {};
-  if (!name || !end_time) return res.status(400).json({ error: "NAME_AND_END_TIME_REQUIRED" });
-  const id = await SeasonService.createSeason(req.body);
-  res.json({ id });
-};
-
-exports.openSeason = async (req, res) => {
-  try {
-    const result = await SeasonService.openSeason(req.params.id);
-    res.json(result);
-  } catch (err) {
-    if (err instanceof WorldBossError) return res.status(400).json({ error: err.code });
-    res.status(500).json({ error: "INTERNAL" });
-  }
-};
-```
-
-`app/src/handler/WorldBoss/public.js`:
-```js
-const SeasonService = require("../../service/WorldBossSeasonService");
-const BattleService = require("../../service/WorldBossBattleService");
-const contributionModel = require("../../model/application/WorldBossContribution");
-
-exports.getStatus = async (req, res) => {
-  res.json(await SeasonService.getBattleStatus());
-};
-
-exports.getLeaderboard = async (req, res) => {
-  const status = await SeasonService.getBattleStatus();
-  if (!status) return res.json([]);
-  const limit = Math.min(Number(req.query.limit) || 50, 100);
-  res.json(await SeasonService.getRanking(status.season.id, limit));
-};
-
-exports.getMyStats = async (req, res) => {
-  const status = await SeasonService.getBattleStatus();
-  if (!status) return res.json(null);
-  const { userId } = req.profile;
-  const [totalDamage, daily] = await Promise.all([
-    contributionModel.sumSeasonDamage(status.season.id, userId),
-    BattleService.getRemainingDailyCost(userId),
-  ]);
-  res.json({ seasonId: status.season.id, totalDamage, daily });
-};
-```
-
-`app/src/handler/WorldBoss/index.js`:
-```js
-exports.admin = require("./admin");
-exports.public = require("./public");
-```
-
-`app/src/router/WorldBoss/index.js`:
-```js
-const createRouter = require("express").Router;
-const { admin: adminHandler, public: publicHandler } = require("../../handler/WorldBoss");
-
-const AdminRouter = createRouter();
-AdminRouter.get("/world-bosses", adminHandler.getAllWorldBoss);
-AdminRouter.post("/world-bosses", adminHandler.storeWorldBoss);
-AdminRouter.put("/world-bosses/:id", adminHandler.updateWorldBoss);
-AdminRouter.delete("/world-bosses/:id", adminHandler.deleteWorldBoss);
-AdminRouter.get("/world-boss-seasons", adminHandler.getAllSeasons);
-AdminRouter.post("/world-boss-seasons", adminHandler.storeSeason);
-AdminRouter.post("/world-boss-seasons/:id/open", adminHandler.openSeason);
-
-const PublicRouter = createRouter();
-PublicRouter.get("/status", publicHandler.getStatus);
-PublicRouter.get("/leaderboard", publicHandler.getLeaderboard);
-PublicRouter.get("/me", publicHandler.getMyStats);
-
-exports.admin = AdminRouter;
-exports.public = PublicRouter;
-```
-
-`app/src/router/api.js` 接線：
-
-1. require 區：
-```js
-const { admin: AdminWorldBossRouter, public: PublicWorldBossRouter } = require("./WorldBoss");
-```
-2. 在既有 `router.use("/admin", verifyToken, verifyAdmin, verifyPrivilege(5));` **之後**（其他 admin 子 router 旁）：
-```js
-router.use("/admin", AdminWorldBossRouter);
-```
-3. public 掛載（其他 `router.use` 區塊旁；`verifyToken` 已在 api.js scope）：
-```js
-router.use("/world-boss", verifyToken, PublicWorldBossRouter);
-```
-
-- [ ] **Step 4: 跑測試確認 pass**
-
-Run: `cd app && yarn test -- src/handler/WorldBoss/__tests__/handlers.test.js`
-Expected: PASS（6 tests）。再 `yarn lint && yarn test` 全綠。
+Expected: automated forced-failure subprocess exits 1, success exits 0, real empty run exits 0.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-app/node_modules/.bin/prettier --write app/src/router/WorldBoss/index.js app/src/handler/WorldBoss app/src/router/api.js app/src/model/application/WorldBossRound.js
-git add -A && git commit -m "feat(worldboss): admin CRUD/season API + LIFF read API"
+git add app/bin/WorldBossSeasonSettle.js app/bin/__tests__/WorldBossSeasonSettle.test.js \
+  app/config/crontab.config.js
+git commit -m "feat(worldboss): add settlement cron failure contract"
 ```
 
 ---
 
-### Task 12: 前端管理頁（圖鑑＋賽季）
+### Task 9: Build Flex templates for active state and latest reward
 
 **Files:**
-- Create: `frontend/src/pages/Admin/Worldboss.jsx`
-- Modify: `frontend/src/App.jsx`（import + route）、`frontend/src/components/NavDrawer.jsx`（adminItems 加一項）
+- Create: `app/src/templates/application/WorldBoss.js`.
+- Test: `app/src/templates/application/__tests__/WorldBoss.test.js` (structural content only, not pixel appearance).
 
 **Interfaces:**
-- Consumes: Task 11 的 admin API 合約；`useAxios`（axios-hooks，已全域綁定共用 axios instance，相對路徑 `/api/...` 即可）；`RequireAdmin` route guard（App.jsx 既有）。
-- Produces: `/admin/worldboss` 單頁 = 圖鑑 CRUD ＋ 賽季建立/開季。無前端測試（repo 沒有 frontend test runner）— 驗收靠 lint + build + 手動冒煙。
 
-- [ ] **Step 1: `frontend/src/pages/Admin/Worldboss.jsx`**
-
-```jsx
-import { useState } from "react";
-import useAxios from "axios-hooks";
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-
-const EMPTY_BOSS = { name: "", image: "", description: "", hp_weight: 1 };
-const EMPTY_SEASON = { name: "", announcement: "", start_time: "", end_time: "" };
-const STATUS_CHIP = {
-  draft: { label: "草稿", color: "default" },
-  active: { label: "進行中", color: "success" },
-  settled: { label: "已結算", color: "info" },
-};
-
-export default function AdminWorldboss() {
-  const [{ data: bosses = [] }, refetchBosses] = useAxios("/api/admin/world-bosses");
-  const [{ data: seasons = [] }, refetchSeasons] = useAxios("/api/admin/world-boss-seasons");
-  const [, callApi] = useAxios({}, { manual: true });
-
-  const [error, setError] = useState("");
-  const [bossForm, setBossForm] = useState(null); // null = dialog closed；{...EMPTY_BOSS} or row
-  const [seasonForm, setSeasonForm] = useState(null);
-
-  const run = async (config, refetch) => {
-    setError("");
-    try {
-      await callApi(config);
-      await refetch();
-      return true;
-    } catch (e) {
-      setError(e.response?.data?.error || "操作失敗");
-      return false;
-    }
-  };
-
-  const saveBoss = async () => {
-    const { id, ...body } = bossForm;
-    const ok = await run(
-      id
-        ? { url: `/api/admin/world-bosses/${id}`, method: "PUT", data: body }
-        : { url: "/api/admin/world-bosses", method: "POST", data: body },
-      refetchBosses
-    );
-    if (ok) setBossForm(null);
-  };
-
-  const deleteBoss = async id => {
-    if (!window.confirm("確定刪除這隻王？（曾出場的王會被拒絕刪除）")) return;
-    await run({ url: `/api/admin/world-bosses/${id}`, method: "DELETE" }, refetchBosses);
-  };
-
-  const saveSeason = async () => {
-    const ok = await run(
-      { url: "/api/admin/world-boss-seasons", method: "POST", data: seasonForm },
-      refetchSeasons
-    );
-    if (ok) setSeasonForm(null);
-  };
-
-  const openSeason = async id => {
-    if (!window.confirm("確定開啟這個賽季？開季後會立刻建立第 1 輪，全服開打。")) return;
-    await run({ url: `/api/admin/world-boss-seasons/${id}/open`, method: "POST" }, refetchSeasons);
-  };
-
-  return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h5" gutterBottom>
-        世界王管理
-      </Typography>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
-          {error}
-        </Alert>
-      )}
-
-      <Card sx={{ mb: 3 }}>
-        <CardHeader
-          title="王圖鑑"
-          action={<Button variant="contained" onClick={() => setBossForm({ ...EMPTY_BOSS })}>新增</Button>}
-        />
-        <CardContent>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>名稱</TableCell>
-                <TableCell>血量權重</TableCell>
-                <TableCell>說明</TableCell>
-                <TableCell align="right">操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {bosses.map(boss => (
-                <TableRow key={boss.id}>
-                  <TableCell>{boss.name}</TableCell>
-                  <TableCell>{boss.hp_weight}</TableCell>
-                  <TableCell sx={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {boss.description}
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => setBossForm(boss)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => deleteBoss(boss.id)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="賽季"
-          action={<Button variant="contained" onClick={() => setSeasonForm({ ...EMPTY_SEASON })}>建立賽季</Button>}
-        />
-        <CardContent>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>名稱</TableCell>
-                <TableCell>狀態</TableCell>
-                <TableCell>開始</TableCell>
-                <TableCell>結束</TableCell>
-                <TableCell align="right">操作</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {seasons.map(season => {
-                const chip = STATUS_CHIP[season.status] || STATUS_CHIP.draft;
-                return (
-                  <TableRow key={season.id}>
-                    <TableCell>{season.name}</TableCell>
-                    <TableCell>
-                      <Chip size="small" label={chip.label} color={chip.color} />
-                    </TableCell>
-                    <TableCell>{season.start_time ? new Date(season.start_time).toLocaleString() : "-"}</TableCell>
-                    <TableCell>{season.end_time ? new Date(season.end_time).toLocaleString() : "-"}</TableCell>
-                    <TableCell align="right">
-                      {season.status === "draft" && (
-                        <Button size="small" variant="outlined" color="error" onClick={() => openSeason(season.id)}>
-                          開季
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Dialog open={Boolean(bossForm)} onClose={() => setBossForm(null)} fullWidth maxWidth="sm">
-        <DialogTitle>{bossForm?.id ? "編輯王" : "新增王"}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="名稱" required value={bossForm?.name || ""} onChange={e => setBossForm(f => ({ ...f, name: e.target.value }))} />
-            <TextField label="圖片 URL（可空）" value={bossForm?.image || ""} onChange={e => setBossForm(f => ({ ...f, image: e.target.value }))} />
-            <TextField label="說明" multiline minRows={2} value={bossForm?.description || ""} onChange={e => setBossForm(f => ({ ...f, description: e.target.value }))} />
-            <TextField label="血量權重" type="number" inputProps={{ step: 0.05, min: 0.1 }} value={bossForm?.hp_weight ?? 1} onChange={e => setBossForm(f => ({ ...f, hp_weight: Number(e.target.value) }))} />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setBossForm(null)}>取消</Button>
-          <Button variant="contained" disabled={!bossForm?.name} onClick={saveBoss}>儲存</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={Boolean(seasonForm)} onClose={() => setSeasonForm(null)} fullWidth maxWidth="sm">
-        <DialogTitle>建立賽季（草稿）</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="名稱" required value={seasonForm?.name || ""} onChange={e => setSeasonForm(f => ({ ...f, name: e.target.value }))} />
-            <TextField label="公告（可空）" multiline minRows={2} value={seasonForm?.announcement || ""} onChange={e => setSeasonForm(f => ({ ...f, announcement: e.target.value }))} />
-            {/* ponytail: datetime-local 字串直送（MySQL 接受 T 分隔）；需要跨時區部署時再統一改 ISO+後端轉換 */}
-            <TextField label="開始時間（可空＝開季當下）" type="datetime-local" InputLabelProps={{ shrink: true }} value={seasonForm?.start_time || ""} onChange={e => setSeasonForm(f => ({ ...f, start_time: e.target.value }))} />
-            <TextField label="結束時間" required type="datetime-local" InputLabelProps={{ shrink: true }} value={seasonForm?.end_time || ""} onChange={e => setSeasonForm(f => ({ ...f, end_time: e.target.value }))} />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSeasonForm(null)}>取消</Button>
-          <Button variant="contained" disabled={!seasonForm?.name || !seasonForm?.end_time} onClick={saveSeason}>建立</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
-}
-```
-
-（送出時 `start_time` 空字串要轉 null：`saveSeason` 前處理 `data: { ...seasonForm, start_time: seasonForm.start_time || null }` — 實作時直接把 `data` 換成這個表達式。）
-
-- [ ] **Step 2: 接線**
-
-1. `frontend/src/App.jsx`：import 區加 `import AdminWorldboss from "./pages/Admin/Worldboss";`，`<Route element={<RequireAdmin />}>` 區塊內（其他 admin route 旁）加：
-```jsx
-<Route path="admin/worldboss" element={<AdminWorldboss />} />
-```
-2. `frontend/src/components/NavDrawer.jsx` 的 `adminItems` 陣列加（icon 依 Task 2 刪除情況補 import，例：`import PetsIcon from "@mui/icons-material/Pets";`）：
 ```js
-{ label: "世界王管理", path: "/admin/worldboss", icon: PetsIcon },
+generateBattleStatusBubble({season,round,boss,daily,liffUri})
+generateAttackResultBubble({result,daily,latestReward})
+generateLatestRewardBubble({reward,liffUri})
+generateWorldBossReply({status,daily,latestReward,liffUri}) -> bubble or carousel
+generateNoActiveSeasonBubble({ended,liffUri})
 ```
 
-- [ ] **Step 3: 驗證**
+Latest reward copy must include season, `第 N 名`, stones (including `0`), title (or `無稱號`), total damage, ledger `rewardId`, paid timestamp `paidAt`, and a LIFF button. Label the proof fields in player-readable copy (for example `結算編號 #42`、`入帳時間 ...`); do not expose only an internal object property. `generateWorldBossReply` includes both active status and reward when both exist; without active it still returns latest reward; only when both absent does it return no-season.
+
+- [ ] **Step 1: Write failing structural tests**
+
+Assert serialized Flex JSON contains:
+- active round/HP/attack buttons and URI `/worldboss`;
+- latest reward fields `第 1 名`, `100`, `殲滅之王`, `結算編號 #42`, and the `paidAt` instant;
+- zero-tier reward still shows rank, `0` stones, `無稱號`, rewardId, and paidAt;
+- active + reward produces a carousel with two bubbles;
+- invalid `max_hp=0` is rejected rather than yielding `NaN%`.
+
+- [ ] **Step 2: Run and confirm failure**
 
 ```bash
-yarn lint:frontend && yarn build:frontend
+cd app && yarn test -- src/templates/application/__tests__/WorldBoss.test.js --runInBand
 ```
-Expected: 全綠。有起 dev 環境的話用瀏覽器開 `/admin/worldboss` 冒煙：列表載入、新增一隻王、建立草稿賽季。
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Implement pure builders**
+
+Use `FEATURE.worldBoss`, `SEMANTIC`, and `SURFACE`; no model/service/context imports. Attack postback data includes `{action:"worldBossAttack",attackType:"standard"|"skill",cooldown:<config>}`. Keep each LINE Flex message within platform limits.
+
+- [ ] **Step 4: Format and verify**
 
 ```bash
-git add -A && git commit -m "feat(worldboss): admin page — boss catalog CRUD + season create/open"
+app/node_modules/.bin/prettier --write app/src/templates/application/WorldBoss.js \
+  app/src/templates/application/__tests__/WorldBoss.test.js
+cd app
+yarn test -- src/templates/application/__tests__/WorldBoss.test.js --runInBand
+yarn lint
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/src/templates/application/WorldBoss.js \
+  app/src/templates/application/__tests__/WorldBoss.test.js
+git commit -m "feat(worldboss): add battle and settlement flex cards"
 ```
 
 ---
 
-### Task 13: LIFF 戰況板
+### Task 10: Wire chat controller and show latest reward on next interaction
 
 **Files:**
-- Create: `frontend/src/pages/Worldboss/index.jsx`
-- Modify: `frontend/src/App.jsx`（import + route，**一般會員區**非 admin）、`frontend/src/components/NavDrawer.jsx`（一般選單加一項）
+- Create: `app/src/controller/application/WorldBossController.js`.
+- Modify: `app/src/app.js`.
+- Reuse unchanged: `app/src/model/application/RPGCharacter.js`, `app/src/service/EquipmentService.js`, `app/src/service/MinigameService.js`.
+- Test: `app/src/controller/application/__tests__/WorldBossController.test.js`.
 
 **Interfaces:**
-- Consumes: Task 11 public API（`/api/world-boss/status`、`/leaderboard`、`/me`；token 由 LiffProvider 全域注入 axios instance）。
-- Produces: route path **`worldboss`**（小寫，與 Task 10 controller 的 `LIFF_PATH = "/worldboss"` 完全一致 — 不一致 LIFF 會 404）。
+- Router only matches `/^[.#/](世界王|worldboss)$/i`; it does not restore `#冒險小卡` or `#裝備`.
+- `showBattleStatus(context)` concurrently reads battle status, daily quota, and `getLatestSettledResult(userId)`, then calls `generateWorldBossReply`.
+- `attackOnBoss(context,{payload})` validates `payload.attackType`, computes the exact RPG/equipment values below, calls `BattleService.attack({userId,attackType,damage,cost,exp})`, re-reads latest reward, and includes it in the reply.
+- Load progress via `MinigameService.findByUserId(userId)` and bonuses via `EquipmentService.getEquipmentBonuses(userId)`. For a player without `minigame_level`, compute the first hit as default `{level:1,job_key:"adventurer"}` **without inserting**. BattleService creates/locks that row and grants EXP inside the attack transaction; controller must not call `createByUserId` before `attack()`.
+- Build `character = RPGCharacter.make(job_key,{level})`. For `standard`, base damage is `character.getStandardDamage()` and base cost is `10`; for `skill`, base damage is `character.getSkillOneDamage()` and base cost is `character.skillOne.cost`. Final `damage = Math.floor(baseDamage * (1 + Math.max(0, Number(atk_percent)||0)))`; final `cost = Math.max(1, baseCost - Math.max(0, Number(cost_reduction)||0))`; final `exp = config.get("worldboss.per_hit_exp") + Math.max(0, Number(exp_bonus)||0)`. `crit_rate` and `gold_bonus` do not receive a second application here because RPGCharacter skill methods already own their critical behavior and per-hit EXP is fixed by spec.
+- LIFF path constant is `"/worldboss"`.
+- Preserve the 5-second cooldown through Redis `SET <worldboss-v2:userId> 1 EX config.worldboss.attack_cooldown_seconds NX`. A false result returns the friendly cooldown reply before damage/service work. Use a v2-specific key; do not restore v1 event IDs or let cooldown replace the transactional daily quota. Unexpected Redis errors rethrow rather than silently disabling the guard.
 
-- [ ] **Step 1: `frontend/src/pages/Worldboss/index.jsx`**
+- [ ] **Step 1: Write failing controller tests with mocks before require**
 
-```jsx
-import useAxios from "axios-hooks";
-import {
-  Avatar,
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  Container,
-  IconButton,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Stack,
-  Typography,
-} from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
+Cover:
+- active + latest reward gives both cards on the next `#世界王` interaction;
+- no active + latest reward still shows rank/stones/title/rewardId/paidAt, including zero-tier results;
+- neither gives no-season card;
+- invalid attackType is rejected before damage calculation/service call;
+- cooldown Redis NX success calls the service once, NX miss returns friendly reply with no damage/service work, and Redis rejection rethrows; assert the v2-specific key and configured 5-second TTL;
+- controller daily precheck can short-circuit UX, but service `DAILY_LIMIT_EXCEEDED` is also mapped to friendly reply (race-safe authority remains service);
+- standard and skill fixtures assert exact `RPGCharacter` method selection, base cost, `atk_percent`, `cost_reduction`, and `per_hit_exp + exp_bonus` values passed to `attack()`; include a negative/NaN bonus fixture proving bonuses never make values invalid;
+- missing minigame data uses Lv.1 adventurer damage, does not call `createByUserId`, and leaves creation to the service transaction;
+- expired/no-active errors map to Flex; unexpected errors rethrow.
 
-const fmt = n => Number(n || 0).toLocaleString();
-const MEDALS = ["🥇", "🥈", "🥉"];
+- [ ] **Step 2: Run and confirm failure**
 
-export default function Worldboss() {
-  const [{ data: status, loading }, refetchStatus] = useAxios("/api/world-boss/status");
-  const [{ data: leaderboard = [] }, refetchBoard] = useAxios("/api/world-boss/leaderboard?limit=50");
-  const [{ data: me }, refetchMe] = useAxios("/api/world-boss/me");
+```bash
+cd app && yarn test -- src/controller/application/__tests__/WorldBossController.test.js --runInBand
+```
 
-  const refreshAll = () => {
-    refetchStatus();
-    refetchBoard();
-    refetchMe();
-  };
+- [ ] **Step 3: Implement controller and three app.js wiring points**
 
-  if (loading) return <LinearProgress />;
+Add require, postback route, and `...WorldBossController.router`. Do not add a generic LINE push/multicast or restore v1 commands. Achievement emission remains `boss_attack` with `{feature:"world_boss"}` after successful attack.
 
-  if (!status || !status.round) {
-    return (
-      <Container maxWidth="sm" sx={{ py: 4 }}>
-        <Card>
-          <CardContent sx={{ textAlign: "center" }}>
-            <Typography variant="h6">💤 目前沒有進行中的賽季</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              等待管理員開啟新賽季，敬請期待！
-            </Typography>
-          </CardContent>
-        </Card>
-      </Container>
-    );
+- [ ] **Step 4: Format and verify narrow + full suite + startup**
+
+```bash
+app/node_modules/.bin/prettier --write app/src/controller/application/WorldBossController.js \
+  app/src/controller/application/__tests__/WorldBossController.test.js app/src/app.js
+cd app
+yarn test -- src/controller/application/__tests__/WorldBossController.test.js --runInBand
+yarn test -- --runInBand
+yarn lint
+timeout 20 yarn dev
+```
+
+Expected: tests/lint pass; startup timeout may exit 124 but logs contain no require/wiring error.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/src/controller/application/WorldBossController.js \
+  app/src/controller/application/__tests__/WorldBossController.test.js app/src/app.js
+git commit -m "feat(worldboss): wire chat battle and reward replies"
+```
+
+---
+
+### Task 11: Add validated admin CRUD and public LIFF APIs
+
+**Files:**
+- Create: `app/src/router/WorldBoss/index.js`, `app/src/handler/WorldBoss/{index,admin,public}.js`.
+- Modify: `app/src/router/api.js`.
+- Test: `app/src/handler/WorldBoss/__tests__/handlers.test.js`.
+
+**Interfaces:**
+
+```text
+GET    /api/admin/world-bosses
+POST   /api/admin/world-bosses
+PUT    /api/admin/world-bosses/:id
+DELETE /api/admin/world-bosses/:id
+GET    /api/admin/world-boss-seasons
+POST   /api/admin/world-boss-seasons
+PUT    /api/admin/world-boss-seasons/:id       draft only
+DELETE /api/admin/world-boss-seasons/:id       draft only
+POST   /api/admin/world-boss-seasons/:id/open  immediate server-now open
+GET    /api/world-boss/status
+GET    /api/world-boss/leaderboard?limit=50
+GET    /api/world-boss/me
+```
+
+All routes use existing auth middleware. Response datetimes pass through one `toApiDto` helper that emits `date.toISOString()` with `Z`.
+
+`GET /me` returns independently of active state:
+
+```json
+{
+  "current": null,
+  "latestReward": {
+    "rewardId": 42,
+    "seasonId": 1,
+    "seasonName": "S1",
+    "ranking": 1,
+    "totalDamage": 500,
+    "stoneAmount": 100,
+    "titleKey": "worldboss_annihilator",
+    "titleName": "殲滅之王",
+    "paidAt": "2026-07-19T12:00:00.000Z",
+    "settledAt": "2026-07-19T12:00:00.000Z"
   }
-
-  const { season, round, boss, ended } = status;
-  const hpPercent = Math.max(0, Math.min(100, (Number(round.current_hp) / Number(round.max_hp)) * 100));
-
-  return (
-    <Container maxWidth="sm" sx={{ py: 2 }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-        <Typography variant="h6">{season.name}</Typography>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Chip size="small" color={ended ? "warning" : "success"} label={ended ? "結算中" : "進行中"} />
-          <IconButton size="small" onClick={refreshAll} aria-label="重新整理">
-            <RefreshIcon fontSize="small" />
-          </IconButton>
-        </Stack>
-      </Stack>
-
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Typography variant="overline" color="text.secondary">
-            第 {round.round_no} 輪
-          </Typography>
-          <Typography variant="h5" gutterBottom>
-            {boss?.name || "???"}
-          </Typography>
-          <LinearProgress variant="determinate" color="error" value={hpPercent} sx={{ height: 10, borderRadius: 5 }} />
-          <Typography variant="caption" display="block" align="right" sx={{ mt: 0.5 }}>
-            HP {fmt(round.current_hp)} / {fmt(round.max_hp)}
-          </Typography>
-          {season.end_time && (
-            <Typography variant="caption" color="text.secondary">
-              賽季結束：{new Date(season.end_time).toLocaleString()}
-            </Typography>
-          )}
-          {season.announcement && (
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              📢 {season.announcement}
-            </Typography>
-          )}
-        </CardContent>
-      </Card>
-
-      {me && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent>
-            <Typography variant="subtitle2" gutterBottom>
-              我的戰報
-            </Typography>
-            <Stack direction="row" spacing={3}>
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  本季總傷害
-                </Typography>
-                <Typography variant="h6">{fmt(me.totalDamage)}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  今日 cost
-                </Typography>
-                <Typography variant="h6">
-                  {me.daily.used}/{me.daily.limit}
-                </Typography>
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardContent>
-          <Typography variant="subtitle2" gutterBottom>
-            貢獻排行榜
-          </Typography>
-          <List dense disablePadding>
-            {leaderboard.map((row, index) => (
-              <ListItem key={row.user_id} disableGutters>
-                <ListItemAvatar>
-                  <Avatar sx={{ width: 32, height: 32, fontSize: 16 }}>
-                    {MEDALS[index] || index + 1}
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={row.display_name || "神秘冒險者"}
-                  secondary={`${fmt(row.total_damage)} 傷害`}
-                />
-              </ListItem>
-            ))}
-            {leaderboard.length === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                還沒有人出手，快成為第一刀！
-              </Typography>
-            )}
-          </List>
-        </CardContent>
-      </Card>
-    </Container>
-  );
 }
 ```
 
-- [ ] **Step 2: 接線**
+When active exists, `current` is `{seasonId,totalDamage,daily}` while `latestReward` remains present.
 
-1. `frontend/src/App.jsx`：`import Worldboss from "./pages/Worldboss";`，在 `<Route element={<MainLayout />}>` 內的**一般（非 RequireAdmin）**route 區加：
-```jsx
-<Route path="worldboss" element={<Worldboss />} />
-```
-2. `frontend/src/components/NavDrawer.jsx`：一般功能選單陣列（與猜拳/賽跑同一個 items 陣列）加一項，形狀照同陣列既有項目：
-```js
-{ label: "世界王", path: "/worldboss", icon: PetsIcon },
-```
+- [ ] **Step 1: Write failing handler tests**
 
-- [ ] **Step 3: 驗證**
+Cover all routes and error mappings, including:
+- boss name/weight invalid values rejected and service not called;
+- season create/update invalid dates rejected; active/settled update/delete service errors map 409/400;
+- create payload `start_time` is ignored/rejected and open writes no client time;
+- leaderboard `1` and `100` accepted; missing defaults 50; `0`, `101`, `1.5`, `NaN`, `Infinity` return 400 rather than clamp;
+- all datetime response fields are ISO strings ending `Z`;
+- `/me` returns latest reward with no active and both current/reward with active.
 
-```bash
-yarn lint:frontend && yarn build:frontend
-grep -n "worldboss" frontend/src/App.jsx app/src/controller/application/WorldBossController.js
-```
-Expected: build 綠；grep 顯示 App.jsx `path="worldboss"` 與 controller `LIFF_PATH = "/worldboss"` **字串一致**（route-path 慣例：小寫、不用 PascalCase）。
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 2: Run and confirm failure**
 
 ```bash
-git add -A && git commit -m "feat(worldboss): LIFF battle board (hp, my stats, season leaderboard)"
+cd app && yarn test -- src/handler/WorldBoss/__tests__/handlers.test.js --runInBand
+```
+
+- [ ] **Step 3: Implement handlers through services**
+
+Admin handler must call `WorldBossCatalogService.listBosses/createBoss/updateBoss/deleteBoss` and `WorldBossSeasonService.listSeasons/createSeason/updateSeason/deleteSeason/openSeason`; it must not call Base model CRUD directly. Assert both GET handlers delegate to their service list method and preserve deterministic order. Public handler calls `getBattleStatus`, `getRanking`, `getLatestSettledResult`, and battle daily helper. Centralize error→HTTP mapping and UTC DTO serialization.
+
+Mount admin router only after existing `verifyToken, verifyAdmin, verifyPrivilege(5)` middleware; mount public router as `router.use("/world-boss", verifyToken, PublicWorldBossRouter)`.
+
+- [ ] **Step 4: Format and verify narrow + full suite**
+
+```bash
+app/node_modules/.bin/prettier --write app/src/router/WorldBoss/index.js \
+  app/src/handler/WorldBoss app/src/router/api.js \
+  app/src/handler/WorldBoss/__tests__/handlers.test.js
+cd app
+yarn test -- src/handler/WorldBoss/__tests__/handlers.test.js --runInBand
+yarn test -- --runInBand
+yarn lint
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/src/router/WorldBoss app/src/handler/WorldBoss app/src/router/api.js
+git commit -m "feat(worldboss): add admin and LIFF APIs"
 ```
 
 ---
 
-### Task 14: 收尾（全套驗證＋殘留掃描＋PR）
+### Task 12: Build admin catalog and complete draft-season CRUD UI
 
-**Files:** 無新檔案 — 驗證與掃描。
+**Files:**
+- Create: `frontend/src/pages/Admin/Worldboss.jsx`.
+- Modify: `frontend/src/App.jsx`, `frontend/src/components/NavDrawer.jsx`.
 
-- [ ] **Step 1: 全套測試/lint/build**
+**Interfaces:**
+- `/admin/worldboss` supports boss create/edit/delete and season create/edit/delete/open.
+- Edit/delete/open buttons appear only for draft seasons. Active/settled are read-only.
+- Season form has no start-time field. End-time `datetime-local` is converted with `new Date(value).toISOString()` immediately before API submission; invalid/non-future value blocks submit client-side, while server remains authoritative.
+
+- [ ] **Step 1: Implement API helpers and forms**
+
+Use:
+
+```jsx
+const toUtcIso = value => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+const seasonPayload = form => ({
+  name: form.name.trim(),
+  announcement: form.announcement.trim() || null,
+  end_time: toUtcIso(form.end_time),
+});
+```
+
+Boss form enforces trimmed name length ≤64 and finite positive weight for UX. Season edit uses PUT; delete uses DELETE after confirmation; open confirmation says it starts immediately at server time. Do not send `start_time`.
+
+- [ ] **Step 2: Wire route and navigation**
+
+Add `<Route path="admin/worldboss" element={<AdminWorldboss />} />` inside `RequireAdmin` and one `世界王管理` nav item.
+
+- [ ] **Step 3: Format, lint, build, and perform manual browser checks**
 
 ```bash
-cd app && yarn lint && yarn test -- --runInBand
-cd .. && yarn lint:frontend && yarn build:frontend
+app/node_modules/.bin/prettier --write frontend/src/pages/Admin/Worldboss.jsx \
+  frontend/src/App.jsx frontend/src/components/NavDrawer.jsx
+yarn lint:frontend
+yarn build:frontend
 ```
-Expected: 全綠。任何紅的先修完才往下走。
 
-- [ ] **Step 2: 殘留掃描（teardown 完整性）**
+Manual browser checks (record pass/fail in task report): create boss, reject invalid weight, edit/delete unused boss, create/edit/delete draft, open draft immediately, verify active edit/delete buttons absent, verify request JSON `end_time` ends `Z` and has no `start_time`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add frontend/src/pages/Admin/Worldboss.jsx frontend/src/App.jsx \
+  frontend/src/components/NavDrawer.jsx
+git commit -m "feat(worldboss): add catalog and season admin page"
+```
+
+---
+
+### Task 13: Build LIFF battle board with latest settled reward
+
+**Files:**
+- Create: `frontend/src/pages/Worldboss/index.jsx`.
+- Modify: `frontend/src/App.jsx`, `frontend/src/components/NavDrawer.jsx`.
+
+**Interfaces:**
+- Route is exactly `worldboss`; backend LIFF URI is exactly `/worldboss`.
+- Page consumes status, leaderboard, and `/me`. It always renders `latestReward` when present, even if status/current is null or a newer season is active.
+- Leaderboard uses server-provided `ranking`, so ties render `1,1,3`; do not derive rank from array index.
+
+- [ ] **Step 1: Implement page states**
+
+Render:
+- loading/error/refresh;
+- active card with season, boss, safe HP percent (`max_hp>0` guard), round, UTC API dates formatted with `toLocaleString()`;
+- current personal damage/daily quota when available;
+- latest settled reward card with rank, stones (including zero), title or `無稱號`, total damage, authoritative `rewardId` (`結算編號`) and `paidAt` (`入帳時間`); `settledAt` may be secondary but cannot replace payment proof;
+- leaderboard with `row.ranking` and shared medal for equal ranks;
+- when no active, keep reward card visible and show no-season copy below/above it.
+
+- [ ] **Step 2: Wire route and navigation**
+
+Add `<Route path="worldboss" element={<Worldboss />} />` in the normal `MainLayout` and one general `世界王` nav item.
+
+- [ ] **Step 3: Format, lint, build, and perform manual browser checks**
+
+```bash
+app/node_modules/.bin/prettier --write frontend/src/pages/Worldboss/index.jsx \
+  frontend/src/App.jsx frontend/src/components/NavDrawer.jsx
+yarn lint:frontend
+yarn build:frontend
+rg -n 'path="worldboss"|LIFF_PATH = "/worldboss"' \
+  frontend/src/App.jsx app/src/controller/application/WorldBossController.js
+```
+
+Manual browser checks: active+reward together, no-active+reward, zero-tier reward, no-active/no-reward, tied rows show 1/1/3, reward card visibly shows rewardId and paidAt (not only settledAt), locale date renders without invalid date, refresh updates all three calls.
+
+Real LINE E2E (`#世界王` reply token, attack postback, LIFF auth) is explicitly not automatable in this repository; list it as pending human acceptance rather than marking it passed.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add frontend/src/pages/Worldboss/index.jsx frontend/src/App.jsx \
+  frontend/src/components/NavDrawer.jsx
+git commit -m "feat(worldboss): add LIFF battle and reward board"
+```
+
+---
+
+### Task 14: Local final verification, rollback checkpoint, and fresh review
+
+**Files:** No product files unless a failing gate requires a scoped fix. No push/PR/deploy.
+
+- [ ] **Step 1: Run format, lint, test, and build gates**
 
 ```bash
 cd /home/hanshino/workspace/redive_linebot
-grep -rin "worldBossAttackMessageKeeping\|adminBossAttack\|deliveryWorldBossTitles\|world-boss/feature-messages\|夢幻回歸" app/src app/bin app/config frontend/src
-grep -rn "WorldBossEvent\|WorldBossLog\|AttackMessageTags\|WorldBossUserAttackMessage" app/src frontend/src
+yarn format:check
+cd app
+yarn lint
+yarn test -- --runInBand
+cd ..
+yarn lint:frontend
+yarn build:frontend
+git diff --check main...HEAD
 ```
-Expected: 兩個 grep 都 **0 hits**（v1 符號全數死透）。有 hit 就回對應 task 補刀。
 
-- [ ] **Step 3: 冒煙（本機起服務）**
+Expected: all exit 0. Fix failures in the owning task scope, format changed JS/JSX again, rerun the failed narrow test and then this whole gate.
+
+- [ ] **Step 2: Run semantic teardown and placeholder scans**
 
 ```bash
-make infra   # 若未起
-cd app && yarn dev   # 起 bot，看啟動 log 無錯後 Ctrl-C；或 timeout 20 yarn dev
-node bin/WorldBossSeasonSettle.js   # cron 空跑
-```
-Expected: 無 require/wiring error。（完整 LINE 端對端需要 `make cf-go` + 真機，留給使用者驗收。）
+cd /home/hanshino/workspace/redive_linebot
+if rg -n 'adminBossAttack|deliveryWorldBossTitles|world-boss/feature-messages|WorldBossEvent|WorldBossLog|AttackMessageTags|WorldBossUserAttackMessage|#冒險小卡|\^\[#＃\]裝備' \
+  app/src app/bin app/config frontend/src; then
+  echo "v1 worldboss residual found" >&2
+  exit 1
+fi
 
-- [ ] **Step 4: Push + PR**
+added_js=$(mktemp)
+git diff --unified=0 main...HEAD -- '*.js' '*.jsx' > "$added_js"
+if rg '^\+.*(TODO|FIXME|test\.skip|test\.only|describe\.only|it\.only|NotImplemented|ponytail:)' "$added_js"; then
+  echo "placeholder debt found" >&2
+  rm -f "$added_js"
+  exit 1
+fi
+# Collapse each added JS/JSX file before scanning so multiline `catch (...) {\n}` is detectable.
+if git diff --name-only main...HEAD -- '*.js' '*.jsx' | while IFS= read -r file; do
+  perl -0777 -ne 'exit 1 if /catch\s*(?:\([^)]*\))?\s*\{\s*\}/s' "$file" || exit 1
+done; then
+  :
+else
+  echo "empty catch found" >&2
+  rm -f "$added_js"
+  exit 1
+fi
+rm -f "$added_js"
+```
+
+Expected: v1 scan has 0 hits; added-line debt/empty-catch assertions exit 0. Do not modify unrelated comments to silence a broad grep—narrow the semantic pattern instead.
+
+- [ ] **Step 3: Exercise runtime and cron failure contract**
 
 ```bash
-git push -u origin feat/worldboss-v2
-gh pr create --title "feat(worldboss): v2 全服共鬥賽季制（拆除 v1 重寫）" --body "$(cat <<'EOF'
-## Summary
-- 拆除世界王 v1 全件（controller/services/models/templates/admin 頁/5 張表/舊成就稱號）
-- v2 全服共鬥賽季制：手動開季 + cron 冪等結算、無限輪滾動王、on-hit 原子扣血、溢傷連清、每刀 RPG 職業經驗、賽季末女神石＋稱號
-- 聊天 `#世界王` Flex 快照卡 + `/worldboss` LIFF 戰況板 + `/admin/worldboss` 管理頁
-- Spec: docs/superpowers/specs/2026-07-19-worldboss-v2-design.md
-
-## Test plan
-- [ ] `cd app && yarn test`（battle/season/handler/controller/models 測試）
-- [ ] `yarn build:frontend`
-- [ ] 本機 LINE 冒煙：`#世界王` → 攻擊 → 清輪 → LIFF 戰況板
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-EOF
-)"
+make infra
+cd app
+timeout 20 yarn dev
+node bin/WorldBossSeasonSettle.js
+node -e 'const c=require("./bin/WorldBossSeasonSettle");c.runCli(async()=>{throw new Error("forced-final-gate")})'; test $? -ne 0
 ```
 
-- [ ] **Step 5: 部署備忘（寫進 PR 留言或交接）**
+Expected: bot has no require/wiring error; cron empty run exits 0; forced run exits nonzero.
 
-- prod 跑 `docker exec redive_linebot-bot-1 yarn migrate`（Task 3 + Task 4 兩支 migration）。
-- 圖鑑：全新環境跑 `docker exec redive_linebot-bot-1 yarn knex seed:run --specific=WorldBossCatalogSeeder.js`，或由管理頁手動建立（**seeder 是全量替換，管理員建過資料後不可重跑**）。
-- worker 重啟後 crontab 生效（結算每小時第 10 分）。
-- 開季是手動動作：部署完成 ≠ 開打，管理員要在 `/admin/worldboss` 建賽季並按「開季」。
-- 王圖片：`world_boss.image` 建議用 PictShare 上傳後填 URL；空值會 fallback `defaultUserIcon`。
+- [ ] **Step 4: Verify rollback with backups, without claiming data restoration**
+
+Before production deployment, the deploy operator must create and verify a timestamped DB dump. For local migration rollback verification, use the Task 3 backup checkpoint, then:
+
+```bash
+cd app
+yarn knex migrate:down   # removes v2: dependent user_titles first, then titles/tables
+yarn knex migrate:down   # v1 teardown down: recreates five empty v1 schemas
+node -e "const k=require('knex')(require('./knexfile'));Promise.all(['world_boss','world_boss_event','world_boss_event_log','world_boss_user_attack_message','attack_message_has_tags'].map(t=>k.schema.hasTable(t))).then(x=>{if(x.some(v=>!v))process.exitCode=1;return k.destroy()})"
+yarn migrate
+yarn knex seed:run --specific=WorldBossCatalogSeeder.js
+node -e "const k=require('knex')(require('./knexfile'));k('world_boss').whereIn('id',[1,2,3,4]).count({n:'id'}).first().then(({n})=>{if(Number(n)!==4)process.exitCode=1}).finally(()=>k.destroy())"
+```
+
+Expected: rollback truthfully yields empty v1 schemas; migrate reapplies teardown+v2. The explicit reseed and assertion restore stable boss IDs 1–4 before any openSeason test or handoff; migration reapply does not run seeds automatically. Restore lost v1 data only from the verified backup; migration `down()` never claims to restore rows.
+
+Production checkpoint for a **later authorized online-agent deployment** (not executable from this workstation):
+
+```bash
+# Discover Portainer containers by compose labels; do not assume generated suffixes.
+bot=$(docker ps -q --filter label=com.docker.compose.project=redive_linebot \
+  --filter label=com.docker.compose.service=bot)
+worker=$(docker ps -q --filter label=com.docker.compose.project=redive_linebot \
+  --filter label=com.docker.compose.service=worker)
+mysql=$(docker ps -q --filter label=com.docker.compose.project=infra \
+  --filter label=com.docker.compose.service=mysql)
+test -n "$bot" && test -n "$worker" && test -n "$mysql"
+
+# Persist on the host-mounted SSD, not inside an ephemeral container.
+backup_dir=/mnt/storage/redive-backups/worldboss-v2
+mkdir -p "$backup_dir"
+backup="$backup_dir/Princess-before-worldboss-v2-$(date +%Y%m%d-%H%M%S).sql"
+docker stop "$worker" "$bot"
+docker exec "$mysql" sh -c \
+  'exec mysqldump --single-transaction --routines --triggers -uroot -p"$MYSQL_ROOT_PASSWORD" Princess' \
+  > "$backup"
+test -s "$backup"
+sha256sum "$backup" > "${backup}.sha256"
+sha256sum -c "${backup}.sha256"
+
+# Run migration/seed from a one-shot container while public bot and worker stay stopped.
+image=$(docker inspect -f '{{.Config.Image}}' "$bot")
+env_file=$(mktemp /tmp/redive-worldboss-env.XXXXXX)
+chmod 600 "$env_file"
+docker inspect "$bot" --format '{{range .Config.Env}}{{println .}}{{end}}' > "$env_file"
+docker run --rm --network infra --env-file "$env_file" "$image" yarn migrate
+docker run --rm --network infra --env-file "$env_file" "$image" \
+  yarn knex seed:run --specific=WorldBossCatalogSeeder.js
+rm -f "$env_file"
+docker start "$bot" "$worker"
+docker ps --filter id="$bot" --filter id="$worker"
+
+# Restore branch—run only after a separate explicit recovery decision.
+docker stop "$worker" "$bot"
+sha256sum -c "${backup}.sha256"
+docker exec -i "$mysql" sh -c \
+  'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" Princess' < "$backup"
+docker start "$bot" "$worker"
+```
+
+The later deployment handoff must record discovered container IDs, exact absolute backup/checksum paths, nonempty/checksum results, stop/start output, migration/seed output, and a bot/worker health verification before completion. If the actual Portainer project labels differ, the online agent must report them and adjust discovery—not fall back to an unpersisted container-local dump.
+
+- [ ] **Step 5: Fresh-context review**
+
+Give a fresh verifier only this plan/spec and the branch diff. Acceptance requires:
+- all Task 1–13 criteria and tests are present and passing;
+- concurrent open/lethal/quota/settlement and forced rollback tests are real service/DB tests;
+- shared sentinels survive;
+- latest reward works chat + API + LIFF with/without active;
+- tie rewards are identical;
+- migration rollback and cron exit semantics are truthful;
+- no placeholder debt or scope creep.
+
+Verdict must be ACCEPT before completion. After fixes, send only the delta back to the same verifier.
+
+- [ ] **Step 6: Stop locally and write handoff**
+
+Record commits, test output, local backup path, manual browser checks, and the explicitly unautomated LINE E2E list. Do not push, create PR, post comments, or deploy; those actions require a later explicit user instruction.
