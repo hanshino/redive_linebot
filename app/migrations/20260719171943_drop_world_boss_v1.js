@@ -37,16 +37,16 @@ function createV1Tables(knex) {
       table.increments("id").primary();
       table.integer("world_boss_event_id").notNullable();
       table.integer("user_id").notNullable();
-      table.string("action_type").notNullable();
-      table.integer("damage").notNullable();
+      table.string("action_type").notNullable().comment("攻擊類型");
+      table.integer("damage").notNullable().comment("傷害");
       table.integer("cost").notNullable().defaultTo(0);
       table.timestamp("created_at").defaultTo(knex.fn.now());
     })
     .createTable("world_boss_user_attack_message", table => {
       table.increments("id").primary();
-      table.string("icon_url");
-      table.string("template").notNullable();
-      table.integer("creator_id").notNullable();
+      table.string("icon_url").comment("頭像 uri");
+      table.string("template").notNullable().comment("訊息樣板");
+      table.integer("creator_id").notNullable().comment("建立者 id");
       table.timestamp("created_at").defaultTo(knex.fn.now());
       table.timestamp("updated_at").defaultTo(knex.fn.now());
     })
