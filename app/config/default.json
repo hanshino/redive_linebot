@@ -241,18 +241,6 @@
       "itemAmount": 500
     }
   },
-  "title_delivery": {
-    "world_boss": {
-      "progressors": {
-        "key": "progressors",
-        "limit": 1
-      },
-      "leechers": {
-        "key": "leechers",
-        "limit": 1
-      }
-    }
-  },
   "event": {
     "expire": 86400,
     "daily_quest": "daily_quest"
