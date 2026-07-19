@@ -1,5 +1,4 @@
 const mysql = require("../src/util/mysql");
-const config = require("config");
 const { DefaultLogger } = require("../src/util/Logger");
 const UserTitleModel = require("../src/model/application/UserTitle");
 
@@ -14,7 +13,6 @@ async function main() {
 
     await deliveryGachaTitles(trx);
     await deliveryJankenTitles(trx);
-    await deliveryWorldBossTitles(trx);
 
     await trx.commit();
     DefaultLogger.info("Title delivery complete");
@@ -82,49 +80,6 @@ async function deliveryJankenTitles(trx) {
 
     if (topUser) {
       await UserTitleModel.grantByPlatformId(topUser.user_id, title.id, trx);
-    }
-  }
-}
-
-async function deliveryWorldBossTitles(trx) {
-  const progressorsConfig = config.get("title_delivery.world_boss.progressors");
-  const leechersConfig = config.get("title_delivery.world_boss.leechers");
-
-  const { count: userCount } = await trx.count({ count: "*" }).from("minigame_level").first();
-  if (userCount === 0) return;
-
-  const progressorsCount = Math.max(1, Math.ceil((userCount * progressorsConfig.limit) / 100));
-  const leechersCount = Math.max(1, Math.ceil((userCount * leechersConfig.limit) / 100));
-
-  // NOTE: minigame_level.user_id is an internal int ID, NOT a LINE platform_id.
-  // Must join the user table to get platform_id.
-  const progressorsTitle = await trx("titles").where("key", "progressors").first();
-  if (progressorsTitle) {
-    const topUsers = await trx("minigame_level")
-      .join("user", "minigame_level.user_id", "user.id")
-      .select("user.platform_id")
-      .orderBy([
-        { column: "minigame_level.level", order: "desc" },
-        { column: "minigame_level.exp", order: "desc" },
-      ])
-      .limit(progressorsCount);
-    for (const user of topUsers) {
-      await UserTitleModel.grantByPlatformId(user.platform_id, progressorsTitle.id, trx);
-    }
-  }
-
-  const leechersTitle = await trx("titles").where("key", "leechers").first();
-  if (leechersTitle) {
-    const bottomUsers = await trx("minigame_level")
-      .join("user", "minigame_level.user_id", "user.id")
-      .select("user.platform_id")
-      .orderBy([
-        { column: "minigame_level.level", order: "asc" },
-        { column: "minigame_level.exp", order: "asc" },
-      ])
-      .limit(leechersCount);
-    for (const user of bottomUsers) {
-      await UserTitleModel.grantByPlatformId(user.platform_id, leechersTitle.id, trx);
     }
   }
 }

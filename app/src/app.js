@@ -19,7 +19,6 @@ const { GlobalOrderBase } = require("./controller/application/GlobalOrders");
 const { showOrderManager } = require("./templates/application/CustomerOrder/line");
 const ChatLevelController = require("./controller/application/ChatLevelController");
 const WeatherController = require("./controller/application/WeatherController");
-const WorldBossController = require("./controller/application/WorldBossController");
 const AdvertisementController = require("./controller/application/AdvertisementController");
 const GodStoneShopController = require("./controller/princess/GodStoneShop");
 const CharacterController = require("./controller/princess/character");
@@ -103,13 +102,9 @@ async function HandlePostback(context, { next }) {
       EX: cooldown,
       NX: true,
     });
-    if (!isExist && action !== "adminBossAttack") return;
+    if (!isExist) return;
 
     return router([
-      route(
-        () => action === "worldBossAttack",
-        withProps(WorldBossController.attackOnBoss, { payload })
-      ),
       route(() => action === "janken", withProps(JankenController.decide, { payload })),
       route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
       route(
@@ -161,7 +156,6 @@ async function OrderBased(context, { next }) {
     ...(isAdmin ? AdminOrder(context) : []),
     ...CustomerOrder(context),
     ...GroupOrder(context),
-    ...WorldBossController.router,
     ...AdvertisementController.router,
     ...GodStoneShopController.router,
     ...JankenController.router,

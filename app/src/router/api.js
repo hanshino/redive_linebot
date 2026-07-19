@@ -21,14 +21,11 @@ const { webhook } = require("../util/discord");
 const { showStatistics, showUserStatistics } = require("../controller/application/Statistics");
 const ChatLevelController = require("../controller/application/ChatLevelController");
 const AnnounceController = require("../controller/application/AnnounceController");
-const WorldBossController = require("../controller/application/WorldBossController");
 const WeatherController = require("../controller/application/WeatherController");
 const SigninController = require("../controller/application/SigninController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
 const AdminModel = require("../model/application/Admin");
-const { admin: AdminWorldBossRouter } = require("./WorldBoss");
 const ImgurRouter = require("./Imgur");
-const { admin: AdminWorldBossEventRouter } = require("./WorldBossEvent");
 const { admin: AdminEquipmentRouter, player: PlayerEquipmentRouter } = require("./Equipment");
 const { admin: AdminCouponRouter } = require("./Coupon");
 const { router: InventoryRouter } = require("./Inventory");
@@ -48,8 +45,6 @@ router.use(TradeRouter);
 router.use(ImgurRouter);
 router.use("/admin", verifyToken, verifyAdmin, verifyPrivilege(5));
 
-router.use("/admin", AdminWorldBossRouter);
-router.use("/admin", AdminWorldBossEventRouter);
 router.use("/admin", AdminEquipmentRouter);
 router.use("/admin", AdminCouponRouter);
 
@@ -394,50 +389,6 @@ router.get("/characters/images", PrincessCharacterController.api.getCharacterIma
 router.get("/chat-levels/rankings", ChatLevelController.api.queryRank);
 
 router.get("/announcements/:page", AnnounceController.api.queryData);
-
-/**
- * 小遊戲 - 世界王
- */
-// 新增世界王傷害特色訊息
-router.post(
-  "/game/world-boss/feature-messages",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(3),
-  WorldBossController.api.createAttackMessage
-);
-// 取得世界王傷害特色訊息
-router.get(
-  "/game/world-boss/feature-messages",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(1),
-  WorldBossController.api.listAttackMessage
-);
-// 取得世界王傷害特色訊息 - 單筆
-router.get(
-  "/game/world-boss/feature-messages/:id",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(1),
-  WorldBossController.api.getAttackMessage
-);
-// 編輯世界王傷害特色訊息
-router.put(
-  "/game/world-boss/feature-messages/:id",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(3),
-  WorldBossController.api.updateAttackMessage
-);
-// 刪除世界王傷害特色訊息
-router.delete(
-  "/game/world-boss/feature-messages/:id",
-  verifyToken,
-  verifyAdmin,
-  verifyPrivilege(3),
-  WorldBossController.api.deleteAttackMessage
-);
 
 const JankenController = require("../controller/application/JankenController");
 
