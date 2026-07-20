@@ -2,6 +2,7 @@ const config = require("config");
 const { FEATURE, SEMANTIC, SURFACE } = require("../common/theme");
 
 const ATTACK_COOLDOWN_SECONDS = config.get("worldboss.attack_cooldown_seconds");
+const MAX_BOSS_DESCRIPTION_BYTES = 2048;
 const ACCENT = FEATURE.worldBoss;
 
 function textNode(text, extra = {}) {
@@ -58,11 +59,37 @@ function attackAction(attackType) {
   };
 }
 
+function truncateUtf8(value, maxBytes) {
+  const text = String(value || "");
+  if (Buffer.byteLength(text, "utf8") <= maxBytes) return text;
+
+  let bytes = 0;
+  let truncated = "";
+  for (const character of text) {
+    const characterBytes = Buffer.byteLength(character, "utf8");
+    if (bytes + characterBytes > maxBytes - Buffer.byteLength("…", "utf8")) break;
+    truncated += character;
+    bytes += characterBytes;
+  }
+  return `${truncated}…`;
+}
+
+function decimalToBigInt(value) {
+  if (typeof value === "bigint") return value;
+  if (typeof value === "number" && Number.isSafeInteger(value)) return BigInt(value);
+  if (typeof value === "string" && /^\d+$/.test(value)) return BigInt(value);
+  return null;
+}
+
+function roundedPercent(numerator, denominator) {
+  return Number((numerator * 100n + denominator / 2n) / denominator);
+}
+
 function validateRound(round) {
-  const maxHp = Number(round && round.max_hp);
-  const currentHp = Number(round && round.current_hp);
-  if (!Number.isFinite(maxHp) || maxHp <= 0) throw new Error("INVALID_MAX_HP");
-  if (!Number.isFinite(currentHp) || currentHp < 0 || currentHp > maxHp) {
+  const maxHp = decimalToBigInt(round && round.max_hp);
+  const currentHp = decimalToBigInt(round && round.current_hp);
+  if (maxHp === null || maxHp <= 0n) throw new Error("INVALID_MAX_HP");
+  if (currentHp === null || currentHp < 0n || currentHp > maxHp) {
     throw new Error("INVALID_CURRENT_HP");
   }
   return { maxHp, currentHp };
@@ -70,7 +97,8 @@ function validateRound(round) {
 
 function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
   const { maxHp, currentHp } = validateRound(round);
-  const hpPercent = Math.round((currentHp / maxHp) * 100);
+  const hpPercent = roundedPercent(currentHp, maxHp);
+  const description = truncateUtf8(boss.description, MAX_BOSS_DESCRIPTION_BYTES);
   const remaining = Number(daily && daily.remaining);
   const dailyLimit = Number(daily && daily.limit);
   const dailyUsed = Number(daily && daily.used);
@@ -95,9 +123,7 @@ function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
       spacing: "sm",
       contents: [
         textNode(`第 ${round.round_no} 輪 · ${boss.name}`, { weight: "bold", size: "lg" }),
-        ...(boss.description
-          ? [textNode(boss.description, { color: SURFACE.textMuted, size: "xs" })]
-          : []),
+        ...(description ? [textNode(description, { color: SURFACE.textMuted, size: "xs" })] : []),
         textNode(`HP ${formatNumber(currentHp)} / ${formatNumber(maxHp)}（${hpPercent}%）`, {
           margin: "md",
           weight: "bold",

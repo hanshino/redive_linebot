@@ -114,6 +114,45 @@ describe("WorldBoss Flex templates", () => {
     ).toThrow("INVALID_LIFF_URI");
   });
 
+  it("caps an unbounded boss description within LINE bubble and carousel payload limits", () => {
+    const oversizedStatus = {
+      ...status,
+      boss: { ...status.boss, description: "超長描述".repeat(22000) },
+    };
+    const bubble = WorldBoss.generateBattleStatusBubble({
+      ...oversizedStatus,
+      daily,
+      liffUri: LIFF,
+    });
+    const carousel = WorldBoss.generateWorldBossReply({
+      status: oversizedStatus,
+      daily,
+      latestReward,
+      liffUri: LIFF,
+    });
+
+    expect(visibleCopy(bubble)).toContain("…");
+    expect(Buffer.byteLength(JSON.stringify(bubble), "utf8")).toBeLessThanOrEqual(30 * 1024);
+    expect(Buffer.byteLength(JSON.stringify(carousel), "utf8")).toBeLessThanOrEqual(50 * 1024);
+  });
+
+  it("preserves BIGINT HP strings while calculating a safe progress percentage", () => {
+    const bubble = WorldBoss.generateBattleStatusBubble({
+      ...status,
+      round: {
+        ...status.round,
+        current_hp: "4503599627370497",
+        max_hp: "9007199254740993",
+      },
+      daily,
+      liffUri: LIFF,
+    });
+
+    expect(visibleCopy(bubble)).toContain(
+      "HP 4,503,599,627,370,497 / 9,007,199,254,740,993（50%）"
+    );
+  });
+
   it("preserves aggregate integer strings above Number.MAX_SAFE_INTEGER", () => {
     const bubble = WorldBoss.generateLatestRewardBubble({
       reward: { ...latestReward, totalDamage: "9007199254740993" },
