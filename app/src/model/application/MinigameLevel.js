@@ -23,10 +23,11 @@ exports.table = TABLE;
  * @param {String} userId Line user id
  * @returns {Promise<MinigameLevel>}
  */
-exports.findByUserId = async userId => {
+exports.findByUserId = async (userId, trx) => {
+  const db = trx || mysql;
   // 先組出 從 User 表中找出 userId 的 subQuery
-  const subQuery = getWhere(userId);
-  const query = mysql
+  const subQuery = getWhere(userId, db);
+  const query = db
     .select({
       id: "minigame_level.id",
       user_id: "minigame_level.user_id",
@@ -48,18 +49,31 @@ exports.findByUserId = async userId => {
   return await query;
 };
 
-exports.createByUserId = async (userId, attributes) => {
+exports.createByUserId = async (userId, attributes, trx) => {
+  const db = trx || mysql;
   attributes = pick(attributes, ["level", "exp"]);
-  const query = mysql(TABLE).insert(Object.assign(attributes, { user_id: getWhere(userId) }));
+  const query = db(TABLE).insert(Object.assign(attributes, { user_id: getWhere(userId, db) }));
   return await query;
 };
 
-exports.updateByUserId = (userId, attributes) => {
+exports.updateByUserId = (userId, attributes, trx) => {
+  const db = trx || mysql;
   attributes = pick(attributes, ["level", "exp"]);
-  const query = mysql(TABLE)
-    .where({ user_id: getWhere(userId) })
+  return db(TABLE)
+    .where({ user_id: getWhere(userId, db) })
     .update(attributes);
-  return query;
+};
+
+exports.lockUserAndProgress = async (userId, defaults, trx) => {
+  const user = await trx("user").where({ platform_id: userId }).forUpdate().first();
+  if (!user) throw Object.assign(new Error("USER_NOT_FOUND"), { code: "USER_NOT_FOUND" });
+
+  let row = await trx(TABLE).where({ user_id: user.id }).forUpdate().first();
+  if (!row) {
+    await trx(TABLE).insert({ user_id: user.id, level: defaults.level, exp: defaults.exp });
+    row = await trx(TABLE).where({ user_id: user.id }).forUpdate().first();
+  }
+  return row;
 };
 
 exports.changeUserJob = async (userId, jobKey) => {
@@ -76,6 +90,6 @@ exports.changeUserJob = async (userId, jobKey) => {
  * 提供這張表 where 條件
  * @param {String} userId Line user id
  */
-function getWhere(userId) {
-  return mysql.first("id").from("user").where({ platform_id: userId });
+function getWhere(userId, db = mysql) {
+  return db.first("id").from("user").where({ platform_id: userId });
 }
