@@ -36,6 +36,7 @@ const SubscribeController = require("./controller/application/SubscribeControlle
 const OpenaiController = require("./controller/application/OpenaiController");
 const JobController = require("./controller/application/JobController");
 const TopicController = require("./controller/application/topic");
+const WorldBossController = require("./controller/application/WorldBossController");
 const { transfer } = require("./middleware/dcWebhook");
 const { withTiming, wrapChain } = require("./middleware/timing");
 const redis = require("./util/redis");
@@ -94,18 +95,24 @@ async function HandlePostback(context, { next }) {
     let { action, cooldown = 1 } = payload;
     const { userId } = context.event.source;
 
-    let memkey = `Postback_${userId}_${action}`;
+    if (action !== "worldBossAttack") {
+      let memkey = `Postback_${userId}_${action}`;
 
-    // 使用 setnx 限制每位使用者 1秒內 不能連續重複動作
-    // 如果有特別指定的 cooldown 值，則使用該值
-    let isExist = await redis.set(memkey, 1, {
-      EX: cooldown,
-      NX: true,
-    });
-    if (!isExist) return;
+      // 使用 setnx 限制每位使用者 1秒內 不能連續重複動作
+      // 如果有特別指定的 cooldown 值，則使用該值
+      let isExist = await redis.set(memkey, 1, {
+        EX: cooldown,
+        NX: true,
+      });
+      if (!isExist) return;
+    }
 
     return router([
       route(() => action === "janken", withProps(JankenController.decide, { payload })),
+      route(
+        () => action === "worldBossAttack",
+        withProps(WorldBossController.attackOnBoss, { payload })
+      ),
       route(() => action === "challenge", withProps(JankenController.challenge, { payload })),
       route(
         () => action === "confirmTransfer",
@@ -159,6 +166,7 @@ async function OrderBased(context, { next }) {
     ...AdvertisementController.router,
     ...GodStoneShopController.router,
     ...JankenController.router,
+    ...WorldBossController.router,
     ...RaceController.router,
     ...AchievementController.router,
     ...AchievementController.titleRouter,
@@ -434,3 +442,4 @@ async function App(context) {
 }
 
 module.exports = App;
+module.exports.HandlePostback = HandlePostback;
