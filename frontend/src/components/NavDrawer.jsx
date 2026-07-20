@@ -77,6 +77,7 @@ const adminItems = [
   { label: "全群指令管理", path: "/admin/global-order", icon: MessageIcon },
   { label: "訊息實況", path: "/admin/messages", icon: MessageIcon },
   { label: "優惠券管理", path: "/admin/coupons", icon: ConfirmationNumberIcon },
+  { label: "世界王管理", path: "/admin/worldboss", icon: SportsEsportsIcon },
 ];
 
 const linkItems = [

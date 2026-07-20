@@ -44,6 +44,7 @@ import AdminGachaShop from "./pages/Admin/GachaShop";
 import AdminGlobalOrder from "./pages/Admin/GlobalOrder";
 import AdminMessages from "./pages/Admin/Messages";
 import AdminCoupons from "./pages/Admin/Coupon";
+import AdminWorldboss from "./pages/Admin/Worldboss";
 import RequireAdmin from "./components/RequireAdmin";
 
 function RedirectFromTransaction() {
@@ -130,6 +131,7 @@ export default function App() {
             <Route path="admin/global-order" element={<AdminGlobalOrder />} />
             <Route path="admin/messages" element={<AdminMessages />} />
             <Route path="admin/coupons" element={<AdminCoupons />} />
+            <Route path="admin/worldboss" element={<AdminWorldboss />} />
           </Route>
         </Route>
       </Routes>
