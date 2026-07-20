@@ -21,8 +21,15 @@ function detailRow(label, value, valueColor = SURFACE.text) {
 }
 
 function formatNumber(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? new Intl.NumberFormat("en-US").format(number) : String(value);
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? new Intl.NumberFormat("en-US").format(value) : String(value);
+  }
+  if (typeof value === "bigint") return value.toLocaleString("en-US");
+  if (typeof value !== "string" || !/^-?\d+$/.test(value)) return String(value);
+
+  const negative = value.startsWith("-");
+  const digits = value.slice(negative ? 1 : 0).replace(/^0+(?=\d)/, "");
+  return `${negative ? "-" : ""}${digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 }
 
 function worldBossUri(liffUri) {
@@ -32,6 +39,7 @@ function worldBossUri(liffUri) {
   } catch (error) {
     throw new Error("INVALID_LIFF_URI", { cause: error });
   }
+  if (uri.protocol !== "https:") throw new Error("INVALID_LIFF_URI");
   const path = uri.pathname.replace(/\/$/, "");
   uri.pathname = path.endsWith("/worldboss") ? path : `${path}/worldboss`;
   return uri.toString();

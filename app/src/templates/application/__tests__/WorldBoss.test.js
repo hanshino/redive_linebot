@@ -17,6 +17,27 @@ function visibleCopy(node) {
   return collectByKey(node, "text").concat(collectByKey(node, "label")).join("\n");
 }
 
+function detailRowValue(node, label) {
+  const rows = [];
+  function visit(value) {
+    if (Array.isArray(value)) value.forEach(visit);
+    else if (value && typeof value === "object") {
+      if (
+        value.type === "box" &&
+        value.layout === "horizontal" &&
+        Array.isArray(value.contents) &&
+        value.contents[0] &&
+        value.contents[0].text === label
+      ) {
+        rows.push(value.contents[1] && value.contents[1].text);
+      }
+      Object.values(value).forEach(visit);
+    }
+  }
+  visit(node);
+  return rows;
+}
+
 function postbackActions(node) {
   const actions = [];
   function visit(value) {
@@ -87,6 +108,21 @@ describe("WorldBoss Flex templates", () => {
     ).toThrow("INVALID_MAX_HP");
   });
 
+  it("rejects non-HTTPS LIFF URIs rather than serializing invalid URI actions", () => {
+    expect(() =>
+      WorldBoss.generateBattleStatusBubble({ ...status, daily, liffUri: "ftp://liff.line.me/id" })
+    ).toThrow("INVALID_LIFF_URI");
+  });
+
+  it("preserves aggregate integer strings above Number.MAX_SAFE_INTEGER", () => {
+    const bubble = WorldBoss.generateLatestRewardBubble({
+      reward: { ...latestReward, totalDamage: "9007199254740993" },
+      liffUri: LIFF,
+    });
+
+    expect(detailRowValue(bubble, "賽季總傷害")).toEqual(["9,007,199,254,740,993"]);
+  });
+
   it("renders every player-readable latest settlement field including ledger proof", () => {
     const bubble = WorldBoss.generateLatestRewardBubble({ reward: latestReward, liffUri: LIFF });
     const copy = visibleCopy(bubble);
@@ -119,7 +155,7 @@ describe("WorldBoss Flex templates", () => {
     const copy = visibleCopy(bubble);
 
     expect(copy).toContain("第 88 名");
-    expect(copy).toContain("0");
+    expect(detailRowValue(bubble, "女神石")).toEqual(["0"]);
     expect(copy).toContain("無稱號");
     expect(copy).toContain("結算編號 #43");
     expect(copy).toContain("入帳時間 2026-07-20T13:00:00.000Z");
