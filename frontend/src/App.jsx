@@ -45,6 +45,7 @@ import AdminGlobalOrder from "./pages/Admin/GlobalOrder";
 import AdminMessages from "./pages/Admin/Messages";
 import AdminCoupons from "./pages/Admin/Coupon";
 import AdminWorldboss from "./pages/Admin/Worldboss";
+import Worldboss from "./pages/Worldboss";
 import RequireAdmin from "./components/RequireAdmin";
 
 function RedirectFromTransaction() {
@@ -64,6 +65,7 @@ export default function App() {
           <Route index element={<Home />} />
           <Route path="rankings" element={<Rankings />} />
           <Route path="janken" element={<Janken />} />
+          <Route path="worldboss" element={<Worldboss />} />
           <Route path="race" element={<Race />} />
           <Route path="race/bet" element={<RaceBet />} />
           <Route path="race/:raceId" element={<RaceDetail />} />

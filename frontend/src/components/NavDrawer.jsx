@@ -22,6 +22,7 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import MessageIcon from "@mui/icons-material/Message";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -55,6 +56,7 @@ const princessItems = [
 
 const arenaItems = [
   { label: "猜拳競技場", path: "/janken", icon: EmojiEventsIcon },
+  { label: "世界王", path: "/worldboss", icon: MilitaryTechIcon },
   { label: "蘭德索爾盃", path: "/race", icon: EmojiEventsIcon },
 ];
 
