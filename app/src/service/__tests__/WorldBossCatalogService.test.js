@@ -1,21 +1,21 @@
 require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../.env") });
 jest.unmock("../../util/mysql");
 const mysql = jest.requireActual("../../util/mysql");
-const { PREFIX, slotFor, cleanupByPrefix } = require("../../__tests__/helpers/worldBossFixture");
+const { PREFIX, cleanupByPrefix } = require("../../__tests__/helpers/worldBossFixture");
 const WorldBossCatalogService = require("../WorldBossCatalogService");
 
 describe("WorldBossCatalogService", () => {
   const prefix = `${PREFIX}catalog_`;
-  const sentinelName = "__wbtest_sentinel_catalog";
+  const sentinelName = "xxwbtestXcatalogXsentinel";
 
   beforeEach(async () => {
-    await cleanupByPrefix(mysql, prefix, slotFor(5));
+    await cleanupByPrefix(mysql, prefix);
     await mysql("world_boss").where({ name: sentinelName }).del();
     await mysql("world_boss").insert({ name: sentinelName, hp_weight: 1 });
   });
 
   afterEach(async () => {
-    await cleanupByPrefix(mysql, prefix, slotFor(5));
+    await cleanupByPrefix(mysql, prefix);
     expect(await mysql("world_boss").where({ name: sentinelName }).first()).toBeTruthy();
     await mysql("world_boss").where({ name: sentinelName }).del();
   });
@@ -29,6 +29,11 @@ describe("WorldBossCatalogService", () => {
     expect(() =>
       WorldBossCatalogService.normalizeBossInput({ name: "x".repeat(65), hp_weight: 1 })
     ).toThrow("INVALID_BOSS_NAME");
+    for (const invalidInput of [null, 42, "invalid"]) {
+      expect(() => WorldBossCatalogService.normalizeBossInput(invalidInput)).toThrow(
+        "INVALID_BOSS_NAME"
+      );
+    }
 
     for (const hpWeight of [0, -1, Number.NaN, Infinity]) {
       expect(() =>

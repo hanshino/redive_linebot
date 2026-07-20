@@ -2,6 +2,7 @@ const knex = require("knex");
 
 const dbConfig = require("../../knexfile");
 const migration = require("../../migrations/20260719174434_create_world_boss_v2");
+const foreignKeyMigration = require("../../migrations/20260720085307_add_world_boss_round_world_boss_foreign_key");
 const seeder = require("../../seeds/WorldBossCatalogSeeder");
 const config = require("../../config/default.json");
 
@@ -17,6 +18,7 @@ const COLLISION_KEY = TITLE_KEYS[0];
 const SENTINEL_USER_ID = "__wbtest_title_owner";
 const UNRELATED_TITLE_KEY = "__wbtest_unrelated_title";
 const UNRELATED_USER_ID = "__wbtest_unrelated_owner";
+const TEST_PREFIX = "__wbtest_";
 
 const TEST_DATABASE = "Princess_worldboss_v2_test";
 const adminConfig = {
@@ -34,7 +36,7 @@ let database;
 async function removeTestTitles() {
   const titles = await database("titles")
     .whereIn("key", [COLLISION_KEY, UNRELATED_TITLE_KEY])
-    .where("name", "like", "__wbtest_%")
+    .whereRaw("LEFT(??, ?) = ?", ["name", TEST_PREFIX.length, TEST_PREFIX])
     .select("id");
   const ids = titles.map(title => title.id);
   if (ids.length) {
@@ -149,6 +151,62 @@ test("schema exposes every required enum, unique, index, and check constraint", 
   expect(createSql.world_boss_contribution).toContain("idx_wbc_round");
   expect(createSql.world_boss_contribution).toContain("idx_wbc_user_created");
   expect(createSql.world_boss_season_reward).toContain("uq_wbsr_season_user");
+});
+
+test("follow-up migration restricts deleting a boss referenced by a round", async () => {
+  await migration.up(database);
+  await foreignKeyMigration.up(database);
+
+  const [constraint] = await database("information_schema.REFERENTIAL_CONSTRAINTS")
+    .where({
+      CONSTRAINT_SCHEMA: TEST_DATABASE,
+      TABLE_NAME: "world_boss_round",
+      CONSTRAINT_NAME: "world_boss_round_world_boss_id_foreign",
+    })
+    .select("UNIQUE_CONSTRAINT_NAME", "DELETE_RULE");
+  expect(constraint).toMatchObject({ UNIQUE_CONSTRAINT_NAME: "PRIMARY", DELETE_RULE: "RESTRICT" });
+
+  const [bossId] = await database("world_boss").insert({
+    name: `${TEST_PREFIX}foreign-key-boss`,
+    hp_weight: 1,
+  });
+  const [seasonId] = await database("world_boss_season").insert({
+    name: `${TEST_PREFIX}foreign-key-season`,
+    status: "draft",
+    end_time: new Date("2030-01-01T00:00:00.000Z"),
+  });
+  const [roundId] = await database("world_boss_round").insert({
+    season_id: seasonId,
+    round_no: 1,
+    world_boss_id: bossId,
+    max_hp: 100,
+    current_hp: 100,
+    status: "cleared",
+  });
+
+  await expect(database("world_boss").where({ id: bossId }).del()).rejects.toThrow();
+  await expect(database("world_boss").where({ id: bossId }).first()).resolves.toBeDefined();
+  await expect(database("world_boss_round").where({ id: roundId }).first()).resolves.toBeDefined();
+
+  await foreignKeyMigration.down(database);
+  await expect(
+    database("information_schema.REFERENTIAL_CONSTRAINTS")
+      .where({
+        CONSTRAINT_SCHEMA: TEST_DATABASE,
+        TABLE_NAME: "world_boss_round",
+        CONSTRAINT_NAME: "world_boss_round_world_boss_id_foreign",
+      })
+      .first()
+  ).resolves.toBeFalsy();
+  await expect(
+    database("information_schema.STATISTICS")
+      .where({
+        TABLE_SCHEMA: TEST_DATABASE,
+        TABLE_NAME: "world_boss_round",
+        INDEX_NAME: "idx_wbr_world_boss",
+      })
+      .first()
+  ).resolves.toBeFalsy();
 });
 
 test("database rejects invalid catalog, season, and round rows", async () => {

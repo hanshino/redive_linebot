@@ -1,7 +1,11 @@
 require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../../.env") });
 jest.unmock("../../../util/mysql");
 const mysql = jest.requireActual("../../../util/mysql");
-const { PREFIX, slotFor, cleanupByPrefix } = require("../../../__tests__/helpers/worldBossFixture");
+const {
+  PREFIX,
+  ACTIVE_SLOT,
+  cleanupByPrefix,
+} = require("../../../__tests__/helpers/worldBossFixture");
 const WorldBossSeason = require("../WorldBossSeason");
 const WorldBossRound = require("../WorldBossRound");
 const WorldBossContribution = require("../WorldBossContribution");
@@ -9,8 +13,8 @@ const WorldBossSeasonReward = require("../WorldBossSeasonReward");
 
 describe("World Boss v2 models", () => {
   const prefix = `${PREFIX}models_`;
-  const sentinelName = "__wbtest_sentinel_models";
-  const activeSlot = 1;
+  const sentinelName = "xxwbtestXmodelsXsentinel";
+  const activeSlot = ACTIVE_SLOT;
 
   async function createSeason({
     name,
@@ -45,7 +49,7 @@ describe("World Boss v2 models", () => {
   }
 
   beforeEach(async () => {
-    await cleanupByPrefix(mysql, prefix, slotFor(5));
+    await cleanupByPrefix(mysql, prefix);
     await mysql("world_boss_season").where({ name: sentinelName }).del();
     await mysql("world_boss_season").insert({
       name: sentinelName,
@@ -55,7 +59,7 @@ describe("World Boss v2 models", () => {
   });
 
   afterEach(async () => {
-    await cleanupByPrefix(mysql, prefix, slotFor(5));
+    await cleanupByPrefix(mysql, prefix);
     expect(await mysql("world_boss_season").where({ name: sentinelName }).first()).toBeTruthy();
     await mysql("world_boss_season").where({ name: sentinelName }).del();
   });

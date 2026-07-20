@@ -7,6 +7,8 @@ function fail(code) {
 }
 
 function normalizeBossInput(input = {}) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw fail("INVALID_BOSS_NAME");
+
   const name = typeof input.name === "string" ? input.name.trim() : "";
   if (!name || name.length > 64) throw fail("INVALID_BOSS_NAME");
 
