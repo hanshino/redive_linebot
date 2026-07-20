@@ -9,7 +9,7 @@ async function main() {
   const trx = await mysql.transaction();
 
   try {
-    await UserTitleModel.clearAll(trx);
+    await UserTitleModel.clearAllExcept("worldboss_", trx);
 
     await deliveryGachaTitles(trx);
     await deliveryJankenTitles(trx);
