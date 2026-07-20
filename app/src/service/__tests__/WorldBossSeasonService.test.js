@@ -386,6 +386,10 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     });
     const ranking = await service.getRanking(fixture.seasonId, 100);
     expect(ranking.map(row => row.ranking)).toEqual([1, 1, 3]);
+    await expect(service.getUserTotalDamage(fixture.seasonId, owned("rank_c"))).resolves.toBe(300);
+    await expect(service.getUserTotalDamage(fixture.seasonId, owned("not_ranked"))).resolves.toBe(
+      0
+    );
     await expect(service.getRanking(fixture.seasonId, 0)).rejects.toMatchObject({
       code: "INVALID_RANKING_LIMIT",
     });

@@ -202,6 +202,10 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
     return WorldBossContribution.seasonRanking(seasonId, limit);
   }
 
+  async function getUserTotalDamage(seasonId, userId) {
+    return WorldBossContribution.sumSeasonDamage(seasonId, userId);
+  }
+
   async function getLatestSettledResult(userId) {
     return WorldBossSeasonReward.findLatestSettledByUser(userId);
   }
@@ -314,6 +318,7 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
     openSeason,
     getBattleStatus,
     getRanking,
+    getUserTotalDamage,
     getLatestSettledResult,
     settleSeason,
     settleExpiredSeasons,

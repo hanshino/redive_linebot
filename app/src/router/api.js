@@ -28,6 +28,7 @@ const AdminModel = require("../model/application/Admin");
 const ImgurRouter = require("./Imgur");
 const { admin: AdminEquipmentRouter, player: PlayerEquipmentRouter } = require("./Equipment");
 const { admin: AdminCouponRouter } = require("./Coupon");
+const { admin: AdminWorldBossRouter, public: PublicWorldBossRouter } = require("./WorldBoss");
 const { router: InventoryRouter } = require("./Inventory");
 const { router: TradeRouter } = require("./Trade");
 const { router: MarketRouter } = require("./Market");
@@ -43,10 +44,12 @@ router.use(PublicMarketRouter);
 router.use(InventoryRouter);
 router.use(TradeRouter);
 router.use(ImgurRouter);
+router.use("/world-boss", verifyToken, PublicWorldBossRouter);
 router.use("/admin", verifyToken, verifyAdmin, verifyPrivilege(5));
 
 router.use("/admin", AdminEquipmentRouter);
 router.use("/admin", AdminCouponRouter);
+router.use("/admin", AdminWorldBossRouter);
 
 router.use(GodStoneShopRouter);
 router.use("/game", verifyToken, PlayerEquipmentRouter);

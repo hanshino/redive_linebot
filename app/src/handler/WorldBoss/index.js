@@ -1,0 +1,69 @@
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+
+const BAD_REQUEST_CODES = new Set([
+  "INVALID_ID",
+  "INVALID_BOSS_NAME",
+  "INVALID_HP_WEIGHT",
+  "INVALID_NAME",
+  "INVALID_END_TIME",
+  "INVALID_DATE",
+  "INVALID_RANKING_LIMIT",
+]);
+const CONFLICT_CODES = new Set(["BOSS_IN_USE", "SEASON_NOT_DRAFT", "ANOTHER_SEASON_ACTIVE"]);
+const NOT_FOUND_CODES = new Set(["SEASON_NOT_FOUND"]);
+const UNPROCESSABLE_CODES = new Set(["NO_WORLD_BOSS", "INVALID_MAX_HP", "WORLD_BOSS_NOT_FOUND"]);
+
+function toApiDto(value) {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(toApiDto);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, toApiDto(child)]));
+}
+
+function respondError(res, error) {
+  const code = error && error.code;
+  if (BAD_REQUEST_CODES.has(code)) return res.status(400).json({ error: code });
+  if (CONFLICT_CODES.has(code)) return res.status(409).json({ error: code });
+  if (NOT_FOUND_CODES.has(code)) return res.status(404).json({ error: code });
+  if (UNPROCESSABLE_CODES.has(code)) return res.status(422).json({ error: code });
+  console.error("[world-boss-api]", error);
+  return res.status(500).json({ error: "INTERNAL_ERROR" });
+}
+
+function fail(code) {
+  return Object.assign(new Error(code), { code });
+}
+
+function parseId(value) {
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) throw fail("INVALID_ID");
+  const id = Number(value);
+  if (!Number.isSafeInteger(id)) throw fail("INVALID_ID");
+  return id;
+}
+
+function parseUtcDate(value) {
+  if (typeof value !== "string" || !ISO_DATETIME.test(value)) throw fail("INVALID_END_TIME");
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime()) || date.toISOString() !== value)
+    throw fail("INVALID_END_TIME");
+  return date;
+}
+
+function parseLeaderboardLimit(value) {
+  if (value === undefined) return 50;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) throw fail("INVALID_RANKING_LIMIT");
+  const limit = Number(value);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw fail("INVALID_RANKING_LIMIT");
+  }
+  return limit;
+}
+
+module.exports = {
+  toApiDto,
+  respondError,
+  fail,
+  parseId,
+  parseUtcDate,
+  parseLeaderboardLimit,
+};
