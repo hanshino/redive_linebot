@@ -153,15 +153,70 @@ test("schema exposes every required enum, unique, index, and check constraint", 
   expect(createSql.world_boss_season_reward).toContain("uq_wbsr_season_user");
 });
 
-test("follow-up migration restricts deleting a boss referenced by a round", async () => {
+test("follow-up migration rejects orphaned rounds before DDL and restricts boss deletion", async () => {
   await migration.up(database);
-  await foreignKeyMigration.up(database);
+
+  const [seasonId] = await database("world_boss_season").insert({
+    name: `${TEST_PREFIX}foreign-key-season`,
+    status: "draft",
+    end_time: new Date("2030-01-01T00:00:00.000Z"),
+  });
+  const orphanRoundIds = [];
+  for (let roundNo = 1; roundNo <= 11; roundNo += 1) {
+    const [id] = await database("world_boss_round").insert({
+      season_id: seasonId,
+      round_no: roundNo,
+      world_boss_id: 999999,
+      max_hp: 100,
+      current_hp: 100,
+      status: "cleared",
+    });
+    orphanRoundIds.push(id);
+  }
+  const [beforeCreateRows] = await database.raw("SHOW CREATE TABLE `world_boss_round`");
+  const beforeCreate = beforeCreateRows[0]["Create Table"];
+  const expectedSample = orphanRoundIds.slice(0, 10).map(roundId => ({
+    roundId,
+    worldBossId: 999999,
+  }));
+
+  await expect(foreignKeyMigration.up(database)).rejects.toMatchObject({
+    code: "WORLD_BOSS_ROUND_ORPHANS",
+    orphanCount: 11,
+    orphanSample: expectedSample,
+  });
+  await expect(database("world_boss_round").whereIn("id", orphanRoundIds)).resolves.toHaveLength(
+    11
+  );
+  const [afterCreateRows] = await database.raw("SHOW CREATE TABLE `world_boss_round`");
+  expect(afterCreateRows[0]["Create Table"]).toBe(beforeCreate);
+  await expect(
+    database("information_schema.REFERENTIAL_CONSTRAINTS")
+      .where({
+        CONSTRAINT_SCHEMA: TEST_DATABASE,
+        TABLE_NAME: "world_boss_round",
+        CONSTRAINT_NAME: "fk_wbr_world_boss",
+      })
+      .first()
+  ).resolves.toBeFalsy();
+  await expect(
+    database("information_schema.STATISTICS")
+      .where({
+        TABLE_SCHEMA: TEST_DATABASE,
+        TABLE_NAME: "world_boss_round",
+        INDEX_NAME: "idx_wbr_world_boss",
+      })
+      .first()
+  ).resolves.toBeFalsy();
+
+  await database("world_boss_round").whereIn("id", orphanRoundIds).del();
+  await expect(foreignKeyMigration.up(database)).resolves.toBeUndefined();
 
   const [constraint] = await database("information_schema.REFERENTIAL_CONSTRAINTS")
     .where({
       CONSTRAINT_SCHEMA: TEST_DATABASE,
       TABLE_NAME: "world_boss_round",
-      CONSTRAINT_NAME: "world_boss_round_world_boss_id_foreign",
+      CONSTRAINT_NAME: "fk_wbr_world_boss",
     })
     .select("UNIQUE_CONSTRAINT_NAME", "DELETE_RULE");
   expect(constraint).toMatchObject({ UNIQUE_CONSTRAINT_NAME: "PRIMARY", DELETE_RULE: "RESTRICT" });
@@ -170,14 +225,9 @@ test("follow-up migration restricts deleting a boss referenced by a round", asyn
     name: `${TEST_PREFIX}foreign-key-boss`,
     hp_weight: 1,
   });
-  const [seasonId] = await database("world_boss_season").insert({
-    name: `${TEST_PREFIX}foreign-key-season`,
-    status: "draft",
-    end_time: new Date("2030-01-01T00:00:00.000Z"),
-  });
   const [roundId] = await database("world_boss_round").insert({
     season_id: seasonId,
-    round_no: 1,
+    round_no: 12,
     world_boss_id: bossId,
     max_hp: 100,
     current_hp: 100,
@@ -194,7 +244,7 @@ test("follow-up migration restricts deleting a boss referenced by a round", asyn
       .where({
         CONSTRAINT_SCHEMA: TEST_DATABASE,
         TABLE_NAME: "world_boss_round",
-        CONSTRAINT_NAME: "world_boss_round_world_boss_id_foreign",
+        CONSTRAINT_NAME: "fk_wbr_world_boss",
       })
       .first()
   ).resolves.toBeFalsy();

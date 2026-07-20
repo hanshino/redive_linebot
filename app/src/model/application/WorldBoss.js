@@ -14,8 +14,3 @@ exports.list = async function (trx) {
   const db = trx || mysql;
   return db(TABLE).orderBy("id", "asc");
 };
-
-exports.isInUse = async function (id, trx) {
-  const db = trx || mysql;
-  return Boolean(await db("world_boss_round").where({ world_boss_id: id }).first());
-};

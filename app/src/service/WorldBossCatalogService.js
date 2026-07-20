@@ -35,9 +35,21 @@ async function updateBoss(id, input, trx) {
   return WorldBoss.model.update(id, normalizeBossInput(input), {}, trx);
 }
 
+function isBossRoundReferenceError(error) {
+  return (
+    (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451) &&
+    error.sqlMessage?.includes("`fk_wbr_world_boss`") &&
+    error.sqlMessage.includes("`world_boss_round`")
+  );
+}
+
 async function deleteBoss(id, trx) {
-  if (await WorldBoss.isInUse(id, trx)) throw fail("BOSS_IN_USE");
-  return WorldBoss.model.delete(id, trx);
+  try {
+    return await WorldBoss.model.delete(id, trx);
+  } catch (error) {
+    if (isBossRoundReferenceError(error)) throw fail("BOSS_IN_USE");
+    throw error;
+  }
 }
 
 module.exports = {

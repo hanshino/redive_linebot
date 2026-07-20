@@ -2,6 +2,7 @@ require("dotenv").config({ path: require("path").resolve(__dirname, "../../../..
 jest.unmock("../../util/mysql");
 const mysql = jest.requireActual("../../util/mysql");
 const { PREFIX, cleanupByPrefix } = require("../../__tests__/helpers/worldBossFixture");
+const WorldBoss = require("../../model/application/WorldBoss");
 const WorldBossCatalogService = require("../WorldBossCatalogService");
 
 describe("WorldBossCatalogService", () => {
@@ -73,29 +74,38 @@ describe("WorldBossCatalogService", () => {
     ).toEqual([firstId, secondId]);
   });
 
-  test("refuses to delete a boss used by a test-owned round", async () => {
-    const bossId = await WorldBossCatalogService.createBoss({
-      name: `${prefix}in-use`,
-      hp_weight: 1,
+  test("translates the expected foreign-key deletion error to BOSS_IN_USE", async () => {
+    const deleteError = Object.assign(new Error("Cannot delete or update a parent row"), {
+      code: "ER_ROW_IS_REFERENCED_2",
+      errno: 1451,
+      sqlMessage:
+        "Cannot delete or update a parent row: a foreign key constraint fails (`Princess`.`world_boss_round`, CONSTRAINT `fk_wbr_world_boss` FOREIGN KEY (`world_boss_id`) REFERENCES `world_boss` (`id`))",
     });
-    const [seasonId] = await mysql("world_boss_season").insert({
-      name: `${prefix}in-use-season`,
-      status: "draft",
-      end_time: new Date("2030-01-01T00:00:00.000Z"),
-    });
-    await mysql("world_boss_round").insert({
-      season_id: seasonId,
-      round_no: 1,
-      world_boss_id: bossId,
-      max_hp: 100,
-      current_hp: 100,
-      status: "cleared",
-      active_slot: null,
-    });
+    const deleteSpy = jest.spyOn(WorldBoss.model, "delete").mockRejectedValue(deleteError);
 
-    await expect(WorldBossCatalogService.deleteBoss(bossId)).rejects.toMatchObject({
-      code: "BOSS_IN_USE",
+    try {
+      await expect(WorldBossCatalogService.deleteBoss(123)).rejects.toMatchObject({
+        code: "BOSS_IN_USE",
+      });
+      expect(deleteSpy).toHaveBeenCalledWith(123, undefined);
+    } finally {
+      deleteSpy.mockRestore();
+    }
+  });
+
+  test("bubbles an unrelated referenced-row error unchanged", async () => {
+    const deleteError = Object.assign(new Error("Cannot delete another parent row"), {
+      code: "ER_ROW_IS_REFERENCED_2",
+      errno: 1451,
+      sqlMessage:
+        "Cannot delete or update a parent row: a foreign key constraint fails (`Princess`.`other_child`, CONSTRAINT `fk_other_child_parent` FOREIGN KEY (`parent_id`) REFERENCES `other_parent` (`id`))",
     });
-    expect(await mysql("world_boss").where({ id: bossId }).first()).toBeTruthy();
+    const deleteSpy = jest.spyOn(WorldBoss.model, "delete").mockRejectedValue(deleteError);
+
+    try {
+      await expect(WorldBossCatalogService.deleteBoss(123)).rejects.toBe(deleteError);
+    } finally {
+      deleteSpy.mockRestore();
+    }
   });
 });
