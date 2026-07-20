@@ -6,3 +6,4 @@
 # conversion and file contents are untouched.
 /.env.example whitespace=cr-at-eol
 /app/server.js whitespace=cr-at-eol
+app/src/app.js whitespace=cr-at-eol
