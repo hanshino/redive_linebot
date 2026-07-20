@@ -23,6 +23,33 @@
       "command_attack": "command_attack"
     }
   },
+  "worldboss": {
+    "daily_cost_limit": 100,
+    "attack_cooldown_seconds": 5,
+    "per_hit_exp": 120,
+    "hp_tiers": [
+      { "from_round": 1, "base_hp": 30000, "per_round": 15000 },
+      { "from_round": 11, "base_hp": 200000, "per_round": 40000 },
+      { "from_round": 31, "base_hp": 1200000, "per_round": 100000 },
+      { "from_round": 61, "base_hp": 4500000, "per_round": 200000 }
+    ],
+    "season_rewards": [
+      {
+        "min_rank": 1,
+        "max_rank": 1,
+        "stone": 100,
+        "title_key": "worldboss_annihilator"
+      },
+      {
+        "min_rank": 2,
+        "max_rank": 3,
+        "stone": 60,
+        "title_key": "worldboss_vanguard"
+      },
+      { "min_rank": 4, "max_rank": 10, "stone": 30, "title_key": null },
+      { "min_rank": 11, "max_rank": 50, "stone": 10, "title_key": null }
+    ]
+  },
   "minigame": {
     "race": {
       "trackLength": 50,
