@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -83,49 +83,63 @@ export default function Worldboss() {
   const [savingBoss, setSavingBoss] = useState(false);
   const [savingSeason, setSavingSeason] = useState(false);
   const [confirmationBusy, setConfirmationBusy] = useState(false);
+  const mountedRef = useRef(false);
+  const requestSequenceRef = useRef(0);
 
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
   const [alertState, { handleOpen: showAlert, handleClose: closeAlert }] = useAlertDialog();
 
   const fetchData = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
-      setError(false);
-      const [bossResponse, seasonResponse] = await Promise.all([
-        api.get("/api/admin/world-bosses"),
-        api.get("/api/admin/world-boss-seasons"),
-      ]);
-      setBosses(bossResponse.data || []);
-      setSeasons(seasonResponse.data || []);
-      return true;
-    } catch {
-      setError(true);
-      return false;
-    } finally {
-      if (showLoading) setLoading(false);
-    }
+    const requestId = ++requestSequenceRef.current;
+    const isCurrent = () => mountedRef.current && requestId === requestSequenceRef.current;
+
+    if (showLoading && isCurrent()) setLoading(true);
+    if (isCurrent()) setError(false);
+
+    const [bossResult, seasonResult] = await Promise.allSettled([
+      api.get("/api/admin/world-bosses"),
+      api.get("/api/admin/world-boss-seasons"),
+    ]);
+
+    if (!isCurrent()) return null;
+
+    if (bossResult.status === "fulfilled") setBosses(bossResult.value.data || []);
+    if (seasonResult.status === "fulfilled") setSeasons(seasonResult.value.data || []);
+
+    const failed = bossResult.status === "rejected" || seasonResult.status === "rejected";
+    setError(failed);
+    setLoading(false);
+    return !failed;
   }, []);
 
   useEffect(() => {
     document.title = "世界王管理";
+    mountedRef.current = true;
     const timer = window.setTimeout(() => {
       fetchData().then(loaded => {
-        if (!loaded) showHint("載入世界王資料失敗", "error");
+        if (loaded === false) showHint("載入世界王資料失敗", "error");
       });
     }, 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      mountedRef.current = false;
+      requestSequenceRef.current += 1;
+    };
   }, [fetchData, showHint]);
 
   const refresh = async () => {
     setRefreshing(true);
     const loaded = await fetchData(false);
+    if (!mountedRef.current) return;
     setRefreshing(false);
-    showHint(loaded ? "資料已重新載入" : "載入世界王資料失敗", loaded ? "success" : "error");
+    if (loaded !== null) {
+      showHint(loaded ? "資料已重新載入" : "部分資料載入失敗", loaded ? "success" : "error");
+    }
   };
 
   const reloadAfterMutation = async () => {
     const loaded = await fetchData(false);
-    if (!loaded) showHint("操作已完成，但重新載入失敗", "warning");
+    if (loaded === false) showHint("操作已完成，但部分資料重新載入失敗", "warning");
     return loaded;
   };
 
@@ -222,6 +236,8 @@ export default function Worldboss() {
     showAlert({
       title: "確認刪除世界王",
       description: `確定要刪除「${boss.name}」嗎？此操作無法復原。`,
+      submitText: "刪除",
+      cancelText: "取消",
       onSubmit: async () => {
         try {
           setConfirmationBusy(true);
@@ -242,6 +258,8 @@ export default function Worldboss() {
     showAlert({
       title: "確認刪除賽季草稿",
       description: `確定要刪除賽季「${season.name}」嗎？此操作無法復原。`,
+      submitText: "刪除",
+      cancelText: "取消",
       onSubmit: async () => {
         try {
           setConfirmationBusy(true);
@@ -263,6 +281,7 @@ export default function Worldboss() {
       title: "確認開放賽季",
       description: `要立即開放賽季「${season.name}」嗎？賽季將以伺服器時間立即開始。`,
       submitText: "立即開放",
+      cancelText: "取消",
       onSubmit: async () => {
         try {
           setConfirmationBusy(true);
