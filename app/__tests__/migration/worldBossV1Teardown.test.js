@@ -201,6 +201,24 @@ async function seedMetadata() {
   };
 }
 
+async function deleteV1MetadataDependencies() {
+  await database("user_achievement_progress")
+    .whereIn("achievement_id", function () {
+      this.select("id").from("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS);
+    })
+    .del();
+  await database("user_achievements")
+    .whereIn("achievement_id", function () {
+      this.select("id").from("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS);
+    })
+    .del();
+  await database("user_titles")
+    .whereIn("title_id", function () {
+      this.select("id").from("titles").whereIn("key", V1_TITLE_KEYS);
+    })
+    .del();
+}
+
 async function recreateDatabase() {
   if (database) {
     await database.destroy();
@@ -382,26 +400,53 @@ const metadataDriftCases = [
 test.each(metadataDriftCases)(
   "metadata preflight rejects $name without mutating any table or row",
   async ({ expectedMessage, mutate }) => {
-    await database("user_achievement_progress")
-      .whereIn("achievement_id", function () {
-        this.select("id").from("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS);
-      })
-      .del();
-    await database("user_achievements")
-      .whereIn("achievement_id", function () {
-        this.select("id").from("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS);
-      })
-      .del();
-    await database("user_titles")
-      .whereIn("title_id", function () {
-        this.select("id").from("titles").whereIn("key", V1_TITLE_KEYS);
-      })
-      .del();
+    await deleteV1MetadataDependencies();
     await mutate();
     const before = await snapshotFixtureState();
 
     await expect(migration.up(database)).rejects.toThrow(
       expectedMessage || /Cannot teardown v1 World Boss:/
+    );
+
+    await expectFixtureStateUnchanged(before);
+  }
+);
+
+const tableSchemaDriftCases = [
+  {
+    name: "missing column",
+    mutate: () => database.raw("ALTER TABLE `world_boss` DROP COLUMN `luck`"),
+  },
+  {
+    name: "extra column",
+    mutate: () =>
+      database.raw("ALTER TABLE `world_boss` ADD COLUMN `legacy_drift` INT NULL AFTER `luck`"),
+  },
+  {
+    name: "wrong column type",
+    mutate: () => database.raw("ALTER TABLE `world_boss` MODIFY COLUMN `hp` BIGINT NOT NULL"),
+  },
+  {
+    name: "wrong column default",
+    mutate: () => database.raw("ALTER TABLE `world_boss` ALTER COLUMN `attack` SET DEFAULT 7"),
+  },
+  {
+    name: "wrong historical column comment",
+    mutate: () =>
+      database.raw(
+        "ALTER TABLE `world_boss_event_log` MODIFY COLUMN `action_type` VARCHAR(255) NOT NULL COMMENT 'drifted'"
+      ),
+  },
+];
+
+test.each(tableSchemaDriftCases)(
+  "table schema preflight rejects $name without mutating metadata or legacy tables",
+  async ({ mutate }) => {
+    await mutate();
+    const before = await snapshotFixtureState();
+
+    await expect(migration.up(database)).rejects.toThrow(
+      /Cannot teardown v1 World Boss: .*schema does not match v1/
     );
 
     await expectFixtureStateUnchanged(before);
@@ -424,13 +469,99 @@ test.each([1, 2, 3, 4])(
   }
 );
 
-test("zero legacy tables with intact v1 metadata is rejected without deleting metadata", async () => {
+const zeroTableMetadataDriftCases = [
+  {
+    name: "intact v1 metadata",
+    expectedMessage: "Cannot teardown v1 World Boss: v1 tables and metadata are inconsistent.",
+    mutate: async () => {},
+  },
+  {
+    name: "missing expected achievement",
+    expectedMessage: "Cannot teardown v1 World Boss: world_boss metadata does not match v1.",
+    mutate: async () => {
+      await deleteV1MetadataDependencies();
+      await database("achievements").where({ key: V1_ACHIEVEMENT_KEYS[0] }).del();
+    },
+  },
+  {
+    name: "extra category achievement",
+    expectedMessage: "Cannot teardown v1 World Boss: world_boss metadata does not match v1.",
+    mutate: () =>
+      database("achievements").insert({
+        category_id: fixtureIds.worldBossCategoryId,
+        key: "__wbtest_zero_table_extra_achievement",
+        name: "__wbtest_zero_table_extra_achievement",
+        description: "__wbtest_zero_table_extra_achievement_description",
+        icon: "E",
+        type: "challenge",
+      }),
+  },
+  {
+    name: "wrong expected achievement category",
+    expectedMessage: "Cannot teardown v1 World Boss: world_boss metadata does not match v1.",
+    mutate: () =>
+      database("achievements")
+        .where({ key: V1_ACHIEVEMENT_KEYS[0] })
+        .update({ category_id: fixtureIds.unrelatedCategoryId }),
+  },
+  {
+    name: "missing expected title",
+    expectedMessage: "Cannot teardown v1 World Boss: world_boss metadata does not match v1.",
+    mutate: async () => {
+      await deleteV1MetadataDependencies();
+      await database("titles").where({ key: V1_TITLE_KEYS[0] }).del();
+    },
+  },
+  {
+    name: "missing world_boss category with owned keys remaining",
+    expectedMessage: "Cannot teardown v1 World Boss: v1 metadata is partially removed.",
+    mutate: async () => {
+      await deleteV1MetadataDependencies();
+      await database("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS).del();
+      await database("achievement_categories").where({ id: fixtureIds.worldBossCategoryId }).del();
+      await database("achievements").insert({
+        category_id: fixtureIds.unrelatedCategoryId,
+        key: V1_ACHIEVEMENT_KEYS[0],
+        name: "__wbtest_zero_table_partial_metadata",
+        description: "__wbtest_zero_table_partial_metadata_description",
+        icon: "P",
+        type: "challenge",
+      });
+    },
+  },
+  {
+    name: "world_boss category with all owned metadata removed",
+    expectedMessage: "Cannot teardown v1 World Boss: world_boss metadata does not match v1.",
+    mutate: async () => {
+      await deleteV1MetadataDependencies();
+      await database("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS).del();
+      await database("titles").whereIn("key", V1_TITLE_KEYS).del();
+    },
+  },
+];
+
+test.each(zeroTableMetadataDriftCases)(
+  "zero legacy tables with $name is rejected without mutating metadata",
+  async ({ expectedMessage, mutate }) => {
+    await database.raw(`DROP TABLE ${V1_TABLES.map(table => `\`${table}\``).join(", ")}`);
+    await mutate();
+    const before = await snapshotFixtureState();
+
+    await expect(migration.up(database)).rejects.toThrow(expectedMessage);
+
+    await expectFixtureStateUnchanged(before);
+  }
+);
+
+test("zero legacy tables with fully purged v1 metadata is an unchanged no-op", async () => {
   await database.raw(`DROP TABLE ${V1_TABLES.map(table => `\`${table}\``).join(", ")}`);
+  await deleteV1MetadataDependencies();
+  await database("achievements").whereIn("key", V1_ACHIEVEMENT_KEYS).del();
+  await database("achievement_categories").where({ id: fixtureIds.worldBossCategoryId }).del();
+  await database("titles").whereIn("key", V1_TITLE_KEYS).del();
   const before = await snapshotFixtureState();
 
-  await expect(migration.up(database)).rejects.toThrow(
-    "Cannot teardown v1 World Boss: v1 tables and metadata are inconsistent."
-  );
+  await expect(migration.up(database)).resolves.toBeUndefined();
 
   await expectFixtureStateUnchanged(before);
 });
@@ -491,14 +622,11 @@ test("failed atomic DROP leaves every legacy table but does not roll back commit
 });
 
 test("non-InnoDB legacy table is rejected before metadata or table mutation", async () => {
-  try {
-    await database.raw("ALTER TABLE `attack_message_has_tags` ENGINE = MyISAM");
-  } catch (error) {
-    if (["ER_UNKNOWN_STORAGE_ENGINE", "ER_DISABLED_STORAGE_ENGINE"].includes(error.code)) {
-      return;
-    }
-    throw error;
-  }
+  await database.raw("ALTER TABLE `attack_message_has_tags` ENGINE = MyISAM");
+  const [engineRows] = await database.raw(
+    "SELECT ENGINE FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'attack_message_has_tags'"
+  );
+  expect(engineRows[0].ENGINE).toBe("MyISAM");
   const before = await snapshotFixtureState();
 
   await expect(migration.up(database)).rejects.toThrow(

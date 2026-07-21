@@ -13,12 +13,122 @@ const V1_TABLES = [
   "world_boss",
 ];
 const DROP_V1_TABLES_SQL = `DROP TABLE IF EXISTS ${V1_TABLES.map(table => `\`${table}\``).join(", ")}`;
+const V1_TABLE_COLUMNS = {
+  attack_message_has_tags: [
+    ["id", "int", "int unsigned", "NO", null, "AUTO_INCREMENT", ""],
+    ["attack_message_id", "int", "int unsigned", "NO", null, "", ""],
+    ["tag", "varchar", "varchar(255)", "NO", null, "", ""],
+  ],
+  world_boss_event_log: [
+    ["id", "int", "int unsigned", "NO", null, "AUTO_INCREMENT", ""],
+    ["world_boss_event_id", "int", "int", "NO", null, "", ""],
+    ["user_id", "int", "int", "NO", null, "", ""],
+    ["action_type", "varchar", "varchar(255)", "NO", null, "", "攻擊類型"],
+    ["damage", "int", "int", "NO", null, "", "傷害"],
+    ["cost", "int", "int", "NO", "0", "", ""],
+    ["created_at", "timestamp", "timestamp", "YES", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED", ""],
+  ],
+  world_boss_event: [
+    ["id", "int", "int unsigned", "NO", null, "AUTO_INCREMENT", ""],
+    ["world_boss_id", "int", "int", "NO", null, "", ""],
+    ["announcement", "varchar", "varchar(255)", "NO", null, "", ""],
+    ["start_time", "timestamp", "timestamp", "NO", null, "", ""],
+    ["end_time", "timestamp", "timestamp", "NO", null, "", ""],
+    ["created_at", "timestamp", "timestamp", "YES", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED", ""],
+    ["updated_at", "timestamp", "timestamp", "YES", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED", ""],
+  ],
+  world_boss_user_attack_message: [
+    ["id", "int", "int unsigned", "NO", null, "AUTO_INCREMENT", ""],
+    ["icon_url", "varchar", "varchar(255)", "YES", null, "", "頭像 uri"],
+    ["template", "varchar", "varchar(255)", "NO", null, "", "訊息樣板"],
+    ["creator_id", "int", "int", "NO", null, "", "建立者 id"],
+    ["created_at", "timestamp", "timestamp", "YES", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED", ""],
+    ["updated_at", "timestamp", "timestamp", "YES", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED", ""],
+  ],
+  world_boss: [
+    ["id", "int", "int unsigned", "NO", null, "AUTO_INCREMENT", ""],
+    ["name", "varchar", "varchar(255)", "NO", null, "", ""],
+    ["description", "varchar", "varchar(255)", "YES", null, "", ""],
+    ["image", "varchar", "varchar(255)", "YES", null, "", ""],
+    ["level", "int", "int", "NO", null, "", ""],
+    ["hp", "int", "int", "NO", null, "", ""],
+    ["attack", "int", "int", "NO", "0", "", ""],
+    ["defense", "int", "int", "NO", "0", "", ""],
+    ["speed", "int", "int", "NO", "0", "", ""],
+    ["luck", "int", "int", "NO", "0", "", ""],
+    ["exp", "int", "int", "NO", null, "", ""],
+    ["gold", "int", "int", "NO", null, "", ""],
+    ["created_at", "timestamp", "timestamp", "YES", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED", ""],
+    ["updated_at", "timestamp", "timestamp", "YES", "CURRENT_TIMESTAMP", "DEFAULT_GENERATED", ""],
+  ],
+};
 
 function hasExactlyKeys(actualKeys, expectedKeys) {
   return (
     actualKeys.length === expectedKeys.length &&
     actualKeys.every((key, index) => key === expectedKeys[index])
   );
+}
+
+function normalizeColumnDefault(value) {
+  if (value === null) {
+    return null;
+  }
+
+  const normalized = String(value).trim().toUpperCase().replace(/\s+/g, "");
+  if (/^CURRENT_TIMESTAMP(?:\(0?\))?$/.test(normalized)) {
+    return "CURRENT_TIMESTAMP";
+  }
+  return String(value);
+}
+
+function normalizeColumnExtra(value, columnDefault) {
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ");
+  if (columnDefault === "CURRENT_TIMESTAMP" && ["", "DEFAULT_GENERATED"].includes(normalized)) {
+    return "DEFAULT_GENERATED";
+  }
+  return normalized;
+}
+
+function normalizeV1Column(column) {
+  const columnDefault = normalizeColumnDefault(column.columnDefault);
+  return [
+    column.columnName,
+    column.dataType.toLowerCase(),
+    column.columnType.toLowerCase().replace(/\s+/g, " "),
+    column.isNullable.toUpperCase(),
+    columnDefault,
+    normalizeColumnExtra(column.extra, columnDefault),
+    column.columnComment,
+  ];
+}
+
+async function assertExactV1TableSchemas(knex) {
+  const columns = await knex("information_schema.columns")
+    .select({
+      tableName: "table_name",
+      columnName: "column_name",
+      dataType: "data_type",
+      columnType: "column_type",
+      isNullable: "is_nullable",
+      columnDefault: "column_default",
+      extra: "extra",
+      columnComment: "column_comment",
+    })
+    .whereRaw("table_schema = DATABASE()")
+    .whereIn("table_name", V1_TABLES)
+    .orderBy("table_name")
+    .orderBy("ordinal_position");
+
+  for (const tableName of V1_TABLES) {
+    const actual = columns.filter(column => column.tableName === tableName).map(normalizeV1Column);
+    if (JSON.stringify(actual) !== JSON.stringify(V1_TABLE_COLUMNS[tableName])) {
+      throw new Error(`Cannot teardown v1 World Boss: ${tableName} schema does not match v1.`);
+    }
+  }
 }
 
 async function assertInnoDbV1Tables(knex) {
@@ -132,6 +242,9 @@ exports.config = { transaction: false };
 exports.up = async knex => {
   await knex.transaction(async trx => {
     const { allV1TablesMissing } = await assertInnoDbV1Tables(trx);
+    if (!allV1TablesMissing) {
+      await assertExactV1TableSchemas(trx);
+    }
     const { metadataAlreadyPurged } = await getV1TeardownState(trx);
 
     if (allV1TablesMissing && !metadataAlreadyPurged) {
