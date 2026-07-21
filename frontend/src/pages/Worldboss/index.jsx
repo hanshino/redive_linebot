@@ -128,7 +128,7 @@ function LoadingBoard() {
   );
 }
 
-function PersonalStats({ current }) {
+function PersonalStats({ current, unavailable = false }) {
   const daily = current?.daily;
 
   return (
@@ -149,11 +149,18 @@ function PersonalStats({ current }) {
           value={daily ? `${formatInteger(daily.used)} / ${formatInteger(daily.limit)}` : "—"}
         />
       </Grid>
+      {unavailable && (
+        <Grid size={{ xs: 12 }}>
+          <Typography variant="caption" color="warning.main">
+            個人資料與目前賽季不同步，請重新整理後再試。
+          </Typography>
+        </Grid>
+      )}
     </Grid>
   );
 }
 
-function PersonalProgressCard({ current }) {
+function PersonalProgressCard({ current, unavailable }) {
   return (
     <Card variant="outlined">
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
@@ -161,14 +168,14 @@ function PersonalProgressCard({ current }) {
           <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
             個人討伐進度
           </Typography>
-          <PersonalStats current={current} />
+          <PersonalStats current={current} unavailable={unavailable} />
         </Stack>
       </CardContent>
     </Card>
   );
 }
 
-function BattleCard({ status, current }) {
+function BattleCard({ status, current, currentUnavailable }) {
   const { season, round, boss, ended } = status;
   const hpPercent = safeHpPercent(round);
 
@@ -269,7 +276,7 @@ function BattleCard({ status, current }) {
 
           <Divider />
 
-          <PersonalStats current={current} />
+          <PersonalStats current={current} unavailable={currentUnavailable} />
 
           <Typography variant="caption" color="text.secondary">
             活動結束（UTC）：{formatUtcDate(season.end_time)}
@@ -521,6 +528,8 @@ export default function Worldboss() {
   const [refreshing, setRefreshing] = useState(false);
   const requestIdRef = useRef(0);
   const loadedOnceRef = useRef(false);
+  const hasLoadedDataRef = useRef(false);
+  const [hasLoadedData, setHasLoadedData] = useState(false);
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
 
   const fetchBoard = useCallback(
@@ -553,6 +562,8 @@ export default function Worldboss() {
       const successfulEndpoints = endpointResults
         .filter(({ result }) => result.status === "fulfilled")
         .map(({ label }) => label);
+      const allEndpointsFailed = successfulEndpoints.length === 0;
+      const hasLoadedData = hasLoadedDataRef.current;
 
       setData(previous => ({
         ...previous,
@@ -568,16 +579,24 @@ export default function Worldboss() {
       }));
       setErrors(nextErrors);
       loadedOnceRef.current = true;
+      if (!allEndpointsFailed) {
+        hasLoadedDataRef.current = true;
+        setHasLoadedData(true);
+      }
       setLoading(false);
       setRefreshing(false);
 
       if (announce) {
         const failedEndpoints = Object.keys(nextErrors);
         showHint(
-          failedEndpoints.length
-            ? `部分資料無法更新：${failedEndpoints.join("、")}`
-            : `已更新${successfulEndpoints.join("、")}`,
-          failedEndpoints.length ? "warning" : "success"
+          allEndpointsFailed
+            ? hasLoadedData
+              ? "無法更新世界王資料，以下顯示上次成功載入的資料。"
+              : "目前無法載入世界王資料，請稍後再試。"
+            : failedEndpoints.length
+              ? `部分資料無法更新：${failedEndpoints.join("、")}`
+              : `已更新${successfulEndpoints.join("、")}`,
+          allEndpointsFailed ? "error" : failedEndpoints.length ? "warning" : "success"
         );
       }
     },
@@ -592,8 +611,19 @@ export default function Worldboss() {
   if (loading) return <LoadingBoard />;
 
   const hasBattle = Boolean(data.status?.season && data.status?.round && data.status?.boss);
+  const current = data.me?.current;
+  const statusSeasonId = data.status?.season?.id;
+  const currentMatchesStatus = Boolean(
+    current &&
+    !errors.status &&
+    statusSeasonId != null &&
+    String(current.seasonId) === String(statusSeasonId)
+  );
+  const shouldRenderCurrent = currentMatchesStatus;
+  const currentUnavailable = !shouldRenderCurrent && (hasBattle || current != null);
   const latestReward = data.me?.latestReward;
   const errorEntries = Object.entries(errors);
+  const allEndpointsFailed = errorEntries.length === 3;
 
   return (
     <Container maxWidth="lg" sx={{ py: 1 }}>
@@ -624,17 +654,29 @@ export default function Worldboss() {
         </Stack>
 
         {errorEntries.length > 0 && (
-          <Alert severity="warning" variant="outlined" aria-live="polite">
-            部分資料無法更新：
-            {errorEntries.map(([name, message]) => `${name}（${message}）`).join("、")}
-            。現有資料可能不是最新狀態。
+          <Alert
+            severity={allEndpointsFailed ? "error" : "warning"}
+            variant="outlined"
+            aria-live="polite"
+          >
+            {allEndpointsFailed
+              ? hasLoadedData
+                ? "目前無法更新世界王資料，以下顯示上次成功載入的資料。"
+                : "目前無法載入世界王資料，請稍後再試。"
+              : `部分資料無法更新：${errorEntries
+                  .map(([name, message]) => `${name}（${message}）`)
+                  .join("、")}。現有資料可能不是最新狀態。`}
           </Alert>
         )}
 
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 7 }}>
             {hasBattle ? (
-              <BattleCard status={data.status} current={data.me?.current} />
+              <BattleCard
+                status={data.status}
+                current={shouldRenderCurrent ? current : undefined}
+                currentUnavailable={currentUnavailable}
+              />
             ) : errors.status ? (
               <UnavailableStatus />
             ) : (
@@ -652,8 +694,11 @@ export default function Worldboss() {
           </Grid>
         </Grid>
 
-        {data.me?.current != null && !hasBattle && (
-          <PersonalProgressCard current={data.me.current} />
+        {current != null && !hasBattle && (
+          <PersonalProgressCard
+            current={shouldRenderCurrent ? current : undefined}
+            unavailable={currentUnavailable}
+          />
         )}
 
         <Leaderboard rows={data.leaderboard} unavailable={Boolean(errors.leaderboard)} />
