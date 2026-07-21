@@ -3,6 +3,7 @@ const { FEATURE, SEMANTIC, SURFACE } = require("../common/theme");
 
 const ATTACK_COOLDOWN_SECONDS = config.get("worldboss.attack_cooldown_seconds");
 const MAX_BOSS_DESCRIPTION_BYTES = 2048;
+const MAX_CLEARED_ROUNDS_SHOWN = 6;
 const ACCENT = FEATURE.worldBoss;
 
 function textNode(text, extra = {}) {
@@ -149,12 +150,12 @@ function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
         },
         { type: "separator", color: SURFACE.dividerMuted, margin: "md" },
         detailRow(
-          "今日可用女神石",
+          "今日行動額度",
           Number.isFinite(remaining) ? `${formatNumber(remaining)}` : "--",
           ACCENT.main
         ),
         detailRow(
-          "今日已消耗",
+          "今日已消耗額度",
           Number.isFinite(dailyUsed) && Number.isFinite(dailyLimit)
             ? `${formatNumber(dailyUsed)} / ${formatNumber(dailyLimit)}`
             : "--"
@@ -202,14 +203,26 @@ function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
   };
 }
 
-function generateAttackResultBubble({ result, daily, latestReward }) {
+function clearedRoundsSummary(clearedRounds) {
+  if (clearedRounds.length <= MAX_CLEARED_ROUNDS_SHOWN) {
+    return `第 ${clearedRounds.map(formatNumber).join("、")} 輪`;
+  }
+
+  const firstRounds = clearedRounds.slice(0, MAX_CLEARED_ROUNDS_SHOWN / 2).map(formatNumber);
+  const lastRounds = clearedRounds.slice(-MAX_CLEARED_ROUNDS_SHOWN / 2).map(formatNumber);
+  return `共 ${formatNumber(clearedRounds.length)} 輪（第 ${firstRounds.join(
+    "、"
+  )} 輪 … 第 ${lastRounds.join("、")} 輪）`;
+}
+
+function generateAttackResultBubble({ result, daily, latestReward, liffUri }) {
   const clearedRounds = Array.isArray(result.clearedRounds) ? result.clearedRounds : [];
   const resultRows = [
     detailRow("本次傷害", formatNumber(result.damage), SEMANTIC.success.main),
-    detailRow("消耗女神石", formatNumber(result.cost), SEMANTIC.warning.main),
+    detailRow("消耗攻擊 cost", formatNumber(result.cost), SEMANTIC.warning.main),
     detailRow("賽季累積傷害", formatNumber(result.seasonTotalDamage)),
     detailRow(
-      "今日剩餘女神石額度",
+      "今日剩餘行動額度",
       Number.isFinite(Number(daily && daily.remaining)) ? formatNumber(daily.remaining) : "--",
       ACCENT.main
     ),
@@ -217,11 +230,7 @@ function generateAttackResultBubble({ result, daily, latestReward }) {
 
   if (clearedRounds.length) {
     resultRows.push(
-      detailRow(
-        "已擊破",
-        `第 ${clearedRounds.map(formatNumber).join("、")} 輪`,
-        SEMANTIC.success.main
-      )
+      detailRow("已擊破", clearedRoundsSummary(clearedRounds), SEMANTIC.success.main)
     );
   }
   if (result.levelResult && result.levelResult.levelUp) {
@@ -233,11 +242,8 @@ function generateAttackResultBubble({ result, daily, latestReward }) {
       )
     );
   }
-  if (latestReward) {
-    resultRows.push(detailRow("最近結算", `第 ${formatNumber(latestReward.ranking)} 名`));
-  }
 
-  return {
+  const attackBubble = {
     type: "bubble",
     size: "kilo",
     header: {
@@ -254,6 +260,12 @@ function generateAttackResultBubble({ result, daily, latestReward }) {
       spacing: "sm",
       contents: resultRows,
     },
+  };
+
+  if (!latestReward) return attackBubble;
+  return {
+    type: "carousel",
+    contents: [attackBubble, generateLatestRewardBubble({ reward: latestReward, liffUri })],
   };
 }
 

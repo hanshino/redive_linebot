@@ -75,14 +75,14 @@ async function attackOnBoss(context, { payload }) {
   const progress = storedProgress || { level: 1, job_key: "adventurer" };
   const { damage, cost, exp } = attackInput({ progress, bonuses, attackType });
   const daily = await BattleService.getRemainingDailyCost(userId);
-  if (daily.remaining < cost) return context.replyText("今日可用女神石額度不足，請明天再來挑戰。");
+  if (daily.remaining < cost) return context.replyText("今日行動額度不足，請明天再來挑戰。");
 
   let result;
   try {
     result = await BattleService.attack({ userId, attackType, damage, cost, exp });
   } catch (error) {
     if (["DAILY_LIMIT_EXCEEDED"].includes(error && error.code)) {
-      return context.replyText("今日可用女神石額度不足，請明天再來挑戰。");
+      return context.replyText("今日行動額度不足，請明天再來挑戰。");
     }
     if (["NO_ACTIVE_SEASON", "SEASON_ENDED", "NO_ACTIVE_ROUND"].includes(error && error.code)) {
       return showBattleStatus(context);
@@ -95,6 +95,7 @@ async function attackOnBoss(context, { payload }) {
     result,
     daily: result.daily,
     latestReward,
+    liffUri: getLiffUri("full", WORLD_BOSS_LIFF_PATH),
   });
   await context.replyFlex("世界王攻擊", bubble);
 

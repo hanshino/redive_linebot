@@ -285,7 +285,7 @@ describe("WorldBossController.attackOnBoss", () => {
 
     await Controller.attackOnBoss(ctx, { payload: { attackType: "standard" } });
 
-    expect(ctx.replyText).toHaveBeenCalledWith(expect.any(String));
+    expect(ctx.replyText).toHaveBeenCalledWith("今日行動額度不足，請明天再來挑戰。");
     expect(BattleService.attack).not.toHaveBeenCalled();
   });
 
@@ -295,7 +295,22 @@ describe("WorldBossController.attackOnBoss", () => {
 
     await Controller.attackOnBoss(ctx, { payload: { attackType: "standard" } });
 
-    expect(ctx.replyText).toHaveBeenCalledWith(expect.any(String));
+    expect(ctx.replyText).toHaveBeenCalledWith("今日行動額度不足，請明天再來挑戰。");
+  });
+
+  it("passes the LIFF URI and latest reward to the attack reply", async () => {
+    SeasonService.getLatestSettledResult.mockResolvedValue(latestReward);
+    const ctx = context();
+
+    await Controller.attackOnBoss(ctx, { payload: { attackType: "standard" } });
+
+    expect(WorldBossTemplate.generateAttackResultBubble).toHaveBeenCalledWith({
+      result: attackResult,
+      daily: attackResult.daily,
+      latestReward,
+      liffUri: "https://liff.example/worldboss",
+    });
+    expect(ctx.replyFlex).toHaveBeenCalledWith("世界王攻擊", { type: "attack-reply" });
   });
 
   it("uses standard damage, fixed base cost, and equipment bonuses exactly", async () => {

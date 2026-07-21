@@ -92,6 +92,9 @@ describe("WorldBoss Flex templates", () => {
         },
       ])
     );
+    expect(detailRowValue(bubble, "今日行動額度")).toEqual(["80"]);
+    expect(detailRowValue(bubble, "今日已消耗額度")).toEqual(["20 / 100"]);
+    expect(copy).not.toContain("今日可用女神石");
     expect(collectByKey(bubble, "uri")).toContain(
       "https://liff.line.me/world-boss-liff/worldboss?source=line"
     );
@@ -223,8 +226,8 @@ describe("WorldBoss Flex templates", () => {
     expect(visibleCopy(noSeason)).toContain("目前沒有進行中的世界王賽季");
   });
 
-  it("renders an attack result with damage, daily balance, and any cleared rounds", () => {
-    const bubble = WorldBoss.generateAttackResultBubble({
+  it("renders attack quota copy and the complete latest settlement proof as a carousel", () => {
+    const reply = WorldBoss.generateAttackResultBubble({
       result: {
         damage: 1200,
         cost: 15,
@@ -234,14 +237,73 @@ describe("WorldBoss Flex templates", () => {
       },
       daily,
       latestReward,
+      liffUri: LIFF,
     });
-    const copy = visibleCopy(bubble);
+    const attackBubble = reply.contents[0];
+    const rewardBubble = reply.contents[1];
+    const attackCopy = visibleCopy(attackBubble);
+    const rewardCopy = visibleCopy(rewardBubble);
 
-    expect(bubble.type).toBe("bubble");
-    expect(copy).toContain("1,200");
-    expect(copy).toContain("80");
-    expect(copy).toContain("第 2、3 輪");
-    expect(copy).toContain("Lv.6");
+    expect(reply.type).toBe("carousel");
+    expect(reply.contents).toHaveLength(2);
+    expect(attackCopy).toContain("1,200");
+    expect(detailRowValue(attackBubble, "消耗攻擊 cost")).toEqual(["15"]);
+    expect(detailRowValue(attackBubble, "今日剩餘行動額度")).toEqual(["80"]);
+    expect(attackCopy).not.toContain("女神石");
+    expect(attackCopy).toContain("第 2、3 輪");
+    expect(attackCopy).toContain("Lv.6");
+    expect(rewardCopy).toContain("春季世界王");
+    expect(rewardCopy).toContain("第 1 名");
+    expect(detailRowValue(rewardBubble, "女神石")).toEqual(["100"]);
+    expect(rewardCopy).toContain("殲滅之王");
+    expect(rewardCopy).toContain("987,654");
+    expect(rewardCopy).toContain("結算編號 #42");
+    expect(rewardCopy).toContain("入帳時間 2026-07-20T12:34:56.000Z");
+    expect(collectByKey(rewardBubble, "uri")).toContain(
+      "https://liff.line.me/world-boss-liff/worldboss?source=line"
+    );
+  });
+
+  it("keeps a successful attack without a latest settlement as one valid bubble", () => {
+    const reply = WorldBoss.generateAttackResultBubble({
+      result: {
+        damage: 1,
+        cost: 1,
+        seasonTotalDamage: 1,
+        clearedRounds: [],
+        levelResult: { levelUp: false },
+      },
+      daily,
+      latestReward: null,
+      liffUri: LIFF,
+    });
+
+    expect(reply.type).toBe("bubble");
+    expect(detailRowValue(reply, "消耗攻擊 cost")).toEqual(["1"]);
+  });
+
+  it("bounds a 5,000-round attack summary within LINE bubble and carousel limits", () => {
+    const clearedRounds = Array.from({ length: 5000 }, (_, index) => index + 1);
+    const reply = WorldBoss.generateAttackResultBubble({
+      result: {
+        damage: 5000,
+        cost: 1,
+        seasonTotalDamage: 5000,
+        clearedRounds,
+        levelResult: { levelUp: false },
+      },
+      daily,
+      latestReward,
+      liffUri: LIFF,
+    });
+    const attackBubble = reply.contents[0];
+    const copy = visibleCopy(attackBubble);
+
+    expect(copy).toContain("共 5,000 輪");
+    expect(copy).toContain("第 1、2、3 輪");
+    expect(copy).toContain("第 4,998、4,999、5,000 輪");
+    expect(Buffer.byteLength(JSON.stringify(attackBubble), "utf8")).toBeLessThanOrEqual(30 * 1024);
+    expect(Buffer.byteLength(JSON.stringify(reply), "utf8")).toBeLessThanOrEqual(50 * 1024);
   });
 
   it("marks the no-active-season card as ended when the supplied status says so", () => {
