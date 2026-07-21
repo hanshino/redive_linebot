@@ -1,3 +1,5 @@
+const { canonicalPositiveInteger } = require("../../util/decimalInteger");
+
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
 const BAD_REQUEST_CODES = new Set([
@@ -36,9 +38,11 @@ function fail(code) {
 
 function parseId(value) {
   if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) throw fail("INVALID_ID");
-  const id = Number(value);
-  if (!Number.isSafeInteger(id)) throw fail("INVALID_ID");
-  return id;
+  try {
+    return canonicalPositiveInteger(value);
+  } catch {
+    throw fail("INVALID_ID");
+  }
 }
 
 function parseUtcDate(value) {

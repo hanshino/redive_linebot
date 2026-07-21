@@ -1,4 +1,5 @@
 const mysql = require("../../util/mysql");
+const { canonicalUnsignedInteger, canonicalPositiveInteger } = require("../../util/decimalInteger");
 
 const TABLE = "world_boss_season_reward";
 
@@ -20,7 +21,7 @@ exports.findForUpdate = async function (seasonId, userId, trx) {
 
 exports.findLatestSettledByUser = async function (userId, trx) {
   const db = trx || mysql;
-  return db(`${TABLE} as reward`)
+  const row = await db(`${TABLE} as reward`)
     .join("world_boss_season as season", "reward.season_id", "season.id")
     .leftJoin("titles as title", "reward.title_key", "title.key")
     .where("reward.user_id", userId)
@@ -40,4 +41,12 @@ exports.findLatestSettledByUser = async function (userId, trx) {
     .orderBy("season.settled_at", "desc")
     .orderBy("reward.id", "desc")
     .first();
+  return row
+    ? {
+        ...row,
+        rewardId: canonicalPositiveInteger(row.rewardId),
+        seasonId: canonicalPositiveInteger(row.seasonId),
+        totalDamage: canonicalUnsignedInteger(row.totalDamage),
+      }
+    : row;
 };

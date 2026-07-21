@@ -7,6 +7,7 @@ const WorldBossSeasonReward = require("../model/application/WorldBossSeasonRewar
 const { inventory } = require("../model/application/Inventory");
 const UserTitle = require("../model/application/UserTitle");
 const { createBattleService } = require("./WorldBossBattleService");
+const { canonicalUnsignedInteger } = require("../util/decimalInteger");
 
 const TABLE = "world_boss_season";
 const REWARD_TABLE = "world_boss_season_reward";
@@ -92,10 +93,14 @@ function ledgerMatches(ledger, row, reward) {
   return (
     ledger.user_id === row.user_id &&
     Number(ledger.ranking) === row.ranking &&
-    Number(ledger.total_damage) === row.total_damage &&
+    canonicalUnsignedInteger(ledger.total_damage) === row.total_damage &&
     Number(ledger.stone_amount) === reward.stone &&
     (ledger.title_key || null) === reward.title_key
   );
+}
+
+function settlementResult(seasonId, contributors, rewarded, zeroTier) {
+  return { seasonId: canonicalUnsignedInteger(seasonId), contributors, rewarded, zeroTier };
 }
 
 function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks = {} } = {}) {
@@ -294,12 +299,7 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
         active_slot: null,
         settled_at: now,
       });
-      return {
-        seasonId: Number(season.id),
-        contributors: ranking.length,
-        rewarded,
-        zeroTier,
-      };
+      return settlementResult(season.id, ranking.length, rewarded, zeroTier);
     });
   }
 
@@ -329,3 +329,4 @@ const defaultService = createSeasonService();
 module.exports = defaultService;
 module.exports.createSeasonService = createSeasonService;
 module.exports.isEnded = isEnded;
+module.exports.settlementResult = settlementResult;

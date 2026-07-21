@@ -386,15 +386,17 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     });
     const ranking = await service.getRanking(fixture.seasonId, 100);
     expect(ranking.map(row => row.ranking)).toEqual([1, 1, 3]);
-    await expect(service.getUserTotalDamage(fixture.seasonId, owned("rank_c"))).resolves.toBe(300);
+    await expect(service.getUserTotalDamage(fixture.seasonId, owned("rank_c"))).resolves.toBe(
+      "300"
+    );
     await expect(service.getUserTotalDamage(fixture.seasonId, owned("not_ranked"))).resolves.toBe(
-      0
+      "0"
     );
     await expect(service.getRanking(fixture.seasonId, 0)).rejects.toMatchObject({
       code: "INVALID_RANKING_LIMIT",
     });
     await expect(service.settleSeason(fixture.seasonId)).resolves.toMatchObject({
-      seasonId: fixture.seasonId,
+      seasonId: String(fixture.seasonId),
     });
   });
 });
@@ -415,7 +417,7 @@ describe("WorldBossSeasonService settlement", () => {
 
     const result = await service.settleSeason(fixture.seasonId);
     expect(result).toEqual({
-      seasonId: fixture.seasonId,
+      seasonId: String(fixture.seasonId),
       contributors: 102,
       rewarded: 50,
       zeroTier: 52,
@@ -440,11 +442,75 @@ describe("WorldBossSeasonService settlement", () => {
     const rank51 = ledgers.find(row => row.ranking === 51);
     expect(rank51).toMatchObject({ stone_amount: 0, title_key: null });
     await expect(service.getLatestSettledResult(rank51.user_id)).resolves.toMatchObject({
-      seasonId: fixture.seasonId,
+      seasonId: String(fixture.seasonId),
       ranking: 51,
       stoneAmount: 0,
       titleKey: null,
       paidAt: expect.any(Date),
+    });
+  });
+
+  test("settles exact damage totals into distinct tiers and exact reward ledgers", async () => {
+    const fixture = await createActiveFixture({ label: "exact_damage" });
+    const topUser = owned("exact_top");
+    const secondUser = owned("exact_second");
+    await addContributions(fixture.seasonId, fixture.roundId, [
+      { userId: topUser, damages: ["4503599627370496", "4503599627370497"] },
+      { userId: secondUser, damages: ["4503599627370496", "4503599627370496"] },
+    ]);
+    const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+
+    await expect(service.getRanking(fixture.seasonId, 100)).resolves.toEqual([
+      { user_id: topUser, total_damage: "9007199254740993", ranking: 1 },
+      { user_id: secondUser, total_damage: "9007199254740992", ranking: 2 },
+    ]);
+    await expect(service.settleSeason(fixture.seasonId)).resolves.toMatchObject({
+      contributors: 2,
+      rewarded: 2,
+      zeroTier: 0,
+    });
+
+    const ledgers = await mysql("world_boss_season_reward")
+      .where({ season_id: fixture.seasonId })
+      .orderBy("ranking");
+    expect(
+      ledgers.map(row => ({
+        userId: row.user_id,
+        ranking: row.ranking,
+        totalDamage: row.total_damage,
+        stoneAmount: row.stone_amount,
+        titleKey: row.title_key,
+      }))
+    ).toEqual([
+      {
+        userId: topUser,
+        ranking: 1,
+        totalDamage: "9007199254740993",
+        stoneAmount: 100,
+        titleKey: "worldboss_annihilator",
+      },
+      {
+        userId: secondUser,
+        ranking: 2,
+        totalDamage: "9007199254740992",
+        stoneAmount: 60,
+        titleKey: "worldboss_vanguard",
+      },
+    ]);
+    await expect(service.getLatestSettledResult(topUser)).resolves.toMatchObject({
+      ranking: 1,
+      totalDamage: "9007199254740993",
+    });
+  });
+
+  test("preserves a BIGINT season id in settlement output", () => {
+    const { settlementResult } = require("../WorldBossSeasonService");
+
+    expect(settlementResult("9007199254740993", 2, 2, 0)).toEqual({
+      seasonId: "9007199254740993",
+      contributors: 2,
+      rewarded: 2,
+      zeroTier: 0,
     });
   });
 
@@ -581,7 +647,7 @@ describe("WorldBossSeasonService settlement", () => {
     const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
 
     await expect(service.settleSeason(fixture.seasonId)).resolves.toEqual({
-      seasonId: fixture.seasonId,
+      seasonId: String(fixture.seasonId),
       contributors: 1,
       rewarded: 1,
       zeroTier: 0,
@@ -661,8 +727,8 @@ describe("WorldBossSeasonService settlement", () => {
     await service.openSeason(newerId);
 
     await expect(service.getLatestSettledResult(userId)).resolves.toMatchObject({
-      rewardId: expect.any(Number),
-      seasonId: first.seasonId,
+      rewardId: expect.stringMatching(/^[1-9]\d*$/),
+      seasonId: String(first.seasonId),
       ranking: 1,
       stoneAmount: 100,
       titleKey: "worldboss_annihilator",
@@ -680,7 +746,7 @@ describe("WorldBossSeasonService settlement", () => {
 
     const results = await service.settleExpiredSeasons();
     expect(results).toEqual([
-      { seasonId: first.seasonId, contributors: 1, rewarded: 1, zeroTier: 0 },
+      { seasonId: String(first.seasonId), contributors: 1, rewarded: 1, zeroTier: 0 },
     ]);
     await expect(service.settleExpiredSeasons()).resolves.toEqual([]);
   });

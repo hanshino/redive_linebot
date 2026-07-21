@@ -163,7 +163,7 @@ describe("WorldBossBattleService", () => {
     expect(result).toMatchObject({
       damage: 25,
       cost: 10,
-      seasonTotalDamage: 25,
+      seasonTotalDamage: "25",
       daily: { limit: 100, used: 10, remaining: 90 },
       levelResult: {
         levelUp: false,
@@ -276,6 +276,71 @@ describe("WorldBossBattleService", () => {
     } finally {
       listSpy.mockRestore();
     }
+  });
+
+  test("compares BIGINT boss ids exactly when excluding the previous boss", () => {
+    const { excludeBoss } = require("../WorldBossBattleService");
+    const bosses = [{ id: "9007199254740992" }, { id: "9007199254740993" }];
+
+    expect(excludeBoss(bosses, "9007199254740992")).toEqual([{ id: "9007199254740993" }]);
+  });
+
+  test("subtracts a safe attack from BIGINT HP exactly and returns an exact season total", async () => {
+    const fixture = await createBattleFixture({
+      label: "exact_hp",
+      maxHp: "9007199254740993",
+      currentHp: "9007199254740993",
+    });
+    await mysql("world_boss_contribution").insert({
+      season_id: fixture.seasonId,
+      round_id: fixture.roundId,
+      user_id: fixture.userId,
+      damage: "9007199254740991",
+      cost: 1,
+      created_at: new Date(now.getTime() - 1),
+      updated_at: new Date(now.getTime() - 1),
+    });
+    const service = createBattleService({ clock: () => now });
+
+    const result = await service.attack({
+      userId: fixture.userId,
+      attackType: "standard",
+      damage: 1,
+      cost: 1,
+      exp: 1,
+    });
+
+    await expect(
+      mysql("world_boss_round").where({ id: fixture.roundId }).first()
+    ).resolves.toMatchObject({
+      current_hp: "9007199254740992",
+    });
+    expect(result.round.current_hp).toBe("9007199254740992");
+    expect(result.seasonTotalDamage).toBe("9007199254740992");
+    expect(() => JSON.stringify(result)).not.toThrow();
+  });
+
+  test("subtracts near-limit damage from BIGINT HP without rounding", async () => {
+    const fixture = await createBattleFixture({
+      label: "hp_rem",
+      maxHp: "9007199254740993",
+      currentHp: "9007199254740993",
+    });
+    const service = createBattleService({ clock: () => now });
+
+    await expect(
+      service.attack({
+        userId: fixture.userId,
+        attackType: "standard",
+        damage: Number.MAX_SAFE_INTEGER,
+        cost: 1,
+        exp: 1,
+      })
+    ).resolves.toMatchObject({ seasonTotalDamage: "9007199254740991" });
+
+    await expect(
+      mysql("world_boss_round").where({ id: fixture.roundId }).first()
+    ).resolves.toMatchObject({ current_hp: 2 });
   });
 
   test("treats now equal to end_time as ended without quota, HP, contribution, or EXP writes", async () => {

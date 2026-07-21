@@ -23,6 +23,7 @@ const knex = require("knex")({
     port: process.env.DB_PORT,
     database: "Princess",
     timezone: TIMEZONE,
+    supportBigNumbers: true,
   },
   pool: {
     min: 0,

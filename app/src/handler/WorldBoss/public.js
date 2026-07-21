@@ -1,9 +1,10 @@
 const SeasonService = require("../../service/WorldBossSeasonService");
 const BattleService = require("../../service/WorldBossBattleService");
+const { canonicalPositiveInteger } = require("../../util/decimalInteger");
 const { toApiDto, respondError, parseLeaderboardLimit } = require(".");
 
 function activeSeasonId(status) {
-  return status && status.season ? Number(status.season.id) : null;
+  return status && status.season ? canonicalPositiveInteger(status.season.id) : null;
 }
 
 exports.status = async function (req, res) {

@@ -1,4 +1,5 @@
 const mysql = require("../../util/mysql");
+const { canonicalUnsignedInteger } = require("../../util/decimalInteger");
 
 const TABLE = "world_boss_contribution";
 
@@ -12,7 +13,7 @@ function withCompetitionRank(rows) {
   let previousDamage = null;
   let previousRank = 0;
   return rows.map((row, index) => {
-    const damage = Number(row.total_damage);
+    const damage = canonicalUnsignedInteger(row.total_damage);
     const ranking = previousDamage === damage ? previousRank : index + 1;
     previousDamage = damage;
     previousRank = ranking;
@@ -60,7 +61,7 @@ exports.sumSeasonDamage = async function (seasonId, userId, trx) {
     .where({ season_id: seasonId, user_id: userId })
     .sum({ total: "damage" })
     .first();
-  return Number(row.total) || 0;
+  return row.total === null || row.total === undefined ? "0" : canonicalUnsignedInteger(row.total);
 };
 
 exports.withCompetitionRank = withCompetitionRank;

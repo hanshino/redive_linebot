@@ -5,6 +5,7 @@ const WorldBoss = require("../model/application/WorldBoss");
 const WorldBossSeason = require("../model/application/WorldBossSeason");
 const WorldBossRound = require("../model/application/WorldBossRound");
 const WorldBossContribution = require("../model/application/WorldBossContribution");
+const { canonicalPositiveInteger } = require("../util/decimalInteger");
 
 const DAILY_COST_LIMIT = config.get("worldboss.daily_cost_limit");
 const HP_TIERS = config.get("worldboss.hp_tiers");
@@ -25,6 +26,19 @@ function positiveNumber(value) {
 
 function positiveSafeInteger(value) {
   return Number.isSafeInteger(value) && value > 0;
+}
+
+function positiveBigInt(value) {
+  try {
+    return BigInt(canonicalPositiveInteger(value));
+  } catch {
+    return null;
+  }
+}
+
+function excludeBoss(bosses, excludeBossId) {
+  const excluded = canonicalPositiveInteger(excludeBossId);
+  return bosses.filter(boss => canonicalPositiveInteger(boss.id) !== excluded);
 }
 
 function nonNegativeInteger(value) {
@@ -146,7 +160,7 @@ function createBattleService({ activeSlot = 1, clock = () => new Date(), hooks =
     let bosses = await WorldBoss.list(trx);
     if (!bosses.length) throw fail("NO_WORLD_BOSS");
     if (bosses.length > 1 && excludeBossId !== undefined && excludeBossId !== null) {
-      bosses = bosses.filter(boss => Number(boss.id) !== Number(excludeBossId));
+      bosses = excludeBoss(bosses, excludeBossId);
     }
     const boss = bosses[Math.floor(Math.random() * bosses.length)];
     const maxHp = hpForRound(roundNo, Number(boss.hp_weight));
@@ -218,17 +232,19 @@ function createBattleService({ activeSlot = 1, clock = () => new Date(), hooks =
 
       let round = await WorldBossRound.findActiveForUpdate(season.id, trx);
       if (!round) throw fail("NO_ACTIVE_ROUND");
-      if (!positiveNumber(Number(round.max_hp))) throw fail("INVALID_MAX_HP");
+      const maxHp = positiveBigInt(round.max_hp);
+      let currentHp = positiveBigInt(round.current_hp);
+      if (maxHp === null || currentHp === null || currentHp > maxHp) throw fail("INVALID_MAX_HP");
       let boss = await trx("world_boss").where({ id: round.world_boss_id }).first();
       if (!boss) throw fail("WORLD_BOSS_NOT_FOUND");
 
-      let remainingDamage = damage;
+      let remainingDamage = BigInt(damage);
       const clearedRounds = [];
       const contributionRoundId = round.id;
-      while (remainingDamage >= Number(round.current_hp)) {
-        remainingDamage -= Number(round.current_hp);
+      while (remainingDamage >= currentHp) {
+        remainingDamage -= currentHp;
         await trx("world_boss_round").where({ id: round.id }).update({
-          current_hp: 0,
+          current_hp: "0",
           status: "cleared",
           active_slot: null,
           cleared_at: now,
@@ -239,12 +255,14 @@ function createBattleService({ activeSlot = 1, clock = () => new Date(), hooks =
         boss = created.boss;
         round = { ...created };
         delete round.boss;
-        if (remainingDamage <= 0) break;
+        currentHp = positiveBigInt(round.current_hp);
+        if (currentHp === null) throw fail("INVALID_MAX_HP");
+        if (remainingDamage <= 0n) break;
       }
-      if (remainingDamage > 0) {
+      if (remainingDamage > 0n) {
         await trx("world_boss_round")
           .where({ id: round.id })
-          .update({ current_hp: Number(round.current_hp) - remainingDamage });
+          .update({ current_hp: (currentHp - remainingDamage).toString() });
         round = await trx("world_boss_round").where({ id: round.id }).first();
       }
 
@@ -291,3 +309,4 @@ const defaultService = createBattleService();
 module.exports = defaultService;
 module.exports.createBattleService = createBattleService;
 module.exports.isExpired = isExpired;
+module.exports.excludeBoss = excludeBoss;

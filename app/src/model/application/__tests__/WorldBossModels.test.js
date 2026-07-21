@@ -13,8 +13,9 @@ const WorldBossSeasonReward = require("../WorldBossSeasonReward");
 
 describe("World Boss v2 models", () => {
   const prefix = `${PREFIX}models_`;
-  const sentinelName = "xxwbtestXmodelsXsentinel";
+  const sentinelName = `${PREFIX}sentinel_models_preserve`;
   const activeSlot = ACTIVE_SLOT;
+  let sentinelSnapshot;
 
   async function createSeason({
     name,
@@ -48,23 +49,40 @@ describe("World Boss v2 models", () => {
     return id;
   }
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     await cleanupByPrefix(mysql, prefix);
     await mysql("world_boss_season").where({ name: sentinelName }).del();
     await mysql("world_boss_season").insert({
       name: sentinelName,
       status: "draft",
+      announcement: "preserve this sentinel",
       end_time: new Date("2030-01-01T00:00:00.000Z"),
     });
+    sentinelSnapshot = await mysql("world_boss_season").where({ name: sentinelName }).first();
+  });
+
+  beforeEach(async () => {
+    await cleanupByPrefix(mysql, prefix);
+    await expect(mysql("world_boss_season").where({ name: sentinelName }).first()).resolves.toEqual(
+      sentinelSnapshot
+    );
   });
 
   afterEach(async () => {
     await cleanupByPrefix(mysql, prefix);
-    expect(await mysql("world_boss_season").where({ name: sentinelName }).first()).toBeTruthy();
-    await mysql("world_boss_season").where({ name: sentinelName }).del();
+    await expect(mysql("world_boss_season").where({ name: sentinelName }).first()).resolves.toEqual(
+      sentinelSnapshot
+    );
   });
 
-  afterAll(() => mysql.destroy());
+  afterAll(async () => {
+    await cleanupByPrefix(mysql, prefix);
+    await expect(mysql("world_boss_season").where({ name: sentinelName }).first()).resolves.toEqual(
+      sentinelSnapshot
+    );
+    await mysql("world_boss_season").where({ name: sentinelName }).del();
+    await mysql.destroy();
+  });
 
   test("finds and locks the active season and its active round", async () => {
     const [bossId] = await mysql("world_boss").insert({
@@ -137,16 +155,16 @@ describe("World Boss v2 models", () => {
     expect(publicRows).toHaveLength(100);
     expect(publicRows.slice(0, 3).map(row => [row.user_id, row.total_damage, row.ranking])).toEqual(
       [
-        [`${prefix}u-a`, 500, 1],
-        [`${prefix}u-b`, 500, 1],
-        [`${prefix}u-c`, 300, 3],
+        [`${prefix}u-a`, "500", 1],
+        [`${prefix}u-b`, "500", 1],
+        [`${prefix}u-c`, "300", 3],
       ]
     );
 
     const allRows = await WorldBossContribution.seasonRankingAll(seasonId);
     expect(allRows).toHaveLength(104);
     expect(allRows.find(row => row.ranking === 101)).toBeTruthy();
-    expect(await WorldBossContribution.sumSeasonDamage(seasonId, `${prefix}u-a`)).toBe(500);
+    expect(await WorldBossContribution.sumSeasonDamage(seasonId, `${prefix}u-a`)).toBe("500");
 
     for (const limit of [0, 101, 1.5, Number.NaN]) {
       await expect(WorldBossContribution.seasonRanking(seasonId, limit)).rejects.toMatchObject({
@@ -155,6 +173,39 @@ describe("World Boss v2 models", () => {
     }
     await expect(WorldBossContribution.seasonRanking(seasonId, 1)).resolves.toHaveLength(1);
     await expect(WorldBossContribution.seasonRanking(seasonId, 100)).resolves.toHaveLength(100);
+  });
+
+  test("preserves exact aggregate damage for ordering, ties, and user totals", async () => {
+    const seasonId = await createSeason({ name: `${prefix}exact-ranking-season` });
+    const [bossId] = await mysql("world_boss").insert({
+      name: `${prefix}exact-ranking-boss`,
+      hp_weight: 1,
+    });
+    const roundId = await createRound(seasonId, bossId, {
+      max_hp: "18446744073709551615",
+      current_hp: "18446744073709551615",
+    });
+    const half = "4503599627370496";
+    await mysql("world_boss_contribution").insert(
+      [
+        { user_id: `${prefix}exact-a`, damage: half },
+        { user_id: `${prefix}exact-a`, damage: "4503599627370497" },
+        { user_id: `${prefix}exact-b`, damage: half },
+        { user_id: `${prefix}exact-b`, damage: "4503599627370497" },
+        { user_id: `${prefix}exact-c`, damage: half },
+        { user_id: `${prefix}exact-c`, damage: half },
+      ].map(row => ({ season_id: seasonId, round_id: roundId, cost: 1, ...row }))
+    );
+
+    const ranking = await WorldBossContribution.seasonRanking(seasonId, 100);
+    expect(ranking.map(row => [row.user_id, row.total_damage, row.ranking])).toEqual([
+      [`${prefix}exact-a`, "9007199254740993", 1],
+      [`${prefix}exact-b`, "9007199254740993", 1],
+      [`${prefix}exact-c`, "9007199254740992", 3],
+    ]);
+    await expect(WorldBossContribution.sumSeasonDamage(seasonId, `${prefix}exact-a`)).resolves.toBe(
+      "9007199254740993"
+    );
   });
 
   test("sums cost using a half-open UTC range at the Taipei midnight boundary", async () => {
@@ -262,10 +313,10 @@ describe("World Boss v2 models", () => {
 
     const latest = await WorldBossSeasonReward.findLatestSettledByUser(userId);
     expect(latest).toMatchObject({
-      seasonId: settledSeasonId,
+      seasonId: String(settledSeasonId),
       seasonName: `${prefix}settled-season`,
       ranking: 1,
-      totalDamage: 999,
+      totalDamage: "999",
       stoneAmount: 500,
       titleKey: title.key,
       titleName: title.name,
