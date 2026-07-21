@@ -26,11 +26,17 @@ async function assertInnoDbV1Tables(knex) {
     .select({ tableName: "table_name", engine: "engine" })
     .whereRaw("table_schema = DATABASE()")
     .whereIn("table_name", V1_TABLES);
+  const allV1TablesMissing = tableEngines.length === 0;
   const nonInnoDbTables = tableEngines.filter(table => table.engine !== "InnoDB");
 
+  if (!allV1TablesMissing && tableEngines.length !== V1_TABLES.length) {
+    throw new Error("Cannot teardown v1 World Boss: all v1 tables must exist.");
+  }
   if (nonInnoDbTables.length) {
     throw new Error("Cannot teardown v1 World Boss: all v1 tables must use InnoDB.");
   }
+
+  return { allV1TablesMissing };
 }
 
 async function getV1TeardownState(knex) {
@@ -125,9 +131,12 @@ exports.config = { transaction: false };
 
 exports.up = async knex => {
   await knex.transaction(async trx => {
-    await assertInnoDbV1Tables(trx);
+    const { allV1TablesMissing } = await assertInnoDbV1Tables(trx);
     const { metadataAlreadyPurged } = await getV1TeardownState(trx);
 
+    if (allV1TablesMissing && !metadataAlreadyPurged) {
+      throw new Error("Cannot teardown v1 World Boss: v1 tables and metadata are inconsistent.");
+    }
     if (metadataAlreadyPurged) {
       return;
     }
