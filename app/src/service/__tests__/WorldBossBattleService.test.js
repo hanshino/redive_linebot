@@ -343,6 +343,104 @@ describe("WorldBossBattleService", () => {
     ).resolves.toMatchObject({ current_hp: 2 });
   });
 
+  test("one overkill attack clears multiple rounds and creates exactly one damaged successor", async () => {
+    const fixture = await createBattleFixture({
+      label: "overkill",
+      maxHp: 100,
+      currentHp: 100,
+    });
+    const damage = 45123;
+    const cost = 10;
+    const exp = 7;
+    const updateSpy = jest.spyOn(MinigameLevel, "updateByUserId");
+    const listSpy = jest
+      .spyOn(WorldBoss, "list")
+      .mockImplementation(trx => trx("world_boss").where({ id: fixture.bossId }));
+    const service = createBattleService({ clock: () => now });
+
+    try {
+      const result = await service.attack({
+        userId: fixture.userId,
+        attackType: "skill",
+        damage,
+        cost,
+        exp,
+      });
+
+      expect(result).toMatchObject({
+        clearedRounds: [1, 2],
+        damage,
+        cost,
+        seasonTotalDamage: "45123",
+        daily: { limit: 100, used: cost, remaining: 90 },
+        levelResult: {
+          levelUp: false,
+          newLevel: 1,
+          newExp: exp,
+          levelUpCount: 0,
+          nextLevelExp: 24,
+        },
+      });
+      expect(Number(result.boss.id)).toBe(fixture.bossId);
+      expect(updateSpy).toHaveBeenCalledTimes(1);
+      expect(updateSpy).toHaveBeenCalledWith(fixture.userId, { level: 1, exp }, expect.anything());
+
+      const rounds = await mysql("world_boss_round")
+        .where({ season_id: fixture.seasonId })
+        .orderBy("round_no");
+      expect(rounds).toEqual([
+        expect.objectContaining({
+          id: fixture.roundId,
+          round_no: 1,
+          world_boss_id: fixture.bossId,
+          current_hp: 0,
+          status: "cleared",
+          active_slot: null,
+        }),
+        expect.objectContaining({
+          round_no: 2,
+          world_boss_id: fixture.bossId,
+          current_hp: 0,
+          status: "cleared",
+          active_slot: null,
+        }),
+        expect.objectContaining({
+          round_no: 3,
+          world_boss_id: fixture.bossId,
+          max_hp: 60000,
+          current_hp: 59977,
+          status: "active",
+          active_slot: ACTIVE_SLOT,
+        }),
+      ]);
+      const activeRounds = rounds.filter(round => round.status === "active");
+      expect(activeRounds).toHaveLength(1);
+      expect(Number(result.round.id)).toBe(Number(activeRounds[0].id));
+
+      await expect(
+        mysql("world_boss_contribution").where({ season_id: fixture.seasonId })
+      ).resolves.toEqual([
+        expect.objectContaining({
+          round_id: fixture.roundId,
+          user_id: fixture.userId,
+          damage,
+          cost,
+        }),
+      ]);
+      await expect(
+        mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
+      ).resolves.toMatchObject({ level: 1, exp });
+      await expect(service.getRemainingDailyCost(fixture.userId)).resolves.toEqual({
+        limit: 100,
+        used: cost,
+        remaining: 90,
+      });
+    } finally {
+      listSpy.mockRestore();
+      updateSpy.mockRestore();
+    }
+  });
+
   test("treats now equal to end_time as ended without quota, HP, contribution, or EXP writes", async () => {
     const fixture = await createBattleFixture({ label: "ended", endTime: now });
     const service = createBattleService({ clock: () => now });
