@@ -8,15 +8,10 @@ Princess Connect Re:Dive LINE chatbot — a production LINE messaging bot built 
 
 ## Repository Layout
 
-Yarn workspaces root; two packages plus shared dev tooling:
+Yarn workspaces root: `app/` (all backend code) and `frontend/` (admin dashboard, embedded as LINE LIFF). Design specs live in `docs/`.
 
-- **app/** — Bottender bot + Express API + Socket.IO + cron worker. All backend code lives here.
-- **frontend/** — React 19 + MUI 7 + Vite admin dashboard, embedded as LINE LIFF.
-- **docs/** — Design specs (e.g. `docs/superpowers/specs/`).
-
-The legacy `migration/Princess.sql` docker init was folded into knex (`app/migrations/20210101000000_baseline_initial_schema.{js,sql}`); knex is now the single schema source.
-
-There is no `job/` package — cron is `yarn worker` inside `app/` (see below).
+- There is no `job/` package — cron is `yarn worker` inside `app/` (see below).
+- The legacy `migration/Princess.sql` docker init was folded into knex (`app/migrations/20210101000000_baseline_initial_schema.{js,sql}`); knex is now the single schema source.
 
 ## Runtime Architecture
 
@@ -61,12 +56,10 @@ Command routing in `OrderBased` composes routers from every domain controller (g
 
 ### Layers
 
-- **Controllers** (`app/src/controller/`): split into `princess/` (game features: gacha, battle, character, god-stone shop) and `application/` (group/system: chat level, worldboss, janken, achievements, market, race, subscribe, admin, customer orders).
-- **Services** (`app/src/service/`): business logic reused across controllers (`AchievementEngine`, `GachaService`, `EquipmentService`, `JankenService`, `RaceService`, `SubscriptionService`, `WorldBossEvent*Service`, `EventCenterService`, etc.).
-- **Models** (`app/src/model/`): Knex-based CRUD, split into `application/` and `princess/`. All extend `app/src/model/base.js` — supply `{ table, fillable }`; get `all()`, `first()`, `find()`, `create()`, `update()`, `delete()`, plus `transaction()` / `setTransaction(trx)` for trx propagation.
-- **Templates** (`app/src/templates/`): LINE Flex Message builders, mirroring the controller split.
-- **Middleware** (`app/src/middleware/`): Bottender-chain middleware (`profile`, `statistics`, `config`, `alias`, `rateLimit`, `dcWebhook`, `umamiTrack`) and Express auth (`validation.js` for `/api` tokens).
-- **Router** (`app/src/router/api.js`): Express REST API; `socket.js` wires Socket.IO events on the shared HTTP server.
+`app/src/` splits into `controller/`, `service/`, `model/`, `templates/` (LINE Flex builders), `middleware/`, `router/`. Inside `controller/`, `model/`, and `templates/` the same two-way split repeats: `princess/` = game features, `application/` = group/system features.
+
+- **Models** all extend `app/src/model/base.js` — supply `{ table, fillable }`, get `all()` / `first()` / `find()` / `create()` / `update()` / `delete()` plus `transaction()` / `setTransaction(trx)` for trx propagation.
+- **Middleware** holds both Bottender-chain middleware and the Express `/api` token auth (`validation.js`).
 
 ### Data layer
 
@@ -81,66 +74,24 @@ Command routing in `OrderBased` composes routers from every domain controller (g
 
 ## Frontend (frontend/) Internals
 
-- React 19, MUI 7 (`@mui/material`, `@mui/x-data-grid` v8), Emotion, `react-router-dom` v7, Framer Motion, Recharts, Socket.IO client.
-- Bundler: **Vite 8** (not CRA). Dev: `yarn dev`. Build: `yarn build`. No test runner currently configured.
-- Entry: `frontend/src/main.jsx` → `App.jsx`. Pages under `src/pages/` (Achievement, Admin, Auto{History,Settings}, Bag, CustomerOrder, Equipment, Gacha, Group, Home, Janken, Panel, Race, Rankings, Tools, Trade).
+- Bundler: **Vite 8** (not CRA). No test runner is configured — Jest tests exist only in `app/` (`__tests__/` dirs alongside services/controllers/bin).
+- Entry: `frontend/src/main.jsx` → `App.jsx`; pages under `src/pages/`.
 - Auth uses LINE LIFF (`@line/liff`) — pages assume a LIFF context, and LIFF endpoint URLs are kept in sync by `make cf-tunnel` in dev.
 - Progressive redesign toward MUI card layouts is in progress; see memory for which pages are done.
 
 ## Common Commands
 
-Root (yarn workspaces glue):
+`yarn dev` at the root runs app + frontend concurrently; each workspace's own scripts are in its `package.json`, and `make help` lists every Makefile target. The non-obvious ones:
 
 ```bash
-yarn dev              # runs app + frontend concurrently
-yarn test:app         # jest in app/
-yarn lint:app         # eslint in app/
-yarn lint:frontend    # eslint in frontend/
-yarn build:frontend   # production build
-yarn migrate          # proxies to app/yarn migrate
+make infra                                    # MySQL + Redis + phpMyAdmin only — bot/frontend run on the host
+make cf-go                                    # tunnel + sync URL into LINE webhook, LIFF, .env APP_DOMAIN
+cd app && yarn worker                         # cron scheduler (tasks.js + app/bin/*) — no HTTP server
+cd app && yarn test -- path/to/file.test.js   # single test file
+cd app && yarn knex migrate:make <name>       # never hand-write a migration
+cd app && yarn migrate && yarn knex seed:run  # fresh-DB bootstrap
+cd app && yarn debug                          # DEBUG=bottender:action node server.js
 ```
-
-Makefile (infra + LINE plumbing):
-
-```bash
-make infra            # docker compose up -d mysql redis (+ phpmyadmin)
-make infra-stop       # docker compose down
-make migrate          # cd app && yarn migrate
-make logs             # tail infra logs
-make bash-redis       # redis-cli into the redis container
-make cf-up            # start cloudflared quick tunnel (background, log → /tmp/cloudflared.log)
-make cf-down          # stop cloudflared
-make cf-url           # print current trycloudflare URL
-make cf-tunnel        # push cloudflared URL → LINE webhook + LIFF endpoint + .env APP_DOMAIN
-make cf-go            # cf-up + cf-tunnel one-shot
-make get-webhook      # print current LINE webhook endpoint
-make get-liff         # print LIFF app config
-make help             # list all targets
-```
-
-app/ scripts:
-
-```bash
-yarn dev              # nodemon server.js (port 9527)
-yarn start            # production bot
-yarn worker           # cron scheduler (tasks.js + app/bin/*)
-yarn test             # jest
-yarn test -- path/to/file.test.js   # single test file
-yarn lint             # eslint .
-yarn migrate          # knex migrate:latest
-yarn debug            # DEBUG=bottender:action node server.js
-```
-
-frontend/ scripts:
-
-```bash
-yarn dev              # vite dev server (port 3000)
-yarn build            # production build
-yarn preview          # serve the built dist
-yarn lint             # eslint .
-```
-
-Tests currently live only in `app/` (Jest, `__tests__/` dirs alongside services/controllers/bin). There is no frontend test runner.
 
 ## LINE Webhook Flow
 
@@ -157,9 +108,7 @@ Copy `.env.example` to root `.env`. Required: `LINE_ACCESS_TOKEN`, `LINE_CHANNEL
 
 ## Key Config Files
 
-- `app/bottender.config.js` — session store (Redis), channel enablement, initial `context.state`.
-- `app/knexfile.js` — single MySQL connection config for app + worker + migrations.
-- `app/config/default.json` — game logic constants, external link URLs, color palette; read via `config` package (`require("config").get(...)`).
+- `app/config/default.json` — game logic constants, external link URLs, color palette; read via `require("config").get(...)`.
 - `app/config/crontab.config.js` — cron schedule → `app/bin/<Script>.js` mapping (edit here when adding background jobs).
-- `docker-compose.yml` — infra only (mysql, redis, phpmyadmin). Dev reality; bot/frontend run on the host. No longer mounts any SQL init — schema is bootstrapped purely by knex (`yarn migrate`).
+- `docker-compose.yml` — infra only. No longer mounts any SQL init; schema is bootstrapped purely by knex.
 - `docker-compose.traefik.yml` — production service + Traefik routing labels. Not used locally.
