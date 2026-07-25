@@ -1,3 +1,7 @@
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config({ path: require("path").resolve(__dirname, "../../.env") });
+}
+
 const service = require("../src/service/WorldBossSeasonService");
 const { DefaultLogger } = require("../src/util/Logger");
 
