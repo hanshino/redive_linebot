@@ -1,11 +1,15 @@
+const mockLineClient = {
+  getGroupMemberProfile: jest.fn(),
+  getProfile: jest.fn(),
+  pushMessage: jest.fn(),
+  multicast: jest.fn(),
+  broadcast: jest.fn(),
+  replyMessage: jest.fn(),
+  reply: jest.fn(),
+};
+
 jest.mock("bottender", () => ({
-  getClient: jest.fn(() => ({
-    getGroupMemberProfile: jest.fn(),
-    getProfile: jest.fn(),
-    pushMessage: jest.fn(),
-    replyMessage: jest.fn(),
-    reply: jest.fn(),
-  })),
+  getClient: jest.fn(() => mockLineClient),
   chain: jest.fn(),
   withProps: (handler, providedProps) => (context, props) =>
     handler(context, { ...props, ...providedProps }),
@@ -99,6 +103,12 @@ function context(userId = "Uworldboss") {
   };
 }
 
+function expectReplyOnlyDelivery() {
+  expect(mockLineClient.pushMessage).not.toHaveBeenCalled();
+  expect(mockLineClient.multicast).not.toHaveBeenCalled();
+  expect(mockLineClient.broadcast).not.toHaveBeenCalled();
+}
+
 function character({ standard = 100, skill = 200, skillCost = 7 } = {}) {
   return {
     getStandardDamage: jest.fn(() => standard),
@@ -164,6 +174,7 @@ describe("WorldBossController.showBattleStatus", () => {
       liffUri: "https://liff.example/worldboss",
     });
     expect(ctx.replyFlex).toHaveBeenCalledWith("世界王", { type: "world-reply" });
+    expectReplyOnlyDelivery();
   });
 
   it("shows a zero-tier settled reward when no season is active", async () => {
@@ -311,6 +322,7 @@ describe("WorldBossController.attackOnBoss", () => {
       liffUri: "https://liff.example/worldboss",
     });
     expect(ctx.replyFlex).toHaveBeenCalledWith("世界王攻擊", { type: "attack-reply" });
+    expectReplyOnlyDelivery();
   });
 
   it("uses standard damage, fixed base cost, and equipment bonuses exactly", async () => {

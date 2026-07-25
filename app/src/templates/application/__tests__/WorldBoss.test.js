@@ -264,12 +264,12 @@ describe("WorldBoss Flex templates", () => {
     );
   });
 
-  it("keeps a successful attack without a latest settlement as one valid bubble", () => {
+  it("formats an oversized attack total and serializes a no-reward reply safely", () => {
     const reply = WorldBoss.generateAttackResultBubble({
       result: {
         damage: 1,
         cost: 1,
-        seasonTotalDamage: 1,
+        seasonTotalDamage: "9007199254740993",
         clearedRounds: [],
         levelResult: { levelUp: false },
       },
@@ -280,6 +280,8 @@ describe("WorldBoss Flex templates", () => {
 
     expect(reply.type).toBe("bubble");
     expect(detailRowValue(reply, "消耗攻擊 cost")).toEqual(["1"]);
+    expect(detailRowValue(reply, "賽季累積傷害")).toEqual(["9,007,199,254,740,993"]);
+    expect(() => JSON.stringify(reply)).not.toThrow();
   });
 
   it("bounds a 5,000-round attack summary within LINE bubble and carousel limits", () => {
