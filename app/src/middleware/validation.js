@@ -76,26 +76,34 @@ exports.verifyToken = async (req, res, next) => {
 };
 
 exports.verifyAdmin = async (req, res, next) => {
-  const { userId } = req.profile;
+  try {
+    const { userId } = req.profile;
+    const adminList = await AdminModel.getList();
+    const adminData = adminList.find(data => data.userId === userId);
+    if (adminData === undefined) return Forbidden(res);
 
-  const adminList = await AdminModel.getList();
-  var adminData = adminList.find(data => data.userId === userId);
-  if (adminData === undefined) return Forbidden(res);
+    req.profile = {
+      ...req.profile,
+      ...adminData,
+    };
 
-  req.profile = {
-    ...req.profile,
-    ...adminData,
-  };
-
-  next();
+    next();
+  } catch (error) {
+    next(error);
+  }
 };
 
 exports.verifyPrivilege = (allow = 9) => {
   return (req, res, next) => {
-    let { privilege } = req.profile;
-    privilege = parseInt(privilege);
+    const privilege = req.profile?.privilege;
+    const isValidPrivilege =
+      (typeof privilege === "number" &&
+        Number.isFinite(privilege) &&
+        Number.isInteger(privilege)) ||
+      (typeof privilege === "string" && /^(?:0|[1-9])$/.test(privilege));
+    const level = Number(privilege);
 
-    if (privilege < allow) {
+    if (!isValidPrivilege || level < 0 || level > 9 || level < allow) {
       return Forbidden(res);
     }
 
