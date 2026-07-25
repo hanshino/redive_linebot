@@ -17,7 +17,9 @@ const TITLE_KEYS = ["worldboss_annihilator", "worldboss_vanguard"];
 const COLLISION_KEY = TITLE_KEYS[0];
 const SENTINEL_USER_ID = "__wbtest_title_owner";
 const UNRELATED_TITLE_KEY = "__wbtest_unrelated_title";
+const MAX_ORDER_TITLE_KEY = "__wbtest_max_order_title";
 const UNRELATED_USER_ID = "__wbtest_unrelated_owner";
+const MAX_ORDER_USER_ID = "__wbtest_max_order_owner";
 const TEST_PREFIX = "__wbtest_";
 
 const TEST_DATABASE = "Princess_worldboss_v2_test";
@@ -35,13 +37,18 @@ let database;
 
 async function removeTestTitles() {
   const titles = await database("titles")
-    .whereIn("key", [COLLISION_KEY, UNRELATED_TITLE_KEY])
-    .whereRaw("LEFT(??, ?) = ?", ["name", TEST_PREFIX.length, TEST_PREFIX])
+    .whereIn("key", [...TITLE_KEYS, UNRELATED_TITLE_KEY, MAX_ORDER_TITLE_KEY])
     .select("id");
   const ids = titles.map(title => title.id);
   if (ids.length) {
     await database("user_titles").whereIn("title_id", ids).del();
     await database("titles").whereIn("id", ids).del();
+  }
+}
+
+async function resetV2Tables() {
+  for (const table of TABLES) {
+    await database.schema.dropTableIfExists(table);
   }
 }
 
@@ -82,14 +89,14 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await migration.down(database);
+  await resetV2Tables();
   await removeTestTitles();
 });
 
 afterAll(async () => {
   try {
     if (database) {
-      await migration.down(database);
+      await resetV2Tables();
       await removeTestTitles();
       await database.destroy();
     }
@@ -125,6 +132,133 @@ test("reserved title collision aborts before DDL and preserves dependent data", 
   await expect(migration.up(database)).resolves.toBeUndefined();
 });
 
+test("matching reserved title without v2 tables remains an up collision", async () => {
+  const [titleId] = await database("titles").insert({
+    key: COLLISION_KEY,
+    name: "殲滅之王",
+    description: "世界王賽季總傷害第 1 名",
+    icon: "👑",
+    rarity: 3,
+    order: 1,
+  });
+  await database("user_titles").insert({ user_id: SENTINEL_USER_ID, title_id: titleId });
+
+  await expect(migration.up(database)).rejects.toThrow(
+    "WORLD_BOSS_TITLE_KEY_COLLISION:worldboss_annihilator"
+  );
+
+  await expectNoV2Tables();
+  await expect(database("titles").where({ id: titleId }).first()).resolves.toBeDefined();
+  await expect(
+    database("user_titles").where({ user_id: SENTINEL_USER_ID, title_id: titleId }).first()
+  ).resolves.toBeDefined();
+});
+
+test("matching reserved title without v2 tables remains a down collision", async () => {
+  const [titleId] = await database("titles").insert({
+    key: COLLISION_KEY,
+    name: "殲滅之王",
+    description: "世界王賽季總傷害第 1 名",
+    icon: "👑",
+    rarity: 3,
+    order: 1,
+  });
+  await database("user_titles").insert({ user_id: SENTINEL_USER_ID, title_id: titleId });
+
+  await expect(migration.down(database)).rejects.toThrow(
+    "WORLD_BOSS_TITLE_KEY_COLLISION:worldboss_annihilator"
+  );
+
+  await expectNoV2Tables();
+  await expect(database("titles").where({ id: titleId }).first()).resolves.toBeDefined();
+  await expect(
+    database("user_titles").where({ user_id: SENTINEL_USER_ID, title_id: titleId }).first()
+  ).resolves.toBeDefined();
+});
+
+test("title order exhaustion aborts before DDL and preserves dependent data", async () => {
+  const [titleId] = await database("titles").insert({
+    key: MAX_ORDER_TITLE_KEY,
+    name: "__wbtest_max_order_title",
+    description: "__wbtest_max_order_description",
+    icon: "M",
+    rarity: 0,
+    order: 127,
+  });
+  await database("user_titles").insert({ user_id: MAX_ORDER_USER_ID, title_id: titleId });
+
+  await expect(migration.up(database)).rejects.toThrow("WORLD_BOSS_TITLE_ORDER_EXHAUSTED");
+
+  await expectNoV2Tables();
+  await expect(database("titles").where({ id: titleId }).first()).resolves.toBeDefined();
+  await expect(
+    database("user_titles").where({ user_id: MAX_ORDER_USER_ID, title_id: titleId }).first()
+  ).resolves.toBeDefined();
+});
+
+test("create migration converges from an exact owned partial DDL state", async () => {
+  await migration.up(database);
+  await database("titles").whereIn("key", TITLE_KEYS).del();
+  await database.schema.dropTable("world_boss_season_reward");
+  await database.schema.dropTable("world_boss_contribution");
+
+  await expect(migration.up(database)).resolves.toBeUndefined();
+
+  for (const table of TABLES) {
+    await expect(database.schema.hasTable(table)).resolves.toBe(true);
+  }
+  await expect(database("titles").whereIn("key", TITLE_KEYS)).resolves.toHaveLength(2);
+});
+
+test("create migration rejects a custom table without mutating it", async () => {
+  await database.schema.createTable("world_boss", table => {
+    table.increments("custom_id").primary();
+    table.string("sentinel").notNullable();
+  });
+  await database("world_boss").insert({ sentinel: "preserve-me" });
+  const [beforeRows] = await database.raw("SHOW CREATE TABLE `world_boss`");
+
+  await expect(migration.up(database)).rejects.toThrow("WORLD_BOSS_V2_SCHEMA_DRIFT:world_boss");
+
+  const [afterRows] = await database.raw("SHOW CREATE TABLE `world_boss`");
+  expect(afterRows[0]["Create Table"]).toBe(beforeRows[0]["Create Table"]);
+  await expect(database("world_boss").where({ sentinel: "preserve-me" })).resolves.toHaveLength(1);
+  for (const table of TABLES.filter(table => table !== "world_boss")) {
+    await expect(database.schema.hasTable(table)).resolves.toBe(false);
+  }
+
+  await database.schema.dropTable("world_boss");
+});
+
+test("create migration rejects an expected table with an extra user-owned column", async () => {
+  await migration.up(database);
+  await database.schema.alterTable("world_boss", table => {
+    table.string("custom_sentinel");
+  });
+  await database("world_boss").insert({
+    name: `${TEST_PREFIX}custom-owned`,
+    hp_weight: 1,
+    custom_sentinel: "preserve-me",
+  });
+  const [beforeRows] = await database.raw("SHOW CREATE TABLE `world_boss`");
+
+  await expect(migration.down(database)).rejects.toThrow("WORLD_BOSS_V2_SCHEMA_DRIFT:world_boss");
+
+  const [afterRows] = await database.raw("SHOW CREATE TABLE `world_boss`");
+  expect(afterRows[0]["Create Table"]).toBe(beforeRows[0]["Create Table"]);
+  await expect(
+    database("world_boss").where({ custom_sentinel: "preserve-me" }).first()
+  ).resolves.toBeDefined();
+  for (const table of TABLES) {
+    await expect(database.schema.hasTable(table)).resolves.toBe(true);
+  }
+
+  await database("world_boss").where({ custom_sentinel: "preserve-me" }).del();
+  await database.schema.alterTable("world_boss", table => {
+    table.dropColumn("custom_sentinel");
+  });
+});
+
 test("schema exposes every required enum, unique, index, and check constraint", async () => {
   await migration.up(database);
 
@@ -151,6 +285,62 @@ test("schema exposes every required enum, unique, index, and check constraint", 
   expect(createSql.world_boss_contribution).toContain("idx_wbc_round");
   expect(createSql.world_boss_contribution).toContain("idx_wbc_user_created");
   expect(createSql.world_boss_season_reward).toContain("uq_wbsr_season_user");
+});
+
+test("follow-up migration resumes when the exact owned index already exists", async () => {
+  await migration.up(database);
+  await database.schema.alterTable("world_boss_round", table => {
+    table.index(["world_boss_id"], "idx_wbr_world_boss");
+  });
+
+  await expect(foreignKeyMigration.up(database)).resolves.toBeUndefined();
+  await expect(
+    database("information_schema.REFERENTIAL_CONSTRAINTS")
+      .where({
+        CONSTRAINT_SCHEMA: TEST_DATABASE,
+        TABLE_NAME: "world_boss_round",
+        CONSTRAINT_NAME: "fk_wbr_world_boss",
+      })
+      .first()
+  ).resolves.toMatchObject({ DELETE_RULE: "RESTRICT" });
+});
+
+test("follow-up migration rejects a conflicting index before DDL", async () => {
+  await migration.up(database);
+  await database.schema.alterTable("world_boss_round", table => {
+    table.index(["season_id"], "idx_wbr_world_boss");
+  });
+  const [beforeRows] = await database.raw("SHOW CREATE TABLE `world_boss_round`");
+
+  await expect(foreignKeyMigration.up(database)).rejects.toThrow(
+    "WORLD_BOSS_ROUND_INDEX_DRIFT:idx_wbr_world_boss"
+  );
+
+  const [afterRows] = await database.raw("SHOW CREATE TABLE `world_boss_round`");
+  expect(afterRows[0]["Create Table"]).toBe(beforeRows[0]["Create Table"]);
+  await expect(
+    database("information_schema.REFERENTIAL_CONSTRAINTS")
+      .where({
+        CONSTRAINT_SCHEMA: TEST_DATABASE,
+        TABLE_NAME: "world_boss_round",
+        CONSTRAINT_NAME: "fk_wbr_world_boss",
+      })
+      .first()
+  ).resolves.toBeFalsy();
+});
+
+test("follow-up migration rejects incompatible engine before DDL", async () => {
+  await migration.up(database);
+  await database.raw("ALTER TABLE `world_boss_round` ENGINE=MyISAM");
+  const [beforeRows] = await database.raw("SHOW CREATE TABLE `world_boss_round`");
+
+  await expect(foreignKeyMigration.up(database)).rejects.toThrow(
+    "WORLD_BOSS_ROUND_FOREIGN_KEY_ENGINE_MISMATCH"
+  );
+
+  const [afterRows] = await database.raw("SHOW CREATE TABLE `world_boss_round`");
+  expect(afterRows[0]["Create Table"]).toBe(beforeRows[0]["Create Table"]);
+  await database.raw("ALTER TABLE `world_boss_round` ENGINE=InnoDB");
 });
 
 test("follow-up migration rejects orphaned rounds before DDL and restricts boss deletion", async () => {
@@ -248,6 +438,28 @@ test("follow-up migration rejects orphaned rounds before DDL and restricts boss 
       })
       .first()
   ).resolves.toBeFalsy();
+  await expect(
+    database("information_schema.STATISTICS")
+      .where({
+        TABLE_SCHEMA: TEST_DATABASE,
+        TABLE_NAME: "world_boss_round",
+        INDEX_NAME: "idx_wbr_world_boss",
+      })
+      .first()
+  ).resolves.toBeFalsy();
+});
+
+test("follow-up down is replay-safe from full and exact partial states", async () => {
+  await migration.up(database);
+  await foreignKeyMigration.up(database);
+
+  await expect(foreignKeyMigration.down(database)).resolves.toBeUndefined();
+  await expect(foreignKeyMigration.down(database)).resolves.toBeUndefined();
+
+  await database.schema.alterTable("world_boss_round", table => {
+    table.index(["world_boss_id"], "idx_wbr_world_boss");
+  });
+  await expect(foreignKeyMigration.down(database)).resolves.toBeUndefined();
   await expect(
     database("information_schema.STATISTICS")
       .where({
@@ -410,6 +622,21 @@ test("down removes owned titles and dependencies but preserves unrelated title d
       .where({ user_id: UNRELATED_USER_ID, title_id: unrelatedTitleId })
       .first()
   ).resolves.toBeDefined();
+});
+
+test("create down rejects ambiguous partial states with an owned-looking title", async () => {
+  await migration.up(database);
+  await database.schema.dropTable("world_boss_season_reward");
+  await database("titles").where({ key: TITLE_KEYS[0] }).del();
+
+  await expect(migration.down(database)).rejects.toThrow(
+    "WORLD_BOSS_TITLE_KEY_COLLISION:worldboss_vanguard"
+  );
+  await expect(database("titles").where({ key: TITLE_KEYS[1] }).first()).resolves.toBeDefined();
+  await expect(database.schema.hasTable("world_boss_season_reward")).resolves.toBe(false);
+  for (const table of TABLES.filter(table => table !== "world_boss_season_reward")) {
+    await expect(database.schema.hasTable(table)).resolves.toBe(true);
+  }
 });
 
 test("catalog seed preserves existing stable IDs and inserts missing catalog rows", async () => {
