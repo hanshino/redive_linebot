@@ -35,6 +35,33 @@ function decimalToBigInt(value) {
   return null;
 }
 
+function canonicalSeasonId(value) {
+  if (typeof value === "string" && /^[1-9]\d*$/.test(value)) return value;
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return String(value);
+  return null;
+}
+
+function leaderboardSnapshot(value) {
+  const seasonId = canonicalSeasonId(value?.seasonId);
+  return {
+    seasonId,
+    rows: seasonId !== null && Array.isArray(value?.rows) ? value.rows : [],
+  };
+}
+
+function leaderboardView(status, leaderboard, errors) {
+  const statusSeasonId = canonicalSeasonId(status?.season?.id);
+  const matchesStatus = Boolean(
+    leaderboard !== undefined &&
+    ((status === null && leaderboard.seasonId === null) ||
+      (statusSeasonId !== null && leaderboard.seasonId === statusSeasonId))
+  );
+  return {
+    rows: matchesStatus ? leaderboard.rows : undefined,
+    unavailable: Boolean(errors.status || errors.leaderboard || !matchesStatus),
+  };
+}
+
 function formatInteger(value) {
   if (typeof value === "bigint") return value.toLocaleString("en-US");
   if (typeof value === "string" && /^-?\d+$/.test(value)) {
@@ -48,13 +75,12 @@ function formatInteger(value) {
   return value == null ? "—" : String(value);
 }
 
-function formatUtcDate(value) {
+function formatDate(value) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "—"
     : date.toLocaleString("zh-TW", {
-        timeZone: "UTC",
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -279,7 +305,7 @@ function BattleCard({ status, current, currentUnavailable }) {
           <PersonalStats current={current} unavailable={currentUnavailable} />
 
           <Typography variant="caption" color="text.secondary">
-            活動結束（UTC）：{formatUtcDate(season.end_time)}
+            活動結束：{formatDate(season.end_time)}
           </Typography>
         </Stack>
       </CardContent>
@@ -369,13 +395,13 @@ function LatestRewardCard({ reward }) {
               #{reward.rewardId ?? "—"}
             </Typography>
             <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75 }}>
-              入帳時間（UTC）
+              入帳時間{" "}
             </Typography>
             <Typography
               variant="body2"
               sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
             >
-              {formatUtcDate(reward.paidAt)}
+              {formatDate(reward.paidAt)}
             </Typography>
             {reward.settledAt && (
               <Typography
@@ -384,7 +410,7 @@ function LatestRewardCard({ reward }) {
                 display="block"
                 sx={{ mt: 0.75 }}
               >
-                賽季結算（UTC）：{formatUtcDate(reward.settledAt)}
+                賽季結算：{formatDate(reward.settledAt)}
               </Typography>
             )}
           </Box>
@@ -569,11 +595,7 @@ export default function Worldboss() {
         ...previous,
         ...(statusResult.status === "fulfilled" ? { status: statusResult.value.data ?? null } : {}),
         ...(leaderboardResult.status === "fulfilled"
-          ? {
-              leaderboard: Array.isArray(leaderboardResult.value.data)
-                ? leaderboardResult.value.data
-                : [],
-            }
+          ? { leaderboard: leaderboardSnapshot(leaderboardResult.value.data) }
           : {}),
         ...(meResult.status === "fulfilled" ? { me: meResult.value.data ?? null } : {}),
       }));
@@ -612,15 +634,16 @@ export default function Worldboss() {
 
   const hasBattle = Boolean(data.status?.season && data.status?.round && data.status?.boss);
   const current = data.me?.current;
-  const statusSeasonId = data.status?.season?.id;
+  const statusSeasonId = canonicalSeasonId(data.status?.season?.id);
   const currentMatchesStatus = Boolean(
     current &&
     !errors.status &&
-    statusSeasonId != null &&
-    String(current.seasonId) === String(statusSeasonId)
+    statusSeasonId !== null &&
+    canonicalSeasonId(current.seasonId) === statusSeasonId
   );
   const shouldRenderCurrent = currentMatchesStatus;
   const currentUnavailable = !shouldRenderCurrent && (hasBattle || current != null);
+  const leaderboard = leaderboardView(data.status, data.leaderboard, errors);
   const latestReward = data.me?.latestReward;
   const errorEntries = Object.entries(errors);
   const allEndpointsFailed = errorEntries.length === 3;
@@ -701,7 +724,7 @@ export default function Worldboss() {
           />
         )}
 
-        <Leaderboard rows={data.leaderboard} unavailable={Boolean(errors.leaderboard)} />
+        <Leaderboard rows={leaderboard.rows} unavailable={leaderboard.unavailable} />
       </Stack>
       <HintSnackBar {...hintState} onClose={closeHint} />
     </Container>

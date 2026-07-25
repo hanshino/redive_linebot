@@ -400,7 +400,10 @@ describe("World Boss public handlers", () => {
 
     expect(SeasonService.getBattleStatus).toHaveBeenCalledWith();
     expect(SeasonService.getRanking).toHaveBeenCalledWith("8", expected);
-    expect(res.json).toHaveBeenCalledWith([{ user_id: "Uone", total_damage: "500", ranking: 1 }]);
+    expect(res.json).toHaveBeenCalledWith({
+      seasonId: "8",
+      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+    });
   });
 
   it.each(["0", "101", "1.5", "NaN", "Infinity", "", " 1"])(
@@ -423,7 +426,7 @@ describe("World Boss public handlers", () => {
     await publicHandler.leaderboard(request(), res);
 
     expect(SeasonService.getRanking).not.toHaveBeenCalled();
-    expect(res.json).toHaveBeenCalledWith([]);
+    expect(res.json).toHaveBeenCalledWith({ seasonId: null, rows: [] });
   });
 
   it("returns latest reward even when there is no active season", async () => {
@@ -450,9 +453,10 @@ describe("World Boss public handlers", () => {
     const leaderboardRes = response();
     await publicHandler.leaderboard(request(), leaderboardRes);
     expect(SeasonService.getRanking).toHaveBeenCalledWith("8", 50);
-    expect(leaderboardRes.json).toHaveBeenCalledWith([
-      { user_id: "Uone", total_damage: "500", ranking: 1 },
-    ]);
+    expect(leaderboardRes.json).toHaveBeenCalledWith({
+      seasonId: "8",
+      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+    });
 
     const meRes = response();
     await publicHandler.me(request({ userId: "Ume" }), meRes);
@@ -503,6 +507,10 @@ describe("World Boss public handlers", () => {
 
     await publicHandler.leaderboard(request(), leaderboardRes);
     expect(SeasonService.getRanking).toHaveBeenCalledWith(exactSeasonId, 50);
+    expect(leaderboardRes.json).toHaveBeenCalledWith({
+      seasonId: exactSeasonId,
+      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+    });
 
     const meRes = response();
     await publicHandler.me(request({ userId: "Uexact" }), meRes);
@@ -530,10 +538,13 @@ describe("World Boss public handlers", () => {
     const leaderboardRes = response();
     await publicHandler.leaderboard(request(), leaderboardRes);
     expect(SeasonService.getRanking).toHaveBeenCalledWith(seasonId, 50);
-    expect(leaderboardRes.json).toHaveBeenCalledWith([
-      { user_id: "Uexact", total_damage: "9007199254740993", ranking: 1 },
-      { user_id: "Ulower", total_damage: "9007199254740992", ranking: 2 },
-    ]);
+    expect(leaderboardRes.json).toHaveBeenCalledWith({
+      seasonId,
+      rows: [
+        { user_id: "Uexact", total_damage: "9007199254740993", ranking: 1 },
+        { user_id: "Ulower", total_damage: "9007199254740992", ranking: 2 },
+      ],
+    });
 
     const meRes = response();
     await publicHandler.me(request({ userId: "Uexact" }), meRes);

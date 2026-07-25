@@ -20,7 +20,8 @@ exports.leaderboard = async function (req, res) {
     const limit = parseLeaderboardLimit(req.query.limit);
     const status = await SeasonService.getBattleStatus();
     const seasonId = activeSeasonId(status);
-    res.json(toApiDto(seasonId ? await SeasonService.getRanking(seasonId, limit) : []));
+    const rows = seasonId ? await SeasonService.getRanking(seasonId, limit) : [];
+    res.json(toApiDto({ seasonId, rows }));
   } catch (error) {
     respondError(res, error);
   }
