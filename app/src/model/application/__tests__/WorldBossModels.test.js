@@ -1,11 +1,14 @@
 require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../../.env") });
-jest.unmock("../../../util/mysql");
-const mysql = jest.requireActual("../../../util/mysql");
 const {
   PREFIX,
   ACTIVE_SLOT,
+  SETUP_TIMEOUT_MS,
+  createWorldBossTestDatabase,
   cleanupByPrefix,
 } = require("../../../__tests__/helpers/worldBossFixture");
+const testDatabase = createWorldBossTestDatabase("models");
+const mysql = testDatabase.mysql;
+jest.mock("../../../util/mysql", () => mysql);
 const WorldBossSeason = require("../WorldBossSeason");
 const WorldBossRound = require("../WorldBossRound");
 const WorldBossContribution = require("../WorldBossContribution");
@@ -50,6 +53,7 @@ describe("World Boss v2 models", () => {
   }
 
   beforeAll(async () => {
+    await expect(testDatabase.setup()).resolves.toMatch(/^Princess_wbtest_models_/);
     await cleanupByPrefix(mysql, prefix);
     await mysql("world_boss_season").where({ name: sentinelName }).del();
     await mysql("world_boss_season").insert({
@@ -59,7 +63,7 @@ describe("World Boss v2 models", () => {
       end_time: new Date("2030-01-01T00:00:00.000Z"),
     });
     sentinelSnapshot = await mysql("world_boss_season").where({ name: sentinelName }).first();
-  });
+  }, SETUP_TIMEOUT_MS);
 
   beforeEach(async () => {
     await cleanupByPrefix(mysql, prefix);
@@ -75,14 +79,7 @@ describe("World Boss v2 models", () => {
     );
   });
 
-  afterAll(async () => {
-    await cleanupByPrefix(mysql, prefix);
-    await expect(mysql("world_boss_season").where({ name: sentinelName }).first()).resolves.toEqual(
-      sentinelSnapshot
-    );
-    await mysql("world_boss_season").where({ name: sentinelName }).del();
-    await mysql.destroy();
-  });
+  afterAll(() => testDatabase.teardown());
 
   test("finds and locks the active season and its active round", async () => {
     const [bossId] = await mysql("world_boss").insert({

@@ -1,9 +1,15 @@
 require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../.env") });
-jest.unmock("../../util/mysql");
-const mysql = jest.requireActual("../../util/mysql");
+const {
+  PREFIX,
+  ACTIVE_SLOT,
+  SETUP_TIMEOUT_MS,
+  createWorldBossTestDatabase,
+} = require("../../__tests__/helpers/worldBossFixture");
+const testDatabase = createWorldBossTestDatabase("season");
+const mysql = testDatabase.mysql;
+jest.mock("../../util/mysql", () => mysql);
 const { inventory } = require("../../model/application/Inventory");
 const UserTitle = require("../../model/application/UserTitle");
-const { PREFIX, ACTIVE_SLOT } = require("../../__tests__/helpers/worldBossFixture");
 const { createSeasonService } = require("../WorldBossSeasonService");
 
 const prefix = `${PREFIX}season_`;
@@ -126,12 +132,13 @@ async function titleId(key) {
 }
 
 beforeAll(async () => {
+  await expect(testDatabase.setup()).resolves.toMatch(/^Princess_wbtest_season_/);
   ownedTitleIds = (await mysql("titles").whereIn("key", worldBossTitleKeys).select("id")).map(
     row => row.id
   );
   expect(ownedTitleIds).toHaveLength(2);
   await cleanupOwned();
-});
+}, SETUP_TIMEOUT_MS);
 
 beforeEach(async () => {
   await cleanupOwned();
@@ -141,10 +148,7 @@ afterEach(async () => {
   await cleanupOwned();
 });
 
-afterAll(async () => {
-  await cleanupOwned();
-  await mysql.destroy();
-});
+afterAll(() => testDatabase.teardown());
 
 describe("WorldBossSeasonService CRUD and opening", () => {
   test("lists newest seasons deterministically and only mutates drafts", async () => {

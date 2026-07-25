@@ -1,13 +1,23 @@
 require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../.env") });
-jest.unmock("../../util/mysql");
-const mysql = jest.requireActual("../../util/mysql");
-const { PREFIX, cleanupByPrefix } = require("../../__tests__/helpers/worldBossFixture");
+const {
+  PREFIX,
+  SETUP_TIMEOUT_MS,
+  createWorldBossTestDatabase,
+  cleanupByPrefix,
+} = require("../../__tests__/helpers/worldBossFixture");
+const testDatabase = createWorldBossTestDatabase("catalog");
+const mysql = testDatabase.mysql;
+jest.mock("../../util/mysql", () => mysql);
 const WorldBoss = require("../../model/application/WorldBoss");
 const WorldBossCatalogService = require("../WorldBossCatalogService");
 
 describe("WorldBossCatalogService", () => {
   const prefix = `${PREFIX}catalog_`;
   const sentinelName = "xxwbtestXcatalogXsentinel";
+
+  beforeAll(async () => {
+    await expect(testDatabase.setup()).resolves.toMatch(/^Princess_wbtest_catalog_/);
+  }, SETUP_TIMEOUT_MS);
 
   beforeEach(async () => {
     await cleanupByPrefix(mysql, prefix);
@@ -21,7 +31,7 @@ describe("WorldBossCatalogService", () => {
     await mysql("world_boss").where({ name: sentinelName }).del();
   });
 
-  afterAll(() => mysql.destroy());
+  afterAll(() => testDatabase.teardown());
 
   test("validates boss names and hp weights while trimming a valid name", async () => {
     expect(() => WorldBossCatalogService.normalizeBossInput({ name: "", hp_weight: 1 })).toThrow(

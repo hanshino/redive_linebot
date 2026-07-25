@@ -1,7 +1,13 @@
 require("dotenv").config({ path: require("path").resolve(__dirname, "../../../../.env") });
-jest.unmock("../../util/mysql");
-const mysql = jest.requireActual("../../util/mysql");
-const { PREFIX, ACTIVE_SLOT } = require("../../__tests__/helpers/worldBossFixture");
+const {
+  PREFIX,
+  ACTIVE_SLOT,
+  SETUP_TIMEOUT_MS,
+  createWorldBossTestDatabase,
+} = require("../../__tests__/helpers/worldBossFixture");
+const testDatabase = createWorldBossTestDatabase("battle");
+const mysql = testDatabase.mysql;
+jest.mock("../../util/mysql", () => mysql);
 const MinigameLevel = require("../../model/application/MinigameLevel");
 const WorldBoss = require("../../model/application/WorldBoss");
 const { createBattleService } = require("../WorldBossBattleService");
@@ -120,6 +126,7 @@ async function assertSentinelsPreserved() {
 }
 
 beforeAll(async () => {
+  await expect(testDatabase.setup()).resolves.toMatch(/^Princess_wbtest_battle_/);
   await cleanupOwned({ includeSentinels: true });
   await mysql("user").insert({ platform: "line", platform_id: sentinel.userId, status: 1 });
   await mysql("world_boss").insert({ name: sentinel.bossName, hp_weight: 1 });
@@ -128,7 +135,7 @@ beforeAll(async () => {
     status: "draft",
     end_time: new Date("2030-01-01T00:00:00.000Z"),
   });
-});
+}, SETUP_TIMEOUT_MS);
 
 beforeEach(async () => {
   await cleanupOwned();
@@ -140,12 +147,7 @@ afterEach(async () => {
   await assertSentinelsPreserved();
 });
 
-afterAll(async () => {
-  await cleanupOwned();
-  await assertSentinelsPreserved();
-  await cleanupOwned({ includeSentinels: true });
-  await mysql.destroy();
-});
+afterAll(() => testDatabase.teardown());
 
 describe("WorldBossBattleService", () => {
   test("normal hit changes HP, contribution, RPG EXP, totals, and daily quota atomically", async () => {
