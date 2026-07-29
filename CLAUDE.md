@@ -31,9 +31,11 @@ There is no `job/` package — cron is `yarn worker` inside `app/` (see below).
 
 ### Production
 
-- Defined in `docker-compose.traefik.yml` (referenced but deployed via Portainer stacks — see memory).
+- Since 2026-07-29: single AWS EC2 `t4g.medium` (Graviton/arm64, Ubuntu 24.04, `ap-east-2`), one docker compose stack in `~/stack` on the host — **not** in this repo, and **not** Portainer-managed (Portainer is not deployed on this machine).
+- Reverse proxy is **Caddy** (not Traefik) fronting `pudding.hanshino.dev`.
 - Three services: **bot** (`yarn start`), **frontend** (pre-built static), **worker** (`yarn worker`).
-- Traefik terminates TLS and routes `/api`, `/webhooks`, `/bot-assets`, `/socket.io` → bot; everything else → frontend.
+- CI (`.github/workflows/main.yml`) only builds `linux/arm64` images and pushes to `ghcr.io/hanshino/redive_backend` / `ghcr.io/hanshino/redive_frontend` (tags `latest` and the commit SHA). There is no CD step — the host pulls and restarts the stack manually; `docker/setup-qemu-action` and any amd64 build were removed since the only deploy target is arm64.
+- `docker-compose.traefik.yml` in this repo is stale (Traefik + Portainer-era, `hanshino/redive_backend` on Docker Hub) and not used by the running stack, but it's kept as the canonical source for the four path prefixes Caddy routes to the bot — `/api`, `/webhooks`, `/bot-assets`, `/socket.io` — do not delete without carrying that list somewhere else first.
 
 ### Bot process vs worker process
 
@@ -70,7 +72,7 @@ Command routing in `OrderBased` composes routers from every domain controller (g
 - **MySQL** via Knex (`app/knexfile.js`) — database is hardcoded `Princess`. Host-run migrations read the root `.env` (`DB_HOST=mysql` maps to the docker-exposed port 3306 on localhost).
 - **Redis** — Bottender session store + general cache (`app/src/util/redis.js`). Session TTL 60 min, state TTL 15 min (`app/bottender.config.js`).
 - **SQLite** — read-only game data (`app/assets/redive_tw.db`) and a local task log (`app/assets/task.db`); accessed via `better-sqlite3` through `app/src/model/princess/character/index.js`, with `app/src/util/sqlite.js` as the connection factory.
-- **Migrations** — `app/migrations/`. Create new ones with `cd app && yarn knex migrate:make <name>` — never hand-write. knex is the single schema source (the old docker `Princess.sql` init was folded into the `20210101000000_baseline_initial_schema` migration). **Fresh DB bootstrap**: `cd app && yarn migrate && yarn knex seed:run` (migrate builds all tables, seeders fill `chat_exp_unit` / `GachaPool` / etc.) — there is no more SQL injected at container first-boot.
+- **Migrations** — `app/migrations/`. Create new ones with `cd app && yarn knex migrate:make <name>` — never hand-write. knex is the single schema source (the old docker `Princess.sql` init was folded into the `20210101000000_baseline_initial_schema` migration). **Fresh DB bootstrap**: `cd app && yarn migrate && yarn knex seed:run` (migrate builds all tables, seeders fill `chat_exp_unit` / `GachaPool` / etc.) — there is no more SQL injected at container first-boot. **Do not specify a collation when creating the database** (or specify `utf8mb4_0900_ai_ci` explicitly) — MySQL 8's default must match what `20260327_unify_all_collation_to_0900.js` assumes, or later migrations fail with `Illegal mix of collations`; see the comment in `20210101000000_baseline_initial_schema.js` for the full story.
 
 ### Socket.IO
 

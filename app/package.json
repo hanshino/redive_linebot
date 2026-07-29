@@ -9,7 +9,8 @@
     "worker": "node tasks.js",
     "debug": "DEBUG=bottender:action node server.js",
     "test": "jest",
-    "migrate": "knex migrate:latest"
+    "migrate": "knex migrate:latest",
+    "seed": "knex seed:run"
   },
   "dependencies": {
     "@google/genai": "^2.12.0",

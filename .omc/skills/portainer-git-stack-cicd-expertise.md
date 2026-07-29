@@ -1,5 +1,11 @@
 # Portainer Git-Managed Stack CI/CD via API
 
+> **DEPRECATED as of 2026-07-29.** The self-hosted machine this described died
+> on 2026-07-27; production moved to a single AWS EC2 arm64 host with no
+> Portainer. `.github/workflows/main.yml`'s `deploy` job (Portainer API calls)
+> was removed. This file is kept only as historical record of the gotchas —
+> do not follow it for the current stack.
+
 ## The Insight
 
 Portainer's "redeploy from git" does **not** recreate containers unless the rendered compose file's text changes. Webhook fire / API call returns success and the stack's `ConfigHash` updates to the new commit, but `UpdateDate` and container `CreatedAt` stay the same. With `:latest` hard-coded in compose, **CI silently deploys nothing** even though new images were pushed.
