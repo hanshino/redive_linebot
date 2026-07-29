@@ -5,21 +5,26 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  # Backend build and push job
+  # Backend build and push job — native arm64 runner (free for public repos),
+  # no QEMU: better-sqlite3 / @node-rs/jieba are native modules and emulated
+  # compilation would be unacceptably slow. amd64 has no consumer (the only
+  # deploy target is a Graviton/arm64 EC2 host), so we don't build it.
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
 
-      - name: Log in to Docker Hub
+      - name: Log in to GHCR
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -28,27 +33,26 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
         with:
           context: ./app
+          platforms: linux/arm64
           push: true
           tags: |
-            hanshino/redive_backend:latest
-            hanshino/redive_backend:${{ github.sha }}
-          cache-from: type=registry,ref=hanshino/redive_backend:buildcache
-          cache-to: type=registry,ref=hanshino/redive_backend:buildcache,mode=max
+            ghcr.io/hanshino/redive_backend:latest
+            ghcr.io/hanshino/redive_backend:${{ github.sha }}
+          cache-from: type=registry,ref=ghcr.io/hanshino/redive_backend:buildcache
+          cache-to: type=registry,ref=ghcr.io/hanshino/redive_backend:buildcache,mode=max
 
   # Frontend build and push job, executed in parallel with backend
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
 
-      - name: Log in to Docker Hub
+      - name: Log in to GHCR
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -57,104 +61,26 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
         with:
           context: ./frontend
+          platforms: linux/arm64
           push: true
           tags: |
-            hanshino/redive_frontend:latest
-            hanshino/redive_frontend:${{ github.sha }}
-          cache-from: type=registry,ref=hanshino/redive_frontend:buildcache
-          cache-to: type=registry,ref=hanshino/redive_frontend:buildcache,mode=max
+            ghcr.io/hanshino/redive_frontend:latest
+            ghcr.io/hanshino/redive_frontend:${{ github.sha }}
+          cache-from: type=registry,ref=ghcr.io/hanshino/redive_frontend:buildcache
+          cache-to: type=registry,ref=ghcr.io/hanshino/redive_frontend:buildcache,mode=max
 
-  # Deployment via Portainer API
-  deploy:
+  # There is no CD: the EC2 host (~/stack) pulls and restarts manually.
+  # Portainer, which the old deploy job talked to, is not deployed on the
+  # new machine. This job only fires once both images are pushed — GitHub
+  # Actions skips a job when any of its `needs` fails, so a failed build
+  # never sends a false "done" notification.
+  notify:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     steps:
-      - name: Redeploy stack with new image tags
-        run: |
-          # Pin BACKEND_IMAGE_TAG / FRONTEND_IMAGE_TAG to this commit SHA so
-          # docker-compose pulls the freshly-pushed images. We fetch the full
-          # current env, replace just these two, and POST it back via
-          # /git/redeploy with pullImage:true to force a recreate.
-          SHA="${{ github.sha }}"
-
-          CURRENT_ENV=$(curl -sf \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}" \
-            | jq '.Env')
-
-          NEW_ENV=$(jq --arg sha "$SHA" '
-            map(select(.name != "BACKEND_IMAGE_TAG" and .name != "FRONTEND_IMAGE_TAG"))
-            + [{name: "BACKEND_IMAGE_TAG", value: $sha}, {name: "FRONTEND_IMAGE_TAG", value: $sha}]
-          ' <<< "$CURRENT_ENV")
-
-          BODY=$(jq -n --argjson env "$NEW_ENV" '{
-            repositoryReferenceName: "refs/heads/main",
-            repositoryAuthentication: false,
-            env: $env,
-            prune: true,
-            pullImage: true
-          }')
-
-          HTTP_STATUS=$(curl -s -o /tmp/redeploy-response -w "%{http_code}" \
-            -X PUT \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}/git/redeploy?endpointId=${{ secrets.PORTAINER_ENDPOINT_ID }}" \
-            -d "$BODY")
-
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "::error::git/redeploy failed with HTTP $HTTP_STATUS"
-            echo "Response body:"
-            cat /tmp/redeploy-response
-            exit 1
-          fi
-          echo "Stack redeployed at SHA $SHA"
-
-      - name: Wait for containers to be ready
-        run: sleep 30
-
-      - name: Run database migrations
-        run: |
-          # Create exec instance
-          EXEC_ID=$(curl -sf \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -X POST \
-            "${{ secrets.PORTAINER_URL }}/api/endpoints/${{ secrets.PORTAINER_ENDPOINT_ID }}/docker/containers/${{ secrets.PORTAINER_BOT_CONTAINER }}/exec" \
-            -d '{"AttachStdout":true,"AttachStderr":true,"Cmd":["yarn","migrate"]}' \
-            | jq -r '.Id')
-
-          if [ -z "$EXEC_ID" ] || [ "$EXEC_ID" = "null" ]; then
-            echo "::error::Failed to create exec instance"
-            exit 1
-          fi
-
-          # Run exec
-          RESULT=$(curl -sf \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -X POST \
-            "${{ secrets.PORTAINER_URL }}/api/endpoints/${{ secrets.PORTAINER_ENDPOINT_ID }}/docker/exec/$EXEC_ID/start" \
-            -d '{"Detach":false,"Tty":false}')
-
-          echo "Migration output: $RESULT"
-
-          # Check exec exit code
-          EXIT_CODE=$(curl -sf \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            "${{ secrets.PORTAINER_URL }}/api/endpoints/${{ secrets.PORTAINER_ENDPOINT_ID }}/docker/exec/$EXEC_ID/json" \
-            | jq -r '.ExitCode')
-
-          if [ "$EXIT_CODE" != "0" ]; then
-            echo "::error::Migration failed with exit code $EXIT_CODE"
-            exit 1
-          fi
-
-          echo "Migration completed successfully"
-
       - name: Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@master
         with:
-          args: "{{ EVENT_PAYLOAD.repository.full_name }} 已完成部署"
+          args: "{{ EVENT_PAYLOAD.repository.full_name }} image 已建置並推送到 GHCR（尚未自動部署，需在機器上手動 pull + restart）"

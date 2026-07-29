@@ -14,6 +14,23 @@
  *     確保 fresh DB 上後續 alterTable 能找到底表。
  *
  * ponytail: 直接讀同名 .sql 逐句執行，省掉把含反引號/單引號的 DDL 硬塞進 JS 字串。
+ *
+ * 建全新資料庫時，**不要**指定 CHARACTER SET / COLLATE（讓 MySQL 8 預設的
+ * utf8mb4_0900_ai_ci 生效），或者明確指定 utf8mb4_0900_ai_ci。**不要**指定
+ * utf8mb4_unicode_ci，即使這份 baseline 裡的 26 張表全部寫死 unicode_ci。
+ *
+ * 為什麼：`20260327_unify_all_collation_to_0900.js` 只把 10 張「舊表」
+ * CONVERT TO 0900，從來不碰資料庫本身的預設 collation。正式環境沒事，
+ * 是因為它的 DB 預設本來就是 0900 —— 所以這份 baseline 跑完之後才由 knex
+ * 建的表（例如 user_achievements）全部繼承 0900，只有那 10 張舊表需要靠
+ * 那支 migration 轉過去對齊。
+ *
+ * 如果建 DB 時手動指定了 unicode_ci，上面那段邏輯整個反過來：舊表被轉去
+ * 0900，但後面才建的新表繼承 unicode_ci，新舊表一 JOIN 就是
+ * `Illegal mix of collations (utf8mb4_unicode_ci,IMPLICIT) and
+ * (utf8mb4_0900_ai_ci,IMPLICIT)`。2026-07-29 遷移到新 EC2 host 時，
+ * 因為看到這份 baseline 裡的 unicode_ci 字樣就手動指定了它，
+ * 結果在第 122 支 migration（grant_legacy_tier_achievements）就這樣炸了一次。
  */
 const fs = require("fs");
 const path = require("path");
