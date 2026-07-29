@@ -1,8 +1,9 @@
 const router = require("express").Router();
 const i18n = require("../../util/i18n");
 const pictshare = require("../../util/pictshare");
+const { verifyToken, verifyAdmin, verifyPrivilege } = require("../../middleware/validation");
 
-router.post("/images", async (req, res) => {
+router.post("/images", verifyToken, verifyAdmin, verifyPrivilege(5), async (req, res) => {
   try {
     const { image } = req.body;
     const result = await pictshare.uploadBase64(image);
