@@ -13,6 +13,8 @@ const humanNumber = require("human-number");
 const redis = require("../../util/redis");
 const config = require("config");
 const { DefaultLogger } = require("../../util/Logger");
+const AchievementEngine = require("../../service/AchievementEngine");
+const { notifyUnlocks } = require("../../service/achievementNotifier");
 
 exports.router = [
   text(/^[./#](交易管理|trade-manage)$/i, showManage),
@@ -224,6 +226,10 @@ const doTransfer = async (context, { payload }) => {
   }
 
   removeTransfer(transferId);
+  const { unlocked } = await AchievementEngine.evaluate(sourceId, "atm_transfer", { amount }).catch(
+    () => ({ unlocked: [] })
+  );
+  await notifyUnlocks(context, sourceId, unlocked);
   context.replyText(
     i18n.__("message.trade.transfer_money_success", {
       displayName,

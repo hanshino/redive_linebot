@@ -8,6 +8,7 @@ const mysql = require("../../util/mysql");
 const { DefaultLogger } = require("../../util/Logger");
 const moment = require("moment");
 const { resolveDisplayName } = require("../../service/ProfileService");
+const AchievementEngine = require("../../service/AchievementEngine");
 
 /**
  * 顯示商品詳細資訊
@@ -158,6 +159,11 @@ exports.transaction = async (req, res) => {
       );
       if (!tradeHistoryId) throw i18n.__("api.error.transaction.createTradeHistoryFailed");
     });
+
+    await Promise.all([
+      AchievementEngine.evaluate(userId, "trade_complete", {}).catch(() => {}),
+      AchievementEngine.evaluate(sellerId, "trade_complete", {}).catch(() => {}),
+    ]);
 
     DefaultLogger.info("success transaction item", {
       userId,

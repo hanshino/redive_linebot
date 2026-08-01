@@ -301,6 +301,10 @@ async function prestige(userId, blessingId) {
 
   await chatUserState.invalidate(userId);
 
+  await AchievementEngine.evaluate(userId, "prestige_complete", {
+    prestigeCount: newPrestigeCount,
+  }).catch(() => {});
+
   const groupId = await resolveLastGroup(userId);
   const displayName = await resolveDisplayName(groupId, userId);
   await broadcastQueue.pushEvent(groupId, {
