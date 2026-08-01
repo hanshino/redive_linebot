@@ -1,5 +1,7 @@
 const { text } = require("bottender/router");
 const RaceService = require("../../service/RaceService");
+const AchievementEngine = require("../../service/AchievementEngine");
+const { notifyUnlocks } = require("../../service/achievementNotifier");
 const { race } = require("../../model/application/Race");
 const { raceRunner } = require("../../model/application/RaceRunner");
 const { raceBet } = require("../../model/application/RaceBet");
@@ -68,6 +70,11 @@ async function placeBet(context, { match }) {
     await context.replyText(result.error);
     return;
   }
+
+  const { unlocked } = await AchievementEngine.evaluate(userId, "race_bet_placed", {
+    isAllIn: result.isAllIn,
+  }).catch(() => ({ unlocked: [] }));
+  await notifyUnlocks(context, userId, unlocked);
 
   const odds = await RaceService.getOdds(activeRace.id);
   const targetOdd = odds.find(o => o.runnerId === target.id);

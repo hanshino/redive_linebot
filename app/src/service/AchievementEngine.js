@@ -96,6 +96,13 @@ const EVENT_ACHIEVEMENT_MAP = {
     "mention_memory_seeker_self",
     "mention_void_gazer_self",
   ],
+  race_bet_placed: ["race_first_bet", "race_all_in"],
+  race_bet_won: ["race_win_10", "race_big_win"],
+  trade_complete: ["trade_first", "trade_50"],
+  atm_transfer: ["atm_whale"],
+  coupon_redeem: ["coupon_first", "coupon_collector"],
+  shop_exchange: ["shop_first_exchange", "shop_big_spender"],
+  prestige_complete: ["prestige_first", "prestige_3"],
 };
 
 // --- Progress calculation strategies by achievement type ---
@@ -111,6 +118,16 @@ const STRATEGIES = {
     return context[contextKey] !== undefined ? context[contextKey] : currentValue;
   },
   threshold(currentValue, achievement, context, contextKey, minValue) {
+    return context[contextKey] >= minValue ? achievement.target_value : currentValue;
+  },
+  // Generic threshold check driven entirely by DB `condition` JSON — used for
+  // hidden achievements whose exact numeric threshold must NOT be hardcoded in
+  // this file (keeps secret thresholds out of git; only the DB row seeded via
+  // raw SQL knows the real number).
+  conditionThreshold(currentValue, achievement, context) {
+    const condition = achievement.condition || {};
+    const { contextKey, minValue } = condition;
+    if (!contextKey || minValue === undefined) return currentValue;
     return context[contextKey] >= minValue ? achievement.target_value : currentValue;
   },
   timeWindow(currentValue, achievement, startHour, endHour) {
@@ -189,6 +206,19 @@ const ACHIEVEMENT_STRATEGY = {
   mention_admin_hi_self: (cv, a, ctx) => STRATEGIES.receivedMentionKeyword(cv, a, ctx),
   mention_memory_seeker_self: (cv, a, ctx) => STRATEGIES.receivedMentionKeyword(cv, a, ctx),
   mention_void_gazer_self: (cv, a, ctx) => STRATEGIES.receivedMentionKeyword(cv, a, ctx),
+  race_first_bet: (cv, a) => STRATEGIES.instant(cv, a),
+  race_win_10: cv => STRATEGIES.increment(cv),
+  race_all_in: (cv, a, ctx) => STRATEGIES.conditionThreshold(cv, a, ctx),
+  race_big_win: (cv, a, ctx) => STRATEGIES.conditionThreshold(cv, a, ctx),
+  trade_first: (cv, a) => STRATEGIES.instant(cv, a),
+  trade_50: cv => STRATEGIES.increment(cv),
+  atm_whale: (cv, a, ctx) => STRATEGIES.conditionThreshold(cv, a, ctx),
+  coupon_first: (cv, a) => STRATEGIES.instant(cv, a),
+  coupon_collector: cv => STRATEGIES.increment(cv),
+  shop_first_exchange: (cv, a) => STRATEGIES.instant(cv, a),
+  shop_big_spender: (cv, a, ctx) => STRATEGIES.conditionThreshold(cv, a, ctx),
+  prestige_first: (cv, a) => STRATEGIES.instant(cv, a),
+  prestige_3: (cv, a, ctx) => STRATEGIES.conditionThreshold(cv, a, ctx),
 };
 
 const GODDESS_STONE_ITEM_ID = 999;

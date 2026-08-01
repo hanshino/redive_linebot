@@ -3,6 +3,7 @@ const GodStoneShopModel = require("../../../model/princess/GodStoneShop");
 const GachaModel = require("../../../model/princess/gacha");
 const gacha = GachaModel.model;
 const i18n = require("../../../util/i18n");
+const AchievementEngine = require("../../../service/AchievementEngine");
 
 /**
  * 使用女神石兌換物品
@@ -54,6 +55,10 @@ exports.exchangeItem = async function (req, res) {
     },
     { userId, itemId: 999, itemAmount: remainGodStone },
   ]);
+
+  await AchievementEngine.evaluate(userId, "shop_exchange", {
+    spend: parseInt(itemInfo.price) * parseInt(itemCount),
+  }).catch(() => {});
 
   res.json({ userId, itemId, itemCount, remainGodStone });
 };

@@ -8,6 +8,8 @@ const couponUsedHistory = require("../../model/application/CouponUsedHistory");
 const { inventory } = require("../../model/application/Inventory");
 const { DefaultLogger } = require("../../util/Logger");
 const moment = require("moment");
+const AchievementEngine = require("../../service/AchievementEngine");
+const { notifyUnlocks } = require("../../service/achievementNotifier");
 
 exports.adminRouter = [text(/^[!]coupon add/, adminAdd)];
 
@@ -99,6 +101,13 @@ async function userUse(context, props) {
       user_id: userId,
       coupon_code_id: coupon.id,
     });
+
+    const { unlocked } = await AchievementEngine.evaluate(userId, "coupon_redeem", {}).catch(
+      () => ({
+        unlocked: [],
+      })
+    );
+    await notifyUnlocks(context, userId, unlocked);
 
     return context.replyText(
       i18n.__("message.coupon.success", {

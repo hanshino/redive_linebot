@@ -1,5 +1,6 @@
 const config = require("config");
 const mysql = require("../util/mysql");
+const AchievementEngine = require("./AchievementEngine");
 const { race } = require("../model/application/Race");
 const { raceRunner } = require("../model/application/RaceRunner");
 const { raceBet } = require("../model/application/RaceBet");
@@ -105,7 +106,7 @@ exports.placeBet = async function (userId, raceId, runnerId, amount) {
       note: "race_bet",
     });
 
-    return { success: true };
+    return { success: true, isAllIn: balance === amount ? 1 : 0 };
   });
 };
 
@@ -251,6 +252,14 @@ exports.settleBets = async function (raceId) {
       .where("runner_id", "!=", currentRace.winner_runner_id)
       .update({ payout: 0 });
   });
+
+  await Promise.all(
+    winnerBets.map(bet => {
+      const payout = Math.floor(prizePool * (bet.amount / winnerTotal));
+      const odds = bet.amount > 0 ? payout / bet.amount : 0;
+      return AchievementEngine.evaluate(bet.user_id, "race_bet_won", { odds }).catch(() => {});
+    })
+  );
 
   return { refunded: false, prizePool, fee, winners: winnerBets.length };
 };
