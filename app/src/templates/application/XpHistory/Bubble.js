@@ -22,9 +22,23 @@ const COLORS = {
   deep: "#3A2800",
   muted: "#5A6B7F",
   warmBg: "#F8FAFB",
+  // 鍊金之霧 converts exp into god stones — violet marks it as a different
+  // currency, so it never reads as the amber "exp you kept".
+  violetText: "#E9D5FF",
+  violetTint: "#EDE9FE",
+  violetDeep: "#5B21B6",
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+
+// 鍊金之霧: exp is diverted into 女神石 instead of levels. Fields may be absent
+// on cached/older summaries — treat that as an ordinary day.
+function alchemyState(today) {
+  const exp = Number(today.alchemy_exp) || 0;
+  const rate = Number(today.alchemy_rate) || null;
+  if (exp <= 0) return null;
+  return { exp, rate, stones: Number(today.alchemy_stones) || 0 };
+}
 
 function tierStatusLine(today) {
   const { tier, tier1_upper, raw_exp } = today;
@@ -35,6 +49,23 @@ function tierStatusLine(today) {
     return { text: `⚠ 已進入 tier 2 · XP ×0.30 · ${raw_exp} raw`, color: COLORS.amberText };
   }
   return { text: `⚠ tier 3 · 幾乎不漲 · ${raw_exp} raw`, color: "#FCA5A5" };
+}
+
+function barBox(segs) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    spacing: "xs",
+    height: "8px",
+    contents: segs.map(s => ({
+      type: "box",
+      layout: "vertical",
+      flex: s.flex,
+      backgroundColor: s.color,
+      cornerRadius: "md",
+      contents: [],
+    })),
+  };
 }
 
 function progressBar(today) {
@@ -53,20 +84,18 @@ function progressBar(today) {
   if (t3 > 0) segs.push({ flex: t3, color: "#9CA3AF" });
   if (rest > 0) segs.push({ flex: rest, color: COLORS.whiteOverlay });
 
-  return {
-    type: "box",
-    layout: "horizontal",
-    spacing: "xs",
-    height: "8px",
-    contents: segs.map(s => ({
-      type: "box",
-      layout: "vertical",
-      flex: s.flex,
-      backgroundColor: s.color,
-      cornerRadius: "md",
-      contents: [],
-    })),
-  };
+  return barBox(segs);
+}
+
+// Tier progress means little when nothing reaches the level bar; show how far
+// the leftover exp has crept toward the next 💎 instead.
+function stoneProgressBar(alchemy) {
+  if (!alchemy.rate) return barBox([{ flex: 100, color: COLORS.whiteOverlay }]);
+  const toward = Math.round(((alchemy.exp % alchemy.rate) / alchemy.rate) * 100);
+  const segs = [];
+  if (toward > 0) segs.push({ flex: toward, color: COLORS.violetText });
+  if (toward < 100) segs.push({ flex: 100 - toward, color: COLORS.whiteOverlay });
+  return barBox(segs);
 }
 
 function chipBox(text, { bg, fg, border }) {
@@ -134,6 +163,14 @@ function buildLastEventChips(ev) {
   }
   if (ev.permanent_mult > 1)
     out.push(chipBox(`永久 ×${ev.permanent_mult.toFixed(2)}`, { bg: "#F3E8FF", fg: "#6B21A8" }));
+  // Under 鍊金之霧 the event's effective_exp is intact but goes to 女神石, not
+  // levels. Say so, otherwise the number reads as level progress it never made.
+  const rate = ev.modifiers?.weather?.effects?.exp_to_stone_rate;
+  if (rate && !ev.weather_protected) {
+    out.push(chipBox("💎 鍊成女神石", { bg: COLORS.violetTint, fg: COLORS.violetDeep }));
+  } else if (rate) {
+    out.push(chipBox("🛡 成長護符 · 正常入帳", { bg: COLORS.greenTint, fg: COLORS.greenDeep }));
+  }
   if (out.length === 0) out.push(chipBox("正常獲取", { bg: COLORS.greyTint, fg: COLORS.greyText }));
   return out;
 }
@@ -238,7 +275,46 @@ function buildHeader(today) {
     ? `⚔ ★${active_trial_star} 試煉中`
     : `${m.format("MM/DD")} ${WEEKDAYS[m.day()]}`;
 
-  const status = tierStatusLine(today);
+  const alchemy = alchemyState(today);
+  const status = alchemy
+    ? {
+        text: alchemy.rate
+          ? `🌫 鍊金之霧 · ${alchemy.rate} XP 鍊成 💎1`
+          : "🌫 鍊金之霧 · 經驗鍊成女神石",
+        color: COLORS.violetText,
+      }
+    : tierStatusLine(today);
+
+  // On an alchemy day the day's yield is stones, not level exp — lead with the
+  // stone count so the header never reads as "0 of something".
+  const yieldLabel = alchemy ? "今日鍊成" : "累計實得";
+  const yieldSpans = alchemy
+    ? [
+        { type: "span", text: "💎 ", color: COLORS.violetText, size: "lg" },
+        {
+          type: "span",
+          text: String(alchemy.stones),
+          weight: "bold",
+          color: COLORS.violetText,
+          size: "xxl",
+        },
+        {
+          type: "span",
+          text: ` / ${alchemy.exp} XP 已轉化`,
+          color: COLORS.white,
+          size: "xs",
+        },
+      ]
+    : [
+        {
+          type: "span",
+          text: String(effective_exp),
+          weight: "bold",
+          color: COLORS.amberText,
+          size: "xxl",
+        },
+        { type: "span", text: ` / ${raw_exp} raw`, color: COLORS.white, size: "xs" },
+      ];
 
   return {
     type: "box",
@@ -287,19 +363,10 @@ function buildHeader(today) {
             layout: "vertical",
             flex: 1,
             contents: [
-              { type: "text", text: "累計實得", size: "xxs", color: COLORS.white },
+              { type: "text", text: yieldLabel, size: "xxs", color: COLORS.white },
               {
                 type: "text",
-                contents: [
-                  {
-                    type: "span",
-                    text: String(effective_exp),
-                    weight: "bold",
-                    color: COLORS.amberText,
-                    size: "xxl",
-                  },
-                  { type: "span", text: ` / ${raw_exp} raw`, color: COLORS.white, size: "xs" },
-                ],
+                contents: yieldSpans,
               },
             ],
           },
@@ -326,7 +393,7 @@ function buildHeader(today) {
         layout: "vertical",
         margin: "md",
         contents: [
-          progressBar(today),
+          alchemy ? stoneProgressBar(alchemy) : progressBar(today),
           {
             type: "text",
             text: status.text,

@@ -9,14 +9,21 @@ jest.mock("../../src/model/application/ChatExpDaily", () => ({
 jest.mock("../../src/model/application/UserBlessing", () => ({
   listBlessingIdsByUserId: jest.fn(),
 }));
+jest.mock("../../src/service/ChatWeatherService", () => ({
+  getWeatherForDate: jest.fn(),
+}));
 
 const ChatExpEvent = require("../../src/model/application/ChatExpEvent");
 const ChatExpDaily = require("../../src/model/application/ChatExpDaily");
 const UserBlessing = require("../../src/model/application/UserBlessing");
+const ChatWeatherService = require("../../src/service/ChatWeatherService");
 const XpHistoryService = require("../../src/service/XpHistoryService");
 
 describe("XpHistoryService", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    ChatWeatherService.getWeatherForDate.mockResolvedValue(null);
+  });
 
   describe("buildSummary", () => {
     test("returns today.tier=1 when raw_exp < tier1_upper", async () => {
@@ -123,6 +130,126 @@ describe("XpHistoryService", () => {
       expect(summary.last_event.modifiers.active_trial_star).toBe(5);
       // active_trial_star is surfaced from the latest event into today
       expect(summary.today.active_trial_star).toBe(5);
+    });
+  });
+
+  describe("buildSummary alchemy", () => {
+    const alchemyWeather = (rate = 50) => ({
+      weather_key: "alchemy_mist",
+      category: "debuff",
+      name: "煉金霧靄",
+      effects: { exp_to_stone_rate: rate },
+    });
+
+    beforeEach(() => {
+      UserBlessing.listBlessingIdsByUserId.mockResolvedValue([]);
+      ChatExpEvent.findLatestByUser.mockResolvedValue(null);
+    });
+
+    test("non-alchemy day → alchemy_exp 0, stones 0, rate null", async () => {
+      ChatExpDaily.findByUserDate.mockResolvedValue({
+        raw_exp: 300,
+        effective_exp: 300,
+        alchemy_exp: 0,
+        msg_count: 40,
+      });
+      ChatWeatherService.getWeatherForDate.mockResolvedValue({
+        weather_key: "mana_tailwind",
+        category: "buff",
+        effects: { raw_xp_mult: 1.1 },
+      });
+
+      const { today } = await XpHistoryService.buildSummary("U_test");
+      expect(today.alchemy_exp).toBe(0);
+      expect(today.alchemy_stones).toBe(0);
+      expect(today.alchemy_rate).toBeNull();
+    });
+
+    test("alchemy day → exp surfaced, rate exposed, stones floored", async () => {
+      ChatExpDaily.findByUserDate.mockResolvedValue({
+        raw_exp: 3500,
+        effective_exp: 0,
+        alchemy_exp: 220,
+        msg_count: 40,
+      });
+      ChatWeatherService.getWeatherForDate.mockResolvedValue(alchemyWeather(50));
+
+      const { today } = await XpHistoryService.buildSummary("U_test");
+      expect(today.effective_exp).toBe(0);
+      expect(today.alchemy_exp).toBe(220);
+      expect(today.alchemy_rate).toBe(50);
+      expect(today.alchemy_stones).toBe(4);
+    });
+
+    test("alchemy exp below one stone → no phantom stone", async () => {
+      ChatExpDaily.findByUserDate.mockResolvedValue({
+        raw_exp: 60,
+        effective_exp: 0,
+        alchemy_exp: 49,
+        msg_count: 3,
+      });
+      ChatWeatherService.getWeatherForDate.mockResolvedValue(alchemyWeather(50));
+
+      const { today } = await XpHistoryService.buildSummary("U_test");
+      expect(today.alchemy_exp).toBe(49);
+      expect(today.alchemy_rate).toBe(50);
+      expect(today.alchemy_stones).toBe(0);
+    });
+
+    test("weather feature disabled (null weather) → rate null, no crash", async () => {
+      ChatExpDaily.findByUserDate.mockResolvedValue({
+        raw_exp: 300,
+        effective_exp: 300,
+        alchemy_exp: 0,
+        msg_count: 40,
+      });
+      ChatWeatherService.getWeatherForDate.mockResolvedValue(null);
+
+      const { today } = await XpHistoryService.buildSummary("U_test");
+      expect(today.alchemy_rate).toBeNull();
+      expect(today.alchemy_stones).toBe(0);
+    });
+
+    test("legacy daily row without alchemy_exp → 0, never NaN", async () => {
+      ChatExpDaily.findByUserDate.mockResolvedValue({
+        raw_exp: 300,
+        effective_exp: 300,
+        msg_count: 40,
+      });
+      ChatWeatherService.getWeatherForDate.mockResolvedValue(alchemyWeather(50));
+
+      const { today } = await XpHistoryService.buildSummary("U_test");
+      expect(today.alchemy_exp).toBe(0);
+      expect(today.alchemy_stones).toBe(0);
+    });
+
+    test("no daily row at all → alchemy fields still present and zeroed", async () => {
+      ChatExpDaily.findByUserDate.mockResolvedValue(null);
+      ChatWeatherService.getWeatherForDate.mockResolvedValue(alchemyWeather(50));
+
+      const { today } = await XpHistoryService.buildSummary("U_test");
+      expect(today.alchemy_exp).toBe(0);
+      expect(today.alchemy_stones).toBe(0);
+      expect(today.alchemy_rate).toBe(50);
+    });
+
+    test("weather is fetched in parallel, not serially awaited", async () => {
+      // Hold the first Promise.all member pending; if weather were a serial
+      // await after it, getWeatherForDate would never have been called yet.
+      let releaseDaily;
+      ChatExpDaily.findByUserDate.mockReturnValue(
+        new Promise(resolve => {
+          releaseDaily = () => resolve(null);
+        })
+      );
+      ChatWeatherService.getWeatherForDate.mockResolvedValue(null);
+
+      const pending = XpHistoryService.buildSummary("U_test");
+      await Promise.resolve();
+      expect(ChatWeatherService.getWeatherForDate).toHaveBeenCalledTimes(1);
+
+      releaseDaily();
+      await pending;
     });
   });
 });

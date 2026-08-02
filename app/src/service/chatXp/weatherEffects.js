@@ -7,6 +7,7 @@ const EFFECT_LABELS = {
   raw_xp_mult: "原始經驗",
   effective_xp_mult: "最終經驗",
   group_bonus_mult: "群組加成",
+  exp_to_stone_rate: "經驗轉女神石",
 };
 
 /**
@@ -32,8 +33,9 @@ function mult(effects, field) {
 }
 
 /**
- * Weighted category pick, then uniform pick within the category, avoiding
+ * Weighted category pick, then weighted pick within the category, avoiding
  * avoidKey when the category has an alternative. rand() ∈ [0,1), called twice.
+ * Per-weather `weight` defaults to 1; equal weights reduce to a uniform pick.
  */
 function pickWeather(pool, weights, avoidKey, rand = Math.random) {
   const byCategory = {};
@@ -56,12 +58,26 @@ function pickWeather(pool, weights, avoidKey, rand = Math.random) {
   let keys = byCategory[chosen];
   const filtered = keys.filter(k => k !== avoidKey);
   if (filtered.length > 0) keys = filtered;
-  return keys[Math.floor(rand() * keys.length)];
+
+  const keyWeight = k => {
+    const w = pool[k].weight;
+    return typeof w === "number" && w > 0 ? w : 1;
+  };
+  const keyTotal = keys.reduce((s, k) => s + keyWeight(k), 0);
+  let kr = rand() * keyTotal;
+  for (const k of keys) {
+    kr -= keyWeight(k);
+    if (kr < 0) return k;
+  }
+  return keys[keys.length - 1];
 }
 
 function describeEffects(effects) {
   return Object.entries(effects || {}).map(([field, value]) => {
     const label = EFFECT_LABELS[field] || field;
+    // Not a multiplier: it's a conversion ratio (N exp → 1 stone), so the
+    // ×-1-as-percentage formatting below would render nonsense (+4900%).
+    if (field === "exp_to_stone_rate") return `${label} ${value}:1`;
     const pct = Math.round((value - 1) * 100);
     return `${label} ${pct >= 0 ? `+${pct}` : pct}%`;
   });

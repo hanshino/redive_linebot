@@ -12,7 +12,16 @@ const COLOR = {
   redDeep: "#B91C1C",
   greenDeep: "#15803D",
   purple: "#6B21A8",
+  alchemy: "#6D28D9",
 };
+
+// Under 鍊金之霧 the event keeps its full effective_exp, but it is paid out as
+// 女神石 instead of level progress — so the chain must not end at 「實得 XP」.
+// A protected event has no effects at all and falls through to the normal path.
+function alchemyRate(ev) {
+  if (ev.weather_protected) return null;
+  return Number(ev.modifiers?.weather?.effects?.exp_to_stone_rate) || null;
+}
 
 function colorForDiminish(factor) {
   if (factor === 1) return COLOR.muted;
@@ -161,6 +170,7 @@ export default function BreakdownRow({ ev, showAll }) {
   const effParts = shapeEffParts(ev);
   const visibleRaw = rawParts.filter(p => showAll || !p.hide);
   const visibleEff = effParts.filter(p => showAll || !p.hide);
+  const rate = alchemyRate(ev);
 
   return (
     <Box sx={{ p: 1.5, bgcolor: "#F8FAFB", borderRadius: 1 }}>
@@ -183,7 +193,29 @@ export default function BreakdownRow({ ev, showAll }) {
           </ChainRow>
         </Box>
       )}
-      <ChainArrow to="實得 XP" value={ev.effective_exp} color={COLOR.amberDeep} valueSize={14} />
+      {rate ? (
+        <>
+          <ChainArrow
+            to="鍊成 XP"
+            value={ev.effective_exp}
+            color={COLOR.alchemy}
+            valueSize={14}
+          />
+          <Box
+            sx={{
+              mt: 0.5,
+              ml: 1.75,
+              fontFamily: "ui-monospace, Menlo, monospace",
+              fontSize: 11,
+              color: COLOR.alchemy,
+            }}
+          >
+            🌫 鍊金之霧 · 不入等級，改按 {rate} XP = 💎1 計入女神石
+          </Box>
+        </>
+      ) : (
+        <ChainArrow to="實得 XP" value={ev.effective_exp} color={COLOR.amberDeep} valueSize={14} />
+      )}
     </Box>
   );
 }

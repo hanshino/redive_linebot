@@ -87,12 +87,23 @@ describe("pickWeather", () => {
       pickWeather({ solo: { category: "debuff" } }, { debuff: 100 }, "solo", mkRand([0.5, 0.5]))
     ).toBe("solo");
   });
+  it("honours per-weather weight: a rare weather needs a higher roll", () => {
+    // rare has weight 0.5 against common's default 1 → total 1.5, rare owns the tail third.
+    const p = { common: { category: "debuff" }, rare: { category: "debuff", weight: 0.5 } };
+    const w = { debuff: 100 };
+    expect(pickWeather(p, w, null, mkRand([0.5, 0.6]))).toBe("common");
+    expect(pickWeather(p, w, null, mkRand([0.5, 0.7]))).toBe("rare");
+  });
 });
 
 describe("describeEffects", () => {
   it("formats penalty and bonus with signed percentages", () => {
     expect(describeEffects({ cooldown_required_mult: 1.1 })).toEqual(["冷卻時間需求 +10%"]);
     expect(describeEffects({ raw_xp_mult: 0.9 })).toEqual(["原始經驗 -10%"]);
+  });
+  it("renders exp_to_stone_rate as a conversion ratio, not a percentage", () => {
+    // (value - 1) * 100 would have printed "+4900%" for a rate of 50.
+    expect(describeEffects({ exp_to_stone_rate: 50 })).toEqual(["經驗轉女神石 50:1"]);
   });
   it("empty effects → empty list", () => {
     expect(describeEffects({})).toEqual([]);

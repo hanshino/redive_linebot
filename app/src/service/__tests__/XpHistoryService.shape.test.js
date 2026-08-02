@@ -76,3 +76,63 @@ describe("shapeDay weather", () => {
     expect(d.weather_protection).toBeNull();
   });
 });
+
+describe("shapeDay alchemy", () => {
+  const alchemyDay = extra => ({
+    date: "2026-07-11",
+    raw_exp: 3500,
+    effective_exp: 0,
+    alchemy_exp: 220,
+    msg_count: 40,
+    protected_msg_count: 0,
+    honeymoon_active: 0,
+    trial_id: null,
+    weather_key: "alchemy_mist",
+    weather_name: "煉金霧靄",
+    weather_category: "debuff",
+    weather_effects: JSON.stringify({ exp_to_stone_rate: 50 }),
+    ...extra,
+  });
+
+  it("derives stones from the joined rate: floor(alchemy_exp / rate)", () => {
+    const d = shapeDay(alchemyDay());
+    expect(d.alchemy_exp).toBe(220);
+    expect(d.alchemy_stones).toBe(4); // floor(220/50)
+  });
+
+  it("no phantom stone when the day's alchemy_exp is below one stone", () => {
+    const d = shapeDay(alchemyDay({ alchemy_exp: 49 }));
+    expect(d.alchemy_exp).toBe(49);
+    expect(d.alchemy_stones).toBe(0);
+  });
+
+  it("exact multiples of the rate mint no extra stone", () => {
+    expect(shapeDay(alchemyDay({ alchemy_exp: 200 })).alchemy_stones).toBe(4);
+  });
+
+  it("non-alchemy weather day → alchemy_exp/stones 0", () => {
+    const d = shapeDay({
+      date: "2026-07-10",
+      raw_exp: 100,
+      effective_exp: 80,
+      msg_count: 5,
+      weather_key: "silent_fog",
+      weather_category: "debuff",
+      weather_effects: JSON.stringify({ raw_xp_mult: 0.9 }),
+    });
+    expect(d.alchemy_exp).toBe(0);
+    expect(d.alchemy_stones).toBe(0);
+  });
+
+  it("no weather row → alchemy fields default to 0, never NaN", () => {
+    const d = shapeDay({ date: "2026-01-01", weather_key: null });
+    expect(d.alchemy_exp).toBe(0);
+    expect(d.alchemy_stones).toBe(0);
+  });
+
+  it("legacy rows with null alchemy_exp on an alchemy day → 0 stones", () => {
+    const d = shapeDay(alchemyDay({ alchemy_exp: null }));
+    expect(d.alchemy_exp).toBe(0);
+    expect(d.alchemy_stones).toBe(0);
+  });
+});

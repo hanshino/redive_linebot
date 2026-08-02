@@ -23,6 +23,10 @@ const COLORS = {
   green: "#16A34A",
   greenDeep: "#15803D",
   weatherDebuff: "#B96322",
+  // 鍊金之霧: exp that became 女神石. Solid violet, not the translucent grey of
+  // 流失 — it left the level bar but the player still got paid for it.
+  alchemy: "#A78BFA",
+  alchemyDeep: "#6D28D9",
 };
 
 const RANGES = [1, 7, 30, 90, 365];
@@ -87,6 +91,17 @@ function TrendTooltip({ active, payload }) {
           {d.effective.toLocaleString()}
         </Box>
       </Box>
+      {d.alchemy > 0 && (
+        <Box>
+          鍊成{" "}
+          <Box component="span" sx={{ color: COLORS.alchemyDeep, fontWeight: 700 }}>
+            💎{d.alchemy_stones.toLocaleString()}
+          </Box>{" "}
+          <Box component="span" sx={{ color: COLORS.muted }}>
+            ({d.alchemy.toLocaleString()} XP)
+          </Box>
+        </Box>
+      )}
       <Box sx={{ color: COLORS.muted }}>訊息 {d.msg_count}</Box>
       {d.honeymoon_active && <Box sx={{ color: COLORS.greenDeep, fontSize: 10 }}>🌱 蜜月期</Box>}
       {d.trial_id && <Box sx={{ color: "#B45309", fontSize: 10 }}>⚔ 試煉中</Box>}
@@ -105,22 +120,33 @@ function TrendTooltip({ active, payload }) {
 }
 
 export default function DailyTrend({ days, range, onRangeChange }) {
-  const { chartData, honeymoonBands, trialBands } = useMemo(() => {
+  const { chartData, honeymoonBands, trialBands, hasAlchemy } = useMemo(() => {
     const rows = days || [];
-    return {
-      chartData: rows.map(d => ({
+    const data = rows.map(d => {
+      const raw = d.raw_exp || 0;
+      const effective = d.effective_exp || 0;
+      // Converted, not lost — subtract it before computing 流失, otherwise an
+      // alchemy day charts as a full-height grey bar.
+      const alchemy = d.alchemy_exp || 0;
+      return {
         date: d.date,
-        effective: d.effective_exp || 0,
-        loss: Math.max(0, (d.raw_exp || 0) - (d.effective_exp || 0)),
-        raw: d.raw_exp || 0,
+        effective,
+        alchemy,
+        loss: Math.max(0, raw - effective - alchemy),
+        raw,
+        alchemy_stones: d.alchemy_stones || 0,
         msg_count: d.msg_count || 0,
         honeymoon_active: d.honeymoon_active,
         trial_id: d.trial_id,
         weather: d.weather,
         weather_protection: d.weather_protection,
-      })),
+      };
+    });
+    return {
+      chartData: data,
       honeymoonBands: bandRanges(rows, d => d.honeymoon_active),
       trialBands: bandRanges(rows, d => d.trial_id != null),
+      hasAlchemy: data.some(d => d.alchemy > 0),
     };
   }, [days]);
 
@@ -253,6 +279,7 @@ export default function DailyTrend({ days, range, onRangeChange }) {
                 radius={[0, 0, 2, 2]}
                 name="effective"
               />
+              <Bar dataKey="alchemy" stackId="a" fill={COLORS.alchemy} name="alchemy" />
               <Bar
                 dataKey="loss"
                 stackId="a"
@@ -280,6 +307,12 @@ export default function DailyTrend({ days, range, onRangeChange }) {
             <Box sx={{ width: 10, height: 10, bgcolor: COLORS.amber, borderRadius: 0.25 }} />
             實得
           </Box>
+          {hasAlchemy && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Box sx={{ width: 10, height: 10, bgcolor: COLORS.alchemy, borderRadius: 0.25 }} />
+              鍊成女神石
+            </Box>
+          )}
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <Box
               sx={{

@@ -172,7 +172,7 @@
     },
     "dailyWeather": {
       "enabled": true,
-      "purchaseEnabled": false,
+      "purchaseEnabled": true,
       "weights": { "buff": 60, "debuff": 40 },
       "defaultProtectionCost": 30,
       "pool": {
@@ -201,6 +201,16 @@
           "effects": { "effective_xp_mult": 0.9 },
           "protectionType": "clearsky",
           "protectionName": "晴空護符",
+          "protectionCost": 30
+        },
+        "alchemy_mist": {
+          "category": "debuff",
+          "name": "鍊金之霧",
+          "flavorText": "霧裡的話語不再化作成長，而是凝成石粒落下。",
+          "weight": 0.4,
+          "effects": { "exp_to_stone_rate": 50 },
+          "protectionType": "growth_ward",
+          "protectionName": "成長護符",
           "protectionCost": 30
         },
         "mana_tailwind": {
