@@ -14,6 +14,7 @@ const ChatUserData = require("../../model/application/ChatUserData");
 const ChatExpDaily = require("../../model/application/ChatExpDaily");
 const ChatExpEvent = require("../../model/application/ChatExpEvent");
 const ChatExpUnit = require("../../model/application/ChatExpUnit");
+const { inventory } = require("../../model/application/Inventory");
 const { computeCatchupMult } = require("./catchupMult");
 const { computeEventXp } = require("./computeEventXp");
 const { resolveEffectiveEffects } = require("./weatherEffects");
@@ -123,6 +124,7 @@ async function processUserEvents(userId, events, ctx) {
 
   let rawDelta = 0;
   let effectiveDelta = 0;
+  let alchemyDelta = 0;
   let msgCount = 0;
   let protectedCount = 0;
   const eventRecords = [];
@@ -155,7 +157,14 @@ async function processUserEvents(userId, events, ctx) {
     });
 
     rawDelta += raw;
-    effectiveDelta += effectiveInt;
+    // Alchemy weather diverts this event's effective exp into god stones instead
+    // of level progress. Resolved per-event: a protected event has no effects, so
+    // it falls through to the normal exp path even on an alchemy day.
+    if (wEffects.exp_to_stone_rate) {
+      alchemyDelta += effectiveInt;
+    } else {
+      effectiveDelta += effectiveInt;
+    }
     msgCount += 1;
     if (wProtected) protectedCount += 1;
 
@@ -206,6 +215,10 @@ async function processUserEvents(userId, events, ctx) {
     expUnitRows: ctx.expUnitRows,
     rawDelta,
     effectiveDelta,
+    alchemyDelta,
+    alchemyRate: ctx.weather?.effects?.exp_to_stone_rate ?? 0,
+    alchemyDailyCap: ctx.weather?.effects?.exp_to_stone_daily_cap,
+    prevAlchemyExp: dailyRow?.alchemy_exp ?? 0,
     msgCount,
     protectedCount,
     eventRecords,
@@ -216,7 +229,8 @@ async function processUserEvents(userId, events, ctx) {
       `eff=+${effectiveDelta} ${result.prevLevel}→${result.newLevel} ` +
       `exp=${result.prevExp}→${result.newExp}` +
       (catchupMult > 1 ? ` catchup=×${catchupMult.toFixed(2)}` : "") +
-      (result.hadActiveTrial ? ` trial+=${effectiveDelta}` : "")
+      (alchemyDelta > 0 ? ` alchemy=+${alchemyDelta} stones=+${result.mintedStones}` : "") +
+      (result.hadActiveTrial ? ` trial+=${effectiveDelta + alchemyDelta}` : "")
   );
 
   await onBatchWritten(userId, result, batchLastGroupId);
@@ -232,12 +246,16 @@ async function writeBatch(userId, state, batch) {
   // cache and M3 may end a trial between cache population and this batch;
   // writing against state would advance progress on an already-resolved trial.
   const activeTrialId = existing?.active_trial_id ?? null;
+  const alchemyDelta = batch.alchemyDelta ?? 0;
+  // Alchemy exp never touches current_exp / current_level.
   const newExp = Math.min(LEVEL_CAP_EXP, prevExp + batch.effectiveDelta);
   const newLevel = ChatExpUnit.getLevelFromExp(newExp, batch.expUnitRows);
 
   const updates = { current_exp: newExp, current_level: newLevel };
   if (activeTrialId) {
-    updates.active_trial_exp_progress = prevTrialProgress + batch.effectiveDelta;
+    // INVARIANT: trial progress advances by the FULL earned amount. Weather must
+    // never eat trial progress — trials have a hard 60-day deadline.
+    updates.active_trial_exp_progress = prevTrialProgress + batch.effectiveDelta + alchemyDelta;
   }
 
   await ChatUserData.upsert(userId, updates);
@@ -247,11 +265,36 @@ async function writeBatch(userId, state, batch) {
     date: batch.today,
     rawExp: batch.rawDelta,
     effectiveExp: batch.effectiveDelta,
+    alchemyExp: alchemyDelta,
     msgCount: batch.msgCount,
     protectedCount: batch.protectedCount,
     honeymoonActive: state.prestige_count === 0,
     trialId: activeTrialId,
   });
+
+  // Mint off the day-cumulative counter, so the remainder of every batch carries
+  // into the next one instead of being floored away.
+  // Counter is persisted (above) *before* the stones are credited: a crash in
+  // between under-credits by at most one batch, which is the safe direction —
+  // the reverse order would re-mint the same exp on the next batch.
+  const rate = batch.alchemyRate ?? 0;
+  const dailyCap = batch.alchemyDailyCap;
+  let mintedStones = 0;
+  if (alchemyDelta > 0 && rate > 0) {
+    const prevAlchemy = batch.prevAlchemyExp ?? 0;
+    const newAlchemy = prevAlchemy + alchemyDelta;
+    if (typeof dailyCap === "number" && Number.isFinite(dailyCap) && dailyCap > 0) {
+      const capExp = dailyCap * rate;
+      const a = Math.min(prevAlchemy, capExp);
+      const b = Math.min(newAlchemy, capExp);
+      mintedStones = Math.floor(b / rate) - Math.floor(a / rate);
+    } else {
+      mintedStones = Math.floor(newAlchemy / rate) - Math.floor(prevAlchemy / rate);
+    }
+    if (mintedStones > 0) {
+      await inventory.increaseGodStone({ userId, amount: mintedStones, note: "alchemy_mist" });
+    }
+  }
 
   // insertEvent calls are sequential without a per-row try/catch: a failure
   // aborts the remaining events mid-loop (chat_user_data + chat_exp_daily
@@ -266,6 +309,7 @@ async function writeBatch(userId, state, batch) {
     newLevel,
     prevExp,
     newExp,
+    mintedStones,
     hadActiveTrial: Boolean(activeTrialId),
     prestigeCount: existing?.prestige_count ?? 0,
   };

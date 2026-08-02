@@ -62,6 +62,28 @@ describe("generateWeatherBubble", () => {
     expect(collectVisibleStrings(b)).toContain("查看經驗歷程"); // CTA falls back to history link
   });
 
+  it("renders alchemy mist through the normal debuff path, with no bogus percentage", () => {
+    const b = generateWeatherBubble({
+      ...debuff,
+      weather: {
+        weather_key: "alchemy_mist",
+        category: "debuff",
+        name: "鍊金之霧",
+        flavor_text: "霧裡的話語不再化作成長，而是凝成石粒落下。",
+        effects: { exp_to_stone_rate: 50 },
+        protection_type: "growth_ward",
+        protection_name: "成長護符",
+        protection_cost: 30,
+      },
+    });
+    const texts = collect(b, "text").join("");
+    expect(texts).toContain("鍊金之霧");
+    expect(texts).toContain("經驗轉女神石 50:1");
+    expect(texts).not.toContain("4900");
+    expect(texts).toContain("成長護符");
+    expect(collectVisibleStrings(b)).toContain("前往購買防護");
+  });
+
   it("shows no protection section on a buff day", () => {
     const b = generateWeatherBubble({
       ...debuff,

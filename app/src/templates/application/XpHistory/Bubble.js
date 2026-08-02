@@ -22,9 +22,27 @@ const COLORS = {
   deep: "#3A2800",
   muted: "#5A6B7F",
   warmBg: "#F8FAFB",
+  // 鍊金之霧 converts exp into god stones — violet marks it as a different
+  // currency, so it never reads as the amber "exp you kept".
+  violetText: "#E9D5FF",
+  violetMid: "#C4B5FD",
+  violetTint: "#EDE9FE",
+  violetDeep: "#5B21B6",
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+
+// Stone counts run to four and occasionally five figures now.
+const groupDigits = n => Number(n || 0).toLocaleString("en-US");
+
+// 鍊金之霧: exp is diverted into 女神石 instead of levels. Fields may be absent
+// on cached/older summaries — treat that as an ordinary day.
+function alchemyState(today) {
+  const exp = Number(today.alchemy_exp) || 0;
+  const rate = Number(today.alchemy_rate) || null;
+  if (exp <= 0) return null;
+  return { exp, rate, stones: Number(today.alchemy_stones) || 0 };
+}
 
 function tierStatusLine(today) {
   const { tier, tier1_upper, raw_exp } = today;
@@ -37,22 +55,7 @@ function tierStatusLine(today) {
   return { text: `⚠ tier 3 · 幾乎不漲 · ${raw_exp} raw`, color: "#FCA5A5" };
 }
 
-function progressBar(today) {
-  const { raw_exp, tier1_upper, tier2_upper } = today;
-  const scale = Math.max(raw_exp, Math.round(tier2_upper * 1.4));
-  const t1 = Math.round((Math.min(raw_exp, tier1_upper) / scale) * 100);
-  const t2 = Math.round(
-    (Math.min(Math.max(0, raw_exp - tier1_upper), tier2_upper - tier1_upper) / scale) * 100
-  );
-  const t3 = Math.round((Math.max(0, raw_exp - tier2_upper) / scale) * 100);
-  const rest = Math.max(0, 100 - t1 - t2 - t3);
-
-  const segs = [];
-  if (t1 > 0) segs.push({ flex: t1, color: COLORS.amber });
-  if (t2 > 0) segs.push({ flex: t2, color: COLORS.amberDeep });
-  if (t3 > 0) segs.push({ flex: t3, color: "#9CA3AF" });
-  if (rest > 0) segs.push({ flex: rest, color: COLORS.whiteOverlay });
-
+function barBox(segs) {
   return {
     type: "box",
     layout: "horizontal",
@@ -67,6 +70,38 @@ function progressBar(today) {
       contents: [],
     })),
   };
+}
+
+function progressBar(today, palette) {
+  const { raw_exp, tier1_upper, tier2_upper } = today;
+  const colors = palette || { t1: COLORS.amber, t2: COLORS.amberDeep };
+  const scale = Math.max(raw_exp, Math.round(tier2_upper * 1.4));
+  const t1 = Math.round((Math.min(raw_exp, tier1_upper) / scale) * 100);
+  const t2 = Math.round(
+    (Math.min(Math.max(0, raw_exp - tier1_upper), tier2_upper - tier1_upper) / scale) * 100
+  );
+  const t3 = Math.round((Math.max(0, raw_exp - tier2_upper) / scale) * 100);
+  const rest = Math.max(0, 100 - t1 - t2 - t3);
+
+  const segs = [];
+  if (t1 > 0) segs.push({ flex: t1, color: colors.t1 });
+  if (t2 > 0) segs.push({ flex: t2, color: colors.t2 });
+  if (t3 > 0) segs.push({ flex: t3, color: "#9CA3AF" });
+  if (rest > 0) segs.push({ flex: rest, color: COLORS.whiteOverlay });
+
+  return barBox(segs);
+}
+
+// Diminishing returns still apply under 鍊金之霧 — the pipeline diverts exp to
+// stones *after* the tier factor, so the tier bar predicts minting just as well
+// as it predicts levelling. Same maths, violet paint.
+const ALCHEMY_BAR = { t1: COLORS.violetText, t2: COLORS.violetMid };
+
+// 「1 XP = 💎1」 reads like machinery; at 1:1 say it in words. Any other rate
+// keeps the numeric form, which is the only way it stays true.
+function alchemyRateText(rate) {
+  if (!rate) return "經驗鍊成女神石";
+  return rate === 1 ? "經驗 1:1 鍊成女神石" : `${rate} XP 鍊成 💎1`;
 }
 
 function chipBox(text, { bg, fg, border }) {
@@ -134,6 +169,14 @@ function buildLastEventChips(ev) {
   }
   if (ev.permanent_mult > 1)
     out.push(chipBox(`永久 ×${ev.permanent_mult.toFixed(2)}`, { bg: "#F3E8FF", fg: "#6B21A8" }));
+  // Under 鍊金之霧 the event's effective_exp is intact but goes to 女神石, not
+  // levels. Say so, otherwise the number reads as level progress it never made.
+  const rate = ev.modifiers?.weather?.effects?.exp_to_stone_rate;
+  if (rate && !ev.weather_protected) {
+    out.push(chipBox("💎 鍊成女神石", { bg: COLORS.violetTint, fg: COLORS.violetDeep }));
+  } else if (rate) {
+    out.push(chipBox("🛡 成長護符 · 正常入帳", { bg: COLORS.greenTint, fg: COLORS.greenDeep }));
+  }
   if (out.length === 0) out.push(chipBox("正常獲取", { bg: COLORS.greyTint, fg: COLORS.greyText }));
   return out;
 }
@@ -238,7 +281,53 @@ function buildHeader(today) {
     ? `⚔ ★${active_trial_star} 試煉中`
     : `${m.format("MM/DD")} ${WEEKDAYS[m.day()]}`;
 
-  const status = tierStatusLine(today);
+  const alchemy = alchemyState(today);
+  const status = alchemy
+    ? {
+        text: `🌫 鍊金之霧 · ${alchemyRateText(alchemy.rate)}`,
+        color: COLORS.violetText,
+      }
+    : tierStatusLine(today);
+
+  // On an alchemy day the day's yield is stones, not level exp — lead with the
+  // stone count so the header never reads as "0 of something".
+  const yieldLabel = alchemy ? "今日鍊成" : "累計實得";
+  // 4-figure days are normal now and 5-figure ones happen, so separate the
+  // thousands and step the size down before the suffix gets squeezed off.
+  const stoneText = alchemy ? groupDigits(alchemy.stones) : "";
+  const stoneSize = stoneText.length >= 7 ? "lg" : stoneText.length >= 5 ? "xl" : "xxl";
+  const yieldSpans = alchemy
+    ? [
+        { type: "span", text: "💎 ", color: COLORS.violetText, size: "md" },
+        {
+          type: "span",
+          text: stoneText,
+          weight: "bold",
+          color: COLORS.violetText,
+          size: stoneSize,
+        },
+        {
+          type: "span",
+          // At 1:1 the XP figure is the same number again — spend the line on the
+          // trade-off instead, which is the part the player cannot see elsewhere.
+          text:
+            alchemy.rate === 1
+              ? "  今日經驗不累積等級"
+              : `  由 ${groupDigits(alchemy.exp)} XP 鍊成`,
+          color: COLORS.white,
+          size: "xs",
+        },
+      ]
+    : [
+        {
+          type: "span",
+          text: String(effective_exp),
+          weight: "bold",
+          color: COLORS.amberText,
+          size: "xxl",
+        },
+        { type: "span", text: ` / ${raw_exp} raw`, color: COLORS.white, size: "xs" },
+      ];
 
   return {
     type: "box",
@@ -287,19 +376,10 @@ function buildHeader(today) {
             layout: "vertical",
             flex: 1,
             contents: [
-              { type: "text", text: "累計實得", size: "xxs", color: COLORS.white },
+              { type: "text", text: yieldLabel, size: "xxs", color: COLORS.white },
               {
                 type: "text",
-                contents: [
-                  {
-                    type: "span",
-                    text: String(effective_exp),
-                    weight: "bold",
-                    color: COLORS.amberText,
-                    size: "xxl",
-                  },
-                  { type: "span", text: ` / ${raw_exp} raw`, color: COLORS.white, size: "xs" },
-                ],
+                contents: yieldSpans,
               },
             ],
           },
@@ -326,7 +406,7 @@ function buildHeader(today) {
         layout: "vertical",
         margin: "md",
         contents: [
-          progressBar(today),
+          alchemy ? progressBar(today, ALCHEMY_BAR) : progressBar(today),
           {
             type: "text",
             text: status.text,

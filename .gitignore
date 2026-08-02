@@ -95,3 +95,6 @@ data
 
 # Throwaway POCs (validation scratch — not shipped)
 /poc/
+
+# Manual prod-only SQL seeds (hidden achievement thresholds etc.) — never commit
+/docs/sql/

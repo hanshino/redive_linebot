@@ -172,7 +172,7 @@
     },
     "dailyWeather": {
       "enabled": true,
-      "purchaseEnabled": false,
+      "purchaseEnabled": true,
       "weights": { "buff": 60, "debuff": 40 },
       "defaultProtectionCost": 30,
       "pool": {
@@ -202,6 +202,13 @@
           "protectionType": "clearsky",
           "protectionName": "晴空護符",
           "protectionCost": 30
+        },
+        "alchemy_mist": {
+          "category": "buff",
+          "name": "鍊金之霧",
+          "flavorText": "霧裡的話語凝成石粒，化作意外的收穫。",
+          "weight": 0.27,
+          "effects": { "exp_to_stone_rate": 1, "exp_to_stone_daily_cap": 100000 }
         },
         "mana_tailwind": {
           "category": "buff",

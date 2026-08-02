@@ -23,6 +23,10 @@ const COLORS = {
   green: "#16A34A",
   greenDeep: "#15803D",
   weatherDebuff: "#B96322",
+  // 鍊金之霧: exp that became 女神石. Solid violet, not the translucent grey of
+  // 流失 — it left the level bar but the player still got paid for it.
+  alchemy: "#A78BFA",
+  alchemyDeep: "#6D28D9",
 };
 
 const RANGES = [1, 7, 30, 90, 365];
@@ -59,6 +63,14 @@ function TrendTooltip({ active, payload }) {
   const d = payload[0]?.payload;
   if (!d) return null;
   const isBuffDay = d.weather?.category === "buff";
+  // 鍊金之霧 is a buff now, but it stays 🌫 violet everywhere else in this page —
+  // don't let the generic buff styling recolour it to ☀ green.
+  const isAlchemyDay = Boolean(d.weather?.effects?.exp_to_stone_rate);
+  const weatherColor = isAlchemyDay
+    ? COLORS.alchemyDeep
+    : isBuffDay
+      ? COLORS.greenDeep
+      : COLORS.weatherDebuff;
   return (
     <Box
       sx={{
@@ -87,12 +99,23 @@ function TrendTooltip({ active, payload }) {
           {d.effective.toLocaleString()}
         </Box>
       </Box>
+      {d.alchemy_exp > 0 && (
+        <Box>
+          鍊成{" "}
+          <Box component="span" sx={{ color: COLORS.alchemyDeep, fontWeight: 700 }}>
+            💎{d.alchemy_stones.toLocaleString()}
+          </Box>{" "}
+          <Box component="span" sx={{ color: COLORS.muted }}>
+            ({d.alchemy_exp.toLocaleString()} XP)
+          </Box>
+        </Box>
+      )}
       <Box sx={{ color: COLORS.muted }}>訊息 {d.msg_count}</Box>
       {d.honeymoon_active && <Box sx={{ color: COLORS.greenDeep, fontSize: 10 }}>🌱 蜜月期</Box>}
       {d.trial_id && <Box sx={{ color: "#B45309", fontSize: 10 }}>⚔ 試煉中</Box>}
       {d.weather && (
-        <Box sx={{ color: isBuffDay ? COLORS.greenDeep : COLORS.weatherDebuff, fontSize: 10 }}>
-          {isBuffDay ? "☀" : "🌫"} {d.weather.name}
+        <Box sx={{ color: weatherColor, fontSize: 10 }}>
+          {isAlchemyDay ? "🌫" : isBuffDay ? "☀" : "🌫"} {d.weather.name}
           {d.weather_protection === "full"
             ? " · 已防護"
             : ` · ${d.weather_protection === "partial" ? "部分防護 " : ""}${weatherEffectLabels(
@@ -105,22 +128,36 @@ function TrendTooltip({ active, payload }) {
 }
 
 export default function DailyTrend({ days, range, onRangeChange }) {
-  const { chartData, honeymoonBands, trialBands } = useMemo(() => {
+  const { chartData, honeymoonBands, trialBands, hasAlchemy } = useMemo(() => {
     const rows = days || [];
-    return {
-      chartData: rows.map(d => ({
+    const data = rows.map(d => {
+      const raw = d.raw_exp || 0;
+      const effective = d.effective_exp || 0;
+      // Converted, not lost — subtract it before computing 流失, otherwise an
+      // alchemy day charts as a full-height grey bar. The honeymoon ×1.2 is
+      // applied after raw, so effective + alchemy can exceed raw; clamp the
+      // stack to raw so the bar never draws taller than the day's raw exp.
+      const alchemy = Math.min(d.alchemy_exp || 0, Math.max(0, raw - effective));
+      return {
         date: d.date,
-        effective: d.effective_exp || 0,
-        loss: Math.max(0, (d.raw_exp || 0) - (d.effective_exp || 0)),
-        raw: d.raw_exp || 0,
+        effective,
+        alchemy,
+        loss: Math.max(0, raw - effective - alchemy),
+        raw,
+        alchemy_stones: d.alchemy_stones || 0,
+        alchemy_exp: d.alchemy_exp || 0,
         msg_count: d.msg_count || 0,
         honeymoon_active: d.honeymoon_active,
         trial_id: d.trial_id,
         weather: d.weather,
         weather_protection: d.weather_protection,
-      })),
+      };
+    });
+    return {
+      chartData: data,
       honeymoonBands: bandRanges(rows, d => d.honeymoon_active),
       trialBands: bandRanges(rows, d => d.trial_id != null),
+      hasAlchemy: data.some(d => d.alchemy_exp > 0),
     };
   }, [days]);
 
@@ -253,6 +290,7 @@ export default function DailyTrend({ days, range, onRangeChange }) {
                 radius={[0, 0, 2, 2]}
                 name="effective"
               />
+              <Bar dataKey="alchemy" stackId="a" fill={COLORS.alchemy} name="alchemy" />
               <Bar
                 dataKey="loss"
                 stackId="a"
@@ -280,6 +318,12 @@ export default function DailyTrend({ days, range, onRangeChange }) {
             <Box sx={{ width: 10, height: 10, bgcolor: COLORS.amber, borderRadius: 0.25 }} />
             實得
           </Box>
+          {hasAlchemy && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Box sx={{ width: 10, height: 10, bgcolor: COLORS.alchemy, borderRadius: 0.25 }} />
+              鍊成女神石
+            </Box>
+          )}
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <Box
               sx={{
