@@ -105,6 +105,11 @@ describe("describeEffects", () => {
     // (value - 1) * 100 would have printed "+4900%" for a rate of 50.
     expect(describeEffects({ exp_to_stone_rate: 50 })).toEqual(["經驗轉女神石 50:1"]);
   });
+  it("does not render the alchemy daily cap as an effect", () => {
+    expect(describeEffects({ exp_to_stone_rate: 1, exp_to_stone_daily_cap: 100000 })).toEqual([
+      "經驗轉女神石 1:1",
+    ]);
+  });
   it("empty effects → empty list", () => {
     expect(describeEffects({})).toEqual([]);
   });

@@ -25,11 +25,15 @@ const COLORS = {
   // 鍊金之霧 converts exp into god stones — violet marks it as a different
   // currency, so it never reads as the amber "exp you kept".
   violetText: "#E9D5FF",
+  violetMid: "#C4B5FD",
   violetTint: "#EDE9FE",
   violetDeep: "#5B21B6",
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+
+// Stone counts run to four and occasionally five figures now.
+const groupDigits = n => Number(n || 0).toLocaleString("en-US");
 
 // 鍊金之霧: exp is diverted into 女神石 instead of levels. Fields may be absent
 // on cached/older summaries — treat that as an ordinary day.
@@ -68,8 +72,9 @@ function barBox(segs) {
   };
 }
 
-function progressBar(today) {
+function progressBar(today, palette) {
   const { raw_exp, tier1_upper, tier2_upper } = today;
+  const colors = palette || { t1: COLORS.amber, t2: COLORS.amberDeep };
   const scale = Math.max(raw_exp, Math.round(tier2_upper * 1.4));
   const t1 = Math.round((Math.min(raw_exp, tier1_upper) / scale) * 100);
   const t2 = Math.round(
@@ -79,23 +84,24 @@ function progressBar(today) {
   const rest = Math.max(0, 100 - t1 - t2 - t3);
 
   const segs = [];
-  if (t1 > 0) segs.push({ flex: t1, color: COLORS.amber });
-  if (t2 > 0) segs.push({ flex: t2, color: COLORS.amberDeep });
+  if (t1 > 0) segs.push({ flex: t1, color: colors.t1 });
+  if (t2 > 0) segs.push({ flex: t2, color: colors.t2 });
   if (t3 > 0) segs.push({ flex: t3, color: "#9CA3AF" });
   if (rest > 0) segs.push({ flex: rest, color: COLORS.whiteOverlay });
 
   return barBox(segs);
 }
 
-// Tier progress means little when nothing reaches the level bar; show how far
-// the leftover exp has crept toward the next 💎 instead.
-function stoneProgressBar(alchemy) {
-  if (!alchemy.rate) return barBox([{ flex: 100, color: COLORS.whiteOverlay }]);
-  const toward = Math.round(((alchemy.exp % alchemy.rate) / alchemy.rate) * 100);
-  const segs = [];
-  if (toward > 0) segs.push({ flex: toward, color: COLORS.violetText });
-  if (toward < 100) segs.push({ flex: 100 - toward, color: COLORS.whiteOverlay });
-  return barBox(segs);
+// Diminishing returns still apply under 鍊金之霧 — the pipeline diverts exp to
+// stones *after* the tier factor, so the tier bar predicts minting just as well
+// as it predicts levelling. Same maths, violet paint.
+const ALCHEMY_BAR = { t1: COLORS.violetText, t2: COLORS.violetMid };
+
+// 「1 XP = 💎1」 reads like machinery; at 1:1 say it in words. Any other rate
+// keeps the numeric form, which is the only way it stays true.
+function alchemyRateText(rate) {
+  if (!rate) return "經驗鍊成女神石";
+  return rate === 1 ? "經驗 1:1 鍊成女神石" : `${rate} XP 鍊成 💎1`;
 }
 
 function chipBox(text, { bg, fg, border }) {
@@ -278,9 +284,7 @@ function buildHeader(today) {
   const alchemy = alchemyState(today);
   const status = alchemy
     ? {
-        text: alchemy.rate
-          ? `🌫 鍊金之霧 · ${alchemy.rate} XP 鍊成 💎1`
-          : "🌫 鍊金之霧 · 經驗鍊成女神石",
+        text: `🌫 鍊金之霧 · ${alchemyRateText(alchemy.rate)}`,
         color: COLORS.violetText,
       }
     : tierStatusLine(today);
@@ -288,19 +292,28 @@ function buildHeader(today) {
   // On an alchemy day the day's yield is stones, not level exp — lead with the
   // stone count so the header never reads as "0 of something".
   const yieldLabel = alchemy ? "今日鍊成" : "累計實得";
+  // 4-figure days are normal now and 5-figure ones happen, so separate the
+  // thousands and step the size down before the suffix gets squeezed off.
+  const stoneText = alchemy ? groupDigits(alchemy.stones) : "";
+  const stoneSize = stoneText.length >= 7 ? "lg" : stoneText.length >= 5 ? "xl" : "xxl";
   const yieldSpans = alchemy
     ? [
-        { type: "span", text: "💎 ", color: COLORS.violetText, size: "lg" },
+        { type: "span", text: "💎 ", color: COLORS.violetText, size: "md" },
         {
           type: "span",
-          text: String(alchemy.stones),
+          text: stoneText,
           weight: "bold",
           color: COLORS.violetText,
-          size: "xxl",
+          size: stoneSize,
         },
         {
           type: "span",
-          text: ` / ${alchemy.exp} XP 已轉化`,
+          // At 1:1 the XP figure is the same number again — spend the line on the
+          // trade-off instead, which is the part the player cannot see elsewhere.
+          text:
+            alchemy.rate === 1
+              ? "  今日經驗不累積等級"
+              : `  由 ${groupDigits(alchemy.exp)} XP 鍊成`,
           color: COLORS.white,
           size: "xs",
         },
@@ -393,7 +406,7 @@ function buildHeader(today) {
         layout: "vertical",
         margin: "md",
         contents: [
-          alchemy ? stoneProgressBar(alchemy) : progressBar(today),
+          alchemy ? progressBar(today, ALCHEMY_BAR) : progressBar(today),
           {
             type: "text",
             text: status.text,

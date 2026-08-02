@@ -204,14 +204,11 @@
           "protectionCost": 30
         },
         "alchemy_mist": {
-          "category": "debuff",
+          "category": "buff",
           "name": "鍊金之霧",
-          "flavorText": "霧裡的話語不再化作成長，而是凝成石粒落下。",
-          "weight": 0.4,
-          "effects": { "exp_to_stone_rate": 50 },
-          "protectionType": "growth_ward",
-          "protectionName": "成長護符",
-          "protectionCost": 30
+          "flavorText": "霧裡的話語凝成石粒，化作意外的收穫。",
+          "weight": 0.27,
+          "effects": { "exp_to_stone_rate": 1, "exp_to_stone_daily_cap": 100000 }
         },
         "mana_tailwind": {
           "category": "buff",

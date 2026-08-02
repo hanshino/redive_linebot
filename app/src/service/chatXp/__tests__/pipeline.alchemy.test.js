@@ -5,21 +5,18 @@ const mysql = jest.requireActual("../../../util/mysql");
 // Rate lives on the DB weather row (pipeline reads ctx.weather.effects), so each
 // test pre-inserts the row it wants. The config pool only matters for the
 // auto-generation path exercised by the first case.
-const RATE = 50;
+const RATE = 1;
 const WEATHER_CFG = {
   enabled: true,
   purchaseEnabled: true,
-  weights: { debuff: 100 },
+  weights: { buff: 100 },
   defaultProtectionCost: 30,
   pool: {
     alchemy_mist: {
-      category: "debuff",
+      category: "buff",
       name: "鍊金之霧",
-      flavorText: "霧裡的話語不再化作成長，而是凝成石粒落下。",
-      effects: { exp_to_stone_rate: RATE },
-      protectionType: "growth_ward",
-      protectionName: "成長護符",
-      protectionCost: 30,
+      flavorText: "霧裡的話語凝成石粒，化作意外的收穫。",
+      effects: { exp_to_stone_rate: RATE, exp_to_stone_daily_cap: 100000 },
     },
   },
 };
@@ -62,17 +59,19 @@ const msg = (ts = Date.now()) => ({
   groupCount: 1,
 });
 
-async function insertWeather(rate) {
+async function insertWeather(rate, { category = "buff", dailyCap } = {}) {
+  const effects = { exp_to_stone_rate: rate };
+  if (dailyCap !== undefined) effects.exp_to_stone_daily_cap = dailyCap;
   await mysql("chat_daily_weather").insert({
     date: TODAY,
     weather_key: "alchemy_mist",
-    category: "debuff",
+    category,
     name: "鍊金之霧",
     flavor_text: "霧。",
-    effects: JSON.stringify({ exp_to_stone_rate: rate }),
-    protection_type: "growth_ward",
-    protection_name: "成長護符",
-    protection_cost: 30,
+    effects: JSON.stringify(effects),
+    protection_type: category === "debuff" ? "growth_ward" : null,
+    protection_name: category === "debuff" ? "成長護符" : null,
+    protection_cost: category === "debuff" ? 30 : null,
     generated_at: new Date(),
   });
 }
@@ -110,7 +109,7 @@ describe("pipeline alchemy mist", () => {
     expect(user.current_exp).toBe(0);
     expect(user.current_level).toBe(0);
 
-    expect(await stoneBalance()).toBe(Math.floor(PER_MSG / RATE)); // 2
+    expect(await stoneBalance()).toBe(Math.floor(PER_MSG / RATE));
 
     const daily = await dailyRow();
     expect(daily.alchemy_exp).toBe(PER_MSG);
@@ -161,8 +160,33 @@ describe("pipeline alchemy mist", () => {
     expect((await userRow()).current_exp).toBe(0);
   });
 
+  it("caps minting while retaining the full alchemy counter", async () => {
+    const cap = 2;
+    await insertWeather(RATE, { dailyCap: cap });
+
+    await processBatch([msg()]);
+    expect(await stoneBalance()).toBe(cap);
+    expect((await dailyRow()).alchemy_exp).toBe(PER_MSG);
+
+    await processBatch([msg()]);
+    expect(await stoneBalance()).toBe(cap);
+    expect((await dailyRow()).alchemy_exp).toBe(PER_MSG * 2);
+  });
+
+  it("mints no additional stones after the daily cap is reached", async () => {
+    const cap = 2;
+    await insertWeather(RATE, { dailyCap: cap });
+
+    await processBatch([msg(), msg()]);
+    expect(await stoneBalance()).toBe(cap);
+
+    await processBatch([msg()]);
+    expect(await stoneBalance()).toBe(cap);
+    expect((await dailyRow()).alchemy_exp).toBe(PER_MSG * 3);
+  });
+
   it("a protected user earns normal exp, not stones", async () => {
-    await insertWeather(RATE);
+    await insertWeather(RATE, { category: "debuff" });
     await mysql("user_weather_protections").insert({
       user_id: USER,
       weather_date: TODAY,

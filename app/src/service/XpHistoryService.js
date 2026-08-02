@@ -59,9 +59,14 @@ function alchemyRate(effects) {
 // alchemy_exp counter (floor(new/rate) - floor(prev/rate) per batch), so the
 // per-batch terms telescope and the day total is exactly floor(total/rate) —
 // reproducing it here needs no event-level replay.
-function alchemyStones(alchemyExp, rate) {
+function alchemyStones(alchemyExp, rate, dailyCap) {
   if (!rate) return 0;
-  return Math.floor((Number(alchemyExp) || 0) / rate);
+  const exp = Number(alchemyExp) || 0;
+  const cappedExp =
+    typeof dailyCap === "number" && Number.isFinite(dailyCap) && dailyCap > 0
+      ? Math.min(exp, dailyCap * rate)
+      : exp;
+  return Math.floor(cappedExp / rate);
 }
 
 async function buildSummary(userId) {
@@ -84,7 +89,7 @@ async function buildSummary(userId) {
     effective_exp: daily?.effective_exp ?? 0,
     alchemy_exp: alchemyExp,
     alchemy_rate: rate,
-    alchemy_stones: alchemyStones(alchemyExp, rate),
+    alchemy_stones: alchemyStones(alchemyExp, rate, weather?.effects?.exp_to_stone_daily_cap),
     msg_count: daily?.msg_count ?? 0,
     tier: deriveTier(dailyRaw, tier1Upper, tier2Upper),
     tier1_upper: tier1Upper,
@@ -135,7 +140,11 @@ function shapeDay(row) {
     alchemy_exp: alchemyExp,
     // Rate comes from the chat_daily_weather join already in buildDaily — no
     // per-row query.
-    alchemy_stones: alchemyStones(alchemyExp, alchemyRate(effects)),
+    alchemy_stones: alchemyStones(
+      alchemyExp,
+      alchemyRate(effects),
+      effects?.exp_to_stone_daily_cap
+    ),
     msg_count: row.msg_count,
     honeymoon_active: Boolean(row.honeymoon_active),
     trial_id: row.trial_id ?? null,

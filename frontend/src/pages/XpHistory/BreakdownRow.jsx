@@ -205,7 +205,7 @@ export default function BreakdownRow({ ev, showAll }) {
               color: COLOR.alchemy,
             }}
           >
-            🌫 鍊金之霧 · 不入等級，改按 {rate} XP = 💎1 計入女神石
+            🌫 鍊金之霧 · {rate === 1 ? "1:1 鍊成女神石" : `每 ${rate} XP 鍊成 💎1`}，當日不累積等級
           </Box>
         </>
       ) : (

@@ -63,6 +63,14 @@ function TrendTooltip({ active, payload }) {
   const d = payload[0]?.payload;
   if (!d) return null;
   const isBuffDay = d.weather?.category === "buff";
+  // 鍊金之霧 is a buff now, but it stays 🌫 violet everywhere else in this page —
+  // don't let the generic buff styling recolour it to ☀ green.
+  const isAlchemyDay = Boolean(d.weather?.effects?.exp_to_stone_rate);
+  const weatherColor = isAlchemyDay
+    ? COLORS.alchemyDeep
+    : isBuffDay
+      ? COLORS.greenDeep
+      : COLORS.weatherDebuff;
   return (
     <Box
       sx={{
@@ -91,14 +99,14 @@ function TrendTooltip({ active, payload }) {
           {d.effective.toLocaleString()}
         </Box>
       </Box>
-      {d.alchemy > 0 && (
+      {d.alchemy_exp > 0 && (
         <Box>
           鍊成{" "}
           <Box component="span" sx={{ color: COLORS.alchemyDeep, fontWeight: 700 }}>
             💎{d.alchemy_stones.toLocaleString()}
           </Box>{" "}
           <Box component="span" sx={{ color: COLORS.muted }}>
-            ({d.alchemy.toLocaleString()} XP)
+            ({d.alchemy_exp.toLocaleString()} XP)
           </Box>
         </Box>
       )}
@@ -106,8 +114,8 @@ function TrendTooltip({ active, payload }) {
       {d.honeymoon_active && <Box sx={{ color: COLORS.greenDeep, fontSize: 10 }}>🌱 蜜月期</Box>}
       {d.trial_id && <Box sx={{ color: "#B45309", fontSize: 10 }}>⚔ 試煉中</Box>}
       {d.weather && (
-        <Box sx={{ color: isBuffDay ? COLORS.greenDeep : COLORS.weatherDebuff, fontSize: 10 }}>
-          {isBuffDay ? "☀" : "🌫"} {d.weather.name}
+        <Box sx={{ color: weatherColor, fontSize: 10 }}>
+          {isAlchemyDay ? "🌫" : isBuffDay ? "☀" : "🌫"} {d.weather.name}
           {d.weather_protection === "full"
             ? " · 已防護"
             : ` · ${d.weather_protection === "partial" ? "部分防護 " : ""}${weatherEffectLabels(
@@ -126,8 +134,10 @@ export default function DailyTrend({ days, range, onRangeChange }) {
       const raw = d.raw_exp || 0;
       const effective = d.effective_exp || 0;
       // Converted, not lost — subtract it before computing 流失, otherwise an
-      // alchemy day charts as a full-height grey bar.
-      const alchemy = d.alchemy_exp || 0;
+      // alchemy day charts as a full-height grey bar. The honeymoon ×1.2 is
+      // applied after raw, so effective + alchemy can exceed raw; clamp the
+      // stack to raw so the bar never draws taller than the day's raw exp.
+      const alchemy = Math.min(d.alchemy_exp || 0, Math.max(0, raw - effective));
       return {
         date: d.date,
         effective,
@@ -135,6 +145,7 @@ export default function DailyTrend({ days, range, onRangeChange }) {
         loss: Math.max(0, raw - effective - alchemy),
         raw,
         alchemy_stones: d.alchemy_stones || 0,
+        alchemy_exp: d.alchemy_exp || 0,
         msg_count: d.msg_count || 0,
         honeymoon_active: d.honeymoon_active,
         trial_id: d.trial_id,
@@ -146,7 +157,7 @@ export default function DailyTrend({ days, range, onRangeChange }) {
       chartData: data,
       honeymoonBands: bandRanges(rows, d => d.honeymoon_active),
       trialBands: bandRanges(rows, d => d.trial_id != null),
-      hasAlchemy: data.some(d => d.alchemy > 0),
+      hasAlchemy: data.some(d => d.alchemy_exp > 0),
     };
   }, [days]);
 

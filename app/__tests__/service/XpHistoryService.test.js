@@ -134,11 +134,14 @@ describe("XpHistoryService", () => {
   });
 
   describe("buildSummary alchemy", () => {
-    const alchemyWeather = (rate = 50) => ({
+    const alchemyWeather = (rate = 50, dailyCap) => ({
       weather_key: "alchemy_mist",
       category: "debuff",
       name: "煉金霧靄",
-      effects: { exp_to_stone_rate: rate },
+      effects: {
+        exp_to_stone_rate: rate,
+        ...(dailyCap === undefined ? {} : { exp_to_stone_daily_cap: dailyCap }),
+      },
     });
 
     beforeEach(() => {
@@ -194,6 +197,20 @@ describe("XpHistoryService", () => {
       expect(today.alchemy_exp).toBe(49);
       expect(today.alchemy_rate).toBe(50);
       expect(today.alchemy_stones).toBe(0);
+    });
+
+    test("alchemy stones use the daily cap from weather effects", async () => {
+      ChatExpDaily.findByUserDate.mockResolvedValue({
+        raw_exp: 100000,
+        effective_exp: 0,
+        alchemy_exp: 250,
+        msg_count: 100,
+      });
+      ChatWeatherService.getWeatherForDate.mockResolvedValue(alchemyWeather(50, 3));
+
+      const { today } = await XpHistoryService.buildSummary("U_test");
+      expect(today.alchemy_exp).toBe(250);
+      expect(today.alchemy_stones).toBe(3);
     });
 
     test("weather feature disabled (null weather) → rate null, no crash", async () => {

@@ -73,14 +73,19 @@ function pickWeather(pool, weights, avoidKey, rand = Math.random) {
 }
 
 function describeEffects(effects) {
-  return Object.entries(effects || {}).map(([field, value]) => {
-    const label = EFFECT_LABELS[field] || field;
-    // Not a multiplier: it's a conversion ratio (N exp → 1 stone), so the
-    // ×-1-as-percentage formatting below would render nonsense (+4900%).
-    if (field === "exp_to_stone_rate") return `${label} ${value}:1`;
-    const pct = Math.round((value - 1) * 100);
-    return `${label} ${pct >= 0 ? `+${pct}` : pct}%`;
-  });
+  return Object.entries(effects || {})
+    .filter(([field]) => {
+      // Safety rail only; do not show the daily mint cap as a weather effect.
+      return field !== "exp_to_stone_daily_cap";
+    })
+    .map(([field, value]) => {
+      const label = EFFECT_LABELS[field] || field;
+      // Not a multiplier: it's a conversion ratio (N exp → 1 stone), so the
+      // ×-1-as-percentage formatting below would render nonsense (+4900%).
+      if (field === "exp_to_stone_rate") return `${label} ${value}:1`;
+      const pct = Math.round((value - 1) * 100);
+      return `${label} ${pct >= 0 ? `+${pct}` : pct}%`;
+    });
 }
 
 module.exports = { resolveEffectiveEffects, mult, pickWeather, describeEffects, EFFECT_IDENTITY };

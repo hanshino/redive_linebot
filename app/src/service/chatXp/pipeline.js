@@ -217,6 +217,7 @@ async function processUserEvents(userId, events, ctx) {
     effectiveDelta,
     alchemyDelta,
     alchemyRate: ctx.weather?.effects?.exp_to_stone_rate ?? 0,
+    alchemyDailyCap: ctx.weather?.effects?.exp_to_stone_daily_cap,
     prevAlchemyExp: dailyRow?.alchemy_exp ?? 0,
     msgCount,
     protectedCount,
@@ -277,11 +278,19 @@ async function writeBatch(userId, state, batch) {
   // between under-credits by at most one batch, which is the safe direction —
   // the reverse order would re-mint the same exp on the next batch.
   const rate = batch.alchemyRate ?? 0;
+  const dailyCap = batch.alchemyDailyCap;
   let mintedStones = 0;
   if (alchemyDelta > 0 && rate > 0) {
     const prevAlchemy = batch.prevAlchemyExp ?? 0;
     const newAlchemy = prevAlchemy + alchemyDelta;
-    mintedStones = Math.floor(newAlchemy / rate) - Math.floor(prevAlchemy / rate);
+    if (typeof dailyCap === "number" && Number.isFinite(dailyCap) && dailyCap > 0) {
+      const capExp = dailyCap * rate;
+      const a = Math.min(prevAlchemy, capExp);
+      const b = Math.min(newAlchemy, capExp);
+      mintedStones = Math.floor(b / rate) - Math.floor(a / rate);
+    } else {
+      mintedStones = Math.floor(newAlchemy / rate) - Math.floor(prevAlchemy / rate);
+    }
     if (mintedStones > 0) {
       await inventory.increaseGodStone({ userId, amount: mintedStones, note: "alchemy_mist" });
     }

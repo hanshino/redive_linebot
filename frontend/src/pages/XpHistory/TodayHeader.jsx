@@ -11,7 +11,15 @@ const COLOR = {
   // 鍊金之霧 turns exp into 女神石 — violet keeps it visually separate from the
   // amber "exp you kept" language used everywhere else.
   violet: "#E9D5FF",
+  violetMid: "#C4B5FD",
 };
+
+// 「1 XP = 💎1」 reads like machinery; at 1:1 say it in words. Any other rate
+// keeps the numeric form, which is the only way it stays true.
+function alchemyRateText(rate) {
+  if (!rate) return "經驗鍊成女神石";
+  return rate === 1 ? "經驗 1:1 鍊成女神石" : `${rate} XP 鍊成 💎1`;
+}
 
 // Fields are absent on older cached summaries; no alchemy_exp means an ordinary
 // day, and a protected player mints nothing so they stay on the normal header.
@@ -42,9 +50,11 @@ export default function TodayHeader({ summary }) {
   const tierLabel = t3Used > 0 ? "⚠ 第三階 ×0.03" : t2Used > 0 ? "第二階 ×0.30" : "滿速 第一階";
   const tierColor = t3Used > 0 ? COLOR.redSoft : COLOR.amberText;
 
-  // Progress toward the next 💎 replaces the tier bar — tier means nothing on a
-  // day where no exp reaches the level at all.
-  const towardStone = alchemy?.rate ? ((alchemy.exp % alchemy.rate) / alchemy.rate) * 100 : 0;
+  // Diminishing returns still apply under 鍊金之霧 — exp is diverted to stones
+  // *after* the tier factor, so the same tier bar predicts minting. Only the
+  // paint changes, which means it needs no rate at all to stay correct.
+  const barT1 = alchemy ? COLOR.violet : COLOR.amber;
+  const barT2 = alchemy ? COLOR.violetMid : COLOR.amberDeep;
 
   return (
     <Box
@@ -77,17 +87,22 @@ export default function TodayHeader({ summary }) {
           <Box sx={{ fontFamily: "ui-monospace, Menlo, monospace", mt: 0.25 }}>
             {alchemy ? (
               <>
-                <Box component="span" sx={{ fontSize: 22, mr: 0.5 }}>
+                <Box component="span" sx={{ fontSize: 18, mr: 0.5 }}>
                   💎
                 </Box>
                 <Box
                   component="span"
-                  sx={{ fontSize: 32, fontWeight: 700, color: COLOR.violet, lineHeight: 1 }}
+                  sx={{
+                    fontSize: alchemy.stones >= 10000 ? 26 : 32,
+                    fontWeight: 700,
+                    color: COLOR.violet,
+                    lineHeight: 1,
+                  }}
                 >
-                  {alchemy.stones}
+                  {alchemy.stones.toLocaleString()}
                 </Box>
                 <Box component="span" sx={{ fontSize: 13, opacity: 0.85, ml: 0.75 }}>
-                  / {alchemy.exp} XP 已轉化
+                  {alchemy.rate === 1 ? "女神石" : `由 ${alchemy.exp.toLocaleString()} XP 鍊成`}
                 </Box>
               </>
             ) : (
@@ -115,34 +130,13 @@ export default function TodayHeader({ summary }) {
 
       <Box sx={{ mt: 1.75 }}>
         <Stack direction="row" gap="2px" sx={{ height: 8 }}>
-          {alchemy ? (
-            <>
-              {towardStone > 0 && (
-                <Box sx={{ width: `${towardStone}%`, bgcolor: COLOR.violet, borderRadius: 0.5 }} />
-              )}
-              {towardStone < 100 && (
-                <Box
-                  sx={{
-                    width: `${100 - towardStone}%`,
-                    bgcolor: "rgba(255,255,255,0.27)",
-                    borderRadius: 0.5,
-                  }}
-                />
-              )}
-            </>
-          ) : (
-            <>
-              {w1 > 0 && <Box sx={{ width: `${w1}%`, bgcolor: COLOR.amber, borderRadius: 0.5 }} />}
-              {w2 > 0 && (
-                <Box sx={{ width: `${w2}%`, bgcolor: COLOR.amberDeep, borderRadius: 0.5 }} />
-              )}
-              {w3 > 0 && <Box sx={{ width: `${w3}%`, bgcolor: "#9CA3AF", borderRadius: 0.5 }} />}
-              {wRest > 0 && (
-                <Box
-                  sx={{ width: `${wRest}%`, bgcolor: "rgba(255,255,255,0.27)", borderRadius: 0.5 }}
-                />
-              )}
-            </>
+          {w1 > 0 && <Box sx={{ width: `${w1}%`, bgcolor: barT1, borderRadius: 0.5 }} />}
+          {w2 > 0 && <Box sx={{ width: `${w2}%`, bgcolor: barT2, borderRadius: 0.5 }} />}
+          {w3 > 0 && <Box sx={{ width: `${w3}%`, bgcolor: "#9CA3AF", borderRadius: 0.5 }} />}
+          {wRest > 0 && (
+            <Box
+              sx={{ width: `${wRest}%`, bgcolor: "rgba(255,255,255,0.27)", borderRadius: 0.5 }}
+            />
           )}
         </Stack>
         <Stack
@@ -155,14 +149,10 @@ export default function TodayHeader({ summary }) {
           }}
         >
           <Box component="span" sx={{ color: alchemy ? COLOR.violet : tierColor, fontWeight: 700 }}>
-            {alchemy ? "🌫 鍊金之霧 · 經驗改鍊成女神石" : tierLabel}
+            {alchemy ? `🌫 鍊金之霧 · ${alchemyRateText(alchemy.rate)}` : tierLabel}
           </Box>
           <Box component="span" sx={{ opacity: 0.85 }}>
-            {alchemy
-              ? alchemy.rate
-                ? `${alchemy.rate} XP = 💎1`
-                : `${raw_exp} 原始`
-              : `${raw_exp} / ${tier2_upper}+ 原始`}
+            {alchemy ? "經驗不累積等級" : `${raw_exp} / ${tier2_upper}+ 原始`}
           </Box>
         </Stack>
       </Box>
