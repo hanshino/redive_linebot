@@ -195,12 +195,7 @@ export default function BreakdownRow({ ev, showAll }) {
       )}
       {rate ? (
         <>
-          <ChainArrow
-            to="鍊成 XP"
-            value={ev.effective_exp}
-            color={COLOR.alchemy}
-            valueSize={14}
-          />
+          <ChainArrow to="鍊成 XP" value={ev.effective_exp} color={COLOR.alchemy} valueSize={14} />
           <Box
             sx={{
               mt: 0.5,

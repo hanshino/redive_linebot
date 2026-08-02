@@ -118,9 +118,7 @@ export default function TodayHeader({ summary }) {
           {alchemy ? (
             <>
               {towardStone > 0 && (
-                <Box
-                  sx={{ width: `${towardStone}%`, bgcolor: COLOR.violet, borderRadius: 0.5 }}
-                />
+                <Box sx={{ width: `${towardStone}%`, bgcolor: COLOR.violet, borderRadius: 0.5 }} />
               )}
               {towardStone < 100 && (
                 <Box
