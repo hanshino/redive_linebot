@@ -11,7 +11,8 @@ jest.mock("../../src/util/mysql", () => {
     insert: jest.fn().mockResolvedValue([1]),
     update: jest.fn().mockResolvedValue(1),
     delete: jest.fn().mockReturnThis(),
-    where: jest.fn().mockResolvedValue(1),
+    where: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
     first: jest.fn().mockReturnThis(),
   });
   return jest.fn(() => makeBuilder());
@@ -60,5 +61,49 @@ describe("base model transaction scoping", () => {
     expect(model.setTransaction).toBeUndefined();
     expect(model.transaction).toBeUndefined();
     expect(model.trx).toBeUndefined();
+  });
+});
+
+describe("base model filter conditions", () => {
+  let model;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    model = new Base({ table: "widgets", fillable: [] });
+  });
+
+  it("keeps qualified operator filters scalar in all() and first()", () => {
+    model.all({ filter: { "subscribe_user.start_at": { operator: "<=", value: 10 } } });
+    expect(mysql.mock.results[0].value.where).toHaveBeenCalledWith(
+      "subscribe_user.start_at",
+      "<=",
+      10
+    );
+
+    model.first({ filter: { "subscribe_user.end_at": { operator: ">", value: 20 } } });
+    expect(mysql.mock.results[1].value.where).toHaveBeenCalledWith(
+      "subscribe_user.end_at",
+      ">",
+      20
+    );
+  });
+
+  it("keeps unqualified operators and plain, Date, and null values unchanged", () => {
+    const date = new Date("2026-01-01T00:00:00.000Z");
+    model.all({
+      filter: {
+        level: { operator: ">=", value: 10 },
+        user_id: "U123",
+        created_at: date,
+        deleted_at: null,
+      },
+    });
+
+    expect(mysql.mock.results[0].value.where.mock.calls).toEqual([
+      ["level", ">=", 10],
+      ["user_id", "=", "U123"],
+      ["created_at", "=", date],
+      ["deleted_at", "=", null],
+    ]);
   });
 });

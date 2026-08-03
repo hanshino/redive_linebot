@@ -1,6 +1,26 @@
 const mysql = require("../util/mysql");
 const { get, pick } = require("lodash");
 
+function applyFilter(query, filter) {
+  Object.keys(filter).forEach(key => {
+    const condition = filter[key];
+    const isOperatorSpec =
+      condition !== null &&
+      typeof condition === "object" &&
+      !Array.isArray(condition) &&
+      !(condition instanceof Date) &&
+      "operator" in condition;
+
+    query = query.where(
+      key,
+      isOperatorSpec ? condition.operator : "=",
+      isOperatorSpec ? condition.value : condition
+    );
+  });
+
+  return query;
+}
+
 class Base {
   constructor({ table, fillable }) {
     this.table = table;
@@ -54,13 +74,7 @@ class Base {
 
     let query = this.qb(trx);
 
-    Object.keys(filter).forEach(key => {
-      query = query.where(
-        key,
-        get(filter, `${key}.operator`, "="),
-        get(filter, `${key}.value`, filter[key])
-      );
-    });
+    query = applyFilter(query, filter);
 
     if (pagination.page) {
       query = query.limit(pagination.perPage).offset(pagination.perPage * (pagination.page - 1));
@@ -93,13 +107,7 @@ class Base {
 
     let query = this.qb(trx);
 
-    Object.keys(filter).forEach(key => {
-      query = query.where(
-        key,
-        get(filter, `${key}.operator`, "="),
-        get(filter, `${key}.value`, filter[key])
-      );
-    });
+    query = applyFilter(query, filter);
 
     order.forEach(item => {
       let col = get(item, "column");
