@@ -282,17 +282,19 @@ async function detectCanDaily(userId) {
   // 注意：這裡必須傳 Date 而非 Moment。mysql2 不認得 Moment 物件，
   // 會序列化成 "Mon Aug 03 2026 ..." 而讓 MySQL 丟 ER_WRONG_VALUE。
   const nowDate = now.toDate();
-  const subscribeUser = await SubscribeUser.all({
-    filter: {
-      [SubscribeUser.getColumnName("user_id")]: userId,
-      [SubscribeUser.getColumnName("start_at")]: { operator: "<=", value: nowDate },
-      [SubscribeUser.getColumnName("end_at")]: { operator: ">", value: nowDate },
-    },
-  }).join(
-    SubscribeCard.table,
-    SubscribeCard.getColumnName("key"),
-    SubscribeUser.getColumnName("subscribe_card_key")
-  );
+  // 直接用 query builder，不走 base.all() 的 filter：後者以 lodash get(filter, `${key}.operator`)
+  // 取運算子，key 帶了 "table.column" 的點號時會被當成路徑解析而找不到 operator，
+  // 於是整個 {operator, value} 物件被當成值丟給 knex（ERR_ASSERTION）。
+  // 這裡有 join，欄位必須帶表名，所以改用明確的 where 三參數形式。
+  const subscribeUser = await SubscribeUser.knex
+    .where(SubscribeUser.getColumnName("user_id"), userId)
+    .andWhere(SubscribeUser.getColumnName("start_at"), "<=", nowDate)
+    .andWhere(SubscribeUser.getColumnName("end_at"), ">", nowDate)
+    .join(
+      SubscribeCard.table,
+      SubscribeCard.getColumnName("key"),
+      SubscribeUser.getColumnName("subscribe_card_key")
+    );
 
   const activeSubs = subscribeUser;
   const bonusCount = activeSubs.reduce((acc, data) => {
