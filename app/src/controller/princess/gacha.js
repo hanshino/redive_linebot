@@ -166,11 +166,6 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     return await normalGacha();
   }
 
-  const isAbleDailyGacha = await detectCanDaily(userId, groupId);
-  if (!isAbleDailyGacha) {
-    return await normalGacha();
-  }
-
   // 進行每日一抽
   // 需要檢查是否要花費女神石進行機率調升或是保證抽
   const userOwnStone = parseInt(await GachaModel.getUserGodStoneCount(userId));
@@ -190,12 +185,22 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
     return context.replyText(i18n.__("message.gacha.not_enough_stone"));
   }
 
+  const dailyClaimKey = await detectCanDaily(userId);
+  if (!dailyClaimKey) {
+    return await normalGacha();
+  }
+
   let result;
   try {
     result = await time("gacha.runDaily", () =>
       GachaService.runDailyDraw(userId, { tag, pickup, ensure, europe })
     );
   } catch (err) {
+    // 交易失敗時釋放 claim，讓回滾後的每日額度可以重試；程序崩潰則等 TTL 自動釋放。
+    if (dailyClaimKey !== true) {
+      await redis.del(dailyClaimKey);
+      await redis.del(`daily_gacha_${userId}_${moment().format("MMDD")}`);
+    }
     DefaultLogger.warn(`[gacha] runDailyDraw failed for ${userId}: ${err.message}`);
     console.log(err);
     return context.replyText(
@@ -242,9 +247,11 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
 }
 
 /**
- * 檢查是否可以進行每日轉蛋
+ * 檢查是否可以進行每日轉蛋。
+ * 成功時回傳搶佔到的 redis claim key（呼叫端在抽卡失敗時需釋放），
+ * 額度用盡時回傳 false；測試環境直接回傳 true。
  * @param {String} userId
- * @returns {Promise<Boolean>}
+ * @returns {Promise<String|Boolean>}
  */
 async function detectCanDaily(userId) {
   if (process.env.NODE_ENV !== "production") return true;
@@ -263,15 +270,23 @@ async function detectCanDaily(userId) {
   // 檢查是否有超過每日抽卡上限
   const record = await GachaRecord.knex
     .where({ user_id: userId })
-    .whereBetween("created_at", [now.startOf("day").toDate(), now.endOf("day").toDate()])
+    .whereBetween("created_at", [
+      now.clone().startOf("day").toDate(),
+      now.clone().endOf("day").toDate(),
+    ])
     .count({ count: "*" })
     .first();
 
   // 轉蛋次數
-  const usedCount = get(record, "count", 0);
+  const usedCount = Number(get(record, "count", 0));
+  // 注意：這裡必須傳 Date 而非 Moment。mysql2 不認得 Moment 物件，
+  // 會序列化成 "Mon Aug 03 2026 ..." 而讓 MySQL 丟 ER_WRONG_VALUE。
+  const nowDate = now.toDate();
   const subscribeUser = await SubscribeUser.all({
     filter: {
-      user_id: userId,
+      [SubscribeUser.getColumnName("user_id")]: userId,
+      [SubscribeUser.getColumnName("start_at")]: { operator: "<=", value: nowDate },
+      [SubscribeUser.getColumnName("end_at")]: { operator: ">", value: nowDate },
     },
   }).join(
     SubscribeCard.table,
@@ -279,36 +294,42 @@ async function detectCanDaily(userId) {
     SubscribeUser.getColumnName("subscribe_card_key")
   );
 
-  if (subscribeUser.length === 0) {
-    // 無訂閱用戶，不管有無超過，都幫其設定一個 cache
-    // 以免每次都要去資料庫檢查
-    // 此次的回傳便可以讓呼叫端知道是否超過
-    await redis.set(key, "1", {
-      EX: 60,
-    });
-
-    return usedCount < dailyLimit;
-  }
-
-  // 計算訂閱用戶的轉蛋次數
-  const bonusCount = subscribeUser.reduce((acc, data) => {
-    const { effects } = data;
-    const gachaEffect = effects.find(effect => effect.type === "gacha_times");
-    const effectCount = get(gachaEffect, "value", 0);
-    return acc + effectCount;
+  const activeSubs = subscribeUser;
+  const bonusCount = activeSubs.reduce((acc, data) => {
+    const effects = Array.isArray(data.effects)
+      ? data.effects
+      : typeof data.effects === "string"
+        ? JSON.parse(data.effects || "[]")
+        : [];
+    const gachaEffect = effects.find(effect => effect && effect.type === "gacha_times");
+    return acc + get(gachaEffect, "value", 0);
   }, dailyLimit);
 
   CustomLogger.debug(`detectCanDaily: ${userId} useCount: ${usedCount} bonusCount: ${bonusCount}`);
 
   if (usedCount >= bonusCount) {
-    // 超過每日限制，設定 cache 1 天
+    // 超過每日限制，cache 到今天結束；cache 只作負快取，DB count 仍是權威。
+    const ttl = Math.max(60, moment().endOf("day").diff(moment(), "seconds"));
     await redis.set(key, "1", {
-      EX: 60,
+      EX: ttl,
     });
     return false;
   }
 
-  return true;
+  // 每個 DB usedCount 對應一個 slot；Redis 遺失時仍會重新從 DB count 對齊，不會多發額度。
+  const claimKey = `daily_gacha_claim_${userId}_${now.format("MMDD")}_${usedCount}`;
+  const ttl = Math.max(60, moment().endOf("day").diff(moment(), "seconds"));
+  const claimed = await redis.set(claimKey, "1", {
+    EX: ttl,
+    NX: true,
+  });
+  if (isNull(claimed)) return false;
+
+  if (activeSubs.length === 0) {
+    // 無訂閱用戶只有一個每日額度，成功 claim 後以負快取避免重查資料庫。
+    await redis.set(key, "1", { EX: ttl });
+  }
+  return claimKey;
 }
 
 async function purgeDailyGachaCache(userId) {
