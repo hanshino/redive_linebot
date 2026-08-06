@@ -227,6 +227,18 @@
           "name": "熱鬧廣場",
           "flavorText": "人越多越熱鬧，話題被氣氛推著跑。",
           "effects": { "group_bonus_mult": 1.1 }
+        },
+        "dormant_thunder": {
+          "category": "buff",
+          "name": "驚蟄",
+          "flavorText": "雲層安靜地積蓄了很久，久到你以為不會響。",
+          "effects": {
+            "silence_burst": [
+              { "gapMs": 86400000, "mult": 10 },
+              { "gapMs": 21600000, "mult": 5 },
+              { "gapMs": 3600000, "mult": 2 }
+            ]
+          }
         }
       }
     }

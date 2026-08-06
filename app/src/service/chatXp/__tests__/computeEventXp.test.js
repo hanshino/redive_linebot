@@ -45,6 +45,28 @@ describe("computeEventXp", () => {
     expect(reduced.raw).toBeCloseTo(neutral.raw * 0.9, 5);
   });
 
+  it("silence_burst applies its highest raw multiplier after 24h", () => {
+    const neutral = computeEventXp(args());
+    const weather = computeEventXp(
+      args({
+        event: { timeSinceLastMsg: 86400000, groupCount: 1 },
+        effects: { silence_burst: [{ gapMs: 86400000, mult: 10 }] },
+      })
+    );
+    expect(weather.raw).toBeCloseTo(neutral.raw * 10, 5);
+  });
+
+  it("null silence uses the highest tier without NaN", () => {
+    const r = computeEventXp(
+      args({
+        event: { timeSinceLastMsg: null, groupCount: 1 },
+        effects: { silence_burst: [{ gapMs: 86400000, mult: 10 }] },
+      })
+    );
+    expect(r.raw).toBeCloseTo(computeEventXp(args()).raw * 10, 5);
+    expect(Number.isNaN(r.raw)).toBe(false);
+  });
+
   it("cooldown_required_mult>1 lengthens the window: a 5s gap drops below full rate", () => {
     // 5000ms < 6000 (t4_6) but >4000 (t2_4) → baseline rate 0.8 without weather.
     const neutral = computeEventXp(args({ event: { timeSinceLastMsg: 5000, groupCount: 1 } }));

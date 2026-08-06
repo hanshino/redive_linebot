@@ -68,7 +68,11 @@ function generateWeatherBubble({
       body.push(textNode("今日為減益天氣。", MUTED_NOTE));
     }
   } else {
-    body.push(textNode("今日為增益天氣，無需防護。", MUTED_NOTE));
+    if (weather.effects?.silence_burst) {
+      body.push(textNode("越久沒發言，下一句的經驗越重。", MUTED_NOTE));
+    } else {
+      body.push(textNode("今日為增益天氣，無需防護。", MUTED_NOTE));
+    }
   }
 
   const needsProtection = isDebuff && !isProtected && purchaseEnabled;

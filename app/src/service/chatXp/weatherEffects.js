@@ -8,6 +8,7 @@ const EFFECT_LABELS = {
   effective_xp_mult: "最終經驗",
   group_bonus_mult: "群組加成",
   exp_to_stone_rate: "經驗轉女神石",
+  silence_burst: "久違發言",
 };
 
 /**
@@ -30,6 +31,18 @@ function resolveEffectiveEffects(weather, protection, eventTs) {
 function mult(effects, field) {
   const v = effects && effects[field];
   return typeof v === "number" && v > 0 ? v : EFFECT_IDENTITY;
+}
+
+function silenceMult(effects, timeSinceLastMsg) {
+  const tiers = effects && effects.silence_burst;
+  if (!Array.isArray(tiers) || tiers.length === 0) return EFFECT_IDENTITY;
+  // null = 沉默超過 touch key 的 TTL（見 EventDequeue handleChatExp）→ 視為最高階。
+  const gap = timeSinceLastMsg == null ? Infinity : timeSinceLastMsg;
+  // ponytail: 依賴 config 中 tiers 由大到小排序，不在每則訊息重複排序。
+  for (const t of tiers) {
+    if (gap >= t.gapMs) return t.mult > 0 ? t.mult : EFFECT_IDENTITY;
+  }
+  return EFFECT_IDENTITY;
 }
 
 /**
@@ -83,9 +96,20 @@ function describeEffects(effects) {
       // Not a multiplier: it's a conversion ratio (N exp → 1 stone), so the
       // ×-1-as-percentage formatting below would render nonsense (+4900%).
       if (field === "exp_to_stone_rate") return `${label} ${value}:1`;
+      if (field === "silence_burst") {
+        const top = Math.max(...value.map(t => t.mult));
+        return `${label} 最高 ×${top}`;
+      }
       const pct = Math.round((value - 1) * 100);
       return `${label} ${pct >= 0 ? `+${pct}` : pct}%`;
     });
 }
 
-module.exports = { resolveEffectiveEffects, mult, pickWeather, describeEffects, EFFECT_IDENTITY };
+module.exports = {
+  resolveEffectiveEffects,
+  mult,
+  silenceMult,
+  pickWeather,
+  describeEffects,
+  EFFECT_IDENTITY,
+};

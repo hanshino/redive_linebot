@@ -184,11 +184,9 @@ async function handleChatExp(botEvent) {
 
   const groupCount = await getGroupMemberCount(groupId);
 
-  // TTL 10s — must stay above the cooldown table's longest baseline tier
-  // (6s full-speed threshold) so the pipeline can always resolve the
-  // previous timestamp. The pre-M2 code used 5s which silently expired
-  // touch markers within the full-speed tier — spec line 88.
-  await redis.set(touchKey, String(currTS), { EX: 10 });
+  // TTL is determined by silence_burst's maximum threshold (24h), with 48h
+  // of headroom so long silences remain distinguishable from expired markers.
+  await redis.set(touchKey, String(currTS), { EX: 172800 });
 
   // Record the group this user was last active in. PrestigeService uses this
   // to route LIFF-originated broadcasts (trial_enter / prestige / awakening)

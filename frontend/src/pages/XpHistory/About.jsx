@@ -130,6 +130,21 @@ export default function XpHistoryAbout() {
         </Typography>
       </Section>
 
+      <Section title="天氣「驚蟄」">
+        <Term name="說明">距離上次發言越久，下一則訊息的原始 XP 倍率越高。</Term>
+        <Stack gap={0.5}>
+          <Row k="超過 24 小時" v="×10" />
+          <Row k="超過 6 小時" v="×5" />
+          <Row k="超過 1 小時" v="×2" />
+        </Stack>
+        <Typography variant="caption" color="text.secondary">
+          倍率只作用在觸發的那一則訊息。
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          爆發拿到的原始 XP 一樣會推進今日遞減進度，因此爆發之後的發言收益會明顯下降。
+        </Typography>
+      </Section>
+
       <Section title="實得 XP 後續加成">
         <Term name="蜜月">
           轉生次數 = 0 時自動 ×1.2。轉生一次後解除（讓老玩家不會永遠領蜜月）。
