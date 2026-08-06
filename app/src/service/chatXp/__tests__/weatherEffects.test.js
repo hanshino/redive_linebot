@@ -1,6 +1,7 @@
 const {
   resolveEffectiveEffects,
   mult,
+  silenceMult,
   pickWeather,
   describeEffects,
 } = require("../weatherEffects");
@@ -61,6 +62,24 @@ describe("mult", () => {
   });
 });
 
+describe("silenceMult", () => {
+  const effects = {
+    silence_burst: [
+      { gapMs: 86400000, mult: 10 },
+      { gapMs: 21600000, mult: 5 },
+      { gapMs: 3600000, mult: 2 },
+    ],
+  };
+
+  it("null uses the highest tier", () => expect(silenceMult(effects, null)).toBe(10));
+  it("matches a tier at its exact boundary", () => expect(silenceMult(effects, 21600000)).toBe(5));
+  it("returns identity below the smallest tier", () =>
+    expect(silenceMult(effects, 3599999)).toBe(1));
+  it("returns identity without silence_burst", () => expect(silenceMult({}, 86400000)).toBe(1));
+  it("returns identity for an empty tier list", () =>
+    expect(silenceMult({ silence_burst: [] }, 86400000)).toBe(1));
+});
+
 describe("pickWeather", () => {
   // pool order: 3 debuff then 3 buff; weights buff:60 debuff:40 → categories ["debuff","buff"]
   const pool = {
@@ -104,6 +123,14 @@ describe("describeEffects", () => {
   it("renders exp_to_stone_rate as a conversion ratio, not a percentage", () => {
     // (value - 1) * 100 would have printed "+4900%" for a rate of 50.
     expect(describeEffects({ exp_to_stone_rate: 50 })).toEqual(["經驗轉女神石 50:1"]);
+  });
+  it("renders silence_burst as its highest multiplier without NaN", () => {
+    expect(describeEffects({ silence_burst: [{ gapMs: 86400000, mult: 10 }] })).toEqual([
+      "久違發言 最高 ×10",
+    ]);
+    expect(describeEffects({ silence_burst: [{ gapMs: 86400000, mult: 10 }] })[0]).not.toContain(
+      "NaN"
+    );
   });
   it("does not render the alchemy daily cap as an effect", () => {
     expect(describeEffects({ exp_to_stone_rate: 1, exp_to_stone_daily_cap: 100000 })).toEqual([

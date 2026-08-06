@@ -84,13 +84,15 @@ describe("EventDequeue.handleChatExp", () => {
     expect(payload.timeSinceLastMsg).toBe(3000);
   });
 
-  it("sets CHAT_TOUCH_TIMESTAMP_{userId} with 10s TTL", async () => {
+  // 48h: must exceed silence_burst's largest threshold (24h) so a long silence
+  // stays distinguishable from an expired marker — see handleChatExp.
+  it("sets CHAT_TOUCH_TIMESTAMP_{userId} with 48h TTL", async () => {
     redis.get.mockResolvedValue(null);
 
     await handleChatExp(groupTextEvent({ userId: "Uaaa", ts: 1700000000000 }));
 
     expect(redis.set).toHaveBeenCalledWith("CHAT_TOUCH_TIMESTAMP_Uaaa", "1700000000000", {
-      EX: 10,
+      EX: 172800,
     });
   });
 
@@ -103,7 +105,7 @@ describe("EventDequeue.handleChatExp", () => {
     await handleChatExp(groupTextEvent({ userId: "Uaaa", ts: 1700000000000 }));
 
     expect(redis.set).toHaveBeenCalledWith("CHAT_TOUCH_TIMESTAMP_Uaaa", "1700000000000", {
-      EX: 10,
+      EX: 172800,
     });
   });
 

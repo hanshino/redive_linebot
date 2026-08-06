@@ -5,7 +5,7 @@ const { computeGroupBonus } = require("./groupBonus");
 const { computePerMsgXp } = require("./perMsgXp");
 const { applyDiminish } = require("./diminishTier");
 const { applyTrialAndPermanent } = require("./trialAndPermanent");
-const { mult } = require("./weatherEffects");
+const { mult, silenceMult } = require("./weatherEffects");
 
 /**
  * Pure per-message XP computation. `effects` is the effective weather effect map
@@ -34,7 +34,7 @@ function computeEventXp({
     groupBonus,
     status: state,
   });
-  const raw = rawBase * mult(effects, "raw_xp_mult");
+  const raw = rawBase * mult(effects, "raw_xp_mult") * silenceMult(effects, event.timeSinceLastMsg);
 
   const honeymoonMult = state.prestige_count === 0 ? 1.2 : 1.0;
   const scaledIncoming = raw * honeymoonMult;
