@@ -460,6 +460,199 @@ describe("AchievementEngine", () => {
     });
   });
 
+  describe("dynamic signin definitions", () => {
+    // 這些成就完全由 DB row 驅動：key 不出現在 EVENT_ACHIEVEMENT_MAP、也沒有
+    // 專屬 strategy。條件與門檻只存在資料庫，程式碼不洩漏。
+    const makeDef = (metric, target, extra = {}) => ({
+      id: 900,
+      key: "a_secret_key_not_in_code",
+      target_value: target,
+      reward_stones: 0,
+      condition: { event: "signin", metric, ...extra },
+    });
+
+    beforeEach(() => {
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map());
+      UserAchievementModel.unlock.mockResolvedValue();
+      UserProgressModel.delete.mockResolvedValue();
+      mysql.mockImplementation(() => ({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(null),
+        insert: jest.fn().mockResolvedValue(),
+      }));
+    });
+
+    afterEach(() => {
+      // 還原預設 chain，否則後面的 getUserSummary 會繼承這裡的 mysql override
+      mysql.mockImplementation(() => ({
+        insert: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        whereIn: jest.fn().mockReturnThis(),
+        update: jest.fn().mockResolvedValue(1),
+        first: jest.fn().mockResolvedValue(undefined),
+        select: jest.fn().mockReturnThis(),
+      }));
+    });
+
+    it("tracks streak from context and unlocks at target", async () => {
+      AchievementEngine._setCache([makeDef("streak", 7)]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", {
+        source: "normal",
+        date: "2026-08-07",
+        streak: 7,
+        total: 20,
+        monthCount: 7,
+        daysInMonth: 31,
+        fullMonth: false,
+      });
+
+      expect(result.unlocked.map(a => a.id)).toEqual([900]);
+    });
+
+    it("records streak progress without unlocking below target", async () => {
+      AchievementEngine._setCache([makeDef("streak", 30)]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 5 });
+
+      expect(result.unlocked).toEqual([]);
+      expect(UserProgressModel.upsertMany).toHaveBeenCalledWith([
+        { userId: "Ualice", achievementId: 900, currentValue: 5 },
+      ]);
+    });
+
+    it("tracks total independently of streak", async () => {
+      AchievementEngine._setCache([makeDef("total", 100)]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", {
+        streak: 1,
+        total: 100,
+      });
+
+      expect(result.unlocked.map(a => a.id)).toEqual([900]);
+    });
+
+    it("full_month unlocks only when fullMonth is true", async () => {
+      AchievementEngine._setCache([makeDef("full_month", 1)]);
+
+      const miss = await AchievementEngine.evaluate("Ualice", "signin", {
+        fullMonth: false,
+        monthCount: 30,
+        daysInMonth: 31,
+      });
+      expect(miss.unlocked).toEqual([]);
+
+      const hit = await AchievementEngine.evaluate("Ualice", "signin", {
+        fullMonth: true,
+        monthCount: 31,
+        daysInMonth: 31,
+      });
+      expect(hit.unlocked.map(a => a.id)).toEqual([900]);
+    });
+
+    it("treats makeup signins the same as normal ones", async () => {
+      AchievementEngine._setCache([makeDef("streak", 3)]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", {
+        source: "makeup",
+        streak: 3,
+      });
+
+      expect(result.unlocked.map(a => a.id)).toEqual([900]);
+    });
+
+    it("skips and warns on an unknown metric instead of throwing", async () => {
+      AchievementEngine._setCache([makeDef("phase_of_the_moon", 1)]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 99 });
+
+      expect(result.unlocked).toEqual([]);
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
+      expect(DefaultLogger.warn).toHaveBeenCalledWith(expect.stringContaining("phase_of_the_moon"));
+    });
+
+    it("still honours the eligibility gate for condition-driven rows", async () => {
+      AchievementEngine._setCache([
+        makeDef("streak", 1, { eligibility: { excludeUserIds: ["Ualice"] } }),
+      ]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 10 });
+
+      expect(result.unlocked).toEqual([]);
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
+    });
+
+    it("ignores definitions whose condition.event names a different event", async () => {
+      AchievementEngine._setCache([
+        { ...makeDef("streak", 1), condition: { event: "janken_win", metric: "streak" } },
+      ]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 10 });
+
+      expect(result.unlocked).toEqual([]);
+    });
+
+    it("does not let a condition-driven row hijack a key that has its own strategy", async () => {
+      // gacha_first 有專屬 strategy（instant，永遠回 target_value）。
+      // 即使 DB row 把 condition.event 設成 signin，它也只能由 gacha_pull 觸發：
+      // 否則 instant 會在簽到時無條件解鎖一個轉蛋成就。
+      const hijacked = {
+        id: 901,
+        key: "gacha_first",
+        target_value: 1,
+        reward_stones: 0,
+        condition: { event: "signin", metric: "streak" },
+      };
+      AchievementEngine._setCache([hijacked]);
+
+      const viaSignin = await AchievementEngine.evaluate("Ualice", "signin", {
+        source: "normal",
+        streak: 1,
+      });
+      expect(viaSignin.unlocked).toEqual([]);
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+
+      // 原本的 gacha 路徑不受影響。
+      const viaGacha = await AchievementEngine.evaluate("Ualice", "gacha_pull", {});
+      expect(viaGacha.unlocked.map(a => a.id)).toEqual([901]);
+    });
+
+    it("keeps a hardcoded key off a foreign event that happens to share a context field", async () => {
+      // janken_streak_5 的 strategy 讀 context.streak —— 簽到 context 剛好也有 streak。
+      // 這是最危險的重疊：若被誤選中，簽到連續天數會直接灌進猜拳連勝進度。
+      AchievementEngine._setCache([
+        {
+          id: 902,
+          key: "janken_streak_5",
+          target_value: 5,
+          reward_stones: 0,
+          condition: { event: "signin", metric: "streak" },
+        },
+      ]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", {
+        source: "normal",
+        streak: 9,
+        total: 9,
+      });
+
+      expect(result.unlocked).toEqual([]);
+      expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+    });
+
+    it("still evaluates condition-driven rows whose key has no hardcoded strategy", async () => {
+      // 排除規則只針對「已有 strategy 的 key」，不能誤傷正常的 DB 驅動成就。
+      AchievementEngine._setCache([makeDef("streak", 3)]);
+
+      const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 3 });
+
+      expect(result.unlocked.map(a => a.id)).toEqual([900]);
+    });
+  });
+
   describe("getUserSummary", () => {
     it("should return structured summary", async () => {
       AchievementModel.allWithCategories.mockResolvedValue([

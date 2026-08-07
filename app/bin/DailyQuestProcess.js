@@ -3,6 +3,7 @@ const redis = require("../src/util/redis");
 const moment = require("moment");
 const config = require("config");
 const { DefaultLogger } = require("../src/util/Logger");
+const { todayUtc8 } = require("../src/util/date");
 
 module.exports = main;
 
@@ -101,11 +102,9 @@ async function getTodayRecord(userId) {
   const end = moment().endOf("day").toDate();
 
   const [gacha, janken] = await Promise.all([
-    mysql("signin_days")
-      .where("user_id", userId)
-      .where("last_signin_at", ">=", start)
-      .where("last_signin_at", "<=", end)
-      .first(),
+    // 每日一抽的簽到來源已從 signin_days 換成 signin_ledger（一天一列）。
+    // 舊表不再被寫入，繼續讀它會讓每日任務永遠判定未完成。
+    mysql("signin_ledger").where("user_id", userId).where("signin_date", todayUtc8()).first(),
     mysql("janken_result")
       .where("user_id", userId)
       .where("created_at", ">=", start)

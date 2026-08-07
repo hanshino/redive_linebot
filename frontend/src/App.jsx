@@ -30,6 +30,7 @@ import XpHistoryAbout from "./pages/XpHistory/About";
 import AutoSettings from "./pages/AutoSettings";
 import AutoHistory from "./pages/AutoHistory";
 import Topics from "./pages/Topics";
+import Signin from "./pages/Signin";
 import AdminGachaPool from "./pages/Admin/GachaPool";
 import AdminGachaPoolForm from "./pages/Admin/GachaPool/GachaPoolForm";
 import AdminGachaBanner from "./pages/Admin/GachaBanner";
@@ -106,6 +107,9 @@ export default function App() {
 
           {/* Chat word-cloud (LIFF) — must match getLiffUri("full", "/topics") */}
           <Route path="topics" element={<Topics />} />
+
+          {/* Daily sign-in calendar (LIFF) — matches /liff/full/signin */}
+          <Route path="signin" element={<Signin />} />
 
           {/* Admin — requires admin privilege */}
           <Route element={<RequireAdmin />}>

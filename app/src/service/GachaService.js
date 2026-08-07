@@ -9,11 +9,11 @@ const { inventory } = InventoryModel;
 const GachaRecord = require("../model/princess/GachaRecord");
 const GachaRecordDetail = require("../model/princess/GachaRecordDetail");
 const GachaBanner = require("../model/princess/GachaBanner");
-const signModel = require("../model/application/SigninDays");
 const SubscribeUser = require("../model/application/SubscribeUser");
 const SubscribeCard = require("../model/application/SubscribeCard");
 
 const EventCenterService = require("./EventCenterService");
+const SigninService = require("./SigninService");
 const AchievementEngine = require("./AchievementEngine");
 const {
   play,
@@ -28,28 +28,6 @@ const {
 const i18n = require("../util/i18n");
 const { DefaultLogger } = require("../util/Logger");
 const { time } = require("../middleware/timing");
-
-async function handleSignin(userId) {
-  const userData = await signModel.first({ filter: { user_id: userId } });
-  const now = moment();
-
-  if (!userData) {
-    return await signModel.create({ user_id: userId, last_signin_at: now.toDate() });
-  }
-
-  const latsSigninAt = moment(userData.last_signin_at);
-  const updateData = { last_signin_at: now.toDate() };
-
-  if (now.isSame(latsSigninAt, "day")) {
-    return;
-  } else if (now.diff(latsSigninAt, "days") > 1) {
-    updateData.sum_days = 1;
-  } else {
-    updateData.sum_days = userData.sum_days + 1;
-  }
-
-  await signModel.update(userId, updateData, { pk: "user_id" });
-}
 
 function resolveCost(pickup, ensure, europe, activeEuropeBanner) {
   if (pickup) {
@@ -251,6 +229,8 @@ async function runDailyDraw(userId, opts = {}) {
   const repeatReward = computeRepeatReward(uniqRewards, duplicateItems);
   const newCharacters = uniqRewards.filter(r => newItemIds.includes(r.id));
 
+  let signinCreated = false;
+  let signinDate = null;
   await time("rd.tx", async () => {
     await mysql.transaction(async trx => {
       if (cost.amount > 0) {
@@ -304,15 +284,28 @@ async function runDailyDraw(userId, opts = {}) {
           }))
         );
       }
+
+      // 簽到與轉蛋紀錄同進同退：交易回滾時不會留下「有簽到、沒轉蛋」的孤兒列。
+      const signin = await SigninService.recordNormal(userId, { trx });
+      signinCreated = signin.created;
+      signinDate = signin.date;
     });
   });
 
   await time("rd.side", () =>
-    Promise.all([
-      handleSignin(userId),
-      EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId }),
-    ])
+    EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId })
   );
+
+  // 成就評估必須在 commit 之後 —— 交易內查 streak/total 會讀到未提交的狀態。
+  // 只有真的新增了 ledger 才評估，同一天重抽不重複觸發。
+  const signinUnlocks = signinCreated
+    ? await time("rd.signinAchievement", () =>
+        SigninService.evaluateAchievements(userId, {
+          source: "normal",
+          date: signinDate,
+        }).then(r => r.unlocked || [])
+      )
+    : [];
 
   const { unlocked } = await time("rd.achievement", () =>
     AchievementEngine.evaluate(userId, "gacha_pull", {
@@ -335,7 +328,7 @@ async function runDailyDraw(userId, opts = {}) {
     ownCharactersCount,
     repeatReward,
     godStoneCost: cost.amount,
-    unlocks: unlocked || [],
+    unlocks: [...(unlocked || []), ...signinUnlocks],
   };
 }
 

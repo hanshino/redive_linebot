@@ -19,7 +19,8 @@ const Subscription = require("./Subscription");
  * @param {Boolean} data.today.gacha
  * @param {Boolean} data.today.janken
  * @param {Number}  data.today.weeklyCompleted
- * @param {Number} data.signinDays
+ * @param {Object} data.signin           {streak, monthCount, daysInMonth, total}
+ * @param {String} data.signinUri        簽到月曆 LIFF 連結
  * @param {Number} data.characterCurrent
  * @param {Number} data.characterTotal
  * @param {Number} data.starProgress     0–100
@@ -46,7 +47,8 @@ exports.buildBubbles = data => {
         expNext: data.expNext,
         flags: data.flags,
         today: data.today,
-        signinDays: data.signinDays,
+        signin: data.signin,
+        signinUri: data.signinUri,
         subscriptionPanel: cards.length === 1 ? cards[0] : null,
         subscriptionBadge: null,
         dailyRaw: data.dailyRaw,
@@ -66,7 +68,8 @@ exports.buildBubbles = data => {
         expNext: data.expNext,
         flags: data.flags,
         today: data.today,
-        signinDays: data.signinDays,
+        signin: data.signin,
+        signinUri: data.signinUri,
         subscriptionPanel: null,
         subscriptionBadge: { text: cards.map(c => c.titleText).join(" + ") },
         dailyRaw: data.dailyRaw,
