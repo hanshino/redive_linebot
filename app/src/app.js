@@ -28,6 +28,7 @@ const AchievementController = require("./controller/application/AchievementContr
 const DonateListController = require("./controller/application/DonateListController");
 const AliasController = require("./controller/application/AliasController");
 const MarketController = require("./controller/application/MarketController");
+const PublicMarketController = require("./controller/application/PublicMarketController");
 const CouponController = require("./controller/application/CouponController");
 const ImageController = require("./controller/application/ImageController");
 const StatusController = require("./controller/application/StatusController");
@@ -168,6 +169,8 @@ async function OrderBased(context, { next }) {
     ...AchievementController.router,
     ...AchievementController.titleRouter,
     ...MarketController.router,
+    // 放在 MarketController 之後：`.市場` 與 `.交易`/`.trade` 前綴不重疊，不會互相遮蔽
+    ...PublicMarketController.router,
     ...CouponController.router,
     ...ImageController.router,
     ...StatusController.router,

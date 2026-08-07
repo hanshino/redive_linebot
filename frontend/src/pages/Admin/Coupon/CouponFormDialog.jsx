@@ -71,8 +71,10 @@ export default function CouponFormDialog({ open, editing, saving, onClose, onSub
             disabled={codeLocked}
             error={!!err.code}
             helperText={err.code || (codeLocked ? "已有人領取，無法修改" : "最多 50 字")}
-            inputProps={{ maxLength: 50 }}
             fullWidth
+            slotProps={{
+              htmlInput: { maxLength: 50 },
+            }}
           />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField
@@ -103,8 +105,10 @@ export default function CouponFormDialog({ open, editing, saving, onClose, onSub
             onChange={set("reward")}
             error={!!err.reward}
             helperText={err.reward}
-            inputProps={{ min: 1 }}
             fullWidth
+            slotProps={{
+              htmlInput: { min: 1 },
+            }}
           />
         </Stack>
       </DialogContent>

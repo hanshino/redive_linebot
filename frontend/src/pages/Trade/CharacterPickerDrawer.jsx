@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   SwipeableDrawer,
   Box,
@@ -9,8 +9,12 @@ import {
   Avatar,
   Button,
   IconButton,
+  InputAdornment,
+  TextField,
 } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
+import SearchIcon from "@mui/icons-material/Search";
 
 /**
  * Bottom-sheet character picker.
@@ -20,15 +24,30 @@ import CloseIcon from "@mui/icons-material/Close";
  *   items        - [{ itemId, name, headImage }]
  *   initialId    - itemId currently selected (may be null)
  *   onConfirm    - (itemId) => void
+ *   title        - heading copy (defaults to the trade wording)
  */
-export default function CharacterPickerDrawer({ open, onClose, items, initialId, onConfirm }) {
+export default function CharacterPickerDrawer({
+  open,
+  onClose,
+  items,
+  initialId,
+  onConfirm,
+  title = "選擇要交易的角色",
+}) {
   const [localId, setLocalId] = useState(initialId ?? null);
+  const [keyword, setKeyword] = useState("");
 
   // Re-syncing on each open keeps the picker honest if the parent's
   // selection changes between opens.
   useEffect(() => {
     if (open) setLocalId(initialId ?? null);
   }, [open, initialId]);
+
+  const hits = useMemo(() => {
+    const q = keyword.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(i => i.name?.toLowerCase().includes(q) || String(i.itemId).includes(q));
+  }, [items, keyword]);
 
   const handleConfirm = () => {
     onConfirm(localId);
@@ -41,11 +60,13 @@ export default function CharacterPickerDrawer({ open, onClose, items, initialId,
       open={open}
       onClose={onClose}
       onOpen={() => {}}
-      PaperProps={{
-        sx: {
-          borderTopLeftRadius: 16,
-          borderTopRightRadius: 16,
-          maxHeight: "85dvh",
+      slotProps={{
+        paper: {
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            maxHeight: "85dvh",
+          },
         },
       }}
     >
@@ -63,11 +84,45 @@ export default function CharacterPickerDrawer({ open, onClose, items, initialId,
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-          選擇要交易的角色
+          {title}
         </Typography>
-        <IconButton onClick={onClose} size="small" aria-label="關閉">
-          <CloseIcon />
-        </IconButton>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            {hits.length} / {items.length} 位
+          </Typography>
+          <IconButton onClick={onClose} size="small" aria-label="關閉角色選擇">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </Box>
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: { md: 720 },
+          mx: { md: "auto" },
+          px: 2,
+          pb: 1.5,
+        }}
+      >
+        <TextField
+          type="search"
+          size="small"
+          fullWidth
+          value={keyword}
+          onChange={e => setKeyword(e.target.value)}
+          placeholder="搜尋角色名稱或編號"
+          aria-label="搜尋角色名稱或編號"
+          autoComplete="off"
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
       </Box>
       <Box
         sx={{
@@ -84,9 +139,15 @@ export default function CharacterPickerDrawer({ open, onClose, items, initialId,
           <Box sx={{ py: 6, textAlign: "center", color: "text.secondary" }}>
             您目前沒有可交易的角色
           </Box>
+        ) : hits.length === 0 ? (
+          <Box sx={{ py: 6, textAlign: "center", color: "text.secondary", fontSize: 13 }}>
+            沒有符合「{keyword}」的角色。
+            <br />
+            可以搜名字或角色編號。
+          </Box>
         ) : (
           <Grid container spacing={1.5}>
-            {items.map(item => {
+            {hits.map(item => {
               const selected = item.itemId === localId;
               return (
                 <Grid size={{ xs: 4, sm: 3, md: 2 }} key={item.itemId}>
@@ -111,6 +172,20 @@ export default function CharacterPickerDrawer({ open, onClose, items, initialId,
                             borderRadius: 0,
                           }}
                         />
+                        {selected && (
+                          <CheckCircleIcon
+                            aria-hidden="true"
+                            sx={{
+                              position: "absolute",
+                              right: 4,
+                              top: 4,
+                              fontSize: 20,
+                              color: "primary.main",
+                              bgcolor: "background.paper",
+                              borderRadius: "50%",
+                            }}
+                          />
+                        )}
                       </Box>
                       <Box sx={{ p: 0.75 }}>
                         <Typography

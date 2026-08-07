@@ -34,6 +34,7 @@ const { admin: AdminCouponRouter } = require("./Coupon");
 const { router: InventoryRouter } = require("./Inventory");
 const { router: TradeRouter } = require("./Trade");
 const { router: MarketRouter } = require("./Market");
+const { router: PublicMarketRouter } = require("./PublicMarket");
 const { getProfile } = require("../handler/Profile");
 const moment = require("moment");
 const XpHistoryService = require("../service/XpHistoryService");
@@ -41,6 +42,7 @@ const { todayUtc8 } = require("../util/date");
 
 router.use(require("./auth"));
 router.use(MarketRouter);
+router.use(PublicMarketRouter);
 router.use(InventoryRouter);
 router.use(TradeRouter);
 router.use(ImgurRouter);
