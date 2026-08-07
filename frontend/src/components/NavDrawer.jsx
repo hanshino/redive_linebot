@@ -33,6 +33,9 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import HistoryIcon from "@mui/icons-material/History";
 import InsightsIcon from "@mui/icons-material/Insights";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
+import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
+import BubbleChartIcon from "@mui/icons-material/BubbleChart";
 
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
@@ -40,6 +43,8 @@ const mainItems = [
 ];
 
 const chatLevelItems = [
+  { label: "簽到月曆", path: "/signin", icon: EventAvailableIcon },
+  { label: "成就系統", path: "/achievements", icon: MilitaryTechIcon },
   { label: "轉生之路", path: "/prestige", icon: AutoAwesomeIcon },
   { label: "經驗歷程", path: "/xp-history", icon: InsightsIcon },
 ];
@@ -59,6 +64,7 @@ const botItems = [{ label: "使用手冊", path: "/panel/manual", icon: LibraryB
 
 const personalItems = [
   { label: "我的群組", path: "/groups", icon: GroupsIcon },
+  { label: "聊天文字雲", path: "/topics", icon: BubbleChartIcon },
   { label: "交易管理", path: "/trade/manage", icon: ShoppingBasketIcon },
   { label: "自動設定", path: "/auto/settings", icon: AutoAwesomeIcon },
   { label: "自動行為紀錄", path: "/auto/history", icon: HistoryIcon },
@@ -133,7 +139,7 @@ function NavSection({ title, items, open, onToggle, onNavigate, currentPath }) {
 }
 
 export default function NavDrawer({ onClose }) {
-  const { isAdmin } = useLiff();
+  const { loggedIn, isAdmin } = useLiff();
   const location = useLocation();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState({
@@ -175,22 +181,26 @@ export default function NavDrawer({ onClose }) {
 
       <Divider />
 
-      <NavSection
-        title="聊天等級"
-        items={chatLevelItems}
-        open={openSections.chatLevel}
-        onToggle={() => toggleSection("chatLevel")}
-        onNavigate={handleNavigate}
-        currentPath={location.pathname}
-      />
-      <NavSection
-        title="公主連結"
-        items={princessItems}
-        open={openSections.princess}
-        onToggle={() => toggleSection("princess")}
-        onNavigate={handleNavigate}
-        currentPath={location.pathname}
-      />
+      {loggedIn && (
+        <>
+          <NavSection
+            title="聊天等級"
+            items={chatLevelItems}
+            open={openSections.chatLevel}
+            onToggle={() => toggleSection("chatLevel")}
+            onNavigate={handleNavigate}
+            currentPath={location.pathname}
+          />
+          <NavSection
+            title="公主連結"
+            items={princessItems}
+            open={openSections.princess}
+            onToggle={() => toggleSection("princess")}
+            onNavigate={handleNavigate}
+            currentPath={location.pathname}
+          />
+        </>
+      )}
       <NavSection
         title="競技場"
         items={arenaItems}
@@ -207,14 +217,16 @@ export default function NavDrawer({ onClose }) {
         onNavigate={handleNavigate}
         currentPath={location.pathname}
       />
-      <NavSection
-        title="個人功能"
-        items={personalItems}
-        open={openSections.personal}
-        onToggle={() => toggleSection("personal")}
-        onNavigate={handleNavigate}
-        currentPath={location.pathname}
-      />
+      {loggedIn && (
+        <NavSection
+          title="個人功能"
+          items={personalItems}
+          open={openSections.personal}
+          onToggle={() => toggleSection("personal")}
+          onNavigate={handleNavigate}
+          currentPath={location.pathname}
+        />
+      )}
       {isAdmin && (
         <NavSection
           title="管理員"
