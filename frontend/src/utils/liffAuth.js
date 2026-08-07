@@ -1,5 +1,29 @@
 import liff from "@line/liff";
 
+const SIZE_KEY = "liff_size";
+const DEFAULT_SIZE = "full";
+
+export function getLiffSize() {
+  const match = window.location.pathname.match(/^\/liff\/([^/]+)/);
+  return match?.[1] || window.localStorage.getItem(SIZE_KEY) || DEFAULT_SIZE;
+}
+
+export function buildLiffRedirectUri(size, location = window.location) {
+  const current = new URL(
+    location.href || `${location.origin}${location.pathname}${location.search}${location.hash}`
+  );
+  const liffPath = current.pathname.match(/^\/liff\/[^/]+(\/.*)?$/);
+  const childPath = liffPath ? liffPath[1] || "/" : current.pathname;
+  const search = new URLSearchParams(current.search);
+
+  ["code", "state", "liffClientId", "liffRedirectUri", "liff.state"].forEach(param =>
+    search.delete(param)
+  );
+
+  const query = search.toString();
+  return `${current.origin}/liff/${size}${childPath}${query ? `?${query}` : ""}${current.hash}`;
+}
+
 // LIFF error shapes we can actually rely on (@line/liff 2.29.1):
 // `@liff/server-api` throws a LiffError whose `code` is either the literal
 // HTTP status string ("401" is in its HTTPStatusCodes set) or an error code
@@ -30,7 +54,7 @@ export function isLiffAuthError(err) {
  */
 export function ensureLiffLogin() {
   if (liff.isLoggedIn()) return true;
-  liff.login({ redirectUri: window.location.href });
+  liff.login({ redirectUri: buildLiffRedirectUri(getLiffSize()) });
   return false;
 }
 
@@ -61,7 +85,7 @@ export async function runLiffAction(action) {
 
     // Explicit unauthorized / expired token: one redirect, no retry loop.
     try {
-      liff.login({ redirectUri: window.location.href });
+      liff.login({ redirectUri: buildLiffRedirectUri(getLiffSize()) });
     } catch (loginErr) {
       return { ok: false, error: loginErr };
     }

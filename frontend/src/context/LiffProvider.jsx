@@ -3,16 +3,8 @@ import liff from "@line/liff";
 import api from "../services/api";
 import { FullPageLoading } from "../components/Loading";
 import { debugLog } from "../utils/debugLogger";
+import { buildLiffRedirectUri, getLiffSize } from "../utils/liffAuth";
 import { LiffContext } from "./LiffContext";
-
-const SIZE_KEY = "liff_size";
-const DEFAULT_SIZE = "full";
-
-function getLiffSize() {
-  const match = window.location.pathname.match(/^\/liff\/([^/]+)/);
-  if (match) return match[1];
-  return window.localStorage.getItem(SIZE_KEY) || DEFAULT_SIZE;
-}
 
 /**
  * Fetch LIFF ID and call liff.init().
@@ -174,9 +166,7 @@ export default function LiffProvider({ children }) {
       console.warn("LIFF init failed:", err);
       return;
     }
-    const { pathname, search } = window.location;
-    const redirectUri = `${window.location.origin}/liff/${getLiffSize()}${pathname}${search}`;
-    liff.login({ redirectUri });
+    liff.login({ redirectUri: buildLiffRedirectUri(getLiffSize()) });
   }, []);
 
   const logout = useCallback(async () => {
