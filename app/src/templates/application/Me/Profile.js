@@ -313,8 +313,10 @@ function buildStatsRow({ gacha, janken, weeklyCompleted }) {
   };
 }
 
-function buildStreak(signinDays) {
-  return {
+function buildStreak(signin) {
+  const { streak = 0, monthCount = 0, daysInMonth = 0, total = 0 } = signin || {};
+
+  const streakRow = {
     type: "box",
     layout: "horizontal",
     contents: [
@@ -331,7 +333,7 @@ function buildStreak(signinDays) {
         contents: [
           {
             type: "span",
-            text: `${signinDays || 0}`,
+            text: `${streak}`,
             weight: "bold",
             color: COLORS.amber500,
             size: "md",
@@ -342,6 +344,36 @@ function buildStreak(signinDays) {
         flex: 0,
       },
     ],
+    alignItems: "center",
+  };
+
+  const detailRow = {
+    type: "box",
+    layout: "horizontal",
+    contents: [
+      {
+        type: "text",
+        text: `本月 ${monthCount}/${daysInMonth} 天`,
+        size: "xxs",
+        color: COLORS.textMuted,
+        flex: 1,
+      },
+      {
+        type: "text",
+        text: `累積 ${total} 天`,
+        size: "xxs",
+        color: COLORS.textMuted,
+        align: "end",
+        flex: 0,
+      },
+    ],
+    margin: "xs",
+  };
+
+  return {
+    type: "box",
+    layout: "vertical",
+    contents: [streakRow, detailRow],
     backgroundColor: COLORS.amberBg,
     cornerRadius: "md",
     paddingStart: "md",
@@ -349,7 +381,6 @@ function buildStreak(signinDays) {
     paddingTop: "sm",
     paddingBottom: "sm",
     margin: "md",
-    alignItems: "center",
   };
 }
 
@@ -362,7 +393,8 @@ exports.build = ({
   expNext,
   flags,
   today,
-  signinDays,
+  signin,
+  signinUri,
   subscriptionPanel,
   subscriptionBadge,
   dailyRaw,
@@ -402,7 +434,7 @@ exports.build = ({
   bodyContents.push({
     type: "box",
     layout: "vertical",
-    contents: [buildStreak(signinDays)],
+    contents: [buildStreak(signin)],
     paddingStart: "lg",
     paddingEnd: "lg",
     paddingBottom: "md",
@@ -412,10 +444,18 @@ exports.build = ({
     layout: "vertical",
     contents: [
       buildLinkPill({
+        label: "🗓 查看簽到月曆",
+        size: "xs",
+        cornerRadius: "md",
+        alignItems: "center",
+        action: { type: "uri", label: "查看簽到月曆", uri: signinUri },
+      }),
+      buildLinkPill({
         label: "📈 查看經驗歷程",
         size: "xs",
         cornerRadius: "md",
         alignItems: "center",
+        margin: "sm",
         action: { type: "uri", label: "查看經驗歷程", uri: xpHistoryUri },
       }),
     ],

@@ -23,6 +23,7 @@ const ChatLevelController = require("../controller/application/ChatLevelControll
 const AnnounceController = require("../controller/application/AnnounceController");
 const WorldBossController = require("../controller/application/WorldBossController");
 const WeatherController = require("../controller/application/WeatherController");
+const SigninController = require("../controller/application/SigninController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
 const AdminModel = require("../model/application/Admin");
 const { admin: AdminWorldBossRouter } = require("./WorldBoss");
@@ -129,6 +130,9 @@ router.get("/me/xp-daily", verifyToken, async (req, res) => {
 
 router.get("/me/chat-weather/today", verifyToken, WeatherController.apiGetToday);
 router.post("/me/chat-weather/protection/purchase", verifyToken, WeatherController.apiPurchase);
+
+router.get("/me/signins", verifyToken, SigninController.apiGetCalendar);
+router.post("/me/signins/makeup", verifyToken, SigninController.apiMakeup);
 
 router.get("/liff-ids", (req, res) => {
   const { size } = req.query || "full";

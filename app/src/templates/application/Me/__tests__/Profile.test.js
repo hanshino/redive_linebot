@@ -8,7 +8,8 @@ const baseInput = {
   expCurrent: 1200,
   expNext: 2000,
   today: { gacha: false, janken: false, weeklyCompleted: 0 },
-  signinDays: 7,
+  signin: { streak: 7, monthCount: 5, daysInMonth: 31, total: 42 },
+  signinUri: "https://liff.line.me/test-liff-id/signin",
   subscriptionPanel: null,
   subscriptionBadge: null,
   xpHistoryUri: "https://liff.line.me/test-liff-id/xp-history",
@@ -93,6 +94,50 @@ describe("Me/Profile.build", () => {
       type: "uri",
       label: "查看經驗歷程",
       uri: baseInput.xpHistoryUri,
+    });
+  });
+
+  describe("signin panel", () => {
+    it("renders the streak from SigninService summary", () => {
+      const bubble = Profile.build(baseInput);
+      const spans = findNode(bubble, n =>
+        n.type === "text" && Array.isArray(n.contents) && n.contents.some(s => s.text === " 天")
+          ? n.contents
+          : null
+      );
+      expect(spans[0].text).toBe("7");
+    });
+
+    it("renders month progress and lifetime total", () => {
+      const bubble = Profile.build(baseInput);
+      expect(findText(bubble, t => t.startsWith("本月"))).toBe("本月 5/31 天");
+      expect(findText(bubble, t => t.startsWith("累積"))).toBe("累積 42 天");
+    });
+
+    it("falls back to zeros when the summary is missing", () => {
+      const bubble = Profile.build({ ...baseInput, signin: undefined });
+      expect(findText(bubble, t => t.startsWith("本月"))).toBe("本月 0/0 天");
+      expect(findText(bubble, t => t.startsWith("累積"))).toBe("累積 0 天");
+    });
+
+    it("renders 簽到月曆 CTA as a uri action pointing at the LIFF URL", () => {
+      const bubble = Profile.build(baseInput);
+      const action = findNode(bubble, n =>
+        n.action && n.action.label === "查看簽到月曆" ? n.action : null
+      );
+      expect(action).toEqual({
+        type: "uri",
+        label: "查看簽到月曆",
+        uri: baseInput.signinUri,
+      });
+    });
+
+    it("keeps the XP history CTA alongside the new signin CTA", () => {
+      const bubble = Profile.build(baseInput);
+      const xp = findNode(bubble, n =>
+        n.action && n.action.label === "查看經驗歷程" ? n.action : null
+      );
+      expect(xp.uri).toBe(baseInput.xpHistoryUri);
     });
   });
 

@@ -56,10 +56,9 @@ jest.mock("../../src/model/princess/GachaRecord", () => ({
 jest.mock("../../src/model/princess/GachaRecordDetail", () => ({
   table: "gacha_record_detail",
 }));
-jest.mock("../../src/model/application/SigninDays", () => ({
-  first: jest.fn().mockResolvedValue(null),
-  create: jest.fn().mockResolvedValue(undefined),
-  update: jest.fn().mockResolvedValue(undefined),
+jest.mock("../../src/service/SigninService", () => ({
+  recordNormal: jest.fn(),
+  evaluateAchievements: jest.fn().mockResolvedValue({ unlocked: [] }),
 }));
 
 jest.mock("../../src/service/EventCenterService", () => ({
@@ -90,7 +89,7 @@ const GachaService = require("../../src/service/GachaService");
 const mysql = require("../../src/util/mysql");
 const EventCenterService = require("../../src/service/EventCenterService");
 const AchievementEngine = require("../../src/service/AchievementEngine");
-const signModel = require("../../src/model/application/SigninDays");
+const signinService = require("../../src/service/SigninService");
 
 function makePool() {
   return [
@@ -112,6 +111,8 @@ describe("GachaService.runDailyDraw", () => {
     );
     GachaModel.getDatabasePool.mockResolvedValue(makePool());
     GachaBanner.getActiveBannersWithCharacters.mockResolvedValue([]);
+    signinService.recordNormal.mockResolvedValue({ created: true, date: "2026-08-07" });
+    signinService.evaluateAchievements.mockResolvedValue({ unlocked: [] });
   });
 
   it("returns plain-data shape with exactly the seven documented keys", async () => {
@@ -147,10 +148,11 @@ describe("GachaService.runDailyDraw", () => {
     expect(result).not.toHaveProperty("message");
   });
 
-  it("invokes handleSignin, EventCenterService.add, AchievementEngine.evaluate with the contract args", async () => {
+  it("invokes recordNormal, EventCenterService.add, AchievementEngine.evaluate with the contract args", async () => {
     await GachaService.runDailyDraw("Uabc");
 
-    expect(signModel.first).toHaveBeenCalledWith({ filter: { user_id: "Uabc" } });
+    expect(signinService.recordNormal).toHaveBeenCalledTimes(1);
+    expect(signinService.recordNormal).toHaveBeenCalledWith("Uabc", { trx: currentTrx });
 
     expect(EventCenterService.add).toHaveBeenCalledTimes(1);
     expect(EventCenterService.add).toHaveBeenCalledWith("event_center:daily_quest", {
@@ -164,6 +166,53 @@ describe("GachaService.runDailyDraw", () => {
     expect(metaArg).toHaveProperty("threeStarCount");
     expect(metaArg).toHaveProperty("uniqueCount");
     expect(metaArg).toHaveProperty("pullType");
+  });
+
+  describe("signin integration", () => {
+    it("records the signin inside the same transaction as the gacha writes", async () => {
+      await GachaService.runDailyDraw("Utx");
+
+      // 同一個 trx 物件 = 同一筆交易；轉蛋回滾時簽到跟著消失。
+      const [, opts] = signinService.recordNormal.mock.calls[0];
+      expect(opts.trx).toBe(currentTrx);
+      expect(txInserts.some(t => t.table === "gacha_record")).toBe(true);
+    });
+
+    it("evaluates the signin achievement only when a new ledger row was created", async () => {
+      await GachaService.runDailyDraw("Ufirst");
+      expect(signinService.evaluateAchievements).toHaveBeenCalledWith("Ufirst", {
+        source: "normal",
+        date: "2026-08-07",
+      });
+    });
+
+    it("skips signin achievement evaluation when the day was already signed", async () => {
+      signinService.recordNormal.mockResolvedValue({ created: false, date: "2026-08-07" });
+
+      await GachaService.runDailyDraw("Usecond");
+
+      expect(signinService.evaluateAchievements).not.toHaveBeenCalled();
+      // 轉蛋成就仍照跑 —— 每日額度內的第二抽不該被簽到狀態影響。
+      expect(AchievementEngine.evaluate).toHaveBeenCalledTimes(1);
+    });
+
+    it("merges signin unlocks with gacha unlocks in the returned unlocks array", async () => {
+      AchievementEngine.evaluate.mockResolvedValue({ unlocked: [{ key: "gacha_first" }] });
+      signinService.evaluateAchievements.mockResolvedValue({
+        unlocked: [{ key: "signin_secret" }],
+      });
+
+      const result = await GachaService.runDailyDraw("Umerge");
+
+      expect(result.unlocks.map(u => u.key)).toEqual(["gacha_first", "signin_secret"]);
+    });
+
+    it("still returns a result when signin achievement evaluation yields nothing", async () => {
+      AchievementEngine.evaluate.mockResolvedValue({ unlocked: [] });
+      signinService.evaluateAchievements.mockResolvedValue({ unlocked: undefined });
+      const result = await GachaService.runDailyDraw("Uempty");
+      expect(result.unlocks).toEqual([]);
+    });
   });
 
   it("writes one GachaRecord row and one GachaRecordDetail row per pulled character", async () => {

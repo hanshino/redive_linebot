@@ -19,7 +19,7 @@ const LineClient = getClient("line");
 const GachaModel = require("../../model/princess/gacha");
 const GachaRecord = require("../../model/princess/GachaRecord");
 const JankenResult = require("../../model/application/JankenResult");
-const SigninModel = require("../../model/application/SigninDays");
+const SigninService = require("../../service/SigninService");
 const DailyQuestModel = require("../../model/application/DailyQuest");
 const DonateModel = require("../../model/application/DonateList");
 const SubscribeUserModel = require("../../model/application/SubscribeUser");
@@ -65,6 +65,7 @@ const { resolveTierUppers } = require("../../service/chatXp/diminishTier");
 const { todayUtc8 } = require("../../util/date");
 
 const XP_HISTORY_LIFF_PATH = "/xp-history";
+const SIGNIN_LIFF_PATH = "/signin";
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
@@ -129,7 +130,7 @@ exports.showStatus = async (context, props) => {
       time("me.charTotal", () => GachaModel.getPrincessCharacterCount()),
       time("me.godStone", () => GachaModel.getUserGodStoneCount(userId)),
       time("me.janken", () => JankenResult.findUserGrade(userId)),
-      time("me.signin", () => SigninModel.first({ filter: { user_id: userId } })),
+      time("me.signin", () => SigninService.getSummary(userId)),
       getQuestInfo(userId),
       time("me.donate", () => DonateModel.getUserTotalAmount(userId)),
       time("me.subscribe", () => getSubscribeInfo(userId)),
@@ -179,7 +180,13 @@ exports.showStatus = async (context, props) => {
         janken: questInfo.janken,
         weeklyCompleted: questInfo.weeklyCompletedCount,
       },
-      signinDays: get(signinInfo, "sum_days", 0),
+      signin: {
+        streak: get(signinInfo, "streak", 0),
+        monthCount: get(signinInfo, "monthCount", 0),
+        daysInMonth: get(signinInfo, "daysInMonth", 0),
+        total: get(signinInfo, "total", 0),
+      },
+      signinUri: commonTemplate.getLiffUri("full", SIGNIN_LIFF_PATH),
       characterCurrent,
       characterTotal,
       starProgress: gachaProgress.progress,

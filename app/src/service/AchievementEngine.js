@@ -130,6 +130,25 @@ const STRATEGIES = {
     if (!contextKey || minValue === undefined) return currentValue;
     return context[contextKey] >= minValue ? achievement.target_value : currentValue;
   },
+  // Fully definition-driven strategy: the DB row's `condition` names both the
+  // event and the metric, so a new achievement needs no code change here (and
+  // its key never has to appear in this file — secret keys stay out of git).
+  conditionMetric(currentValue, achievement, context) {
+    const metric = (achievement.condition || {}).metric;
+    switch (metric) {
+      case "streak":
+        return STRATEGIES.contextValue(currentValue, achievement, context, "streak");
+      case "total":
+        return STRATEGIES.contextValue(currentValue, achievement, context, "total");
+      case "full_month":
+        return context.fullMonth ? achievement.target_value : currentValue;
+      default:
+        DefaultLogger.warn(
+          `AchievementEngine: unknown condition.metric=${metric} for achievement id=${achievement.id}`
+        );
+        return currentValue;
+    }
+  },
   timeWindow(currentValue, achievement, startHour, endHour) {
     const hour = new Date(Date.now() + 8 * 60 * 60 * 1000).getUTCHours(); // Asia/Taipei
     return hour >= startHour && hour < endHour ? achievement.target_value : currentValue;
@@ -225,6 +244,49 @@ const GODDESS_STONE_ITEM_ID = 999;
 const REDIS_TTL = 90 * 24 * 60 * 60; // 90 days
 
 /**
+ * Candidate rows for an event = the hardcoded key list (legacy events) UNION
+ * every definition whose `condition.event` names this event. The second half is
+ * what lets a new achievement ship as a DB row alone: no key here, no strategy
+ * entry, therefore no secret key or threshold committed to git.
+ *
+ * Keys that already own a hardcoded strategy are excluded from the second half:
+ * their strategy is written for their own event's context, and `resolveStrategy`
+ * prefers it over the generic one. Without this guard a DB row setting
+ * `condition.event` on such a key would drag it into a foreign event and run
+ * that strategy against the wrong context — e.g. `gacha_first` (instant, always
+ * returns target_value) would unlock on a signin. The event map stays the only
+ * way a hardcoded key gets evaluated.
+ */
+function resolveAchievements(cache, eventType) {
+  const byKey = (EVENT_ACHIEVEMENT_MAP[eventType] || [])
+    .map(key => cache.find(a => a.key === key))
+    .filter(Boolean);
+
+  const seen = new Set(byKey.map(a => a.id));
+  const byCondition = cache.filter(
+    a =>
+      a.condition &&
+      a.condition.event === eventType &&
+      !seen.has(a.id) &&
+      !ACHIEVEMENT_STRATEGY[a.key]
+  );
+
+  return [...byKey, ...byCondition];
+}
+
+/**
+ * Pick the progress strategy for one achievement: an explicit per-key entry
+ * wins; otherwise a definition carrying `condition.event` falls back to the
+ * generic metric strategy.
+ */
+function resolveStrategy(achievement) {
+  const byKey = ACHIEVEMENT_STRATEGY[achievement.key];
+  if (byKey) return byKey;
+  if (achievement.condition && achievement.condition.event) return STRATEGIES.conditionMetric;
+  return null;
+}
+
+/**
  * Evaluate achievements for a user after an event.
  * Errors are logged and swallowed, never thrown.
  * @returns {Promise<{ unlocked: Array }>} newly unlocked achievement rows (empty if none).
@@ -232,14 +294,8 @@ const REDIS_TTL = 90 * 24 * 60 * 60; // 90 days
 exports.evaluate = async (userId, eventType, context = {}) => {
   const unlocked = [];
   try {
-    const achievementKeys = EVENT_ACHIEVEMENT_MAP[eventType];
-    if (!achievementKeys || achievementKeys.length === 0) return { unlocked };
-
     const cache = await getCache();
-    const achievements = achievementKeys
-      .map(key => cache.find(a => a.key === key))
-      .filter(Boolean)
-      .filter(a => isEligible(userId, a));
+    const achievements = resolveAchievements(cache, eventType).filter(a => isEligible(userId, a));
     if (achievements.length === 0) return { unlocked };
 
     const allIds = achievements.map(a => a.id);
@@ -260,7 +316,7 @@ exports.evaluate = async (userId, eventType, context = {}) => {
     for (const achievement of candidates) {
       try {
         const currentValue = progressMap.get(achievement.id) || 0;
-        const strategy = ACHIEVEMENT_STRATEGY[achievement.key];
+        const strategy = resolveStrategy(achievement);
         const newValue = strategy ? await strategy(currentValue, achievement, ctx) : currentValue;
         if (newValue === null || newValue === currentValue) continue;
 
