@@ -1,5 +1,6 @@
 import { useReducer } from "react";
 import liff from "@line/liff";
+import { runLiffAction } from "../utils/liffAuth";
 
 const sendMsgReducer = (state, action) => {
   switch (action.type) {
@@ -23,12 +24,11 @@ export const useSendMessage = () => {
 
   const handleSend = async text => {
     dispatch({ type: "SEND_INIT" });
-    try {
-      await liff.sendMessages([{ type: "text", text }]);
-      dispatch({ type: "SEND_SUCCESS" });
-    } catch {
-      dispatch({ type: "SEND_FAIL" });
-    }
+    const result = await runLiffAction(() => liff.sendMessages([{ type: "text", text }]));
+    // A reauth result means the page is already redirecting to LINE login;
+    // don't flash an error on the way out.
+    if (result.ok) dispatch({ type: "SEND_SUCCESS" });
+    else if (!result.reauth) dispatch({ type: "SEND_FAIL" });
   };
 
   return [state, handleSend];

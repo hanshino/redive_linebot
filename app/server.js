@@ -9,9 +9,13 @@ const express = require("express");
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const { bottender } = require("bottender");
 const apiRouter = require("./src/router/api");
-const cors = require("cors");
+const { checkOriginConfig } = require("./src/service/AuthSessionService");
 const { server, http } = require("./src/util/connection");
 require("./src/router/socket");
+
+// Surfaced at boot rather than on the first rejected request — a bad
+// APP_DOMAIN fails closed and would otherwise look like a random 403 storm.
+checkOriginConfig();
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -40,7 +44,8 @@ app.prepare().then(() => {
     req.rawBody = buf.toString();
   };
 
-  server.use(cors());
+  // No CORS middleware: auth is a same-origin HttpOnly cookie, and the old
+  // wildcard `cors()` would have handed any origin a credentialed read path.
   server.use(express.json({ verify, limit: "3mb" }));
   server.use(express.urlencoded({ extended: false, verify }));
 
