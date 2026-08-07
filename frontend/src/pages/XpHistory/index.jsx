@@ -183,7 +183,9 @@ export default function XpHistory() {
         anchor="bottom"
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
-        PaperProps={{ sx: { borderTopLeftRadius: 12, borderTopRightRadius: 12, p: 2 } }}
+        slotProps={{
+          paper: { sx: { borderTopLeftRadius: 12, borderTopRightRadius: 12, p: 2 } },
+        }}
       >
         <Box
           sx={{ width: 40, height: 4, bgcolor: "divider", borderRadius: 2, mx: "auto", mb: 2 }}

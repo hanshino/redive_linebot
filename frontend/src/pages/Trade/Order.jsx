@@ -206,12 +206,15 @@ export default function TradeOrder() {
           value={charge}
           onChange={e => setCharge(e.target.value.replace(/[^0-9]/g, ""))}
           disabled={isSelf}
-          inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-          InputProps={{
-            startAdornment: <DiamondIcon sx={{ mr: 1, color: "text.secondary" }} />,
-          }}
           placeholder="輸入要求金額"
           sx={{ mt: 1 }}
+          slotProps={{
+            input: {
+              startAdornment: <DiamondIcon sx={{ mr: 1, color: "text.secondary" }} />,
+            },
+
+            htmlInput: { inputMode: "numeric", pattern: "[0-9]*" },
+          }}
         />
         <Box sx={{ display: "flex", gap: 1, mt: 1.5, flexWrap: "wrap" }}>
           {QUICK_PRICES.map(p => (

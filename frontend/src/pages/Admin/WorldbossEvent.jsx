@@ -58,7 +58,7 @@ function EditDialog({ open, onClose, onSubmit, loading: parentLoading }) {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
+      slotProps={{ paper: { sx: { borderRadius: 3 } } }}
     >
       <DialogTitle sx={{ fontWeight: 700 }}>新增世界王活動</DialogTitle>
       <DialogContent>

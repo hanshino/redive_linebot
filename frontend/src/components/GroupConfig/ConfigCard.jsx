@@ -30,7 +30,7 @@ export default function ConfigCard({ title, description, status, name, handle, i
           onChange={isLoggedIn ? handleChange : undefined}
           color="primary"
           disabled={!isLoggedIn}
-          inputProps={{ "aria-label": `toggle ${name}` }}
+          slotProps={{ input: { "aria-label": `toggle ${name}` } }}
         />
       </CardActions>
     </Card>
