@@ -65,6 +65,8 @@ const botItems = [{ label: "使用手冊", path: "/panel/manual", icon: LibraryB
 const personalItems = [
   { label: "我的群組", path: "/groups", icon: GroupsIcon },
   { label: "聊天文字雲", path: "/topics", icon: BubbleChartIcon },
+  { label: "角色交易所", path: "/trade/market", icon: ShoppingBasketIcon },
+  { label: "我的掛單", path: "/trade/my-listings", icon: ShoppingBasketIcon },
   { label: "交易管理", path: "/trade/manage", icon: ShoppingBasketIcon },
   { label: "自動設定", path: "/auto/settings", icon: AutoAwesomeIcon },
   { label: "自動行為紀錄", path: "/auto/history", icon: HistoryIcon },
