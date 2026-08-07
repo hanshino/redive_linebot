@@ -345,12 +345,23 @@ describe("achievement evaluation", () => {
     expect(AchievementEngine.evaluate).toHaveBeenCalledWith("Ualice", "signin", {
       source: "normal",
       date: TODAY,
+      month: "2026-08",
       streak: 2,
       total: 2,
       monthCount: 2,
       daysInMonth: 31,
       fullMonth: false,
     });
+  });
+
+  it("carries the current month, not the month of the back-filled date", async () => {
+    // 補簽的是過去某天，但 fullMonth 講的一律是「現在這個月」。
+    seedStones("Ualice", 50000);
+    await SigninService.makeup("Ualice", "2026-08-01");
+
+    const [, , ctx] = AchievementEngine.evaluate.mock.calls[0];
+    expect(ctx.month).toBe("2026-08");
+    expect(ctx.date).toBe("2026-08-01");
   });
 
   it("fires with source=makeup after a successful makeup", async () => {
@@ -374,5 +385,97 @@ describe("achievement evaluation", () => {
     seedStones("Ualice", 50000);
     const res = await SigninService.makeup("Ualice", "2026-08-05");
     expect(res.ok).toBe(true);
+    expect(res.unlocked).toEqual([]);
+  });
+});
+
+describe("makeup returns newly unlocked achievements", () => {
+  // 完整 DB row：makeup 回傳時必須被投影，內部欄位不得外流給前端
+  const FULL_ROW = {
+    id: 900,
+    key: "secret",
+    name: "全勤",
+    icon: "🗓",
+    rarity: 3,
+    reward_stones: 500,
+    category_key: "signin",
+    description: "秘密條件",
+    target_value: 31,
+    category_id: 4,
+    condition: { event: "signin", metric: "full_month", month: "2026-08" },
+    notify_on_unlock: true,
+    notify_message: "解鎖 {name}",
+    created_at: "2026-01-01",
+  };
+
+  it("surfaces the unlocked achievements projected to the notice shape", async () => {
+    AchievementEngine.evaluate.mockResolvedValueOnce({ unlocked: [FULL_ROW] });
+    seedStones("Ualice", 50000);
+
+    const res = await SigninService.makeup("Ualice", "2026-08-05");
+
+    expect(res.ok).toBe(true);
+    expect(res.unlocked).toEqual([
+      {
+        id: 900,
+        key: "secret",
+        name: "全勤",
+        icon: "🗓",
+        rarity: 3,
+        reward_stones: 500,
+        category_key: "signin",
+      },
+    ]);
+    // 既有欄位不得被破壞
+    expect(res.date).toBe("2026-08-05");
+    expect(res.cost).toBe(20000);
+  });
+
+  it("never leaks condition / notify_message through the makeup result", async () => {
+    AchievementEngine.evaluate.mockResolvedValueOnce({ unlocked: [FULL_ROW] });
+    seedStones("Ualice", 50000);
+
+    const res = await SigninService.makeup("Ualice", "2026-08-05");
+    const json = JSON.stringify(res);
+
+    ["condition", "notify_message", "notify_on_unlock", "category_id", "created_at"].forEach(k =>
+      expect(res.unlocked[0]).not.toHaveProperty(k)
+    );
+    expect(json).not.toContain("full_month");
+    expect(json).not.toContain("解鎖 {name}");
+    expect(json).not.toContain("秘密條件");
+  });
+
+  it("returns an empty array when nothing unlocked", async () => {
+    seedStones("Ualice", 50000);
+    const res = await SigninService.makeup("Ualice", "2026-08-05");
+    expect(res.unlocked).toEqual([]);
+  });
+
+  it("returns an empty array when the engine yields no unlocked key", async () => {
+    AchievementEngine.evaluate.mockResolvedValueOnce({});
+    seedStones("Ualice", 50000);
+    const res = await SigninService.makeup("Ualice", "2026-08-05");
+    expect(res.unlocked).toEqual([]);
+  });
+
+  it("does not attach unlocked to a rejected makeup", async () => {
+    seedStones("Ualice", 1);
+    const res = await SigninService.makeup("Ualice", "2026-08-05");
+    expect(res.ok).toBe(false);
+    expect(res.unlocked).toBeUndefined();
+  });
+
+  it("still hands raw rows to internal callers via evaluateAchievements", async () => {
+    // notifyUnlocks 需要 notify_message / notify_on_unlock，內部路徑不可被投影破壞
+    AchievementEngine.evaluate.mockResolvedValueOnce({ unlocked: [FULL_ROW] });
+
+    const res = await SigninService.evaluateAchievements("Ualice", {
+      source: "normal",
+      date: TODAY,
+    });
+
+    expect(res.unlocked[0]).toHaveProperty("notify_message", "解鎖 {name}");
+    expect(res.unlocked[0]).toHaveProperty("notify_on_unlock", true);
   });
 });

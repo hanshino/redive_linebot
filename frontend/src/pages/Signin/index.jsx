@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   ButtonBase,
@@ -12,15 +13,18 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
   LinearProgress,
   Paper,
   Skeleton,
+  Snackbar,
   Stack,
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
@@ -31,6 +35,7 @@ import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
+import { CATEGORY_ICONS, RARITY_CONFIG } from "../Achievement/constants";
 
 // Backend day boundary is Asia/Taipei (UTC+8) — same convention as
 // pages/XpHistory/dateTpe.js. Parse the API's ISO date at +08:00 and read the
@@ -261,6 +266,102 @@ function Legend() {
   );
 }
 
+/* ---------- achievement unlock toast ---------- */
+
+// POST /api/me/signins/makeup returns the calendar payload with `ok` /
+// `created` as siblings (see the API contract) — `unlocked` arrives the same
+// way, a top-level array of achievement rows, not nested in a wrapper.
+function readUnlocked(payload) {
+  const list = payload && payload.unlocked;
+  return Array.isArray(list) ? list.filter(Boolean) : [];
+}
+
+function UnlockRow({ achievement }) {
+  const rarity = RARITY_CONFIG[achievement.rarity] || RARITY_CONFIG[0];
+  // Keys of signin achievements are intentionally not in the frontend, so the
+  // icon resolves from the row's own emoji first, then the category fallback.
+  const FallbackIcon = CATEGORY_ICONS[achievement.category_key] || EmojiEventsIcon;
+  const reward = Number(achievement.reward_stones) || 0;
+
+  return (
+    <Stack direction="row" spacing={1.25} sx={{ alignItems: "center" }}>
+      <Avatar
+        variant="rounded"
+        sx={{
+          width: 36,
+          height: 36,
+          flexShrink: 0,
+          bgcolor: rarity.bg,
+          color: rarity.color,
+          fontSize: 18,
+        }}
+      >
+        {achievement.icon || <FallbackIcon sx={{ fontSize: 20 }} />}
+      </Avatar>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>
+          {achievement.name}
+        </Typography>
+        <Typography variant="caption" sx={{ color: rarity.color, fontWeight: 600 }}>
+          {rarity.label}
+        </Typography>
+      </Box>
+      {reward > 0 && (
+        <Chip
+          size="small"
+          icon={<DiamondIcon sx={{ fontSize: "0.85rem !important" }} />}
+          label={`+${num(reward)}`}
+          sx={{ flexShrink: 0, fontWeight: 700, height: 22, fontSize: "0.72rem" }}
+        />
+      )}
+    </Stack>
+  );
+}
+
+function UnlockToast({ items, onClose }) {
+  const count = items.length;
+  // Long enough to read every row, short enough not to camp on the calendar.
+  const duration = Math.min(4500 + count * 1800, 10000);
+
+  return (
+    <Snackbar
+      open={count > 0}
+      autoHideDuration={duration}
+      onClose={(_, reason) => reason !== "clickaway" && onClose()}
+      anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      sx={{ maxWidth: "min(420px, calc(100vw - 32px))" }}
+    >
+      <Paper
+        elevation={8}
+        role="status"
+        aria-live="polite"
+        sx={{
+          width: "100%",
+          p: 1.75,
+          borderRadius: 3,
+          borderTop: 4,
+          borderTopColor: "secondary.main",
+        }}
+      >
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1.25 }}>
+          <EmojiEventsIcon sx={{ fontSize: 20, color: "secondary.main" }} />
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
+            {count > 1 ? `補簽成功，解鎖 ${count} 項成就！` : "補簽成功，還解鎖了新成就！"}
+          </Typography>
+          <IconButton size="small" onClick={onClose} aria-label="關閉成就通知">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+        <Stack spacing={1.25} sx={{ maxHeight: 200, overflowY: "auto" }}>
+          {items.map(a => (
+            <UnlockRow key={a.id ?? a.key ?? a.name} achievement={a} />
+          ))}
+        </Stack>
+      </Paper>
+    </Snackbar>
+  );
+}
+
 /* ---------- page ---------- */
 
 export default function Signin() {
@@ -271,6 +372,7 @@ export default function Signin() {
   const [target, setTarget] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [dialogError, setDialogError] = useState("");
+  const [unlocked, setUnlocked] = useState([]);
   const [hint, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
 
   useEffect(() => {
@@ -332,13 +434,22 @@ export default function Signin() {
       .then(res => {
         setData(res.data);
         setTarget(null);
-        showHint(`已補簽 ${fullDateLabel(target)}`, "success");
+        const unlocks = readUnlocked(res.data);
+        // One toast at a time: the unlock card already says 補簽成功, so the
+        // plain hint would just fight it for the same corner.
+        if (unlocks.length) {
+          closeHint();
+          setUnlocked(unlocks);
+        } else {
+          showHint(`已補簽 ${fullDateLabel(target)}`, "success");
+        }
       })
       .catch(err => {
         const code = err?.response?.data?.code;
         const message = ERROR_MSG[code] || err?.response?.data?.message || "補簽失敗，請稍後再試。";
         if (code === "ALREADY_SIGNED") {
           setTarget(null);
+          setUnlocked([]);
           showHint(message, "warning");
           load();
           return;
@@ -626,6 +737,8 @@ export default function Signin() {
         severity={hint.severity}
         onClose={closeHint}
       />
+
+      <UnlockToast items={unlocked} onClose={() => setUnlocked([])} />
     </Box>
   );
 }

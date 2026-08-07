@@ -3,6 +3,7 @@ const mysql = require("../util/mysql");
 const { todayUtc8 } = require("../util/date");
 const gacha = require("../model/princess/gacha");
 const AchievementEngine = require("./AchievementEngine");
+const { toUnlockNoticeList } = require("./achievementPublicView");
 const { DefaultLogger } = require("../util/Logger");
 
 const TABLE = "signin_ledger";
@@ -106,7 +107,8 @@ async function recordNormal(userId, options = {}) {
  *
  * @param {String} userId
  * @param {String} date YYYY-MM-DD
- * @returns {Promise<{ok: Boolean, code?: String, date?: String, cost?: Number, balance?: Number}>}
+ * @returns {Promise<{ok: Boolean, code?: String, date?: String, cost?: Number,
+ *   balance?: Number, unlocked?: Array}>}
  */
 async function makeup(userId, date) {
   if (!isValidDate(date)) return { ok: false, code: "INVALID_DATE" };
@@ -161,9 +163,12 @@ async function makeup(userId, date) {
     throw e;
   }
 
-  await evaluateAchievements(userId, { source: "makeup", date });
+  // evaluateAchievements 自己吞例外並回 { unlocked: [] }，補簽本身已經 commit，
+  // 成就掛掉不該讓呼叫端以為補簽失敗。
+  // 這裡是給前端的出口，投影成 unlock notice —— 不得帶出 condition / notify_message。
+  const { unlocked } = await evaluateAchievements(userId, { source: "makeup", date });
 
-  return { ok: true, date, cost: MAKEUP_COST };
+  return { ok: true, date, cost: MAKEUP_COST, unlocked: toUnlockNoticeList(unlocked) };
 }
 
 /**
@@ -250,6 +255,10 @@ async function evaluateAchievements(userId, meta) {
     return await AchievementEngine.evaluate(userId, "signin", {
       source: meta.source,
       date: meta.date,
+      // 當前月份（UTC+8 的 YYYY-MM）—— 讓 definition 能用 condition.month 綁定
+      // 特定月份的全勤成就。不從 meta.date 推導：補簽的是過去某天，
+      // 但 fullMonth 講的一律是「現在這個月」，兩者混用會在跨月時給錯月份。
+      month: summary.month,
       streak: summary.streak,
       total: summary.total,
       monthCount: summary.monthCount,

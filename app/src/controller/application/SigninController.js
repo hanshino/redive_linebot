@@ -35,8 +35,14 @@ exports.apiMakeup = async (req, res) => {
     }
 
     // 成功回傳最新月曆，前端不必再打一次 GET。
+    // unlocked 為本次補簽新解鎖的成就（可能為空陣列），讓前端直接跳慶祝動畫。
     const payload = await SigninService.getCalendar(userId);
-    res.json({ ...payload, ok: true, created: { date: result.date, cost: result.cost } });
+    res.json({
+      ...payload,
+      ok: true,
+      created: { date: result.date, cost: result.cost },
+      unlocked: result.unlocked || [],
+    });
   } catch (e) {
     DefaultLogger.error("[me/signins/makeup]", e);
     res.status(500).json({ error: "internal_error" });
