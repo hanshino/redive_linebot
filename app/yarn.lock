@@ -3391,9 +3391,9 @@ fast-safe-stringify@^2.1.1:
   integrity sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==
 
 fast-uri@^3.0.1, fast-uri@^3.1.2:
-  version "3.1.2"
-  resolved "https://registry.yarnpkg.com/fast-uri/-/fast-uri-3.1.2.tgz#8af3d4fc9d3e71b11572cc2673b514a7d1a8c8ec"
-  integrity sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==
+  version "3.1.5"
+  resolved "https://registry.yarnpkg.com/fast-uri/-/fast-uri-3.1.5.tgz#610f37419a030270430cecd68d74e3d4d96725d0"
+  integrity sha512-gHwA1O9LDIcKunMKhObS/HimwtehO1nPUECKAu5TpKgaO19fcWEl4bliWe1jWxVFvIXztJjjQ4L8XQ1EU9f7Jw==
 
 fb-watchman@^2.0.2:
   version "2.0.2"
@@ -4162,9 +4162,9 @@ ioredis@^4.27.9:
     standard-as-callback "^2.1.0"
 
 ip-address@^10.2.0:
-  version "10.2.0"
-  resolved "https://registry.yarnpkg.com/ip-address/-/ip-address-10.2.0.tgz#805fc178b20c518bd4c8548b24fe30892d7f3206"
-  integrity sha512-/+S6j4E9AHvW9SWMSEY9Xfy66O5PWvVEJ08O0y5JGyEKQpojb0K0GKpz/v5HJ/G0vi3D2sjGK78119oXZeE0qA==
+  version "10.4.0"
+  resolved "https://registry.yarnpkg.com/ip-address/-/ip-address-10.4.0.tgz#c5910bc541b6eae287765d1e4846be0308a05d93"
+  integrity sha512-oSK96Grm3aP6OrS263xVxbNDGVL7rzBtYdpGqlDG8iQdoenDoTs/nkki+DflYbAEE8Xl6o5YxhxlrKvI3nqKXQ==
 
 ipaddr.js@1.9.1:
   version "1.9.1"
@@ -6037,9 +6037,9 @@ process@^0.11.10:
   integrity sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==
 
 protobufjs@^7.5.4:
-  version "7.6.4"
-  resolved "https://registry.yarnpkg.com/protobufjs/-/protobufjs-7.6.4.tgz#8bb000300026efd63eb7951d26e5dbb38f5658f2"
-  integrity sha512-RJJPTTpvFfHcWLkIa2JFWK4XvtSzS0yEWDmunqHXli1h3JlkbcQZXDZdcWxv+JK3Xsl5/UFDPZ0iGm7DAengYw==
+  version "7.6.5"
+  resolved "https://registry.yarnpkg.com/protobufjs/-/protobufjs-7.6.5.tgz#7b9250cdaf4a06139a9f0fe468a40d7d4febca71"
+  integrity sha512-/FPD0nUc9jH6rfFjji9IBqOz4pcSE3CsT1m7Ep6Mdb0LxSUMj8hgl6GomOvZzpNpAqqGaXA0P3VSrZLFzIhQrw==
   dependencies:
     "@protobufjs/aspromise" "^1.1.2"
     "@protobufjs/base64" "^1.1.2"
@@ -6673,9 +6673,9 @@ socket.io-adapter@~2.5.2:
     ws "~8.18.3"
 
 socket.io-parser@~4.2.4:
-  version "4.2.6"
-  resolved "https://registry.yarnpkg.com/socket.io-parser/-/socket.io-parser-4.2.6.tgz#19156bf179af3931abd05260cfb1491822578a6f"
-  integrity sha512-asJqbVBDsBCJx0pTqw3WfesSY0iRX+2xzWEWzrpcH7L6fLzrhyF8WPI8UaeM4YCuDfpwA/cgsdugMsmtz8EJeg==
+  version "4.2.7"
+  resolved "https://registry.yarnpkg.com/socket.io-parser/-/socket.io-parser-4.2.7.tgz#679e51fe24d1c81df90fc5f7efe4a5f432fe99c0"
+  integrity sha512-IH/iSeO9T6gz1KkFleGDWkG9N3dl4jXVYUtMhIqH10Md0ttMer8nUNWiP1DKuNrybD2xBrixLJdCC9J6ECoYkg==
   dependencies:
     "@socket.io/component-emitter" "~3.1.0"
     debug "~4.4.1"
@@ -7246,9 +7246,9 @@ undici-types@~7.19.0:
   integrity sha512-qYVnV5OEm2AW8cJMCpdV20CDyaN3g0AjDlOGf1OW4iaDEx8MwdtChUp4zu4H0VP3nDRF/8RKWH+IPp9uW0YGZg==
 
 undici@^7.19.0, undici@^7.28.0:
-  version "7.28.0"
-  resolved "https://registry.yarnpkg.com/undici/-/undici-7.28.0.tgz#97d64564198b285bc281f0e8e29597e3d11fe7ec"
-  integrity sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==
+  version "7.29.0"
+  resolved "https://registry.yarnpkg.com/undici/-/undici-7.29.0.tgz#ae0f6f62e06e057a9cbb7b2b5fde2bb74f791b8f"
+  integrity sha512-IDxfleLmmbSskfWSUATiN1nfn2rDuvnMOqb5CWR92iIfojA0Ud+ulOAAEQ57LPr9rWmsreUyf5lwyao+7GNNVw==
 
 unique-string@^2.0.0:
   version "2.0.0"
