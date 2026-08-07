@@ -29,11 +29,23 @@ exports.isUnlocked = async (userId, achievementId) => {
   return !!row;
 };
 
+/**
+ * Idempotent unlock. Returns whether this call is the one that actually
+ * inserted the row — two concurrent evaluate() passes both reach here, but
+ * INSERT IGNORE only lets one through, and only that one may pay the reward.
+ *
+ * knex.raw resolves to [ResultSetHeader, fields]; affectedRows is 1 on insert
+ * and 0 when the unique key made MySQL ignore it.
+ *
+ * @returns {Promise<Boolean>} true when a new row was created
+ */
 exports.unlock = async (userId, achievementId) => {
-  return mysql.raw(`INSERT IGNORE INTO ${TABLE} (user_id, achievement_id) VALUES (?, ?)`, [
-    userId,
-    achievementId,
-  ]);
+  const result = await mysql.raw(
+    `INSERT IGNORE INTO ${TABLE} (user_id, achievement_id) VALUES (?, ?)`,
+    [userId, achievementId]
+  );
+  const header = Array.isArray(result) ? result[0] : result;
+  return Number(header && header.affectedRows) > 0;
 };
 
 exports.getUnlockedIds = async (userId, achievementIds) => {

@@ -39,13 +39,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-
-const RARITY_CONFIG = {
-  0: { label: "普通", color: "#757575", bg: "#f5f5f5" },
-  1: { label: "稀有", color: "#6c5ce7", bg: "#ede7f6" },
-  2: { label: "史詩", color: "#b8860b", bg: "#fff8e1" },
-  3: { label: "傳說", color: "#d63384", bg: "#fce4ec" },
-};
+import { RARITY_CONFIG, CATEGORY_ICONS } from "./constants";
 
 const ACHIEVEMENT_ICONS = {
   chat_100: ChatBubbleOutlineIcon,
@@ -77,15 +71,6 @@ const ACHIEVEMENT_ICONS = {
   subscribe_6: DiamondIcon,
   subscribe_12: AccountBalanceIcon,
   legacy_pioneer: AccountBalanceIcon,
-};
-
-const CATEGORY_ICONS = {
-  chat: ChatBubbleOutlineIcon,
-  gacha: CatchingPokemonIcon,
-  janken: GavelIcon,
-  world_boss: ShieldIcon,
-  social: PeopleIcon,
-  subscribe: CardGiftcardIcon,
 };
 
 const CARD_HEIGHT = 180;

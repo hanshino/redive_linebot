@@ -5,6 +5,8 @@ const CategoryModel = require("../model/application/AchievementCategory");
 const { DefaultLogger } = require("../util/Logger");
 const mysql = require("../util/mysql");
 const redis = require("../util/redis");
+const { todayUtc8 } = require("../util/date");
+const { toPublic, toPublicList } = require("./achievementPublicView");
 const { LV_MAX_TOTAL_EXP } = require("../../seeds/ChatExpUnitSeeder");
 
 // --- In-memory cache for achievement definitions (24 rows, rarely changes) ---
@@ -28,8 +30,17 @@ exports._setCache = data => {
 // Shared by evaluate() and getUserSummary() so ineligible rows are filtered
 // from both the unlock path and the collection-rate denominator.
 function isEligible(userId, achievement) {
-  const eligibility =
-    (achievement && achievement.condition && achievement.condition.eligibility) || null;
+  const condition = (achievement && achievement.condition) || null;
+
+  // `availableFrom` (YYYY-MM-DD, Asia/Taipei) hides a not-yet-released row from
+  // both the unlock path and the completion-rate denominator — otherwise a
+  // future achievement would drag everyone's percentage down before it exists.
+  // There is deliberately no `availableUntil`: once live, a row stays live, so
+  // an already-unlocked achievement can never vanish from a user's collection.
+  const availableFrom = condition && condition.availableFrom;
+  if (availableFrom && todayUtc8() < availableFrom) return false;
+
+  const eligibility = (condition && condition.eligibility) || null;
   if (!eligibility) return true;
   const include = Array.isArray(eligibility.includeUserIds) ? eligibility.includeUserIds : null;
   const exclude = Array.isArray(eligibility.excludeUserIds) ? eligibility.excludeUserIds : [];
@@ -134,13 +145,19 @@ const STRATEGIES = {
   // event and the metric, so a new achievement needs no code change here (and
   // its key never has to appear in this file — secret keys stay out of git).
   conditionMetric(currentValue, achievement, context) {
-    const metric = (achievement.condition || {}).metric;
+    const condition = achievement.condition || {};
+    const metric = condition.metric;
     switch (metric) {
       case "streak":
         return STRATEGIES.contextValue(currentValue, achievement, context, "streak");
       case "total":
         return STRATEGIES.contextValue(currentValue, achievement, context, "total");
       case "full_month":
+        // `condition.month` (YYYY-MM) pins a full-month achievement to one
+        // specific month. streak/total are cumulative and deliberately NOT
+        // gated: only the month-shaped metric can be month-specific.
+        // No `month` set = any month counts.
+        if (condition.month && context.month !== condition.month) return currentValue;
         return context.fullMonth ? achievement.target_value : currentValue;
       default:
         DefaultLogger.warn(
@@ -347,8 +364,10 @@ exports.evaluate = async (userId, eventType, context = {}) => {
     // deletes the progress row, and is order-sensitive, so it is not batched.
     for (const achievement of toUnlock) {
       try {
-        await unlockAchievement(userId, achievement);
-        unlocked.push(achievement);
+        // Only push when this pass actually won the INSERT IGNORE race —
+        // otherwise a concurrent evaluate would re-notify an old unlock.
+        const created = await unlockAchievement(userId, achievement);
+        if (created) unlocked.push(achievement);
       } catch (innerErr) {
         DefaultLogger.error(
           `AchievementEngine.evaluate unlock error for key ${achievement.key}:`,
@@ -373,9 +392,28 @@ async function handleTrackedSet(userId, achievementId, newItem, currentValue) {
   return currentValue + 1;
 }
 
+/**
+ * Award one achievement. Returns false when another concurrent pass already
+ * inserted the row — the caller must then NOT treat it as newly unlocked.
+ *
+ * The INSERT IGNORE is the concurrency gate: only the writer that actually
+ * created the row credits stones. Without this, two evaluate() passes racing
+ * on the same achievement each saw "not unlocked yet" during phase 1 and both
+ * paid the reward.
+ *
+ * @returns {Promise<Boolean>} true when this call performed the unlock
+ */
 async function unlockAchievement(userId, achievement) {
-  await UserAchievementModel.unlock(userId, achievement.id);
+  const created = await UserAchievementModel.unlock(userId, achievement.id);
+  // Progress row is dead weight once unlocked, regardless of who won the race.
   await UserProgressModel.delete(userId, achievement.id);
+
+  if (!created) {
+    DefaultLogger.info(
+      `Achievement ${achievement.key} for user ${userId} already unlocked by a concurrent pass; skipping reward`
+    );
+    return false;
+  }
 
   if (achievement.reward_stones > 0) {
     // Append a new ledger row — balance is SUM(itemAmount) across rows.
@@ -392,6 +430,7 @@ async function unlockAchievement(userId, achievement) {
   DefaultLogger.info(
     `Achievement unlocked: ${achievement.key} for user ${userId} (+${achievement.reward_stones} stones)`
   );
+  return true;
 }
 
 exports.getUserSummary = async userId => {
@@ -430,22 +469,29 @@ exports.getUserSummary = async userId => {
       ...cat,
       total: catAchievements.length,
       unlocked: catUnlocked.length,
-      achievements: catAchievements.map(a => ({
-        ...a,
-        isUnlocked: unlockedIds.has(a.id),
-        currentValue: progressMap[a.id] || 0,
-        unlockedAt: (unlocked.find(u => u.id === a.id) || {}).unlocked_at || null,
-      })),
+      achievements: catAchievements.map(a =>
+        toPublic({
+          ...a,
+          isUnlocked: unlockedIds.has(a.id),
+          currentValue: progressMap[a.id] || 0,
+          unlockedAt: (unlocked.find(u => u.id === a.id) || {}).unlocked_at || null,
+        })
+      ),
     };
   });
 
+  // getUserSummary is the shared exit for the LIFF achievement page, the
+  // `/api/achievements/user/:userId` endpoint and the LINE flex card, so the
+  // projection lives here rather than in each caller. The flex template only
+  // reads allowlisted fields (icon/name/rarity/unlocked_at/current_value/
+  // target_value/percentage), so it is unaffected.
   return {
     total,
     unlocked: unlockedCount,
     percentage: total > 0 ? Math.round((unlockedCount / total) * 100) : 0,
     categories: categorySummary,
-    recentUnlocks,
-    nearCompletion,
+    recentUnlocks: toPublicList(recentUnlocks),
+    nearCompletion: toPublicList(nearCompletion),
     profile: userProfile
       ? { displayName: userProfile.display_name, pictureUrl: userProfile.picture_url }
       : null,
@@ -481,7 +527,11 @@ exports.unlockByKey = async (userId, key) => {
     if (unlockedIds.has(achievement.id)) {
       return { unlocked: false, reason: "already_unlocked" };
     }
-    await unlockAchievement(userId, achievement);
+    // The pre-check above is only a fast path; the INSERT IGNORE result is the
+    // authority, so a racing caller reports already_unlocked instead of a
+    // second unlock (and never gets a duplicate reward).
+    const created = await unlockAchievement(userId, achievement);
+    if (!created) return { unlocked: false, reason: "already_unlocked" };
     return { unlocked: true, achievement };
   } catch (err) {
     DefaultLogger.error(`AchievementEngine.unlockByKey error for ${key}:`, err);

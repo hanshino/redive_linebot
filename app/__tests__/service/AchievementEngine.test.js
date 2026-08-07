@@ -8,7 +8,8 @@ jest.mock("../../src/model/application/Achievement", () => ({
 jest.mock("../../src/model/application/UserAchievement", () => ({
   findByUser: jest.fn(),
   isUnlocked: jest.fn(),
-  unlock: jest.fn(),
+  // unlock 回傳「這次是否真的 INSERT」；預設為 true（贏得 race）
+  unlock: jest.fn().mockResolvedValue(true),
   countByUser: jest.fn(),
   getRecentByUser: jest.fn(),
   getUnlockedIds: jest.fn().mockResolvedValue(new Set()),
@@ -32,6 +33,13 @@ jest.mock("../../src/util/Logger", () => ({
 jest.mock("../../src/util/redis", () => ({
   get: jest.fn().mockResolvedValue(null),
   set: jest.fn().mockResolvedValue("OK"),
+}));
+// availableFrom 以台灣日期比對；固定「今天」才能穩定測到期前/後兩側。
+jest.mock("../../src/util/date", () => ({
+  todayUtc8: jest.fn(() => "2026-08-07"),
+  yesterdayUtc8: jest.fn(),
+  toUtc8Date: jest.fn(),
+  daysAgoUtc8: jest.fn(),
 }));
 jest.mock("../../src/util/mysql", () => {
   const mockChain = () => ({
@@ -64,6 +72,9 @@ const CACHE_DATA = [
 describe("AchievementEngine", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // clearAllMocks 會清掉 mock 的預設回傳值；unlock 現在的契約是
+    // 「回傳這次是否真的 INSERT」，預設要是 true，否則所有解鎖都會被當成 race 輸家。
+    UserAchievementModel.unlock.mockResolvedValue(true);
     // Force cache refresh by mocking allWithCategories — getCache() will call it
     AchievementEngine._setCache(null);
     AchievementModel.allWithCategories.mockResolvedValue(CACHE_DATA);
@@ -115,7 +126,7 @@ describe("AchievementEngine", () => {
         ])
       );
       UserProgressModel.upsert.mockResolvedValue();
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
 
       await AchievementEngine.evaluate("user1", "chat_message", {});
@@ -179,7 +190,7 @@ describe("AchievementEngine", () => {
         ])
       );
       UserProgressModel.upsertMany.mockRejectedValueOnce(new Error("deadlock"));
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
 
       const result = await AchievementEngine.evaluate("user1", "chat_message", {});
@@ -208,7 +219,7 @@ describe("AchievementEngine", () => {
       );
       // First unlock (id1) blows up inside unlockAchievement; second must survive.
       UserAchievementModel.unlock.mockRejectedValueOnce(new Error("write conflict"));
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
 
       const result = await AchievementEngine.evaluate("user1", "chat_message", {});
@@ -258,7 +269,7 @@ describe("AchievementEngine", () => {
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
       UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[2, 99]]));
       UserProgressModel.upsert.mockResolvedValue();
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
       mysql.mockImplementationOnce(() => ({
         where: jest.fn().mockReturnThis(),
@@ -286,7 +297,7 @@ describe("AchievementEngine", () => {
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
       UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[2, 99]]));
       UserProgressModel.upsert.mockResolvedValue();
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
       const insert = jest.fn().mockResolvedValue();
       const update = jest.fn().mockResolvedValue(99);
@@ -330,6 +341,107 @@ describe("AchievementEngine", () => {
     });
   });
 
+  describe("concurrent unlock (INSERT IGNORE race)", () => {
+    const achievement = {
+      id: 7,
+      key: "chat_100",
+      target_value: 100,
+      reward_stones: 50,
+      notify_on_unlock: true,
+      notify_message: null,
+      condition: null,
+    };
+
+    let insert;
+    beforeEach(() => {
+      AchievementEngine._setCache([achievement]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map([[7, 99]]));
+      UserProgressModel.delete.mockResolvedValue();
+      insert = jest.fn().mockResolvedValue();
+      mysql.mockImplementation(() => ({
+        where: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue(null),
+        insert,
+      }));
+    });
+
+    afterEach(() => {
+      mysql.mockImplementation(() => ({
+        insert: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        whereIn: jest.fn().mockReturnThis(),
+        update: jest.fn().mockResolvedValue(1),
+        first: jest.fn().mockResolvedValue(undefined),
+        select: jest.fn().mockReturnThis(),
+      }));
+    });
+
+    it("credits stones and reports the unlock when the INSERT won (affectedRows=1)", async () => {
+      UserAchievementModel.unlock.mockResolvedValue(true);
+
+      const result = await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      expect(result.unlocked.map(a => a.id)).toEqual([7]);
+      expect(insert).toHaveBeenCalledTimes(1);
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "user1", itemId: 999, itemAmount: 50 })
+      );
+    });
+
+    it("pays nothing and reports no unlock when another pass won (affectedRows=0)", async () => {
+      UserAchievementModel.unlock.mockResolvedValue(false);
+
+      const result = await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      // 併發下的輸家：不得重複發獎，也不得再送一次解鎖通知
+      expect(result.unlocked).toEqual([]);
+      expect(insert).not.toHaveBeenCalled();
+      expect(DefaultLogger.error).not.toHaveBeenCalled();
+    });
+
+    it("still clears the progress row for the losing pass", async () => {
+      UserAchievementModel.unlock.mockResolvedValue(false);
+
+      await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      // progress 已無意義，不論誰贏都該清掉
+      expect(UserProgressModel.delete).toHaveBeenCalledWith("user1", 7);
+    });
+
+    it("unlockByKey reports already_unlocked and pays nothing when it loses the race", async () => {
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserAchievementModel.unlock.mockResolvedValue(false);
+
+      const result = await AchievementEngine.unlockByKey("user1", "chat_100");
+
+      expect(result).toEqual({ unlocked: false, reason: "already_unlocked" });
+      expect(insert).not.toHaveBeenCalled();
+    });
+
+    it("unlockByKey pays exactly once when it wins the race", async () => {
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserAchievementModel.unlock.mockResolvedValue(true);
+
+      const result = await AchievementEngine.unlockByKey("user1", "chat_100");
+
+      expect(result.unlocked).toBe(true);
+      expect(insert).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not credit stones twice across two sequential evaluate passes", async () => {
+      // 第一次贏、第二次輸（真實 INSERT IGNORE 的行為）
+      UserAchievementModel.unlock.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+      const first = await AchievementEngine.evaluate("user1", "chat_message", {});
+      const second = await AchievementEngine.evaluate("user1", "chat_message", {});
+
+      expect(first.unlocked).toHaveLength(1);
+      expect(second.unlocked).toHaveLength(0);
+      expect(insert).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("mention_keyword event", () => {
     const baseAchievement = {
       id: 99,
@@ -348,7 +460,7 @@ describe("AchievementEngine", () => {
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
       UserProgressModel.getProgress.mockResolvedValue(null);
       UserProgressModel.upsert.mockResolvedValue();
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
       mysql.mockReturnValue({
         where: jest.fn().mockReturnThis(),
@@ -474,7 +586,7 @@ describe("AchievementEngine", () => {
     beforeEach(() => {
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
       UserProgressModel.getProgressByIds.mockResolvedValue(new Map());
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
       mysql.mockImplementation(() => ({
         where: jest.fn().mockReturnThis(),
@@ -651,6 +763,132 @@ describe("AchievementEngine", () => {
 
       expect(result.unlocked.map(a => a.id)).toEqual([900]);
     });
+
+    describe("condition.month", () => {
+      const fullMonthCtx = (month, fullMonth = true) => ({
+        source: "normal",
+        month,
+        fullMonth,
+        monthCount: 31,
+        daysInMonth: 31,
+        streak: 31,
+        total: 31,
+      });
+
+      it("completes full_month when context.month matches", async () => {
+        AchievementEngine._setCache([makeDef("full_month", 1, { month: "2026-08" })]);
+
+        const result = await AchievementEngine.evaluate(
+          "Ualice",
+          "signin",
+          fullMonthCtx("2026-08")
+        );
+
+        expect(result.unlocked.map(a => a.id)).toEqual([900]);
+      });
+
+      it("does not complete full_month when context.month differs", async () => {
+        AchievementEngine._setCache([makeDef("full_month", 1, { month: "2026-08" })]);
+
+        const result = await AchievementEngine.evaluate(
+          "Ualice",
+          "signin",
+          fullMonthCtx("2026-09")
+        );
+
+        expect(result.unlocked).toEqual([]);
+        expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
+        expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+      });
+
+      it("does not complete a month-pinned full_month when the month is not yet full", async () => {
+        AchievementEngine._setCache([makeDef("full_month", 1, { month: "2026-08" })]);
+
+        const result = await AchievementEngine.evaluate(
+          "Ualice",
+          "signin",
+          fullMonthCtx("2026-08", false)
+        );
+
+        expect(result.unlocked).toEqual([]);
+      });
+
+      it("accepts any month when condition.month is absent", async () => {
+        AchievementEngine._setCache([makeDef("full_month", 1)]);
+
+        const result = await AchievementEngine.evaluate(
+          "Ualice",
+          "signin",
+          fullMonthCtx("2029-12")
+        );
+
+        expect(result.unlocked.map(a => a.id)).toEqual([900]);
+      });
+
+      it("does not gate streak on condition.month", async () => {
+        // streak 是累積型，綁月份沒有意義；即使 row 上帶了 month 也不該擋。
+        AchievementEngine._setCache([makeDef("streak", 5, { month: "2026-01" })]);
+
+        const result = await AchievementEngine.evaluate("Ualice", "signin", {
+          month: "2026-08",
+          streak: 5,
+        });
+
+        expect(result.unlocked.map(a => a.id)).toEqual([900]);
+      });
+
+      it("does not gate total on condition.month", async () => {
+        AchievementEngine._setCache([makeDef("total", 10, { month: "2026-01" })]);
+
+        const result = await AchievementEngine.evaluate("Ualice", "signin", {
+          month: "2026-08",
+          total: 10,
+        });
+
+        expect(result.unlocked.map(a => a.id)).toEqual([900]);
+      });
+    });
+
+    describe("condition.availableFrom", () => {
+      it("excludes a row whose availableFrom is still in the future", async () => {
+        AchievementEngine._setCache([makeDef("streak", 1, { availableFrom: "2026-08-08" })]);
+
+        const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 99 });
+
+        expect(result.unlocked).toEqual([]);
+        expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
+        expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+      });
+
+      it("includes a row on its availableFrom day (boundary is inclusive)", async () => {
+        AchievementEngine._setCache([makeDef("streak", 1, { availableFrom: "2026-08-07" })]);
+
+        const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 1 });
+
+        expect(result.unlocked.map(a => a.id)).toEqual([900]);
+      });
+
+      it("includes a row whose availableFrom has passed", async () => {
+        AchievementEngine._setCache([makeDef("streak", 1, { availableFrom: "2026-01-01" })]);
+
+        const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 1 });
+
+        expect(result.unlocked.map(a => a.id)).toEqual([900]);
+      });
+
+      it("still applies the eligibility gate alongside availableFrom", async () => {
+        AchievementEngine._setCache([
+          makeDef("streak", 1, {
+            availableFrom: "2026-01-01",
+            eligibility: { excludeUserIds: ["Ualice"] },
+          }),
+        ]);
+
+        const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 9 });
+
+        expect(result.unlocked).toEqual([]);
+      });
+    });
   });
 
   describe("getUserSummary", () => {
@@ -711,6 +949,151 @@ describe("AchievementEngine", () => {
       expect(plebSummary.total).toBe(2);
       expect(plebSummary.categories[0].achievements.map(a => a.key)).toEqual(["a1", "a2"]);
     });
+
+    it("keeps unreleased (availableFrom) rows out of the completion denominator", async () => {
+      // 今天固定為 2026-08-07。未上線的成就若算進分母，所有人的完成率會先被稀釋。
+      AchievementModel.allWithCategories.mockResolvedValue([
+        { id: 1, key: "live1", name: "L1", category_key: "social", condition: null },
+        {
+          id: 2,
+          key: "live2",
+          name: "L2",
+          category_key: "social",
+          condition: { availableFrom: "2026-08-07" },
+        },
+        {
+          id: 3,
+          key: "unreleased",
+          name: "U",
+          category_key: "social",
+          condition: { availableFrom: "2026-09-01" },
+        },
+      ]);
+      CategoryModel.all.mockResolvedValue([{ id: 1, key: "social", name: "社交" }]);
+      UserAchievementModel.findByUser.mockResolvedValue([
+        { id: 1, key: "live1", name: "L1", unlocked_at: new Date() },
+      ]);
+      UserProgressModel.findByUser.mockResolvedValue([]);
+      UserAchievementModel.getRecentByUser.mockResolvedValue([]);
+      UserProgressModel.getNearCompletion.mockResolvedValue([]);
+
+      const summary = await AchievementEngine.getUserSummary("Ualice");
+
+      expect(summary.total).toBe(2);
+      expect(summary.percentage).toBe(50);
+      expect(summary.categories[0].achievements.map(a => a.key)).toEqual(["live1", "live2"]);
+    });
+
+    describe("public projection", () => {
+      const SECRET_ROW = {
+        id: 1,
+        key: "secret_key",
+        name: "秘密成就",
+        description: "描述",
+        icon: "🗝",
+        type: "hidden",
+        rarity: 3,
+        target_value: 30,
+        reward_stones: 500,
+        order: 1,
+        category_key: "signin",
+        category_name: "簽到",
+        category_icon: "🗓",
+        // 以下皆為內部欄位，絕不可外流
+        category_id: 9,
+        condition: { event: "signin", metric: "streak", month: "2026-08" },
+        notify_on_unlock: true,
+        notify_message: "解鎖秘密成就 {name}",
+        created_at: "2026-01-01",
+        updated_at: "2026-01-02",
+      };
+
+      const PRIVATE_KEYS = [
+        "condition",
+        "notify_message",
+        "notify_on_unlock",
+        "category_id",
+        "created_at",
+        "updated_at",
+      ];
+
+      beforeEach(() => {
+        AchievementModel.allWithCategories.mockResolvedValue([SECRET_ROW]);
+        CategoryModel.all.mockResolvedValue([{ id: 1, key: "signin", name: "簽到" }]);
+        UserAchievementModel.findByUser.mockResolvedValue([]);
+        UserProgressModel.findByUser.mockResolvedValue([]);
+        UserAchievementModel.getRecentByUser.mockResolvedValue([{ ...SECRET_ROW, unlocked_at: 1 }]);
+        UserProgressModel.getNearCompletion.mockResolvedValue([
+          { ...SECRET_ROW, current_value: 5, percentage: 17 },
+        ]);
+      });
+
+      it("strips internal fields from category achievements", async () => {
+        const summary = await AchievementEngine.getUserSummary("Ualice");
+        const row = summary.categories[0].achievements[0];
+
+        PRIVATE_KEYS.forEach(k => expect(row).not.toHaveProperty(k));
+      });
+
+      it("strips internal fields from recentUnlocks and nearCompletion", async () => {
+        const summary = await AchievementEngine.getUserSummary("Ualice");
+
+        PRIVATE_KEYS.forEach(k => {
+          expect(summary.recentUnlocks[0]).not.toHaveProperty(k);
+          expect(summary.nearCompletion[0]).not.toHaveProperty(k);
+        });
+      });
+
+      it("keeps every field the achievement UI renders", async () => {
+        const summary = await AchievementEngine.getUserSummary("Ualice");
+        const row = summary.categories[0].achievements[0];
+
+        expect(row).toMatchObject({
+          id: 1,
+          key: "secret_key",
+          name: "秘密成就",
+          description: "描述",
+          icon: "🗝",
+          type: "hidden",
+          rarity: 3,
+          target_value: 30,
+          reward_stones: 500,
+          order: 1,
+          category_key: "signin",
+          category_name: "簽到",
+          category_icon: "🗓",
+          isUnlocked: false,
+          currentValue: 0,
+          unlockedAt: null,
+        });
+      });
+
+      it("keeps the fields the LINE flex card reads on recent/near rows", async () => {
+        const summary = await AchievementEngine.getUserSummary("Ualice");
+
+        expect(summary.recentUnlocks[0]).toMatchObject({
+          icon: "🗝",
+          name: "秘密成就",
+          rarity: 3,
+          unlocked_at: 1,
+        });
+        expect(summary.nearCompletion[0]).toMatchObject({
+          current_value: 5,
+          target_value: 30,
+          percentage: 17,
+        });
+      });
+
+      it("serialises to JSON with no trace of the secret condition", async () => {
+        const summary = await AchievementEngine.getUserSummary("Ualice");
+        const json = JSON.stringify(summary);
+
+        expect(json).not.toContain("condition");
+        expect(json).not.toContain("notify_message");
+        expect(json).not.toContain("解鎖秘密成就");
+        expect(json).not.toContain("2026-08");
+      });
+    });
   });
 
   describe("isEligible", () => {
@@ -736,6 +1119,23 @@ describe("AchievementEngine", () => {
     it("exclude wins when user is in both", () => {
       const a = {
         condition: { eligibility: { includeUserIds: ["Uvip"], excludeUserIds: ["Uvip"] } },
+      };
+      expect(_isEligible("Uvip", a)).toBe(false);
+    });
+
+    it("hides a row before its availableFrom date and keeps it after", () => {
+      // 今天固定為 2026-08-07（見檔頭 util/date mock）
+      expect(_isEligible("Uany", { condition: { availableFrom: "2026-08-08" } })).toBe(false);
+      expect(_isEligible("Uany", { condition: { availableFrom: "2026-08-07" } })).toBe(true);
+      expect(_isEligible("Uany", { condition: { availableFrom: "2026-07-01" } })).toBe(true);
+    });
+
+    it("availableFrom rejects regardless of an otherwise passing eligibility block", () => {
+      const a = {
+        condition: {
+          availableFrom: "2026-12-01",
+          eligibility: { includeUserIds: ["Uvip"] },
+        },
       };
       expect(_isEligible("Uvip", a)).toBe(false);
     });
@@ -792,7 +1192,7 @@ describe("AchievementEngine", () => {
       AchievementEngine._setCache([sister]);
       UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
       UserProgressModel.upsert.mockResolvedValue();
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
       mysql.mockImplementation(() => ({
         where: jest.fn().mockReturnThis(),
@@ -887,7 +1287,7 @@ describe("AchievementEngine", () => {
 
     it("unlocks and inserts stone ledger row on first call", async () => {
       UserAchievementModel.getUnlockedIds.mockResolvedValueOnce(new Set());
-      UserAchievementModel.unlock.mockResolvedValueOnce();
+      UserAchievementModel.unlock.mockResolvedValueOnce(true);
 
       const result = await AchievementEngine.unlockByKey("Uabc", "prestige_departure");
 
@@ -980,7 +1380,7 @@ describe("AchievementEngine", () => {
 
     beforeEach(() => {
       AchievementEngine._setCache(CHAT_CACHE);
-      UserAchievementModel.unlock.mockResolvedValue();
+      UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.upsert.mockResolvedValue();
     });
 

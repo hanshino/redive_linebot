@@ -7,6 +7,7 @@ const AchievementEngine = require("../../service/AchievementEngine");
 const UserTitleModel = require("../../model/application/UserTitle");
 const UserAchievementModel = require("../../model/application/UserAchievement");
 const AchievementTemplate = require("../../templates/application/Achievement");
+const { toPublicList } = require("../../service/achievementPublicView");
 
 const lineClient = getClient("line");
 const RANKING_CACHE_KEY = "AchievementRanking_v1";
@@ -47,7 +48,8 @@ exports.api = {
     try {
       const AchievementModel = require("../../model/application/Achievement");
       const achievements = await AchievementModel.allWithCategories();
-      res.json(achievements);
+      // 公開列表：condition / notify_* 等內部欄位不得外流（玩家會挖 API）
+      res.json(toPublicList(achievements));
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
