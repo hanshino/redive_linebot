@@ -8,6 +8,8 @@ import ShieldIcon from "@mui/icons-material/Shield";
 import PeopleIcon from "@mui/icons-material/People";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import SportsScoreIcon from "@mui/icons-material/SportsScore";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 
 export const RARITY_CONFIG = {
   0: { label: "普通", color: "#757575", bg: "#f5f5f5" },
@@ -27,4 +29,6 @@ export const CATEGORY_ICONS = {
   social: PeopleIcon,
   subscribe: CardGiftcardIcon,
   signin: CalendarMonthIcon,
+  race: SportsScoreIcon,
+  market: StorefrontIcon,
 };
