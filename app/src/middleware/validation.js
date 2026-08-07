@@ -1,5 +1,10 @@
-const { default: axios } = require("axios");
 const AdminModel = require("../model/application/Admin");
+const {
+  SAFE_METHODS,
+  readSessionToken,
+  getSession,
+  isAllowedOrigin,
+} = require("../service/AuthSessionService");
 
 /**
  * 驗證Line來源id
@@ -38,33 +43,36 @@ exports.verifyLineUserId = (userId, res, next) => {
 };
 
 /**
- * 驗證line token
- * @param {String} token Liff的token
+ * Cookie session authentication. No Authorization bearer fallback exists —
+ * the only credential the browser holds is the HttpOnly `redive_session`
+ * cookie, so an attacker page cannot read or replay it.
+ *
+ * Contract kept from the old LIFF-token middleware: on success `req.profile`
+ * carries `{ userId, displayName, pictureUrl }`.
  */
-exports.verifyToken = (req, res, next) => {
-  const auth = req.get("Authorization");
-
-  if (auth === undefined) {
-    return Unauthorized(res);
+exports.verifyToken = async (req, res, next) => {
+  // Cookie auth is ambient, so unsafe verbs need a same-origin check (CSRF).
+  if (!SAFE_METHODS.has(req.method) && !isAllowedOrigin(req.get("Origin"))) {
+    return Forbidden(res);
   }
 
-  const token = auth.split(" ")[1] || "";
+  const token = readSessionToken(req.headers.cookie);
+  if (!token) return Unauthorized(res);
 
-  axios
-    .get("https://api.line.me/v2/profile", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    .then(resp => {
-      if (resp.status !== 200) return Promise.reject();
-      return resp.data;
-    })
-    .then(profile => {
-      req.profile = profile;
-      next();
-    })
-    .catch(() => Unauthorized(res));
+  let profile;
+  try {
+    profile = await getSession(token);
+  } catch (err) {
+    // Redis is down: the session may well be valid, so do NOT log the user
+    // out — 503 keeps the client's cookie and lets it retry.
+    console.error("[auth] session lookup failed", err && err.message);
+    return ServiceUnavailable(res);
+  }
+
+  if (!profile) return Unauthorized(res);
+
+  req.profile = profile;
+  next();
 };
 
 exports.verifyAdmin = async (req, res, next) => {
@@ -96,45 +104,44 @@ exports.verifyPrivilege = (allow = 9) => {
 };
 
 exports.socketSetProfile = async (socket, next) => {
-  const { token } = socket.handshake.query;
-
-  if (token === null || token === "null" || token === undefined) {
-    next(new Error("Authentication error"));
-    return;
+  if (!isAllowedOrigin(socket.handshake.headers.origin)) {
+    return next(new Error("Authentication error"));
   }
 
-  const profile = await axios
-    .get("https://api.line.me/v2/profile", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    .then(resp => {
-      if (resp.status !== 200) return Promise.reject();
-      return resp.data;
-    })
-    .catch(() => {
-      next(new Error("Authentication error"));
-      return;
-    });
+  const token = readSessionToken(socket.handshake.headers.cookie);
+  if (!token) return next(new Error("Authentication error"));
 
-  if (profile === false) return;
+  let profile;
+  try {
+    profile = await getSession(token);
+  } catch (err) {
+    console.error("[auth] socket session lookup failed", err && err.message);
+    return next(new Error("Service unavailable"));
+  }
 
-  socket.handshake.query = {
-    ...socket.handshake.query,
-    ...profile,
-  };
+  if (!profile) return next(new Error("Authentication error"));
 
+  socket.data.profile = profile;
   return next();
 };
 
 exports.socketVerifyAdmin = async (socket, next) => {
-  const { userId } = socket.handshake.query;
+  const { userId } = socket.data.profile || {};
 
-  const adminList = await AdminModel.getList();
-  var adminData = adminList.find(data => data.userId === userId);
-  if (adminData === undefined) next(new Error("Authentication error"));
+  let adminData;
+  try {
+    const adminList = await AdminModel.getList();
+    adminData = adminList.find(data => data.userId === userId);
+  } catch (err) {
+    console.error("[auth] socket admin lookup failed", err && err.message);
+    return next(new Error("Service unavailable"));
+  }
 
+  // Every branch must call next() exactly once — calling it twice lets an
+  // unauthorized socket through after the rejection.
+  if (adminData === undefined) return next(new Error("Authentication error"));
+
+  socket.data.profile = { ...socket.data.profile, ...adminData };
   return next();
 };
 
@@ -144,4 +151,8 @@ function Unauthorized(res) {
 
 function Forbidden(res) {
   res.status(403).json({ message: "forbidden" });
+}
+
+function ServiceUnavailable(res) {
+  res.status(503).json({ message: "session store unavailable." });
 }

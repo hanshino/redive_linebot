@@ -22,7 +22,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import ForumIcon from "@mui/icons-material/Forum";
 import InboxIcon from "@mui/icons-material/Inbox";
 import AlertLogin from "../../components/AlertLogin";
-import liff from "@line/liff";
 import useLiff from "../../context/useLiff";
 
 // --- Helper functions ---
@@ -328,13 +327,13 @@ export default function AdminMessages() {
     if (!isLoggedIn) return;
     document.title = "訊息實況";
     const socket = io("/admin/messages", {
-      auth: {
-        token: liff.getAccessToken(),
-      },
+      // Auth rides the HttpOnly redive_session cookie; nothing to pass here.
+      withCredentials: true,
     });
 
     socket.on("newEvent", event => handleEvent(event));
     socket.on("error", msg => alert(msg));
+    socket.on("connect_error", err => console.warn("Socket auth failed:", err.message));
 
     return () => {
       socket.close();

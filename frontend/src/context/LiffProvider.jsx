@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import liff from "@line/liff";
-import api, { setAuthToken, clearAuthToken } from "../services/api";
+import api from "../services/api";
 import { FullPageLoading } from "../components/Loading";
 import { debugLog } from "../utils/debugLogger";
 import { LiffContext } from "./LiffContext";
 
-const TOKEN_KEY = "liff_access_token";
 const SIZE_KEY = "liff_size";
 const DEFAULT_SIZE = "full";
 
@@ -33,39 +32,65 @@ export default function LiffProvider({ children }) {
   const initPromiseRef = useRef(null);
   const initStartedRef = useRef(false);
 
+  // `loggedIn` now means "the backend holds a session for us", not "the LIFF
+  // SDK has a token". The only credential in the browser is the HttpOnly
+  // redive_session cookie, which JS cannot read — so /api/me is the probe.
+  const applyProfile = useCallback(data => {
+    setProfile(data);
+    setIsAdmin(data.privilege !== undefined);
+    setLoggedIn(true);
+  }, []);
+
+  const clearProfile = useCallback(() => {
+    setProfile(null);
+    setIsAdmin(false);
+    setLoggedIn(false);
+  }, []);
+
+  /**
+   * @returns {Promise<"ok"|"unauthorized"|"error">}
+   */
   const fetchProfile = useCallback(async () => {
-    debugLog("FETCH_PROFILE_START");
     try {
       const { data } = await api.get("/api/me");
-      setProfile(data);
-      const admin = data.privilege !== undefined;
-      setIsAdmin(admin);
-      debugLog("FETCH_PROFILE_OK", { isAdmin: admin, userId: data.userId?.substring(0, 8) });
+      applyProfile(data);
+      debugLog("FETCH_PROFILE_OK", {
+        isAdmin: data.privilege !== undefined,
+        userId: data.userId?.substring(0, 8),
+      });
+      return "ok";
     } catch (err) {
       const status = err.response?.status;
       debugLog("FETCH_PROFILE_FAIL", { status, message: err.message });
-      // Only the 401 path means "token is dead" — the axios interceptor
-      // (services/api.js) already cleared storage and redirected; just sync
-      // local state. Network errors / 5xx are transient: keep the token so
-      // the next request can succeed without forcing a fresh LIFF login.
       if (status === 401) {
-        setLoggedIn(false);
-        setProfile(null);
-        setIsAdmin(false);
+        clearProfile();
+        return "unauthorized";
       }
+      // 503 (Redis down) / network / 5xx are transient: the cookie may still
+      // be perfectly valid, so don't tear the session down over it.
+      return "error";
     }
-  }, []);
+  }, [applyProfile, clearProfile]);
+
+  // Any 401 anywhere in the app means the cookie session is gone. Sync the
+  // logged-out state and stop there: no automatic re-exchange, because the
+  // bootstrap effect below owns the single exchange attempt and a second
+  // trigger point is exactly how this turns into a login loop.
+  //
+  // Registered before the bootstrap effect so the bootstrap's own initial 401
+  // is observed too — that path is harmless, it clears state that a later
+  // successful exchange then restores via applyProfile.
+  useEffect(() => {
+    window.addEventListener("auth:unauthorized", clearProfile);
+    return () => window.removeEventListener("auth:unauthorized", clearProfile);
+  }, [clearProfile]);
 
   useEffect(() => {
     // Guard against StrictMode double-invoke — ref survives unmount/remount
     if (initStartedRef.current) return;
     initStartedRef.current = true;
 
-    const storedToken = window.localStorage.getItem(TOKEN_KEY);
-    debugLog("INIT_START", {
-      route: window.location.pathname,
-      hasStoredToken: !!storedToken,
-    });
+    debugLog("INIT_START", { route: window.location.pathname });
 
     // Always run liff.init(): LIFF's secondary redirect lands on the user's
     // intended path (e.g. /rankings) without a /liff/ prefix or liff.state
@@ -75,51 +100,68 @@ export default function LiffProvider({ children }) {
     if (!initPromiseRef.current) {
       initPromiseRef.current = initLiffSdk();
     }
+
     initPromiseRef.current
-      .then(async () => {
-        const isLoggedIn = liff.isLoggedIn();
-        debugLog("LIFF_SDK_INIT", { success: true, isLoggedIn });
-        if (isLoggedIn) {
-          const token = liff.getAccessToken();
-          debugLog("LIFF_LOGGED_IN", { tokenPrefix: token?.substring(0, 8) });
-          window.localStorage.setItem(TOKEN_KEY, token);
-          setAuthToken(token);
-          setLoggedIn(true);
-          try {
-            setLiffCtx(liff.getContext() || {});
-          } catch (err) {
-            console.warn("Failed to get LIFF context:", err);
-          }
-          await fetchProfile();
-        } else if (storedToken) {
-          // SDK initialized but says not logged in (typical for external
-          // browsers that haven't gone through liff.login yet). Try the
-          // stored token; the API will tell us via 401 if it's stale.
-          debugLog("FALLBACK_STORED_TOKEN", { tokenPrefix: storedToken.substring(0, 8) });
-          setAuthToken(storedToken);
-          setLoggedIn(true);
-          await fetchProfile();
-        } else {
-          debugLog("LIFF_NOT_LOGGED_IN");
+      .then(() => {
+        debugLog("LIFF_SDK_INIT", { success: true, isLoggedIn: liff.isLoggedIn() });
+        try {
+          setLiffCtx(liff.getContext() || {});
+        } catch (err) {
+          console.warn("Failed to get LIFF context:", err);
         }
+        return true;
       })
       .catch(err => {
         debugLog("LIFF_SDK_INIT", { success: false, error: err.message });
         console.warn("LIFF init failed:", err);
-        // Init failed (LIFF ID fetch died, page outside LIFF endpoint, etc).
-        // Stored token is the last lifeline.
-        if (storedToken) {
-          debugLog("FALLBACK_STORED_TOKEN", { tokenPrefix: storedToken.substring(0, 8) });
-          setAuthToken(storedToken);
-          setLoggedIn(true);
-          return fetchProfile();
+        return false;
+      })
+      .then(async sdkReady => {
+        // Existing cookie session first — the common case, and the only path
+        // available to a browser that never went through LIFF login.
+        if ((await fetchProfile()) !== "unauthorized") return;
+
+        // Exactly one ID-token exchange attempt. Anything that fails here
+        // leaves the user logged out until they press login, which is what
+        // stops this from becoming a redirect loop.
+        if (!sdkReady || !liff.isLoggedIn()) return;
+
+        let idToken;
+        try {
+          idToken = liff.getIDToken();
+        } catch (err) {
+          debugLog("ID_TOKEN_FAIL", { message: err.message });
+          return;
         }
+        if (!idToken) {
+          debugLog("ID_TOKEN_MISSING");
+          return;
+        }
+
+        try {
+          await api.post("/api/auth/session", { idToken });
+          debugLog("SESSION_EXCHANGE_OK");
+        } catch (err) {
+          debugLog("SESSION_EXCHANGE_FAIL", {
+            status: err.response?.status,
+            message: err.message,
+          });
+          return;
+        }
+
+        await fetchProfile();
+      })
+      .catch(err => {
+        // Never let bootstrap reject: `ready` must still flip or the app
+        // stays stuck on the full-page spinner forever.
+        debugLog("BOOTSTRAP_FAIL", { message: err.message });
+        console.warn("Auth bootstrap failed:", err);
       })
       .finally(() => {
         debugLog("READY");
         setReady(true);
       });
-  }, []);
+  }, [fetchProfile]);
 
   const login = useCallback(async () => {
     // Reuse in-flight init or start a new one
@@ -137,18 +179,25 @@ export default function LiffProvider({ children }) {
     liff.login({ redirectUri });
   }, []);
 
-  const logout = useCallback(() => {
-    window.localStorage.removeItem(TOKEN_KEY);
-    clearAuthToken();
-    setProfile(null);
-    setIsAdmin(false);
+  const logout = useCallback(async () => {
+    // Server first: the cookie is HttpOnly, so only the backend can revoke
+    // it. Bailing out on failure keeps the UI honest instead of showing a
+    // logged-out shell that still carries a live session.
+    try {
+      await api.post("/api/auth/logout");
+    } catch (err) {
+      console.warn("Logout failed:", err);
+      return;
+    }
+
+    clearProfile();
     try {
       liff.logout();
     } catch {
       // SDK not initialized, nothing to clean up
     }
     window.location.reload();
-  }, []);
+  }, [clearProfile]);
 
   const value = useMemo(
     () => ({ ready, loggedIn, isAdmin, profile, liffContext: liffCtx, login, logout }),

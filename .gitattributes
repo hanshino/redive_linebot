@@ -1,0 +1,8 @@
+# These two files are stored with CRLF endings (they predate any line-ending
+# policy). Without this, git counts each CR as trailing whitespace and
+# `git diff --check` fails on every line added to them. Scoped deliberately to
+# just these paths rather than `*`, so repo-wide whitespace policy is unchanged.
+# No `text`/`eol` attribute is set, so git performs no checkin/checkout
+# conversion and file contents are untouched.
+/.env.example whitespace=cr-at-eol
+/app/server.js whitespace=cr-at-eol

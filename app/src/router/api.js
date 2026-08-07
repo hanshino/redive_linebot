@@ -39,6 +39,7 @@ const moment = require("moment");
 const XpHistoryService = require("../service/XpHistoryService");
 const { todayUtc8 } = require("../util/date");
 
+router.use(require("./auth"));
 router.use(MarketRouter);
 router.use(InventoryRouter);
 router.use(TradeRouter);

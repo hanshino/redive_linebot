@@ -6,6 +6,7 @@ import RedeemIcon from "@mui/icons-material/Redeem";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import StarIcon from "@mui/icons-material/Star";
 import liff from "@line/liff";
+import { runLiffAction } from "../../utils/liffAuth";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
 import { STATUS, STATUS_MAP, ROLE, fmtDate, getViewerRole } from "./_shared";
@@ -313,8 +314,8 @@ export default function TradeDetail() {
   };
 
   const handleShare = async () => {
-    try {
-      const result = await liff.shareTargetPicker([
+    const result = await runLiffAction(() =>
+      liff.shareTargetPicker([
         {
           type: "flex",
           altText: "交易邀請",
@@ -327,12 +328,14 @@ export default function TradeDetail() {
             star: market.star ?? 0,
           }),
         },
-      ]);
-      if (result === null) openSnack("已取消分享", "info");
-      else openSnack("已發送邀請", "success");
-    } catch {
-      openSnack("分享失敗，請稍後再試", "error");
-    }
+      ])
+    );
+
+    // reauth === redirecting to LINE login; stay quiet.
+    if (result.reauth) return;
+    if (!result.ok) openSnack("分享失敗，請稍後再試", "error");
+    else if (result.value === null) openSnack("已取消分享", "info");
+    else openSnack("已發送邀請", "success");
   };
 
   return (
