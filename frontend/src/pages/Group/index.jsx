@@ -4,6 +4,7 @@ import { Box, Typography, Grid, Skeleton, Card, Alert } from "@mui/material";
 import GroupsIcon from "@mui/icons-material/Groups";
 import AlertLogin from "../../components/AlertLogin";
 import GroupCard from "../../components/GroupCard";
+import useLiff from "../../context/useLiff";
 
 function SkeletonCard() {
   return (
@@ -46,7 +47,7 @@ function EmptyState() {
 }
 
 export default function GroupList() {
-  const isLoggedIn = window.liff?.isLoggedIn?.() ?? false;
+  const { loggedIn: isLoggedIn } = useLiff();
 
   const [{ data, loading, error }, refetch] = useAxios({ url: "/api/guilds" }, { manual: true });
 
