@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useAxios from "axios-hooks";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Alert,
   AlertTitle,
@@ -55,11 +55,18 @@ function Card({ children, sx }) {
   );
 }
 
-function AppHeader({ listing, orderNo, onRefresh, refreshing }) {
-  const navigate = useNavigate();
+/** 回市場一律帶著角色，讓人回到剛才在看的那一本掛單簿。 */
+const marketPathFor = listing =>
+  listing?.itemId != null ? `/trade/market?characterId=${listing.itemId}` : "/trade/market";
+
+function AppHeader({ listing, orderNo, onBack, onRefresh, refreshing }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 0.5 }}>
-      <IconButton aria-label="返回列表" size="small" onClick={() => navigate("/trade/market")}>
+      <IconButton
+        aria-label={listing?.name ? `返回${listing.name}的掛單列表` : "返回市場列表"}
+        size="small"
+        onClick={onBack}
+      >
         <ArrowBackIosNewIcon fontSize="small" />
       </IconButton>
       <Box>
@@ -197,7 +204,14 @@ export default function MarketListing() {
   const { loggedIn: isLoggedIn, profile } = useLiff();
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const viewerId = profile?.userId;
+
+  // 從市場點進來的話，上一頁就是那本掛單簿：直接退回去，history 不會多長一節，
+  // 不然「頁內返回 push 市場 → 瀏覽器上一頁又回到詳情」會變成一個轉不出去的圈。
+  // 直接開連結（LIFF 分享、書籤）沒有這個標記，改用 replace 導向帶角色的市場，
+  // 同樣不會留下能退回本頁的紀錄。不看 history.length，那個值猜不準。
+  const fromMarket = Boolean(location.state?.fromMarket);
 
   // 購買失敗回來的終態：把畫面原地降級成 B1 / B4，不重新導頁。
   const [deadCode, setDeadCode] = useState(null);
@@ -226,6 +240,12 @@ export default function MarketListing() {
   }, [isLoggedIn, refetch]);
 
   const orderNo = useMemo(() => `#EX-${id}`, [id]);
+
+  // 這頁所有語義上「回市場」的按鈕都走這裡，行為才會一致。
+  const backToMarket = useCallback(() => {
+    if (fromMarket) navigate(-1);
+    else navigate(marketPathFor(listing), { replace: true });
+  }, [fromMarket, navigate, listing]);
 
   const handleBuy = async () => {
     setConfirmOpen(false);
@@ -272,7 +292,8 @@ export default function MarketListing() {
         <Alert severity="error" sx={{ borderRadius: 3 }}>
           {status === 404 ? "找不到這筆委託" : "載入委託失敗，請稍後再試"}
         </Alert>
-        <Button variant="outlined" onClick={() => navigate("/trade/market")}>
+        {/* listing 沒載到，不知道是哪隻角色；從市場來就退回去，直接開連結則回市場首頁。 */}
+        <Button variant="outlined" onClick={backToMarket}>
           回列表
         </Button>
       </Box>
@@ -303,6 +324,7 @@ export default function MarketListing() {
       <AppHeader
         listing={listing}
         orderNo={orderNo}
+        onBack={backToMarket}
         onRefresh={() => {
           setDeadCode(null);
           refetch().catch(() => {});
@@ -342,8 +364,8 @@ export default function MarketListing() {
             <Button variant="contained" disabled>
               委託已失效
             </Button>
-            <Button variant="outlined" onClick={() => navigate("/trade/market")}>
-              回列表
+            <Button variant="outlined" onClick={backToMarket}>
+              回{listing.name}的掛單
             </Button>
             <Typography sx={{ fontSize: 11.5, color: "text.secondary", lineHeight: 1.6, mx: 0.25 }}>
               若你認為這是異常，請在群組輸入「客服」回報單號 {orderNo}。
@@ -355,7 +377,7 @@ export default function MarketListing() {
               立即購買
             </Button>
             <BtnNote>此委託已不可購買</BtnNote>
-            <Button variant="outlined" onClick={() => navigate("/trade/market")}>
+            <Button variant="outlined" onClick={backToMarket}>
               看其他{listing.name}的掛單
             </Button>
           </>
@@ -414,7 +436,7 @@ export default function MarketListing() {
         <Alert severity="info" icon={false} sx={{ borderRadius: 3 }}>
           這筆委託已取消，無法購買。可以回列表看看其他{listing.name}的掛單。
         </Alert>
-        <Button variant="outlined" onClick={() => navigate("/trade/market")}>
+        <Button variant="outlined" onClick={backToMarket}>
           回列表找其他{listing.name}
         </Button>
       </>
@@ -539,7 +561,7 @@ export default function MarketListing() {
           女神石不足
         </Button>
         <BtnNote>還差 {fmtStone(shortfall)} 女神石</BtnNote>
-        <Button variant="outlined" onClick={() => navigate("/trade/market")}>
+        <Button variant="outlined" onClick={backToMarket}>
           看預算內的{listing.name}（≤ {fmtStone(balance)}）
         </Button>
       </>
