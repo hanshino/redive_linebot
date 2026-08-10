@@ -93,7 +93,7 @@ describe("手續費計算", () => {
     [1, 1, 0],
     [20, 1, 19],
     [21, 2, 19],
-    [99999, 5000, 94999],
+    [10000000, 500000, 9500000],
   ])("price %i -> fee %i / net %i（5%% 無條件進位）", (price, fee, net) => {
     expect(Service.calcFee(price)).toBe(fee);
     expect(Service.calcNetProceeds(price)).toBe(net);
@@ -107,9 +107,9 @@ describe("手續費計算", () => {
 });
 
 describe("價格驗證", () => {
-  it.each([1, 2, 99998, 99999])("接受 %i", p => expect(Service.isValidPrice(p)).toBe(true));
+  it.each([1, 2, 9999999, 10000000])("接受 %i", p => expect(Service.isValidPrice(p)).toBe(true));
 
-  it.each([0, -1, 100000, 1.5, NaN, Infinity, "500", null, undefined])("拒絕 %p", p =>
+  it.each([0, -1, 10000001, 1.5, NaN, Infinity, "500", null, undefined])("拒絕 %p", p =>
     expect(Service.isValidPrice(p)).toBe(false)
   );
 });

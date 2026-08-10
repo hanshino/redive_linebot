@@ -6,7 +6,7 @@
 
 export const FEE_PERCENT = 5;
 export const PRICE_MIN = 1;
-export const PRICE_MAX = 99999;
+export const PRICE_MAX = 10000000;
 export const MAX_OPEN_FALLBACK = 10;
 
 /** 手續費無條件進位，實收為售價扣掉手續費。與後端同一條公式。 */
@@ -69,7 +69,7 @@ export const MARKET_ERROR = {
   },
   NOT_OWNED: { title: "你目前沒有這個角色，無法掛單" },
   ALREADY_LISTED: { title: "這個角色你已經有一張掛單了" },
-  INVALID_PRICE: { title: "售價只能填 1 ～ 99,999" },
+  INVALID_PRICE: { title: "售價只能填 1 ～ 10,000,000" },
 };
 
 export function errorInfo(err, fallback = "操作失敗，請稍後再試") {

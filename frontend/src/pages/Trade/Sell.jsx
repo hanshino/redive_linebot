@@ -367,7 +367,7 @@ export default function Sell() {
           onChange={e => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
           disabled={capped}
           error={price !== "" && !priceValid}
-          helperText="可填 1 ～ 99,999。買家付的就是這個價。"
+          helperText="可填 1 ～ 10,000,000。買家付的就是這個價。"
           slotProps={{
             input: {
               endAdornment: (
