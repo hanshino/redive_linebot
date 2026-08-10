@@ -9,7 +9,7 @@ const { DefaultLogger } = require("../util/Logger");
 const FEE_PERCENT = 5;
 const MAX_OPEN_LISTINGS = 10;
 const MIN_PRICE = 1;
-const MAX_PRICE = 99999;
+const MAX_PRICE = 10000000;
 const GOD_STONE_ITEM_ID = 999;
 
 /**
@@ -32,7 +32,7 @@ function calcNetProceeds(price) {
 }
 
 /**
- * 價格必須是 1 ～ 99999 的整數。
+ * 價格必須是 1 ～ 10000000 的整數。
  * @param {*} price
  * @returns {Boolean}
  */
