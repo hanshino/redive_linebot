@@ -1,7 +1,17 @@
-import { Avatar, Box, Chip, Paper, Typography } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  Chip,
+  Paper,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import StarRateRoundedIcon from "@mui/icons-material/StarRateRounded";
-import { LISTING_STATUS, NUMS, charGradient } from "./_market";
+import SellRoundedIcon from "@mui/icons-material/SellRounded";
+import ShoppingBasketRoundedIcon from "@mui/icons-material/ShoppingBasketRounded";
+import { LISTING_STATUS, NUMS, ORDER_COPY, charGradient, normalizeOrderType } from "./_market";
 
 /* ---------------------------------------------------------------- 版面零件 */
 
@@ -168,8 +178,79 @@ export function StatusChip({ status, size = "small", sx }) {
   );
 }
 
-/** 主色漸層面板，三個頁面的 banner 共用同一層底。 */
-export function GradientPanel({ children, sx }) {
+/**
+ * 賣單 / 收購單的方向標。
+ *
+ * 這個 chip 是整個第二階段最不能誤讀的一格：同一張列表會同時出現
+ * 「我要賣掉的角色」跟「我想買進的角色」，兩者的金流方向完全相反。
+ * 所以顏色分開（賣＝主色、購＝次色）、圖示分開，字也直接寫「賣出／求購」，
+ * 不用「買/賣」單字，避免在小字級被看成同一個字。
+ */
+export function OrderTypeChip({ orderType, size = "small", sx }) {
+  const type = normalizeOrderType(orderType);
+  const buy = type === "buy";
+  const Icon = buy ? ShoppingBasketRoundedIcon : SellRoundedIcon;
+
+  return (
+    <Chip
+      size={size}
+      label={ORDER_COPY[type].chip}
+      color={buy ? "secondary" : "primary"}
+      variant="outlined"
+      icon={<Icon aria-hidden="true" sx={{ fontSize: "14px !important" }} />}
+      aria-label={buy ? "收購單，你把角色賣出去" : "賣單，你把角色賣給買家"}
+      sx={{ fontWeight: 700, height: 25, ...sx }}
+    />
+  );
+}
+
+/**
+ * 出售中 / 收購中的切換。Market 用它換整本掛單簿，
+ * 所以做成兩顆等寬的按鈕，不縮成 icon —— 按錯方向的代價是看錯價格。
+ */
+export function OrderTypeSwitch({ value, onChange, disabled }) {
+  const type = normalizeOrderType(value);
+
+  return (
+    <ToggleButtonGroup
+      value={type}
+      exclusive
+      size="small"
+      fullWidth
+      disabled={disabled}
+      onChange={(_, v) => v !== null && onChange(v)}
+      aria-label="切換掛單簿方向"
+      sx={{
+        "& .MuiToggleButton-root": {
+          py: 0.75,
+          fontSize: 13,
+          fontWeight: 700,
+          textTransform: "none",
+          gap: 0.75,
+          borderRadius: "999px !important",
+        },
+      }}
+    >
+      <ToggleButton value="sell" aria-label="看別人賣出的角色，你可以買">
+        <SellRoundedIcon aria-hidden="true" sx={{ fontSize: 16 }} />
+        {ORDER_COPY.sell.book}
+      </ToggleButton>
+      <ToggleButton value="buy" aria-label="看別人收購的角色，你可以賣">
+        <ShoppingBasketRoundedIcon aria-hidden="true" sx={{ fontSize: 16 }} />
+        {ORDER_COPY.buy.book}
+      </ToggleButton>
+    </ToggleButtonGroup>
+  );
+}
+
+/**
+ * 主色漸層面板，三個頁面的 banner 共用同一層底。
+ *
+ * tone="buy" 換成琥珀色那一套：收購單的錢是從你自己口袋先扣出去的，
+ * 跟賣單的青色分開，掃一眼就知道現在站在哪一邊，不用讀完標題。
+ */
+export function GradientPanel({ children, tone = "sell", sx }) {
+  const buy = tone === "buy";
   return (
     <Paper
       elevation={0}
@@ -181,8 +262,13 @@ export function GradientPanel({ children, sx }) {
         color: "#fff",
         border: "1px solid",
         borderColor: alpha("#fff", 0.14),
-        background:
-          theme.palette.mode === "dark"
+        background: buy
+          ? theme.palette.mode === "dark"
+            ? `radial-gradient(120% 140% at 88% -20%, ${alpha(theme.palette.secondary.light, 0.24)}, transparent 55%),
+               linear-gradient(135deg, #4A2C05, #A9670A 58%, ${theme.palette.secondary.main})`
+            : `radial-gradient(120% 140% at 88% -20%, rgba(255,255,255,.3), transparent 55%),
+               linear-gradient(135deg, ${theme.palette.secondary.dark}, ${theme.palette.secondary.main} 55%, ${theme.palette.secondary.light})`
+          : theme.palette.mode === "dark"
             ? `radial-gradient(120% 140% at 88% -20%, ${alpha(theme.palette.primary.light, 0.22)}, transparent 55%),
                linear-gradient(135deg, #0B3A4C, #0E7A8C 60%, ${theme.palette.primary.main})`
             : `radial-gradient(120% 140% at 88% -20%, rgba(255,255,255,.28), transparent 55%),
