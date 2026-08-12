@@ -18,6 +18,7 @@ import TradeDetail from "./pages/Trade/TradeDetail";
 import Market from "./pages/Trade/Market";
 import MarketListing from "./pages/Trade/MarketListing";
 import MarketSell from "./pages/Trade/Sell";
+import MarketBuy from "./pages/Trade/Buy";
 import MyListings from "./pages/Trade/MyListings";
 import GroupList from "./pages/Group";
 import GroupRecord from "./pages/Group/Record";
@@ -80,9 +81,10 @@ export default function App() {
 
           {/* Trade */}
           {/* 公開市場 / 角色委託所 —— 必須排在 trade/:marketId 之前，
-              否則 "market" / "sell" / "my-listings" 會被當成 marketId 吃掉。 */}
+              否則 "market" / "sell" / "buy" / "my-listings" 會被當成 marketId 吃掉。 */}
           <Route path="trade/market" element={<Market />} />
           <Route path="trade/sell" element={<MarketSell />} />
+          <Route path="trade/buy" element={<MarketBuy />} />
           <Route path="trade/my-listings" element={<MyListings />} />
           <Route path="trade/listings/:id" element={<MarketListing />} />
           <Route path="trade/order" element={<TradeOrder />} />

@@ -5,8 +5,8 @@ const { getLiffUri } = require("../common");
  * 版型來自設計稿 line-flex-market.json，數字改為由 service 帶入。
  *
  * @param {Object} param0
- * @param {Number} param0.myOpenCount 我的開放掛單數
- * @param {Number} param0.maxOpen 掛單上限
+ * @param {Number} param0.myOpenCount 我的開放掛單數（賣單 + 收購單合計）
+ * @param {Number} param0.maxOpen 掛單上限（兩種方向共用）
  * @param {Number} param0.totalOpenCount 全站開放掛單數
  * @param {Number} param0.feePercent 手續費百分比
  * @returns {Object} Flex bubble
@@ -55,7 +55,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
         },
         {
           type: "text",
-          text: "角色掛單簿 · 最低價優先",
+          text: "賣單最低價 · 收購單最高價",
           size: "xs",
           color: "#CDEFF3",
           margin: "sm",
@@ -74,7 +74,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
           contents: [
             {
               type: "text",
-              text: "我的開放掛單",
+              text: "我的開放委託",
               size: "sm",
               color: "#5A6B7F",
               flex: 0,
@@ -108,6 +108,13 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
           ],
         },
         {
+          type: "text",
+          text: "賣單 + 收購單合計",
+          size: "xxs",
+          color: "#5A6B7F",
+          margin: "sm",
+        },
+        {
           type: "separator",
           margin: "lg",
           color: "#E8EEF0",
@@ -119,7 +126,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
           contents: [
             {
               type: "text",
-              text: "全站開放掛單",
+              text: "全站開放委託",
               size: "sm",
               color: "#5A6B7F",
               flex: 0,
@@ -211,6 +218,16 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
             type: "uri",
             label: "我要掛賣單",
             uri: getLiffUri("full", "/trade/sell"),
+          },
+        },
+        {
+          type: "button",
+          style: "link",
+          height: "sm",
+          action: {
+            type: "uri",
+            label: "我要發收購單",
+            uri: getLiffUri("full", "/trade/buy"),
           },
         },
       ],
