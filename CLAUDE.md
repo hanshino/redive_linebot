@@ -97,6 +97,14 @@ cd app && yarn debug                          # DEBUG=bottender:action node serv
 
 LINE channel is the only enabled webhook (`app/bottender.config.js`): `POST /webhooks/line`. Messenger / WhatsApp / Telegram / Slack / Viber blocks exist but are disabled. To rotate the public URL during development, run `make cf-go` (or just `make cf-tunnel` if cloudflared is already up) and restart the bot.
 
+### Group message design
+
+- Treat messages sent into LINE groups as shared public UI. Keep them objective and never include the triggering user's private state merely because that data is available.
+- Public group cards may show shared game state and clearly attributed public events. Personal quotas, progress, EXP, rewards, ledgers, and history belong in LIFF or an explicitly private context.
+- Avoid one reply per action for frequently used group features. Prefer silent handling, throttling, aggregation, or milestone-only announcements.
+- Delayed group announcements must use the existing reply-token queue (`replyTokenQueue` + `broadcastQueue`); do not introduce LINE Push for them.
+- Before designing any LINE message, classify every field as public state or personal state. Do not mix both in one group Flex Message.
+
 ## Code Style
 
 - ESLint 10 + Prettier 3: double quotes, trailing commas (`es5`), 100-char print width (`app/.eslintrc.js`, `app/.prettierrc`). Husky + lint-staged format on commit via `app/node_modules/.bin/prettier` (monorepo-wide).

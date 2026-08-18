@@ -33,7 +33,6 @@ import HistoryIcon from "@mui/icons-material/History";
 import InsightsIcon from "@mui/icons-material/Insights";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
-import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
 
 const mainItems = [

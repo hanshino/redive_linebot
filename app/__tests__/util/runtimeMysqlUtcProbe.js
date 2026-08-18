@@ -22,14 +22,14 @@ async function run() {
 
     const [timezoneRows] = await runtimeDatabase.raw("SELECT @@session.time_zone AS session_tz");
     const instant = new Date("2026-07-19T12:34:56.789Z");
-    const [beforeRows] = await runtimeDatabase.raw("SELECT UTC_TIMESTAMP(3) AS utc_now");
+    const [beforeRows] = await runtimeDatabase.raw("SELECT CURRENT_TIMESTAMP(3) AS session_now");
     const [id] = await runtimeDatabase("runtime_utc_probe").insert({ inserted_at: instant });
     const row = await runtimeDatabase("runtime_utc_probe").where({ id }).first();
     const [insertedAtTextRows] = await runtimeDatabase.raw(
       "SELECT DATE_FORMAT(inserted_at, '%Y-%m-%d %H:%i:%s.%f') AS inserted_at_text FROM runtime_utc_probe WHERE id = ?",
       [id]
     );
-    const [afterRows] = await runtimeDatabase.raw("SELECT UTC_TIMESTAMP(3) AS utc_now");
+    const [afterRows] = await runtimeDatabase.raw("SELECT CURRENT_TIMESTAMP(3) AS session_now");
 
     process.stdout.write(
       JSON.stringify({
@@ -37,8 +37,8 @@ async function run() {
         insertedAt: row.inserted_at.toISOString(),
         insertedAtText: insertedAtTextRows[0].inserted_at_text.slice(0, 23),
         createdAt: row.created_at.toISOString(),
-        beforeUtc: beforeRows[0].utc_now.toISOString(),
-        afterUtc: afterRows[0].utc_now.toISOString(),
+        beforeSession: beforeRows[0].session_now.toISOString(),
+        afterSession: afterRows[0].session_now.toISOString(),
       })
     );
   } finally {

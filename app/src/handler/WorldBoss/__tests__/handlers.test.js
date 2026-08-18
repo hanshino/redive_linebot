@@ -18,9 +18,11 @@ jest.mock("../../../service/WorldBossSeasonService", () => ({
 jest.mock("../../../service/WorldBossBattleService", () => ({
   getRemainingDailyCost: jest.fn(),
 }));
+jest.mock("../../../service/WorldBossAttackService", () => ({ attack: jest.fn() }));
 const CatalogService = require("../../../service/WorldBossCatalogService");
 const SeasonService = require("../../../service/WorldBossSeasonService");
 const BattleService = require("../../../service/WorldBossBattleService");
+const AttackService = require("../../../service/WorldBossAttackService");
 const express = require("express");
 const supertest = require("supertest");
 const admin = require("../admin");
@@ -35,8 +37,8 @@ function response() {
   return res;
 }
 
-function request({ body = {}, params = {}, query = {}, userId = "Uworldboss" } = {}) {
-  return { body, params, query, profile: { userId } };
+function request({ body = {}, params = {}, query = {}, userId = "Uworldboss", displayName } = {}) {
+  return { body, params, query, profile: { userId, displayName } };
 }
 
 function error(code) {
@@ -73,14 +75,17 @@ const status = {
     start_time: new Date("2026-07-20T01:00:00.000Z"),
     end_time: new Date("2026-07-21T01:00:00.000Z"),
   },
-  round: {
-    id: 20,
-    round_no: 3,
-    current_hp: "9007199254740993",
-    max_hp: "9007199254740994",
+  cycleNo: 3,
+  rounds: [1, 2, 3, 4, 5].map(position => ({
+    id: 19 + position,
+    cycle_no: 3,
+    position,
+    current_hp: position === 1 ? "9007199254740993" : "100",
+    max_hp: position === 1 ? "9007199254740994" : "200",
     created_at: new Date("2026-07-20T01:00:00.000Z"),
-  },
-  boss: { id: 2, name: "冰狼", hp_weight: "0.75" },
+    world_boss_id: position,
+    name: `王${position}`,
+  })),
   ended: false,
 };
 const latestReward = {
@@ -96,6 +101,21 @@ const latestReward = {
   settledAt: new Date("2026-07-19T12:00:00.000Z"),
 };
 
+const attackResult = {
+  damage: 500,
+  effectiveDamage: "100",
+  wastedDamage: "400",
+  cost: 15,
+  cleared: true,
+  cycleAdvanced: false,
+  attackedCycleNo: 3,
+  cycleNo: 3,
+  boss: { id: 2, position: 2, name: "王2" },
+  levelResult: { levelUp: true, newLevel: 9, newExp: 3 },
+  seasonTotalDamage: "9007199254740993",
+  daily: { limit: 100, used: 35, remaining: 65 },
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   CatalogService.listBosses.mockResolvedValue(bossRows);
@@ -106,7 +126,7 @@ beforeEach(() => {
   SeasonService.createSeason.mockResolvedValue(9);
   SeasonService.updateSeason.mockResolvedValue(8);
   SeasonService.deleteSeason.mockResolvedValue(8);
-  SeasonService.openSeason.mockResolvedValue({ seasonId: 8, round: status.round });
+  SeasonService.openSeason.mockResolvedValue({ seasonId: 8, cycleNo: 3, rounds: status.rounds });
   SeasonService.getBattleStatus.mockResolvedValue(status);
   SeasonService.getRanking.mockResolvedValue([
     { user_id: "Uone", total_damage: "500", ranking: 1 },
@@ -114,6 +134,11 @@ beforeEach(() => {
   SeasonService.getLatestSettledResult.mockResolvedValue(latestReward);
   BattleService.getRemainingDailyCost.mockResolvedValue({ limit: 100, used: 20, remaining: 80 });
   SeasonService.getUserTotalDamage.mockResolvedValue("500");
+  AttackService.attack.mockResolvedValue({
+    result: attackResult,
+    announcementQueued: true,
+    latestReward: null,
+  });
 });
 
 describe("World Boss admin boss handlers", () => {
@@ -241,6 +266,7 @@ describe("World Boss admin season handlers", () => {
           name: "  S3  ",
           announcement: "公告",
           end_time: "2027-01-01T00:00:00.000Z",
+          boss_ids: ["1", "2", "3", "4", "5"],
           start_time: "2099-01-01T00:00:00.000Z",
         },
       }),
@@ -251,6 +277,7 @@ describe("World Boss admin season handlers", () => {
       name: "S3",
       announcement: "公告",
       end_time: new Date("2027-01-01T00:00:00.000Z"),
+      boss_ids: ["1", "2", "3", "4", "5"],
     });
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({ id: 9 });
@@ -283,6 +310,17 @@ describe("World Boss admin season handlers", () => {
 
     expect(SeasonService.updateSeason).toHaveBeenCalledWith("8", { announcement: "updated" });
     expect(res.json).toHaveBeenCalledWith({});
+  });
+
+  it("passes boss_ids through on draft update", async () => {
+    const res = response();
+    await admin.updateSeason(
+      request({ params: { id: "8" }, body: { boss_ids: ["5", "4", "3", "2", "1"] } }),
+      res
+    );
+    expect(SeasonService.updateSeason).toHaveBeenCalledWith("8", {
+      boss_ids: ["5", "4", "3", "2", "1"],
+    });
   });
 
   it("passes canonical BIGINT path ids without Number coercion", async () => {
@@ -349,7 +387,7 @@ describe("World Boss admin season handlers", () => {
 
     expect(SeasonService.openSeason).toHaveBeenCalledWith("8");
     expect(res.json.mock.calls[0][0]).toMatchObject({ seasonId: 8 });
-    expect(res.json.mock.calls[0][0].round.created_at).toBe("2026-07-20T01:00:00.000Z");
+    expect(res.json.mock.calls[0][0].rounds).toHaveLength(5);
   });
 
   it.each([
@@ -383,9 +421,9 @@ describe("World Boss public handlers", () => {
         start_time: "2026-07-20T01:00:00.000Z",
         end_time: "2026-07-21T01:00:00.000Z",
       },
-      round: { created_at: "2026-07-20T01:00:00.000Z" },
+      rounds: expect.any(Array),
     });
-    expect(res.json.mock.calls[0][0].round.current_hp).toBe("9007199254740993");
+    expect(res.json.mock.calls[0][0].rounds[0].current_hp).toBe("9007199254740993");
   });
 
   it.each([
@@ -403,6 +441,20 @@ describe("World Boss public handlers", () => {
     expect(res.json).toHaveBeenCalledWith({
       seasonId: "8",
       rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+    });
+  });
+
+  it("passes display_name through in the leaderboard DTO", async () => {
+    SeasonService.getRanking.mockResolvedValue([
+      { user_id: "Uone", display_name: "玩家甲", total_damage: "500", ranking: 1 },
+    ]);
+    const res = response();
+
+    await publicHandler.leaderboard(request(), res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      seasonId: "8",
+      rows: [{ user_id: "Uone", display_name: "玩家甲", total_damage: "500", ranking: 1 }],
     });
   });
 
@@ -574,6 +626,174 @@ describe("World Boss public handlers", () => {
   });
 });
 
+describe("World Boss attack handler", () => {
+  const body = { roundId: 21, attackType: "standard" };
+
+  it("acts as the authenticated user and ignores a spoofed body userId", async () => {
+    const res = response();
+
+    await publicHandler.attack(
+      request({
+        body: { ...body, userId: "Uvictim", user_id: "Uvictim", profile: { userId: "Uvictim" } },
+        userId: "Ureal",
+        displayName: "真實玩家",
+      }),
+      res
+    );
+
+    expect(AttackService.attack).toHaveBeenCalledWith({
+      userId: "Ureal",
+      roundId: "21",
+      attackType: "standard",
+      groupId: null,
+      displayName: "真實玩家",
+    });
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [undefined, "INVALID_ROUND_ID"],
+    [{}, "INVALID_ROUND_ID"],
+    [{ attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: 0, attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: -1, attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: "1.5", attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: " 1", attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: "abc", attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: 21 }, "INVALID_ATTACK_TYPE"],
+    [{ roundId: 21, attackType: "ultimate" }, "INVALID_ATTACK_TYPE"],
+    [{ roundId: 21, attackType: "STANDARD" }, "INVALID_ATTACK_TYPE"],
+    [{ roundId: 21, attackType: "standard", groupId: "nope" }, "INVALID_GROUP_ID"],
+    [{ roundId: 21, attackType: "standard", groupId: `U${"a".repeat(32)}` }, "INVALID_GROUP_ID"],
+    [{ roundId: 21, attackType: "standard", groupId: `R${"f".repeat(32)}` }, "INVALID_GROUP_ID"],
+    [{ roundId: 21, attackType: "standard", groupId: `C${"A".repeat(32)}` }, "INVALID_GROUP_ID"],
+    [{ roundId: 21, attackType: "standard", groupId: 12345 }, "INVALID_GROUP_ID"],
+  ])("rejects body %p with 400 %s before calling the service", async (payload, code) => {
+    const res = response();
+
+    await publicHandler.attack(request({ body: payload }), res);
+
+    expect(AttackService.attack).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: code });
+  });
+
+  it.each([undefined, null])("treats groupId %p as absent, not invalid", async groupId => {
+    const res = response();
+
+    await publicHandler.attack(request({ body: { ...body, groupId } }), res);
+
+    expect(AttackService.attack).toHaveBeenCalledWith(expect.objectContaining({ groupId: null }));
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it.each([`C${"a".repeat(32)}`, `C${"0".repeat(32)}`])(
+    "forwards a well-formed group id %s for server-side verification",
+    async groupId => {
+      const res = response();
+
+      await publicHandler.attack(request({ body: { ...body, groupId } }), res);
+
+      expect(AttackService.attack).toHaveBeenCalledWith(expect.objectContaining({ groupId }));
+    }
+  );
+
+  it("returns the private success DTO with exact big integers and the announcement flag", async () => {
+    const reward = { rewardId: 42, paidAt: new Date("2026-07-19T12:00:00.000Z") };
+    AttackService.attack.mockResolvedValue({
+      result: attackResult,
+      announcementQueued: true,
+      latestReward: reward,
+    });
+    const res = response();
+
+    await publicHandler.attack(request({ body: { ...body, roundId: "21" } }), res);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({
+      attack: {
+        roundId: "21",
+        attackType: "standard",
+        damage: 500,
+        effectiveDamage: "100",
+        wastedDamage: "400",
+        cost: 15,
+        cleared: true,
+        cycleAdvanced: false,
+        attackedCycleNo: 3,
+        cycleNo: 3,
+        boss: { id: 2, position: 2, name: "王2" },
+        levelResult: { levelUp: true, newLevel: 9, newExp: 3 },
+        seasonTotalDamage: "9007199254740993",
+        daily: { limit: 100, used: 35, remaining: 65 },
+      },
+      announcementQueued: true,
+      latestReward: { rewardId: 42, paidAt: "2026-07-19T12:00:00.000Z" },
+      status: expect.objectContaining({ season: expect.any(Object) }),
+    });
+    expect(() => JSON.stringify(res.json.mock.calls[0][0])).not.toThrow();
+  });
+
+  it("still returns 200 with announcementQueued false when nothing was enqueued", async () => {
+    AttackService.attack.mockResolvedValue({
+      result: attackResult,
+      announcementQueued: false,
+      latestReward: null,
+    });
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].announcementQueued).toBe(false);
+  });
+
+  it("returns a usable response even when the follow-up status read fails", async () => {
+    SeasonService.getBattleStatus.mockRejectedValue(new Error("db down"));
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].status).toBeNull();
+    expect(res.json.mock.calls[0][0].attack.effectiveDamage).toBe("100");
+  });
+
+  it.each([
+    ["ROUND_NOT_FOUND", 409],
+    ["ROUND_STALE", 409],
+    ["ROUND_CLEARED", 409],
+    ["NO_ACTIVE_SEASON", 409],
+    ["SEASON_ENDED", 409],
+    ["NO_ACTIVE_ROUND", 409],
+    ["DAILY_LIMIT_EXCEEDED", 422],
+    ["INVALID_ROUND_ID", 400],
+    ["INVALID_ATTACK_TYPE", 400],
+    ["INVALID_USER", 400],
+    ["ATTACK_COOLDOWN", 429],
+  ])("maps service failure %s to HTTP %i as stable JSON, never 500", async (code, statusCode) => {
+    AttackService.attack.mockRejectedValue(error(code));
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).toHaveBeenCalledWith(statusCode);
+    expect(res.json).toHaveBeenCalledWith({ error: code });
+  });
+
+  it("maps an unexpected failure to 500 without leaking the message", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    AttackService.attack.mockRejectedValue(new Error("secret cookie=abc"));
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "INTERNAL_ERROR" });
+    consoleError.mockRestore();
+  });
+});
+
 describe("World Boss router auth wiring", () => {
   it("enforces token, admin, and privilege-five middleware on the effective parent router", async () => {
     let isolated;
@@ -646,6 +866,33 @@ describe("World Boss router auth wiring", () => {
       { path: "/status", methods: ["get"] },
       { path: "/leaderboard", methods: ["get"] },
       { path: "/me", methods: ["get"] },
+      { path: "/attack", methods: ["post"] },
     ]);
+  });
+
+  it("puts the attack route behind verifyToken like the rest of the public router", async () => {
+    let isolated;
+    jest.isolateModules(() => {
+      const validation = require("../../../middleware/validation");
+      validation.verifyPrivilege = jest.fn(() => (req, res, next) => next());
+      const worldBossRouters = require("../../../router/WorldBoss");
+      const api = require("../../../router/api");
+      isolated = { api, validation, worldBossRouters };
+    });
+
+    const { api, validation, worldBossRouters } = isolated;
+    const publicIndex = api.stack.findIndex(layer => layer.handle === worldBossRouters.public);
+    const tokenIndex = api.stack
+      .slice(0, publicIndex)
+      .findLastIndex(layer => layer.handle === validation.verifyToken);
+
+    expect(tokenIndex).toBeGreaterThanOrEqual(0);
+    expect(publicIndex).toBeGreaterThan(tokenIndex);
+    // Attack lives on that same guarded router, so it inherits the same gate.
+    expect(
+      worldBossRouters.public.stack.some(
+        layer => layer.route && layer.route.path === "/attack" && layer.route.methods.post
+      )
+    ).toBe(true);
   });
 });

@@ -35,11 +35,11 @@ async function updateBoss(id, input, trx) {
   return WorldBoss.model.update(id, normalizeBossInput(input), {}, trx);
 }
 
-function isBossRoundReferenceError(error) {
+function isBossRosterReferenceError(error) {
   return (
     (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451) &&
-    error.sqlMessage?.includes("`fk_wbr_world_boss`") &&
-    error.sqlMessage.includes("`world_boss_round`")
+    error.sqlMessage?.includes("`fk_wbsb_world_boss`") &&
+    error.sqlMessage.includes("`world_boss_season_boss`")
   );
 }
 
@@ -47,7 +47,7 @@ async function deleteBoss(id, trx) {
   try {
     return await WorldBoss.model.delete(id, trx);
   } catch (error) {
-    if (isBossRoundReferenceError(error)) throw fail("BOSS_IN_USE");
+    if (isBossRosterReferenceError(error)) throw fail("BOSS_IN_USE");
     throw error;
   }
 }

@@ -4,17 +4,21 @@ const {
   ACTIVE_SLOT,
   SETUP_TIMEOUT_MS,
   createWorldBossTestDatabase,
+  deleteSeasonTree,
 } = require("../../__tests__/helpers/worldBossFixture");
 const testDatabase = createWorldBossTestDatabase("season");
 const mysql = testDatabase.mysql;
 jest.mock("../../util/mysql", () => mysql);
 const { inventory } = require("../../model/application/Inventory");
 const UserTitle = require("../../model/application/UserTitle");
+const WorldBossSeasonBoss = require("../../model/application/WorldBossSeasonBoss");
+const WorldBossRound = require("../../model/application/WorldBossRound");
 const { createSeasonService } = require("../WorldBossSeasonService");
 
 const prefix = `${PREFIX}season_`;
 const now = new Date("2026-07-20T04:00:00.000Z");
 const later = new Date("2026-07-21T04:00:00.000Z");
+const ROSTER_SIZE = WorldBossSeasonBoss.ROSTER_SIZE;
 const worldBossTitleKeys = ["worldboss_annihilator", "worldboss_vanguard"];
 let ownedTitleIds = [];
 
@@ -38,16 +42,14 @@ function literalPrefix(query, column, value = prefix) {
 
 async function cleanupOwned() {
   const seasons = await literalPrefix(mysql("world_boss_season"), "name").select("id");
-  const seasonIds = seasons.map(row => row.id);
-  if (seasonIds.length) {
-    await mysql("world_boss_season_reward").whereIn("season_id", seasonIds).del();
-    await mysql("world_boss_contribution").whereIn("season_id", seasonIds).del();
-    await mysql("world_boss_round").whereIn("season_id", seasonIds).del();
-    await mysql("world_boss_season").whereIn("id", seasonIds).del();
-  }
+  await deleteSeasonTree(
+    mysql,
+    seasons.map(row => row.id)
+  );
   await literalPrefix(mysql("inventory"), "userId").del();
   await literalPrefix(mysql("user_titles"), "user_id").del();
   await literalPrefix(mysql("world_boss"), "name").del();
+  await literalPrefix(mysql("user"), "platform_id").del();
 }
 
 async function sharedTitleSnapshot() {
@@ -58,9 +60,21 @@ async function sharedTitleSnapshot() {
     .orderBy("owned.id");
 }
 
-async function createBoss(label = "boss") {
-  const [id] = await mysql("world_boss").insert({ name: owned(label), hp_weight: 1 });
-  return id;
+/**
+ * Creates ROSTER_SIZE catalog bosses with distinct weights so snapshot assertions can
+ * tell one roster slot from another.
+ */
+async function createBosses(label, count = ROSTER_SIZE) {
+  const ids = [];
+  for (let index = 0; index < count; index += 1) {
+    const [id] = await mysql("world_boss").insert({
+      name: owned(`${label}_${index + 1}`),
+      hp_weight: 1 + index / 10,
+      description: owned(`${label}_desc_${index + 1}`),
+    });
+    ids.push(id);
+  }
+  return ids;
 }
 
 async function createSeasonRow({
@@ -70,6 +84,7 @@ async function createSeasonRow({
   startTime = status === "active" ? new Date(now.getTime() - 1000) : null,
   endTime = later,
   settledAt = status === "settled" ? now : null,
+  bossIds = null,
 } = {}) {
   const [id] = await mysql("world_boss_season").insert({
     name: owned(label),
@@ -80,22 +95,25 @@ async function createSeasonRow({
     end_time: endTime,
     settled_at: settledAt,
   });
+  const roster = bossIds || (await createBosses(`${label}_roster`));
+  await mysql.transaction(trx => WorldBossSeasonBoss.replaceForSeason(trx, id, roster));
   return id;
 }
 
 async function createActiveFixture({ label, endTime = now } = {}) {
-  const bossId = await createBoss(`${label}_boss`);
   const seasonId = await createSeasonRow({ label: `${label}_season`, status: "active", endTime });
-  const [roundId] = await mysql("world_boss_round").insert({
-    season_id: seasonId,
-    round_no: 1,
-    world_boss_id: bossId,
-    max_hp: 1000,
-    current_hp: 700,
-    status: "active",
-    active_slot: ACTIVE_SLOT,
-  });
-  return { bossId, seasonId, roundId };
+  const roster = await WorldBossSeasonBoss.listBySeason(seasonId);
+  await mysql("world_boss_round").insert(
+    roster.map(entry => ({
+      season_boss_id: entry.id,
+      cycle_no: 1,
+      max_hp: 1000,
+      current_hp: 700,
+      cleared_at: null,
+    }))
+  );
+  const rounds = await WorldBossRound.listCycle(seasonId, 1);
+  return { seasonId, roster, rounds, roundId: rounds[0].id };
 }
 
 async function addContributions(seasonId, roundId, rows) {
@@ -160,10 +178,12 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     const rows = (await service.listSeasons()).filter(row => row.name.startsWith(prefix));
     expect(rows.map(row => Number(row.id))).toEqual([secondId, firstId]);
 
+    const bossIds = await createBosses("crud");
     const createdId = await service.createSeason({
       name: owned("crud"),
       announcement: "created",
       end_time: later,
+      boss_ids: bossIds,
       start_time: new Date("2035-01-01T00:00:00.000Z"),
       status: "settled",
       active_slot: 99,
@@ -175,12 +195,21 @@ describe("WorldBossSeasonService CRUD and opening", () => {
       active_slot: null,
       start_time: null,
     });
+    await expect(service.getSeasonRoster(createdId)).resolves.toMatchObject(
+      bossIds.map((bossId, index) => ({
+        position: index + 1,
+        world_boss_id: bossId,
+        name: owned(`crud_${index + 1}`),
+      }))
+    );
 
+    const reordered = [...bossIds].reverse();
     await expect(
       service.updateSeason(createdId, {
         name: owned("crud_updated"),
         announcement: "updated",
         end_time: new Date(later.getTime() + 1000),
+        boss_ids: reordered,
         start_time: new Date("2036-01-01T00:00:00.000Z"),
         status: "active",
         active_slot: 99,
@@ -193,6 +222,9 @@ describe("WorldBossSeasonService CRUD and opening", () => {
       active_slot: null,
       start_time: null,
     });
+    await expect(service.getSeasonRoster(createdId)).resolves.toMatchObject(
+      reordered.map((bossId, index) => ({ position: index + 1, world_boss_id: bossId }))
+    );
 
     const activeId = await createSeasonRow({ label: "active", status: "active" });
     const settledId = await createSeasonRow({ label: "settled", status: "settled" });
@@ -215,8 +247,10 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     await expect(seasonRow(activeId)).resolves.toEqual(activeBefore);
     await expect(seasonRow(settledId)).resolves.toEqual(settledBefore);
 
+    // Deleting a draft cascades its roster away.
     await expect(service.deleteSeason(createdId)).resolves.toBe(createdId);
     await expect(seasonRow(createdId)).resolves.toBeUndefined();
+    await expect(service.getSeasonRoster(createdId)).resolves.toEqual([]);
     await expect(service.updateSeason(999999999, { name: owned("missing") })).rejects.toMatchObject(
       {
         code: "SEASON_NOT_FOUND",
@@ -224,22 +258,85 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     );
   });
 
+  test("requires exactly five distinct roster bosses on create and update", async () => {
+    const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+    const bossIds = await createBosses("roster_validation", 6);
+    const base = { name: owned("roster_validation"), end_time: later };
+
+    for (const bossIdsInput of [
+      undefined,
+      null,
+      "not-an-array",
+      [],
+      bossIds.slice(0, 4),
+      bossIds.slice(0, 6),
+    ]) {
+      await expect(service.createSeason({ ...base, boss_ids: bossIdsInput })).rejects.toMatchObject(
+        { code: "INVALID_ROSTER_SIZE" }
+      );
+    }
+    for (const bossIdsInput of [
+      [bossIds[0], bossIds[1], bossIds[2], bossIds[3], 0],
+      [bossIds[0], bossIds[1], bossIds[2], bossIds[3], -1],
+      [bossIds[0], bossIds[1], bossIds[2], bossIds[3], 1.5],
+      [bossIds[0], bossIds[1], bossIds[2], bossIds[3], "abc"],
+      [bossIds[0], bossIds[1], bossIds[2], bossIds[3], null],
+    ]) {
+      await expect(service.createSeason({ ...base, boss_ids: bossIdsInput })).rejects.toMatchObject(
+        { code: "INVALID_ROSTER_BOSS_ID" }
+      );
+    }
+    await expect(
+      service.createSeason({
+        ...base,
+        boss_ids: [bossIds[0], bossIds[0], bossIds[1], bossIds[2], bossIds[3]],
+      })
+    ).rejects.toMatchObject({ code: "DUPLICATE_ROSTER_BOSS" });
+    await expect(
+      service.createSeason({
+        ...base,
+        boss_ids: [bossIds[0], bossIds[1], bossIds[2], bossIds[3], 999999999],
+      })
+    ).rejects.toMatchObject({ code: "ROSTER_BOSS_NOT_FOUND" });
+    await expect(
+      literalPrefix(mysql("world_boss_season"), "name", owned("roster_validation"))
+    ).resolves.toEqual([]);
+
+    const validId = await service.createSeason({ ...base, boss_ids: bossIds.slice(0, 5) });
+    const before = await service.getSeasonRoster(validId);
+    await expect(
+      service.updateSeason(validId, { boss_ids: bossIds.slice(0, 4) })
+    ).rejects.toMatchObject({ code: "INVALID_ROSTER_SIZE" });
+    await expect(
+      service.updateSeason(validId, {
+        boss_ids: [bossIds[0], bossIds[0], bossIds[1], bossIds[2], bossIds[3]],
+      })
+    ).rejects.toMatchObject({ code: "DUPLICATE_ROSTER_BOSS" });
+    await expect(service.getSeasonRoster(validId)).resolves.toEqual(before);
+  });
+
   test("validates names and dates at the trust boundary and makes start_time server-owned", async () => {
     const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+    const bossIds = await createBosses("date_validation");
     for (const name of [undefined, "", "   ", "x".repeat(65)]) {
-      await expect(service.createSeason({ name, end_time: later })).rejects.toMatchObject({
-        code: "INVALID_NAME",
-      });
+      await expect(
+        service.createSeason({ name, end_time: later, boss_ids: bossIds })
+      ).rejects.toMatchObject({ code: "INVALID_NAME" });
     }
     for (const endTime of [undefined, null, "not-a-date", now, new Date(now.getTime() - 1)]) {
       await expect(
-        service.createSeason({ name: owned("invalid_date"), end_time: endTime })
+        service.createSeason({
+          name: owned("invalid_date"),
+          end_time: endTime,
+          boss_ids: bossIds,
+        })
       ).rejects.toMatchObject({ code: "INVALID_END_TIME" });
     }
 
     const id = await service.createSeason({
       name: `  ${owned("trimmed")}  `,
       end_time: later.toISOString(),
+      boss_ids: bossIds,
       start_time: new Date("2040-01-01T00:00:00.000Z"),
     });
     await expect(seasonRow(id)).resolves.toMatchObject({
@@ -249,10 +346,10 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     await service.updateSeason(id, { start_time: new Date("2041-01-01T00:00:00.000Z") });
     await expect(seasonRow(id)).resolves.toMatchObject({ start_time: null });
 
-    await createBoss("open_boss");
     const opened = await service.openSeason(id);
     expect(opened.seasonId).toBe(id);
-    expect(Number(opened.round.round_no)).toBe(1);
+    expect(opened.cycleNo).toBe(1);
+    expect(opened.rounds).toHaveLength(ROSTER_SIZE);
     await expect(seasonRow(id)).resolves.toMatchObject({
       status: "active",
       active_slot: ACTIVE_SLOT,
@@ -260,8 +357,47 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     });
   });
 
-  test("concurrent opens produce exactly one active season and one active round", async () => {
-    await createBoss("concurrent_boss");
+  test("opening re-snapshots the roster and creates exactly five cycle-1 encounters", async () => {
+    const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+    const bossIds = await createBosses("open_snapshot");
+    const id = await service.createSeason({
+      name: owned("open_snapshot"),
+      end_time: later,
+      boss_ids: bossIds,
+    });
+    // Catalog edits before opening must be picked up; edits after must not.
+    await mysql("world_boss")
+      .where({ id: bossIds[0] })
+      .update({ name: owned("open_snapshot_renamed"), hp_weight: 2, description: "renamed" });
+
+    const opened = await service.openSeason(id);
+    expect(opened.roster[0]).toMatchObject({
+      position: 1,
+      name: owned("open_snapshot_renamed"),
+      hp_weight: "2.000",
+      description: "renamed",
+    });
+    expect(opened.rounds).toHaveLength(ROSTER_SIZE);
+    expect(opened.rounds.map(row => row.position)).toEqual([1, 2, 3, 4, 5]);
+    // Cycle 1 base HP is 30000; boss 1's weight 2 doubles it, the rest use 1.0..1.4.
+    expect(opened.rounds.map(row => Number(row.max_hp))).toEqual([
+      60000, 33000, 36000, 39000, 42000,
+    ]);
+    expect(opened.rounds.map(row => Number(row.current_hp))).toEqual([
+      60000, 33000, 36000, 39000, 42000,
+    ]);
+    expect(opened.rounds.every(row => row.cleared_at === null)).toBe(true);
+
+    await mysql("world_boss")
+      .where({ id: bossIds[0] })
+      .update({ name: owned("after_open") });
+    await expect(service.getSeasonRoster(id)).resolves.toMatchObject([
+      { position: 1, name: owned("open_snapshot_renamed") },
+      ...bossIds.slice(1).map((_, index) => ({ position: index + 2 })),
+    ]);
+  });
+
+  test("concurrent opens produce exactly one active season and one cycle of five", async () => {
     const firstId = await createSeasonRow({ label: "concurrent_a" });
     const secondId = await createSeasonRow({ label: "concurrent_b" });
     const firstAtMutation = deferred();
@@ -299,16 +435,23 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     const rejected = results.filter(result => result.status === "rejected");
     expect(rejected).toHaveLength(1);
     expect(rejected[0].reason).toMatchObject({ code: "ANOTHER_SEASON_ACTIVE" });
-    await expect(
-      mysql("world_boss_season").where({ status: "active", active_slot: ACTIVE_SLOT })
-    ).resolves.toHaveLength(1);
-    await expect(
-      mysql("world_boss_round").where({ status: "active", active_slot: ACTIVE_SLOT })
-    ).resolves.toHaveLength(1);
+    const active = await mysql("world_boss_season").where({
+      status: "active",
+      active_slot: ACTIVE_SLOT,
+    });
+    expect(active).toHaveLength(1);
+    const cycle = await WorldBossRound.listCurrentCycle(active[0].id);
+    expect(cycle).toMatchObject({ cycleNo: 1 });
+    expect(cycle.rounds).toHaveLength(ROSTER_SIZE);
+    // The season that lost the race must have no encounters at all.
+    const loserId = Number(active[0].id) === firstId ? secondId : firstId;
+    await expect(WorldBossRound.listCurrentCycle(loserId)).resolves.toEqual({
+      cycleNo: 0,
+      rounds: [],
+    });
   });
 
   test("deadlock retry uses a new transaction and reruns validation before committing", async () => {
-    await createBoss("retry_boss");
     const id = await createSeasonRow({ label: "retry" });
     const attempts = [];
     const trxObjects = [];
@@ -326,18 +469,18 @@ describe("WorldBossSeasonService CRUD and opening", () => {
       },
     });
 
-    await expect(service.openSeason(id)).resolves.toMatchObject({ seasonId: id });
+    await expect(service.openSeason(id)).resolves.toMatchObject({ seasonId: id, cycleNo: 1 });
     expect(attempts).toEqual([1, 2]);
     expect(trxObjects[0]).not.toBe(trxObjects[1]);
     await expect(seasonRow(id)).resolves.toMatchObject({
       status: "active",
       active_slot: ACTIVE_SLOT,
     });
-    await expect(mysql("world_boss_round").where({ season_id: id })).resolves.toHaveLength(1);
+    // The rolled-back first attempt must not leave a partial cycle.
+    await expect(WorldBossRound.listCycle(id, 1)).resolves.toHaveLength(ROSTER_SIZE);
   });
 
   test("maps an exhausted deadlock retry to the deterministic winner", async () => {
-    await createBoss("winner_boss");
     const losingId = await createSeasonRow({ label: "winner_loser" });
     const winnerId = await createSeasonRow({ label: "winner_actual" });
     const attempts = [];
@@ -371,6 +514,10 @@ describe("WorldBossSeasonService CRUD and opening", () => {
       status: "draft",
       active_slot: null,
     });
+    await expect(WorldBossRound.listCurrentCycle(losingId)).resolves.toEqual({
+      cycleNo: 0,
+      rounds: [],
+    });
   });
 
   test("reports status, deterministic public ranking, and expiry at an inclusive boundary", async () => {
@@ -381,15 +528,26 @@ describe("WorldBossSeasonService CRUD and opening", () => {
       { userId: owned("rank_b"), damages: [500] },
       { userId: owned("rank_c"), damages: [300] },
     ]);
+    await mysql("user").insert([
+      { platform: "line", platform_id: owned("rank_a"), display_name: "甲" },
+      { platform: "line", platform_id: owned("rank_b"), display_name: "   " },
+    ]);
 
-    await expect(service.getBattleStatus()).resolves.toMatchObject({
+    const status = await service.getBattleStatus();
+    expect(status).toMatchObject({
       season: { id: fixture.seasonId },
-      round: { id: fixture.roundId },
-      boss: { id: fixture.bossId },
+      cycleNo: 1,
       ended: true,
     });
+    expect(status.rounds).toHaveLength(ROSTER_SIZE);
+    expect(status.rounds.map(row => row.position)).toEqual([1, 2, 3, 4, 5]);
+    expect(status.rounds.map(row => Number(row.current_hp))).toEqual(
+      new Array(ROSTER_SIZE).fill(700)
+    );
+
     const ranking = await service.getRanking(fixture.seasonId, 100);
     expect(ranking.map(row => row.ranking)).toEqual([1, 1, 3]);
+    expect(ranking.map(row => row.display_name)).toEqual(["甲", null, null]);
     await expect(service.getUserTotalDamage(fixture.seasonId, owned("rank_c"))).resolves.toBe(
       "300"
     );
@@ -402,6 +560,35 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     await expect(service.settleSeason(fixture.seasonId)).resolves.toMatchObject({
       seasonId: String(fixture.seasonId),
     });
+  });
+
+  test("batch-enriches ranking names once without changing ranking rows", async () => {
+    const fixture = await createActiveFixture({ label: "ranking_names" });
+    const rows = [
+      { userId: owned("named"), damages: [500] },
+      { userId: owned("missing"), damages: [400] },
+      { userId: owned("blank"), damages: [300] },
+    ];
+    await addContributions(fixture.seasonId, fixture.roundId, rows);
+    await mysql("user").insert([
+      { platform: "line", platform_id: owned("named"), display_name: "玩家甲" },
+      { platform: "line", platform_id: owned("blank"), display_name: "  " },
+    ]);
+    const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+    const userQueries = [];
+    const onQuery = query => {
+      if (/from [`]?user[`]?/i.test(query.sql)) userQueries.push(query.sql);
+    };
+    mysql.on("query", onQuery);
+    try {
+      await expect(service.getRanking(fixture.seasonId, 2)).resolves.toEqual([
+        { user_id: owned("named"), total_damage: "500", ranking: 1, display_name: "玩家甲" },
+        { user_id: owned("missing"), total_damage: "400", ranking: 2, display_name: null },
+      ]);
+    } finally {
+      mysql.removeListener("query", onQuery);
+    }
+    expect(userQueries).toHaveLength(1);
   });
 });
 
@@ -465,8 +652,8 @@ describe("WorldBossSeasonService settlement", () => {
     const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
 
     await expect(service.getRanking(fixture.seasonId, 100)).resolves.toEqual([
-      { user_id: topUser, total_damage: "9007199254740993", ranking: 1 },
-      { user_id: secondUser, total_damage: "9007199254740992", ranking: 2 },
+      { user_id: topUser, total_damage: "9007199254740993", ranking: 1, display_name: null },
+      { user_id: secondUser, total_damage: "9007199254740992", ranking: 2, display_name: null },
     ]);
     await expect(service.settleSeason(fixture.seasonId)).resolves.toMatchObject({
       contributors: 2,
@@ -726,8 +913,11 @@ describe("WorldBossSeasonService settlement", () => {
     const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
     await service.settleSeason(first.seasonId);
 
-    await createBoss("latest_new_boss");
-    const newerId = await service.createSeason({ name: owned("latest_new"), end_time: later });
+    const newerId = await service.createSeason({
+      name: owned("latest_new"),
+      end_time: later,
+      boss_ids: await createBosses("latest_new_roster"),
+    });
     await service.openSeason(newerId);
 
     await expect(service.getLatestSettledResult(userId)).resolves.toMatchObject({

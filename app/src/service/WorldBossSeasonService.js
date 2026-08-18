@@ -1,17 +1,19 @@
 const config = require("config");
 const mysql = require("../util/mysql");
 const WorldBossSeason = require("../model/application/WorldBossSeason");
+const WorldBossSeasonBoss = require("../model/application/WorldBossSeasonBoss");
 const WorldBossRound = require("../model/application/WorldBossRound");
 const WorldBossContribution = require("../model/application/WorldBossContribution");
 const WorldBossSeasonReward = require("../model/application/WorldBossSeasonReward");
 const { inventory } = require("../model/application/Inventory");
 const UserTitle = require("../model/application/UserTitle");
 const { createBattleService } = require("./WorldBossBattleService");
-const { canonicalUnsignedInteger } = require("../util/decimalInteger");
+const { canonicalUnsignedInteger, canonicalPositiveInteger } = require("../util/decimalInteger");
 
 const TABLE = "world_boss_season";
 const REWARD_TABLE = "world_boss_season_reward";
 const MAX_OPEN_ATTEMPTS = 2;
+const ROSTER_SIZE = WorldBossSeasonBoss.ROSTER_SIZE;
 const SEASON_ACTIVE_UNIQUE = /uq_wbs_active_slot/;
 const SEASON_REWARD_UNIQUE = /uq_wbsr_season_user/;
 const SEASON_REWARDS = config.get("worldboss.season_rewards");
@@ -33,19 +35,39 @@ function normalizeName(value) {
   return name;
 }
 
+/**
+ * A season roster is exactly ROSTER_SIZE distinct bosses; array order fixes positions 1..N.
+ */
+function normalizeBossIds(value) {
+  if (!Array.isArray(value) || value.length !== ROSTER_SIZE) throw fail("INVALID_ROSTER_SIZE");
+  const ids = value.map(candidate => {
+    try {
+      return canonicalPositiveInteger(candidate);
+    } catch {
+      throw fail("INVALID_ROSTER_BOSS_ID");
+    }
+  });
+  if (new Set(ids).size !== ROSTER_SIZE) throw fail("DUPLICATE_ROSTER_BOSS");
+  return ids;
+}
+
 function normalizeSeasonInput(input, now) {
   if (!input || typeof input !== "object") throw fail("INVALID_NAME");
   const endTime = dateValue(input.end_time);
   if (!endTime || endTime.getTime() <= now.getTime()) throw fail("INVALID_END_TIME");
   return {
-    name: normalizeName(input.name),
-    announcement: input.announcement ?? null,
-    end_time: endTime,
+    payload: {
+      name: normalizeName(input.name),
+      announcement: input.announcement ?? null,
+      end_time: endTime,
+    },
+    bossIds: normalizeBossIds(input.boss_ids),
   };
 }
 
 function normalizeSeasonPatch(input, now, persisted) {
   const patch = {};
+  let bossIds = null;
   if (Object.prototype.hasOwnProperty.call(input || {}, "name")) {
     patch.name = normalizeName(input.name);
   }
@@ -57,13 +79,16 @@ function normalizeSeasonPatch(input, now, persisted) {
     if (!endTime || endTime.getTime() <= now.getTime()) throw fail("INVALID_END_TIME");
     patch.end_time = endTime;
   }
-  if (!Object.keys(patch).length) return patch;
+  if (Object.prototype.hasOwnProperty.call(input || {}, "boss_ids")) {
+    bossIds = normalizeBossIds(input.boss_ids);
+  }
+  if (!Object.keys(patch).length && !bossIds) return { patch, bossIds };
   normalizeName(patch.name ?? persisted.name);
   const effectiveEndTime = dateValue(patch.end_time ?? persisted.end_time);
   if (!effectiveEndTime || effectiveEndTime.getTime() <= now.getTime()) {
     throw fail("INVALID_END_TIME");
   }
-  return patch;
+  return { patch, bossIds };
 }
 
 function isEnded(season, now) {
@@ -116,19 +141,25 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
   }
 
   async function listSeasons() {
-    return mysql(TABLE).orderBy("created_at", "desc").orderBy("id", "desc");
+    const seasons = await mysql(TABLE).orderBy("created_at", "desc").orderBy("id", "desc");
+    return Promise.all(
+      seasons.map(async season => ({ ...season, roster: await getSeasonRoster(season.id) }))
+    );
   }
 
   async function createSeason(input) {
-    const payload = normalizeSeasonInput(input, serviceNow());
-    const [id] = await mysql(TABLE).insert({
-      ...payload,
-      status: "draft",
-      active_slot: null,
-      start_time: null,
-      settled_at: null,
+    const { payload, bossIds } = normalizeSeasonInput(input, serviceNow());
+    return mysql.transaction(async trx => {
+      const [id] = await trx(TABLE).insert({
+        ...payload,
+        status: "draft",
+        active_slot: null,
+        start_time: null,
+        settled_at: null,
+      });
+      await WorldBossSeasonBoss.replaceForSeason(trx, id, bossIds);
+      return id;
     });
-    return id;
   }
 
   async function updateSeason(id, input) {
@@ -136,8 +167,9 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
       const season = await WorldBossSeason.findForUpdate(id, trx);
       if (!season) throw fail("SEASON_NOT_FOUND");
       if (season.status !== "draft") throw fail("SEASON_NOT_DRAFT");
-      const patch = normalizeSeasonPatch(input, serviceNow(), season);
+      const { patch, bossIds } = normalizeSeasonPatch(input, serviceNow(), season);
       if (Object.keys(patch).length) await trx(TABLE).where({ id }).update(patch);
+      if (bossIds) await WorldBossSeasonBoss.replaceForSeason(trx, id, bossIds);
       return id;
     });
   }
@@ -163,14 +195,17 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
       if (await WorldBossSeason.findActive(activeSlot, trx)) {
         throw fail("ANOTHER_SEASON_ACTIVE");
       }
+      // Re-snapshot so the season freezes the catalog values that were true at open time.
+      const roster = await WorldBossSeasonBoss.refreshSnapshot(trx, id);
+      if (roster.length !== ROSTER_SIZE) throw fail("INVALID_SEASON_ROSTER");
       await beforeOpenMutation({ attempt, trx, season });
       await trx(TABLE).where({ id }).update({
         status: "active",
         active_slot: activeSlot,
         start_time: now,
       });
-      const round = await battleService.createRound(trx, id, 1);
-      return { seasonId: id, round };
+      const cycle = await battleService.openCycle(trx, id, 1);
+      return { seasonId: id, roster, cycleNo: cycle.cycleNo, rounds: cycle.rounds };
     });
   }
 
@@ -197,14 +232,25 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
   async function getBattleStatus() {
     const season = await WorldBossSeason.findActive(activeSlot);
     if (!season) return null;
-    const round = await WorldBossRound.findActiveBySeason(season.id);
-    if (!round) return { season, round: null, boss: null, ended: isEnded(season, serviceNow()) };
-    const boss = await mysql("world_boss").where({ id: round.world_boss_id }).first();
-    return { season, round, boss: boss || null, ended: isEnded(season, serviceNow()) };
+    const ended = isEnded(season, serviceNow());
+    const { cycleNo, rounds } = await WorldBossRound.listCurrentCycle(season.id);
+    return { season, cycleNo, rounds, ended };
+  }
+
+  async function getSeasonRoster(seasonId) {
+    return WorldBossSeasonBoss.listBySeason(seasonId);
   }
 
   async function getRanking(seasonId, limit) {
-    return WorldBossContribution.seasonRanking(seasonId, limit);
+    const ranking = await WorldBossContribution.seasonRanking(seasonId, limit);
+    const userIds = ranking.map(row => row.user_id);
+    const profiles = userIds.length
+      ? await mysql("user").whereIn("platform_id", userIds).select("platform_id", "display_name")
+      : [];
+    const nameByUserId = Object.fromEntries(
+      profiles.map(profile => [profile.platform_id, profile.display_name?.trim() || null])
+    );
+    return ranking.map(row => ({ ...row, display_name: nameByUserId[row.user_id] || null }));
   }
 
   async function getUserTotalDamage(seasonId, userId) {
@@ -317,6 +363,7 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
     deleteSeason,
     openSeason,
     getBattleStatus,
+    getSeasonRoster,
     getRanking,
     getUserTotalDamage,
     getLatestSettledResult,

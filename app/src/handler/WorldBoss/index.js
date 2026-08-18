@@ -10,10 +10,36 @@ const BAD_REQUEST_CODES = new Set([
   "INVALID_END_TIME",
   "INVALID_DATE",
   "INVALID_RANKING_LIMIT",
+  "INVALID_ROSTER_SIZE",
+  "INVALID_ROSTER_BOSS_ID",
+  "DUPLICATE_ROSTER_BOSS",
+  "INVALID_ROUND_ID",
+  "INVALID_ATTACK_TYPE",
+  "INVALID_GROUP_ID",
+  "INVALID_USER",
 ]);
-const CONFLICT_CODES = new Set(["BOSS_IN_USE", "SEASON_NOT_DRAFT", "ANOTHER_SEASON_ACTIVE"]);
+// Board-state conflicts: the client's view is stale, so the fix is always "refresh".
+const CONFLICT_CODES = new Set([
+  "BOSS_IN_USE",
+  "SEASON_NOT_DRAFT",
+  "ANOTHER_SEASON_ACTIVE",
+  "ROUND_NOT_FOUND",
+  "ROUND_STALE",
+  "ROUND_CLEARED",
+  "NO_ACTIVE_SEASON",
+  "SEASON_ENDED",
+  "NO_ACTIVE_ROUND",
+]);
 const NOT_FOUND_CODES = new Set(["SEASON_NOT_FOUND"]);
-const UNPROCESSABLE_CODES = new Set(["NO_WORLD_BOSS", "INVALID_MAX_HP", "WORLD_BOSS_NOT_FOUND"]);
+// Understood, well-formed, but not actionable right now — refreshing will not help.
+const UNPROCESSABLE_CODES = new Set([
+  "NO_WORLD_BOSS",
+  "INVALID_MAX_HP",
+  "WORLD_BOSS_NOT_FOUND",
+  "INVALID_SEASON_ROSTER",
+  "DAILY_LIMIT_EXCEEDED",
+]);
+const TOO_MANY_REQUESTS_CODES = new Set(["ATTACK_COOLDOWN"]);
 
 function toApiDto(value) {
   if (value instanceof Date) return value.toISOString();
@@ -28,6 +54,7 @@ function respondError(res, error) {
   if (CONFLICT_CODES.has(code)) return res.status(409).json({ error: code });
   if (NOT_FOUND_CODES.has(code)) return res.status(404).json({ error: code });
   if (UNPROCESSABLE_CODES.has(code)) return res.status(422).json({ error: code });
+  if (TOO_MANY_REQUESTS_CODES.has(code)) return res.status(429).json({ error: code });
   console.error("[world-boss-api]", error);
   return res.status(500).json({ error: "INTERNAL_ERROR" });
 }

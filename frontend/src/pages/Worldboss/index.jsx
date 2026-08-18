@@ -24,9 +24,103 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ShieldIcon from "@mui/icons-material/Shield";
+import TaskAltIcon from "@mui/icons-material/TaskAlt";
 import api from "../../services/api";
+import useLiff from "../../context/useLiff";
 import useHintBar from "../../hooks/useHintBar";
 import HintSnackBar from "../../components/HintSnackBar";
+
+// Group ids only. The server verifies an announcement target against
+// CHAT_USER_LAST_GROUP, which app/bin/EventDequeue.js writes only for
+// `source.type === "group"` — so a room id could never match and would be dropped
+// server-side anyway. Sending one buys nothing, so it is omitted here.
+const GROUP_ID = /^C[0-9a-f]{32}$/;
+// Matches worldboss.attack_cooldown_seconds. Only used to re-enable the buttons after
+// a 429; the server stays the authority and we never auto-retry.
+const COOLDOWN_MS = 5000;
+
+/**
+ * The LIFF context is the only source for which chat launched this page. Only a real
+ * group is forwarded — never rendered, never stored, and the server re-verifies that
+ * the user actually spoke there before it announces anything.
+ *
+ * Rooms are deliberately excluded: world boss clear announcements do not support them,
+ * so an attack from a room still succeeds, it just never announces.
+ */
+function contextGroupId(liffContext) {
+  if (liffContext?.type !== "group") return null;
+  const id = liffContext.groupId;
+  return typeof id === "string" && GROUP_ID.test(id) ? id : null;
+}
+
+function attackErrorLabel(error) {
+  const status = error.response?.status;
+  const code = error.response?.data?.error;
+  if (status === 409)
+    return { severity: "warning", message: "戰況已更新，已為你重新載入最新狀態。" };
+  if (status === 422) {
+    return {
+      severity: "warning",
+      message:
+        code === "DAILY_LIMIT_EXCEEDED"
+          ? "今日行動額度已用盡，明天再來討伐。"
+          : "目前無法攻擊，請稍後再試。",
+    };
+  }
+  if (status === 429) return { severity: "info", message: "攻擊冷卻中，請稍候幾秒再出手。" };
+  if (status === 400) return { severity: "error", message: "攻擊要求無效，請重新整理後再試。" };
+  return { severity: "error", message: "攻擊失敗，請稍後再試。" };
+}
+
+/**
+ * Folds an attack response back into the board without a full refetch. The server's
+ * own `status` is authoritative; `me.current` is patched from the same response so the
+ * personal numbers can't disagree with the board they were returned with.
+ */
+function mergeAfterAttack(previous, payload) {
+  const { attack, status, latestReward } = payload;
+  const nextStatus = status ?? previous.status;
+  const seasonId =
+    canonicalSeasonId(nextStatus?.season?.id) ?? canonicalSeasonId(previous.me?.current?.seasonId);
+
+  return {
+    ...previous,
+    ...(status ? { status } : {}),
+    me: {
+      ...previous.me,
+      current:
+        seasonId === null
+          ? (previous.me?.current ?? null)
+          : {
+              ...previous.me?.current,
+              seasonId,
+              totalDamage: attack.seasonTotalDamage,
+              daily: attack.daily,
+            },
+      latestReward: latestReward ?? previous.me?.latestReward ?? null,
+    },
+  };
+}
+
+/**
+ * Private, attacker-only summary of the hit that just landed. This page is the personal
+ * surface, so quota and EXP belong here rather than in any group message.
+ */
+function attackSummary(attack) {
+  const parts = [
+    `有效傷害 ${formatInteger(attack.effectiveDamage)}`,
+    `消耗 ${formatInteger(attack.cost)}`,
+    `今日剩餘 ${formatInteger(attack.daily?.remaining)}`,
+    `賽季累積 ${formatInteger(attack.seasonTotalDamage)}`,
+  ];
+  if (attack.wastedDamage && String(attack.wastedDamage) !== "0") {
+    parts.push(`溢傷作廢 ${formatInteger(attack.wastedDamage)}`);
+  }
+  if (attack.levelResult?.levelUp) {
+    parts.push(`職業等級提升至 Lv.${formatInteger(attack.levelResult.newLevel)}`);
+  }
+  return parts.join(" · ");
+}
 
 function decimalToBigInt(value) {
   if (typeof value === "bigint") return value;
@@ -201,9 +295,131 @@ function PersonalProgressCard({ current, unavailable }) {
   );
 }
 
-function BattleCard({ status, current, currentUnavailable }) {
-  const { season, round, boss, ended } = status;
+/**
+ * One encounter in the current cycle. Each boss carries its own HP, so a cleared boss
+ * has to read as finished at a glance while its neighbours are still live.
+ */
+function BossRoundCard({ round, onAttack, busy, disabled }) {
   const hpPercent = safeHpPercent(round);
+  const cleared = Boolean(round.cleared_at);
+
+  return (
+    <Card
+      variant="outlined"
+      sx={{
+        height: "100%",
+        borderColor: cleared ? "success.light" : "divider",
+        bgcolor: cleared ? "action.hover" : "background.paper",
+      }}
+    >
+      <CardContent sx={{ p: 1.75, "&:last-child": { pb: 1.75 } }}>
+        <Stack spacing={1.25}>
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <Avatar
+              variant="rounded"
+              src={round.image || undefined}
+              alt={round.name || "世界王"}
+              sx={{
+                width: 44,
+                height: 44,
+                bgcolor: cleared ? "success.main" : "secondary.main",
+                filter: cleared ? "grayscale(0.6)" : "none",
+              }}
+            >
+              <ShieldIcon />
+            </Avatar>
+            <Box minWidth={0} flex={1}>
+              <Typography variant="caption" color="text.secondary" display="block">
+                {formatInteger(round.position)} 號位
+              </Typography>
+              <Typography sx={{ fontWeight: 800, lineHeight: 1.25 }} noWrap>
+                {round.name || "未知世界王"}
+              </Typography>
+            </Box>
+            {cleared && <TaskAltIcon color="success" fontSize="small" aria-label="已討伐" />}
+          </Stack>
+
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="baseline" gap={0.5}>
+              <Typography variant="caption" color="text.secondary">
+                {cleared ? "已討伐" : "剩餘 HP"}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{ fontWeight: 800, fontVariantNumeric: "tabular-nums", textAlign: "right" }}
+              >
+                {formatInteger(round.current_hp)} / {formatInteger(round.max_hp)}
+              </Typography>
+            </Stack>
+            {hpPercent === null ? (
+              <Typography variant="caption" color="error.main" display="block" sx={{ mt: 0.5 }}>
+                無法計算 HP 比例
+              </Typography>
+            ) : (
+              <>
+                <LinearProgress
+                  variant="determinate"
+                  value={cleared ? 0 : hpPercent}
+                  color={cleared ? "success" : "primary"}
+                  aria-label={`${round.name || "世界王"} HP ${cleared ? 0 : hpPercent}%`}
+                  sx={{ height: 8, borderRadius: 4, mt: 0.5 }}
+                />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  display="block"
+                  textAlign="right"
+                  sx={{ mt: 0.25, fontVariantNumeric: "tabular-nums" }}
+                >
+                  {cleared ? 0 : hpPercent}%
+                </Typography>
+              </>
+            )}
+          </Box>
+
+          {cleared ? (
+            <Typography
+              variant="caption"
+              color="success.main"
+              sx={{ fontWeight: 700, textAlign: "center", py: 0.5 }}
+            >
+              已討伐
+            </Typography>
+          ) : (
+            <Stack spacing={0.75}>
+              <Button
+                size="small"
+                variant="contained"
+                fullWidth
+                disabled={disabled}
+                onClick={() => onAttack(round, "standard")}
+                startIcon={busy ? <CircularProgress size={14} color="inherit" /> : null}
+                sx={{ fontWeight: 700 }}
+              >
+                普通攻擊
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="secondary"
+                fullWidth
+                disabled={disabled}
+                onClick={() => onAttack(round, "skill")}
+                sx={{ fontWeight: 700 }}
+              >
+                技能攻擊
+              </Button>
+            </Stack>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BattleCard({ status, current, currentUnavailable, onAttack, attackingRoundId, locked }) {
+  const { season, cycleNo, rounds, ended } = status;
+  const clearedCount = rounds.filter(round => round.cleared_at).length;
 
   return (
     <Card variant="outlined" sx={{ height: "100%", overflow: "hidden" }}>
@@ -216,12 +432,15 @@ function BattleCard({ status, current, currentUnavailable }) {
         }}
       >
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
-          <Box>
+          <Box minWidth={0}>
             <Typography variant="overline" sx={{ lineHeight: 1, opacity: 0.82 }}>
               世界王討伐
             </Typography>
             <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
               {season.name || "未命名賽季"}
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.25, opacity: 0.9, fontWeight: 700 }}>
+              第 {formatInteger(cycleNo)} 周回 · 已討伐 {clearedCount} / {rounds.length}
             </Typography>
           </Box>
           <Chip
@@ -231,6 +450,7 @@ function BattleCard({ status, current, currentUnavailable }) {
               bgcolor: "rgba(255,255,255,0.2)",
               color: "inherit",
               fontWeight: 700,
+              flexShrink: 0,
             }}
           />
         </Stack>
@@ -238,67 +458,18 @@ function BattleCard({ status, current, currentUnavailable }) {
 
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack spacing={2.25}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Avatar
-              variant="rounded"
-              src={boss.image || undefined}
-              alt={boss.name || "世界王"}
-              sx={{ width: 52, height: 52, bgcolor: "secondary.main" }}
-            >
-              <ShieldIcon />
-            </Avatar>
-            <Box minWidth={0}>
-              <Typography variant="h6" component="h3" sx={{ fontWeight: 800 }} noWrap>
-                {boss.name || "未知世界王"}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                第 {formatInteger(round.round_no)} 輪
-              </Typography>
-            </Box>
-          </Stack>
-
-          {boss.description && (
-            <Typography variant="body2" color="text.secondary">
-              {boss.description}
-            </Typography>
-          )}
-
-          <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="baseline" gap={1}>
-              <Typography variant="body2" color="text.secondary">
-                世界王 HP
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{ fontWeight: 800, fontVariantNumeric: "tabular-nums", textAlign: "right" }}
-              >
-                {formatInteger(round.current_hp)} / {formatInteger(round.max_hp)}
-              </Typography>
-            </Stack>
-            {hpPercent === null ? (
-              <Typography variant="caption" color="error.main" display="block" sx={{ mt: 0.75 }}>
-                無法計算目前 HP 比例
-              </Typography>
-            ) : (
-              <>
-                <LinearProgress
-                  variant="determinate"
-                  value={hpPercent}
-                  aria-label={`世界王 HP ${hpPercent}%`}
-                  sx={{ height: 10, borderRadius: 5, mt: 0.75 }}
+          <Grid container spacing={1.5} columns={{ xs: 12, lg: 10 }}>
+            {rounds.map(round => (
+              <Grid key={round.id} size={{ xs: 6, sm: 4, lg: 2 }}>
+                <BossRoundCard
+                  round={round}
+                  onAttack={onAttack}
+                  busy={attackingRoundId === round.id}
+                  disabled={locked || ended}
                 />
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  display="block"
-                  textAlign="right"
-                  sx={{ mt: 0.5, fontVariantNumeric: "tabular-nums" }}
-                >
-                  {hpPercent}%
-                </Typography>
-              </>
-            )}
-          </Box>
+              </Grid>
+            ))}
+          </Grid>
 
           <Divider />
 
@@ -310,6 +481,40 @@ function BattleCard({ status, current, currentUnavailable }) {
         </Stack>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Attacker-only result of the most recent hit. Sits above the board so the numbers
+ * land where the user was already looking after tapping.
+ */
+function AttackResultCard({ attack, onDismiss }) {
+  const cleared = Boolean(attack.cleared);
+  const full = Boolean(attack.cycleAdvanced);
+
+  return (
+    <Alert
+      severity={full ? "success" : cleared ? "success" : "info"}
+      variant="outlined"
+      onClose={onDismiss}
+      aria-live="polite"
+    >
+      <Typography sx={{ fontWeight: 800 }}>
+        {full
+          ? `本周回全滅！第 ${formatInteger(attack.cycleNo)} 周回開始`
+          : cleared
+            ? `已擊破 ${attack.boss?.name || "世界王"}`
+            : "攻擊成功"}
+      </Typography>
+      <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: "anywhere" }}>
+        {attackSummary(attack)}
+      </Typography>
+      {attack.announcementQueued && (
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+          擊破公告會在群組的下一則訊息時送出。
+        </Typography>
+      )}
+    </Alert>
   );
 }
 
@@ -512,7 +717,7 @@ function Leaderboard({ rows, unavailable }) {
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
-                    primary={row.user_id || "未知玩家"}
+                    primary={row.display_name || row.user_id || "未知玩家"}
                     secondary="累積傷害"
                     primaryTypographyProps={{
                       noWrap: true,
@@ -552,11 +757,16 @@ export default function Worldboss() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [attackingRoundId, setAttackingRoundId] = useState(null);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [cooling, setCooling] = useState(false);
+  const [lastAttack, setLastAttack] = useState(null);
   const requestIdRef = useRef(0);
   const loadedOnceRef = useRef(false);
   const hasLoadedDataRef = useRef(false);
   const [hasLoadedData, setHasLoadedData] = useState(false);
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
+  const { liffContext } = useLiff();
 
   const fetchBoard = useCallback(
     async ({ announce = false } = {}) => {
@@ -630,9 +840,73 @@ export default function Worldboss() {
     fetchBoard();
   }, [fetchBoard]);
 
+  // Re-enables the buttons once the server-side cooldown has elapsed. This only lifts
+  // the local lock — it never fires a retry on the user's behalf.
+  useEffect(() => {
+    if (!cooldownUntil) return undefined;
+    const timer = window.setTimeout(
+      () => {
+        setCooling(false);
+        setCooldownUntil(0);
+      },
+      Math.max(0, cooldownUntil - Date.now())
+    );
+    return () => window.clearTimeout(timer);
+  }, [cooldownUntil]);
+
+  const attack = useCallback(
+    async (round, attackType) => {
+      if (attackingRoundId !== null || cooling) return;
+      setAttackingRoundId(round.id);
+
+      const groupId = contextGroupId(liffContext);
+      try {
+        const { data: payload } = await api.post("/api/world-boss/attack", {
+          roundId: round.id,
+          attackType,
+          ...(groupId ? { groupId } : {}),
+        });
+
+        setData(previous => mergeAfterAttack(previous, payload));
+        setErrors(previous => {
+          const { status: _status, me: _me, ...rest } = previous;
+          return rest;
+        });
+        setLastAttack({ ...payload.attack, announcementQueued: payload.announcementQueued });
+        hasLoadedDataRef.current = true;
+        setHasLoadedData(true);
+
+        // The board came back with the response; only the ranking is now stale.
+        api
+          .get("/api/world-boss/leaderboard?limit=50")
+          .then(({ data: board }) =>
+            setData(previous => ({ ...previous, leaderboard: leaderboardSnapshot(board) }))
+          )
+          .catch(() => {});
+
+        // A null status means the follow-up read failed server-side, not that the
+        // attack failed — refetch so the board doesn't sit on pre-attack HP.
+        if (!payload.status) fetchBoard();
+      } catch (requestError) {
+        const { severity, message } = attackErrorLabel(requestError);
+        showHint(message, severity);
+        if (requestError.response?.status === 429) {
+          setCooling(true);
+          setCooldownUntil(Date.now() + COOLDOWN_MS);
+        }
+        if (requestError.response?.status === 409) fetchBoard();
+      } finally {
+        setAttackingRoundId(null);
+      }
+    },
+    [attackingRoundId, cooling, liffContext, fetchBoard, showHint]
+  );
+
   if (loading) return <LoadingBoard />;
 
-  const hasBattle = Boolean(data.status?.season && data.status?.round && data.status?.boss);
+  const hasBattle = Boolean(
+    data.status?.season && Array.isArray(data.status?.rounds) && data.status.rounds.length > 0
+  );
   const current = data.me?.current;
   const statusSeasonId = canonicalSeasonId(data.status?.season?.id);
   const currentMatchesStatus = Boolean(
@@ -668,7 +942,10 @@ export default function Worldboss() {
             variant="outlined"
             startIcon={refreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
             onClick={() => fetchBoard({ announce: true })}
-            disabled={refreshing}
+            // Locked while an attack is in flight or cooling down: a board fetch that
+            // started before the attack could land afterwards and overwrite the fresher
+            // state the attack response already gave us.
+            disabled={refreshing || attackingRoundId !== null || cooling}
             aria-label="重新整理世界王戰況、排行榜與個人資料"
             sx={{ alignSelf: { xs: "flex-start", sm: "auto" }, fontWeight: 700 }}
           >
@@ -692,21 +969,28 @@ export default function Worldboss() {
           </Alert>
         )}
 
+        {lastAttack && (
+          <AttackResultCard attack={lastAttack} onDismiss={() => setLastAttack(null)} />
+        )}
+
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 7 }}>
+          <Grid size={{ xs: 12, md: hasBattle ? 12 : 7 }}>
             {hasBattle ? (
               <BattleCard
                 status={data.status}
                 current={shouldRenderCurrent ? current : undefined}
                 currentUnavailable={currentUnavailable}
+                onAttack={attack}
+                attackingRoundId={attackingRoundId}
+                locked={attackingRoundId !== null || cooling}
               />
-            ) : errors.status ? (
+            ) : errors.status || data.status?.season ? (
               <UnavailableStatus />
             ) : (
               <NoActiveSeason />
             )}
           </Grid>
-          <Grid size={{ xs: 12, md: 5 }}>
+          <Grid size={{ xs: 12, md: hasBattle ? 12 : 5 }}>
             {data.me === undefined ? (
               <UnavailableRewardCard />
             ) : latestReward != null ? (

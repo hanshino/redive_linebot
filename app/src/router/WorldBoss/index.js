@@ -17,6 +17,7 @@ AdminRouter.post("/world-boss-seasons/:id/open", admin.openSeason);
 PublicRouter.get("/status", publicHandler.status);
 PublicRouter.get("/leaderboard", publicHandler.leaderboard);
 PublicRouter.get("/me", publicHandler.me);
+PublicRouter.post("/attack", publicHandler.attack);
 
 exports.admin = AdminRouter;
 exports.public = PublicRouter;

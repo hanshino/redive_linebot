@@ -1,63 +1,33 @@
-const config = require("config");
 const WorldBoss = require("../WorldBoss");
 
-function collectByKey(node, key, acc = []) {
-  if (Array.isArray(node)) {
-    node.forEach(item => collectByKey(item, key, acc));
-  } else if (node && typeof node === "object") {
-    for (const [entryKey, value] of Object.entries(node)) {
-      if (entryKey === key && typeof value === "string") acc.push(value);
-      collectByKey(value, key, acc);
-    }
-  }
-  return acc;
+function text(node) {
+  if (Array.isArray(node)) return node.flatMap(text);
+  if (!node || typeof node !== "object") return [];
+  return [
+    ...(typeof node.text === "string" ? [node.text] : []),
+    ...Object.values(node).flatMap(text),
+  ];
 }
 
-function visibleCopy(node) {
-  return collectByKey(node, "text").concat(collectByKey(node, "label")).join("\n");
+function actions(node) {
+  if (Array.isArray(node)) return node.flatMap(actions);
+  if (!node || typeof node !== "object") return [];
+  return [...(node.type === "postback" ? [node] : []), ...Object.values(node).flatMap(actions)];
 }
 
-function detailRowValue(node, label) {
-  const rows = [];
-  function visit(value) {
-    if (Array.isArray(value)) value.forEach(visit);
-    else if (value && typeof value === "object") {
-      if (
-        value.type === "box" &&
-        value.layout === "horizontal" &&
-        Array.isArray(value.contents) &&
-        value.contents[0] &&
-        value.contents[0].text === label
-      ) {
-        rows.push(value.contents[1] && value.contents[1].text);
-      }
-      Object.values(value).forEach(visit);
-    }
-  }
-  visit(node);
-  return rows;
+function uriActions(node) {
+  if (Array.isArray(node)) return node.flatMap(uriActions);
+  if (!node || typeof node !== "object") return [];
+  return [...(node.type === "uri" ? [node] : []), ...Object.values(node).flatMap(uriActions)];
 }
 
-function postbackActions(node) {
-  const actions = [];
-  function visit(value) {
-    if (Array.isArray(value)) value.forEach(visit);
-    else if (value && typeof value === "object") {
-      if (value.type === "postback") actions.push(value);
-      Object.values(value).forEach(visit);
-    }
-  }
-  visit(node);
-  return actions;
+function images(node) {
+  if (Array.isArray(node)) return node.flatMap(images);
+  if (!node || typeof node !== "object") return [];
+  return [...(node.type === "image" ? [node] : []), ...Object.values(node).flatMap(images)];
 }
 
 const LIFF = "https://liff.line.me/world-boss-liff?source=line";
-const status = {
-  season: { id: 9, name: "盛夏世界王", announcement: "全服討伐中" },
-  round: { id: 21, round_no: 3, current_hp: 4500, max_hp: 12000 },
-  boss: { id: 5, name: "暴君哥布林", description: "別讓牠逃走" },
-};
-const daily = { limit: 100, used: 20, remaining: 80 };
 const latestReward = {
   rewardId: 42,
   seasonId: 8,
@@ -69,251 +39,202 @@ const latestReward = {
   paidAt: "2026-07-20T12:34:56.000Z",
 };
 
-describe("WorldBoss Flex templates", () => {
-  it("renders active round, HP, both attack actions, and a query-safe World Boss LIFF URI", () => {
-    const bubble = WorldBoss.generateBattleStatusBubble({ ...status, daily, liffUri: LIFF });
-    const copy = visibleCopy(bubble);
-    const attacks = postbackActions(bubble).map(action => JSON.parse(action.data));
+function makeStatus({ cleared = [], image = () => null } = {}) {
+  return {
+    season: { id: 9, name: "盛夏世界王", announcement: "全服討伐中" },
+    cycleNo: 3,
+    rounds: [1, 2, 3, 4, 5].map(position => ({
+      id: 20 + position,
+      season_id: 9,
+      season_boss_id: 30 + position,
+      cycle_no: 3,
+      position,
+      world_boss_id: 40 + position,
+      name: `王${position}`,
+      image: image(position),
+      description: `描述${position}`,
+      hp_weight: "1.00",
+      max_hp: "12000",
+      current_hp: cleared.includes(position) ? "0" : String(12000 - position * 1000),
+      cleared_at: cleared.includes(position) ? new Date("2026-07-20T12:00:00.000Z") : null,
+    })),
+    ended: false,
+  };
+}
 
-    expect(bubble.type).toBe("bubble");
-    expect(copy).toContain("第 3 輪");
-    expect(copy).toContain("4,500 / 12,000");
-    expect(attacks).toEqual(
-      expect.arrayContaining([
-        {
-          action: "worldBossAttack",
-          attackType: "standard",
-          cooldown: config.get("worldboss.attack_cooldown_seconds"),
-        },
-        {
-          action: "worldBossAttack",
-          attackType: "skill",
-          cooldown: config.get("worldboss.attack_cooldown_seconds"),
-        },
-      ])
-    );
-    expect(detailRowValue(bubble, "今日行動額度")).toEqual(["80"]);
-    expect(detailRowValue(bubble, "今日已消耗額度")).toEqual(["20 / 100"]);
-    expect(copy).not.toContain("今日可用女神石");
-    expect(collectByKey(bubble, "uri")).toContain(
-      "https://liff.line.me/world-boss-liff/worldboss?source=line"
-    );
-  });
+const httpsImage = position => `https://cdn.example.com/boss/${position}.png`;
 
-  it("rejects a zero max HP instead of serializing a NaN or Infinity percentage", () => {
-    expect(() =>
-      WorldBoss.generateBattleStatusBubble({
-        ...status,
-        round: { ...status.round, max_hp: 0 },
-        daily,
-        liffUri: LIFF,
-      })
-    ).toThrow("INVALID_MAX_HP");
-  });
-
-  it("rejects non-HTTPS LIFF URIs rather than serializing invalid URI actions", () => {
-    expect(() =>
-      WorldBoss.generateBattleStatusBubble({ ...status, daily, liffUri: "ftp://liff.line.me/id" })
-    ).toThrow("INVALID_LIFF_URI");
-  });
-
-  it("caps an unbounded boss description within LINE bubble and carousel payload limits", () => {
-    const oversizedStatus = {
-      ...status,
-      boss: { ...status.boss, description: "超長描述".repeat(22000) },
-    };
-    const bubble = WorldBoss.generateBattleStatusBubble({
-      ...oversizedStatus,
-      daily,
+describe("WorldBoss Flex production contract", () => {
+  it("renders exactly five public bubbles in position order with only the shared LIFF uri", () => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus(),
       liffUri: LIFF,
     });
-    const carousel = WorldBoss.generateWorldBossReply({
-      status: oversizedStatus,
-      daily,
+    expect(reply.type).toBe("carousel");
+    expect(reply.contents).toHaveLength(5);
+    expect(reply.contents.map(bubble => text(bubble).find(value => value.includes("號")))).toEqual([
+      "第 3 輪 · 1 號 · 王1",
+      "第 3 輪 · 2 號 · 王2",
+      "第 3 輪 · 3 號 · 王3",
+      "第 3 輪 · 4 號 · 王4",
+      "第 3 輪 · 5 號 · 王5",
+    ]);
+    // Attacks moved to authenticated LIFF: no postback may survive in a group card.
+    expect(actions(reply)).toEqual([]);
+    const uris = uriActions(reply);
+    expect(uris).toHaveLength(5);
+    expect(new Set(uris.map(action => action.uri)).size).toBe(1);
+    expect(new URL(uris[0].uri).pathname.endsWith("/worldboss")).toBe(true);
+  });
+
+  it("excludes every personal field from the public board", () => {
+    const values = text(
+      WorldBoss.generateWorldBossReply({ status: makeStatus(), liffUri: LIFF })
+    ).join("|");
+
+    for (const forbidden of [
+      "今日行動額度",
+      "今日已消耗額度",
+      "剩餘",
+      "EXP",
+      "女神石",
+      "稱號",
+      "結算",
+      "賽季累積傷害",
+      "春季世界王",
+    ]) {
+      expect(values).not.toContain(forbidden);
+    }
+  });
+
+  it("ignores a settled reward and never renders a reward bubble in the group reply", () => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus(),
       latestReward,
       liffUri: LIFF,
     });
 
-    expect(visibleCopy(bubble)).toContain("…");
-    expect(Buffer.byteLength(JSON.stringify(bubble), "utf8")).toBeLessThanOrEqual(30 * 1024);
-    expect(Buffer.byteLength(JSON.stringify(carousel), "utf8")).toBeLessThanOrEqual(50 * 1024);
+    expect(reply.contents).toHaveLength(5);
+    expect(text(reply).join("|")).not.toContain("春季世界王");
   });
 
-  it("preserves BIGINT HP strings while calculating a safe progress percentage", () => {
-    const bubble = WorldBoss.generateBattleStatusBubble({
-      ...status,
-      round: {
-        ...status.round,
-        current_hp: "4503599627370497",
-        max_hp: "9007199254740993",
-      },
-      daily,
+  it("shows cleared bosses without any action at all", () => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus({ cleared: [2, 5] }),
       liffUri: LIFF,
     });
-
-    expect(visibleCopy(bubble)).toContain(
-      "HP 4,503,599,627,370,497 / 9,007,199,254,740,993（50%）"
+    expect(reply.contents[1]).toMatchObject({ type: "bubble" });
+    expect(reply.contents[1].footer.contents).toEqual(
+      expect.arrayContaining([expect.objectContaining({ text: "已擊破" })])
     );
+    expect(actions(reply.contents[1])).toHaveLength(0);
+    expect(uriActions(reply.contents[1])).toHaveLength(0);
+    expect(uriActions(reply.contents[0])).toHaveLength(1);
   });
 
-  it("preserves aggregate integer strings above Number.MAX_SAFE_INTEGER", () => {
-    const bubble = WorldBoss.generateLatestRewardBubble({
-      reward: { ...latestReward, totalDamage: "9007199254740993" },
+  it("falls back to the no-season bubble instead of a reward bubble", () => {
+    const reply = WorldBoss.generateWorldBossReply({ latestReward, liffUri: LIFF });
+    expect(reply.type).toBe("bubble");
+    expect(text(reply).join()).toContain("目前沒有進行中的世界王賽季");
+    expect(text(reply).join()).not.toContain("春季世界王");
+    expect(
+      text(WorldBoss.generateNoActiveSeasonBubble({ ended: true, liffUri: LIFF })).join()
+    ).toContain("世界王賽季已結束");
+  });
+
+  it("gives each bubble the hero image from its own snapshot url", () => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus({ image: httpsImage }),
       liffUri: LIFF,
     });
 
-    expect(detailRowValue(bubble, "賽季總傷害")).toEqual(["9,007,199,254,740,993"]);
+    expect(reply.contents).toHaveLength(5);
+    expect(reply.contents.map(bubble => bubble.hero.url)).toEqual([1, 2, 3, 4, 5].map(httpsImage));
+    reply.contents.forEach(bubble => {
+      expect(bubble.hero).toMatchObject({ type: "image", size: "full", aspectMode: "cover" });
+    });
+    // Position order still holds, so art and name never belong to different bosses.
+    expect(reply.contents.map(bubble => text(bubble).find(value => value.includes("號")))).toEqual([
+      "第 3 輪 · 1 號 · 王1",
+      "第 3 輪 · 2 號 · 王2",
+      "第 3 輪 · 3 號 · 王3",
+      "第 3 輪 · 4 號 · 王4",
+      "第 3 輪 · 5 號 · 王5",
+    ]);
   });
 
-  it("renders every player-readable latest settlement field including ledger proof", () => {
-    const bubble = WorldBoss.generateLatestRewardBubble({ reward: latestReward, liffUri: LIFF });
-    const copy = visibleCopy(bubble);
-
-    expect(bubble.type).toBe("bubble");
-    expect(copy).toContain("春季世界王");
-    expect(copy).toContain("第 1 名");
-    expect(copy).toContain("100");
-    expect(copy).toContain("殲滅之王");
-    expect(copy).toContain("987,654");
-    expect(copy).toContain("結算編號 #42");
-    expect(copy).toContain("入帳時間 2026-07-20T12:34:56.000Z");
-    expect(collectByKey(bubble, "uri")).toContain(
-      "https://liff.line.me/world-boss-liff/worldboss?source=line"
-    );
-  });
-
-  it("keeps the rank, zero stones, fallback title, and ledger proof for a zero-tier settlement", () => {
-    const bubble = WorldBoss.generateLatestRewardBubble({
-      reward: {
-        ...latestReward,
-        rewardId: 43,
-        ranking: 88,
-        stoneAmount: 0,
-        titleName: null,
-        paidAt: "2026-07-20T13:00:00.000Z",
-      },
+  it("keeps a cleared boss's art while dimming it, and leaves live bosses undimmed", () => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus({ cleared: [2], image: httpsImage }),
       liffUri: LIFF,
     });
-    const copy = visibleCopy(bubble);
+    const clearedHero = reply.contents[1].hero;
 
-    expect(copy).toContain("第 88 名");
-    expect(detailRowValue(bubble, "女神石")).toEqual(["0"]);
-    expect(copy).toContain("無稱號");
-    expect(copy).toContain("結算編號 #43");
-    expect(copy).toContain("入帳時間 2026-07-20T13:00:00.000Z");
+    expect(images(clearedHero).map(image => image.url)).toEqual([httpsImage(2)]);
+    expect(clearedHero.contents.some(node => node.backgroundColor)).toBe(true);
+    // Flex images have no opacity property; the veil must be a real box.
+    expect(images(clearedHero).every(image => image.opacity === undefined)).toBe(true);
+    expect(actions(reply.contents[1])).toHaveLength(0);
+    expect(reply.contents[0].hero).toMatchObject({ type: "image", url: httpsImage(1) });
   });
 
-  it("returns active status and a latest reward as two carousel bubbles", () => {
-    const contents = WorldBoss.generateWorldBossReply({
-      status,
-      daily,
-      latestReward,
+  it.each([
+    ["null", () => null],
+    ["undefined", () => undefined],
+    ["empty string", () => ""],
+    ["whitespace", () => "   "],
+    ["plain http", position => `http://cdn.example.com/boss/${position}.png`],
+    ["protocol-relative", position => `//cdn.example.com/boss/${position}.png`],
+    ["a bare path", position => `/boss/${position}.png`],
+    ["a non-url string", () => "not a url"],
+    ["a javascript url", () => "javascript:alert(1)"],
+    ["a data url", () => "data:image/png;base64,iVBORw0KGgo="],
+    ["a non-string", () => 12345],
+  ])("omits the hero entirely when the snapshot image is %s", (_label, image) => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus({ cleared: [4], image }),
       liffUri: LIFF,
     });
 
-    expect(contents.type).toBe("carousel");
-    expect(contents.contents).toHaveLength(2);
-    expect(contents.contents.every(bubble => bubble.type === "bubble")).toBe(true);
+    expect(reply.contents).toHaveLength(5);
+    reply.contents.forEach(bubble => {
+      expect(bubble).not.toHaveProperty("hero");
+      expect(images(bubble)).toEqual([]);
+    });
+    // The text card still renders in full, so nothing is lost by dropping the image.
+    expect(text(reply.contents[0]).some(value => value.includes("王1"))).toBe(true);
   });
 
-  it("returns the latest reward without an active season and a no-season bubble only when both are absent", () => {
-    const rewardOnly = WorldBoss.generateWorldBossReply({ daily, latestReward, liffUri: LIFF });
-    const noSeason = WorldBoss.generateWorldBossReply({ daily, liffUri: LIFF });
-
-    expect(rewardOnly.type).toBe("bubble");
-    expect(visibleCopy(rewardOnly)).toContain("結算編號 #42");
-    expect(noSeason.type).toBe("bubble");
-    expect(visibleCopy(noSeason)).toContain("目前沒有進行中的世界王賽季");
-  });
-
-  it("renders attack quota copy and the complete latest settlement proof as a carousel", () => {
-    const reply = WorldBoss.generateAttackResultBubble({
-      result: {
-        damage: 1200,
-        cost: 15,
-        seasonTotalDamage: 12000,
-        clearedRounds: [2, 3],
-        levelResult: { levelUp: true, newLevel: 6, levelUpCount: 1 },
-      },
-      daily,
-      latestReward,
+  it("renders a mixed roster where only some bosses have usable art", () => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus({
+        image: position => (position % 2 === 1 ? httpsImage(position) : "http://insecure/x.png"),
+      }),
       liffUri: LIFF,
     });
-    const attackBubble = reply.contents[0];
-    const rewardBubble = reply.contents[1];
-    const attackCopy = visibleCopy(attackBubble);
-    const rewardCopy = visibleCopy(rewardBubble);
+
+    expect(reply.contents.map(bubble => bubble.hero?.url)).toEqual([
+      httpsImage(1),
+      undefined,
+      httpsImage(3),
+      undefined,
+      httpsImage(5),
+    ]);
+  });
+
+  it("stays a valid five-bubble carousel within LINE's payload limit when every boss has art", () => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus({ image: position => `${httpsImage(position)}?${"v".repeat(200)}` }),
+      liffUri: LIFF,
+    });
 
     expect(reply.type).toBe("carousel");
-    expect(reply.contents).toHaveLength(2);
-    expect(attackCopy).toContain("1,200");
-    expect(detailRowValue(attackBubble, "消耗攻擊 cost")).toEqual(["15"]);
-    expect(detailRowValue(attackBubble, "今日剩餘行動額度")).toEqual(["80"]);
-    expect(attackCopy).not.toContain("女神石");
-    expect(attackCopy).toContain("第 2、3 輪");
-    expect(attackCopy).toContain("Lv.6");
-    expect(rewardCopy).toContain("春季世界王");
-    expect(rewardCopy).toContain("第 1 名");
-    expect(detailRowValue(rewardBubble, "女神石")).toEqual(["100"]);
-    expect(rewardCopy).toContain("殲滅之王");
-    expect(rewardCopy).toContain("987,654");
-    expect(rewardCopy).toContain("結算編號 #42");
-    expect(rewardCopy).toContain("入帳時間 2026-07-20T12:34:56.000Z");
-    expect(collectByKey(rewardBubble, "uri")).toContain(
-      "https://liff.line.me/world-boss-liff/worldboss?source=line"
-    );
-  });
-
-  it("formats an oversized attack total and serializes a no-reward reply safely", () => {
-    const reply = WorldBoss.generateAttackResultBubble({
-      result: {
-        damage: 1,
-        cost: 1,
-        seasonTotalDamage: "9007199254740993",
-        clearedRounds: [],
-        levelResult: { levelUp: false },
-      },
-      daily,
-      latestReward: null,
-      liffUri: LIFF,
+    expect(reply.contents).toHaveLength(5);
+    expect(reply.contents.every(bubble => bubble.size === "kilo")).toBe(true);
+    expect(Buffer.byteLength(JSON.stringify(reply), "utf8")).toBeLessThan(50 * 1024);
+    // Every image node must be a well-formed https url, or LINE rejects the message.
+    images(reply).forEach(image => {
+      expect(new URL(image.url).protocol).toBe("https:");
     });
-
-    expect(reply.type).toBe("bubble");
-    expect(detailRowValue(reply, "消耗攻擊 cost")).toEqual(["1"]);
-    expect(detailRowValue(reply, "賽季累積傷害")).toEqual(["9,007,199,254,740,993"]);
-    expect(() => JSON.stringify(reply)).not.toThrow();
-  });
-
-  it("bounds a 5,000-round attack summary within LINE bubble and carousel limits", () => {
-    const clearedRounds = Array.from({ length: 5000 }, (_, index) => index + 1);
-    const reply = WorldBoss.generateAttackResultBubble({
-      result: {
-        damage: 5000,
-        cost: 1,
-        seasonTotalDamage: 5000,
-        clearedRounds,
-        levelResult: { levelUp: false },
-      },
-      daily,
-      latestReward,
-      liffUri: LIFF,
-    });
-    const attackBubble = reply.contents[0];
-    const copy = visibleCopy(attackBubble);
-
-    expect(copy).toContain("共 5,000 輪");
-    expect(copy).toContain("第 1、2、3 輪");
-    expect(copy).toContain("第 4,998、4,999、5,000 輪");
-    expect(Buffer.byteLength(JSON.stringify(attackBubble), "utf8")).toBeLessThanOrEqual(30 * 1024);
-    expect(Buffer.byteLength(JSON.stringify(reply), "utf8")).toBeLessThanOrEqual(50 * 1024);
-  });
-
-  it("marks the no-active-season card as ended when the supplied status says so", () => {
-    const bubble = WorldBoss.generateNoActiveSeasonBubble({ ended: true, liffUri: LIFF });
-
-    expect(visibleCopy(bubble)).toContain("世界王賽季已結束");
-    expect(collectByKey(bubble, "uri")).toContain(
-      "https://liff.line.me/world-boss-liff/worldboss?source=line"
-    );
   });
 });

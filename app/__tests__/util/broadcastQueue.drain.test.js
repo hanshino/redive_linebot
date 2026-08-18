@@ -17,6 +17,16 @@ function ev(type, text, extra = {}) {
   return JSON.stringify({ type, text, ...extra });
 }
 
+// The lock value written by drain (a random ownership token).
+function lockToken() {
+  return redis.set.mock.calls[0][1];
+}
+
+// The Lua scripts are distinguished by the command they run.
+function evalCallsFor(command) {
+  return redis.eval.mock.calls.filter(([script]) => script.includes(command));
+}
+
 describe("broadcastQueue.formatMessage", () => {
   it("produces a LINE text message from event.text", () => {
     const msg = broadcastQueue.formatMessage({ type: "trial_enter", text: "踏入了 ★1 的試煉" });
@@ -51,11 +61,68 @@ describe("broadcastQueue.formatMessage", () => {
 describe("broadcastQueue.drain", () => {
   let lineClient;
 
+  // __tests__/setup.js predates the ownership-token lock, so its redis mock has
+  // no eval. Add it here rather than widening the global mock.
+  beforeAll(() => {
+    redis.eval = jest.fn();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     lineClient = makeLineClient();
     redis.lRange.mockResolvedValue([]);
     redis.lTrim.mockResolvedValue("OK");
+    // Default: this caller wins the per-group drain lock.
+    redis.set.mockResolvedValue("OK");
+    // Default: renew/release both find the lock still ours.
+    redis.eval.mockResolvedValue(1);
+  });
+
+  it("takes the per-group NX lock before reading the queue", async () => {
+    redis.lRange.mockResolvedValueOnce([ev("trial_pass", "x")]);
+    replyTokenQueue.pullFreshToken.mockResolvedValueOnce("tok");
+
+    await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    expect(redis.set).toHaveBeenCalledWith("BROADCAST_DRAIN_LOCK_Gabc", expect.any(String), {
+      EX: 10,
+      NX: true,
+    });
+    // The value must be an unguessable per-call token, not a constant — a
+    // constant makes compare-and-delete meaningless.
+    expect(lockToken().length).toBeGreaterThanOrEqual(16);
+    // Reading the slice before the lock would let two callers capture it.
+    expect(redis.set.mock.invocationCallOrder[0]).toBeLessThan(
+      redis.lRange.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("returns locked and touches nothing when another drain holds the lock", async () => {
+    redis.set.mockResolvedValueOnce(null);
+
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    expect(result).toEqual({ drained: 0, reason: "locked" });
+    expect(redis.lRange).not.toHaveBeenCalled();
+    expect(replyTokenQueue.pullFreshToken).not.toHaveBeenCalled();
+    expect(lineClient.reply).not.toHaveBeenCalled();
+    expect(redis.lTrim).not.toHaveBeenCalled();
+    // The loser never owned the lock, so it must not run the release script at
+    // all — not even the compare-and-delete, which would be a wasted round trip.
+    expect(redis.eval).not.toHaveBeenCalled();
+  });
+
+  it("fails safe without draining when the lock itself is unreachable", async () => {
+    redis.set.mockRejectedValueOnce(new Error("redis unavailable"));
+    const logger = { error: jest.fn() };
+
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue, logger });
+
+    expect(result).toEqual({ drained: 0, reason: "lock_failed" });
+    expect(redis.lRange).not.toHaveBeenCalled();
+    expect(lineClient.reply).not.toHaveBeenCalled();
+    expect(redis.lTrim).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalled();
   });
 
   it("returns drained:0 when queue is empty", async () => {
@@ -141,5 +208,168 @@ describe("broadcastQueue.drain", () => {
     const result = await broadcastQueue.drain(null, { lineClient, replyTokenQueue });
     expect(result).toEqual({ drained: 0 });
     expect(redis.lRange).not.toHaveBeenCalled();
+    expect(redis.set).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Regression: the lock used to have no explicit release, relying on the 10s TTL,
+ * with a comment claiming compare-and-delete only bought latency. It bought
+ * correctness. A reply that stalls past the TTL lets a second drainer acquire a
+ * fresh lock, read the SAME slice, and send it again; then both lTrim, and the
+ * second trim deletes events that were pushed after the slice and never sent.
+ */
+describe("broadcastQueue.drain lock ownership", () => {
+  let lineClient;
+
+  beforeAll(() => {
+    redis.eval = jest.fn();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    lineClient = makeLineClient();
+    redis.lTrim.mockResolvedValue("OK");
+    redis.set.mockResolvedValue("OK");
+    redis.eval.mockResolvedValue(1);
+    redis.lRange.mockResolvedValue([ev("trial_pass", "x")]);
+    replyTokenQueue.pullFreshToken.mockResolvedValue("tok");
+  });
+
+  it("releases the lock with compare-and-delete after a successful drain", async () => {
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    expect(result).toEqual({ drained: 1 });
+    const delCalls = evalCallsFor("DEL");
+    expect(delCalls).toHaveLength(1);
+    const [script, options] = delCalls[0];
+    expect(script).toContain('redis.call("GET", KEYS[1]) == ARGV[1]');
+    expect(options).toEqual({
+      keys: ["BROADCAST_DRAIN_LOCK_Gabc"],
+      arguments: [lockToken()],
+    });
+  });
+
+  it("releases the lock after a failed reply and leaves the slice untrimmed", async () => {
+    lineClient.reply.mockRejectedValueOnce(new Error("Invalid reply token"));
+
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    expect(result).toEqual({ drained: 0, reason: "reply_failed" });
+    expect(redis.lTrim).not.toHaveBeenCalled();
+    expect(evalCallsFor("DEL")).toHaveLength(1);
+  });
+
+  it("releases the lock when the queue was empty", async () => {
+    redis.lRange.mockResolvedValueOnce([]);
+
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    expect(result).toEqual({ drained: 0 });
+    expect(evalCallsFor("DEL")).toHaveLength(1);
+  });
+
+  it("releases the lock when no fresh token was available", async () => {
+    replyTokenQueue.pullFreshToken.mockResolvedValueOnce(null);
+
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    expect(result).toEqual({ drained: 0, reason: "no_token" });
+    expect(evalCallsFor("DEL")).toHaveLength(1);
+  });
+
+  it("a second drain in the same tick proceeds once the first released", async () => {
+    // Model a real lock key: SET NX fails while held, succeeds after the
+    // compare-and-delete release.
+    let held = null;
+    redis.set.mockImplementation(async (key, value, options) => {
+      if (options && options.NX && held !== null) return null;
+      held = value;
+      return "OK";
+    });
+    redis.eval.mockImplementation(async (script, { arguments: args }) => {
+      if (held !== args[0]) return 0;
+      if (script.includes("DEL")) held = null;
+      return 1;
+    });
+
+    const first = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+    const second = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    expect(first).toEqual({ drained: 1 });
+    // Without the release this would have been {drained: 0, reason: "locked"}.
+    expect(second).toEqual({ drained: 1 });
+    expect(lineClient.reply).toHaveBeenCalledTimes(2);
+  });
+
+  it("does NOT lTrim when the lock expired mid-drain and another owner took over", async () => {
+    // Ownership check fails: the key now holds someone else's token.
+    redis.eval.mockResolvedValue(0);
+    const logger = { error: jest.fn() };
+
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue, logger });
+
+    expect(lineClient.reply).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ drained: 0, reason: "lock_lost" });
+    // The whole point: trimming here would delete the successor's slice and any
+    // event pushed after ours.
+    expect(redis.lTrim).not.toHaveBeenCalled();
+    expect(logger.error).toHaveBeenCalled();
+  });
+
+  it("does not delete a lock owned by another drainer", async () => {
+    // Lock key mutated to a foreign owner between acquire and release.
+    let held = "someone-elses-token";
+    redis.eval.mockImplementation(async (script, { arguments: args }) => {
+      if (held !== args[0]) return 0;
+      if (script.includes("DEL")) held = null;
+      return 1;
+    });
+
+    await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    // Our compare-and-delete ran but matched nothing, so the foreign lock stands.
+    expect(evalCallsFor("DEL")).toHaveLength(1);
+    expect(held).toBe("someone-elses-token");
+    // And no plain DEL was ever issued against the lock key.
+    expect(redis.del).not.toHaveBeenCalledWith("BROADCAST_DRAIN_LOCK_Gabc");
+  });
+
+  it("re-asserts ownership between the reply and the lTrim, not before the reply", async () => {
+    await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue });
+
+    const renewCall = evalCallsFor("PEXPIRE")[0];
+    expect(renewCall[1]).toEqual({
+      keys: ["BROADCAST_DRAIN_LOCK_Gabc"],
+      arguments: [lockToken(), "10000"],
+    });
+    const renewOrder = redis.eval.mock.invocationCallOrder[0];
+    expect(lineClient.reply.mock.invocationCallOrder[0]).toBeLessThan(renewOrder);
+    expect(renewOrder).toBeLessThan(redis.lTrim.mock.invocationCallOrder[0]);
+  });
+
+  it("skips the lTrim when the ownership check itself errors", async () => {
+    // Can't prove ownership => must not run the destructive step.
+    redis.eval.mockRejectedValue(new Error("redis unavailable"));
+    const logger = { error: jest.fn() };
+
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue, logger });
+
+    expect(result).toEqual({ drained: 0, reason: "lock_lost" });
+    expect(redis.lTrim).not.toHaveBeenCalled();
+  });
+
+  it("still returns the drain result when the release itself fails", async () => {
+    redis.eval
+      .mockResolvedValueOnce(1) // renew succeeds
+      .mockRejectedValueOnce(new Error("redis unavailable")); // release fails
+    const logger = { error: jest.fn() };
+
+    const result = await broadcastQueue.drain("Gabc", { lineClient, replyTokenQueue, logger });
+
+    // A failed release is not a failed drain — the TTL still cleans up.
+    expect(result).toEqual({ drained: 1 });
+    expect(redis.lTrim).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalled();
   });
 });

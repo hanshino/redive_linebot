@@ -49,7 +49,7 @@ afterAll(async () => {
   }
 });
 
-test("runtime database uses UTC for client dates and database-generated timestamps", async () => {
+test("runtime database uses Taipei session time and preserves exact JavaScript instants", async () => {
   const { stdout } = await execFileAsync(
     process.execPath,
     [path.join(__dirname, "runtimeMysqlUtcProbe.js")],
@@ -65,13 +65,13 @@ test("runtime database uses UTC for client dates and database-generated timestam
   );
   const result = JSON.parse(stdout);
 
-  expect(result.sessionTimezone).toBe("+00:00");
+  expect(result.sessionTimezone).toBe("+08:00");
   expect(result.insertedAt).toBe("2026-07-19T12:34:56.789Z");
-  expect(result.insertedAtText).toBe("2026-07-19 12:34:56.789");
+  expect(result.insertedAtText).toBe("2026-07-19 20:34:56.789");
   expect(new Date(result.createdAt).getTime()).toBeGreaterThanOrEqual(
-    new Date(result.beforeUtc).getTime()
+    new Date(result.beforeSession).getTime()
   );
   expect(new Date(result.createdAt).getTime()).toBeLessThanOrEqual(
-    new Date(result.afterUtc).getTime()
+    new Date(result.afterSession).getTime()
   );
 });

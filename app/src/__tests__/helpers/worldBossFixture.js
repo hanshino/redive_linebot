@@ -116,17 +116,25 @@ function whereLiteralPrefix(query, column, prefix) {
   return query.whereRaw("LEFT(??, ?) = ?", [column, prefix.length, prefix]);
 }
 
+async function deleteSeasonTree(mysql, ids) {
+  if (!ids.length) return;
+  await mysql("world_boss_season_reward").whereIn("season_id", ids).del();
+  await mysql("world_boss_contribution").whereIn("season_id", ids).del();
+  const roster = await mysql("world_boss_season_boss").whereIn("season_id", ids).select("id");
+  const rosterIds = roster.map(row => row.id);
+  if (rosterIds.length) {
+    await mysql("world_boss_round").whereIn("season_boss_id", rosterIds).del();
+    await mysql("world_boss_season_boss").whereIn("id", rosterIds).del();
+  }
+  await mysql("world_boss_season").whereIn("id", ids).del();
+}
+
 async function cleanupByPrefix(mysql, prefix = PREFIX) {
   const seasons = await whereLiteralPrefix(mysql("world_boss_season"), "name", prefix).select("id");
-  const ids = seasons.map(row => row.id);
-
-  if (ids.length) {
-    await mysql("world_boss_season_reward").whereIn("season_id", ids).del();
-    await mysql("world_boss_contribution").whereIn("season_id", ids).del();
-    await mysql("world_boss_round").whereIn("season_id", ids).del();
-    await mysql("world_boss_season").whereIn("id", ids).del();
-  }
-
+  await deleteSeasonTree(
+    mysql,
+    seasons.map(row => row.id)
+  );
   await whereLiteralPrefix(mysql("world_boss"), "name", prefix).del();
 }
 
@@ -138,4 +146,5 @@ module.exports = {
   slotFor,
   createWorldBossTestDatabase,
   cleanupByPrefix,
+  deleteSeasonTree,
 };

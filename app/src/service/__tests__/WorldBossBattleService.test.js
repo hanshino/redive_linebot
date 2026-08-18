@@ -9,11 +9,13 @@ const testDatabase = createWorldBossTestDatabase("battle");
 const mysql = testDatabase.mysql;
 jest.mock("../../util/mysql", () => mysql);
 const MinigameLevel = require("../../model/application/MinigameLevel");
-const WorldBoss = require("../../model/application/WorldBoss");
+const WorldBossSeasonBoss = require("../../model/application/WorldBossSeasonBoss");
+const WorldBossRound = require("../../model/application/WorldBossRound");
 const { createBattleService } = require("../WorldBossBattleService");
 
 const prefix = `${PREFIX}battle_`;
 const now = new Date("2026-07-20T04:00:00.000Z");
+const ROSTER_SIZE = WorldBossSeasonBoss.ROSTER_SIZE;
 const sentinel = {
   userId: `${prefix}sentinel_user`,
   bossName: `${prefix}sentinel_boss`,
@@ -32,6 +34,20 @@ function deferred() {
     reject = rejectPromise;
   });
   return { promise, resolve, reject };
+}
+
+/**
+ * Releases every arriver only once `count` of them have arrived. Without this a
+ * "concurrent" test can degenerate into two sequential attacks and still pass.
+ */
+function barrier(count) {
+  const gate = deferred();
+  let arrived = 0;
+  return () => {
+    arrived += 1;
+    if (arrived >= count) gate.resolve();
+    return gate.promise;
+  };
 }
 
 function domainCode(error) {
@@ -54,7 +70,14 @@ async function cleanupOwned({ includeSentinels = false } = {}) {
   if (seasonIds.length) {
     await mysql("world_boss_season_reward").whereIn("season_id", seasonIds).del();
     await mysql("world_boss_contribution").whereIn("season_id", seasonIds).del();
-    await mysql("world_boss_round").whereIn("season_id", seasonIds).del();
+    const roster = await mysql("world_boss_season_boss")
+      .whereIn("season_id", seasonIds)
+      .select("id");
+    const rosterIds = roster.map(row => row.id);
+    if (rosterIds.length) {
+      await mysql("world_boss_round").whereIn("season_boss_id", rosterIds).del();
+      await mysql("world_boss_season_boss").whereIn("id", rosterIds).del();
+    }
     await mysql("world_boss_season").whereIn("id", seasonIds).del();
   }
   await mysql("world_boss")
@@ -76,19 +99,30 @@ async function createUser(userId, { progress = { level: 1, exp: 0 } } = {}) {
   return id;
 }
 
+/**
+ * Builds an active season with a full five-boss roster and one cycle whose per-boss HP is
+ * given explicitly, so a test can express "four already dead, one alive" directly.
+ */
 async function createBattleFixture({
   label,
   userId = ownedUserId(`${label}_user`),
   progress = { level: 1, exp: 0 },
   maxHp = 100,
-  currentHp = maxHp,
+  currentHps = new Array(ROSTER_SIZE).fill(maxHp),
+  cycleNo = 1,
   endTime = new Date("2026-07-21T04:00:00.000Z"),
+  rosterSize = ROSTER_SIZE,
 } = {}) {
   const userDbId = await createUser(userId, { progress });
-  const [bossId] = await mysql("world_boss").insert({
-    name: `${prefix}${label}_boss`,
-    hp_weight: 1,
-  });
+  const bossIds = [];
+  for (let index = 0; index < rosterSize; index += 1) {
+    const [id] = await mysql("world_boss").insert({
+      name: `${prefix}${label}_boss_${index + 1}`,
+      hp_weight: 1,
+      description: `${prefix}${label}_desc_${index + 1}`,
+    });
+    bossIds.push(id);
+  }
   const [seasonId] = await mysql("world_boss_season").insert({
     name: `${prefix}${label}_season`,
     status: "active",
@@ -96,16 +130,26 @@ async function createBattleFixture({
     start_time: new Date("2026-07-19T04:00:00.000Z"),
     end_time: endTime,
   });
-  const [roundId] = await mysql("world_boss_round").insert({
-    season_id: seasonId,
-    round_no: 1,
-    world_boss_id: bossId,
-    max_hp: maxHp,
-    current_hp: currentHp,
-    status: "active",
-    active_slot: ACTIVE_SLOT,
+  const roster = await mysql.transaction(async trx => {
+    await WorldBossSeasonBoss.replaceForSeason(trx, seasonId, bossIds);
+    return WorldBossSeasonBoss.listBySeason(seasonId, trx);
   });
-  return { userId, userDbId, bossId, seasonId, roundId };
+  if (cycleNo) {
+    await mysql("world_boss_round").insert(
+      roster.map((entry, index) => {
+        const currentHp = String(currentHps[index] ?? maxHp);
+        return {
+          season_boss_id: entry.id,
+          cycle_no: cycleNo,
+          max_hp: String(maxHp),
+          current_hp: currentHp,
+          cleared_at: currentHp === "0" ? now : null,
+        };
+      })
+    );
+  }
+  const rounds = cycleNo ? await WorldBossRound.listCycle(seasonId, cycleNo) : [];
+  return { userId, userDbId, bossIds, seasonId, roster, rounds, cycleNo };
 }
 
 async function assertSentinelsPreserved() {
@@ -150,12 +194,14 @@ afterEach(async () => {
 afterAll(() => testDatabase.teardown());
 
 describe("WorldBossBattleService", () => {
-  test("normal hit changes HP, contribution, RPG EXP, totals, and daily quota atomically", async () => {
+  test("normal hit changes only the targeted boss HP, contribution, EXP, totals, and quota", async () => {
     const fixture = await createBattleFixture({ label: "normal" });
+    const target = fixture.rounds[2];
     const service = createBattleService({ clock: () => now });
 
     const result = await service.attack({
       userId: fixture.userId,
+      roundId: String(target.id),
       attackType: "standard",
       damage: 25,
       cost: 10,
@@ -164,44 +210,328 @@ describe("WorldBossBattleService", () => {
 
     expect(result).toMatchObject({
       damage: 25,
+      effectiveDamage: "25",
+      wastedDamage: "0",
       cost: 10,
+      cleared: false,
+      cycleAdvanced: false,
+      attackedCycleNo: 1,
+      cycleNo: 1,
       seasonTotalDamage: "25",
       daily: { limit: 100, used: 10, remaining: 90 },
-      levelResult: {
-        levelUp: false,
-        newLevel: 1,
-        newExp: 5,
-        levelUpCount: 0,
-        nextLevelExp: 24,
-      },
+      levelResult: { levelUp: false, newLevel: 1, newExp: 5, levelUpCount: 0, nextLevelExp: 24 },
     });
     expect(Number(result.season.id)).toBe(fixture.seasonId);
-    expect(Number(result.round.id)).toBe(fixture.roundId);
-    expect(Number(result.boss.id)).toBe(fixture.bossId);
-    expect(result.clearedRounds).toEqual([]);
+    expect(Number(result.boss.id)).toBe(fixture.bossIds[2]);
+    expect(result.boss.position).toBe(3);
+    expect(result.rounds).toHaveLength(ROSTER_SIZE);
 
-    const round = await mysql("world_boss_round").where({ id: fixture.roundId }).first();
-    expect(Number(round.current_hp)).toBe(75);
+    const rounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    expect(rounds.map(row => Number(row.current_hp))).toEqual([100, 100, 75, 100, 100]);
+    expect(rounds.every(row => row.cleared_at === null)).toBe(true);
     await expect(
       mysql("world_boss_contribution").where({ season_id: fixture.seasonId }).first()
-    ).resolves.toMatchObject({ user_id: fixture.userId, damage: 25, cost: 10 });
+    ).resolves.toMatchObject({
+      user_id: fixture.userId,
+      round_id: target.id,
+      damage: 25,
+      cost: 10,
+    });
     await expect(
       mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
     ).resolves.toMatchObject({ level: 1, exp: 5 });
   });
 
-  test("accepts standard and skill but rejects invalid attack input before hooks or writes", async () => {
-    const fixture = await createBattleFixture({ label: "validation" });
-    const onAttackStarted = jest.fn();
-    const service = createBattleService({ clock: () => now, hooks: { onAttackStarted } });
+  test("players may freely pick any surviving boss in the current cycle", async () => {
+    const fixture = await createBattleFixture({ label: "free_target" });
+    const service = createBattleService({ clock: () => now });
+
+    for (const round of fixture.rounds) {
+      await expect(
+        service.attack({
+          userId: fixture.userId,
+          roundId: String(round.id),
+          attackType: "standard",
+          damage: 10,
+          cost: 1,
+          exp: 1,
+        })
+      ).resolves.toMatchObject({ cleared: false, effectiveDamage: "10" });
+    }
+
+    const rounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    expect(rounds.map(row => Number(row.current_hp))).toEqual([90, 90, 90, 90, 90]);
+    // Every hit is credited to its own encounter, not merged onto one.
+    const contributions = await mysql("world_boss_contribution")
+      .where({ season_id: fixture.seasonId })
+      .orderBy("round_id");
+    expect(contributions.map(row => Number(row.round_id))).toEqual(
+      fixture.rounds.map(row => Number(row.id)).sort((left, right) => left - right)
+    );
+  });
+
+  test("overkill is discarded: contribution records only the effective damage", async () => {
+    const fixture = await createBattleFixture({ label: "overkill", maxHp: 100 });
+    const target = fixture.rounds[0];
+    const service = createBattleService({ clock: () => now });
+
+    const result = await service.attack({
+      userId: fixture.userId,
+      roundId: String(target.id),
+      attackType: "skill",
+      damage: 45123,
+      cost: 10,
+      exp: 7,
+    });
+
+    expect(result).toMatchObject({
+      damage: 45123,
+      effectiveDamage: "100",
+      wastedDamage: "45023",
+      cleared: true,
+      cycleAdvanced: false,
+      seasonTotalDamage: "100",
+    });
+    await expect(
+      mysql("world_boss_contribution").where({ season_id: fixture.seasonId }).first()
+    ).resolves.toMatchObject({ damage: 100, cost: 10 });
+    const rounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    expect(Number(rounds[0].current_hp)).toBe(0);
+    expect(rounds[0].cleared_at).toBeInstanceOf(Date);
+    expect(rounds.slice(1).map(row => Number(row.current_hp))).toEqual([100, 100, 100, 100]);
+  });
+
+  test("clearing four of five bosses does not advance the cycle", async () => {
+    const fixture = await createBattleFixture({
+      label: "four_kills",
+      maxHp: 10,
+      currentHps: [10, 10, 10, 10, 10],
+    });
+    const service = createBattleService({ clock: () => now });
+
+    for (const round of fixture.rounds.slice(0, 4)) {
+      const result = await service.attack({
+        userId: fixture.userId,
+        roundId: String(round.id),
+        attackType: "standard",
+        damage: 10,
+        cost: 1,
+        exp: 1,
+      });
+      expect(result).toMatchObject({ cleared: true, cycleAdvanced: false, cycleNo: 1 });
+    }
+
+    expect(await WorldBossRound.currentCycleNo(fixture.seasonId)).toBe(1);
+    const rounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    expect(rounds.map(row => Number(row.current_hp))).toEqual([0, 0, 0, 0, 10]);
+    expect(rounds.filter(row => row.cleared_at).length).toBe(4);
+  });
+
+  test("the fifth kill atomically opens the next cycle with five fresh encounters", async () => {
+    const fixture = await createBattleFixture({
+      label: "fifth_kill",
+      maxHp: 10,
+      currentHps: [0, 0, 0, 0, 10],
+    });
+    const survivor = fixture.rounds[4];
+    const service = createBattleService({ clock: () => now });
+
+    const result = await service.attack({
+      userId: fixture.userId,
+      roundId: String(survivor.id),
+      attackType: "skill",
+      damage: 10,
+      cost: 5,
+      exp: 5,
+    });
+
+    expect(result).toMatchObject({
+      cleared: true,
+      cycleAdvanced: true,
+      attackedCycleNo: 1,
+      cycleNo: 2,
+      effectiveDamage: "10",
+    });
+    expect(result.rounds).toHaveLength(ROSTER_SIZE);
+    expect(result.rounds.map(row => row.position)).toEqual([1, 2, 3, 4, 5]);
+
+    expect(await WorldBossRound.currentCycleNo(fixture.seasonId)).toBe(2);
+    const cycleOne = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    expect(cycleOne.every(row => Number(row.current_hp) === 0 && row.cleared_at)).toBe(true);
+    const cycleTwo = await WorldBossRound.listCycle(fixture.seasonId, 2);
+    expect(cycleTwo).toHaveLength(ROSTER_SIZE);
+    expect(cycleTwo.every(row => row.cleared_at === null)).toBe(true);
+    // Same season roster carries over — the next cycle reuses the identical five bosses.
+    expect(cycleTwo.map(row => Number(row.world_boss_id))).toEqual(fixture.bossIds);
+    expect(cycleTwo.map(row => Number(row.season_boss_id))).toEqual(
+      fixture.roster.map(row => Number(row.id))
+    );
+    // Contribution is attributed to the encounter that was actually hit, not the new cycle.
+    await expect(
+      mysql("world_boss_contribution").where({ season_id: fixture.seasonId }).first()
+    ).resolves.toMatchObject({ round_id: survivor.id, damage: 10 });
+  });
+
+  test("next cycle HP uses the per-boss weight snapshot, not the live catalog", async () => {
+    const fixture = await createBattleFixture({
+      label: "weight",
+      maxHp: 10,
+      currentHps: [0, 0, 0, 0, 10],
+    });
+    // Distinct frozen weights, then a catalog edit that must be ignored.
+    const weights = ["0.500", "1.000", "1.500", "2.000", "2.500"];
+    for (const [index, entry] of fixture.roster.entries()) {
+      await mysql("world_boss_season_boss")
+        .where({ id: entry.id })
+        .update({ hp_weight: weights[index] });
+    }
+    await mysql("world_boss").whereIn("id", fixture.bossIds).update({ hp_weight: 9 });
+    const service = createBattleService({ clock: () => now });
+
+    await service.attack({
+      userId: fixture.userId,
+      roundId: String(fixture.rounds[4].id),
+      attackType: "standard",
+      damage: 10,
+      cost: 1,
+      exp: 1,
+    });
+
+    // Cycle 2 base HP from config tier 1: 30000 + (2 - 1) * 15000 = 45000.
+    const cycleTwo = await WorldBossRound.listCycle(fixture.seasonId, 2);
+    expect(cycleTwo.map(row => Number(row.max_hp))).toEqual([22500, 45000, 67500, 90000, 112500]);
+    expect(cycleTwo.map(row => Number(row.current_hp))).toEqual([
+      22500, 45000, 67500, 90000, 112500,
+    ]);
+    expect(service.hpForCycle(2, 0.5)).toBe(22500);
+  });
+
+  test("rejects a cleared target with no cost, EXP, or contribution side effects", async () => {
+    const fixture = await createBattleFixture({
+      label: "cleared",
+      maxHp: 10,
+      currentHps: [0, 10, 10, 10, 10],
+    });
+    const service = createBattleService({ clock: () => now });
     const before = {
-      round: await mysql("world_boss_round").where({ id: fixture.roundId }).first(),
+      rounds: await WorldBossRound.listCycle(fixture.seasonId, 1),
       progress: await mysql("minigame_level").where({ user_id: fixture.userDbId }).first(),
     };
 
     await expect(
       service.attack({
         userId: fixture.userId,
+        roundId: String(fixture.rounds[0].id),
+        attackType: "standard",
+        damage: 10,
+        cost: 10,
+        exp: 10,
+      })
+    ).rejects.toMatchObject({ code: "ROUND_CLEARED" });
+
+    await expect(WorldBossRound.listCycle(fixture.seasonId, 1)).resolves.toEqual(before.rounds);
+    await expect(
+      mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
+    ).resolves.toEqual(before.progress);
+    expect(await mysql("world_boss_contribution").where({ season_id: fixture.seasonId })).toEqual(
+      []
+    );
+    await expect(service.getRemainingDailyCost(fixture.userId)).resolves.toEqual({
+      limit: 100,
+      used: 0,
+      remaining: 100,
+    });
+  });
+
+  test("rejects a previous-cycle target with no cost, EXP, or contribution side effects", async () => {
+    const fixture = await createBattleFixture({
+      label: "stale_cycle",
+      maxHp: 10,
+      currentHps: [0, 0, 0, 0, 10],
+    });
+    const service = createBattleService({ clock: () => now });
+    await service.attack({
+      userId: fixture.userId,
+      roundId: String(fixture.rounds[4].id),
+      attackType: "standard",
+      damage: 10,
+      cost: 1,
+      exp: 1,
+    });
+    const cycleTwo = await WorldBossRound.listCycle(fixture.seasonId, 2);
+    const beforeProgress = await mysql("minigame_level")
+      .where({ user_id: fixture.userDbId })
+      .first();
+    const beforeCost = await service.getRemainingDailyCost(fixture.userId);
+
+    // Every cycle-1 round id is now stale, including the ones that were never cleared by HP.
+    for (const round of fixture.rounds) {
+      await expect(
+        service.attack({
+          userId: fixture.userId,
+          roundId: String(round.id),
+          attackType: "standard",
+          damage: 5,
+          cost: 10,
+          exp: 10,
+        })
+      ).rejects.toMatchObject({ code: "ROUND_STALE" });
+    }
+
+    await expect(WorldBossRound.listCycle(fixture.seasonId, 2)).resolves.toEqual(cycleTwo);
+    await expect(
+      mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
+    ).resolves.toEqual(beforeProgress);
+    await expect(service.getRemainingDailyCost(fixture.userId)).resolves.toEqual(beforeCost);
+    await expect(
+      mysql("world_boss_contribution").where({ season_id: fixture.seasonId })
+    ).resolves.toHaveLength(1);
+  });
+
+  test("rejects a round id from another season without creating a progress row", async () => {
+    const foreign = await createBattleFixture({ label: "foreign" });
+    // Retire the first season so a second one can hold the active slot.
+    await mysql("world_boss_season")
+      .where({ id: foreign.seasonId })
+      .update({ status: "settled", active_slot: null, settled_at: now });
+    const fixture = await createBattleFixture({ label: "own" });
+    const newPlayer = ownedUserId("no_progress_player");
+    await createUser(newPlayer, { progress: null });
+    const service = createBattleService({ clock: () => now });
+
+    await expect(
+      service.attack({
+        userId: newPlayer,
+        roundId: String(foreign.rounds[0].id),
+        attackType: "standard",
+        damage: 10,
+        cost: 10,
+        exp: 10,
+      })
+    ).rejects.toMatchObject({ code: "ROUND_NOT_FOUND" });
+
+    const newPlayerDbId = (await mysql("user").where({ platform_id: newPlayer }).first()).id;
+    // Target validation runs before lockUserAndProgress, so no row was created.
+    await expect(mysql("minigame_level").where({ user_id: newPlayerDbId })).resolves.toEqual([]);
+    expect(await mysql("world_boss_contribution").where({ season_id: fixture.seasonId })).toEqual(
+      []
+    );
+  });
+
+  test("rejects invalid attack input and round ids before hooks or writes", async () => {
+    const fixture = await createBattleFixture({ label: "validation" });
+    const roundId = String(fixture.rounds[0].id);
+    const onAttackStarted = jest.fn();
+    const service = createBattleService({ clock: () => now, hooks: { onAttackStarted } });
+    const before = {
+      rounds: await WorldBossRound.listCycle(fixture.seasonId, 1),
+      progress: await mysql("minigame_level").where({ user_id: fixture.userDbId }).first(),
+    };
+
+    await expect(
+      service.attack({
+        userId: fixture.userId,
+        roundId,
         attackType: "unknown",
         damage: 1,
         cost: 1,
@@ -213,6 +543,7 @@ describe("WorldBossBattleService", () => {
         await expect(
           service.attack({
             userId: fixture.userId,
+            roundId,
             attackType: "standard",
             damage: 1,
             cost: 1,
@@ -222,80 +553,93 @@ describe("WorldBossBattleService", () => {
         ).rejects.toMatchObject({ code: `INVALID_${field.toUpperCase()}` });
       }
     }
+    for (const value of [undefined, null, "", "0", 0, -1, 1.5, "abc", "1e3", {}]) {
+      await expect(
+        service.attack({
+          userId: fixture.userId,
+          roundId: value,
+          attackType: "standard",
+          damage: 1,
+          cost: 1,
+          exp: 1,
+        })
+      ).rejects.toMatchObject({ code: "INVALID_ROUND_ID" });
+    }
     expect(onAttackStarted).not.toHaveBeenCalled();
     expect(await mysql("world_boss_contribution").where({ season_id: fixture.seasonId })).toEqual(
       []
     );
-    await expect(mysql("world_boss_round").where({ id: fixture.roundId }).first()).resolves.toEqual(
-      before.round
-    );
+    await expect(WorldBossRound.listCycle(fixture.seasonId, 1)).resolves.toEqual(before.rounds);
     await expect(
       mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
     ).resolves.toEqual(before.progress);
 
-    await expect(
-      service.attack({
-        userId: fixture.userId,
-        attackType: "standard",
-        damage: 1,
-        cost: 1,
-        exp: 1,
-      })
-    ).resolves.toMatchObject({ damage: 1, cost: 1 });
-    await expect(
-      service.attack({
-        userId: fixture.userId,
-        attackType: "skill",
-        damage: 1,
-        cost: 1,
-        exp: 1,
-      })
-    ).resolves.toMatchObject({ damage: 1, cost: 1 });
+    for (const attackType of ["standard", "skill"]) {
+      await expect(
+        service.attack({ userId: fixture.userId, roundId, attackType, damage: 1, cost: 1, exp: 1 })
+      ).resolves.toMatchObject({ damage: 1, cost: 1 });
+    }
   });
 
-  test("rejects invalid HP output and createRound never inserts a non-positive max HP", async () => {
+  test("rejects invalid cycle HP output before any encounter row is written", async () => {
+    const fixture = await createBattleFixture({ label: "bad_hp", cycleNo: 0 });
     const service = createBattleService({ clock: () => now });
-    for (const [roundNo, hpWeight] of [
+    for (const [cycleNo, hpWeight] of [
       [0, 1],
+      [-1, 1],
+      [1.5, 1],
       [1, 0],
       [1, -1],
       [1, Number.NaN],
       [1, Infinity],
       [1, Number.MIN_VALUE],
     ]) {
-      expect(() => service.hpForRound(roundNo, hpWeight)).toThrow();
+      expect(() => service.hpForCycle(cycleNo, hpWeight)).toThrow("INVALID_MAX_HP");
     }
 
-    const listSpy = jest
-      .spyOn(WorldBoss, "list")
-      .mockResolvedValue([{ id: 987654321, hp_weight: Number.MIN_VALUE }]);
+    // With the DB check lifted, a zero snapshot weight makes hpForCycle throw; openCycle must
+    // then leave no partial cycle behind — the five rows are computed before any insert.
+    await mysql.raw(
+      "ALTER TABLE `world_boss_season_boss` DROP CHECK `chk_wbsb_hp_weight_positive`"
+    );
     try {
-      await mysql.transaction(async trx => {
-        await expect(service.createRound(trx, 123, 1)).rejects.toMatchObject({
-          code: "INVALID_MAX_HP",
-        });
-      });
+      await mysql("world_boss_season_boss")
+        .where({ id: fixture.roster[2].id })
+        .update({ hp_weight: 0 });
+      await expect(
+        mysql.transaction(trx => service.openCycle(trx, fixture.seasonId, 1))
+      ).rejects.toMatchObject({ code: "INVALID_MAX_HP" });
+      expect(await WorldBossRound.currentCycleNo(fixture.seasonId)).toBe(0);
+      await expect(WorldBossRound.listCycle(fixture.seasonId, 1)).resolves.toEqual([]);
     } finally {
-      listSpy.mockRestore();
+      await mysql("world_boss_season_boss")
+        .where({ id: fixture.roster[2].id })
+        .update({ hp_weight: 1 });
+      await mysql.raw(
+        "ALTER TABLE `world_boss_season_boss` ADD CONSTRAINT `chk_wbsb_hp_weight_positive` CHECK (`hp_weight` > 0)"
+      );
     }
   });
 
-  test("compares BIGINT boss ids exactly when excluding the previous boss", () => {
-    const { excludeBoss } = require("../WorldBossBattleService");
-    const bosses = [{ id: "9007199254740992" }, { id: "9007199254740993" }];
+  test("openCycle refuses a roster that is not exactly five bosses", async () => {
+    const fixture = await createBattleFixture({ label: "short_roster", cycleNo: 0, rosterSize: 4 });
+    const service = createBattleService({ clock: () => now });
 
-    expect(excludeBoss(bosses, "9007199254740992")).toEqual([{ id: "9007199254740993" }]);
+    await expect(
+      mysql.transaction(trx => service.openCycle(trx, fixture.seasonId, 1))
+    ).rejects.toMatchObject({ code: "INVALID_SEASON_ROSTER" });
+    expect(await WorldBossRound.currentCycleNo(fixture.seasonId)).toBe(0);
   });
 
   test("subtracts a safe attack from BIGINT HP exactly and returns an exact season total", async () => {
     const fixture = await createBattleFixture({
       label: "exact_hp",
       maxHp: "9007199254740993",
-      currentHp: "9007199254740993",
     });
+    const target = fixture.rounds[0];
     await mysql("world_boss_contribution").insert({
       season_id: fixture.seasonId,
-      round_id: fixture.roundId,
+      round_id: target.id,
       user_id: fixture.userId,
       damage: "9007199254740991",
       cost: 1,
@@ -306,19 +650,18 @@ describe("WorldBossBattleService", () => {
 
     const result = await service.attack({
       userId: fixture.userId,
+      roundId: String(target.id),
       attackType: "standard",
       damage: 1,
       cost: 1,
       exp: 1,
     });
 
-    await expect(
-      mysql("world_boss_round").where({ id: fixture.roundId }).first()
-    ).resolves.toMatchObject({
-      current_hp: "9007199254740992",
-    });
-    expect(result.round.current_hp).toBe("9007199254740992");
+    await expect(mysql("world_boss_round").where({ id: target.id }).first()).resolves.toMatchObject(
+      { current_hp: "9007199254740992" }
+    );
     expect(result.seasonTotalDamage).toBe("9007199254740992");
+    expect(result.effectiveDamage).toBe("1");
     expect(() => JSON.stringify(result)).not.toThrow();
   });
 
@@ -326,127 +669,34 @@ describe("WorldBossBattleService", () => {
     const fixture = await createBattleFixture({
       label: "hp_rem",
       maxHp: "9007199254740993",
-      currentHp: "9007199254740993",
     });
+    const target = fixture.rounds[0];
     const service = createBattleService({ clock: () => now });
 
     await expect(
       service.attack({
         userId: fixture.userId,
+        roundId: String(target.id),
         attackType: "standard",
         damage: Number.MAX_SAFE_INTEGER,
         cost: 1,
         exp: 1,
       })
-    ).resolves.toMatchObject({ seasonTotalDamage: "9007199254740991" });
-
-    await expect(
-      mysql("world_boss_round").where({ id: fixture.roundId }).first()
-    ).resolves.toMatchObject({ current_hp: 2 });
-  });
-
-  test("one overkill attack clears multiple rounds and creates exactly one damaged successor", async () => {
-    const fixture = await createBattleFixture({
-      label: "overkill",
-      maxHp: 100,
-      currentHp: 100,
+    ).resolves.toMatchObject({
+      seasonTotalDamage: "9007199254740991",
+      effectiveDamage: "9007199254740991",
+      wastedDamage: "0",
     });
-    const damage = 45123;
-    const cost = 10;
-    const exp = 7;
-    const updateSpy = jest.spyOn(MinigameLevel, "updateByUserId");
-    const listSpy = jest
-      .spyOn(WorldBoss, "list")
-      .mockImplementation(trx => trx("world_boss").where({ id: fixture.bossId }));
-    const service = createBattleService({ clock: () => now });
 
-    try {
-      const result = await service.attack({
-        userId: fixture.userId,
-        attackType: "skill",
-        damage,
-        cost,
-        exp,
-      });
-
-      expect(result).toMatchObject({
-        clearedRounds: [1, 2],
-        damage,
-        cost,
-        seasonTotalDamage: "45123",
-        daily: { limit: 100, used: cost, remaining: 90 },
-        levelResult: {
-          levelUp: false,
-          newLevel: 1,
-          newExp: exp,
-          levelUpCount: 0,
-          nextLevelExp: 24,
-        },
-      });
-      expect(Number(result.boss.id)).toBe(fixture.bossId);
-      expect(updateSpy).toHaveBeenCalledTimes(1);
-      expect(updateSpy).toHaveBeenCalledWith(fixture.userId, { level: 1, exp }, expect.anything());
-
-      const rounds = await mysql("world_boss_round")
-        .where({ season_id: fixture.seasonId })
-        .orderBy("round_no");
-      expect(rounds).toEqual([
-        expect.objectContaining({
-          id: fixture.roundId,
-          round_no: 1,
-          world_boss_id: fixture.bossId,
-          current_hp: 0,
-          status: "cleared",
-          active_slot: null,
-        }),
-        expect.objectContaining({
-          round_no: 2,
-          world_boss_id: fixture.bossId,
-          current_hp: 0,
-          status: "cleared",
-          active_slot: null,
-        }),
-        expect.objectContaining({
-          round_no: 3,
-          world_boss_id: fixture.bossId,
-          max_hp: 60000,
-          current_hp: 59977,
-          status: "active",
-          active_slot: ACTIVE_SLOT,
-        }),
-      ]);
-      const activeRounds = rounds.filter(round => round.status === "active");
-      expect(activeRounds).toHaveLength(1);
-      expect(Number(result.round.id)).toBe(Number(activeRounds[0].id));
-
-      await expect(
-        mysql("world_boss_contribution").where({ season_id: fixture.seasonId })
-      ).resolves.toEqual([
-        expect.objectContaining({
-          round_id: fixture.roundId,
-          user_id: fixture.userId,
-          damage,
-          cost,
-        }),
-      ]);
-      await expect(
-        mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
-      ).resolves.toMatchObject({ level: 1, exp });
-      await expect(service.getRemainingDailyCost(fixture.userId)).resolves.toEqual({
-        limit: 100,
-        used: cost,
-        remaining: 90,
-      });
-    } finally {
-      listSpy.mockRestore();
-      updateSpy.mockRestore();
-    }
+    await expect(mysql("world_boss_round").where({ id: target.id }).first()).resolves.toMatchObject(
+      { current_hp: 2 }
+    );
   });
 
   test("treats now equal to end_time as ended without quota, HP, contribution, or EXP writes", async () => {
     const fixture = await createBattleFixture({ label: "ended", endTime: now });
     const service = createBattleService({ clock: () => now });
-    const beforeRound = await mysql("world_boss_round").where({ id: fixture.roundId }).first();
+    const beforeRounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
     const beforeProgress = await mysql("minigame_level")
       .where({ user_id: fixture.userDbId })
       .first();
@@ -454,6 +704,7 @@ describe("WorldBossBattleService", () => {
     await expect(
       service.attack({
         userId: fixture.userId,
+        roundId: String(fixture.rounds[0].id),
         attackType: "standard",
         damage: 100,
         cost: 10,
@@ -461,9 +712,7 @@ describe("WorldBossBattleService", () => {
       })
     ).rejects.toMatchObject({ code: "SEASON_ENDED" });
 
-    await expect(mysql("world_boss_round").where({ id: fixture.roundId }).first()).resolves.toEqual(
-      beforeRound
-    );
+    await expect(WorldBossRound.listCycle(fixture.seasonId, 1)).resolves.toEqual(beforeRounds);
     await expect(
       mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
     ).resolves.toEqual(beforeProgress);
@@ -488,6 +737,7 @@ describe("WorldBossBattleService", () => {
     await expect(
       service.attack({
         userId: fixture.userId,
+        roundId: String(fixture.rounds[0].id),
         attackType: "standard",
         damage: 1,
         cost: 1,
@@ -500,8 +750,13 @@ describe("WorldBossBattleService", () => {
     );
   });
 
-  test("forced EXP hook failure rolls back contribution, HP, cleared/new rounds, and EXP", async () => {
-    const fixture = await createBattleFixture({ label: "rollback", maxHp: 5, currentHp: 5 });
+  test("forced EXP hook failure rolls back contribution, HP, the new cycle, and EXP", async () => {
+    const fixture = await createBattleFixture({
+      label: "rollback",
+      maxHp: 5,
+      currentHps: [0, 0, 0, 0, 5],
+    });
+    const beforeRounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
     const forcedError = new Error("forced exp failure");
     const service = createBattleService({
       clock: () => now,
@@ -511,6 +766,7 @@ describe("WorldBossBattleService", () => {
     await expect(
       service.attack({
         userId: fixture.userId,
+        roundId: String(fixture.rounds[4].id),
         attackType: "skill",
         damage: 10,
         cost: 10,
@@ -518,16 +774,9 @@ describe("WorldBossBattleService", () => {
       })
     ).rejects.toBe(forcedError);
 
-    await expect(mysql("world_boss_round").where({ season_id: fixture.seasonId })).resolves.toEqual(
-      [
-        expect.objectContaining({
-          id: fixture.roundId,
-          status: "active",
-          active_slot: ACTIVE_SLOT,
-          current_hp: 5,
-        }),
-      ]
-    );
+    await expect(WorldBossRound.listCycle(fixture.seasonId, 1)).resolves.toEqual(beforeRounds);
+    expect(await WorldBossRound.currentCycleNo(fixture.seasonId)).toBe(1);
+    await expect(WorldBossRound.listCycle(fixture.seasonId, 2)).resolves.toEqual([]);
     expect(await mysql("world_boss_contribution").where({ season_id: fixture.seasonId })).toEqual(
       []
     );
@@ -540,9 +789,22 @@ describe("WorldBossBattleService", () => {
     const userId = ownedUserId("new_player");
     const fixture = await createBattleFixture({ label: "new_player", userId, progress: null });
     const service = createBattleService({ clock: () => now });
-
-    const first = service.attack({ userId, attackType: "standard", damage: 1, cost: 1, exp: 1 });
-    const second = service.attack({ userId, attackType: "skill", damage: 1, cost: 1, exp: 1 });
+    const first = service.attack({
+      userId,
+      roundId: String(fixture.rounds[0].id),
+      attackType: "standard",
+      damage: 1,
+      cost: 1,
+      exp: 1,
+    });
+    const second = service.attack({
+      userId,
+      roundId: String(fixture.rounds[1].id),
+      attackType: "skill",
+      damage: 1,
+      cost: 1,
+      exp: 1,
+    });
     await expect(Promise.all([first, second])).resolves.toHaveLength(2);
 
     const progressRows = await mysql("minigame_level").where({ user_id: fixture.userDbId });
@@ -552,6 +814,7 @@ describe("WorldBossBattleService", () => {
 
   test("uses a half-open Taipei civil day independent of the MySQL session timezone", async () => {
     const fixture = await createBattleFixture({ label: "day_range" });
+    const roundId = fixture.rounds[0].id;
     const service = createBattleService({ clock: () => now });
     const startUtc = new Date("2026-07-19T16:00:00.000Z");
     const endUtc = new Date("2026-07-20T16:00:00.000Z");
@@ -567,35 +830,21 @@ describe("WorldBossBattleService", () => {
       expect(() => service.taipeiDayRange(invalid)).toThrow("INVALID_DATE");
     }
 
-    await mysql("world_boss_contribution").insert([
-      {
+    await mysql("world_boss_contribution").insert(
+      [
+        { cost: 10, at: new Date("2026-07-19T15:59:59.000Z") },
+        { cost: 20, at: startUtc },
+        { cost: 30, at: endUtc },
+      ].map(({ cost, at }) => ({
         season_id: fixture.seasonId,
-        round_id: fixture.roundId,
+        round_id: roundId,
         user_id: fixture.userId,
         damage: 1,
-        cost: 10,
-        created_at: new Date("2026-07-19T15:59:59.000Z"),
-        updated_at: new Date("2026-07-19T15:59:59.000Z"),
-      },
-      {
-        season_id: fixture.seasonId,
-        round_id: fixture.roundId,
-        user_id: fixture.userId,
-        damage: 1,
-        cost: 20,
-        created_at: startUtc,
-        updated_at: startUtc,
-      },
-      {
-        season_id: fixture.seasonId,
-        round_id: fixture.roundId,
-        user_id: fixture.userId,
-        damage: 1,
-        cost: 30,
-        created_at: endUtc,
-        updated_at: endUtc,
-      },
-    ]);
+        cost,
+        created_at: at,
+        updated_at: at,
+      }))
+    );
 
     await expect(service.getRemainingDailyCost(fixture.userId)).resolves.toEqual({
       limit: 100,
@@ -696,10 +945,10 @@ describe("WorldBossBattleService", () => {
   });
 
   test("serializes near-limit attacks so exactly one reaches cost 100 and changes HP and EXP", async () => {
-    const fixture = await createBattleFixture({ label: "quota", maxHp: 100, currentHp: 100 });
+    const fixture = await createBattleFixture({ label: "quota", maxHp: 100 });
     await mysql("world_boss_contribution").insert({
       season_id: fixture.seasonId,
-      round_id: fixture.roundId,
+      round_id: fixture.rounds[0].id,
       user_id: fixture.userId,
       damage: 1,
       cost: 90,
@@ -710,6 +959,7 @@ describe("WorldBossBattleService", () => {
 
     const first = service.attack({
       userId: fixture.userId,
+      roundId: String(fixture.rounds[0].id),
       attackType: "standard",
       damage: 10,
       cost: 10,
@@ -717,6 +967,7 @@ describe("WorldBossBattleService", () => {
     });
     const second = service.attack({
       userId: fixture.userId,
+      roundId: String(fixture.rounds[1].id),
       attackType: "skill",
       damage: 10,
       cost: 10,
@@ -733,46 +984,45 @@ describe("WorldBossBattleService", () => {
       used: 100,
       remaining: 0,
     });
-    await expect(
-      mysql("world_boss_round").where({ id: fixture.roundId }).first()
-    ).resolves.toMatchObject({ current_hp: 90 });
+    const rounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    const damaged = rounds.filter(row => Number(row.current_hp) !== 100);
+    expect(damaged).toHaveLength(1);
+    expect(Number(damaged[0].current_hp)).toBe(90);
     await expect(
       mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
     ).resolves.toMatchObject({ level: 1, exp: 5 });
   });
 
-  test("two real lethal attacks exercise named UNIQUE recovery and preserve both contributions", async () => {
-    const firstUserId = ownedUserId("recovery_a");
+  // Same-boss case: both players target the one surviving boss. The loser must not
+  // double-subtract HP nor open a second cycle. Renamed from "two concurrent final
+  // kills" — it only ever exercised one boss, and the genuine two-boss race is the
+  // separate test below.
+  test("two concurrent lethal attacks on the same last boss open exactly one cycle", async () => {
+    const firstUserId = ownedUserId("final_a");
     const fixture = await createBattleFixture({
-      label: "recovery",
+      label: "final_kill",
       userId: firstUserId,
       maxHp: 10,
-      currentHp: 10,
+      currentHps: [0, 0, 0, 10, 10],
     });
-    const secondUserId = ownedUserId("recovery_b");
+    const secondUserId = ownedUserId("final_b");
     await createUser(secondUserId);
 
-    const firstAtInsert = deferred();
+    const firstAtCycleInsert = deferred();
     const releaseFirst = deferred();
     const secondStarted = deferred();
     const firstAfterLock = jest.fn();
     const secondAfterLock = jest.fn();
-    const onRoundConflict = jest.fn();
-    let competingRoundId;
-    let insertedPayload;
     const firstService = createBattleService({
       clock: () => now,
       hooks: {
         afterSeasonLock: firstAfterLock,
-        beforeRoundInsert: async ({ trx, seasonId, roundNo, payload }) => {
-          insertedPayload = payload;
-          firstAtInsert.resolve();
-          await releaseFirst.promise;
-          [competingRoundId] = await trx("world_boss_round").insert(payload);
+        beforeCycleInsert: async ({ seasonId, cycleNo }) => {
           expect(seasonId).toBe(fixture.seasonId);
-          expect(roundNo).toBe(2);
+          expect(cycleNo).toBe(2);
+          firstAtCycleInsert.resolve();
+          await releaseFirst.promise;
         },
-        onRoundConflict,
       },
     });
     const secondService = createBattleService({
@@ -783,63 +1033,162 @@ describe("WorldBossBattleService", () => {
       },
     });
 
-    const firstAttack = firstService.attack({
+    // First kills boss 4 — no cycle change; then kills boss 5 and parks inside openCycle.
+    await firstService.attack({
       userId: firstUserId,
+      roundId: String(fixture.rounds[3].id),
       attackType: "standard",
       damage: 10,
-      cost: 10,
+      cost: 1,
       exp: 1,
     });
-    await firstAtInsert.promise;
-    expect(firstAfterLock).toHaveBeenCalledTimes(1);
-
-    const secondAttack = secondService.attack({
-      userId: secondUserId,
-      attackType: "skill",
+    const firstAttack = firstService.attack({
+      userId: firstUserId,
+      roundId: String(fixture.rounds[4].id),
+      attackType: "standard",
       damage: 10,
-      cost: 10,
+      cost: 1,
       exp: 1,
     });
+    await firstAtCycleInsert.promise;
+    expect(firstAfterLock).toHaveBeenCalledTimes(2);
+
+    // The second player targets the same last boss while the first still holds the season lock.
+    const secondAttack = secondService
+      .attack({
+        userId: secondUserId,
+        roundId: String(fixture.rounds[4].id),
+        attackType: "skill",
+        damage: 10,
+        cost: 1,
+        exp: 1,
+      })
+      .catch(error => error);
     await secondStarted.promise;
     expect(secondAfterLock).not.toHaveBeenCalled();
     releaseFirst.resolve();
 
-    const [firstResult, secondResult] = await Promise.all([firstAttack, secondAttack]);
+    const [firstResult, secondOutcome] = await Promise.all([firstAttack, secondAttack]);
+    expect(firstResult).toMatchObject({ cycleAdvanced: true, cycleNo: 2 });
     expect(secondAfterLock).toHaveBeenCalledTimes(1);
-    expect(insertedPayload).toMatchObject({
-      season_id: fixture.seasonId,
-      round_no: 2,
-      status: "active",
-      active_slot: ACTIVE_SLOT,
-    });
-    expect(onRoundConflict).toHaveBeenCalledTimes(1);
-    expect(onRoundConflict.mock.calls[0][0]).toMatchObject({
-      seasonId: fixture.seasonId,
-      roundNo: 2,
-      error: expect.objectContaining({ code: "ER_DUP_ENTRY" }),
-    });
-    expect(
-      `${onRoundConflict.mock.calls[0][0].error.sqlMessage || onRoundConflict.mock.calls[0][0].error.message}`
-    ).toMatch(/uq_wbr_season_round|uq_wbr_season_active_slot/);
-    expect(Number(firstResult.round.id)).toBe(competingRoundId);
-    expect(Number(secondResult.round.id)).toBe(competingRoundId);
+    // The loser sees a cleared/stale target, never a second cycle-2 insert.
+    expect(domainCode(secondOutcome)).toBe("ROUND_STALE");
 
-    const activeRounds = await mysql("world_boss_round").where({
-      season_id: fixture.seasonId,
-      status: "active",
-    });
-    expect(activeRounds).toHaveLength(1);
-    expect(Number(activeRounds[0].id)).toBe(competingRoundId);
-    const duplicateRounds = await mysql("world_boss_round")
-      .where({ season_id: fixture.seasonId })
-      .select("round_no")
-      .count({ count: "id" })
-      .groupBy("round_no")
+    expect(await WorldBossRound.currentCycleNo(fixture.seasonId)).toBe(2);
+    const cycleTwo = await WorldBossRound.listCycle(fixture.seasonId, 2);
+    expect(cycleTwo).toHaveLength(ROSTER_SIZE);
+    const duplicates = await mysql("world_boss_round as round")
+      .join("world_boss_season_boss as roster", "round.season_boss_id", "roster.id")
+      .where("roster.season_id", fixture.seasonId)
+      .select("round.season_boss_id", "round.cycle_no")
+      .count({ count: "round.id" })
+      .groupBy("round.season_boss_id", "round.cycle_no")
       .havingRaw("COUNT(*) > 1");
-    expect(duplicateRounds).toEqual([]);
+    expect(duplicates).toEqual([]);
+    // Only the effective kills were credited; the loser wrote nothing.
+    const contributions = await mysql("world_boss_contribution")
+      .where({ season_id: fixture.seasonId })
+      .orderBy("id");
+    expect(contributions.map(row => row.user_id)).toEqual([firstUserId, firstUserId]);
+  });
+
+  test("two players concurrently killing the last two bosses open exactly one cycle", async () => {
+    const fourthKiller = ownedUserId("last_two_a");
+    const fifthKiller = ownedUserId("last_two_b");
+    // Positions 1-3 already cleared; 4 and 5 each one lethal hit from death.
+    const fixture = await createBattleFixture({
+      label: "last_two",
+      userId: fourthKiller,
+      maxHp: 10,
+      currentHps: [0, 0, 0, 5, 7],
+    });
+    await createUser(fifthKiller);
+    const fourthRound = fixture.rounds[3];
+    const fifthRound = fixture.rounds[4];
+
+    // Both attacks must have an open transaction before either can commit, otherwise
+    // this degenerates into two sequential attacks and proves nothing. onAttackStarted
+    // runs immediately before mysql.transaction, so a two-party barrier there is the
+    // last point both callers can be held at without fighting the season lock itself.
+    const bothStarted = barrier(2);
+    const service = createBattleService({
+      clock: () => now,
+      hooks: { onAttackStarted: bothStarted },
+    });
+
+    const [fourthResult, fifthResult] = await Promise.all([
+      service.attack({
+        userId: fourthKiller,
+        roundId: String(fourthRound.id),
+        attackType: "standard",
+        damage: 5,
+        cost: 3,
+        exp: 1,
+      }),
+      service.attack({
+        userId: fifthKiller,
+        roundId: String(fifthRound.id),
+        attackType: "skill",
+        // Overkill: the effective damage must be boss 5's 7 HP, not the requested 900.
+        damage: 900,
+        cost: 4,
+        exp: 1,
+      }),
+    ]);
+
+    expect(fourthResult).toMatchObject({
+      cleared: true,
+      attackedCycleNo: 1,
+      effectiveDamage: "5",
+      wastedDamage: "0",
+    });
+    expect(fifthResult).toMatchObject({
+      cleared: true,
+      attackedCycleNo: 1,
+      effectiveDamage: "7",
+      wastedDamage: "893",
+    });
+
+    // Whichever transaction commits second sees all five dead — and only it advances.
+    const advanced = [fourthResult, fifthResult].filter(result => result.cycleAdvanced === true);
+    expect(advanced).toHaveLength(1);
+    expect(advanced[0].cycleNo).toBe(2);
+    const notAdvanced = [fourthResult, fifthResult].filter(result => !result.cycleAdvanced);
+    expect(notAdvanced).toHaveLength(1);
+    expect(notAdvanced[0].cycleNo).toBe(1);
+
+    expect(await WorldBossRound.currentCycleNo(fixture.seasonId)).toBe(2);
+    const cycleOne = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    expect(cycleOne.every(row => Number(row.current_hp) === 0 && row.cleared_at)).toBe(true);
+    const cycleTwo = await WorldBossRound.listCycle(fixture.seasonId, 2);
+    expect(cycleTwo).toHaveLength(ROSTER_SIZE);
+    expect(cycleTwo.map(row => row.position)).toEqual([1, 2, 3, 4, 5]);
+    expect(cycleTwo.every(row => row.cleared_at === null)).toBe(true);
+    // A third cycle, or a second copy of cycle 2, is the failure this test exists for.
+    const cycleNumbers = await mysql("world_boss_round as round")
+      .join("world_boss_season_boss as roster", "round.season_boss_id", "roster.id")
+      .where("roster.season_id", fixture.seasonId)
+      .select("round.season_boss_id", "round.cycle_no")
+      .count({ count: "round.id" })
+      .groupBy("round.season_boss_id", "round.cycle_no");
+    expect(cycleNumbers).toHaveLength(ROSTER_SIZE * 2);
+    expect(cycleNumbers.every(row => Number(row.count) === 1)).toBe(true);
+
+    // Exactly one contribution each, credited to the encounter that was actually hit.
     const contributions = await mysql("world_boss_contribution")
       .where({ season_id: fixture.seasonId })
       .orderBy("user_id");
-    expect(contributions.map(row => row.user_id)).toEqual([firstUserId, secondUserId]);
+    expect(contributions).toHaveLength(2);
+    expect(
+      contributions.map(row => ({
+        user_id: row.user_id,
+        round_id: Number(row.round_id),
+        damage: Number(row.damage),
+        cost: row.cost,
+      }))
+    ).toEqual([
+      { user_id: fourthKiller, round_id: Number(fourthRound.id), damage: 5, cost: 3 },
+      { user_id: fifthKiller, round_id: Number(fifthRound.id), damage: 7, cost: 4 },
+    ]);
   });
 });

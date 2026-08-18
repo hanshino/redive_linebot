@@ -10,6 +10,7 @@ const testDatabase = createWorldBossTestDatabase("models");
 const mysql = testDatabase.mysql;
 jest.mock("../../../util/mysql", () => mysql);
 const WorldBossSeason = require("../WorldBossSeason");
+const WorldBossSeasonBoss = require("../WorldBossSeasonBoss");
 const WorldBossRound = require("../WorldBossRound");
 const WorldBossContribution = require("../WorldBossContribution");
 const WorldBossSeasonReward = require("../WorldBossSeasonReward");
@@ -18,6 +19,7 @@ describe("World Boss v2 models", () => {
   const prefix = `${PREFIX}models_`;
   const sentinelName = `${PREFIX}sentinel_models_preserve`;
   const activeSlot = ACTIVE_SLOT;
+  const ROSTER_SIZE = WorldBossSeasonBoss.ROSTER_SIZE;
   let sentinelSnapshot;
 
   async function createSeason({
@@ -38,18 +40,40 @@ describe("World Boss v2 models", () => {
     return id;
   }
 
-  async function createRound(seasonId, bossId, attributes = {}) {
-    const [id] = await mysql("world_boss_round").insert({
-      season_id: seasonId,
-      round_no: attributes.round_no || 1,
-      world_boss_id: bossId,
-      max_hp: attributes.max_hp || 100,
-      current_hp: attributes.current_hp || 100,
-      status: attributes.status || "cleared",
-      active_slot: attributes.active_slot || null,
-      cleared_at: attributes.cleared_at || null,
+  async function createBosses(label, count = ROSTER_SIZE) {
+    const ids = [];
+    for (let index = 0; index < count; index += 1) {
+      const [id] = await mysql("world_boss").insert({
+        name: `${prefix}${label}_${index + 1}`,
+        hp_weight: 1 + index / 10,
+        description: `${prefix}${label}_desc_${index + 1}`,
+      });
+      ids.push(id);
+    }
+    return ids;
+  }
+
+  async function createRoster(seasonId, bossIds) {
+    return mysql.transaction(async trx => {
+      await WorldBossSeasonBoss.replaceForSeason(trx, seasonId, bossIds);
+      return WorldBossSeasonBoss.listBySeason(seasonId, trx);
     });
-    return id;
+  }
+
+  async function createCycle(seasonId, roster, cycleNo, hpByPosition = {}) {
+    await mysql("world_boss_round").insert(
+      roster.map(entry => {
+        const currentHp = hpByPosition[entry.position] ?? 100;
+        return {
+          season_boss_id: entry.id,
+          cycle_no: cycleNo,
+          max_hp: 100,
+          current_hp: currentHp,
+          cleared_at: Number(currentHp) === 0 ? new Date("2026-07-20T00:00:00.000Z") : null,
+        };
+      })
+    );
+    return WorldBossRound.listCycle(seasonId, cycleNo);
   }
 
   beforeAll(async () => {
@@ -81,17 +105,9 @@ describe("World Boss v2 models", () => {
 
   afterAll(() => testDatabase.teardown());
 
-  test("finds and locks the active season and its active round", async () => {
-    const [bossId] = await mysql("world_boss").insert({
-      name: `${prefix}active-boss`,
-      hp_weight: 1,
-    });
+  test("finds and locks the active season", async () => {
     const seasonId = await createSeason({
       name: `${prefix}active-season`,
-      status: "active",
-      active_slot: activeSlot,
-    });
-    const roundId = await createRound(seasonId, bossId, {
       status: "active",
       active_slot: activeSlot,
     });
@@ -102,14 +118,9 @@ describe("World Boss v2 models", () => {
     await mysql.transaction(async trx => {
       const lockedSeason = await WorldBossSeason.findActiveForUpdate(activeSlot, trx);
       const lockedById = await WorldBossSeason.findForUpdate(seasonId, trx);
-      const lockedRound = await WorldBossRound.findActiveForUpdate(seasonId, trx);
       expect(Number(lockedSeason.id)).toBe(seasonId);
       expect(Number(lockedById.id)).toBe(seasonId);
-      expect(Number(lockedRound.id)).toBe(roundId);
     });
-
-    const activeRound = await WorldBossRound.findActiveBySeason(seasonId);
-    expect(Number(activeRound.id)).toBe(roundId);
   });
 
   test("finds active seasons that are settleable at an inclusive end boundary", async () => {
@@ -125,13 +136,129 @@ describe("World Boss v2 models", () => {
     expect(settleable.map(row => Number(row.id))).toContain(seasonId);
   });
 
+  test("roster snapshots the catalog at positions 1..5 and replaces atomically", async () => {
+    const seasonId = await createSeason({ name: `${prefix}roster-season` });
+    const bossIds = await createBosses("roster");
+
+    const roster = await createRoster(seasonId, bossIds);
+    expect(roster.map(row => row.position)).toEqual([1, 2, 3, 4, 5]);
+    expect(roster.map(row => Number(row.world_boss_id))).toEqual(bossIds);
+    expect(roster.map(row => row.name)).toEqual(bossIds.map((_, i) => `${prefix}roster_${i + 1}`));
+    expect(roster.map(row => row.hp_weight)).toEqual(["1.000", "1.100", "1.200", "1.300", "1.400"]);
+
+    // Replacing rewrites positions from the new order and leaves no stale rows behind.
+    const reordered = [...bossIds].reverse();
+    const replaced = await createRoster(seasonId, reordered);
+    expect(replaced).toHaveLength(ROSTER_SIZE);
+    expect(replaced.map(row => Number(row.world_boss_id))).toEqual(reordered);
+
+    await expect(
+      mysql("world_boss_season_boss").where({ season_id: seasonId })
+    ).resolves.toHaveLength(ROSTER_SIZE);
+  });
+
+  test("refreshSnapshot re-freezes display and HP weight from the live catalog", async () => {
+    const seasonId = await createSeason({ name: `${prefix}refresh-season` });
+    const bossIds = await createBosses("refresh");
+    await createRoster(seasonId, bossIds);
+
+    await mysql("world_boss")
+      .where({ id: bossIds[0] })
+      .update({ name: `${prefix}refresh_renamed`, hp_weight: 3.5, description: "renamed" });
+
+    const refreshed = await mysql.transaction(trx =>
+      WorldBossSeasonBoss.refreshSnapshot(trx, seasonId)
+    );
+    expect(refreshed[0]).toMatchObject({
+      position: 1,
+      name: `${prefix}refresh_renamed`,
+      hp_weight: "3.500",
+      description: "renamed",
+    });
+
+    // Later catalog edits no longer leak into the frozen season roster.
+    await mysql("world_boss")
+      .where({ id: bossIds[0] })
+      .update({ name: `${prefix}refresh_after` });
+    const frozen = await WorldBossSeasonBoss.listBySeason(seasonId);
+    expect(frozen[0].name).toBe(`${prefix}refresh_renamed`);
+  });
+
+  test("derives the current cycle from MAX(cycle_no) and joins position from the roster", async () => {
+    const seasonId = await createSeason({
+      name: `${prefix}cycle-season`,
+      status: "active",
+      active_slot: activeSlot,
+    });
+    const roster = await createRoster(seasonId, await createBosses("cycle"));
+
+    expect(await WorldBossRound.currentCycleNo(seasonId)).toBe(0);
+    await expect(WorldBossRound.listCurrentCycle(seasonId)).resolves.toEqual({
+      cycleNo: 0,
+      rounds: [],
+    });
+
+    await createCycle(seasonId, roster, 1, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+    expect(await WorldBossRound.currentCycleNo(seasonId)).toBe(1);
+    await createCycle(seasonId, roster, 2);
+    expect(await WorldBossRound.currentCycleNo(seasonId)).toBe(2);
+
+    const current = await WorldBossRound.listCurrentCycle(seasonId);
+    expect(current.cycleNo).toBe(2);
+    expect(current.rounds).toHaveLength(ROSTER_SIZE);
+    expect(current.rounds.map(row => row.position)).toEqual([1, 2, 3, 4, 5]);
+    expect(current.rounds.map(row => Number(row.season_id))).toEqual(
+      new Array(ROSTER_SIZE).fill(seasonId)
+    );
+    expect(current.rounds.every(row => row.cleared_at === null)).toBe(true);
+
+    const first = await WorldBossRound.listCycle(seasonId, 1);
+    expect(first.every(row => Number(row.current_hp) === 0 && row.cleared_at)).toBe(true);
+  });
+
+  test("resolves a round id only within its own season and locks it", async () => {
+    const seasonId = await createSeason({
+      name: `${prefix}lookup-season`,
+      status: "active",
+      active_slot: activeSlot,
+    });
+    const otherSeasonId = await createSeason({ name: `${prefix}lookup-other` });
+    const roster = await createRoster(seasonId, await createBosses("lookup"));
+    const rounds = await createCycle(seasonId, roster, 1);
+
+    await mysql.transaction(async trx => {
+      const found = await WorldBossRound.findByIdForUpdate(rounds[2].id, seasonId, trx);
+      expect(found).toMatchObject({ position: 3, cycle_no: 1 });
+      // A round id from a different season must not resolve — that is the stale-target guard.
+      await expect(
+        WorldBossRound.findByIdForUpdate(rounds[2].id, otherSeasonId, trx)
+      ).resolves.toBeUndefined();
+      await expect(
+        WorldBossRound.findByIdForUpdate(999999999, seasonId, trx)
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  test("rejects a duplicate cycle row for the same season boss", async () => {
+    const seasonId = await createSeason({ name: `${prefix}unique-season` });
+    const roster = await createRoster(seasonId, await createBosses("unique"));
+    await createCycle(seasonId, roster, 1);
+
+    await expect(
+      mysql("world_boss_round").insert({
+        season_boss_id: roster[0].id,
+        cycle_no: 1,
+        max_hp: 100,
+        current_hp: 100,
+      })
+    ).rejects.toMatchObject({ code: "ER_DUP_ENTRY" });
+  });
+
   test("aggregates, bounds, orders, and competition-ranks season contributions", async () => {
     const seasonId = await createSeason({ name: `${prefix}ranking-season` });
-    const [bossId] = await mysql("world_boss").insert({
-      name: `${prefix}ranking-boss`,
-      hp_weight: 1,
-    });
-    const roundId = await createRound(seasonId, bossId);
+    const roster = await createRoster(seasonId, await createBosses("ranking"));
+    const [round] = await createCycle(seasonId, roster, 1);
+    const roundId = round.id;
     const rows = [
       { user_id: `${prefix}u-b`, damage: 500, cost: 10 },
       { user_id: `${prefix}u-a`, damage: 500, cost: 20 },
@@ -174,14 +301,9 @@ describe("World Boss v2 models", () => {
 
   test("preserves exact aggregate damage for ordering, ties, and user totals", async () => {
     const seasonId = await createSeason({ name: `${prefix}exact-ranking-season` });
-    const [bossId] = await mysql("world_boss").insert({
-      name: `${prefix}exact-ranking-boss`,
-      hp_weight: 1,
-    });
-    const roundId = await createRound(seasonId, bossId, {
-      max_hp: "18446744073709551615",
-      current_hp: "18446744073709551615",
-    });
+    const roster = await createRoster(seasonId, await createBosses("exact"));
+    const [round] = await createCycle(seasonId, roster, 1);
+    const roundId = round.id;
     const half = "4503599627370496";
     await mysql("world_boss_contribution").insert(
       [
@@ -207,11 +329,9 @@ describe("World Boss v2 models", () => {
 
   test("sums cost using a half-open UTC range at the Taipei midnight boundary", async () => {
     const seasonId = await createSeason({ name: `${prefix}quota-season` });
-    const [bossId] = await mysql("world_boss").insert({
-      name: `${prefix}quota-boss`,
-      hp_weight: 1,
-    });
-    const roundId = await createRound(seasonId, bossId);
+    const roster = await createRoster(seasonId, await createBosses("quota"));
+    const [round] = await createCycle(seasonId, roster, 1);
+    const roundId = round.id;
     const userId = `${prefix}quota-user`;
     const startUtc = new Date("2026-07-19T16:00:00.000Z");
     const endUtc = new Date("2026-07-20T16:00:00.000Z");
@@ -258,10 +378,6 @@ describe("World Boss v2 models", () => {
   });
 
   test("uses the reward ledger for duplicate protection and latest paid settlement lookup", async () => {
-    const [bossId] = await mysql("world_boss").insert({
-      name: `${prefix}reward-boss`,
-      hp_weight: 1,
-    });
     const settledSeasonId = await createSeason({
       name: `${prefix}settled-season`,
       status: "settled",
@@ -301,7 +417,8 @@ describe("World Boss v2 models", () => {
         paid_at: null,
       })
     ).toBe(true);
-    await createRound(activeSeasonId, bossId, { status: "active", active_slot: activeSlot });
+    const roster = await createRoster(activeSeasonId, await createBosses("reward"));
+    await createCycle(activeSeasonId, roster, 1);
 
     await mysql.transaction(async trx => {
       const locked = await WorldBossSeasonReward.findForUpdate(settledSeasonId, userId, trx);

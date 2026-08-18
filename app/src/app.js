@@ -95,17 +95,15 @@ async function HandlePostback(context, { next }) {
     let { action, cooldown = 1 } = payload;
     const { userId } = context.event.source;
 
-    if (action !== "worldBossAttack") {
-      let memkey = `Postback_${userId}_${action}`;
+    let memkey = `Postback_${userId}_${action}`;
 
-      // 使用 setnx 限制每位使用者 1秒內 不能連續重複動作
-      // 如果有特別指定的 cooldown 值，則使用該值
-      let isExist = await redis.set(memkey, 1, {
-        EX: cooldown,
-        NX: true,
-      });
-      if (!isExist) return;
-    }
+    // 使用 setnx 限制每位使用者 1秒內 不能連續重複動作
+    // 如果有特別指定的 cooldown 值，則使用該值
+    let isExist = await redis.set(memkey, 1, {
+      EX: cooldown,
+      NX: true,
+    });
+    if (!isExist) return;
 
     return router([
       route(() => action === "janken", withProps(JankenController.decide, { payload })),

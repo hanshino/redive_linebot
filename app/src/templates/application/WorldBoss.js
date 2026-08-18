@@ -1,25 +1,14 @@
-const config = require("config");
 const { FEATURE, SEMANTIC, SURFACE } = require("../common/theme");
 
-const ATTACK_COOLDOWN_SECONDS = config.get("worldboss.attack_cooldown_seconds");
 const MAX_BOSS_DESCRIPTION_BYTES = 2048;
-const MAX_CLEARED_ROUNDS_SHOWN = 6;
+const MAX_IMAGE_URL_LENGTH = 2000;
 const ACCENT = FEATURE.worldBoss;
+// White veil over a cleared boss's art. LINE accepts #RRGGBBAA, so the alpha does the
+// fading without needing an image filter (Flex images have no opacity property).
+const CLEARED_VEIL = `${SURFACE.bg}B3`;
 
 function textNode(text, extra = {}) {
   return { type: "text", text, color: SURFACE.text, wrap: true, size: "sm", ...extra };
-}
-
-function detailRow(label, value, valueColor = SURFACE.text) {
-  return {
-    type: "box",
-    layout: "horizontal",
-    spacing: "sm",
-    contents: [
-      textNode(label, { color: SURFACE.textMuted, size: "xs", flex: 1 }),
-      textNode(value, { color: valueColor, size: "xs", align: "end", flex: 2 }),
-    ],
-  };
 }
 
 function formatNumber(value) {
@@ -47,16 +36,57 @@ function worldBossUri(liffUri) {
   return uri.toString();
 }
 
-function attackAction(attackType) {
+/**
+ * LINE rejects the whole message if an image url is malformed or non-HTTPS, so an
+ * unusable snapshot url has to drop the component rather than fail the bubble.
+ */
+function httpsImageUrl(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > MAX_IMAGE_URL_LENGTH) return null;
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  return url.protocol === "https:" ? url.toString() : null;
+}
+
+/**
+ * Boss art comes from the season snapshot (`round.image`), never the live catalog,
+ * so a bubble always shows the boss as it was when the season opened.
+ */
+function bossHero(image, cleared) {
+  const url = httpsImageUrl(image);
+  if (!url) return null;
+
+  const hero = {
+    type: "image",
+    url,
+    size: "full",
+    aspectRatio: "20:13",
+    aspectMode: "cover",
+  };
+  if (!cleared) return hero;
+
+  // Keep the art on cleared cards but push it back behind a translucent overlay.
   return {
-    type: "postback",
-    label: attackType === "skill" ? "技能攻擊" : "普通攻擊",
-    displayText: attackType === "skill" ? "世界王技能攻擊" : "世界王普通攻擊",
-    data: JSON.stringify({
-      action: "worldBossAttack",
-      attackType,
-      cooldown: ATTACK_COOLDOWN_SECONDS,
-    }),
+    type: "box",
+    layout: "vertical",
+    paddingAll: "none",
+    contents: [
+      hero,
+      {
+        type: "box",
+        layout: "vertical",
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        backgroundColor: CLEARED_VEIL,
+        contents: [],
+      },
+    ],
   };
 }
 
@@ -96,26 +126,33 @@ function validateRound(round) {
   return { maxHp, currentHp };
 }
 
-function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
+/**
+ * A public group card. Every field here is shared world state — season, cycle, boss
+ * snapshot, HP, cleared. No viewer-specific data (quota, EXP, rewards, personal
+ * damage) may be added; the LIFF board is where personal state belongs.
+ */
+function generateBattleStatusBubble({ season, round, boss, liffUri }) {
   const { maxHp, currentHp } = validateRound(round);
   const hpPercent = roundedPercent(currentHp, maxHp);
   const description = truncateUtf8(boss.description, MAX_BOSS_DESCRIPTION_BYTES);
-  const remaining = Number(daily && daily.remaining);
-  const dailyLimit = Number(daily && daily.limit);
-  const dailyUsed = Number(daily && daily.used);
+  const cleared = currentHp === 0n || Boolean(round.cleared_at);
+  const hero = bossHero(boss.image, cleared);
 
   return {
     type: "bubble",
     size: "kilo",
+    ...(hero ? { hero } : {}),
     header: {
       type: "box",
       layout: "vertical",
       backgroundColor: ACCENT.main,
       paddingAll: "md",
-      contents: [
-        textNode("世界王討伐中", { color: ACCENT.contrast, weight: "bold", size: "md" }),
-        textNode(season.name, { color: ACCENT.contrast, size: "xs", margin: "xs" }),
-      ],
+      contents: cleared
+        ? [textNode("已擊破", { color: SEMANTIC.success.main, weight: "bold", align: "center" })]
+        : [
+            textNode("世界王討伐中", { color: ACCENT.contrast, weight: "bold", size: "md" }),
+            textNode(season.name, { color: ACCENT.contrast, size: "xs", margin: "xs" }),
+          ],
     },
     body: {
       type: "box",
@@ -123,7 +160,10 @@ function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
       paddingAll: "lg",
       spacing: "sm",
       contents: [
-        textNode(`第 ${round.round_no} 輪 · ${boss.name}`, { weight: "bold", size: "lg" }),
+        textNode(`第 ${round.cycle_no} 輪 · ${boss.position} 號 · ${boss.name}`, {
+          weight: "bold",
+          size: "lg",
+        }),
         ...(description ? [textNode(description, { color: SURFACE.textMuted, size: "xs" })] : []),
         textNode(`HP ${formatNumber(currentHp)} / ${formatNumber(maxHp)}（${hpPercent}%）`, {
           margin: "md",
@@ -148,18 +188,6 @@ function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
             },
           ],
         },
-        { type: "separator", color: SURFACE.dividerMuted, margin: "md" },
-        detailRow(
-          "今日行動額度",
-          Number.isFinite(remaining) ? `${formatNumber(remaining)}` : "--",
-          ACCENT.main
-        ),
-        detailRow(
-          "今日已消耗額度",
-          Number.isFinite(dailyUsed) && Number.isFinite(dailyLimit)
-            ? `${formatNumber(dailyUsed)} / ${formatNumber(dailyLimit)}`
-            : "--"
-        ),
       ],
     },
     footer: {
@@ -167,161 +195,17 @@ function generateBattleStatusBubble({ season, round, boss, daily, liffUri }) {
       layout: "vertical",
       paddingAll: "md",
       spacing: "sm",
-      contents: [
-        {
-          type: "box",
-          layout: "horizontal",
-          spacing: "sm",
-          contents: [
+      contents: cleared
+        ? [textNode("已擊破", { color: SEMANTIC.success.main, weight: "bold", align: "center" })]
+        : [
             {
               type: "button",
               style: "primary",
               color: ACCENT.main,
               height: "sm",
-              action: attackAction("standard"),
-              flex: 1,
-            },
-            {
-              type: "button",
-              style: "secondary",
-              color: SEMANTIC.warning.main,
-              height: "sm",
-              action: attackAction("skill"),
-              flex: 1,
+              action: { type: "uri", label: "開啟戰況板", uri: worldBossUri(liffUri) },
             },
           ],
-        },
-        {
-          type: "button",
-          style: "link",
-          color: SEMANTIC.info.main,
-          height: "sm",
-          action: { type: "uri", label: "查看世界王戰況", uri: worldBossUri(liffUri) },
-        },
-      ],
-    },
-  };
-}
-
-function clearedRoundsSummary(clearedRounds) {
-  if (clearedRounds.length <= MAX_CLEARED_ROUNDS_SHOWN) {
-    return `第 ${clearedRounds.map(formatNumber).join("、")} 輪`;
-  }
-
-  const firstRounds = clearedRounds.slice(0, MAX_CLEARED_ROUNDS_SHOWN / 2).map(formatNumber);
-  const lastRounds = clearedRounds.slice(-MAX_CLEARED_ROUNDS_SHOWN / 2).map(formatNumber);
-  return `共 ${formatNumber(clearedRounds.length)} 輪（第 ${firstRounds.join(
-    "、"
-  )} 輪 … 第 ${lastRounds.join("、")} 輪）`;
-}
-
-function generateAttackResultBubble({ result, daily, latestReward, liffUri }) {
-  const clearedRounds = Array.isArray(result.clearedRounds) ? result.clearedRounds : [];
-  const resultRows = [
-    detailRow("本次傷害", formatNumber(result.damage), SEMANTIC.success.main),
-    detailRow("消耗攻擊 cost", formatNumber(result.cost), SEMANTIC.warning.main),
-    detailRow("賽季累積傷害", formatNumber(result.seasonTotalDamage)),
-    detailRow(
-      "今日剩餘行動額度",
-      Number.isFinite(Number(daily && daily.remaining)) ? formatNumber(daily.remaining) : "--",
-      ACCENT.main
-    ),
-  ];
-
-  if (clearedRounds.length) {
-    resultRows.push(
-      detailRow("已擊破", clearedRoundsSummary(clearedRounds), SEMANTIC.success.main)
-    );
-  }
-  if (result.levelResult && result.levelResult.levelUp) {
-    resultRows.push(
-      detailRow(
-        "職業等級提升",
-        `Lv.${formatNumber(result.levelResult.newLevel)}`,
-        SEMANTIC.success.main
-      )
-    );
-  }
-
-  const attackBubble = {
-    type: "bubble",
-    size: "kilo",
-    header: {
-      type: "box",
-      layout: "vertical",
-      paddingAll: "md",
-      backgroundColor: SEMANTIC.success.main,
-      contents: [textNode("世界王攻擊成功", { color: SEMANTIC.success.contrast, weight: "bold" })],
-    },
-    body: {
-      type: "box",
-      layout: "vertical",
-      paddingAll: "lg",
-      spacing: "sm",
-      contents: resultRows,
-    },
-  };
-
-  if (!latestReward) return attackBubble;
-  return {
-    type: "carousel",
-    contents: [attackBubble, generateLatestRewardBubble({ reward: latestReward, liffUri })],
-  };
-}
-
-function generateLatestRewardBubble({ reward, liffUri }) {
-  const titleName = reward.titleName || "無稱號";
-  const paidAt = String(reward.paidAt);
-
-  return {
-    type: "bubble",
-    size: "kilo",
-    header: {
-      type: "box",
-      layout: "vertical",
-      paddingAll: "md",
-      backgroundColor: SEMANTIC.warning.main,
-      contents: [
-        textNode("最新世界王結算", {
-          color: SEMANTIC.warning.contrast,
-          weight: "bold",
-          size: "md",
-        }),
-        textNode(reward.seasonName, { color: SEMANTIC.warning.contrast, size: "xs", margin: "xs" }),
-      ],
-    },
-    body: {
-      type: "box",
-      layout: "vertical",
-      paddingAll: "lg",
-      spacing: "sm",
-      contents: [
-        textNode(`第 ${formatNumber(reward.ranking)} 名`, {
-          color: SEMANTIC.warning.dark,
-          weight: "bold",
-          size: "xl",
-        }),
-        detailRow("女神石", formatNumber(reward.stoneAmount), SEMANTIC.warning.main),
-        detailRow("稱號", titleName),
-        detailRow("賽季總傷害", formatNumber(reward.totalDamage)),
-        { type: "separator", color: SURFACE.dividerMuted, margin: "md" },
-        textNode(`結算編號 #${reward.rewardId}`, { color: SURFACE.textMuted, size: "xs" }),
-        textNode(`入帳時間 ${paidAt}`, { color: SURFACE.textMuted, size: "xs" }),
-      ],
-    },
-    footer: {
-      type: "box",
-      layout: "vertical",
-      paddingAll: "md",
-      contents: [
-        {
-          type: "button",
-          style: "link",
-          color: SEMANTIC.info.main,
-          height: "sm",
-          action: { type: "uri", label: "查看世界王戰況", uri: worldBossUri(liffUri) },
-        },
-      ],
     },
   };
 }
@@ -360,20 +244,35 @@ function generateNoActiveSeasonBubble({ ended, liffUri }) {
   };
 }
 
-function generateWorldBossReply({ status, daily, latestReward, liffUri }) {
-  const active = Boolean(status && !status.ended && status.season && status.round && status.boss);
-  const bubbles = [];
-  if (active) bubbles.push(generateBattleStatusBubble({ ...status, daily, liffUri }));
-  if (latestReward) bubbles.push(generateLatestRewardBubble({ reward: latestReward, liffUri }));
-  if (!bubbles.length)
+/**
+ * The `#世界王` group reply. Public state only — the settled-reward card and the
+ * attack-result card were personal state and now live in LIFF, so this returns
+ * either the five-boss board or the no-season notice and nothing else.
+ */
+function generateWorldBossReply({ status, liffUri }) {
+  const active = Boolean(
+    status &&
+    !status.ended &&
+    status.season &&
+    Array.isArray(status.rounds) &&
+    status.rounds.length === 5
+  );
+  if (!active) {
     return generateNoActiveSeasonBubble({ ended: Boolean(status && status.ended), liffUri });
-  return bubbles.length === 1 ? bubbles[0] : { type: "carousel", contents: bubbles };
+  }
+  return {
+    type: "carousel",
+    contents: status.rounds
+      .slice()
+      .sort((left, right) => Number(left.position) - Number(right.position))
+      .map(round =>
+        generateBattleStatusBubble({ season: status.season, round, boss: round, liffUri })
+      ),
+  };
 }
 
 module.exports = {
   generateBattleStatusBubble,
-  generateAttackResultBubble,
-  generateLatestRewardBubble,
   generateWorldBossReply,
   generateNoActiveSeasonBubble,
 };

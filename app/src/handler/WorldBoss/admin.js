@@ -27,11 +27,13 @@ function seasonCreatePayload(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw fail("INVALID_NAME");
   const endTime = parseUtcDate(input.end_time);
   if (endTime.getTime() <= Date.now()) throw fail("INVALID_END_TIME");
-  return {
+  const payload = {
     name: normalizeName(input.name, "INVALID_NAME"),
     announcement: input.announcement ?? null,
     end_time: endTime,
   };
+  if (Object.prototype.hasOwnProperty.call(input, "boss_ids")) payload.boss_ids = input.boss_ids;
+  return payload;
 }
 
 function seasonUpdatePayload(input) {
@@ -47,6 +49,7 @@ function seasonUpdatePayload(input) {
     payload.end_time = parseUtcDate(input.end_time);
     if (payload.end_time.getTime() <= Date.now()) throw fail("INVALID_END_TIME");
   }
+  if (Object.prototype.hasOwnProperty.call(input, "boss_ids")) payload.boss_ids = input.boss_ids;
   return payload;
 }
 

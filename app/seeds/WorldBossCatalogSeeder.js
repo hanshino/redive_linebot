@@ -27,6 +27,13 @@ const BOSSES = [
     hp_weight: 1.25,
     image: null,
   },
+  {
+    id: 5,
+    name: "潮汐海皇",
+    description: "自深海祭壇甦醒的水之支配者。",
+    hp_weight: 1.4,
+    image: null,
+  },
 ];
 
 exports.buildRows = () => BOSSES;

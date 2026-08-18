@@ -11,6 +11,7 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  MenuItem,
   Paper,
   Skeleton,
   Stack,
@@ -30,6 +31,10 @@ import useHintBar from "../../hooks/useHintBar";
 import AlertDialog from "../../components/AlertDialog";
 import HintSnackBar from "../../components/HintSnackBar";
 
+const ROSTER_SIZE = 5;
+const ROSTER_POSITIONS = Array.from({ length: ROSTER_SIZE }, (_, index) => index + 1);
+const emptyRoster = () => ROSTER_POSITIONS.map(() => "");
+
 const emptyBoss = { name: "", hp_weight: "1", image: "", description: "" };
 const emptySeason = { name: "", announcement: "", end_time: "" };
 
@@ -37,11 +42,48 @@ const toUtcIso = value => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 };
-const seasonPayload = form => ({
+
+/**
+ * Season list rows carry `roster: [{position, world_boss_id, ...}]`. Positions are
+ * always 1..5, but sort defensively so a slot never lands in the wrong selector.
+ */
+function rosterToBossIds(roster) {
+  const byPosition = new Map(
+    (Array.isArray(roster) ? roster : []).map(entry => [Number(entry?.position), entry])
+  );
+  return ROSTER_POSITIONS.map(position => {
+    const entry = byPosition.get(position);
+    return entry?.world_boss_id == null ? "" : String(entry.world_boss_id);
+  });
+}
+
+/**
+ * The submitted roster must be exactly five distinct bosses in position order —
+ * the same rule the API enforces, checked here so the button can stay disabled.
+ */
+function rosterIssues(bossIds) {
+  const filled = bossIds.filter(Boolean);
+  const duplicated = new Set(filled.filter((id, index) => filled.indexOf(id) !== index));
+  return {
+    duplicated,
+    incomplete: filled.length !== ROSTER_SIZE,
+    valid: filled.length === ROSTER_SIZE && duplicated.size === 0,
+  };
+}
+
+const seasonPayload = (form, bossIds) => ({
   name: form.name.trim(),
   announcement: form.announcement.trim() || null,
   end_time: toUtcIso(form.end_time),
+  boss_ids: bossIds.map(Number),
 });
+
+const rosterErrorMessages = {
+  INVALID_ROSTER_SIZE: "五個位置都必須選滿一隻世界王。",
+  INVALID_ROSTER_BOSS_ID: "有位置選到了無效的世界王，請重新挑選。",
+  DUPLICATE_ROSTER_BOSS: "同一隻世界王不能重複出現在多個位置。",
+  ROSTER_BOSS_NOT_FOUND: "選到的世界王已不存在，請重新載入後再挑選。",
+};
 
 const statusMeta = {
   draft: { label: "草稿", color: "default" },
@@ -63,7 +105,90 @@ function displayDate(value) {
 }
 
 function errorMessage(error, fallback) {
-  return error.response?.data?.error || error.response?.data?.message || fallback;
+  const code = error.response?.data?.error;
+  return rosterErrorMessages[code] || code || error.response?.data?.message || fallback;
+}
+
+/**
+ * Read-only roster line for the season list. Active/settled seasons are locked, so this
+ * is the only place their five bosses are shown.
+ */
+function RosterSummary({ roster }) {
+  const entries = Array.isArray(roster) ? [...roster].sort((a, b) => a.position - b.position) : [];
+
+  if (entries.length === 0) {
+    return (
+      <Typography variant="caption" color="warning.main" display="block" sx={{ mt: 0.75 }}>
+        尚未設定五王陣容
+      </Typography>
+    );
+  }
+
+  return (
+    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.75 }}>
+      {entries.map(entry => (
+        <Chip
+          key={entry.position}
+          size="small"
+          variant="outlined"
+          label={`${entry.position}. ${entry.name || "未知世界王"}`}
+        />
+      ))}
+    </Box>
+  );
+}
+
+/**
+ * Five fixed position selectors. A boss already taken by another slot stays listed but
+ * disabled, so the roster order is obvious without hiding options as you go.
+ */
+function RosterSelector({ bosses, value, onChange, issues, showErrors, disabled }) {
+  return (
+    <Box>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+        五王陣容
+      </Typography>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+        每個周回會同時開放這五隻世界王，位置固定為 1 到 5，且不能重複。
+      </Typography>
+      <Stack spacing={1.5}>
+        {ROSTER_POSITIONS.map((position, index) => {
+          const selected = value[index];
+          const duplicated = Boolean(selected) && issues.duplicated.has(selected);
+          const missing = showErrors && !selected;
+          return (
+            <TextField
+              key={position}
+              select
+              label={`${position} 號位`}
+              value={selected}
+              onChange={event =>
+                onChange(value.map((item, slot) => (slot === index ? event.target.value : item)))
+              }
+              error={duplicated || missing}
+              helperText={duplicated ? "與其他位置重複" : missing ? "請選擇一隻世界王" : " "}
+              disabled={disabled}
+              fullWidth
+            >
+              <MenuItem value="">
+                <em>未選擇</em>
+              </MenuItem>
+              {bosses.map(boss => {
+                const id = String(boss.id);
+                const takenElsewhere = value.some((item, slot) => slot !== index && item === id);
+                return (
+                  <MenuItem key={id} value={id} disabled={takenElsewhere}>
+                    {boss.name}
+                    {takenElsewhere ? "（已被其他位置選走）" : ""}
+                  </MenuItem>
+                );
+              })}
+            </TextField>
+          );
+        })}
+      </Stack>
+    </Box>
+  );
 }
 
 export default function Worldboss() {
@@ -78,6 +203,7 @@ export default function Worldboss() {
   const [editingSeason, setEditingSeason] = useState(null);
   const [bossForm, setBossForm] = useState(emptyBoss);
   const [seasonForm, setSeasonForm] = useState(emptySeason);
+  const [seasonRoster, setSeasonRoster] = useState(emptyRoster);
   const [bossErrors, setBossErrors] = useState({});
   const [seasonErrors, setSeasonErrors] = useState({});
   const [savingBoss, setSavingBoss] = useState(false);
@@ -88,6 +214,7 @@ export default function Worldboss() {
 
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
   const [alertState, { handleOpen: showAlert, handleClose: closeAlert }] = useAlertDialog();
+  const rosterState = rosterIssues(seasonRoster);
 
   const fetchData = useCallback(async (showLoading = true) => {
     const requestId = ++requestSequenceRef.current;
@@ -171,6 +298,7 @@ export default function Worldboss() {
           }
         : emptySeason
     );
+    setSeasonRoster(season ? rosterToBossIds(season.roster) : emptyRoster());
     setSeasonDialogOpen(true);
   };
 
@@ -213,12 +341,13 @@ export default function Worldboss() {
     else if (name.length > 64) nextErrors.name = "最多 64 字";
     if (!endTime) nextErrors.end_time = "請輸入有效的結束時間";
     else if (new Date(endTime).getTime() <= Date.now()) nextErrors.end_time = "結束時間必須在未來";
+    if (!rosterIssues(seasonRoster).valid) nextErrors.roster = "請選滿五隻不重複的世界王";
     setSeasonErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
 
     try {
       setSavingSeason(true);
-      const payload = seasonPayload(seasonForm);
+      const payload = seasonPayload(seasonForm, seasonRoster);
       if (editingSeason)
         await api.put(`/api/admin/world-boss-seasons/${editingSeason.id}`, payload);
       else await api.post("/api/admin/world-boss-seasons", payload);
@@ -500,6 +629,7 @@ export default function Worldboss() {
                         {season.announcement}
                       </Typography>
                     )}
+                    <RosterSummary roster={season.roster} />
                   </Box>
                   {draft && (
                     <Box sx={{ display: "flex", gap: 0.5 }}>
@@ -642,6 +772,22 @@ export default function Worldboss() {
               minRows={3}
               fullWidth
             />
+
+            <Divider />
+
+            {bosses.length < ROSTER_SIZE && (
+              <Alert severity="warning">
+                圖鑑目前只有 {bosses.length} 隻世界王，需要至少 {ROSTER_SIZE} 隻才能組成賽季陣容。
+              </Alert>
+            )}
+            <RosterSelector
+              bosses={bosses}
+              value={seasonRoster}
+              onChange={setSeasonRoster}
+              issues={rosterState}
+              showErrors={!!seasonErrors.roster}
+              disabled={savingSeason}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -651,7 +797,7 @@ export default function Worldboss() {
           <Button
             variant="contained"
             onClick={saveSeason}
-            disabled={savingSeason}
+            disabled={savingSeason || !rosterState.valid}
             startIcon={savingSeason ? <CircularProgress size={16} /> : null}
           >
             {editingSeason ? "儲存" : "新增"}
