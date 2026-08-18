@@ -27,8 +27,6 @@ import GavelIcon from "@mui/icons-material/Gavel";
 import WhatshotIcon from "@mui/icons-material/Whatshot";
 import PeopleIcon from "@mui/icons-material/People";
 import ShieldIcon from "@mui/icons-material/Shield";
-import SecurityIcon from "@mui/icons-material/Security";
-import BoltIcon from "@mui/icons-material/Bolt";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import ExtensionIcon from "@mui/icons-material/Extension";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
@@ -57,10 +55,6 @@ const ACHIEVEMENT_ICONS = {
   janken_streak_5: WhatshotIcon,
   janken_streak_10: WhatshotIcon,
   janken_challenged_10: PeopleIcon,
-  boss_first_kill: ShieldIcon,
-  boss_level_10: SecurityIcon,
-  boss_level_50: SecurityIcon,
-  boss_top_damage: BoltIcon,
   social_first_command: TerminalIcon,
   social_all_features: ExtensionIcon,
   social_veteran_30d: EmojiEventsIcon,

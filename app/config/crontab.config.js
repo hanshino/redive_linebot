@@ -133,4 +133,11 @@ module.exports = [
     immediate: false,
     require_path: "./bin/JankenDailyRewards",
   },
+  {
+    name: "World Boss Season Settle",
+    description: "settle expired active world boss seasons",
+    period: ["0", "10", "*", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/WorldBossSeasonSettle",
+  },
 ];

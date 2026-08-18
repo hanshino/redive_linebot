@@ -98,3 +98,6 @@ data
 
 # Manual prod-only SQL seeds (hidden achievement thresholds etc.) — never commit
 /docs/sql/
+
+# Local deepwork progress
+.slim/deepwork/

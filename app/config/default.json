@@ -9,7 +9,6 @@
   },
   "redis": {
     "keys": {
-      "worldBossAttackMessageKeeping": "worldBossAttackMessageKeeping",
       "jankenDecide": "jankenDecide",
       "jankenChallenge": "jankenChallenge",
       "adminList": "adminList",
@@ -25,17 +24,30 @@
     }
   },
   "worldboss": {
-    "daily_limit": 100,
-    "penalty_rate": 0.1,
-    "money_revoke_attack_cost": 10000,
-    "revoke_charm": "隱匿於夜之黑暗，撫慰心靈的爆裂之炎，吾以幻夢之名，呼喚初晨的重生，在夢幻之境、遺落之地，引領破碎時光的歸來吧。",
-    "manual": [
-      "每日 cost 上限：100",
-      "傷害會隨著等級的提升",
-      "經驗值是透過傷害比例計算出來的",
-      "可以使用 #冒險小卡 查看自己的進度",
-      "每一次攻擊都會依照技能來消耗 cost",
-      "每一次攻擊都會間隔 5 秒"
+    "daily_cost_limit": 100,
+    "attack_cooldown_seconds": 5,
+    "per_hit_exp": 120,
+    "hp_tiers": [
+      { "from_round": 1, "base_hp": 30000, "per_round": 15000 },
+      { "from_round": 11, "base_hp": 200000, "per_round": 40000 },
+      { "from_round": 31, "base_hp": 1200000, "per_round": 100000 },
+      { "from_round": 61, "base_hp": 4500000, "per_round": 200000 }
+    ],
+    "season_rewards": [
+      {
+        "min_rank": 1,
+        "max_rank": 1,
+        "stone": 100,
+        "title_key": "worldboss_annihilator"
+      },
+      {
+        "min_rank": 2,
+        "max_rank": 3,
+        "stone": 60,
+        "title_key": "worldboss_vanguard"
+      },
+      { "min_rank": 4, "max_rank": 10, "stone": 30, "title_key": null },
+      { "min_rank": 11, "max_rank": 50, "stone": 10, "title_key": null }
     ]
   },
   "minigame": {
@@ -254,18 +266,6 @@
     "weekly_reward": {
       "itemId": 999,
       "itemAmount": 500
-    }
-  },
-  "title_delivery": {
-    "world_boss": {
-      "progressors": {
-        "key": "progressors",
-        "limit": 1
-      },
-      "leechers": {
-        "key": "leechers",
-        "limit": 1
-      }
     }
   },
   "event": {

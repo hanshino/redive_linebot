@@ -1,0 +1,898 @@
+jest.mock("../../../service/WorldBossCatalogService", () => ({
+  listBosses: jest.fn(),
+  createBoss: jest.fn(),
+  updateBoss: jest.fn(),
+  deleteBoss: jest.fn(),
+}));
+jest.mock("../../../service/WorldBossSeasonService", () => ({
+  listSeasons: jest.fn(),
+  createSeason: jest.fn(),
+  updateSeason: jest.fn(),
+  deleteSeason: jest.fn(),
+  openSeason: jest.fn(),
+  getBattleStatus: jest.fn(),
+  getRanking: jest.fn(),
+  getUserTotalDamage: jest.fn(),
+  getLatestSettledResult: jest.fn(),
+}));
+jest.mock("../../../service/WorldBossBattleService", () => ({
+  getRemainingDailyCost: jest.fn(),
+}));
+jest.mock("../../../service/WorldBossAttackService", () => ({ attack: jest.fn() }));
+const CatalogService = require("../../../service/WorldBossCatalogService");
+const SeasonService = require("../../../service/WorldBossSeasonService");
+const BattleService = require("../../../service/WorldBossBattleService");
+const AttackService = require("../../../service/WorldBossAttackService");
+const express = require("express");
+const supertest = require("supertest");
+const admin = require("../admin");
+const publicHandler = require("../public");
+
+function response() {
+  const res = {
+    status: jest.fn(),
+    json: jest.fn(),
+  };
+  res.status.mockReturnValue(res);
+  return res;
+}
+
+function request({ body = {}, params = {}, query = {}, userId = "Uworldboss", displayName } = {}) {
+  return { body, params, query, profile: { userId, displayName } };
+}
+
+function error(code) {
+  return Object.assign(new Error(code), { code });
+}
+
+const bossRows = [
+  {
+    id: 1,
+    name: "炎龍",
+    hp_weight: "1.25",
+    created_at: new Date("2026-07-19T01:02:03.000Z"),
+    updated_at: new Date("2026-07-19T04:05:06.000Z"),
+  },
+  { id: 2, name: "冰狼", hp_weight: "0.75" },
+];
+const seasonRows = [
+  {
+    id: 8,
+    name: "S2",
+    status: "active",
+    start_time: new Date("2026-07-20T01:00:00.000Z"),
+    end_time: new Date("2026-07-21T01:00:00.000Z"),
+    settled_at: null,
+    created_at: new Date("2026-07-19T00:00:00.000Z"),
+    updated_at: new Date("2026-07-20T01:00:00.000Z"),
+  },
+  { id: 7, name: "S1", status: "settled" },
+];
+const status = {
+  season: {
+    id: 8,
+    name: "S2",
+    start_time: new Date("2026-07-20T01:00:00.000Z"),
+    end_time: new Date("2026-07-21T01:00:00.000Z"),
+  },
+  cycleNo: 3,
+  rounds: [1, 2, 3, 4, 5].map(position => ({
+    id: 19 + position,
+    cycle_no: 3,
+    position,
+    current_hp: position === 1 ? "9007199254740993" : "100",
+    max_hp: position === 1 ? "9007199254740994" : "200",
+    created_at: new Date("2026-07-20T01:00:00.000Z"),
+    world_boss_id: position,
+    name: `王${position}`,
+  })),
+  ended: false,
+};
+const latestReward = {
+  rewardId: 42,
+  seasonId: 7,
+  seasonName: "S1",
+  ranking: 1,
+  totalDamage: "500",
+  stoneAmount: 100,
+  titleKey: "worldboss_annihilator",
+  titleName: "殲滅之王",
+  paidAt: new Date("2026-07-19T12:00:00.000Z"),
+  settledAt: new Date("2026-07-19T12:00:00.000Z"),
+};
+
+const attackResult = {
+  damage: 500,
+  effectiveDamage: "100",
+  wastedDamage: "400",
+  cost: 15,
+  cleared: true,
+  cycleAdvanced: false,
+  attackedCycleNo: 3,
+  cycleNo: 3,
+  boss: { id: 2, position: 2, name: "王2" },
+  levelResult: { levelUp: true, newLevel: 9, newExp: 3 },
+  seasonTotalDamage: "9007199254740993",
+  daily: { limit: 100, used: 35, remaining: 65 },
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  CatalogService.listBosses.mockResolvedValue(bossRows);
+  CatalogService.createBoss.mockResolvedValue(3);
+  CatalogService.updateBoss.mockResolvedValue(1);
+  CatalogService.deleteBoss.mockResolvedValue(1);
+  SeasonService.listSeasons.mockResolvedValue(seasonRows);
+  SeasonService.createSeason.mockResolvedValue(9);
+  SeasonService.updateSeason.mockResolvedValue(8);
+  SeasonService.deleteSeason.mockResolvedValue(8);
+  SeasonService.openSeason.mockResolvedValue({ seasonId: 8, cycleNo: 3, rounds: status.rounds });
+  SeasonService.getBattleStatus.mockResolvedValue(status);
+  SeasonService.getRanking.mockResolvedValue([
+    { user_id: "Uone", total_damage: "500", ranking: 1 },
+  ]);
+  SeasonService.getLatestSettledResult.mockResolvedValue(latestReward);
+  BattleService.getRemainingDailyCost.mockResolvedValue({ limit: 100, used: 20, remaining: 80 });
+  SeasonService.getUserTotalDamage.mockResolvedValue("500");
+  AttackService.attack.mockResolvedValue({
+    result: attackResult,
+    announcementQueued: true,
+    latestReward: null,
+  });
+});
+
+describe("World Boss admin boss handlers", () => {
+  it("lists bosses through the catalog service without reordering them", async () => {
+    const res = response();
+
+    await admin.listBosses(request(), res);
+
+    expect(CatalogService.listBosses).toHaveBeenCalledWith();
+    expect(res.json.mock.calls[0][0].map(row => row.id)).toEqual([1, 2]);
+    expect(res.json.mock.calls[0][0][0]).toMatchObject({
+      created_at: "2026-07-19T01:02:03.000Z",
+      updated_at: "2026-07-19T04:05:06.000Z",
+    });
+  });
+
+  it.each([
+    [{ name: "", hp_weight: 1 }, "INVALID_BOSS_NAME"],
+    [{ name: "x".repeat(65), hp_weight: 1 }, "INVALID_BOSS_NAME"],
+    [{ name: "炎龍", hp_weight: 0 }, "INVALID_HP_WEIGHT"],
+    [{ name: "炎龍", hp_weight: "NaN" }, "INVALID_HP_WEIGHT"],
+    [{ name: "炎龍", hp_weight: "Infinity" }, "INVALID_HP_WEIGHT"],
+  ])("rejects an invalid create payload %# before calling the service", async (body, code) => {
+    const res = response();
+
+    await admin.createBoss(request({ body }), res);
+
+    expect(CatalogService.createBoss).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: code });
+  });
+
+  it("creates a trimmed boss through the service", async () => {
+    const res = response();
+
+    await admin.createBoss(
+      request({ body: { name: "  炎龍  ", hp_weight: "1.5", image: "a", description: "b" } }),
+      res
+    );
+
+    expect(CatalogService.createBoss).toHaveBeenCalledWith({
+      name: "炎龍",
+      hp_weight: 1.5,
+      image: "a",
+      description: "b",
+    });
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({ id: 3 });
+  });
+
+  it("maps zero affected boss updates and deletes to not found", async () => {
+    CatalogService.updateBoss.mockResolvedValue(0);
+    const updateRes = response();
+    await admin.updateBoss(
+      request({ params: { id: "404" }, body: { name: "炎龍", hp_weight: 1 } }),
+      updateRes
+    );
+    expect(updateRes.status).toHaveBeenCalledWith(404);
+    expect(updateRes.json).toHaveBeenCalledWith({ error: "BOSS_NOT_FOUND" });
+
+    CatalogService.deleteBoss.mockResolvedValue(0);
+    const deleteRes = response();
+    await admin.deleteBoss(request({ params: { id: "404" } }), deleteRes);
+    expect(deleteRes.status).toHaveBeenCalledWith(404);
+    expect(deleteRes.json).toHaveBeenCalledWith({ error: "BOSS_NOT_FOUND" });
+  });
+
+  it("validates update and maps referenced deletes to conflict", async () => {
+    const invalidRes = response();
+    await admin.updateBoss(
+      request({ params: { id: "2" }, body: { name: "炎龍", hp_weight: -1 } }),
+      invalidRes
+    );
+    expect(CatalogService.updateBoss).not.toHaveBeenCalled();
+    expect(invalidRes.status).toHaveBeenCalledWith(400);
+
+    CatalogService.deleteBoss.mockRejectedValue(error("BOSS_IN_USE"));
+    const conflictRes = response();
+    await admin.deleteBoss(request({ params: { id: "2" } }), conflictRes);
+    expect(CatalogService.deleteBoss).toHaveBeenCalledWith("2");
+    expect(conflictRes.status).toHaveBeenCalledWith(409);
+    expect(conflictRes.json).toHaveBeenCalledWith({ error: "BOSS_IN_USE" });
+  });
+});
+
+describe("World Boss admin season handlers", () => {
+  it("lists seasons through the season service without reordering them", async () => {
+    const res = response();
+
+    await admin.listSeasons(request(), res);
+
+    expect(SeasonService.listSeasons).toHaveBeenCalledWith();
+    expect(res.json.mock.calls[0][0].map(row => row.id)).toEqual([8, 7]);
+    expect(res.json.mock.calls[0][0][0]).toMatchObject({
+      start_time: "2026-07-20T01:00:00.000Z",
+      end_time: "2026-07-21T01:00:00.000Z",
+      settled_at: null,
+      created_at: "2026-07-19T00:00:00.000Z",
+      updated_at: "2026-07-20T01:00:00.000Z",
+    });
+  });
+
+  it.each([
+    [{ name: "", end_time: "2027-01-01T00:00:00.000Z" }, "INVALID_NAME"],
+    [{ name: "S", end_time: "not-a-date" }, "INVALID_END_TIME"],
+    [{ name: "S", end_time: "2026-01-01T00:00:00.000Z" }, "INVALID_END_TIME"],
+    [{ name: "S", end_time: "2027-01-01" }, "INVALID_END_TIME"],
+    [{ name: "S", end_time: "2027-02-31T00:00:00.000Z" }, "INVALID_END_TIME"],
+  ])("rejects invalid season create payload %# before service", async (body, code) => {
+    const res = response();
+
+    await admin.createSeason(request({ body }), res);
+
+    expect(SeasonService.createSeason).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: code });
+  });
+
+  it("creates a draft with an exact UTC end time and ignores client start time", async () => {
+    const res = response();
+
+    await admin.createSeason(
+      request({
+        body: {
+          name: "  S3  ",
+          announcement: "公告",
+          end_time: "2027-01-01T00:00:00.000Z",
+          boss_ids: ["1", "2", "3", "4", "5"],
+          start_time: "2099-01-01T00:00:00.000Z",
+        },
+      }),
+      res
+    );
+
+    expect(SeasonService.createSeason).toHaveBeenCalledWith({
+      name: "S3",
+      announcement: "公告",
+      end_time: new Date("2027-01-01T00:00:00.000Z"),
+      boss_ids: ["1", "2", "3", "4", "5"],
+    });
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({ id: 9 });
+  });
+
+  it.each([
+    [{ end_time: "invalid" }, "INVALID_END_TIME"],
+    [{ end_time: "2027-01-01" }, "INVALID_END_TIME"],
+    [{ end_time: "2027-02-31T00:00:00.000Z" }, "INVALID_END_TIME"],
+  ])("rejects invalid season update payload %# before service", async (body, code) => {
+    const res = response();
+
+    await admin.updateSeason(request({ params: { id: "8" }, body }), res);
+
+    expect(SeasonService.updateSeason).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: code });
+  });
+
+  it("ignores client start time on draft update", async () => {
+    const res = response();
+
+    await admin.updateSeason(
+      request({
+        params: { id: "8" },
+        body: { announcement: "updated", start_time: "2099-01-01T00:00:00.000Z" },
+      }),
+      res
+    );
+
+    expect(SeasonService.updateSeason).toHaveBeenCalledWith("8", { announcement: "updated" });
+    expect(res.json).toHaveBeenCalledWith({});
+  });
+
+  it("passes boss_ids through on draft update", async () => {
+    const res = response();
+    await admin.updateSeason(
+      request({ params: { id: "8" }, body: { boss_ids: ["5", "4", "3", "2", "1"] } }),
+      res
+    );
+    expect(SeasonService.updateSeason).toHaveBeenCalledWith("8", {
+      boss_ids: ["5", "4", "3", "2", "1"],
+    });
+  });
+
+  it("passes canonical BIGINT path ids without Number coercion", async () => {
+    const id = "9007199254740993";
+    const res = response();
+
+    await admin.updateSeason(request({ params: { id }, body: { announcement: "updated" } }), res);
+
+    expect(SeasonService.updateSeason).toHaveBeenCalledWith(id, { announcement: "updated" });
+    expect(res.json).toHaveBeenCalledWith({});
+  });
+
+  it("maps active update/delete to conflict and malformed service input to bad request", async () => {
+    SeasonService.updateSeason.mockRejectedValue(error("SEASON_NOT_DRAFT"));
+    const updateRes = response();
+    await admin.updateSeason(
+      request({ params: { id: "8" }, body: { announcement: "x" } }),
+      updateRes
+    );
+    expect(updateRes.status).toHaveBeenCalledWith(409);
+    expect(updateRes.json).toHaveBeenCalledWith({ error: "SEASON_NOT_DRAFT" });
+
+    SeasonService.deleteSeason.mockRejectedValue(error("SEASON_NOT_DRAFT"));
+    const deleteRes = response();
+    await admin.deleteSeason(request({ params: { id: "8" } }), deleteRes);
+    expect(deleteRes.status).toHaveBeenCalledWith(409);
+
+    SeasonService.updateSeason.mockRejectedValue(error("INVALID_END_TIME"));
+    const badRes = response();
+    await admin.updateSeason(request({ params: { id: "8" }, body: { announcement: "x" } }), badRes);
+    expect(badRes.status).toHaveBeenCalledWith(400);
+  });
+
+  it.each([
+    ["updateBoss", "1.5", "updateBoss"],
+    ["deleteBoss", "0", "deleteBoss"],
+    ["updateSeason", "01", "updateSeason"],
+    ["deleteSeason", "NaN", "deleteSeason"],
+    ["openSeason", "-1", "openSeason"],
+  ])("rejects invalid path ids for %s before service", async (handler, id, serviceMethod) => {
+    const res = response();
+    const body = handler === "updateBoss" ? { name: "炎龍", hp_weight: 1 } : {};
+
+    await admin[handler](request({ params: { id }, body }), res);
+
+    const service = ["updateBoss", "deleteBoss"].includes(serviceMethod)
+      ? CatalogService
+      : SeasonService;
+    expect(service[serviceMethod]).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "INVALID_ID" });
+  });
+
+  it("opens immediately without passing any client time", async () => {
+    const res = response();
+
+    await admin.openSeason(
+      request({
+        params: { id: "8" },
+        body: { start_time: "2099-01-01T00:00:00.000Z", end_time: "2099-02-01T00:00:00.000Z" },
+      }),
+      res
+    );
+
+    expect(SeasonService.openSeason).toHaveBeenCalledWith("8");
+    expect(res.json.mock.calls[0][0]).toMatchObject({ seasonId: 8 });
+    expect(res.json.mock.calls[0][0].rounds).toHaveLength(5);
+  });
+
+  it.each([
+    ["ANOTHER_SEASON_ACTIVE", 409],
+    ["SEASON_NOT_DRAFT", 409],
+    ["SEASON_NOT_FOUND", 404],
+    ["INVALID_END_TIME", 400],
+    ["NO_WORLD_BOSS", 422],
+    ["INVALID_MAX_HP", 422],
+    ["WORLD_BOSS_NOT_FOUND", 422],
+  ])("maps %s to HTTP %i", async (code, statusCode) => {
+    SeasonService.openSeason.mockRejectedValue(error(code));
+    const res = response();
+
+    await admin.openSeason(request({ params: { id: "8" } }), res);
+
+    expect(res.status).toHaveBeenCalledWith(statusCode);
+    expect(res.json).toHaveBeenCalledWith({ error: code });
+  });
+});
+
+describe("World Boss public handlers", () => {
+  it("returns status with all nested datetimes serialized as UTC ISO strings", async () => {
+    const res = response();
+
+    await publicHandler.status(request(), res);
+
+    expect(SeasonService.getBattleStatus).toHaveBeenCalledWith();
+    expect(res.json.mock.calls[0][0]).toMatchObject({
+      season: {
+        start_time: "2026-07-20T01:00:00.000Z",
+        end_time: "2026-07-21T01:00:00.000Z",
+      },
+      rounds: expect.any(Array),
+    });
+    expect(res.json.mock.calls[0][0].rounds[0].current_hp).toBe("9007199254740993");
+  });
+
+  it.each([
+    [undefined, 50],
+    ["1", 1],
+    ["100", 100],
+  ])("accepts leaderboard limit %s as %i", async (limit, expected) => {
+    const res = response();
+    const query = limit === undefined ? {} : { limit };
+
+    await publicHandler.leaderboard(request({ query }), res);
+
+    expect(SeasonService.getBattleStatus).toHaveBeenCalledWith();
+    expect(SeasonService.getRanking).toHaveBeenCalledWith("8", expected);
+    expect(res.json).toHaveBeenCalledWith({
+      seasonId: "8",
+      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+    });
+  });
+
+  it("passes display_name through in the leaderboard DTO", async () => {
+    SeasonService.getRanking.mockResolvedValue([
+      { user_id: "Uone", display_name: "玩家甲", total_damage: "500", ranking: 1 },
+    ]);
+    const res = response();
+
+    await publicHandler.leaderboard(request(), res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      seasonId: "8",
+      rows: [{ user_id: "Uone", display_name: "玩家甲", total_damage: "500", ranking: 1 }],
+    });
+  });
+
+  it.each(["0", "101", "1.5", "NaN", "Infinity", "", " 1"])(
+    "rejects leaderboard limit %p without calling ranking",
+    async limit => {
+      const res = response();
+
+      await publicHandler.leaderboard(request({ query: { limit } }), res);
+
+      expect(SeasonService.getRanking).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "INVALID_RANKING_LIMIT" });
+    }
+  );
+
+  it("returns an empty ranking without an active season", async () => {
+    SeasonService.getBattleStatus.mockResolvedValue(null);
+    const res = response();
+
+    await publicHandler.leaderboard(request(), res);
+
+    expect(SeasonService.getRanking).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ seasonId: null, rows: [] });
+  });
+
+  it("returns latest reward even when there is no active season", async () => {
+    SeasonService.getBattleStatus.mockResolvedValue(null);
+    const res = response();
+
+    await publicHandler.me(request({ userId: "Ume" }), res);
+
+    expect(SeasonService.getLatestSettledResult).toHaveBeenCalledWith("Ume");
+    expect(SeasonService.getUserTotalDamage).not.toHaveBeenCalled();
+    expect(BattleService.getRemainingDailyCost).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({
+      current: null,
+      latestReward: {
+        ...latestReward,
+        paidAt: "2026-07-19T12:00:00.000Z",
+        settledAt: "2026-07-19T12:00:00.000Z",
+      },
+    });
+  });
+
+  it("keeps an ended-but-unsettled active season available to leaderboard and me", async () => {
+    SeasonService.getBattleStatus.mockResolvedValue({ ...status, ended: true });
+    const leaderboardRes = response();
+    await publicHandler.leaderboard(request(), leaderboardRes);
+    expect(SeasonService.getRanking).toHaveBeenCalledWith("8", 50);
+    expect(leaderboardRes.json).toHaveBeenCalledWith({
+      seasonId: "8",
+      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+    });
+
+    const meRes = response();
+    await publicHandler.me(request({ userId: "Ume" }), meRes);
+    expect(SeasonService.getUserTotalDamage).toHaveBeenCalledWith("8", "Ume");
+    expect(meRes.json.mock.calls[0][0].current).toMatchObject({
+      seasonId: "8",
+      totalDamage: "500",
+    });
+  });
+
+  it("returns exact current damage outside the top 100 and latest reward independently", async () => {
+    SeasonService.getRanking.mockResolvedValue(
+      Array.from({ length: 100 }, (_, index) => ({
+        user_id: `Uranked${index + 1}`,
+        total_damage: 1000 - index,
+        ranking: index + 1,
+      }))
+    );
+    SeasonService.getUserTotalDamage.mockResolvedValue("500");
+    const res = response();
+
+    await publicHandler.me(request({ userId: "Ume" }), res);
+
+    expect(SeasonService.getRanking).not.toHaveBeenCalled();
+    expect(SeasonService.getUserTotalDamage).toHaveBeenCalledWith("8", "Ume");
+    expect(BattleService.getRemainingDailyCost).toHaveBeenCalledWith("Ume");
+    expect(res.json.mock.calls[0][0]).toEqual({
+      current: {
+        seasonId: "8",
+        totalDamage: "500",
+        daily: { limit: 100, used: 20, remaining: 80 },
+      },
+      latestReward: {
+        ...latestReward,
+        paidAt: "2026-07-19T12:00:00.000Z",
+        settledAt: "2026-07-19T12:00:00.000Z",
+      },
+    });
+  });
+
+  it("preserves an exact active season ID through leaderboard and me", async () => {
+    const exactSeasonId = "9007199254740993";
+    SeasonService.getBattleStatus.mockResolvedValue({
+      ...status,
+      season: { ...status.season, id: exactSeasonId },
+    });
+    const leaderboardRes = response();
+
+    await publicHandler.leaderboard(request(), leaderboardRes);
+    expect(SeasonService.getRanking).toHaveBeenCalledWith(exactSeasonId, 50);
+    expect(leaderboardRes.json).toHaveBeenCalledWith({
+      seasonId: exactSeasonId,
+      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+    });
+
+    const meRes = response();
+    await publicHandler.me(request({ userId: "Uexact" }), meRes);
+    expect(SeasonService.getUserTotalDamage).toHaveBeenCalledWith(exactSeasonId, "Uexact");
+    expect(meRes.json.mock.calls[0][0].current).toMatchObject({ seasonId: exactSeasonId });
+  });
+
+  it("serializes exact ids and damage strings without JSON BigInt", async () => {
+    const seasonId = "9007199254740993";
+    SeasonService.getBattleStatus.mockResolvedValue({
+      ...status,
+      season: { ...status.season, id: seasonId },
+    });
+    SeasonService.getRanking.mockResolvedValue([
+      { user_id: "Uexact", total_damage: "9007199254740993", ranking: 1 },
+      { user_id: "Ulower", total_damage: "9007199254740992", ranking: 2 },
+    ]);
+    SeasonService.getUserTotalDamage.mockResolvedValue("9007199254740993");
+    SeasonService.getLatestSettledResult.mockResolvedValue({
+      ...latestReward,
+      seasonId,
+      totalDamage: "9007199254740993",
+    });
+
+    const leaderboardRes = response();
+    await publicHandler.leaderboard(request(), leaderboardRes);
+    expect(SeasonService.getRanking).toHaveBeenCalledWith(seasonId, 50);
+    expect(leaderboardRes.json).toHaveBeenCalledWith({
+      seasonId,
+      rows: [
+        { user_id: "Uexact", total_damage: "9007199254740993", ranking: 1 },
+        { user_id: "Ulower", total_damage: "9007199254740992", ranking: 2 },
+      ],
+    });
+
+    const meRes = response();
+    await publicHandler.me(request({ userId: "Uexact" }), meRes);
+    expect(SeasonService.getUserTotalDamage).toHaveBeenCalledWith(seasonId, "Uexact");
+    expect(meRes.json.mock.calls[0][0]).toMatchObject({
+      current: { seasonId, totalDamage: "9007199254740993" },
+      latestReward: { seasonId, totalDamage: "9007199254740993" },
+    });
+    expect(() => JSON.stringify(meRes.json.mock.calls[0][0])).not.toThrow();
+  });
+
+  it("maps service validation errors and unexpected failures centrally", async () => {
+    SeasonService.getRanking.mockRejectedValueOnce(error("INVALID_RANKING_LIMIT"));
+    const badRes = response();
+    await publicHandler.leaderboard(request(), badRes);
+    expect(badRes.status).toHaveBeenCalledWith(400);
+
+    const databaseError = new Error("database unavailable");
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    SeasonService.getBattleStatus.mockRejectedValueOnce(databaseError);
+    const failedRes = response();
+    await publicHandler.status(request(), failedRes);
+    expect(failedRes.status).toHaveBeenCalledWith(500);
+    expect(failedRes.json).toHaveBeenCalledWith({ error: "INTERNAL_ERROR" });
+    expect(consoleError).toHaveBeenCalledWith("[world-boss-api]", databaseError);
+    consoleError.mockRestore();
+  });
+});
+
+describe("World Boss attack handler", () => {
+  const body = { roundId: 21, attackType: "standard" };
+
+  it("acts as the authenticated user and ignores a spoofed body userId", async () => {
+    const res = response();
+
+    await publicHandler.attack(
+      request({
+        body: { ...body, userId: "Uvictim", user_id: "Uvictim", profile: { userId: "Uvictim" } },
+        userId: "Ureal",
+        displayName: "真實玩家",
+      }),
+      res
+    );
+
+    expect(AttackService.attack).toHaveBeenCalledWith({
+      userId: "Ureal",
+      roundId: "21",
+      attackType: "standard",
+      groupId: null,
+      displayName: "真實玩家",
+    });
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [undefined, "INVALID_ROUND_ID"],
+    [{}, "INVALID_ROUND_ID"],
+    [{ attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: 0, attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: -1, attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: "1.5", attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: " 1", attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: "abc", attackType: "standard" }, "INVALID_ROUND_ID"],
+    [{ roundId: 21 }, "INVALID_ATTACK_TYPE"],
+    [{ roundId: 21, attackType: "ultimate" }, "INVALID_ATTACK_TYPE"],
+    [{ roundId: 21, attackType: "STANDARD" }, "INVALID_ATTACK_TYPE"],
+    [{ roundId: 21, attackType: "standard", groupId: "nope" }, "INVALID_GROUP_ID"],
+    [{ roundId: 21, attackType: "standard", groupId: `U${"a".repeat(32)}` }, "INVALID_GROUP_ID"],
+    [{ roundId: 21, attackType: "standard", groupId: `R${"f".repeat(32)}` }, "INVALID_GROUP_ID"],
+    [{ roundId: 21, attackType: "standard", groupId: `C${"A".repeat(32)}` }, "INVALID_GROUP_ID"],
+    [{ roundId: 21, attackType: "standard", groupId: 12345 }, "INVALID_GROUP_ID"],
+  ])("rejects body %p with 400 %s before calling the service", async (payload, code) => {
+    const res = response();
+
+    await publicHandler.attack(request({ body: payload }), res);
+
+    expect(AttackService.attack).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: code });
+  });
+
+  it.each([undefined, null])("treats groupId %p as absent, not invalid", async groupId => {
+    const res = response();
+
+    await publicHandler.attack(request({ body: { ...body, groupId } }), res);
+
+    expect(AttackService.attack).toHaveBeenCalledWith(expect.objectContaining({ groupId: null }));
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it.each([`C${"a".repeat(32)}`, `C${"0".repeat(32)}`])(
+    "forwards a well-formed group id %s for server-side verification",
+    async groupId => {
+      const res = response();
+
+      await publicHandler.attack(request({ body: { ...body, groupId } }), res);
+
+      expect(AttackService.attack).toHaveBeenCalledWith(expect.objectContaining({ groupId }));
+    }
+  );
+
+  it("returns the private success DTO with exact big integers and the announcement flag", async () => {
+    const reward = { rewardId: 42, paidAt: new Date("2026-07-19T12:00:00.000Z") };
+    AttackService.attack.mockResolvedValue({
+      result: attackResult,
+      announcementQueued: true,
+      latestReward: reward,
+    });
+    const res = response();
+
+    await publicHandler.attack(request({ body: { ...body, roundId: "21" } }), res);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({
+      attack: {
+        roundId: "21",
+        attackType: "standard",
+        damage: 500,
+        effectiveDamage: "100",
+        wastedDamage: "400",
+        cost: 15,
+        cleared: true,
+        cycleAdvanced: false,
+        attackedCycleNo: 3,
+        cycleNo: 3,
+        boss: { id: 2, position: 2, name: "王2" },
+        levelResult: { levelUp: true, newLevel: 9, newExp: 3 },
+        seasonTotalDamage: "9007199254740993",
+        daily: { limit: 100, used: 35, remaining: 65 },
+      },
+      announcementQueued: true,
+      latestReward: { rewardId: 42, paidAt: "2026-07-19T12:00:00.000Z" },
+      status: expect.objectContaining({ season: expect.any(Object) }),
+    });
+    expect(() => JSON.stringify(res.json.mock.calls[0][0])).not.toThrow();
+  });
+
+  it("still returns 200 with announcementQueued false when nothing was enqueued", async () => {
+    AttackService.attack.mockResolvedValue({
+      result: attackResult,
+      announcementQueued: false,
+      latestReward: null,
+    });
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].announcementQueued).toBe(false);
+  });
+
+  it("returns a usable response even when the follow-up status read fails", async () => {
+    SeasonService.getBattleStatus.mockRejectedValue(new Error("db down"));
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].status).toBeNull();
+    expect(res.json.mock.calls[0][0].attack.effectiveDamage).toBe("100");
+  });
+
+  it.each([
+    ["ROUND_NOT_FOUND", 409],
+    ["ROUND_STALE", 409],
+    ["ROUND_CLEARED", 409],
+    ["NO_ACTIVE_SEASON", 409],
+    ["SEASON_ENDED", 409],
+    ["NO_ACTIVE_ROUND", 409],
+    ["DAILY_LIMIT_EXCEEDED", 422],
+    ["INVALID_ROUND_ID", 400],
+    ["INVALID_ATTACK_TYPE", 400],
+    ["INVALID_USER", 400],
+    ["ATTACK_COOLDOWN", 429],
+  ])("maps service failure %s to HTTP %i as stable JSON, never 500", async (code, statusCode) => {
+    AttackService.attack.mockRejectedValue(error(code));
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).toHaveBeenCalledWith(statusCode);
+    expect(res.json).toHaveBeenCalledWith({ error: code });
+  });
+
+  it("maps an unexpected failure to 500 without leaking the message", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    AttackService.attack.mockRejectedValue(new Error("secret cookie=abc"));
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "INTERNAL_ERROR" });
+    consoleError.mockRestore();
+  });
+});
+
+describe("World Boss router auth wiring", () => {
+  it("enforces token, admin, and privilege-five middleware on the effective parent router", async () => {
+    let isolated;
+    jest.isolateModules(() => {
+      const validation = require("../../../middleware/validation");
+      const privilegeMiddleware = jest.fn((req, res, next) => next());
+      const verifyPrivilege = jest.fn(() => privilegeMiddleware);
+      validation.verifyPrivilege = verifyPrivilege;
+      const worldBossRouters = require("../../../router/WorldBoss");
+      const api = require("../../../router/api");
+      const app = express();
+      app.use(express.json());
+      app.use("/api", api);
+      isolated = { api, app, validation, verifyPrivilege, privilegeMiddleware, worldBossRouters };
+    });
+
+    await supertest(isolated.app).get("/api/world-boss/status").expect(200);
+    await supertest(isolated.app).get("/api/admin/world-bosses").expect(200);
+
+    const { api, validation, verifyPrivilege, privilegeMiddleware, worldBossRouters } = isolated;
+    const stack = api.stack;
+    const publicIndex = stack.findIndex(layer => layer.handle === worldBossRouters.public);
+    const publicTokenIndex = stack
+      .slice(0, publicIndex)
+      .findLastIndex(layer => layer.handle === validation.verifyToken);
+    const adminRouterIndex = stack.findIndex(layer => layer.handle === worldBossRouters.admin);
+    const adminGateIndex = stack
+      .slice(0, adminRouterIndex)
+      .findLastIndex(
+        (layer, index, layers) =>
+          layer.handle === validation.verifyToken &&
+          layers[index + 1]?.handle === validation.verifyAdmin &&
+          layers[index + 2]?.handle === privilegeMiddleware
+      );
+
+    expect(verifyPrivilege).toHaveBeenCalledWith(5);
+    expect(publicIndex).toBeGreaterThan(publicTokenIndex);
+    expect(publicTokenIndex).toBeGreaterThanOrEqual(0);
+    expect(adminGateIndex).toBeGreaterThan(publicIndex);
+    expect(adminRouterIndex).toBeGreaterThan(adminGateIndex + 2);
+  });
+
+  it("registers the required public and admin route handlers", () => {
+    const { admin: AdminRouter, public: PublicRouter } = require("../../../router/WorldBoss");
+    const adminRoutes = AdminRouter.stack
+      .filter(layer => layer.route)
+      .map(layer => ({
+        path: layer.route.path,
+        methods: Object.keys(layer.route.methods),
+      }));
+    const publicRoutes = PublicRouter.stack
+      .filter(layer => layer.route)
+      .map(layer => ({
+        path: layer.route.path,
+        methods: Object.keys(layer.route.methods),
+      }));
+
+    expect(adminRoutes).toEqual([
+      { path: "/world-bosses", methods: ["get"] },
+      { path: "/world-bosses", methods: ["post"] },
+      { path: "/world-bosses/:id", methods: ["put"] },
+      { path: "/world-bosses/:id", methods: ["delete"] },
+      { path: "/world-boss-seasons", methods: ["get"] },
+      { path: "/world-boss-seasons", methods: ["post"] },
+      { path: "/world-boss-seasons/:id", methods: ["put"] },
+      { path: "/world-boss-seasons/:id", methods: ["delete"] },
+      { path: "/world-boss-seasons/:id/open", methods: ["post"] },
+    ]);
+    expect(publicRoutes).toEqual([
+      { path: "/status", methods: ["get"] },
+      { path: "/leaderboard", methods: ["get"] },
+      { path: "/me", methods: ["get"] },
+      { path: "/attack", methods: ["post"] },
+    ]);
+  });
+
+  it("puts the attack route behind verifyToken like the rest of the public router", async () => {
+    let isolated;
+    jest.isolateModules(() => {
+      const validation = require("../../../middleware/validation");
+      validation.verifyPrivilege = jest.fn(() => (req, res, next) => next());
+      const worldBossRouters = require("../../../router/WorldBoss");
+      const api = require("../../../router/api");
+      isolated = { api, validation, worldBossRouters };
+    });
+
+    const { api, validation, worldBossRouters } = isolated;
+    const publicIndex = api.stack.findIndex(layer => layer.handle === worldBossRouters.public);
+    const tokenIndex = api.stack
+      .slice(0, publicIndex)
+      .findLastIndex(layer => layer.handle === validation.verifyToken);
+
+    expect(tokenIndex).toBeGreaterThanOrEqual(0);
+    expect(publicIndex).toBeGreaterThan(tokenIndex);
+    // Attack lives on that same guarded router, so it inherits the same gate.
+    expect(
+      worldBossRouters.public.stack.some(
+        layer => layer.route && layer.route.path === "/attack" && layer.route.methods.post
+      )
+    ).toBe(true);
+  });
+});

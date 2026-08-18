@@ -39,15 +39,6 @@ const commandMap = [
   { pattern: /^[#./]group$/, name: "group_panel", category: "application" },
   { pattern: /^[.#]自訂頭像/, name: "set_sender", category: "application" },
 
-  // === application: world boss ===
-  { pattern: /^#冒險小卡$/, name: "worldboss_status", category: "application" },
-  { pattern: /^(\/worldboss|#世界王)$/, name: "worldboss_event", category: "application" },
-  { pattern: /^[.#/](攻擊|attack)$/, name: "worldboss_attack", category: "application" },
-  { pattern: /^[#]傷害[紀記]錄/, name: "worldboss_logs", category: "application" },
-  { pattern: /^[#＃]裝備$/, name: "worldboss_equipment", category: "application" },
-  { pattern: /^#夢幻回歸$/, name: "worldboss_revoke", category: "application" },
-  { pattern: /^\/worldrank$/, name: "worldboss_rank", category: "application" },
-
   // === application: janken ===
   { pattern: /^[.#/](猜拳段位|猜拳rank)/, name: "janken_rank", category: "application" },
   {

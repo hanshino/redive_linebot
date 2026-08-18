@@ -21,9 +21,8 @@ import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import GroupsIcon from "@mui/icons-material/Groups";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 import MessageIcon from "@mui/icons-material/Message";
-import PetsIcon from "@mui/icons-material/Pets";
-import SportsHandballIcon from "@mui/icons-material/SportsHandball";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -34,7 +33,6 @@ import HistoryIcon from "@mui/icons-material/History";
 import InsightsIcon from "@mui/icons-material/Insights";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
-import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
 
 const mainItems = [
@@ -57,6 +55,7 @@ const princessItems = [
 
 const arenaItems = [
   { label: "猜拳競技場", path: "/janken", icon: EmojiEventsIcon },
+  { label: "世界王", path: "/worldboss", icon: MilitaryTechIcon },
   { label: "蘭德索爾盃", path: "/race", icon: EmojiEventsIcon },
 ];
 
@@ -78,10 +77,8 @@ const adminItems = [
   { label: "女神石商店", path: "/admin/gacha-shop", icon: StorefrontIcon },
   { label: "全群指令管理", path: "/admin/global-order", icon: MessageIcon },
   { label: "訊息實況", path: "/admin/messages", icon: MessageIcon },
-  { label: "世界王設定", path: "/admin/worldboss", icon: PetsIcon },
-  { label: "世界王活動", path: "/admin/worldboss-event", icon: SportsHandballIcon },
-  { label: "世界王訊息", path: "/admin/worldboss-message", icon: FitnessCenterIcon },
   { label: "優惠券管理", path: "/admin/coupons", icon: ConfirmationNumberIcon },
+  { label: "世界王管理", path: "/admin/worldboss", icon: SportsEsportsIcon },
 ];
 
 const linkItems = [

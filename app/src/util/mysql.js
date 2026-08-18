@@ -1,4 +1,6 @@
 const { DefaultLogger } = require("./Logger");
+const knex = require("knex");
+const queryProfiler = require("./queryProfiler");
 
 // 時區約定：連線層明確宣告 +08:00，不依賴容器的 TZ 環境變數。
 //
@@ -14,30 +16,37 @@ const { DefaultLogger } = require("./Logger");
 // 用數字 offset 而非 "Asia/Taipei"，因為後者需要 MySQL 載入時區表，而台灣沒有日光節約。
 const TIMEZONE = "+08:00";
 
-const knex = require("knex")({
-  client: "mysql2",
-  connection: {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_USER_PASSWORD,
-    port: process.env.DB_PORT,
-    database: "Princess",
-    timezone: TIMEZONE,
-  },
-  pool: {
-    min: 0,
-    max: 10,
-    afterCreate: (conn, done) => {
-      conn.query(`SET time_zone = '${TIMEZONE}'`, err => done(err, conn));
+function createDatabase(database = "Princess") {
+  const connection = knex({
+    client: "mysql2",
+    connection: {
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_USER_PASSWORD,
+      port: process.env.DB_PORT,
+      database,
+      timezone: TIMEZONE,
+      supportBigNumbers: true,
     },
-  },
-});
+    pool: {
+      min: 0,
+      max: 10,
+      afterCreate(connection, done) {
+        connection.query(`SET time_zone = '${TIMEZONE}'`, error => done(error, connection));
+      },
+    },
+  });
 
-require("./queryProfiler").attach(knex);
+  queryProfiler.attach(connection);
+  return connection;
+}
+
+const database = createDatabase();
+database.createDatabase = createDatabase;
 
 // 開機自檢：時區設錯是靜默的（查詢照跑、只是答案錯），所以在這裡吵一次。
 // 上一次就是因為沒人發現，過了幾天才從使用者回報追出來。
-knex
+database
   .raw("SELECT TIMEDIFF(NOW(), UTC_TIMESTAMP()) AS offset")
   .then(([rows]) => {
     const offset = String(rows[0].offset);
@@ -53,4 +62,4 @@ knex
 /**
  * @returns { import("knex").Knex }
  */
-module.exports = knex;
+module.exports = database;

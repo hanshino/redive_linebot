@@ -43,12 +43,9 @@ import AdminGachaBannerForm from "./pages/Admin/GachaBanner/GachaBannerForm";
 import AdminGachaShop from "./pages/Admin/GachaShop";
 import AdminGlobalOrder from "./pages/Admin/GlobalOrder";
 import AdminMessages from "./pages/Admin/Messages";
-import AdminWorldboss from "./pages/Admin/Worldboss";
-import AdminWorldbossEvent from "./pages/Admin/WorldbossEvent";
-import AdminWorldbossMessage from "./pages/Admin/WorldbossMessage";
-import AdminWorldbossMessageCreate from "./pages/Admin/WorldbossMessageCreate";
-import AdminWorldbossMessageUpdate from "./pages/Admin/WorldbossMessageUpdate";
 import AdminCoupons from "./pages/Admin/Coupon";
+import AdminWorldboss from "./pages/Admin/Worldboss";
+import Worldboss from "./pages/Worldboss";
 import RequireAdmin from "./components/RequireAdmin";
 
 function RedirectFromTransaction() {
@@ -68,6 +65,7 @@ export default function App() {
           <Route index element={<Home />} />
           <Route path="rankings" element={<Rankings />} />
           <Route path="janken" element={<Janken />} />
+          <Route path="worldboss" element={<Worldboss />} />
           <Route path="race" element={<Race />} />
           <Route path="race/bet" element={<RaceBet />} />
           <Route path="race/:raceId" element={<RaceDetail />} />
@@ -134,18 +132,8 @@ export default function App() {
             <Route path="admin/gacha-shop" element={<AdminGachaShop />} />
             <Route path="admin/global-order" element={<AdminGlobalOrder />} />
             <Route path="admin/messages" element={<AdminMessages />} />
-            <Route path="admin/worldboss" element={<AdminWorldboss />} />
-            <Route path="admin/worldboss-event" element={<AdminWorldbossEvent />} />
-            <Route path="admin/worldboss-message" element={<AdminWorldbossMessage />} />
-            <Route
-              path="admin/worldboss-message/create"
-              element={<AdminWorldbossMessageCreate />}
-            />
-            <Route
-              path="admin/worldboss-message/update/:id"
-              element={<AdminWorldbossMessageUpdate />}
-            />
             <Route path="admin/coupons" element={<AdminCoupons />} />
+            <Route path="admin/worldboss" element={<AdminWorldboss />} />
           </Route>
         </Route>
       </Routes>
