@@ -1,6 +1,6 @@
 const moment = require("moment");
 const config = require("config");
-const { countBy, shuffle, uniqBy, difference, sum, uniq, pullAt } = require("lodash");
+const { countBy, shuffle, uniqBy, difference, uniq, pullAt } = require("lodash");
 
 const GachaModel = require("../model/princess/gacha");
 const InventoryModel = require("../model/application/Inventory");
@@ -9,6 +9,7 @@ const { inventory } = InventoryModel;
 const GachaRecord = require("../model/princess/GachaRecord");
 const GachaRecordDetail = require("../model/princess/GachaRecordDetail");
 const GachaBanner = require("../model/princess/GachaBanner");
+const CharacterFragment = require("../model/princess/CharacterFragment");
 const SubscribeUser = require("../model/application/SubscribeUser");
 const SubscribeCard = require("../model/application/SubscribeCard");
 
@@ -65,9 +66,27 @@ function buildDailyPool(filteredPool, rateUpBanners, { pickup, ensure, europe })
   return pool;
 }
 
+// 「十抽全 1★ 就重抽一次」這個保底的重抽上限。
+//
+// 原本是無界的 `while (rareCount[1] === 10)`：只要當前池抽不出非 1★，這個條件恆真，
+// 迴圈就同步佔住 event loop —— 不是變慢，是整個 bot 停止回應。
+// 這種池是一筆資料就能造出來的：gachaDrawUtil.filterPool 在 tag 命中且 isPrincess='0'
+// 時走 `return resultPool`，不會像公主池那樣補進其他星級，所以某個 tag 只對到
+// 一批非公主的 1★ 角色時，該 tag 的抽卡就會掛死。
+//
+// 20 的依據（正式池 is_Princess=1 實測權重：1★ 81.433 / 總權重 394.383）：
+//   單抽中 1★ 的機率 0.2065 ⇒ 十抽全 1★ 的機率 1.4e-7
+//   ⇒ 連續 20 次都全 1★ 是 (1.4e-7)^20 ≈ 1e-138
+// 實測 20 萬次十抽，正式池權重下 attempts 從未超過 1，星級分布與原本無界版本
+// 相差 < 0.06pp（純隨機雜訊）。要讓這個上限「被看見」，1★ 得吃掉池子九成五以上的
+// 權重（1★ 95% 時 P(回傳仍全 1★) 才 3.5e-5；99% 時 0.134）—— 那已經不是設定失誤
+// 而是刻意造一個抽不到好東西的池，屆時上限生效反而比掛死正確。
+const MAX_PITY_REDRAWS = 20;
+
 function drawRewards(dailyPool, times, { userId, ensure }) {
   let rareCount;
   let rewards;
+  let attempts = 0;
   do {
     rewards = shuffle(play(dailyPool, times));
     if (ensure) {
@@ -77,26 +96,56 @@ function drawRewards(dailyPool, times, { userId, ensure }) {
       rewards.push(...play(rainbowPool, 1));
     }
     rareCount = countBy(rewards, "star");
-  } while (rareCount[1] === 10);
+    attempts++;
+    // 條件用 times 而不是寫死的 10：原本的 `=== 10` 在 times !== 10 時永遠不成立，
+    // 保底根本不會觸發。目前 times 恆為 10，所以這個修正對現行行為沒有影響。
+  } while (rareCount[1] === times && attempts < MAX_PITY_REDRAWS);
+
+  // 用盡上限仍全 1★ ⇒ 直接採用最後一次的結果。
+  // 刻意不是「取這幾次裡最好的一次」—— 那會把分布往上偏，等於偷偷加強保底；
+  // 保底的語意是「再抽一次試試」而不是「保證不全 1★」，留最後一次才是池子的誠實樣本。
+  if (rareCount[1] === times) {
+    DefaultLogger.warn(
+      `[gacha] 保底重抽 ${attempts} 次仍為全 1★，採用最後一次結果 —— ` +
+        `當前池可能抽不出非 1★（entries=${dailyPool.length}）`
+    );
+  }
+
   return { rewards, rareCount };
 }
 
-function computeRepeatReward(uniqRewards, duplicateItems) {
-  return sum(
-    duplicateItems.map(id => {
-      const target = uniqRewards.find(r => r.id === id);
-      switch (parseInt(target.star)) {
-        case 1:
-          return config.get("gacha.silver_repeat_reward");
-        case 2:
-          return config.get("gacha.gold_repeat_reward");
-        case 3:
-          return config.get("gacha.rainbow_repeat_reward");
-        default:
-          return 0;
-      }
-    })
-  );
+const FRAGMENT_BY_STAR = {
+  1: "gacha.silver_repeat_reward",
+  2: "gacha.gold_repeat_reward",
+  3: "gacha.rainbow_repeat_reward",
+};
+
+/**
+ * 把重複角色換算成「角色專屬碎片」。數量規則沿用既有的 *_repeat_reward config
+ * （1/10/50）—— 產品刻意讓碎片數等於原本的女神石數，所以不另開一組 config。
+ *
+ * 同一角色在同次抽卡重複多張時彙總成單一 amount：碎片是餘額而不是流水，
+ * 一角色一筆 upsert 才不會對同一列打多次相同的 UPDATE。
+ *
+ * @param {Array} uniqRewards 本次抽到的角色（已去重），需含 id / name / star
+ * @param {Array<Number>} duplicateItems 重複的角色 id，每張一個元素
+ * @returns {Array<{itemId:Number, name:String, amount:Number}>} amount 由多至少
+ */
+function computeFragmentRewards(uniqRewards, duplicateItems) {
+  const byItemId = new Map();
+
+  for (const id of duplicateItems) {
+    const target = uniqRewards.find(r => r.id === id);
+    const configKey = FRAGMENT_BY_STAR[parseInt(target.star)];
+    if (!configKey) continue;
+
+    const amount = config.get(configKey);
+    const entry = byItemId.get(id);
+    if (entry) entry.amount += amount;
+    else byItemId.set(id, { itemId: id, name: target.name, amount });
+  }
+
+  return [...byItemId.values()].sort((a, b) => b.amount - a.amount || a.itemId - b.itemId);
 }
 
 /**
@@ -115,7 +164,7 @@ function computeRepeatReward(uniqRewards, duplicateItems) {
  *   rareCount: Object,
  *   newCharacters: Array,
  *   ownCharactersCount: number,
- *   repeatReward: number,
+ *   fragmentRewards: Array<{itemId:number, name:string, amount:number}>,
  *   godStoneCost: number,
  *   unlocks: Array
  * }>}
@@ -226,7 +275,7 @@ async function runDailyDraw(userId, opts = {}) {
     newItemIds.map(id => duplicateItems.indexOf(id))
   );
 
-  const repeatReward = computeRepeatReward(uniqRewards, duplicateItems);
+  const fragmentRewards = computeFragmentRewards(uniqRewards, duplicateItems);
   const newCharacters = uniqRewards.filter(r => newItemIds.includes(r.id));
 
   let signinCreated = false;
@@ -254,13 +303,10 @@ async function runDailyDraw(userId, opts = {}) {
         );
       }
 
-      if (repeatReward > 0) {
-        await trx(inventory.table).insert({
-          userId,
-          itemId: 999,
-          itemAmount: repeatReward,
-          note: i18n.__("message.gacha.repeat_reward_note"),
-        });
+      // 重複角色改發該角色專屬碎片，不再入帳女神石。必須用同一個 trx —— 碎片是資產，
+      // 抽卡紀錄回滾了碎片就不能留下。
+      for (const fragment of fragmentRewards) {
+        await CharacterFragment.increase(userId, fragment.itemId, fragment.amount, trx);
       }
 
       const [insertedId] = await trx(GachaRecord.table).insert({
@@ -326,7 +372,7 @@ async function runDailyDraw(userId, opts = {}) {
     rareCount,
     newCharacters,
     ownCharactersCount,
-    repeatReward,
+    fragmentRewards,
     godStoneCost: cost.amount,
     unlocks: [...(unlocked || []), ...signinUnlocks],
   };
@@ -376,4 +422,7 @@ module.exports = {
   runDailyDraw,
   getRemainingDailyQuota,
   resolveCost,
+  computeFragmentRewards,
+  drawRewards,
+  MAX_PITY_REDRAWS,
 };

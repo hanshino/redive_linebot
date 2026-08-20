@@ -56,7 +56,8 @@ function makeResult(overrides = {}) {
     rareCount: { 1: 10 },
     newCharacters: [],
     ownCharactersCount: 50,
-    repeatReward: 10,
+    // runDailyDraw 回的是角色別碎片陣列，不是單一數字。
+    fragmentRewards: [{ itemId: 1, name: "silver-1", amount: 10 }],
     godStoneCost: 0,
     unlocks: [],
     ...overrides,
@@ -109,7 +110,8 @@ describe("AutoGacha cron", () => {
     expect(typeof args[6]).toBe("string");
     const summary = JSON.parse(args[6]);
     expect(summary.rareCount).toEqual({ 1: 10 });
-    expect(summary.repeatReward).toBe(10);
+    expect(summary.fragmentTotal).toBe(10);
+    expect(summary.fragments).toEqual({ 1: 10 });
     expect(summary.rounds).toBe(1);
   });
 
@@ -124,7 +126,9 @@ describe("AutoGacha cron", () => {
     expect(args[3]).toBe(20);
     const summary = JSON.parse(args[6]);
     expect(summary.rareCount).toEqual({ 1: 20 });
-    expect(summary.repeatReward).toBe(20);
+    // 兩輪都抽到同一隻 ⇒ 片數必須相加，不是被後一輪覆蓋
+    expect(summary.fragmentTotal).toBe(20);
+    expect(summary.fragments).toEqual({ 1: 20 });
     expect(summary.rounds).toBe(2);
     expect(summary.quota_total).toBe(2);
   });
@@ -168,14 +172,99 @@ describe("AutoGacha cron", () => {
       rareCount: { 1: 7, 2: 2, 3: 1 },
       newCharacters: [{ id: 1 }, { id: 2 }],
       godStoneCost: 1500,
-      repeatReward: 50,
+      fragmentRewards: [
+        { itemId: 3, name: "rainbow-3", amount: 50 },
+        { itemId: 1, name: "silver-1", amount: 7 },
+      ],
     });
     expect(out).toMatchObject({
       rareCount: { 1: 7, 2: 2, 3: 1 },
       newCharactersCount: 2,
       godStoneCost: 1500,
-      repeatReward: 50,
+      fragmentTotal: 57,
+      fragments: { 1: 7, 3: 50 },
       rounds: 1,
+    });
+  });
+
+  describe("碎片彙總", () => {
+    it("多輪不同角色時分開記，總數是兩輪相加", async () => {
+      GachaService.getRemainingDailyQuota.mockResolvedValueOnce({
+        total: 2,
+        used: 0,
+        remaining: 2,
+      });
+      GachaService.runDailyDraw
+        .mockResolvedValueOnce(
+          makeResult({ fragmentRewards: [{ itemId: 1, name: "a", amount: 10 }] })
+        )
+        .mockResolvedValueOnce(
+          makeResult({
+            fragmentRewards: [
+              { itemId: 1, name: "a", amount: 5 },
+              { itemId: 2, name: "b", amount: 50 },
+            ],
+          })
+        );
+
+      const counters = { success: 0, failed: 0, skipped: 0 };
+      await AutoGacha.drawForUser({ user_id: "Umulti" }, "2026-04-18", counters);
+
+      const summary = JSON.parse(mysql.raw.mock.calls[0][1][6]);
+      expect(summary.fragments).toEqual({ 1: 15, 2: 50 });
+      expect(summary.fragmentTotal).toBe(65);
+    });
+
+    it("完全沒有重複（碎片為空）時記 0，不是 undefined", async () => {
+      GachaService.runDailyDraw.mockResolvedValue(makeResult({ fragmentRewards: [] }));
+
+      const counters = { success: 0, failed: 0, skipped: 0 };
+      await AutoGacha.drawForUser({ user_id: "Unofrag" }, "2026-04-18", counters);
+
+      const summary = JSON.parse(mysql.raw.mock.calls[0][1][6]);
+      // JSON.stringify 會把 undefined 整個鍵吃掉，前端就分不出「0 片」與「舊紀錄」
+      expect(summary.fragmentTotal).toBe(0);
+      expect(summary.fragments).toEqual({});
+    });
+
+    it("舊欄位 repeatReward 不再出現在 reward_summary", async () => {
+      const counters = { success: 0, failed: 0, skipped: 0 };
+      await AutoGacha.drawForUser({ user_id: "Uold" }, "2026-04-18", counters);
+
+      const summary = JSON.parse(mysql.raw.mock.calls[0][1][6]);
+      expect(summary).not.toHaveProperty("repeatReward");
+    });
+
+    it("runDailyDraw 少給 fragmentRewards 時不會炸，記 0", async () => {
+      const result = makeResult();
+      delete result.fragmentRewards;
+      GachaService.runDailyDraw.mockResolvedValue(result);
+
+      const counters = { success: 0, failed: 0, skipped: 0 };
+      await AutoGacha.drawForUser({ user_id: "Umissing" }, "2026-04-18", counters);
+
+      expect(counters.success).toBe(1);
+      const summary = JSON.parse(mysql.raw.mock.calls[0][1][6]);
+      expect(summary.fragmentTotal).toBe(0);
+      expect(summary.fragments).toEqual({});
+    });
+
+    it("amount 為 0 的項目不佔一個 key，避免 log 被空資料塞爆", async () => {
+      GachaService.runDailyDraw.mockResolvedValue(
+        makeResult({
+          fragmentRewards: [
+            { itemId: 1, name: "a", amount: 0 },
+            { itemId: 2, name: "b", amount: 10 },
+          ],
+        })
+      );
+
+      const counters = { success: 0, failed: 0, skipped: 0 };
+      await AutoGacha.drawForUser({ user_id: "Uzero" }, "2026-04-18", counters);
+
+      const summary = JSON.parse(mysql.raw.mock.calls[0][1][6]);
+      expect(summary.fragments).toEqual({ 2: 10 });
+      expect(summary.fragmentTotal).toBe(10);
     });
   });
 

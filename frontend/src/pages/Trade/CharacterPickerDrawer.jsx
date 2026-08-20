@@ -21,10 +21,12 @@ import SearchIcon from "@mui/icons-material/Search";
  * Props:
  *   open         - boolean
  *   onClose      - () => void
- *   items        - [{ itemId, name, headImage }]
+ *   items        - [{ itemId, name, headImage, amount? }]
  *   initialId    - itemId currently selected (may be null)
  *   onConfirm    - (itemId) => void
  *   title        - heading copy (defaults to the trade wording)
+ *   kind         - "character" | "fragment"；碎片會多顯示持有片數，
+ *                  並改用次色外框，跟角色的主色分開。
  */
 export default function CharacterPickerDrawer({
   open,
@@ -33,7 +35,9 @@ export default function CharacterPickerDrawer({
   initialId,
   onConfirm,
   title = "選擇要交易的角色",
+  kind = "character",
 }) {
+  const fragment = kind === "fragment";
   const [localId, setLocalId] = useState(initialId ?? null);
   const [keyword, setKeyword] = useState("");
 
@@ -137,7 +141,7 @@ export default function CharacterPickerDrawer({
       >
         {items.length === 0 ? (
           <Box sx={{ py: 6, textAlign: "center", color: "text.secondary" }}>
-            您目前沒有可交易的角色
+            {fragment ? "您目前沒有可交易的碎片" : "您目前沒有可交易的角色"}
           </Box>
         ) : hits.length === 0 ? (
           <Box sx={{ py: 6, textAlign: "center", color: "text.secondary", fontSize: 13 }}>
@@ -154,7 +158,11 @@ export default function CharacterPickerDrawer({
                   <Card
                     sx={{
                       outline: selected ? "3px solid" : "1px solid",
-                      outlineColor: selected ? "primary.main" : "divider",
+                      outlineColor: selected
+                        ? fragment
+                          ? "secondary.main"
+                          : "primary.main"
+                        : "divider",
                       transition: "outline-color 150ms",
                     }}
                   >
@@ -180,11 +188,33 @@ export default function CharacterPickerDrawer({
                               right: 4,
                               top: 4,
                               fontSize: 20,
-                              color: "primary.main",
+                              color: fragment ? "secondary.main" : "primary.main",
                               bgcolor: "background.paper",
                               borderRadius: "50%",
                             }}
                           />
+                        )}
+                        {/* 碎片一定要顯示片數：同一個角色的碎片可能只有 3 片也可能 800 片，
+                            光看頭像完全分不出來，而片數直接決定能不能掛出想要的量。 */}
+                        {fragment && item.amount != null && (
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              px: 0.5,
+                              py: 0.25,
+                              textAlign: "center",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "#fff",
+                              bgcolor: "rgba(0,0,0,.55)",
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
+                            {Number(item.amount).toLocaleString("en-US")} 片
+                          </Box>
                         )}
                       </Box>
                       <Box sx={{ p: 0.75 }}>
@@ -225,7 +255,13 @@ export default function CharacterPickerDrawer({
             paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
           }}
         >
-          <Button fullWidth variant="contained" disabled={localId == null} onClick={handleConfirm}>
+          <Button
+            fullWidth
+            variant="contained"
+            color={fragment ? "secondary" : "primary"}
+            disabled={localId == null}
+            onClick={handleConfirm}
+          >
             確定
           </Button>
         </Box>

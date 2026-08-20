@@ -15,18 +15,43 @@ import {
   fmtShortDate,
   fmtShortDay,
   fmtStone,
+  isFragment,
+  itemKindOf,
+  itemLabel,
+  nativeStarOf,
   orderTypeOf,
+  quantityOf,
+  totalOf,
 } from "./_market";
-import { CharAvatar, BaseStar, OrderTypeChip, SectionTitle, StatusChip } from "./_marketUi";
+import {
+  CharAvatar,
+  BaseStar,
+  ItemKindChip,
+  OrderTypeChip,
+  QuantityBadge,
+  SectionTitle,
+  StatusChip,
+} from "./_marketUi";
 
 /* ---------------------------------------------------------------- 一列委託 */
+/**
+ * 角色單與碎片單混在同一份清單裡，所以每一列都要自己說清楚是哪種。
+ *
+ * 右側的粗體數字一律是**總額**（碎片＝單價 × 片數），因為那才是真的進出錢包的錢；
+ * 每片單價縮在它下面一行。反過來放的話，「50」會被當成整筆的價格。
+ */
 function ListingItem({ listing, meta, note, strike }) {
   const orderType = orderTypeOf(listing);
+  const kind = itemKindOf(listing);
+  const fragment = isFragment(listing);
+  const quantity = quantityOf(listing);
+  const total = totalOf(listing);
+
   return (
     <Paper
       component={RouterLink}
       to={`/trade/listings/${listing.id}`}
-      state={{ orderType }}
+      state={{ orderType, itemKind: kind }}
       elevation={0}
       sx={{
         display: "flex",
@@ -40,18 +65,31 @@ function ListingItem({ listing, meta, note, strike }) {
         color: "inherit",
       }}
     >
-      <CharAvatar itemId={listing.itemId} name={listing.name} headImage={listing.headImage} />
+      <CharAvatar
+        itemId={listing.itemId}
+        name={listing.name}
+        headImage={listing.headImage}
+        kind={kind}
+      />
       <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
           <OrderTypeChip orderType={orderType} />
+          {fragment && <ItemKindChip itemKind={kind} />}
           <Typography sx={{ fontSize: 14, fontWeight: 600 }} noWrap>
-            {listing.name}
+            {itemLabel(listing)}
           </Typography>
-          <BaseStar star={listing.star} />
+          {/* 碎片讀 baseStar、角色讀 star。後端刻意分名，這裡不做 fallback。 */}
+          <BaseStar star={nativeStarOf(listing)} kind={kind} />
+          {fragment && <QuantityBadge quantity={quantity} />}
         </Box>
         <Typography sx={{ fontSize: 11.5, color: "text.secondary", mt: "3px", ...NUMS }} noWrap>
           {meta}
         </Typography>
+        {fragment && (
+          <Typography sx={{ fontSize: 11.5, color: "text.secondary", mt: "2px", ...NUMS }} noWrap>
+            每片 {fmtStone(listing.price)} × {fmtStone(quantity)} 片
+          </Typography>
+        )}
         {note && (
           <Typography sx={{ fontSize: 11.5, color: note.color, mt: "2px", ...NUMS }} noWrap>
             {note.text}
@@ -67,17 +105,24 @@ function ListingItem({ listing, meta, note, strike }) {
           justifyItems: "end",
         }}
       >
-        <Typography
-          sx={{
-            fontSize: 14,
-            fontWeight: 700,
-            textDecoration: strike ? "line-through" : "none",
-            opacity: strike ? 0.6 : 1,
-            ...NUMS,
-          }}
-        >
-          {fmtStone(listing.price)}
-        </Typography>
+        <Box sx={{ display: "grid", justifyItems: "end" }}>
+          <Typography
+            sx={{
+              fontSize: 14,
+              fontWeight: 700,
+              textDecoration: strike ? "line-through" : "none",
+              opacity: strike ? 0.6 : 1,
+              ...NUMS,
+            }}
+          >
+            {fmtStone(total)}
+          </Typography>
+          {fragment && (
+            <Typography sx={{ fontSize: 10, color: "text.secondary", lineHeight: 1.2 }}>
+              總價
+            </Typography>
+          )}
+        </Box>
         <StatusChip status={listing.status} />
       </Box>
     </Paper>
@@ -217,10 +262,12 @@ export default function MyListings() {
   const openBuyCount = useMemo(() => open.filter(l => orderTypeOf(l) === "buy").length, [open]);
   const openSellCount = open.length - openBuyCount;
   // 收購單的錢現在被鎖住，放在最上面講清楚，不然餘額變少會讓人以為被偷。
+  // 預扣的是**總額**（碎片＝單價 × 片數），拿 price 加總會少算一大截。
   const reserved = useMemo(
-    () => open.reduce((sum, l) => (orderTypeOf(l) === "buy" ? sum + Number(l.price || 0) : sum), 0),
+    () => open.reduce((sum, l) => (orderTypeOf(l) === "buy" ? sum + totalOf(l) : sum), 0),
     [open]
   );
+  const fragmentCount = useMemo(() => open.filter(l => isFragment(l)).length, [open]);
   const maxOpen = summary?.maxOpen ?? MAX_OPEN_FALLBACK;
 
   if (!isLoggedIn) return <AlertLogin />;
@@ -266,6 +313,17 @@ export default function MyListings() {
         </Button>
       </Box>
 
+      {/* 碎片的入口單獨一排：它的來源頁不一樣（碎片庫存而非背包），
+          混進上面那兩顆會讓人以為要先選種類才知道按哪個。 */}
+      <Button
+        variant="text"
+        color="secondary"
+        onClick={() => navigate("/gacha/fragments")}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        管理角色碎片 / 掛碎片賣單
+      </Button>
+
       {error && (
         <Alert severity="error" sx={{ borderRadius: 3 }}>
           載入我的掛單失敗，請稍後再試
@@ -277,7 +335,8 @@ export default function MyListings() {
       </SectionTitle>
       {!loading && open.length > 0 && (
         <Typography sx={{ fontSize: 11.5, color: "text.secondary", mx: 0.25, mt: -0.75 }}>
-          賣單 {openSellCount} 筆 ・ 收購單 {openBuyCount} 筆，兩種合計共用 {maxOpen} 筆額度。
+          賣單 {openSellCount} 筆 ・ 收購單 {openBuyCount} 筆
+          {fragmentCount > 0 && ` ・ 其中碎片 ${fragmentCount} 筆`}，全部合計共用 {maxOpen} 筆額度。
         </Typography>
       )}
       {loading && !mine ? (
@@ -310,6 +369,8 @@ export default function MyListings() {
       ) : (
         open.map(l => {
           const buy = orderTypeOf(l) === "buy";
+          const frag = isFragment(l);
+          const total = totalOf(l);
           return (
             <ListingItem
               key={l.id}
@@ -317,9 +378,13 @@ export default function MyListings() {
               meta={`${l.itemId} · ${fmtShortDate(l.createdAt)}`}
               note={
                 buy
-                  ? { text: `已預扣 ${fmtStone(l.price)}，取消可全額退回`, color: "warning.main" }
+                  ? { text: `已預扣 ${fmtStone(total)}，取消可全額退回`, color: "warning.main" }
                   : {
-                      text: `成交可得 ${fmtStone(l.netProceeds ?? calcNet(l.price))}`,
+                      // 碎片賣單沒有 escrow：碎片還在你手上，可以繼續回收或兌換，
+                      // 但成交時片數不足這筆單就會失效。這件事只有賣單要講。
+                      text: frag
+                        ? `成交可得 ${fmtStone(l.netProceeds ?? calcNet(total))} ・ 碎片未鎖定`
+                        : `成交可得 ${fmtStone(l.netProceeds ?? calcNet(total))}`,
                       color: "text.secondary",
                     }
               }
@@ -338,32 +403,36 @@ export default function MyListings() {
       ) : (
         closed.map(l => {
           const buy = orderTypeOf(l) === "buy";
+          const frag = isFragment(l);
           const sold = l.status === "sold";
+          const total = totalOf(l);
+          const qty = quantityOf(l);
           // 後端已標好 role；沒帶到時退回比對 sellerId。
           // 這一格決定畫面寫「買入」還是「賣出」，兩者的金流方向相反，不能猜錯。
           const bought = sold && (l.role ? l.role === "buyer" : l.sellerId !== viewerId);
-          const net = fmtStone(l.netProceeds ?? calcNet(l.price));
+          const net = fmtStone(l.netProceeds ?? calcNet(total));
+          const amount = frag ? ` ${fmtStone(qty)} 片` : "";
 
           const meta = sold
             ? `${l.itemId} · ${fmtShortDate(l.soldAt)}`
             : `${l.itemId} · ${fmtShortDate(l.closedAt)} · ${
-                l.status === "invalid" ? "已失效自動下架" : "自行取消"
+                l.status === "invalid" ? (frag ? "碎片不足自動下架" : "已失效自動下架") : "自行取消"
               }`;
 
           const note = sold
             ? bought
               ? {
                   text: buy
-                    ? `收購成交，支付 ${fmtStone(l.price)}`
-                    : `買入，支付 ${fmtStone(l.price)}`,
+                    ? `收購成交，支付${amount} ${fmtStone(total)}`
+                    : `買入${amount}，支付 ${fmtStone(total)}`,
                   color: "text.secondary",
                 }
               : {
-                  text: buy ? `履約賣出，實收 ${net}` : `賣出，實收 ${net}`,
+                  text: buy ? `履約賣出${amount}，實收 ${net}` : `賣出${amount}，實收 ${net}`,
                   color: "success.main",
                 }
             : buy
-              ? { text: `已退還 ${fmtStone(l.refundedAmount ?? l.price)}`, color: "success.main" }
+              ? { text: `已退還 ${fmtStone(l.refundedAmount ?? total)}`, color: "success.main" }
               : null;
 
           return <ListingItem key={l.id} listing={l} meta={meta} note={note} strike={!sold} />;

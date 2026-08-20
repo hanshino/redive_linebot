@@ -55,10 +55,11 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
         },
         {
           type: "text",
-          text: "賣單最低價 · 收購單最高價",
+          text: "角色 · 角色碎片 ｜ 賣單最低價 · 收購單最高價",
           size: "xs",
           color: "#CDEFF3",
           margin: "sm",
+          wrap: true,
         },
       ],
     },
@@ -155,7 +156,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
             },
             {
               type: "text",
-              text: `成交價 ${feePercent}%（向上取整，銷毀）`,
+              text: `成交總額 ${feePercent}%（向上取整，銷毀）`,
               size: "xs",
               color: "#5A6B7F",
               align: "end",
@@ -183,7 +184,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
             },
             {
               type: "text",
-              text: "賣出時你的升星強化不會轉移，買家收到的是角色初始星數。",
+              text: "賣角色時你的升星強化不會轉移，買家收到的是角色初始星數。賣碎片不會動到角色本體，收集率不受影響。",
               size: "xs",
               color: "#B45309",
               wrap: true,
@@ -206,8 +207,19 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
           color: "#00ACC1",
           action: {
             type: "uri",
-            label: "前往市場",
+            label: "角色市場",
             uri: getLiffUri("full", "/trade/market"),
+          },
+        },
+        {
+          type: "button",
+          style: "primary",
+          height: "sm",
+          color: "#26A69A",
+          action: {
+            type: "uri",
+            label: "碎片市場",
+            uri: getLiffUri("full", "/trade/market?itemKind=fragment"),
           },
         },
         {
