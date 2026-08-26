@@ -16,6 +16,7 @@ exports.fetchConfig = async groupId => {
           GlobalOrder: "Y",
           Gacha: "Y",
           PrincessInformation: "Y",
+          WorldBossAttack: "N",
         };
         insertConfig(groupId, res);
       } else {
