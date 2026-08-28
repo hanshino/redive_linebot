@@ -22,7 +22,6 @@ const PUBLIC_FIELDS = [
   "id",
   "key",
   "name",
-  "description",
   "icon",
   "type",
   "rarity",
@@ -55,10 +54,18 @@ const UNLOCK_NOTICE_FIELDS = [
   "category_key",
 ];
 
-const toPublic = achievement =>
-  achievement ? pick(achievement, [...PUBLIC_FIELDS, ...DERIVED_FIELDS]) : achievement;
+const toPublic = (achievement, options = {}) => {
+  if (!achievement) return achievement;
+  const { includeDescription = false } = options;
+  return pick(achievement, [
+    ...PUBLIC_FIELDS,
+    ...DERIVED_FIELDS,
+    ...(includeDescription ? ["description"] : []),
+  ]);
+};
 
-const toPublicList = rows => (Array.isArray(rows) ? rows.map(toPublic) : []);
+const toPublicList = (rows, options) =>
+  Array.isArray(rows) ? rows.map(row => toPublic(row, options)) : [];
 
 /**
  * Shape used when telling a client "you just unlocked this".

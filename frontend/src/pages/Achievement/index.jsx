@@ -5,6 +5,7 @@ import {
   Tab,
   Box,
   Card,
+  CardActionArea,
   CardContent,
   LinearProgress,
   Chip,
@@ -37,7 +38,9 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import NotesRoundedIcon from "@mui/icons-material/NotesRounded";
 import { RARITY_CONFIG, CATEGORY_ICONS } from "./constants";
+import AchievementDetailSheet from "./AchievementDetailSheet";
 
 const ACHIEVEMENT_ICONS = {
   chat_100: ChatBubbleOutlineIcon,
@@ -81,6 +84,10 @@ export default function Achievement() {
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Holds the tapped achievement so the sheet can animate out with content
+  // still mounted; cleared only when it fully closes.
+  const [selected, setSelected] = useState(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const { loggedIn: isLoggedIn, profile } = useLiff();
   const [searchParams] = useSearchParams();
@@ -177,7 +184,7 @@ export default function Achievement() {
             mb: 2,
           }}
         >
-          探索並解鎖所有成就吧！
+          探索並解鎖所有成就吧！點卡片看詳情。
         </Typography>
         <Typography
           variant="h4"
@@ -245,10 +252,21 @@ export default function Achievement() {
               key={achievement.id}
               achievement={achievement}
               stats={statsMap[achievement.id]}
+              onOpen={(item, icon) => {
+                setSelected({ item, icon });
+                setSheetOpen(true);
+              }}
             />
           ))
         )}
       </Box>
+      <AchievementDetailSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        achievement={selected?.item}
+        icon={selected?.icon}
+        stats={selected ? statsMap[selected.item.id] : undefined}
+      />
     </Box>
   );
 }
@@ -302,7 +320,7 @@ function AchievementStatus({ achievement, isHidden, progress, rarity }) {
   );
 }
 
-function AchievementCard({ achievement, stats }) {
+function AchievementCard({ achievement, stats, onOpen }) {
   const rarity = RARITY_CONFIG[achievement.rarity] || RARITY_CONFIG[0];
   const isHidden = achievement.type === "hidden" && !achievement.isUnlocked;
   const progress =
@@ -317,15 +335,15 @@ function AchievementCard({ achievement, stats }) {
 
   const iconColor = achievement.isUnlocked ? rarity.color : "#bdbdbd";
   const iconBg = achievement.isUnlocked ? rarity.bg : "#f5f5f5";
+  // Only unlocked achievements carry `description`, so only they get the
+  // corner note marker. Its absence on locked cards is the same information
+  // gap the sheet spells out, told once more at a glance.
+  const hasCondition = Boolean(achievement.description);
 
   return (
     <Card
       sx={{
         height: CARD_HEIGHT,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
         border: achievement.isUnlocked ? `2px solid ${rarity.color}` : "1px solid #e0e0e0",
         boxShadow: achievement.isUnlocked ? `0 0 12px ${rarity.color}33` : "none",
         opacity: isHidden ? 0.6 : 1,
@@ -337,63 +355,89 @@ function AchievementCard({ achievement, stats }) {
         },
       }}
     >
-      <CardContent
+      <CardActionArea
+        onClick={() => onOpen(achievement, IconComponent)}
+        aria-label={`查看成就詳情：${isHidden ? "隱藏成就" : achievement.name}`}
         sx={{
+          position: "relative",
+          height: "100%",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          width: "100%",
-          height: "100%",
-          py: 2,
-          px: 1.5,
-          "&:last-child": { pb: 2 },
         }}
       >
-        <Avatar
-          sx={{
-            width: 48,
-            height: 48,
-            bgcolor: iconBg,
-            mb: 1,
-          }}
-        >
-          <IconComponent sx={{ fontSize: 26, color: iconColor }} />
-        </Avatar>
-
-        <Typography
-          variant="body2"
-          noWrap
-          sx={{
-            fontWeight: "bold",
-            width: "100%",
-            textAlign: "center",
-            mb: 0.5,
-          }}
-        >
-          {isHidden ? "???" : achievement.name}
-        </Typography>
-
-        <AchievementStatus
-          achievement={achievement}
-          isHidden={isHidden}
-          progress={progress}
-          rarity={rarity}
-        />
-
-        {unlockRate && !isHidden && (
-          <Typography
-            variant="caption"
+        {hasCondition && (
+          <NotesRoundedIcon
+            aria-hidden="true"
             sx={{
-              color: "text.disabled",
-              mt: "auto",
-              fontSize: "0.65rem",
+              position: "absolute",
+              top: 6,
+              right: 6,
+              fontSize: 14,
+              color: rarity.color,
+              opacity: 0.7,
+            }}
+          />
+        )}
+        <CardContent
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "100%",
+            py: 2,
+            px: 1.5,
+            "&:last-child": { pb: 2 },
+          }}
+        >
+          <Avatar
+            sx={{
+              width: 48,
+              height: 48,
+              bgcolor: iconBg,
+              mb: 1,
             }}
           >
-            {unlockRate} 已解鎖
+            <IconComponent sx={{ fontSize: 26, color: iconColor }} />
+          </Avatar>
+
+          <Typography
+            variant="body2"
+            noWrap
+            sx={{
+              fontWeight: "bold",
+              width: "100%",
+              textAlign: "center",
+              mb: 0.5,
+            }}
+          >
+            {isHidden ? "???" : achievement.name}
           </Typography>
-        )}
-      </CardContent>
+
+          <AchievementStatus
+            achievement={achievement}
+            isHidden={isHidden}
+            progress={progress}
+            rarity={rarity}
+          />
+
+          {unlockRate && !isHidden && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.disabled",
+                mt: "auto",
+                fontSize: "0.65rem",
+              }}
+            >
+              {unlockRate} 已解鎖
+            </Typography>
+          )}
+        </CardContent>
+      </CardActionArea>
     </Card>
   );
 }
