@@ -81,6 +81,7 @@ yarn test 2>&1 | tail -40
 
 - [ ] **試煉首通**：`user_achievements` 新增 `prestige_departure`
 - [ ] **第 5 次轉生**：`prestige_awakening` + 對應 build 成就（`blessing_breeze` / `torrent` / `temperature` / `solitude`）依祝福組合解鎖
+  > **2026-08-28 更正**：`prestige_awakening` 實際由「通過 ★5 試煉」觸發，不是第 5 次轉生；兩者已脫鉤。第 5 次轉生對應的成就是 `prestige_5`「輪迴盡頭」。build 成就的部分不受影響。詳見 [2026-08-28-prestige-awakening-semantics.md](./2026-08-28-prestige-awakening-semantics.md)。
 - [ ] **batchEvaluate 改寫**：`chat_100 / chat_1000 / chat_5000` 改吃 `prestige_count * 27000 + current_exp`（手動跑 `node app/bin/AchievementCron.js` 看不會炸）
 
 ### G. M6 LIFF 前端
