@@ -64,7 +64,6 @@ describe("GET /api/achievements", () => {
       id: 1,
       key: "secret_key",
       name: "秘密成就",
-      description: "描述",
       icon: "🗝",
       type: "hidden",
       rarity: 3,

@@ -107,7 +107,7 @@ const EVENT_ACHIEVEMENT_MAP = {
   atm_transfer: ["atm_whale"],
   coupon_redeem: ["coupon_first", "coupon_collector"],
   shop_exchange: ["shop_first_exchange", "shop_big_spender"],
-  prestige_complete: ["prestige_first", "prestige_3"],
+  prestige_complete: ["prestige_first", "prestige_3", "prestige_5"],
 };
 
 // --- Progress calculation strategies by achievement type ---
@@ -245,6 +245,8 @@ const ACHIEVEMENT_STRATEGY = {
   shop_big_spender: (cv, a, ctx) => STRATEGIES.conditionThreshold(cv, a, ctx),
   prestige_first: (cv, a) => STRATEGIES.instant(cv, a),
   prestige_3: (cv, a, ctx) => STRATEGIES.conditionThreshold(cv, a, ctx),
+  // 5 matches PrestigeService.PRESTIGE_CAP, which is already public to players.
+  prestige_5: (cv, a, ctx) => STRATEGIES.threshold(cv, a, ctx, "prestigeCount", 5),
 };
 
 const GODDESS_STONE_ITEM_ID = 999;
