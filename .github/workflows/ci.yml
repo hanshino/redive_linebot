@@ -88,6 +88,12 @@ jobs:
           cache: yarn
           cache-dependency-path: app/yarn.lock
       - run: yarn install --frozen-lockfile
+      # bin/__tests__/WorldBossSeasonSettle.test.js:77 spawns the cron CLI and
+      # asserts it loads DB creds from the root .env (CLAUDE.md: that file is the
+      # single env source). A clean checkout has none, so the job env above is
+      # not enough — the file itself must exist.
+      - name: Create root .env
+        run: printf 'DB_HOST=127.0.0.1\nDB_PORT=3306\nDB_USER=root\nDB_USER_PASSWORD=root\nDB_PASSWORD=root\n' > ../.env
       # The documented fresh-DB bootstrap (see CLAUDE.md). Seeds fill
       # chat_exp_unit / GachaPool, which the chatXp pipeline tests read.
       - run: yarn migrate && yarn knex seed:run
