@@ -460,12 +460,15 @@ exports.getUserSummary = async userId => {
       total: catAchievements.length,
       unlocked: catUnlocked.length,
       achievements: catAchievements.map(a =>
-        toPublic({
-          ...a,
-          isUnlocked: unlockedIds.has(a.id),
-          currentValue: progressMap[a.id] || 0,
-          unlockedAt: (unlocked.find(u => u.id === a.id) || {}).unlocked_at || null,
-        })
+        toPublic(
+          {
+            ...a,
+            isUnlocked: unlockedIds.has(a.id),
+            currentValue: progressMap[a.id] || 0,
+            unlockedAt: (unlocked.find(u => u.id === a.id) || {}).unlocked_at || null,
+          },
+          { includeDescription: unlockedIds.has(a.id) }
+        )
       ),
     };
   });
@@ -480,7 +483,7 @@ exports.getUserSummary = async userId => {
     unlocked: unlockedCount,
     percentage: total > 0 ? Math.round((unlockedCount / total) * 100) : 0,
     categories: categorySummary,
-    recentUnlocks: toPublicList(recentUnlocks),
+    recentUnlocks: toPublicList(recentUnlocks, { includeDescription: true }),
     nearCompletion: toPublicList(nearCompletion),
     profile: userProfile
       ? { displayName: userProfile.display_name, pictureUrl: userProfile.picture_url }
