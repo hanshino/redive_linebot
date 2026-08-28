@@ -43,6 +43,23 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn lint
 
+  # Jest fully mocks MySQL/Redis/LINE in __tests__/setup.js, so no services here.
+  test-app:
+    name: Test (app)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: app/yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn test
+
   format:
     name: Prettier
     runs-on: ubuntu-latest
