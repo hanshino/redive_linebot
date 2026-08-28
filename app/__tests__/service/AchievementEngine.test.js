@@ -1052,7 +1052,6 @@ describe("AchievementEngine", () => {
           id: 1,
           key: "secret_key",
           name: "秘密成就",
-          description: "描述",
           icon: "🗝",
           type: "hidden",
           rarity: 3,
@@ -1340,6 +1339,31 @@ describe("AchievementEngine", () => {
 
       expect(result).toEqual({ unlocked: false, reason: "ineligible" });
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("prestige_5 strategy", () => {
+    it.each([4, 5, 6])("uses the prestige threshold for prestigeCount=%i", async prestigeCount => {
+      AchievementEngine._setCache([
+        {
+          id: 301,
+          key: "prestige_5",
+          type: "hidden",
+          target_value: 1,
+          reward_stones: 500,
+          condition: null,
+        },
+      ]);
+      UserAchievementModel.getUnlockedIds.mockResolvedValue(new Set());
+      UserProgressModel.getProgressByIds.mockResolvedValue(new Map());
+
+      const result = await AchievementEngine.evaluate("Uabc", "prestige_complete", {
+        prestigeCount,
+      });
+
+      expect(result.unlocked.map(achievement => achievement.key)).toEqual(
+        prestigeCount >= 5 ? ["prestige_5"] : []
+      );
     });
   });
 
