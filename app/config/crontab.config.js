@@ -134,6 +134,14 @@ module.exports = [
     require_path: "./bin/JankenDailyRewards",
   },
   {
+    name: "Janken Escrow Refund",
+    description:
+      "refund escrowed women-stones for janken bet matches that timed out without resolving",
+    period: ["0", "*/10", "*", "*", "*", "*"],
+    immediate: false,
+    require_path: "./bin/JankenEscrowRefund",
+  },
+  {
     name: "World Boss Season Settle",
     description: "settle expired active world boss seasons",
     period: ["0", "10", "*", "*", "*", "*"],

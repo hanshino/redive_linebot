@@ -72,7 +72,7 @@ describe("JankenService.autoFateIfEligible", () => {
     expect(redis.set).toHaveBeenCalledWith(
       "jankenDecide:match-1:Up2",
       result.choice,
-      expect.objectContaining({ EX: 7 * 24 * 60 * 60 })
+      expect.objectContaining({ EX: 60 * 60 })
     );
   });
 

@@ -18,7 +18,23 @@ const BOUNTY_MIN_BET = config.get("minigame.janken.streak.bountyMinBet");
 const BOUNTY_CLAIM_MULTIPLIER = config.get("minigame.janken.streak.bountyClaimMultiplier");
 const PAIR_DAMP_THRESHOLD = config.get("minigame.janken.pairDampening.matchesThreshold");
 const PAIR_DAMP_BIAS_MULTIPLIER = config.get("minigame.janken.pairDampening.biasMultiplier");
-const MATCH_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+// How long a duel stays playable: the per-player choice keys and the escrow NX locks both
+// expire after this. Once it lapses the match can never be resolved, so any escrow still
+// posted for it is dead money. REFUND_THRESHOLD_MS below MUST stay strictly greater than
+// this, otherwise the refund cron could race a still-resolvable match and mint stones.
+const MATCH_WINDOW_SECONDS = 60 * 60;
+
+// Refund escrows that have been pending longer than this. Must be > MATCH_WINDOW_SECONDS
+// so a refunded match is provably unresolvable (its choice keys are already gone).
+const REFUND_THRESHOLD_MS = 2 * 60 * 60 * 1000;
+
+// Sorted set of outstanding escrows, scored by the epoch-ms the stones were taken.
+const PENDING_ESCROW_KEY = `${REDIS_PREFIX}:escrow:pending`;
+// matchId is a uuid (hex + "-") and userId is "U" + 32 hex, so neither can ever contain
+// "|" — it is a safe, collision-free separator for the packed member.
+const ESCROW_MEMBER_SEP = "|";
+const packEscrowMember = (matchId, userId, amount) =>
+  [matchId, userId, amount].join(ESCROW_MEMBER_SEP);
 
 // LINE userIds are fixed-length (`U` + 32 hex chars), so byte-order ordering is canonical.
 const orderedPair = (uA, uB) => (uA < uB ? [uA, uB] : [uB, uA]);
@@ -70,12 +86,35 @@ exports.validateBet = function (amount, maxBet) {
   return { valid: true };
 };
 
-exports.escrowBet = async function (userId, amount) {
+exports.escrowBet = async function (userId, amount, matchId) {
   const { amount: balance } = (await inventory.getUserMoney(userId)) || { amount: 0 };
   if (balance < amount) {
     return { success: false, balance };
   }
   await inventory.decreaseGodStone({ userId, amount, note: "janken_bet_escrow" });
+  // Track the escrow so refundStaleEscrows can return it if the match never resolves.
+  // Ledger-first ordering: if we crash between the debit and the zAdd, zAdd-first would
+  // let the cron refund an escrow that was never actually taken (minting stones).
+  try {
+    await redis.zAdd(PENDING_ESCROW_KEY, {
+      score: Date.now(),
+      value: packEscrowMember(matchId, userId, amount),
+    });
+  } catch (err) {
+    // Debited but untracked = permanently lost stones. Reverse immediately rather than
+    // leaving it for manual reconciliation.
+    DefaultLogger.error(
+      `[Janken] escrow tracking failed, rolling back match_id=${matchId} ` +
+        `user_id=${userId} amount=${amount}: ${err && err.message}`,
+      err
+    );
+    await inventory.increaseGodStone({
+      userId,
+      amount,
+      note: "janken_bet_escrow_rollback",
+    });
+    return { success: false, balance };
+  }
   return { success: true };
 };
 
@@ -85,8 +124,79 @@ exports.tryEscrowOnce = async function (matchId, userId, amount) {
   if (!locked) {
     return { alreadyEscrowed: true };
   }
-  const result = await exports.escrowBet(userId, amount);
+  const result = await exports.escrowBet(userId, amount, matchId);
   return result;
+};
+
+/**
+ * Is this bet match still resolvable?
+ *
+ * Probes p1's escrow lock, which is written with EX = MATCH_WINDOW_SECONDS at the moment
+ * p1 posts their stake — the same lifetime as the per-player choice keys. So the lock
+ * being gone is equivalent to "the choice keys are gone too", i.e. the match can never
+ * reach resolveMatch and its escrow has been (or will be) refunded by the cron.
+ *
+ * Only meaningful for bet matches; non-bet matches have no escrow lock and no money at
+ * risk, so callers must not gate them on this.
+ *
+ * @param {string} matchId
+ * @param {string} p1UserId the duel initiator (payload.userId)
+ * @returns {Promise<boolean>}
+ */
+exports.isMatchAlive = async function (matchId, p1UserId) {
+  const escrowKey = `${REDIS_PREFIX}:escrow:${matchId}:${p1UserId}`;
+  const exists = await redis.exists(escrowKey);
+  return exists === 1;
+};
+
+/**
+ * Refund escrows whose match is past REFUND_THRESHOLD_MS and therefore unresolvable.
+ *
+ * Claim-then-pay: the zRem must return 1 before any stones are credited. If another
+ * worker (or resolveMatch's settlement cleanup) already took the member, we pay nothing.
+ * Losing a refund is recoverable by hand from the `janken_bet_escrow` ledger rows;
+ * double-paying is not.
+ *
+ * @returns {Promise<{scanned:number, refunded:number, failed:number}>}
+ */
+exports.refundStaleEscrows = async function () {
+  const cutoff = Date.now() - REFUND_THRESHOLD_MS;
+  const members = (await redis.zRangeByScore(PENDING_ESCROW_KEY, 0, cutoff)) || [];
+  let refunded = 0;
+  let failed = 0;
+
+  for (const member of members) {
+    try {
+      const [matchId, userId, rawAmount] = String(member).split(ESCROW_MEMBER_SEP);
+      const amount = parseInt(rawAmount, 10);
+      if (!matchId || !userId || !Number.isFinite(amount) || amount <= 0) {
+        await redis.zRem(PENDING_ESCROW_KEY, member);
+        DefaultLogger.error(`[JankenEscrowRefund] dropped malformed member=${member}`);
+        failed += 1;
+        continue;
+      }
+
+      const claimed = await redis.zRem(PENDING_ESCROW_KEY, member);
+      if (claimed !== 1) {
+        // Settled or claimed elsewhere — never pay out on an unclaimed member.
+        continue;
+      }
+
+      await inventory.increaseGodStone({ userId, amount, note: "janken_bet_timeout_refund" });
+      refunded += 1;
+      DefaultLogger.info(
+        `[JankenEscrowRefund] refunded match_id=${matchId} user_id=${userId} amount=${amount}`
+      );
+    } catch (err) {
+      failed += 1;
+      DefaultLogger.error(
+        `[JankenEscrowRefund] failed member=${member}: ${err && err.message}`,
+        err
+      );
+    }
+  }
+
+  return { scanned: members.length, refunded, failed };
 };
 
 exports.calculateBountyIncrement = function (fee) {
@@ -287,6 +397,14 @@ exports.resolveMatch = async function ({
         note: "janken_bet_win",
       });
     }
+
+    // Settled — drop both escrows from the pending set so the refund cron can't pay again.
+    // Safe to do after payout: MATCH_WINDOW_SECONDS (1h) < REFUND_THRESHOLD_MS (2h), so a
+    // match that is still resolvable can never be inside the cron's scan window.
+    await Promise.all([
+      redis.zRem(PENDING_ESCROW_KEY, packEscrowMember(matchId, p1UserId, betAmount)),
+      redis.zRem(PENDING_ESCROW_KEY, packEscrowMember(matchId, p2UserId, betAmount)),
+    ]);
   }
 
   await JankenRecords.create({
