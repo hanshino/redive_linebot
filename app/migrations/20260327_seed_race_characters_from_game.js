@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const betterSqlite3 = require("better-sqlite3");
 
@@ -5,6 +6,18 @@ const AVATAR_BASE = "https://chieru.hanshino.dev/assets/units/head";
 
 exports.up = async function (knex) {
   const dbPath = path.resolve(__dirname, "../assets/redive_tw.db");
+
+  // assets/redive_tw.db is gitignored (30MB game data), so a clean checkout —
+  // CI, or a fresh dev box — does not have it and this migration used to abort
+  // the whole `yarn migrate` bootstrap with "unable to open database file".
+  // Production ran this in batch 38 (2026-03-26) and never re-runs it, so
+  // skipping is only ever hit where the seed data is unavailable anyway.
+  // Drop the file in and re-run `knex seed:run` if you need race characters locally.
+  if (!fs.existsSync(dbPath)) {
+    console.warn(`[seed_race_characters_from_game] skipped: ${dbPath} not found`);
+    return;
+  }
+
   const sqlite = betterSqlite3(dbPath, { readonly: true });
 
   // All playable characters from unit_profile
