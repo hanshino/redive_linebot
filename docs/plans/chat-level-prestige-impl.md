@@ -162,6 +162,7 @@ Branch：`feat/chat-level-prestige`
   - （寫入 `achievements` / `achievement_definitions` 既有表，視現行 schema）
 - [ ] 觸發點：
   - PrestigeService 的試煉通過時 → `AchievementEngine.unlock(userId, 'prestige_departure')`（若是 ★1）或 `prestige_awakening`（若是 ★5 = 第 5 次轉生）
+    > **2026-08-28 更正**：「★5 = 第 5 次轉生」這個假設不成立。試煉是 opt-in 且不按星序，通過 ★5 只代表打完那一關，與 `prestige_count` 無關（線上 55 人有 `prestige_awakening`，但只有 2 人 `prestige_count=5`）。真正的轉生終態成就是 `prestige_5`「輪迴盡頭」。詳見 [2026-08-28-prestige-awakening-semantics.md](./2026-08-28-prestige-awakening-semantics.md)。
   - 第 5 次轉生（`prestige_count 4 → 5`）時檢查 `user_blessings` 組合 → 觸發隱藏 build 成就
 - [ ] 遷移腳本觸發 `prestige_pioneer` 一次性發放給 82 人（屬 M9）
 - [ ] **改寫 `AchievementEngine.batchEvaluate`**（`app/src/service/AchievementEngine.js:360-362`）：
