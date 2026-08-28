@@ -79,7 +79,7 @@ describe("WorldBoss Flex production contract", () => {
       "第 3 輪 · 4 號 · 王4",
       "第 3 輪 · 5 號 · 王5",
     ]);
-    // Attacks moved to authenticated LIFF: no postback may survive in a group card.
+    // 預設關閉時群組卡不得有 postback。
     expect(actions(reply)).toEqual([]);
     const uris = uriActions(reply);
     expect(uris).toHaveLength(5);
@@ -87,9 +87,38 @@ describe("WorldBoss Flex production contract", () => {
     expect(new URL(uris[0].uri).pathname.endsWith("/worldboss")).toBe(true);
   });
 
+  it("renders attack postbacks only when enabled, without personal identity data", () => {
+    const reply = WorldBoss.generateWorldBossReply({
+      status: makeStatus({ cleared: [2] }),
+      liffUri: LIFF,
+      attackEnabled: true,
+    });
+
+    reply.contents.forEach((bubble, index) => {
+      const postbacks = actions(bubble);
+      if (index === 1) {
+        expect(postbacks).toHaveLength(0);
+        return;
+      }
+      expect(postbacks).toHaveLength(2);
+      expect(postbacks.map(action => JSON.parse(action.data))).toEqual([
+        { action: "worldBossAttack", roundId: 21 + index, attackType: "standard" },
+        { action: "worldBossAttack", roundId: 21 + index, attackType: "skill" },
+      ]);
+      postbacks.forEach(action => {
+        expect(JSON.parse(action.data)).not.toHaveProperty("userId");
+      });
+      expect(uriActions(bubble)).toHaveLength(1);
+    });
+  });
+
   it("excludes every personal field from the public board", () => {
     const values = text(
-      WorldBoss.generateWorldBossReply({ status: makeStatus(), liffUri: LIFF })
+      WorldBoss.generateWorldBossReply({
+        status: makeStatus(),
+        liffUri: LIFF,
+        attackEnabled: true,
+      })
     ).join("|");
 
     for (const forbidden of [

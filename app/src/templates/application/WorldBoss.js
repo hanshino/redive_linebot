@@ -131,7 +131,7 @@ function validateRound(round) {
  * snapshot, HP, cleared. No viewer-specific data (quota, EXP, rewards, personal
  * damage) may be added; the LIFF board is where personal state belongs.
  */
-function generateBattleStatusBubble({ season, round, boss, liffUri }) {
+function generateBattleStatusBubble({ season, round, boss, liffUri, attackEnabled = false }) {
   const { maxHp, currentHp } = validateRound(round);
   const hpPercent = roundedPercent(currentHp, maxHp);
   const description = truncateUtf8(boss.description, MAX_BOSS_DESCRIPTION_BYTES);
@@ -198,6 +198,33 @@ function generateBattleStatusBubble({ season, round, boss, liffUri }) {
       contents: cleared
         ? [textNode("已擊破", { color: SEMANTIC.success.main, weight: "bold", align: "center" })]
         : [
+            ...(attackEnabled
+              ? [
+                  {
+                    type: "box",
+                    layout: "horizontal",
+                    spacing: "sm",
+                    contents: [
+                      ["⚔️ 攻擊", "standard"],
+                      ["✨ 技能", "skill"],
+                    ].map(([label, attackType]) => ({
+                      type: "button",
+                      style: "primary",
+                      color: ACCENT.main,
+                      height: "sm",
+                      action: {
+                        type: "postback",
+                        label,
+                        data: JSON.stringify({
+                          action: "worldBossAttack",
+                          roundId: round.id,
+                          attackType,
+                        }),
+                      },
+                    })),
+                  },
+                ]
+              : []),
             {
               type: "button",
               style: "primary",
@@ -249,7 +276,7 @@ function generateNoActiveSeasonBubble({ ended, liffUri }) {
  * attack-result card were personal state and now live in LIFF, so this returns
  * either the five-boss board or the no-season notice and nothing else.
  */
-function generateWorldBossReply({ status, liffUri }) {
+function generateWorldBossReply({ status, liffUri, attackEnabled = false }) {
   const active = Boolean(
     status &&
     !status.ended &&
@@ -266,7 +293,13 @@ function generateWorldBossReply({ status, liffUri }) {
       .slice()
       .sort((left, right) => Number(left.position) - Number(right.position))
       .map(round =>
-        generateBattleStatusBubble({ season: status.season, round, boss: round, liffUri })
+        generateBattleStatusBubble({
+          season: status.season,
+          round,
+          boss: round,
+          liffUri,
+          attackEnabled,
+        })
       ),
   };
 }

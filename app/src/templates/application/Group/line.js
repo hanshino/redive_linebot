@@ -259,6 +259,7 @@ exports.showGroupConfig = context => {
     `群組人數:${count}`,
     `轉蛋功能:${getIcon(guildConfig.Gacha)}`,
     `戰隊功能:${getIcon(guildConfig.Battle)}`,
+    `世界王攻擊:${getIcon(guildConfig.WorldBossAttack)}`,
     `公主指令:${getIcon(guildConfig.GlobalOrder)}`,
     `自訂指令:${getIcon(guildConfig.CustomerOrder)}`,
     `公主查詢:${getIcon(guildConfig.PrincessCharacter)}`,

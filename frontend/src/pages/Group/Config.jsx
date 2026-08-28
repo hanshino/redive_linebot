@@ -270,6 +270,7 @@ export default function GroupConfig() {
     GroupConfigData: [],
     GroupConfig: {
       Battle: "Y",
+      WorldBossAttack: "N",
       PrincessCharacter: "Y",
       CustomerOrder: "Y",
       GlobalOrder: "Y",
