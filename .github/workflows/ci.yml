@@ -43,13 +43,43 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn lint
 
-  # Jest fully mocks MySQL/Redis/LINE in __tests__/setup.js, so no services here.
+  # __tests__/setup.js mocks MySQL by default, but 11 test files call
+  # jest.unmock("util/mysql") and hit a real database (janken_*, chat_exp_*,
+  # chat_daily_weather, inventory…). Without this service they fail with
+  # AggregateError, so CI needs a real MySQL 8 and a migrated schema.
+  #
+  # MYSQL_DATABASE creates Princess with the server default collation
+  # (utf8mb4_0900_ai_ci). Do NOT pin utf8mb4_unicode_ci here — see the header
+  # of migrations/20210101000000_baseline_initial_schema.js for why that
+  # breaks 20260327_unify_all_collation_to_0900.
   test-app:
     name: Test (app)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: app
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: Princess
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_USER_PASSWORD: root
+      # The World Boss suites create throwaway databases as root and read the
+      # password from DB_PASSWORD, not DB_USER_PASSWORD — see
+      # src/__tests__/helpers/worldBossFixture.js:34. Omitting it fails 7 suites.
+      DB_PASSWORD: root
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -58,6 +88,9 @@ jobs:
           cache: yarn
           cache-dependency-path: app/yarn.lock
       - run: yarn install --frozen-lockfile
+      # The documented fresh-DB bootstrap (see CLAUDE.md). Seeds fill
+      # chat_exp_unit / GachaPool, which the chatXp pipeline tests read.
+      - run: yarn migrate && yarn knex seed:run
       - run: yarn test
 
   format:
