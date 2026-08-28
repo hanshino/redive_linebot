@@ -137,6 +137,9 @@ async function duel(context) {
     betAmount = parseInt(betMatch[1], 10);
   }
 
+  // Generated before escrow so the escrow can be tagged with its match for timeout refunds.
+  const matchId = uuid();
+
   if (betAmount > 0) {
     const [initiatorRating, targetRating] = await Promise.all([
       JankenRating.findOrCreate(userId),
@@ -155,8 +158,11 @@ async function duel(context) {
       return;
     }
 
-    const escrow = await JankenService.escrowBet(userId, betAmount);
-    if (!escrow.success) {
+    // tryEscrowOnce (not escrowBet) so p1's escrow lock key gets written: that key is the
+    // liveness probe isMatchAlive/decide rely on. matchId is a fresh uuid here, so the NX
+    // lock always succeeds and the `alreadyEscrowed` branch is unreachable in practice.
+    const escrow = await JankenService.tryEscrowOnce(matchId, userId, betAmount);
+    if (!escrow.alreadyEscrowed && !escrow.success) {
       await context.replyText(
         i18n.__("message.duel.insufficient_funds", { balance: escrow.balance })
       );
@@ -165,8 +171,6 @@ async function duel(context) {
   }
 
   const targetProfile = await LineClient.getGroupMemberProfile(groupId, targetUserId);
-
-  const matchId = uuid();
 
   const pkBubble = jankenTemplate.generateDuelCard({
     p1IconUrl: pictureUrl || "https://i.imgur.com/469kcyB.png",
@@ -223,6 +227,16 @@ exports.decide = async (context, { payload }) => {
   }
 
   const choice = get(payload, "type", "random");
+
+  // LINE postback buttons never expire, but a bet match stops being resolvable after
+  // MATCH_WINDOW_SECONDS and its escrow is refunded by the cron ~2h in. Without this
+  // guard a late click would re-debit p2 and/or let an already-refunded match settle,
+  // paying the winner from stones nobody staked. Applies to both players.
+  // Non-bet matches are unrestricted: no escrow, no money at risk.
+  if (betAmount > 0 && !(await JankenService.isMatchAlive(matchId, userId))) {
+    await context.replyText(i18n.__("message.duel.match_expired"));
+    return;
+  }
 
   // Escrow opponent's bet when they first submit (if bet > 0 and they are not the initiator)
   if (betAmount > 0 && sourceUserId === targetUserId) {
