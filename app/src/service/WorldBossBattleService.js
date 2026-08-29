@@ -5,12 +5,15 @@ const WorldBossSeason = require("../model/application/WorldBossSeason");
 const WorldBossSeasonBoss = require("../model/application/WorldBossSeasonBoss");
 const WorldBossRound = require("../model/application/WorldBossRound");
 const WorldBossContribution = require("../model/application/WorldBossContribution");
+const WorldBossRoundEffect = require("../model/application/WorldBossRoundEffect");
+const WorldBossScoreEvent = require("../model/application/WorldBossScoreEvent");
 const { canonicalPositiveInteger } = require("../util/decimalInteger");
 
 const DAILY_COST_LIMIT = config.get("worldboss.daily_cost_limit");
 const HP_TIERS = config.get("worldboss.hp_tiers");
 const DEFAULT_PROGRESS = { level: 1, exp: 0 };
 const ATTACK_TYPES = new Set(["standard", "skill"]);
+const JOB_KEYS = new Set(["adventurer", "swordman", "mage", "thief"]);
 const ROSTER_SIZE = WorldBossSeasonBoss.ROSTER_SIZE;
 const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -50,7 +53,16 @@ function nonNegativeInteger(value) {
 
 function validateAttack(input) {
   if (!input || !ATTACK_TYPES.has(input.attackType)) throw fail("INVALID_ATTACK_TYPE");
-  for (const field of ["damage", "cost", "exp"]) {
+  // rawDamage is the player's own uncapped output; it is BIGINT in the schema, so it is
+  // validated as a canonical decimal integer rather than a JS number.
+  let rawDamage;
+  try {
+    rawDamage = BigInt(canonicalPositiveInteger(input.rawDamage));
+  } catch {
+    throw fail("INVALID_RAW_DAMAGE");
+  }
+  if (!JOB_KEYS.has(input.jobKey)) throw fail("INVALID_JOB_KEY");
+  for (const field of ["cost", "exp"]) {
     if (!positiveSafeInteger(input[field])) throw fail(`INVALID_${field.toUpperCase()}`);
   }
   let roundId;
@@ -59,7 +71,7 @@ function validateAttack(input) {
   } catch {
     throw fail("INVALID_ROUND_ID");
   }
-  return roundId;
+  return { roundId, rawDamage };
 }
 
 function isExpired(season, now) {
@@ -225,14 +237,62 @@ function createBattleService({ activeSlot = 1, clock = () => new Date(), hooks =
     return dailyFor(userId, clock());
   }
 
+  /**
+   * Builds the score ledger for one attack. Three layers, three rules:
+   *  - direct  : always, to the attacker, worth the UNCAPPED raw damage. Overkill is
+   *              discarded from HP but never from score, otherwise the last hit on a
+   *              boss would be worth less than the same hit one second earlier.
+   *  - assist  : to whoever left the effect, worth the effect's value.
+   *  - relay   : only for a banner, to the attacker. A seal already paid the attacker
+   *              in HP damage, so paying a relay on top would double-count it.
+   */
+  function scoreRowsFor({ season, round, contributionId, userId, rawDamage, effect, now }) {
+    const base = {
+      season_id: season.id,
+      round_id: round.id,
+      contribution_id: contributionId,
+      created_at: now,
+      updated_at: now,
+    };
+    const rows = [
+      {
+        ...base,
+        effect_id: null,
+        beneficiary_user_id: userId,
+        kind: WorldBossScoreEvent.KINDS.DIRECT,
+        points: rawDamage.toString(),
+      },
+    ];
+    if (!effect) return rows;
+
+    const points = canonicalPositiveInteger(effect.value);
+    rows.push({
+      ...base,
+      effect_id: effect.id,
+      beneficiary_user_id: effect.source_user_id,
+      kind: WorldBossScoreEvent.KINDS.ASSIST,
+      points,
+    });
+    if (effect.effect_type === WorldBossRoundEffect.TYPES.BANNER) {
+      rows.push({
+        ...base,
+        effect_id: effect.id,
+        beneficiary_user_id: userId,
+        kind: WorldBossScoreEvent.KINDS.RELAY,
+        points,
+      });
+    }
+    return rows;
+  }
+
   async function attack(input) {
-    const roundId = validateAttack(input);
-    const { userId, damage, cost, exp } = input;
+    const { roundId, rawDamage } = validateAttack(input);
+    const { userId, jobKey, cost, exp } = input;
     await onAttackStarted({ userId });
     return mysql.transaction(async trx => {
       // The season row is the single global serializer for every attack; every later
-      // lock (roster, rounds, user) is only ever taken while holding it, so no attack
-      // pair can deadlock on ordering.
+      // lock (roster, rounds, user, effects) is only ever taken while holding it, so no
+      // attack pair can deadlock on ordering.
       const season = await WorldBossSeason.findActiveForUpdate(activeSlot, trx);
       if (!season) throw fail("NO_ACTIVE_SEASON");
       const now = clock();
@@ -257,8 +317,21 @@ function createBattleService({ activeSlot = 1, clock = () => new Date(), hooks =
       const beforeDaily = await dailyFor(userId, now, trx);
       if (beforeDaily.used + cost > DAILY_COST_LIMIT) throw fail("DAILY_LIMIT_EXCEEDED");
 
-      // Overkill is discarded: only the damage that actually removed HP is credited.
-      const requestedDamage = BigInt(damage);
+      // Consume before creating, or an adventurer/mage would detonate the effect it just
+      // left in this very hit. The "not my own effect" filter lives in SQL — see the model.
+      const effect = await WorldBossRoundEffect.findConsumableForUpdate(trx, {
+        roundId: round.id,
+        userId,
+      });
+      // A banner is pure score: it pays an assist and a relay but removes no HP. A seal is
+      // stored damage: it detonates into the HP pool and therefore into the overkill cap.
+      const effectDamage =
+        effect && effect.effect_type === WorldBossRoundEffect.TYPES.SEAL
+          ? BigInt(canonicalPositiveInteger(effect.value))
+          : 0n;
+
+      // Overkill removes no HP, but it is still credited as score — only the HP ledger caps.
+      const requestedDamage = rawDamage + effectDamage;
       const effectiveDamage = requestedDamage > currentHp ? currentHp : requestedDamage;
       const remainingHp = currentHp - effectiveDamage;
       const cleared = remainingHp === 0n;
@@ -268,6 +341,61 @@ function createBattleService({ activeSlot = 1, clock = () => new Date(), hooks =
           current_hp: remainingHp.toString(),
           cleared_at: cleared ? now : null,
         });
+
+      const [contributionId] = await trx("world_boss_contribution").insert({
+        season_id: season.id,
+        round_id: round.id,
+        user_id: userId,
+        raw_damage: rawDamage.toString(),
+        effect_damage: effectDamage.toString(),
+        job_key: jobKey,
+        damage: effectiveDamage.toString(),
+        cost,
+        created_at: now,
+        updated_at: now,
+      });
+
+      if (effect) {
+        await WorldBossRoundEffect.consume(trx, {
+          effectId: effect.id,
+          contributionId,
+          now,
+        });
+      }
+      const scoreRows = scoreRowsFor({
+        season,
+        round,
+        contributionId,
+        userId,
+        rawDamage,
+        effect,
+        now,
+      });
+      await WorldBossScoreEvent.insertMany(trx, scoreRows);
+
+      // A dead boss can never be attacked again, so an effect left on this hit could never
+      // be consumed — do not create data that is unreachable by construction.
+      const plan = cleared ? null : WorldBossRoundEffect.planFor(jobKey, rawDamage.toString());
+      let createdEffect = null;
+      if (plan) {
+        const createdId = await WorldBossRoundEffect.insert(trx, {
+          season_id: season.id,
+          round_id: round.id,
+          source_contribution_id: contributionId,
+          source_user_id: userId,
+          effect_type: plan.effect_type,
+          value: plan.value.toString(),
+          consumed_by_contribution_id: null,
+          created_at: now,
+          updated_at: now,
+        });
+        createdEffect = WorldBossRoundEffect.toDto({
+          id: createdId,
+          effect_type: plan.effect_type,
+          value: plan.value.toString(),
+          source_user_id: userId,
+        });
+      }
 
       const cycleRounds = await WorldBossRound.listCycleForUpdate(season.id, currentCycleNo, trx);
       const allCleared =
@@ -282,18 +410,10 @@ function createBattleService({ activeSlot = 1, clock = () => new Date(), hooks =
         rounds = opened.rounds;
       }
 
-      await trx("world_boss_contribution").insert({
-        season_id: season.id,
-        round_id: round.id,
-        user_id: userId,
-        damage: effectiveDamage.toString(),
-        cost,
-        created_at: now,
-        updated_at: now,
-      });
       const levelUnits = await trx("minigame_level_unit").select("level", "max_exp");
       const levelResult = await applyJobExp({ userId, progress, earnedExp: exp, levelUnits, trx });
       const seasonTotalDamage = await WorldBossContribution.sumSeasonDamage(season.id, userId, trx);
+      const seasonTotalScore = await WorldBossScoreEvent.sumSeasonScore(season.id, userId, trx);
       const daily = await dailyFor(userId, now, trx);
       const attackedRound = cycleRounds.find(row => String(row.id) === String(round.id));
 
@@ -306,12 +426,22 @@ function createBattleService({ activeSlot = 1, clock = () => new Date(), hooks =
         boss: bossOf(round),
         rounds,
         cleared,
-        damage,
+        rawDamage: rawDamage.toString(),
+        effectDamage: effectDamage.toString(),
+        // The HP actually removed — same semantics as the contribution.damage column.
         effectiveDamage: effectiveDamage.toString(),
-        wastedDamage: (requestedDamage - effectiveDamage).toString(),
+        overkillDamage: (requestedDamage - effectiveDamage).toString(),
+        // The whole ledger this attack wrote, not just the attacker's slice: `direct` and
+        // `relay` go to the attacker, `assist` goes to consumedEffect.sourceUserId. Filtering
+        // to the attacker would make `assist` a permanently-zero field, since a player can
+        // never consume their own effect.
+        scoreGained: WorldBossScoreEvent.breakdown(scoreRows),
+        consumedEffect: effect ? WorldBossRoundEffect.toDto(effect) : null,
+        createdEffect,
         cost,
         levelResult,
         seasonTotalDamage,
+        seasonTotalScore,
         daily,
       };
     });

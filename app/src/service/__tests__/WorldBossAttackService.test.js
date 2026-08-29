@@ -30,6 +30,7 @@ const broadcastQueue = require("../../util/broadcastQueue");
 const redis = require("../../util/redis");
 const { DefaultLogger } = require("../../util/Logger");
 const AttackService = require("../WorldBossAttackService");
+const ActualRPGCharacter = jest.requireActual("../../model/application/RPGCharacter");
 
 const USER = "Uattacker";
 const GROUP = `C${"a".repeat(32)}`;
@@ -46,9 +47,13 @@ function character({ standard = 100, skill = 200, skillCost = 7 } = {}) {
 
 function result(overrides = {}) {
   return {
-    damage: 100,
+    rawDamage: "100",
+    effectDamage: "0",
     effectiveDamage: "100",
-    wastedDamage: "0",
+    overkillDamage: "0",
+    scoreGained: { direct: "100", assist: "0", relay: "0" },
+    consumedEffect: null,
+    createdEffect: null,
     cost: 10,
     cleared: false,
     cycleAdvanced: false,
@@ -57,6 +62,7 @@ function result(overrides = {}) {
     boss: { id: 7, position: 2, name: "冰狼" },
     levelResult: { levelUp: false },
     seasonTotalDamage: "1000",
+    seasonTotalScore: "1000",
     daily: { limit: 100, used: 10, remaining: 90 },
     ...overrides,
   };
@@ -123,6 +129,69 @@ describe("WorldBossAttackService — input validation", () => {
 });
 
 describe("WorldBossAttackService — the shared attack seam", () => {
+  describe.each([
+    ["adventurer", 8, 1.2],
+    ["swordman", 10, 1.8],
+    ["mage", 7, 0.7],
+    ["thief", 20, 2.1],
+  ])("RPG skill contract — %s", (jobKey, expectedCost, expectedRate) => {
+    it("uses the adjusted cost and rate", () => {
+      const instance = ActualRPGCharacter.make(jobKey, { level: 100 });
+      expect(instance.skillOne).toEqual(
+        expect.objectContaining({
+          cost: expectedCost,
+          rate: expectedRate,
+        })
+      );
+    });
+
+    it("uses normal damage and does not add an unintended critical hit", () => {
+      const instance = ActualRPGCharacter.make(jobKey, { level: 100 });
+      jest.spyOn(instance, "getNormalDamage").mockReturnValue(1000);
+      const critical = jest.spyOn(instance, "isCritical").mockReturnValue(false);
+
+      expect(instance.getSkillOneDamage()).toBe(Math.floor(1000 * expectedRate));
+      if (jobKey === "swordman" || jobKey === "adventurer") {
+        expect(critical).not.toHaveBeenCalled();
+      }
+    });
+  });
+
+  it("keeps mage and thief critical settings unchanged", () => {
+    expect(ActualRPGCharacter.make("mage", { level: 100 }).skillOne).toEqual(
+      expect.objectContaining({
+        criticalRate: 25,
+        criticalConfig: [
+          { min: 1.8, max: 2.2, rate: 60 },
+          { min: 2.2, max: 2.6, rate: 25 },
+          { min: 2.6, max: 3.0, rate: 12 },
+          { min: 3.0, max: 3.5, rate: 3 },
+        ],
+      })
+    );
+    expect(ActualRPGCharacter.make("thief", { level: 100 }).skillOne).toEqual(
+      expect.objectContaining({
+        criticalRate: 50,
+        criticalConfig: [
+          { min: 1.2, max: 1.5, rate: 10 },
+          { min: 1.5, max: 2.0, rate: 25 },
+          { min: 2.0, max: 2.8, rate: 35 },
+          { min: 2.8, max: 3.8, rate: 25 },
+          { min: 3.8, max: 5.0, rate: 5 },
+        ],
+      })
+    );
+    expect(ActualRPGCharacter.make("swordman", { level: 100 }).skillOne).not.toHaveProperty(
+      "criticalRate"
+    );
+  });
+
+  it("keeps standard attacks independent from skill values", () => {
+    const instance = ActualRPGCharacter.make("mage", { level: 100 });
+    expect(instance.getStandardDamage()).toBe(11000);
+    expect(instance.attack()).toBe(11000);
+  });
+
   it("computes standard damage, base cost and exp from RPG + equipment exactly", async () => {
     const standard = character({ standard: 100, skill: 999, skillCost: 7 });
     RPGCharacter.make.mockReturnValue(standard);
@@ -142,10 +211,15 @@ describe("WorldBossAttackService — the shared attack seam", () => {
       userId: USER,
       attackType: "standard",
       roundId: "2",
-      damage: 125,
+      rawDamage: 125,
+      jobKey: "mage",
       cost: 8,
       exp: 125,
     });
+    // The transitional `damage` alias is gone: BattleService takes rawDamage + jobKey only.
+    // toHaveBeenCalledWith is exact, so an extra key would already fail — this asserts the
+    // intent explicitly so a future re-add is caught by name.
+    expect(BattleService.attack.mock.calls[0][0]).not.toHaveProperty("damage");
   });
 
   it("computes skill damage and skill cost with equipment bonuses exactly", async () => {
@@ -165,7 +239,8 @@ describe("WorldBossAttackService — the shared attack seam", () => {
       userId: USER,
       attackType: "skill",
       roundId: "2",
-      damage: 300,
+      rawDamage: 300,
+      jobKey: "swordman",
       cost: 5,
       exp: 123,
     });
@@ -182,7 +257,12 @@ describe("WorldBossAttackService — the shared attack seam", () => {
     await AttackService.attack({ userId: USER, roundId: 2, attackType: "standard" });
 
     expect(BattleService.attack).toHaveBeenCalledWith(
-      expect.objectContaining({ damage: 10, cost: 10, exp: 120 })
+      expect.objectContaining({
+        rawDamage: 10,
+        jobKey: "swordman",
+        cost: 10,
+        exp: 120,
+      })
     );
   });
 

@@ -118,6 +118,8 @@ function whereLiteralPrefix(query, column, prefix) {
 
 async function deleteSeasonTree(mysql, ids) {
   if (!ids.length) return;
+  await mysql("world_boss_score_event").whereIn("season_id", ids).del();
+  await mysql("world_boss_round_effect").whereIn("season_id", ids).del();
   await mysql("world_boss_season_reward").whereIn("season_id", ids).del();
   await mysql("world_boss_contribution").whereIn("season_id", ids).del();
   const roster = await mysql("world_boss_season_boss").whereIn("season_id", ids).select("id");

@@ -11,6 +11,7 @@ jest.mock("../../util/mysql", () => mysql);
 const MinigameLevel = require("../../model/application/MinigameLevel");
 const WorldBossSeasonBoss = require("../../model/application/WorldBossSeasonBoss");
 const WorldBossRound = require("../../model/application/WorldBossRound");
+const WorldBossRoundEffect = require("../../model/application/WorldBossRoundEffect");
 const { createBattleService } = require("../WorldBossBattleService");
 
 const prefix = `${PREFIX}battle_`;
@@ -68,6 +69,9 @@ async function cleanupOwned({ includeSentinels = false } = {}) {
     .select("id");
   const seasonIds = seasons.map(season => season.id);
   if (seasonIds.length) {
+    // FK RESTRICT: the score/effect ledgers point at contributions, so they must go first.
+    await mysql("world_boss_score_event").whereIn("season_id", seasonIds).del();
+    await mysql("world_boss_round_effect").whereIn("season_id", seasonIds).del();
     await mysql("world_boss_season_reward").whereIn("season_id", seasonIds).del();
     await mysql("world_boss_contribution").whereIn("season_id", seasonIds).del();
     const roster = await mysql("world_boss_season_boss")
@@ -152,6 +156,80 @@ async function createBattleFixture({
   return { userId, userDbId, bossIds, seasonId, roster, rounds, cycleNo };
 }
 
+function attackWith(service, overrides) {
+  return service.attack({
+    attackType: "standard",
+    jobKey: "swordman",
+    cost: 1,
+    exp: 1,
+    ...overrides,
+    roundId: String(overrides.roundId),
+  });
+}
+
+async function listContributions(seasonId) {
+  return mysql("world_boss_contribution").where({ season_id: seasonId }).orderBy("id");
+}
+
+async function listScoreEvents(seasonId) {
+  return mysql("world_boss_score_event").where({ season_id: seasonId }).orderBy("id");
+}
+
+async function listEffects(seasonId) {
+  return mysql("world_boss_round_effect").where({ season_id: seasonId }).orderBy("id");
+}
+
+/**
+ * The three ledgers of one contribution, as plain strings. Reading damage alone can no
+ * longer tell a seal detonation apart from a bigger raw hit, so every damage assertion
+ * checks raw / effect / HP-applied together plus the direct score.
+ */
+async function ledgerOf(contributionId) {
+  const row = await mysql("world_boss_contribution").where({ id: contributionId }).first();
+  const direct = await mysql("world_boss_score_event")
+    .where({ contribution_id: contributionId, kind: "direct" })
+    .first();
+  return {
+    raw_damage: String(row.raw_damage),
+    effect_damage: String(row.effect_damage),
+    damage: String(row.damage),
+    job_key: row.job_key,
+    direct_points: direct ? String(direct.points) : null,
+  };
+}
+
+/**
+ * An unconsumed effect left by `userId` on `roundId`. The FK to a source contribution is
+ * NOT NULL, so a seeded effect needs a seeded contribution to hang off — that contribution
+ * is deliberately given cost 0 so it cannot disturb a quota assertion.
+ */
+async function seedEffect({ seasonId, roundId, userId, type, value, at = now }) {
+  const [sourceContributionId] = await mysql("world_boss_contribution").insert({
+    season_id: seasonId,
+    round_id: roundId,
+    user_id: userId,
+    raw_damage: String(value),
+    effect_damage: "0",
+    job_key: type === "banner" ? "adventurer" : "mage",
+    damage: "0",
+    cost: 0,
+    created_at: at,
+    updated_at: at,
+  });
+  const [id] = await mysql("world_boss_round_effect").insert({
+    season_id: seasonId,
+    round_id: roundId,
+    source_contribution_id: sourceContributionId,
+    source_user_id: userId,
+    effect_type: type,
+    value: String(value),
+    consumed_by_contribution_id: null,
+    created_at: at,
+    updated_at: at,
+  });
+  return { id, sourceContributionId };
+}
+
 async function assertSentinelsPreserved() {
   await expect(
     mysql("user").where({ platform_id: sentinel.userId }).first()
@@ -203,21 +281,27 @@ describe("WorldBossBattleService", () => {
       userId: fixture.userId,
       roundId: String(target.id),
       attackType: "standard",
-      damage: 25,
+      rawDamage: 25,
+      jobKey: "swordman",
       cost: 10,
       exp: 5,
     });
 
     expect(result).toMatchObject({
-      damage: 25,
+      rawDamage: "25",
+      effectDamage: "0",
       effectiveDamage: "25",
-      wastedDamage: "0",
+      overkillDamage: "0",
+      scoreGained: { direct: "25", assist: "0", relay: "0" },
+      consumedEffect: null,
+      createdEffect: null,
       cost: 10,
       cleared: false,
       cycleAdvanced: false,
       attackedCycleNo: 1,
       cycleNo: 1,
       seasonTotalDamage: "25",
+      seasonTotalScore: "25",
       daily: { limit: 100, used: 10, remaining: 90 },
       levelResult: { levelUp: false, newLevel: 1, newExp: 5, levelUpCount: 0, nextLevelExp: 24 },
     });
@@ -229,14 +313,29 @@ describe("WorldBossBattleService", () => {
     const rounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
     expect(rounds.map(row => Number(row.current_hp))).toEqual([100, 100, 75, 100, 100]);
     expect(rounds.every(row => row.cleared_at === null)).toBe(true);
-    await expect(
-      mysql("world_boss_contribution").where({ season_id: fixture.seasonId }).first()
-    ).resolves.toMatchObject({
+    const [contribution] = await listContributions(fixture.seasonId);
+    expect(contribution).toMatchObject({
       user_id: fixture.userId,
       round_id: target.id,
       damage: 25,
       cost: 10,
     });
+    await expect(ledgerOf(contribution.id)).resolves.toEqual({
+      raw_damage: "25",
+      effect_damage: "0",
+      damage: "25",
+      job_key: "swordman",
+      direct_points: "25",
+    });
+    // Exactly one score event, and no effect written or consumed by a swordman.
+    const events = await listScoreEvents(fixture.seasonId);
+    expect(events.map(row => [row.kind, row.beneficiary_user_id, String(row.points)])).toEqual([
+      ["direct", fixture.userId, "25"],
+    ]);
+    expect(events[0].effect_id).toBeNull();
+    await expect(listEffects(fixture.seasonId)).resolves.toEqual([]);
+    // One attack, one quota charge.
+    expect(await listContributions(fixture.seasonId)).toHaveLength(1);
     await expect(
       mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
     ).resolves.toMatchObject({ level: 1, exp: 5 });
@@ -252,7 +351,8 @@ describe("WorldBossBattleService", () => {
           userId: fixture.userId,
           roundId: String(round.id),
           attackType: "standard",
-          damage: 10,
+          rawDamage: 10,
+          jobKey: "swordman",
           cost: 1,
           exp: 1,
         })
@@ -279,22 +379,33 @@ describe("WorldBossBattleService", () => {
       userId: fixture.userId,
       roundId: String(target.id),
       attackType: "skill",
-      damage: 45123,
+      rawDamage: 45123,
+      jobKey: "swordman",
       cost: 10,
       exp: 7,
     });
 
     expect(result).toMatchObject({
-      damage: 45123,
+      rawDamage: "45123",
+      effectDamage: "0",
       effectiveDamage: "100",
-      wastedDamage: "45023",
+      overkillDamage: "45023",
+      // Overkill is discarded from HP but not from score: direct is the full raw hit.
+      scoreGained: { direct: "45123", assist: "0", relay: "0" },
       cleared: true,
       cycleAdvanced: false,
       seasonTotalDamage: "100",
+      seasonTotalScore: "45123",
     });
-    await expect(
-      mysql("world_boss_contribution").where({ season_id: fixture.seasonId }).first()
-    ).resolves.toMatchObject({ damage: 100, cost: 10 });
+    const [contribution] = await listContributions(fixture.seasonId);
+    expect(contribution).toMatchObject({ damage: 100, cost: 10 });
+    await expect(ledgerOf(contribution.id)).resolves.toEqual({
+      raw_damage: "45123",
+      effect_damage: "0",
+      damage: "100",
+      job_key: "swordman",
+      direct_points: "45123",
+    });
     const rounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
     expect(Number(rounds[0].current_hp)).toBe(0);
     expect(rounds[0].cleared_at).toBeInstanceOf(Date);
@@ -314,7 +425,8 @@ describe("WorldBossBattleService", () => {
         userId: fixture.userId,
         roundId: String(round.id),
         attackType: "standard",
-        damage: 10,
+        rawDamage: 10,
+        jobKey: "swordman",
         cost: 1,
         exp: 1,
       });
@@ -340,7 +452,8 @@ describe("WorldBossBattleService", () => {
       userId: fixture.userId,
       roundId: String(survivor.id),
       attackType: "skill",
-      damage: 10,
+      rawDamage: 10,
+      jobKey: "swordman",
       cost: 5,
       exp: 5,
     });
@@ -392,7 +505,8 @@ describe("WorldBossBattleService", () => {
       userId: fixture.userId,
       roundId: String(fixture.rounds[4].id),
       attackType: "standard",
-      damage: 10,
+      rawDamage: 10,
+      jobKey: "swordman",
       cost: 1,
       exp: 1,
     });
@@ -423,7 +537,8 @@ describe("WorldBossBattleService", () => {
         userId: fixture.userId,
         roundId: String(fixture.rounds[0].id),
         attackType: "standard",
-        damage: 10,
+        rawDamage: 10,
+        jobKey: "swordman",
         cost: 10,
         exp: 10,
       })
@@ -454,7 +569,8 @@ describe("WorldBossBattleService", () => {
       userId: fixture.userId,
       roundId: String(fixture.rounds[4].id),
       attackType: "standard",
-      damage: 10,
+      rawDamage: 10,
+      jobKey: "swordman",
       cost: 1,
       exp: 1,
     });
@@ -471,7 +587,8 @@ describe("WorldBossBattleService", () => {
           userId: fixture.userId,
           roundId: String(round.id),
           attackType: "standard",
-          damage: 5,
+          rawDamage: 5,
+          jobKey: "swordman",
           cost: 10,
           exp: 10,
         })
@@ -504,7 +621,8 @@ describe("WorldBossBattleService", () => {
         userId: newPlayer,
         roundId: String(foreign.rounds[0].id),
         attackType: "standard",
-        damage: 10,
+        rawDamage: 10,
+        jobKey: "swordman",
         cost: 10,
         exp: 10,
       })
@@ -533,25 +651,71 @@ describe("WorldBossBattleService", () => {
         userId: fixture.userId,
         roundId,
         attackType: "unknown",
-        damage: 1,
+        rawDamage: 1,
+        jobKey: "swordman",
         cost: 1,
         exp: 1,
       })
     ).rejects.toMatchObject({ code: "INVALID_ATTACK_TYPE" });
-    for (const field of ["damage", "cost", "exp"]) {
-      for (const value of [0, -1, 0.5, Number.NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    for (const field of ["rawDamage", "cost", "exp"]) {
+      for (const value of [0, -1, 0.5, Number.NaN, Infinity]) {
         await expect(
           service.attack({
             userId: fixture.userId,
             roundId,
             attackType: "standard",
-            damage: 1,
+            rawDamage: 1,
+            jobKey: "swordman",
             cost: 1,
             exp: 1,
             [field]: value,
           })
-        ).rejects.toMatchObject({ code: `INVALID_${field.toUpperCase()}` });
+        ).rejects.toMatchObject({
+          code: `INVALID_${field === "rawDamage" ? "RAW_DAMAGE" : field.toUpperCase()}`,
+        });
       }
+    }
+    // cost/exp stay JS-safe integers; rawDamage is BIGINT, so a value past
+    // MAX_SAFE_INTEGER must arrive as an exact decimal string, never as a float.
+    for (const field of ["cost", "exp"]) {
+      await expect(
+        service.attack({
+          userId: fixture.userId,
+          roundId,
+          attackType: "standard",
+          rawDamage: 1,
+          jobKey: "swordman",
+          cost: 1,
+          exp: 1,
+          [field]: Number.MAX_SAFE_INTEGER + 1,
+        })
+      ).rejects.toMatchObject({ code: `INVALID_${field.toUpperCase()}` });
+    }
+    for (const rawDamage of [Number.MAX_SAFE_INTEGER + 1, "1e3", "01x", "-5", "1.0", {}, null]) {
+      await expect(
+        service.attack({
+          userId: fixture.userId,
+          roundId,
+          attackType: "standard",
+          rawDamage,
+          jobKey: "swordman",
+          cost: 1,
+          exp: 1,
+        })
+      ).rejects.toMatchObject({ code: "INVALID_RAW_DAMAGE" });
+    }
+    for (const jobKey of [undefined, null, "", "ADVENTURER", "priest", 1, {}]) {
+      await expect(
+        service.attack({
+          userId: fixture.userId,
+          roundId,
+          attackType: "standard",
+          rawDamage: 1,
+          jobKey,
+          cost: 1,
+          exp: 1,
+        })
+      ).rejects.toMatchObject({ code: "INVALID_JOB_KEY" });
     }
     for (const value of [undefined, null, "", "0", 0, -1, 1.5, "abc", "1e3", {}]) {
       await expect(
@@ -559,7 +723,8 @@ describe("WorldBossBattleService", () => {
           userId: fixture.userId,
           roundId: value,
           attackType: "standard",
-          damage: 1,
+          rawDamage: 1,
+          jobKey: "swordman",
           cost: 1,
           exp: 1,
         })
@@ -576,8 +741,16 @@ describe("WorldBossBattleService", () => {
 
     for (const attackType of ["standard", "skill"]) {
       await expect(
-        service.attack({ userId: fixture.userId, roundId, attackType, damage: 1, cost: 1, exp: 1 })
-      ).resolves.toMatchObject({ damage: 1, cost: 1 });
+        service.attack({
+          userId: fixture.userId,
+          roundId,
+          attackType,
+          rawDamage: 1,
+          jobKey: "swordman",
+          cost: 1,
+          exp: 1,
+        })
+      ).resolves.toMatchObject({ rawDamage: "1", effectiveDamage: "1", cost: 1 });
     }
   });
 
@@ -652,7 +825,8 @@ describe("WorldBossBattleService", () => {
       userId: fixture.userId,
       roundId: String(target.id),
       attackType: "standard",
-      damage: 1,
+      rawDamage: 1,
+      jobKey: "swordman",
       cost: 1,
       exp: 1,
     });
@@ -678,14 +852,14 @@ describe("WorldBossBattleService", () => {
         userId: fixture.userId,
         roundId: String(target.id),
         attackType: "standard",
-        damage: Number.MAX_SAFE_INTEGER,
+        rawDamage: Number.MAX_SAFE_INTEGER,
+        jobKey: "swordman",
         cost: 1,
         exp: 1,
       })
     ).resolves.toMatchObject({
       seasonTotalDamage: "9007199254740991",
       effectiveDamage: "9007199254740991",
-      wastedDamage: "0",
     });
 
     await expect(mysql("world_boss_round").where({ id: target.id }).first()).resolves.toMatchObject(
@@ -706,7 +880,8 @@ describe("WorldBossBattleService", () => {
         userId: fixture.userId,
         roundId: String(fixture.rounds[0].id),
         attackType: "standard",
-        damage: 100,
+        rawDamage: 100,
+        jobKey: "swordman",
         cost: 10,
         exp: 10,
       })
@@ -739,7 +914,8 @@ describe("WorldBossBattleService", () => {
         userId: fixture.userId,
         roundId: String(fixture.rounds[0].id),
         attackType: "standard",
-        damage: 1,
+        rawDamage: 1,
+        jobKey: "swordman",
         cost: 1,
         exp: 1,
       })
@@ -768,7 +944,8 @@ describe("WorldBossBattleService", () => {
         userId: fixture.userId,
         roundId: String(fixture.rounds[4].id),
         attackType: "skill",
-        damage: 10,
+        rawDamage: 10,
+        jobKey: "swordman",
         cost: 10,
         exp: 5,
       })
@@ -793,7 +970,8 @@ describe("WorldBossBattleService", () => {
       userId,
       roundId: String(fixture.rounds[0].id),
       attackType: "standard",
-      damage: 1,
+      rawDamage: 1,
+      jobKey: "swordman",
       cost: 1,
       exp: 1,
     });
@@ -801,7 +979,8 @@ describe("WorldBossBattleService", () => {
       userId,
       roundId: String(fixture.rounds[1].id),
       attackType: "skill",
-      damage: 1,
+      rawDamage: 1,
+      jobKey: "swordman",
       cost: 1,
       exp: 1,
     });
@@ -961,7 +1140,8 @@ describe("WorldBossBattleService", () => {
       userId: fixture.userId,
       roundId: String(fixture.rounds[0].id),
       attackType: "standard",
-      damage: 10,
+      rawDamage: 10,
+      jobKey: "swordman",
       cost: 10,
       exp: 5,
     });
@@ -969,7 +1149,8 @@ describe("WorldBossBattleService", () => {
       userId: fixture.userId,
       roundId: String(fixture.rounds[1].id),
       attackType: "skill",
-      damage: 10,
+      rawDamage: 10,
+      jobKey: "swordman",
       cost: 10,
       exp: 5,
     });
@@ -1038,7 +1219,8 @@ describe("WorldBossBattleService", () => {
       userId: firstUserId,
       roundId: String(fixture.rounds[3].id),
       attackType: "standard",
-      damage: 10,
+      rawDamage: 10,
+      jobKey: "swordman",
       cost: 1,
       exp: 1,
     });
@@ -1046,7 +1228,8 @@ describe("WorldBossBattleService", () => {
       userId: firstUserId,
       roundId: String(fixture.rounds[4].id),
       attackType: "standard",
-      damage: 10,
+      rawDamage: 10,
+      jobKey: "swordman",
       cost: 1,
       exp: 1,
     });
@@ -1059,7 +1242,8 @@ describe("WorldBossBattleService", () => {
         userId: secondUserId,
         roundId: String(fixture.rounds[4].id),
         attackType: "skill",
-        damage: 10,
+        rawDamage: 10,
+        jobKey: "swordman",
         cost: 1,
         exp: 1,
       })
@@ -1121,7 +1305,8 @@ describe("WorldBossBattleService", () => {
         userId: fourthKiller,
         roundId: String(fourthRound.id),
         attackType: "standard",
-        damage: 5,
+        rawDamage: 5,
+        jobKey: "swordman",
         cost: 3,
         exp: 1,
       }),
@@ -1130,7 +1315,8 @@ describe("WorldBossBattleService", () => {
         roundId: String(fifthRound.id),
         attackType: "skill",
         // Overkill: the effective damage must be boss 5's 7 HP, not the requested 900.
-        damage: 900,
+        rawDamage: 900,
+        jobKey: "swordman",
         cost: 4,
         exp: 1,
       }),
@@ -1139,14 +1325,21 @@ describe("WorldBossBattleService", () => {
     expect(fourthResult).toMatchObject({
       cleared: true,
       attackedCycleNo: 1,
+      rawDamage: "5",
+      effectDamage: "0",
       effectiveDamage: "5",
-      wastedDamage: "0",
+      overkillDamage: "0",
+      scoreGained: { direct: "5", assist: "0", relay: "0" },
     });
     expect(fifthResult).toMatchObject({
       cleared: true,
       attackedCycleNo: 1,
+      rawDamage: "900",
+      effectDamage: "0",
       effectiveDamage: "7",
-      wastedDamage: "893",
+      overkillDamage: "893",
+      // Overkill still scores in full: the ledger and the HP pool are separate books.
+      scoreGained: { direct: "900", assist: "0", relay: "0" },
     });
 
     // Whichever transaction commits second sees all five dead — and only it advances.
@@ -1174,21 +1367,715 @@ describe("WorldBossBattleService", () => {
     expect(cycleNumbers).toHaveLength(ROSTER_SIZE * 2);
     expect(cycleNumbers.every(row => Number(row.count) === 1)).toBe(true);
 
-    // Exactly one contribution each, credited to the encounter that was actually hit.
-    const contributions = await mysql("world_boss_contribution")
+    // Exactly one contribution each, credited to the encounter that was actually hit,
+    // and exactly one direct score event each — a double-credited kill is the failure here.
+    const rows = await mysql("world_boss_contribution")
       .where({ season_id: fixture.seasonId })
       .orderBy("user_id");
-    expect(contributions).toHaveLength(2);
+    expect(rows).toHaveLength(2);
     expect(
-      contributions.map(row => ({
+      rows.map(row => ({
         user_id: row.user_id,
         round_id: Number(row.round_id),
+        raw_damage: String(row.raw_damage),
+        effect_damage: String(row.effect_damage),
         damage: Number(row.damage),
         cost: row.cost,
       }))
     ).toEqual([
-      { user_id: fourthKiller, round_id: Number(fourthRound.id), damage: 5, cost: 3 },
-      { user_id: fifthKiller, round_id: Number(fifthRound.id), damage: 7, cost: 4 },
+      {
+        user_id: fourthKiller,
+        round_id: Number(fourthRound.id),
+        raw_damage: "5",
+        effect_damage: "0",
+        damage: 5,
+        cost: 3,
+      },
+      {
+        user_id: fifthKiller,
+        round_id: Number(fifthRound.id),
+        raw_damage: "900",
+        effect_damage: "0",
+        damage: 7,
+        cost: 4,
+      },
     ]);
+    const events = await listScoreEvents(fixture.seasonId);
+    expect(
+      events
+        .map(row => [row.beneficiary_user_id, row.kind, String(row.points)])
+        .sort((left, right) => left[0].localeCompare(right[0]))
+    ).toEqual([
+      [fourthKiller, "direct", "5"],
+      [fifthKiller, "direct", "900"],
+    ]);
+    // A lethal hit leaves no effect, so nothing unconsumable was created either.
+    await expect(listEffects(fixture.seasonId)).resolves.toEqual([]);
+  });
+});
+
+describe("WorldBossBattleService — effect lifecycle and score events", () => {
+  test("an adventurer leaves a banner worth 25% of raw damage and scores only direct", async () => {
+    const fixture = await createBattleFixture({ label: "bnew", maxHp: 1000 });
+    const target = fixture.rounds[0];
+    const service = createBattleService({ clock: () => now });
+
+    const result = await attackWith(service, {
+      userId: fixture.userId,
+      roundId: target.id,
+      rawDamage: 101,
+      jobKey: "adventurer",
+      cost: 8,
+    });
+
+    // floor(101 * 25 / 100) = 25 — the fractional part is dropped, not rounded.
+    expect(result).toMatchObject({
+      rawDamage: "101",
+      effectDamage: "0",
+      effectiveDamage: "101",
+      overkillDamage: "0",
+      consumedEffect: null,
+      createdEffect: { type: "banner", value: "25", sourceUserId: fixture.userId },
+      scoreGained: { direct: "101", assist: "0", relay: "0" },
+    });
+    // The banner is pure score: the boss lost the raw damage only.
+    await expect(mysql("world_boss_round").where({ id: target.id }).first()).resolves.toMatchObject(
+      { current_hp: 899 }
+    );
+    const [contribution] = await listContributions(fixture.seasonId);
+    await expect(ledgerOf(contribution.id)).resolves.toEqual({
+      raw_damage: "101",
+      effect_damage: "0",
+      damage: "101",
+      job_key: "adventurer",
+      direct_points: "101",
+    });
+    const [effect] = await listEffects(fixture.seasonId);
+    expect(effect).toMatchObject({
+      effect_type: "banner",
+      value: 25,
+      source_user_id: fixture.userId,
+      source_contribution_id: contribution.id,
+      consumed_by_contribution_id: null,
+      round_id: target.id,
+    });
+    // Creating a banner pays nobody an assist or relay yet.
+    const events = await listScoreEvents(fixture.seasonId);
+    expect(events.map(row => row.kind)).toEqual(["direct"]);
+  });
+
+  test("a creator never consumes their own effect and skips it to the next eligible one", async () => {
+    const owner = ownedUserId("self_owner");
+    const other = ownedUserId("self_other");
+    const fixture = await createBattleFixture({
+      label: "self_skip",
+      userId: owner,
+      maxHp: 100000,
+    });
+    await createUser(other);
+    const target = fixture.rounds[0];
+    const service = createBattleService({ clock: () => now });
+
+    // Own banner first (lower id), then someone else's banner.
+    const ownEffect = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: owner,
+      type: "banner",
+      value: 40,
+    });
+    const otherEffect = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: other,
+      type: "banner",
+      value: 7,
+    });
+    expect(Number(ownEffect.id)).toBeLessThan(Number(otherEffect.id));
+
+    const result = await attackWith(service, {
+      userId: owner,
+      roundId: target.id,
+      rawDamage: 200,
+      jobKey: "adventurer",
+      cost: 8,
+    });
+
+    // The proof the exclusion is in SQL and not in JS: the oldest row is skipped rather
+    // than blocking, and the next eligible row is consumed in the same hit.
+    expect(result).toMatchObject({
+      effectDamage: "0",
+      consumedEffect: { id: String(otherEffect.id), type: "banner", value: "7" },
+      scoreGained: { direct: "200", assist: "7", relay: "7" },
+    });
+    const rows = await listEffects(fixture.seasonId);
+    const byId = new Map(rows.map(row => [String(row.id), row]));
+    expect(byId.get(String(ownEffect.id)).consumed_by_contribution_id).toBeNull();
+    expect(byId.get(String(otherEffect.id)).consumed_by_contribution_id).not.toBeNull();
+  });
+
+  test("a creator attacking again neither consumes nor stacks on their own banner", async () => {
+    const fixture = await createBattleFixture({ label: "self_only", maxHp: 100000 });
+    const target = fixture.rounds[0];
+    const service = createBattleService({ clock: () => now });
+
+    await attackWith(service, {
+      userId: fixture.userId,
+      roundId: target.id,
+      rawDamage: 100,
+      jobKey: "adventurer",
+      cost: 8,
+    });
+    const second = await attackWith(service, {
+      userId: fixture.userId,
+      roundId: target.id,
+      rawDamage: 100,
+      jobKey: "adventurer",
+      cost: 8,
+    });
+
+    expect(second).toMatchObject({ effectDamage: "0", consumedEffect: null });
+    const rows = await listEffects(fixture.seasonId);
+    expect(rows).toHaveLength(2);
+    expect(rows.every(row => row.consumed_by_contribution_id === null)).toBe(true);
+    // Two hits, two quota charges, no assist/relay ever paid to the same player.
+    await expect(service.getRemainingDailyCost(fixture.userId)).resolves.toMatchObject({
+      used: 16,
+    });
+    const events = await listScoreEvents(fixture.seasonId);
+    expect(events.map(row => row.kind)).toEqual(["direct", "direct"]);
+  });
+
+  test("a banner survives with no TTL and pays assist to the creator and relay to the taker", async () => {
+    const creator = ownedUserId("banner_creator");
+    const taker = ownedUserId("banner_taker");
+    const fixture = await createBattleFixture({
+      label: "banner_relay",
+      userId: creator,
+      maxHp: 100000,
+    });
+    await createUser(taker);
+    const target = fixture.rounds[0];
+    // Injectable clock: hours pass between the two hits, and nothing expires.
+    let currentTime = now;
+    const service = createBattleService({ clock: () => currentTime });
+
+    await attackWith(service, {
+      userId: creator,
+      roundId: target.id,
+      rawDamage: 400,
+      jobKey: "adventurer",
+      cost: 8,
+    });
+    const hpAfterCreate = Number(
+      (await mysql("world_boss_round").where({ id: target.id }).first()).current_hp
+    );
+    currentTime = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    const result = await attackWith(service, {
+      userId: taker,
+      roundId: target.id,
+      rawDamage: 300,
+      jobKey: "swordman",
+      cost: 10,
+    });
+
+    expect(result).toMatchObject({
+      rawDamage: "300",
+      // A banner adds score, never HP: the taker's own contribution stays at 300.
+      effectDamage: "0",
+      effectiveDamage: "300",
+      consumedEffect: { type: "banner", value: "100", sourceUserId: creator },
+      createdEffect: null,
+      scoreGained: { direct: "300", assist: "100", relay: "100" },
+      seasonTotalScore: "400",
+    });
+    await expect(mysql("world_boss_round").where({ id: target.id }).first()).resolves.toMatchObject(
+      { current_hp: hpAfterCreate - 300 }
+    );
+    const takerContribution = (await listContributions(fixture.seasonId)).find(
+      row => row.user_id === taker
+    );
+    await expect(ledgerOf(takerContribution.id)).resolves.toEqual({
+      raw_damage: "300",
+      effect_damage: "0",
+      damage: "300",
+      job_key: "swordman",
+      direct_points: "300",
+    });
+    const events = await listScoreEvents(fixture.seasonId);
+    expect(events.map(row => [row.beneficiary_user_id, row.kind, String(row.points)])).toEqual([
+      [creator, "direct", "400"],
+      [taker, "direct", "300"],
+      [creator, "assist", "100"],
+      [taker, "relay", "100"],
+    ]);
+    // One attack still costs exactly one quota charge, effect or not.
+    await expect(service.getRemainingDailyCost(taker)).resolves.toMatchObject({ used: 10 });
+  });
+
+  test("a mage leaves a seal worth 50% of raw damage and still scores only its own raw", async () => {
+    const fixture = await createBattleFixture({ label: "seal_create", maxHp: 100000 });
+    const target = fixture.rounds[0];
+    const service = createBattleService({ clock: () => now });
+
+    const result = await attackWith(service, {
+      userId: fixture.userId,
+      roundId: target.id,
+      rawDamage: 501,
+      jobKey: "mage",
+      cost: 7,
+    });
+
+    // floor(501 * 50 / 100) = 250.
+    expect(result).toMatchObject({
+      rawDamage: "501",
+      effectDamage: "0",
+      effectiveDamage: "501",
+      createdEffect: { type: "seal", value: "250", sourceUserId: fixture.userId },
+      scoreGained: { direct: "501", assist: "0", relay: "0" },
+    });
+    const [effect] = await listEffects(fixture.seasonId);
+    expect(effect).toMatchObject({ effect_type: "seal", value: 250 });
+    await expect(mysql("world_boss_round").where({ id: target.id }).first()).resolves.toMatchObject(
+      { current_hp: 100000 - 501 }
+    );
+  });
+
+  test("a seal detonates into HP, pays the creator an assist, and pays the taker no relay", async () => {
+    const creator = ownedUserId("seal_creator");
+    const taker = ownedUserId("seal_taker");
+    const fixture = await createBattleFixture({
+      label: "seal_relay",
+      userId: creator,
+      maxHp: 100000,
+    });
+    await createUser(taker);
+    const target = fixture.rounds[0];
+    const service = createBattleService({ clock: () => now });
+    const seal = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: creator,
+      type: "seal",
+      value: 250,
+    });
+
+    const result = await attackWith(service, {
+      userId: taker,
+      roundId: target.id,
+      rawDamage: 300,
+      jobKey: "swordman",
+      cost: 10,
+    });
+
+    expect(result).toMatchObject({
+      rawDamage: "300",
+      effectDamage: "250",
+      effectiveDamage: "550",
+      overkillDamage: "0",
+      cleared: false,
+      consumedEffect: { id: String(seal.id), type: "seal", value: "250" },
+      // The taker's own score is their raw damage only — the seal already paid them in HP.
+      scoreGained: { direct: "300", assist: "250", relay: "0" },
+    });
+    await expect(mysql("world_boss_round").where({ id: target.id }).first()).resolves.toMatchObject(
+      { current_hp: 100000 - 550 }
+    );
+    const takerContribution = (await listContributions(fixture.seasonId)).find(
+      row => row.user_id === taker
+    );
+    await expect(ledgerOf(takerContribution.id)).resolves.toEqual({
+      raw_damage: "300",
+      effect_damage: "250",
+      damage: "550",
+      job_key: "swordman",
+      direct_points: "300",
+    });
+    const events = await mysql("world_boss_score_event")
+      .where({ contribution_id: takerContribution.id })
+      .orderBy("id");
+    expect(events.map(row => [row.beneficiary_user_id, row.kind, String(row.points)])).toEqual([
+      [taker, "direct", "300"],
+      [creator, "assist", "250"],
+    ]);
+    await expect(service.getRemainingDailyCost(taker)).resolves.toMatchObject({ used: 10 });
+  });
+
+  test("a seal detonation that overkills still scores the full raw and assist", async () => {
+    const creator = ownedUserId("seal_ok_creator");
+    const taker = ownedUserId("seal_ok_taker");
+    const fixture = await createBattleFixture({
+      label: "seal_overkill",
+      maxHp: 100,
+      userId: creator,
+    });
+    await createUser(taker);
+    const target = fixture.rounds[0];
+    const service = createBattleService({ clock: () => now });
+    await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: creator,
+      type: "seal",
+      value: 50,
+    });
+
+    // HP 100, raw 80, seal 50 → requested 130, applied 100, overkill 30.
+    const result = await attackWith(service, {
+      userId: taker,
+      roundId: target.id,
+      rawDamage: 80,
+      jobKey: "mage",
+      cost: 7,
+    });
+
+    expect(result).toMatchObject({
+      rawDamage: "80",
+      effectDamage: "50",
+      effectiveDamage: "100",
+      overkillDamage: "30",
+      cleared: true,
+      // The cap belongs to the HP ledger only: direct is still the full 80.
+      scoreGained: { direct: "80", assist: "50", relay: "0" },
+      // The killing blow leaves no effect, even for a mage.
+      createdEffect: null,
+    });
+    const takerContribution = (await listContributions(fixture.seasonId)).find(
+      row => row.user_id === taker
+    );
+    await expect(ledgerOf(takerContribution.id)).resolves.toEqual({
+      raw_damage: "80",
+      effect_damage: "50",
+      damage: "100",
+      job_key: "mage",
+      direct_points: "80",
+    });
+    const rounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    expect(Number(rounds[0].current_hp)).toBe(0);
+    expect(rounds[0].cleared_at).toBeInstanceOf(Date);
+    // Exactly one effect ever existed on this round, and it is now consumed.
+    const rows = await listEffects(fixture.seasonId);
+    expect(rows).toHaveLength(1);
+    expect(String(rows[0].consumed_by_contribution_id)).toBe(String(takerContribution.id));
+  });
+
+  test("an unconsumed effect on a cleared round is stranded, not carried into the next cycle", async () => {
+    const creator = ownedUserId("stranded_creator");
+    const killer = ownedUserId("stranded_killer");
+    const fixture = await createBattleFixture({
+      label: "stranded",
+      userId: creator,
+      maxHp: 10,
+      // Four already dead, so the fifth kill also opens cycle 2.
+      currentHps: [0, 0, 0, 0, 10],
+    });
+    await createUser(killer);
+    const target = fixture.rounds[4];
+    const service = createBattleService({ clock: () => now });
+    // Two effects, but one attack consumes at most one — the second is stranded by the kill.
+    await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: creator,
+      type: "banner",
+      value: 500,
+    });
+    const stranded = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: creator,
+      type: "seal",
+      value: 999,
+    });
+
+    const kill = await attackWith(service, {
+      userId: killer,
+      roundId: target.id,
+      rawDamage: 10,
+      jobKey: "swordman",
+      cost: 1,
+    });
+    expect(kill.cycleAdvanced).toBe(true);
+    expect(kill.consumedEffect).toMatchObject({ type: "banner", value: "500" });
+
+    // The cleared round rejects every further attack, so the stranded seal can never detonate.
+    await expect(
+      attackWith(service, {
+        userId: killer,
+        roundId: target.id,
+        rawDamage: 10,
+        jobKey: "swordman",
+        cost: 1,
+      })
+    ).rejects.toMatchObject({ code: "ROUND_STALE" });
+
+    // A cycle-2 attack looks up effects by round id, so it sees none of cycle 1's.
+    const cycleTwo = await WorldBossRound.listCycle(fixture.seasonId, 2);
+    const next = await attackWith(service, {
+      userId: killer,
+      roundId: cycleTwo[0].id,
+      rawDamage: 10,
+      jobKey: "swordman",
+      cost: 1,
+    });
+    expect(next).toMatchObject({ effectDamage: "0", consumedEffect: null });
+    await expect(
+      mysql("world_boss_round_effect").where({ id: stranded.id }).first()
+    ).resolves.toMatchObject({ consumed_by_contribution_id: null });
+  });
+
+  test("consumes eligible effects strictly oldest first", async () => {
+    const first = ownedUserId("fifo_first");
+    const second = ownedUserId("fifo_second");
+    const taker = ownedUserId("fifo_taker");
+    const fixture = await createBattleFixture({ label: "fifo", userId: first, maxHp: 100000 });
+    await createUser(second);
+    await createUser(taker);
+    const target = fixture.rounds[0];
+    const service = createBattleService({ clock: () => now });
+    const older = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: first,
+      type: "banner",
+      value: 11,
+    });
+    const newer = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: second,
+      type: "banner",
+      value: 22,
+    });
+
+    const firstTake = await attackWith(service, {
+      userId: taker,
+      roundId: target.id,
+      rawDamage: 50,
+      jobKey: "swordman",
+      cost: 1,
+    });
+    const secondTake = await attackWith(service, {
+      userId: taker,
+      roundId: target.id,
+      rawDamage: 50,
+      jobKey: "swordman",
+      cost: 1,
+    });
+
+    // Strict FIFO by id, and at most one effect per attack.
+    expect(firstTake.consumedEffect).toMatchObject({ id: String(older.id), value: "11" });
+    expect(secondTake.consumedEffect).toMatchObject({ id: String(newer.id), value: "22" });
+    expect(firstTake.scoreGained).toEqual({ direct: "50", assist: "11", relay: "11" });
+    expect(secondTake.scoreGained).toEqual({ direct: "50", assist: "22", relay: "22" });
+    await expect(
+      attackWith(service, {
+        userId: taker,
+        roundId: target.id,
+        rawDamage: 50,
+        jobKey: "swordman",
+        cost: 1,
+      })
+    ).resolves.toMatchObject({ consumedEffect: null, effectDamage: "0" });
+  });
+
+  test("a forced failure rolls back the consumption, the score events, and the new effect", async () => {
+    const creator = ownedUserId("rb_creator");
+    const taker = ownedUserId("rb_taker");
+    const fixture = await createBattleFixture({
+      label: "effect_rollback",
+      userId: creator,
+      maxHp: 1000,
+    });
+    await createUser(taker);
+    const target = fixture.rounds[0];
+    const seal = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: creator,
+      type: "seal",
+      value: 90,
+    });
+    const beforeRounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    const beforeContributions = await listContributions(fixture.seasonId);
+    const beforeCost = await createBattleService({ clock: () => now }).getRemainingDailyCost(taker);
+    const forcedError = new Error("forced exp failure");
+    const service = createBattleService({
+      clock: () => now,
+      hooks: { beforeExpUpdate: jest.fn().mockRejectedValue(forcedError) },
+    });
+
+    await expect(
+      attackWith(service, {
+        userId: taker,
+        roundId: target.id,
+        // A mage so the rolled-back transaction also had a new effect to create.
+        rawDamage: 200,
+        jobKey: "mage",
+        cost: 7,
+        exp: 5,
+      })
+    ).rejects.toBe(forcedError);
+
+    await expect(WorldBossRound.listCycle(fixture.seasonId, 1)).resolves.toEqual(beforeRounds);
+    await expect(listContributions(fixture.seasonId)).resolves.toEqual(beforeContributions);
+    // The consumption is back to NULL and no second effect was left behind.
+    const rows = await listEffects(fixture.seasonId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: seal.id, consumed_by_contribution_id: null });
+    await expect(listScoreEvents(fixture.seasonId)).resolves.toEqual([]);
+    await expect(service.getRemainingDailyCost(taker)).resolves.toEqual(beforeCost);
+    await expect(
+      mysql("minigame_level").where({ user_id: fixture.userDbId }).first()
+    ).resolves.toMatchObject({ level: 1, exp: 0 });
+  });
+
+  test("a double consume of the same effect aborts the whole attack", async () => {
+    const creator = ownedUserId("dup_creator");
+    const taker = ownedUserId("dup_taker");
+    const fixture = await createBattleFixture({
+      label: "dup_consume",
+      userId: creator,
+      maxHp: 1000,
+    });
+    await createUser(taker);
+    const target = fixture.rounds[0];
+    const seal = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: target.id,
+      userId: creator,
+      type: "seal",
+      value: 60,
+    });
+    const beforeRounds = await WorldBossRound.listCycle(fixture.seasonId, 1);
+    const beforeContributions = await listContributions(fixture.seasonId);
+
+    // Simulate the row already being consumed between the FOR UPDATE read and the UPDATE.
+    // The conditional UPDATE must then affect 0 rows and take the transaction down with it.
+    const service = createBattleService({
+      clock: () => now,
+      hooks: {
+        afterSeasonLock: async ({ trx }) => {
+          await trx("world_boss_round_effect")
+            .where({ id: seal.id })
+            .update({ consumed_by_contribution_id: seal.sourceContributionId });
+        },
+      },
+    });
+    const consumeSpy = jest
+      .spyOn(WorldBossRoundEffect, "findConsumableForUpdate")
+      .mockResolvedValue({
+        id: seal.id,
+        effect_type: "seal",
+        value: "60",
+        source_user_id: creator,
+      });
+
+    try {
+      await expect(
+        attackWith(service, {
+          userId: taker,
+          roundId: target.id,
+          rawDamage: 100,
+          jobKey: "swordman",
+          cost: 10,
+        })
+      ).rejects.toMatchObject({ code: "EFFECT_ALREADY_CONSUMED" });
+    } finally {
+      consumeSpy.mockRestore();
+    }
+
+    await expect(WorldBossRound.listCycle(fixture.seasonId, 1)).resolves.toEqual(beforeRounds);
+    await expect(listContributions(fixture.seasonId)).resolves.toEqual(beforeContributions);
+    await expect(listScoreEvents(fixture.seasonId)).resolves.toEqual([]);
+    await expect(
+      mysql("world_boss_round_effect").where({ id: seal.id }).first()
+    ).resolves.toMatchObject({ consumed_by_contribution_id: null });
+    await expect(service.getRemainingDailyCost(taker)).resolves.toMatchObject({ used: 0 });
+  });
+
+  test("concurrent lethal hits advance the cycle once and consume each effect once", async () => {
+    const creator = ownedUserId("conc_creator");
+    const fourthKiller = ownedUserId("conc_a");
+    const fifthKiller = ownedUserId("conc_b");
+    const fixture = await createBattleFixture({
+      label: "conc_effect",
+      userId: creator,
+      maxHp: 10,
+      currentHps: [0, 0, 0, 5, 7],
+    });
+    await createUser(fourthKiller);
+    await createUser(fifthKiller);
+    const fourthRound = fixture.rounds[3];
+    const fifthRound = fixture.rounds[4];
+    const fourthSeal = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: fourthRound.id,
+      userId: creator,
+      type: "banner",
+      value: 3,
+    });
+    const fifthSeal = await seedEffect({
+      seasonId: fixture.seasonId,
+      roundId: fifthRound.id,
+      userId: creator,
+      type: "banner",
+      value: 4,
+    });
+
+    const bothStarted = barrier(2);
+    const service = createBattleService({
+      clock: () => now,
+      hooks: { onAttackStarted: bothStarted },
+    });
+
+    const [fourthResult, fifthResult] = await Promise.all([
+      attackWith(service, {
+        userId: fourthKiller,
+        roundId: fourthRound.id,
+        rawDamage: 5,
+        jobKey: "adventurer",
+        cost: 3,
+      }),
+      attackWith(service, {
+        userId: fifthKiller,
+        roundId: fifthRound.id,
+        rawDamage: 7,
+        jobKey: "mage",
+        cost: 4,
+      }),
+    ]);
+
+    expect(
+      [fourthResult, fifthResult].filter(result => result.cycleAdvanced === true)
+    ).toHaveLength(1);
+    expect(await WorldBossRound.currentCycleNo(fixture.seasonId)).toBe(2);
+    const cycleCounts = await mysql("world_boss_round as round")
+      .join("world_boss_season_boss as roster", "round.season_boss_id", "roster.id")
+      .where("roster.season_id", fixture.seasonId)
+      .select("round.season_boss_id", "round.cycle_no")
+      .count({ count: "round.id" })
+      .groupBy("round.season_boss_id", "round.cycle_no");
+    expect(cycleCounts).toHaveLength(ROSTER_SIZE * 2);
+    expect(cycleCounts.every(row => Number(row.count) === 1)).toBe(true);
+
+    // Each attacker wrote exactly one direct event; each banner was consumed exactly once.
+    const events = await listScoreEvents(fixture.seasonId);
+    const directs = events.filter(row => row.kind === "direct");
+    expect(directs.map(row => row.beneficiary_user_id).sort()).toEqual(
+      [fourthKiller, fifthKiller].sort()
+    );
+    const consumers = (await listEffects(fixture.seasonId)).map(row => [
+      String(row.id),
+      String(row.consumed_by_contribution_id),
+    ]);
+    expect(new Set(consumers.map(pair => pair[1])).size).toBe(consumers.length);
+    expect(consumers.map(pair => pair[0]).sort()).toEqual(
+      [String(fourthSeal.id), String(fifthSeal.id)].sort()
+    );
+    // Both bosses died, so neither killer left a new effect behind.
+    expect(fourthResult.createdEffect).toBeNull();
+    expect(fifthResult.createdEffect).toBeNull();
   });
 });

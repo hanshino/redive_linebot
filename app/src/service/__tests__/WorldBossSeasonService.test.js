@@ -13,6 +13,7 @@ const { inventory } = require("../../model/application/Inventory");
 const UserTitle = require("../../model/application/UserTitle");
 const WorldBossSeasonBoss = require("../../model/application/WorldBossSeasonBoss");
 const WorldBossRound = require("../../model/application/WorldBossRound");
+const WorldBossRoundEffect = require("../../model/application/WorldBossRoundEffect");
 const { createSeasonService } = require("../WorldBossSeasonService");
 
 const prefix = `${PREFIX}season_`;
@@ -116,20 +117,114 @@ async function createActiveFixture({ label, endTime = now } = {}) {
   return { seasonId, roster, rounds, roundId: rounds[0].id };
 }
 
+/**
+ * Seeds one v2 attack per damage value: a contribution plus its `direct` score event.
+ * Score and damage are equal here so a test that only cares about ranking can keep using
+ * a single number; tests that need them to diverge use `addScoreEvents` / `addLegacy`.
+ */
 async function addContributions(seasonId, roundId, rows) {
-  await mysql("world_boss_contribution").insert(
-    rows.flatMap(({ userId, damages }) =>
-      damages.map((damage, index) => ({
+  for (const { userId, damages } of rows) {
+    for (const [index, damage] of damages.entries()) {
+      const at = new Date(now.getTime() + index);
+      const [contributionId] = await mysql("world_boss_contribution").insert({
         season_id: seasonId,
         round_id: roundId,
         user_id: userId,
+        raw_damage: String(damage),
+        effect_damage: 0,
+        job_key: "swordman",
         damage,
         cost: 1,
-        created_at: new Date(now.getTime() + index),
-        updated_at: new Date(now.getTime() + index),
-      }))
-    )
+        created_at: at,
+        updated_at: at,
+      });
+      await mysql("world_boss_score_event").insert({
+        season_id: seasonId,
+        round_id: roundId,
+        contribution_id: contributionId,
+        effect_id: null,
+        beneficiary_user_id: userId,
+        kind: "direct",
+        points: String(damage),
+        created_at: at,
+        updated_at: at,
+      });
+    }
+  }
+}
+
+/**
+ * Seeds a v1 contribution and the legacy `direct` event the migration backfills for it:
+ * points equal contribution.damage and `raw_damage` stays NULL.
+ */
+async function addLegacyContribution(seasonId, roundId, userId, damage) {
+  const [contributionId] = await mysql("world_boss_contribution").insert({
+    season_id: seasonId,
+    round_id: roundId,
+    user_id: userId,
+    raw_damage: null,
+    effect_damage: 0,
+    job_key: null,
+    damage,
+    cost: 1,
+    created_at: now,
+    updated_at: now,
+  });
+  await mysql("world_boss_score_event").insert({
+    season_id: seasonId,
+    round_id: roundId,
+    contribution_id: contributionId,
+    effect_id: null,
+    beneficiary_user_id: userId,
+    kind: "direct",
+    points: String(damage),
+    created_at: now,
+    updated_at: now,
+  });
+  return contributionId;
+}
+
+/**
+ * Attaches extra score events (assist / relay) to an existing contribution, which is how a
+ * beneficiary can outscore the damage they personally dealt.
+ */
+async function addScoreEvents(seasonId, roundId, contributionId, effectId, events) {
+  await mysql("world_boss_score_event").insert(
+    events.map(({ userId, kind, points }) => ({
+      season_id: seasonId,
+      round_id: roundId,
+      contribution_id: contributionId,
+      effect_id: effectId,
+      beneficiary_user_id: userId,
+      kind,
+      points: String(points),
+      created_at: now,
+      updated_at: now,
+    }))
   );
+}
+
+async function addEffect(seasonId, roundId, sourceContributionId, sourceUserId, value) {
+  const [id] = await mysql("world_boss_round_effect").insert({
+    season_id: seasonId,
+    round_id: roundId,
+    source_contribution_id: sourceContributionId,
+    source_user_id: sourceUserId,
+    effect_type: "banner",
+    value: String(value),
+    consumed_by_contribution_id: null,
+    created_at: now,
+    updated_at: now,
+  });
+  return id;
+}
+
+/**
+ * The driver returns a small BIGINT as a JS number and a large one as a string, so ledger
+ * assertions compare canonical decimal strings rather than whatever the wire produced.
+ */
+function ledgerFacts(row) {
+  return [row.user_id, row.ranking, String(row.total_score), String(row.total_damage)];
 }
 
 async function inventoryStoneTotal(userId) {
@@ -562,6 +657,67 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     });
   });
 
+  test("enriches live rounds with grouped pending effects and clears stale counts", async () => {
+    const fixture = await createActiveFixture({ label: "pending_effects" });
+    const [sourceContributionId] = await mysql("world_boss_contribution").insert({
+      season_id: fixture.seasonId,
+      round_id: fixture.roundId,
+      user_id: owned("effect_source"),
+      raw_damage: "100",
+      effect_damage: 0,
+      job_key: "adventurer",
+      damage: 100,
+      cost: 1,
+      created_at: now,
+      updated_at: now,
+    });
+    const secondRound = fixture.rounds[1];
+    const [secondContributionId] = await mysql("world_boss_contribution").insert({
+      season_id: fixture.seasonId,
+      round_id: secondRound.id,
+      user_id: owned("effect_source_2"),
+      raw_damage: "100",
+      effect_damage: 0,
+      job_key: "mage",
+      damage: 100,
+      cost: 1,
+      created_at: now,
+      updated_at: now,
+    });
+    await WorldBossRoundEffect.insert(mysql, {
+      season_id: fixture.seasonId,
+      round_id: fixture.roundId,
+      source_contribution_id: sourceContributionId,
+      source_user_id: owned("effect_source"),
+      effect_type: "banner",
+      value: 25,
+    });
+    await WorldBossRoundEffect.insert(mysql, {
+      season_id: fixture.seasonId,
+      round_id: fixture.roundId,
+      source_contribution_id: secondContributionId,
+      source_user_id: owned("effect_source_2"),
+      effect_type: "seal",
+      value: 50,
+    });
+    await mysql("world_boss_round").where({ id: secondRound.id }).update({
+      current_hp: 0,
+      cleared_at: now,
+    });
+
+    const status = await createSeasonService({
+      activeSlot: ACTIVE_SLOT,
+      clock: () => now,
+    }).getBattleStatus();
+    expect(status.rounds[0].pending_effects).toEqual({ banner: 1, seal: 1 });
+    expect(status.rounds[1].pending_effects).toEqual({ banner: 0, seal: 0 });
+    expect(status.rounds.slice(2).map(round => round.pending_effects)).toEqual([
+      { banner: 0, seal: 0 },
+      { banner: 0, seal: 0 },
+      { banner: 0, seal: 0 },
+    ]);
+  });
+
   test("batch-enriches ranking names once without changing ranking rows", async () => {
     const fixture = await createActiveFixture({ label: "ranking_names" });
     const rows = [
@@ -582,8 +738,8 @@ describe("WorldBossSeasonService CRUD and opening", () => {
     mysql.on("query", onQuery);
     try {
       await expect(service.getRanking(fixture.seasonId, 2)).resolves.toEqual([
-        { user_id: owned("named"), total_damage: "500", ranking: 1, display_name: "玩家甲" },
-        { user_id: owned("missing"), total_damage: "400", ranking: 2, display_name: null },
+        { user_id: owned("named"), total_score: "500", ranking: 1, display_name: "玩家甲" },
+        { user_id: owned("missing"), total_score: "400", ranking: 2, display_name: null },
       ]);
     } finally {
       mysql.removeListener("query", onQuery);
@@ -641,7 +797,7 @@ describe("WorldBossSeasonService settlement", () => {
     });
   });
 
-  test("settles exact damage totals into distinct tiers and exact reward ledgers", async () => {
+  test("settles exact score totals into distinct tiers and exact reward ledgers", async () => {
     const fixture = await createActiveFixture({ label: "exact_damage" });
     const topUser = owned("exact_top");
     const secondUser = owned("exact_second");
@@ -652,8 +808,8 @@ describe("WorldBossSeasonService settlement", () => {
     const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
 
     await expect(service.getRanking(fixture.seasonId, 100)).resolves.toEqual([
-      { user_id: topUser, total_damage: "9007199254740993", ranking: 1, display_name: null },
-      { user_id: secondUser, total_damage: "9007199254740992", ranking: 2, display_name: null },
+      { user_id: topUser, total_score: "9007199254740993", ranking: 1, display_name: null },
+      { user_id: secondUser, total_score: "9007199254740992", ranking: 2, display_name: null },
     ]);
     await expect(service.settleSeason(fixture.seasonId)).resolves.toMatchObject({
       contributors: 2,
@@ -668,6 +824,7 @@ describe("WorldBossSeasonService settlement", () => {
       ledgers.map(row => ({
         userId: row.user_id,
         ranking: row.ranking,
+        totalScore: row.total_score,
         totalDamage: row.total_damage,
         stoneAmount: row.stone_amount,
         titleKey: row.title_key,
@@ -676,6 +833,7 @@ describe("WorldBossSeasonService settlement", () => {
       {
         userId: topUser,
         ranking: 1,
+        totalScore: "9007199254740993",
         totalDamage: "9007199254740993",
         stoneAmount: 100,
         titleKey: "worldboss_annihilator",
@@ -683,6 +841,7 @@ describe("WorldBossSeasonService settlement", () => {
       {
         userId: secondUser,
         ranking: 2,
+        totalScore: "9007199254740992",
         totalDamage: "9007199254740992",
         stoneAmount: 60,
         titleKey: "worldboss_vanguard",
@@ -690,8 +849,128 @@ describe("WorldBossSeasonService settlement", () => {
     ]);
     await expect(service.getLatestSettledResult(topUser)).resolves.toMatchObject({
       ranking: 1,
+      totalScore: "9007199254740993",
       totalDamage: "9007199254740993",
     });
+  });
+
+  test("ranks by score, not damage, and stores both in the ledger", async () => {
+    const fixture = await createActiveFixture({ label: "score_ranking" });
+    // The bruiser removes the most HP; the supporter deals less but banks assist + relay
+    // score, so the score leaderboard inverts the damage leaderboard.
+    const bruiser = owned("score_bruiser");
+    const supporter = owned("score_supporter");
+    await addContributions(fixture.seasonId, fixture.roundId, [
+      { userId: bruiser, damages: [500] },
+      { userId: supporter, damages: [300] },
+    ]);
+    const [supporterContribution] = await mysql("world_boss_contribution")
+      .where({ season_id: fixture.seasonId, user_id: supporter })
+      .select("id");
+    const effectId = await addEffect(
+      fixture.seasonId,
+      fixture.roundId,
+      supporterContribution.id,
+      supporter,
+      75
+    );
+    await addScoreEvents(
+      fixture.seasonId,
+      fixture.roundId,
+      supporterContribution.id,
+      effectId,
+      // 300 direct + 150 from assisting = 450, still below the bruiser.
+      [{ userId: supporter, kind: "assist", points: 150 }]
+    );
+    // A second assist on a different contribution pushes the supporter past 500.
+    const [bruiserContribution] = await mysql("world_boss_contribution")
+      .where({ season_id: fixture.seasonId, user_id: bruiser })
+      .select("id");
+    const secondEffect = await addEffect(
+      fixture.seasonId,
+      fixture.roundId,
+      bruiserContribution.id,
+      bruiser,
+      100
+    );
+    await addScoreEvents(fixture.seasonId, fixture.roundId, bruiserContribution.id, secondEffect, [
+      { userId: supporter, kind: "relay", points: 100 },
+    ]);
+    const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+
+    await expect(service.getRanking(fixture.seasonId, 100)).resolves.toEqual([
+      { user_id: supporter, total_score: "550", ranking: 1, display_name: null },
+      { user_id: bruiser, total_score: "500", ranking: 2, display_name: null },
+    ]);
+    await expect(service.settleSeason(fixture.seasonId)).resolves.toMatchObject({
+      contributors: 2,
+      rewarded: 2,
+    });
+    const ledgers = await mysql("world_boss_season_reward")
+      .where({ season_id: fixture.seasonId })
+      .orderBy("ranking");
+    expect(ledgers.map(ledgerFacts)).toEqual([
+      [supporter, 1, "550", "300"],
+      [bruiser, 2, "500", "500"],
+    ]);
+  });
+
+  test("settles a mixed v1 legacy and v2 season on one leaderboard", async () => {
+    const fixture = await createActiveFixture({ label: "mixed_season" });
+    const legacyUser = owned("mixed_legacy");
+    const mixedUser = owned("mixed_both");
+    const v2User = owned("mixed_v2");
+    // v1-only player: raw_damage NULL, score comes purely from the legacy backfill.
+    await addLegacyContribution(fixture.seasonId, fixture.roundId, legacyUser, 300);
+    // Returning player: 300 legacy + 100 v2 direct + 50 assist + 50 relay = 500.
+    await addLegacyContribution(fixture.seasonId, fixture.roundId, mixedUser, 300);
+    await addContributions(fixture.seasonId, fixture.roundId, [
+      { userId: mixedUser, damages: [100] },
+      { userId: v2User, damages: [400] },
+    ]);
+    const [mixedV2] = await mysql("world_boss_contribution")
+      .where({ season_id: fixture.seasonId, user_id: mixedUser })
+      .whereNotNull("raw_damage")
+      .select("id");
+    const effectId = await addEffect(fixture.seasonId, fixture.roundId, mixedV2.id, mixedUser, 50);
+    await addScoreEvents(fixture.seasonId, fixture.roundId, mixedV2.id, effectId, [
+      { userId: mixedUser, kind: "assist", points: 50 },
+      { userId: mixedUser, kind: "relay", points: 50 },
+    ]);
+    const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+
+    // Nobody who played v1 is zeroed out by the switch.
+    await expect(service.getRanking(fixture.seasonId, 100)).resolves.toEqual([
+      { user_id: mixedUser, total_score: "500", ranking: 1, display_name: null },
+      { user_id: v2User, total_score: "400", ranking: 2, display_name: null },
+      { user_id: legacyUser, total_score: "300", ranking: 3, display_name: null },
+    ]);
+    await expect(service.getUserSeasonStats(fixture.seasonId, mixedUser)).resolves.toEqual({
+      seasonId: String(fixture.seasonId),
+      totalScore: "500",
+      score: { direct: "400", assist: "50", relay: "50" },
+      // The v1 row contributes 300 to effective only; raw/effect/overkill stay v2-only.
+      damage: { raw: "100", effect: "0", effective: "400", overkill: "0" },
+    });
+    await expect(service.getUserSeasonStats(fixture.seasonId, legacyUser)).resolves.toEqual({
+      seasonId: String(fixture.seasonId),
+      totalScore: "300",
+      score: { direct: "300", assist: "0", relay: "0" },
+      damage: { raw: "0", effect: "0", effective: "300", overkill: "0" },
+    });
+
+    await expect(service.settleSeason(fixture.seasonId)).resolves.toMatchObject({
+      contributors: 3,
+      rewarded: 3,
+    });
+    const ledgers = await mysql("world_boss_season_reward")
+      .where({ season_id: fixture.seasonId })
+      .orderBy("ranking");
+    expect(ledgers.map(ledgerFacts)).toEqual([
+      [mixedUser, 1, "500", "400"],
+      [v2User, 2, "400", "400"],
+      [legacyUser, 3, "300", "300"],
+    ]);
   });
 
   test("preserves a BIGINT season id in settlement output", () => {
@@ -804,22 +1083,36 @@ describe("WorldBossSeasonService settlement", () => {
     const fixture = await createActiveFixture({ label: "mismatch" });
     const userId = owned("mismatch_user");
     await addContributions(fixture.seasonId, fixture.roundId, [{ userId, damages: [500] }]);
-    await mysql("world_boss_season_reward").insert({
+    const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+    const correct = {
       season_id: fixture.seasonId,
       user_id: userId,
-      ranking: 51,
+      ranking: 1,
+      total_score: 500,
       total_damage: 500,
-      stone_amount: 0,
-      title_key: null,
+      stone_amount: 100,
+      title_key: "worldboss_annihilator",
       paid_at: null,
-    });
-    const service = createSeasonService({ activeSlot: ACTIVE_SLOT, clock: () => now });
+    };
 
-    await expect(service.settleSeason(fixture.seasonId)).rejects.toMatchObject({
-      code: "SETTLEMENT_INCOMPLETE",
-    });
-    expect(await inventoryStoneTotal(userId)).toBe(0);
-    await expect(seasonRow(fixture.seasonId)).resolves.toMatchObject({ status: "active" });
+    // Every fact the ledger records is proof-checked, including both aggregates
+    // independently: a ledger that matches on damage but not on score must still fail.
+    for (const wrong of [
+      { ranking: 51, stone_amount: 0, title_key: null },
+      { total_score: 499 },
+      { total_damage: 499 },
+      { total_score: null },
+      { stone_amount: 60 },
+      { title_key: "worldboss_vanguard" },
+    ]) {
+      await mysql("world_boss_season_reward").where({ season_id: fixture.seasonId }).del();
+      await mysql("world_boss_season_reward").insert({ ...correct, ...wrong });
+      await expect(service.settleSeason(fixture.seasonId)).rejects.toMatchObject({
+        code: "SETTLEMENT_INCOMPLETE",
+      });
+      expect(await inventoryStoneTotal(userId)).toBe(0);
+      await expect(seasonRow(fixture.seasonId)).resolves.toMatchObject({ status: "active" });
+    }
   });
 
   test("completes a pre-existing unpaid ledger exactly once before settling", async () => {
@@ -830,6 +1123,7 @@ describe("WorldBossSeasonService settlement", () => {
       season_id: fixture.seasonId,
       user_id: userId,
       ranking: 1,
+      total_score: 500,
       total_damage: 500,
       stone_amount: 100,
       title_key: "worldboss_annihilator",
@@ -892,6 +1186,7 @@ describe("WorldBossSeasonService settlement", () => {
       season_id: fixture.seasonId,
       user_id: owned("ghost_extra"),
       ranking: 99,
+      total_score: 1,
       total_damage: 1,
       stone_amount: 0,
       title_key: null,

@@ -20,7 +20,15 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import BoltIcon from "@mui/icons-material/Bolt";
+import CampaignIcon from "@mui/icons-material/Campaign";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import HandshakeIcon from "@mui/icons-material/Handshake";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ShieldIcon from "@mui/icons-material/Shield";
@@ -73,15 +81,82 @@ function attackErrorLabel(error) {
 }
 
 /**
+ * The two relay effects a hit can leave on a boss. Every label, colour and icon for them
+ * lives here so a card, a chip and the attack result can never drift apart.
+ */
+const EFFECT_META = {
+  banner: {
+    label: "鼓舞",
+    caption: "接的人和留的人都得分，不扣王的血",
+    Icon: CampaignIcon,
+    tone: theme => theme.palette.secondary.main,
+  },
+  seal: {
+    label: "魔力刻印",
+    caption: "被引爆時轉成傷害，分數歸留下的人",
+    Icon: AutoFixHighIcon,
+    tone: () => "#8B5CF6",
+  },
+};
+
+const UNKNOWN_EFFECT = {
+  label: "未知效果",
+  caption: "",
+  Icon: AutoFixHighIcon,
+  tone: theme => theme.palette.text.secondary,
+};
+
+function effectMeta(type) {
+  return EFFECT_META[type] ?? UNKNOWN_EFFECT;
+}
+
+/** The three books the score is kept in. Order is fixed: own damage first, then the two co-op rows. */
+const SCORE_KINDS = [
+  {
+    key: "direct",
+    label: "自身",
+    caption: "自己打出的傷害",
+    Icon: BoltIcon,
+    tone: theme => theme.palette.primary.main,
+  },
+  {
+    key: "assist",
+    label: "協助",
+    caption: "我留下的效果被別人接走",
+    Icon: HandshakeIcon,
+    tone: theme => theme.palette.secondary.main,
+  },
+  {
+    key: "relay",
+    label: "接力",
+    caption: "我接走別人留下的鼓舞",
+    Icon: ArrowForwardIcon,
+    tone: theme => theme.palette.success.main,
+  },
+];
+
+const DAMAGE_FIELDS = [
+  { key: "raw", label: "自身傷害" },
+  { key: "effect", label: "引爆刻印" },
+  { key: "effective", label: "實際扣血" },
+];
+
+/**
  * Folds an attack response back into the board without a full refetch. The server's
  * own `status` is authoritative; `me.current` is patched from the same response so the
  * personal numbers can't disagree with the board they were returned with.
+ *
+ * `scoreGained` carries the whole ledger the hit wrote, and `assist` in it is credited to
+ * the player whose effect was consumed — never to the attacker. Only `direct` and `relay`
+ * are folded into the caller's own breakdown; a new `assist` of mine can only arrive when
+ * somebody else takes my effect, which the next `/me` read picks up.
  */
 function mergeAfterAttack(previous, payload) {
   const { attack, status, latestReward } = payload;
   const nextStatus = status ?? previous.status;
   const seasonId =
     canonicalSeasonId(nextStatus?.season?.id) ?? canonicalSeasonId(previous.me?.current?.seasonId);
+  const current = previous.me?.current;
 
   return {
     ...previous,
@@ -90,12 +165,24 @@ function mergeAfterAttack(previous, payload) {
       ...previous.me,
       current:
         seasonId === null
-          ? (previous.me?.current ?? null)
+          ? (current ?? null)
           : {
-              ...previous.me?.current,
+              ...current,
               seasonId,
-              totalDamage: attack.seasonTotalDamage,
+              totalScore: attack.seasonTotalScore,
+              score: {
+                direct: addDecimal(current?.score?.direct, attack.scoreGained?.direct),
+                assist: current?.score?.assist ?? null,
+                relay: addDecimal(current?.score?.relay, attack.scoreGained?.relay),
+              },
+              damage: {
+                raw: addDecimal(current?.damage?.raw, attack.rawDamage),
+                effect: addDecimal(current?.damage?.effect, attack.effectDamage),
+                effective: attack.seasonTotalDamage,
+                overkill: addDecimal(current?.damage?.overkill, attack.overkillDamage),
+              },
               daily: attack.daily,
+              effects: withCreatedEffect(current?.effects, attack),
             },
       latestReward: latestReward ?? previous.me?.latestReward ?? null,
     },
@@ -103,23 +190,25 @@ function mergeAfterAttack(previous, payload) {
 }
 
 /**
- * Private, attacker-only summary of the hit that just landed. This page is the personal
- * surface, so quota and EXP belong here rather than in any group message.
+ * Puts the effect this hit just left at the top of "what I left behind", so the history
+ * agrees with the result card that just announced it. Shaped exactly like a `/me` row.
  */
-function attackSummary(attack) {
-  const parts = [
-    `有效傷害 ${formatInteger(attack.effectiveDamage)}`,
-    `消耗 ${formatInteger(attack.cost)}`,
-    `今日剩餘 ${formatInteger(attack.daily?.remaining)}`,
-    `賽季累積 ${formatInteger(attack.seasonTotalDamage)}`,
+function withCreatedEffect(effects, attack) {
+  const list = Array.isArray(effects) ? effects : [];
+  const created = attack.createdEffect;
+  if (!created) return list;
+  return [
+    {
+      effectId: created.id,
+      type: created.type,
+      value: created.value,
+      roundId: attack.roundId,
+      createdAt: new Date().toISOString(),
+      consumedAt: null,
+      consumedBy: null,
+    },
+    ...list.filter(effect => String(effect.effectId) !== String(created.id)),
   ];
-  if (attack.wastedDamage && String(attack.wastedDamage) !== "0") {
-    parts.push(`溢傷作廢 ${formatInteger(attack.wastedDamage)}`);
-  }
-  if (attack.levelResult?.levelUp) {
-    parts.push(`職業等級提升至 Lv.${formatInteger(attack.levelResult.newLevel)}`);
-  }
-  return parts.join(" · ");
 }
 
 function decimalToBigInt(value) {
@@ -127,6 +216,24 @@ function decimalToBigInt(value) {
   if (typeof value === "number" && Number.isSafeInteger(value)) return BigInt(value);
   if (typeof value === "string" && /^\d+$/.test(value)) return BigInt(value);
   return null;
+}
+
+/**
+ * BIGINT arithmetic for the optimistic merge. Every score/damage field arrives as a
+ * decimal string that can exceed Number.MAX_SAFE_INTEGER, so the sum stays in BigInt and
+ * comes back out as a string. An unparsable side gives up and returns null, which renders
+ * as "—" instead of a wrong number until the next fetch corrects it.
+ */
+function addDecimal(left, right) {
+  const a = decimalToBigInt(left ?? "0");
+  const b = decimalToBigInt(right ?? "0");
+  return a === null || b === null ? null : (a + b).toString();
+}
+
+/** True only for a decimal string/number that is strictly greater than zero. */
+function isPositive(value) {
+  const parsed = decimalToBigInt(value);
+  return parsed !== null && parsed > 0n;
 }
 
 function canonicalSeasonId(value) {
@@ -248,35 +355,362 @@ function LoadingBoard() {
   );
 }
 
+/**
+ * The season score, broken into where it came from. The hero number is the score, not the
+ * damage — the leaderboard ranks on score, and the whole point of the split is that damage
+ * alone no longer explains a rank.
+ */
+function ScoreBreakdown({ score }) {
+  return (
+    <Grid container spacing={1}>
+      {SCORE_KINDS.map(({ key, label, caption, Icon, tone }) => {
+        const value = score?.[key];
+        const earned = isPositive(value);
+        return (
+          <Grid key={key} size={{ xs: 4 }}>
+            <Box
+              sx={theme => ({
+                height: "100%",
+                px: 1.25,
+                py: 1.25,
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: earned ? alpha(tone(theme), 0.45) : "divider",
+                bgcolor: earned ? alpha(tone(theme), 0.1) : "transparent",
+                transition: "background-color .25s ease-out, border-color .25s ease-out",
+              })}
+            >
+              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.25 }}>
+                <Icon
+                  sx={theme => ({
+                    fontSize: 16,
+                    color: earned ? tone(theme) : "text.disabled",
+                  })}
+                />
+                <Typography
+                  variant="caption"
+                  sx={theme => ({
+                    fontWeight: 700,
+                    lineHeight: 1.2,
+                    color: earned ? tone(theme) : "text.secondary",
+                  })}
+                >
+                  {label}
+                </Typography>
+              </Stack>
+              <Typography
+                sx={theme => ({
+                  fontWeight: 800,
+                  lineHeight: 1.2,
+                  fontVariantNumeric: "tabular-nums",
+                  overflowWrap: "anywhere",
+                  fontSize: { xs: "1rem", sm: "1.125rem" },
+                  color: earned ? tone(theme) : "text.disabled",
+                })}
+              >
+                {formatInteger(value)}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mt: 0.25, lineHeight: 1.3 }}
+              >
+                {caption}
+              </Typography>
+            </Box>
+          </Grid>
+        );
+      })}
+    </Grid>
+  );
+}
+
+/**
+ * Damage is now a supporting statistic. Overkill gets its own line because the rule change
+ * lives there: it used to be thrown away, and it is now scored in full.
+ */
+function DamageBreakdown({ damage }) {
+  const overkill = damage?.overkill;
+  const hasOverkill = isPositive(overkill);
+
+  return (
+    <Box>
+      <Typography
+        variant="overline"
+        color="text.secondary"
+        sx={{ display: "block", lineHeight: 1.6 }}
+      >
+        傷害統計
+      </Typography>
+      <Grid container spacing={1} sx={{ mt: 0.25 }}>
+        {DAMAGE_FIELDS.map(({ key, label }) => (
+          <Grid key={key} size={{ xs: 4 }}>
+            <Typography variant="caption" color="text.secondary" display="block">
+              {label}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums", overflowWrap: "anywhere" }}
+            >
+              {formatInteger(damage?.[key])}
+            </Typography>
+          </Grid>
+        ))}
+      </Grid>
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        sx={theme => ({
+          mt: 1,
+          px: 1.25,
+          py: 0.75,
+          borderRadius: 2,
+          border: "1px dashed",
+          borderColor: hasOverkill ? alpha(theme.palette.success.main, 0.5) : "divider",
+          bgcolor: hasOverkill ? alpha(theme.palette.success.main, 0.08) : "transparent",
+        })}
+      >
+        <CheckCircleIcon
+          sx={{ fontSize: 18, color: hasOverkill ? "success.main" : "text.disabled" }}
+        />
+        <Box minWidth={0} flex={1}>
+          <Typography variant="caption" color="text.secondary" display="block">
+            溢傷（超過王剩餘 HP 的部分）
+          </Typography>
+          <Typography variant="caption" color="text.secondary" display="block">
+            不扣王的血，但全額計入分數
+          </Typography>
+        </Box>
+        <Typography
+          sx={{
+            fontWeight: 800,
+            fontVariantNumeric: "tabular-nums",
+            overflowWrap: "anywhere",
+            color: hasOverkill ? "success.main" : "text.disabled",
+          }}
+        >
+          {formatInteger(overkill)}
+        </Typography>
+      </Stack>
+    </Box>
+  );
+}
+
 function PersonalStats({ current, unavailable = false }) {
   const daily = current?.daily;
 
   return (
-    <Grid container spacing={2}>
-      <Grid size={{ xs: 6 }}>
-        <SummaryStat label="賽季累積傷害" value={formatInteger(current?.totalDamage)} />
-      </Grid>
-      <Grid size={{ xs: 6 }}>
-        <SummaryStat
-          label="今日剩餘額度"
-          value={daily ? formatInteger(daily.remaining) : "—"}
-          tone="primary.main"
-        />
-      </Grid>
-      <Grid size={{ xs: 12 }}>
-        <SummaryStat
-          label="今日已消耗 / 額度"
-          value={daily ? `${formatInteger(daily.used)} / ${formatInteger(daily.limit)}` : "—"}
-        />
-      </Grid>
-      {unavailable && (
-        <Grid size={{ xs: 12 }}>
-          <Typography variant="caption" color="warning.main">
-            個人資料與目前賽季不同步，請重新整理後再試。
+    <Stack spacing={2}>
+      <Stack
+        direction="row"
+        spacing={1.5}
+        alignItems="flex-end"
+        justifyContent="space-between"
+        flexWrap="wrap"
+        useFlexGap
+      >
+        <Box minWidth={0}>
+          <Typography variant="caption" color="text.secondary" display="block">
+            賽季總分（排行榜依據）
           </Typography>
-        </Grid>
+          <Typography
+            component="p"
+            sx={{
+              fontWeight: 900,
+              lineHeight: 1.1,
+              fontVariantNumeric: "tabular-nums",
+              overflowWrap: "anywhere",
+              fontSize: { xs: "2rem", sm: "2.5rem" },
+              background: theme =>
+                `linear-gradient(120deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            {formatInteger(current?.totalScore)}
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
+          <Typography variant="caption" color="text.secondary" display="block">
+            今日剩餘 / 額度
+          </Typography>
+          <Typography
+            sx={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}
+            color="primary.main"
+          >
+            {daily ? `${formatInteger(daily.remaining)} / ${formatInteger(daily.limit)}` : "—"}
+          </Typography>
+        </Box>
+      </Stack>
+
+      <ScoreBreakdown score={current?.score} />
+      <DamageBreakdown damage={current?.damage} />
+
+      {unavailable && (
+        <Typography variant="caption" color="warning.main">
+          個人資料與目前賽季不同步，請重新整理後再試。
+        </Typography>
       )}
-    </Grid>
+    </Stack>
+  );
+}
+
+/**
+ * "What I left behind, and who picked it up." A player can never consume their own effect,
+ * so this list is the only place the interaction with other players is visible — an unclaimed
+ * row is an open invitation, a claimed one is a name.
+ */
+function EffectHistory({ effects }) {
+  const rows = Array.isArray(effects) ? effects : [];
+  if (rows.length === 0) {
+    return (
+      <Box
+        sx={{
+          py: 3,
+          px: 2,
+          textAlign: "center",
+          borderRadius: 2,
+          border: "1px dashed",
+          borderColor: "divider",
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          這個賽季還沒有留下任何效果。
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          冒險者攻擊後會留下鼓舞，法師會留下魔力刻印，等其他玩家來接。
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Stack spacing={1}>
+      {rows.map(effect => {
+        const { label, Icon, tone } = effectMeta(effect.type);
+        const claimed = Boolean(effect.consumedAt);
+        const taker = effect.consumedBy?.displayName || effect.consumedBy?.userId || "某位玩家";
+
+        return (
+          <Box
+            key={effect.effectId}
+            sx={theme => ({
+              position: "relative",
+              px: 1.5,
+              py: 1.25,
+              borderRadius: 2,
+              overflow: "hidden",
+              border: "1px solid",
+              borderColor: claimed ? alpha(tone(theme), 0.4) : "divider",
+              bgcolor: claimed ? alpha(tone(theme), 0.08) : "transparent",
+              borderStyle: claimed ? "solid" : "dashed",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                insetBlock: 0,
+                insetInlineStart: 0,
+                width: 3,
+                bgcolor: claimed ? tone(theme) : alpha(theme.palette.text.disabled, 0.4),
+              },
+            })}
+          >
+            <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ pl: 0.75 }}>
+              <Avatar
+                variant="rounded"
+                sx={theme => ({
+                  width: 32,
+                  height: 32,
+                  bgcolor: claimed ? alpha(tone(theme), 0.18) : "action.hover",
+                  color: claimed ? tone(theme) : "text.disabled",
+                })}
+              >
+                <Icon sx={{ fontSize: 18 }} />
+              </Avatar>
+              <Box minWidth={0} flex={1}>
+                <Stack
+                  direction="row"
+                  spacing={0.75}
+                  alignItems="baseline"
+                  flexWrap="wrap"
+                  useFlexGap
+                >
+                  <Typography
+                    variant="body2"
+                    sx={theme => ({
+                      fontWeight: 800,
+                      color: claimed ? tone(theme) : "text.primary",
+                    })}
+                  >
+                    {label}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
+                    color="text.secondary"
+                  >
+                    {formatInteger(effect.value)}
+                  </Typography>
+                </Stack>
+                {claimed ? (
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    被 <b>{taker}</b> 接走 · {formatDate(effect.consumedAt)}
+                  </Typography>
+                ) : (
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    還掛在王身上 · 留於 {formatDate(effect.createdAt)}
+                  </Typography>
+                )}
+              </Box>
+              <Chip
+                size="small"
+                icon={
+                  claimed ? (
+                    <HandshakeIcon sx={{ fontSize: 14 }} />
+                  ) : (
+                    <HourglassEmptyIcon sx={{ fontSize: 14 }} />
+                  )
+                }
+                label={claimed ? "已接走" : "等人接"}
+                variant={claimed ? "filled" : "outlined"}
+                sx={theme => ({
+                  flexShrink: 0,
+                  fontWeight: 700,
+                  height: 24,
+                  ...(claimed
+                    ? { bgcolor: alpha(tone(theme), 0.16), color: tone(theme) }
+                    : { color: "text.secondary" }),
+                })}
+              />
+            </Stack>
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+}
+
+function EffectHistoryCard({ effects }) {
+  const rows = Array.isArray(effects) ? effects : [];
+  const claimed = rows.filter(effect => effect.consumedAt).length;
+
+  return (
+    <Card variant="outlined">
+      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+        <Stack spacing={1.75}>
+          <Box>
+            <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
+              我留下的效果
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              自己不能接自己的效果，要等別人來接。
+              {rows.length > 0 && ` 已被接走 ${claimed} / ${rows.length}`}
+            </Typography>
+          </Box>
+          <EffectHistory effects={rows} />
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -296,21 +730,65 @@ function PersonalProgressCard({ current, unavailable }) {
 }
 
 /**
+ * Effects sitting on this boss right now, waiting for somebody other than the person who
+ * left them. Cleared bosses always report zeros server-side, and are skipped anyway.
+ */
+function PendingEffectsRow({ pending }) {
+  const waiting = ["banner", "seal"].filter(type => isPositive(pending?.[type]));
+  if (waiting.length === 0) return null;
+
+  return (
+    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+      {waiting.map(type => {
+        const { label, Icon, tone } = effectMeta(type);
+        return (
+          <Chip
+            key={type}
+            size="small"
+            icon={<Icon sx={{ fontSize: 14 }} />}
+            label={`${label} ×${formatInteger(pending[type])}`}
+            aria-label={`待接力 ${label} ${formatInteger(pending[type])} 個`}
+            sx={theme => ({
+              height: 22,
+              fontWeight: 700,
+              fontSize: "0.7rem",
+              color: tone(theme),
+              bgcolor: alpha(tone(theme), 0.12),
+              border: "1px solid",
+              borderColor: alpha(tone(theme), 0.35),
+              "& .MuiChip-icon": { color: "inherit", ml: 0.5 },
+              "& .MuiChip-label": { px: 0.75 },
+            })}
+          />
+        );
+      })}
+    </Stack>
+  );
+}
+
+/**
  * One encounter in the current cycle. Each boss carries its own HP, so a cleared boss
  * has to read as finished at a glance while its neighbours are still live.
  */
 function BossRoundCard({ round, onAttack, busy, disabled }) {
   const hpPercent = safeHpPercent(round);
   const cleared = Boolean(round.cleared_at);
+  const pending = cleared ? null : round.pending_effects;
+  const hasPending = Boolean(pending && (isPositive(pending.banner) || isPositive(pending.seal)));
 
   return (
     <Card
       variant="outlined"
-      sx={{
+      sx={theme => ({
         height: "100%",
-        borderColor: cleared ? "success.light" : "divider",
+        borderColor: cleared
+          ? "success.light"
+          : hasPending
+            ? alpha(theme.palette.secondary.main, 0.55)
+            : "divider",
         bgcolor: cleared ? "action.hover" : "background.paper",
-      }}
+        ...(hasPending && { boxShadow: `0 0 0 1px ${alpha(theme.palette.secondary.main, 0.2)}` }),
+      })}
     >
       <CardContent sx={{ p: 1.75, "&:last-child": { pb: 1.75 } }}>
         <Stack spacing={1.25}>
@@ -387,25 +865,36 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
             </Typography>
           ) : (
             <Stack spacing={0.75}>
+              {hasPending && (
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                    sx={{ mb: 0.5 }}
+                  >
+                    待接力
+                  </Typography>
+                  <PendingEffectsRow pending={pending} />
+                </Box>
+              )}
               <Button
-                size="small"
                 variant="contained"
                 fullWidth
                 disabled={disabled}
                 onClick={() => onAttack(round, "standard")}
                 startIcon={busy ? <CircularProgress size={14} color="inherit" /> : null}
-                sx={{ fontWeight: 700 }}
+                sx={{ fontWeight: 700, minHeight: 40 }}
               >
                 普通攻擊
               </Button>
               <Button
-                size="small"
                 variant="outlined"
                 color="secondary"
                 fullWidth
                 disabled={disabled}
                 onClick={() => onAttack(round, "skill")}
-                sx={{ fontWeight: 700 }}
+                sx={{ fontWeight: 700, minHeight: 40 }}
               >
                 技能攻擊
               </Button>
@@ -484,20 +973,50 @@ function BattleCard({ status, current, currentUnavailable, onAttack, attackingRo
   );
 }
 
+function AttackStat({ label, value, tone }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.3 }}>
+        {label}
+      </Typography>
+      <Typography
+        variant="body2"
+        sx={{
+          fontWeight: 800,
+          fontVariantNumeric: "tabular-nums",
+          overflowWrap: "anywhere",
+          ...(tone ? { color: tone } : {}),
+        }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
 /**
  * Attacker-only result of the most recent hit. Sits above the board so the numbers
  * land where the user was already looking after tapping.
+ *
+ * `scoreGained.assist` is deliberately labelled as going to somebody else: the ledger this
+ * hit wrote credits it to the owner of the consumed effect, never to the attacker.
  */
 function AttackResultCard({ attack, onDismiss }) {
   const cleared = Boolean(attack.cleared);
   const full = Boolean(attack.cycleAdvanced);
+  const consumed = attack.consumedEffect;
+  const created = attack.createdEffect;
+  const consumedMeta = consumed ? effectMeta(consumed.type) : null;
+  const createdMeta = created ? effectMeta(created.type) : null;
+  const overkill = attack.overkillDamage;
 
   return (
     <Alert
-      severity={full ? "success" : cleared ? "success" : "info"}
+      severity={full || cleared ? "success" : "info"}
       variant="outlined"
       onClose={onDismiss}
       aria-live="polite"
+      sx={{ "& .MuiAlert-message": { width: "100%", minWidth: 0 } }}
     >
       <Typography sx={{ fontWeight: 800 }}>
         {full
@@ -506,9 +1025,115 @@ function AttackResultCard({ attack, onDismiss }) {
             ? `已擊破 ${attack.boss?.name || "世界王"}`
             : "攻擊成功"}
       </Typography>
-      <Typography variant="body2" sx={{ mt: 0.5, overflowWrap: "anywhere" }}>
-        {attackSummary(attack)}
-      </Typography>
+
+      <Stack spacing={1.25} sx={{ mt: 1 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ color: "text.primary" }}
+        >
+          <AttackStat label="自身傷害" value={formatInteger(attack.rawDamage)} />
+          {isPositive(attack.effectDamage) && (
+            <>
+              <Typography color="text.disabled">+</Typography>
+              <AttackStat label="引爆刻印" value={formatInteger(attack.effectDamage)} />
+            </>
+          )}
+          <ArrowForwardIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+          <AttackStat label="實際扣血" value={formatInteger(attack.effectiveDamage)} />
+          {isPositive(overkill) && (
+            <Chip
+              size="small"
+              label={`溢傷 ${formatInteger(overkill)} 全額計分`}
+              color="success"
+              variant="outlined"
+              sx={{ height: 22, fontWeight: 700, fontSize: "0.7rem" }}
+            />
+          )}
+        </Stack>
+
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+          <AttackStat
+            label="這刀的分數"
+            value={formatInteger(attack.scoreGained?.direct)}
+            tone="primary.main"
+          />
+          {isPositive(attack.scoreGained?.relay) && (
+            <AttackStat
+              label="接力加分"
+              value={formatInteger(attack.scoreGained?.relay)}
+              tone="success.main"
+            />
+          )}
+          {isPositive(attack.scoreGained?.assist) && (
+            <AttackStat
+              label={`回饋給${consumed?.sourceDisplayName || "留效果的人"}`}
+              value={formatInteger(attack.scoreGained?.assist)}
+              tone="secondary.main"
+            />
+          )}
+        </Stack>
+
+        {(consumed || created) && (
+          <Stack spacing={0.75}>
+            {consumed && (
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={theme => ({
+                  px: 1.25,
+                  py: 0.75,
+                  borderRadius: 2,
+                  bgcolor: alpha(consumedMeta.tone(theme), 0.12),
+                })}
+              >
+                <consumedMeta.Icon
+                  sx={theme => ({ fontSize: 18, color: consumedMeta.tone(theme) })}
+                />
+                <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
+                  你接走了 <b>{consumed.sourceDisplayName || "某位玩家"}</b> 的{consumedMeta.label}
+                  （{formatInteger(consumed.value)}）
+                </Typography>
+              </Stack>
+            )}
+            {created && (
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={theme => ({
+                  px: 1.25,
+                  py: 0.75,
+                  borderRadius: 2,
+                  border: "1px dashed",
+                  borderColor: alpha(createdMeta.tone(theme), 0.5),
+                })}
+              >
+                <createdMeta.Icon
+                  sx={theme => ({ fontSize: 18, color: createdMeta.tone(theme) })}
+                />
+                <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>
+                  你在這隻王身上留下了{createdMeta.label}（{formatInteger(created.value)}），等其他
+                  玩家來接
+                </Typography>
+              </Stack>
+            )}
+          </Stack>
+        )}
+
+        <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+          消耗 {formatInteger(attack.cost)} · 今日剩餘 {formatInteger(attack.daily?.remaining)} ·
+          賽季總分 {formatInteger(attack.seasonTotalScore)}
+          {attack.levelResult?.levelUp
+            ? ` · 職業等級提升至 Lv.${formatInteger(attack.levelResult.newLevel)}`
+            : ""}
+        </Typography>
+      </Stack>
+
       {attack.announcementQueued && (
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
           擊破公告會在群組的下一則訊息時送出。
@@ -588,7 +1213,19 @@ function LatestRewardCard({ reward }) {
 
           <Divider />
 
-          <SummaryStat label="賽季總傷害" value={formatInteger(reward.totalDamage)} />
+          <Stack spacing={1}>
+            <SummaryStat
+              label="賽季總分"
+              value={reward.totalScore == null ? "舊制未計分" : formatInteger(reward.totalScore)}
+              tone={reward.totalScore == null ? "text.secondary" : "text.primary"}
+            />
+            {reward.totalScore == null && (
+              <Typography variant="caption" color="text.secondary">
+                這個賽季在改制前結算，當時只記錄傷害。
+              </Typography>
+            )}
+            <SummaryStat label="賽季總傷害" value={formatInteger(reward.totalDamage)} />
+          </Stack>
           <Box sx={{ bgcolor: "action.hover", borderRadius: 1.5, p: 1.25 }}>
             <Typography variant="caption" color="text.secondary" display="block">
               結算編號
@@ -677,10 +1314,10 @@ function Leaderboard({ rows, unavailable }) {
         >
           <Box>
             <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
-              賽季傷害排行榜
+              賽季分數排行榜
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              顯示前 50 名貢獻者
+              顯示前 50 名 · 分數含溢傷與協作加分
             </Typography>
           </Box>
           <EmojiEventsIcon color="warning" aria-hidden="true" />
@@ -692,7 +1329,7 @@ function Leaderboard({ rows, unavailable }) {
           </Alert>
         )}
         {hasRows ? (
-          <List disablePadding aria-label="世界王傷害排行榜">
+          <List disablePadding aria-label="世界王分數排行榜">
             {rows.map((row, index) => {
               const ranking = row.ranking;
               return (
@@ -718,7 +1355,7 @@ function Leaderboard({ rows, unavailable }) {
                   </ListItemAvatar>
                   <ListItemText
                     primary={row.display_name || row.user_id || "未知玩家"}
-                    secondary="累積傷害"
+                    secondary="賽季總分"
                     primaryTypographyProps={{
                       noWrap: true,
                       sx: { maxWidth: { xs: "calc(100vw - 190px)", sm: "min(50vw, 360px)" } },
@@ -736,7 +1373,7 @@ function Leaderboard({ rows, unavailable }) {
                       textAlign: "right",
                     }}
                   >
-                    {formatInteger(row.total_damage)}
+                    {formatInteger(row.total_score)}
                   </Typography>
                 </ListItem>
               );
@@ -990,7 +1627,12 @@ export default function Worldboss() {
               <NoActiveSeason />
             )}
           </Grid>
-          <Grid size={{ xs: 12, md: hasBattle ? 12 : 5 }}>
+          {shouldRenderCurrent && (
+            <Grid size={{ xs: 12, md: 7 }}>
+              <EffectHistoryCard effects={current?.effects} />
+            </Grid>
+          )}
+          <Grid size={{ xs: 12, md: shouldRenderCurrent || !hasBattle ? 5 : 12 }}>
             {data.me === undefined ? (
               <UnavailableRewardCard />
             ) : latestReward != null ? (
