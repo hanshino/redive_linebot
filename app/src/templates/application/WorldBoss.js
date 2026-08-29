@@ -1,21 +1,62 @@
-const { FEATURE, SEMANTIC, SURFACE } = require("../common/theme");
+const { PALETTE } = require("../common/theme");
 
 const MAX_BOSS_DESCRIPTION_BYTES = 2048;
 const MAX_IMAGE_URL_LENGTH = 2000;
-const ACCENT = FEATURE.worldBoss;
-// White veil over a cleared boss's art. LINE accepts #RRGGBBAA, so the alpha does the
-// fading without needing an image filter (Flex images have no opacity property).
-const CLEARED_VEIL = `${SURFACE.bg}B3`;
+// A 1% sliver is invisible at kilo width, so a live boss always keeps a readable stub.
+const MIN_HP_BAR_PERCENT = 2;
 
-function textNode(text, extra = {}) {
-  return { type: "text", text, color: SURFACE.text, wrap: true, size: "sm", ...extra };
+/**
+ * "戰報卡" palette. These are dark-surface values with alpha channels that the shared
+ * light-surface tokens don't carry, so they live here rather than in theme.js — this
+ * template is their only consumer. Values that do exist in the shared palette are
+ * referenced from it so the red / green / amber stay in sync with the rest of the bot.
+ */
+const C = {
+  surface: "#131822",
+  text: "#E8EDF5",
+  textMuted: "#8A98AD",
+  textFaint: "#7C8AA0",
+  white: PALETTE.white,
+
+  chipBg: "#000000A6",
+  scrimEnd: "#13182200",
+  clearedVeil: "#0A0F16D9",
+
+  cleared: "#34D399",
+  clearedStampBg: "#04170FA6",
+  clearedPanelBg: "#0E2D1FCC",
+  clearedPanelBorder: "#1E5E42",
+  clearedPanelMuted: "#6E8A7E",
+
+  track: "#FFFFFF14",
+  outline: "#FFFFFF29",
+
+  attack: PALETTE.red600,
+  skill: "#273246",
+  link: "#8CC6FF",
+  stripEnd: PALETTE.amber500,
+};
+
+/**
+ * HP tiers double as the card's status read: green is safe, amber is halfway, rose is
+ * nearly down. Ordered high to low; the last entry catches 0% on a boss that is still
+ * alive (a rounding artefact on a huge HP pool), which must not fall through.
+ */
+const HP_TIERS = [
+  { above: 60, text: PALETTE.green400, from: "#15803D", to: PALETTE.green400 },
+  { above: 30, text: PALETTE.amber400, from: "#B45309", to: PALETTE.amber400 },
+  { above: -Infinity, text: "#FB7185", from: "#9F1239", to: "#FB7185" },
+];
+
+function hpTier(percent) {
+  return HP_TIERS.find(tier => percent > tier.above);
 }
 
 function formatNumber(value) {
   if (typeof value === "number") {
     return Number.isFinite(value) ? new Intl.NumberFormat("en-US").format(value) : String(value);
   }
-  if (typeof value === "bigint") return value.toLocaleString("en-US");
+  if (typeof value === "bigint") return new Intl.NumberFormat("en-US").format(value);
   if (typeof value !== "string" || !/^-?\d+$/.test(value)) return String(value);
 
   const negative = value.startsWith("-");
@@ -51,43 +92,6 @@ function httpsImageUrl(value) {
     return null;
   }
   return url.protocol === "https:" ? url.toString() : null;
-}
-
-/**
- * Boss art comes from the season snapshot (`round.image`), never the live catalog,
- * so a bubble always shows the boss as it was when the season opened.
- */
-function bossHero(image, cleared) {
-  const url = httpsImageUrl(image);
-  if (!url) return null;
-
-  const hero = {
-    type: "image",
-    url,
-    size: "full",
-    aspectRatio: "20:13",
-    aspectMode: "cover",
-  };
-  if (!cleared) return hero;
-
-  // Keep the art on cleared cards but push it back behind a translucent overlay.
-  return {
-    type: "box",
-    layout: "vertical",
-    paddingAll: "none",
-    contents: [
-      hero,
-      {
-        type: "box",
-        layout: "vertical",
-        position: "absolute",
-        width: "100%",
-        height: "100%",
-        backgroundColor: CLEARED_VEIL,
-        contents: [],
-      },
-    ],
-  };
 }
 
 function truncateUtf8(value, maxBytes) {
@@ -126,113 +130,364 @@ function validateRound(round) {
   return { maxHp, currentHp };
 }
 
+/** Bottom-up scrim so the boss name stays legible over any artwork. */
+function heroScrim() {
+  return {
+    type: "box",
+    layout: "vertical",
+    position: "absolute",
+    offsetStart: "0px",
+    offsetEnd: "0px",
+    offsetBottom: "0px",
+    height: "64%",
+    background: {
+      type: "linearGradient",
+      angle: "0deg",
+      startColor: C.surface,
+      endColor: C.scrimEnd,
+    },
+    contents: [],
+  };
+}
+
+/** Cycle + slot badge, pinned top-left. `flex: 0` keeps the pill hugging its label. */
+function heroChip(label) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    position: "absolute",
+    offsetTop: "8px",
+    offsetStart: "8px",
+    offsetEnd: "8px",
+    contents: [
+      {
+        type: "box",
+        layout: "vertical",
+        flex: 0,
+        backgroundColor: C.chipBg,
+        cornerRadius: "4px",
+        paddingTop: "3px",
+        paddingBottom: "3px",
+        paddingStart: "7px",
+        paddingEnd: "7px",
+        contents: [{ type: "text", text: label, size: "xxs", color: C.white }],
+      },
+      { type: "filler" },
+    ],
+  };
+}
+
+function heroName(name) {
+  return {
+    type: "text",
+    text: name,
+    position: "absolute",
+    offsetStart: "12px",
+    offsetEnd: "12px",
+    offsetBottom: "8px",
+    size: "xl",
+    weight: "bold",
+    color: C.white,
+  };
+}
+
+function clearedStamp() {
+  return {
+    type: "box",
+    layout: "vertical",
+    position: "absolute",
+    offsetTop: "0px",
+    offsetBottom: "0px",
+    offsetStart: "0px",
+    offsetEnd: "0px",
+    justifyContent: "center",
+    alignItems: "center",
+    contents: [
+      {
+        type: "box",
+        layout: "vertical",
+        borderWidth: "2px",
+        borderColor: C.cleared,
+        cornerRadius: "4px",
+        backgroundColor: C.clearedStampBg,
+        paddingTop: "7px",
+        paddingBottom: "7px",
+        paddingStart: "16px",
+        paddingEnd: "16px",
+        contents: [{ type: "text", text: "已擊破", size: "md", weight: "bold", color: C.cleared }],
+      },
+    ],
+  };
+}
+
+/**
+ * Boss art comes from the season snapshot (`round.image`), never the live catalog,
+ * so a bubble always shows the boss as it was when the season opened. The cycle label
+ * and boss name ride on top of the art; when the url is unusable the whole hero is
+ * dropped and `bodyTitle` carries them instead.
+ */
+function bossHero({ image, cleared, label, name }) {
+  const url = httpsImageUrl(image);
+  if (!url) return null;
+
+  return {
+    type: "box",
+    layout: "vertical",
+    paddingAll: "none",
+    contents: [
+      { type: "image", url, size: "full", aspectRatio: "20:13", aspectMode: "cover" },
+      // Flex images have no opacity property, so a cleared boss is dimmed by a real box.
+      ...(cleared
+        ? [
+            {
+              type: "box",
+              layout: "vertical",
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+              backgroundColor: C.clearedVeil,
+              contents: [],
+            },
+          ]
+        : []),
+      heroScrim(),
+      heroChip(label),
+      heroName(name),
+      ...(cleared ? [clearedStamp()] : []),
+    ],
+  };
+}
+
+/** Fallback header for bubbles that lost their hero to an unusable snapshot url. */
+function bodyTitle(label, name) {
+  return [
+    { type: "text", text: label, size: "xxs", color: C.textMuted },
+    {
+      type: "text",
+      text: name,
+      size: "xl",
+      weight: "bold",
+      color: C.text,
+      wrap: true,
+      margin: "xs",
+    },
+  ];
+}
+
+function hpBlock({ currentHp, maxHp, percent }) {
+  const tier = hpTier(percent);
+
+  return {
+    type: "box",
+    layout: "vertical",
+    contents: [
+      {
+        type: "box",
+        layout: "horizontal",
+        alignItems: "flex-end",
+        contents: [
+          {
+            type: "text",
+            size: "3xl",
+            weight: "bold",
+            flex: 0,
+            contents: [
+              {
+                type: "span",
+                text: String(percent),
+                size: "3xl",
+                weight: "bold",
+                color: tier.text,
+              },
+              { type: "span", text: "%", size: "sm", weight: "bold", color: tier.text },
+            ],
+          },
+          {
+            type: "text",
+            text: `${formatNumber(currentHp)}\n/ ${formatNumber(maxHp)}`,
+            size: "xxs",
+            color: C.textFaint,
+            align: "end",
+            gravity: "bottom",
+            wrap: true,
+            flex: 1,
+          },
+        ],
+      },
+      {
+        type: "box",
+        layout: "vertical",
+        height: "14px",
+        cornerRadius: "7px",
+        backgroundColor: C.track,
+        margin: "md",
+        contents: [
+          {
+            type: "box",
+            layout: "vertical",
+            width: `${Math.max(percent, MIN_HP_BAR_PERCENT)}%`,
+            height: "14px",
+            cornerRadius: "7px",
+            background: {
+              type: "linearGradient",
+              angle: "90deg",
+              startColor: tier.from,
+              endColor: tier.to,
+            },
+            backgroundColor: tier.from,
+            contents: [],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function clearedPanel(maxHp) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    alignItems: "center",
+    backgroundColor: C.clearedPanelBg,
+    borderWidth: "1px",
+    borderColor: C.clearedPanelBorder,
+    cornerRadius: "6px",
+    paddingTop: "9px",
+    paddingBottom: "9px",
+    paddingStart: "11px",
+    paddingEnd: "11px",
+    contents: [
+      { type: "text", text: "✓ 討伐完成", size: "sm", weight: "bold", color: C.cleared, flex: 0 },
+      {
+        type: "text",
+        text: `0 / ${formatNumber(maxHp)}`,
+        size: "xxs",
+        color: C.clearedPanelMuted,
+        align: "end",
+        gravity: "center",
+        flex: 1,
+      },
+    ],
+  };
+}
+
+/** A `link` button has no border of its own, so an outline box supplies one. */
+function outlineButton(label, uri) {
+  return {
+    type: "box",
+    layout: "vertical",
+    borderWidth: "1px",
+    borderColor: C.outline,
+    cornerRadius: "6px",
+    contents: [
+      {
+        type: "button",
+        style: "link",
+        color: C.link,
+        height: "sm",
+        action: { type: "uri", label, uri },
+      },
+    ],
+  };
+}
+
+function attackRow(roundId) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    spacing: "sm",
+    contents: [
+      ["⚔️ 攻擊", "standard", C.attack, 3],
+      ["✨ 技能", "skill", C.skill, 2],
+    ].map(([label, attackType, color, flex]) => ({
+      type: "button",
+      style: "primary",
+      color,
+      height: "sm",
+      flex,
+      action: {
+        type: "postback",
+        label,
+        data: JSON.stringify({ action: "worldBossAttack", roundId, attackType }),
+      },
+    })),
+  };
+}
+
 /**
  * A public group card. Every field here is shared world state — season, cycle, boss
  * snapshot, HP, cleared. No viewer-specific data (quota, EXP, rewards, personal
  * damage) may be added; the LIFF board is where personal state belongs.
+ *
+ * `season` is still accepted by the caller but is deliberately not rendered: the
+ * carousel shows five cards of the same season, so repeating its name five times
+ * spends the card's largest type on the least useful word.
  */
-function generateBattleStatusBubble({ season, round, boss, liffUri, attackEnabled = false }) {
+function generateBattleStatusBubble({ round, boss, liffUri, attackEnabled = false }) {
   const { maxHp, currentHp } = validateRound(round);
   const hpPercent = roundedPercent(currentHp, maxHp);
   const description = truncateUtf8(boss.description, MAX_BOSS_DESCRIPTION_BYTES);
   const cleared = currentHp === 0n || Boolean(round.cleared_at);
-  const hero = bossHero(boss.image, cleared);
+  const label = `第 ${round.cycle_no} 輪 · ${boss.position} 號`;
+  const hero = bossHero({ image: boss.image, cleared, label, name: boss.name });
+  const boardUri = worldBossUri(liffUri);
 
   return {
     type: "bubble",
     size: "kilo",
-    ...(hero ? { hero } : {}),
-    header: {
-      type: "box",
-      layout: "vertical",
-      backgroundColor: ACCENT.main,
-      paddingAll: "md",
-      contents: cleared
-        ? [textNode("已擊破", { color: SEMANTIC.success.main, weight: "bold", align: "center" })]
-        : [
-            textNode("世界王討伐中", { color: ACCENT.contrast, weight: "bold", size: "md" }),
-            textNode(season.name, { color: ACCENT.contrast, size: "xs", margin: "xs" }),
-          ],
+    styles: {
+      body: { backgroundColor: C.surface },
+      footer: { backgroundColor: C.surface, separator: false },
     },
+    ...(hero ? { hero } : {}),
     body: {
       type: "box",
       layout: "vertical",
-      paddingAll: "lg",
-      spacing: "sm",
+      backgroundColor: C.surface,
+      paddingAll: "12px",
+      paddingBottom: "16px",
+      spacing: "lg",
       contents: [
-        textNode(`第 ${round.cycle_no} 輪 · ${boss.position} 號 · ${boss.name}`, {
-          weight: "bold",
-          size: "lg",
-        }),
-        ...(description ? [textNode(description, { color: SURFACE.textMuted, size: "xs" })] : []),
-        textNode(`HP ${formatNumber(currentHp)} / ${formatNumber(maxHp)}（${hpPercent}%）`, {
-          margin: "md",
-          weight: "bold",
-          color: ACCENT.main,
-        }),
-        {
-          type: "box",
-          layout: "vertical",
-          height: "8px",
-          backgroundColor: SURFACE.bgMuted,
-          cornerRadius: "4px",
-          contents: [
-            {
-              type: "box",
-              layout: "vertical",
-              width: `${hpPercent}%`,
-              height: "8px",
-              backgroundColor: ACCENT.main,
-              cornerRadius: "4px",
-              contents: [],
-            },
-          ],
-        },
+        ...(hero
+          ? []
+          : [{ type: "box", layout: "vertical", contents: bodyTitle(label, boss.name) }]),
+        ...(description
+          ? [
+              {
+                type: "text",
+                text: description,
+                size: "xs",
+                color: C.textMuted,
+                wrap: true,
+                maxLines: 2,
+              },
+            ]
+          : []),
+        cleared ? clearedPanel(maxHp) : hpBlock({ currentHp, maxHp, percent: hpPercent }),
       ],
     },
     footer: {
       type: "box",
       layout: "vertical",
-      paddingAll: "md",
+      backgroundColor: C.surface,
+      paddingTop: "8px",
+      paddingBottom: "12px",
+      paddingStart: "12px",
+      paddingEnd: "12px",
       spacing: "sm",
-      contents: cleared
-        ? [textNode("已擊破", { color: SEMANTIC.success.main, weight: "bold", align: "center" })]
-        : [
-            ...(attackEnabled
-              ? [
-                  {
-                    type: "box",
-                    layout: "horizontal",
-                    spacing: "sm",
-                    contents: [
-                      ["⚔️ 攻擊", "standard"],
-                      ["✨ 技能", "skill"],
-                    ].map(([label, attackType]) => ({
-                      type: "button",
-                      style: "primary",
-                      color: ACCENT.main,
-                      height: "sm",
-                      action: {
-                        type: "postback",
-                        label,
-                        data: JSON.stringify({
-                          action: "worldBossAttack",
-                          roundId: round.id,
-                          attackType,
-                        }),
-                      },
-                    })),
-                  },
-                ]
-              : []),
-            {
-              type: "button",
-              style: "primary",
-              color: ACCENT.main,
-              height: "sm",
-              action: { type: "uri", label: "開啟戰況板", uri: worldBossUri(liffUri) },
-            },
-          ],
+      contents:
+        !cleared && attackEnabled
+          ? [
+              attackRow(round.id),
+              {
+                type: "button",
+                style: "link",
+                color: C.link,
+                height: "sm",
+                action: { type: "uri", label: "開啟戰況板", uri: boardUri },
+              },
+            ]
+          : [outlineButton("開啟戰況板", boardUri)],
     },
   };
 }
@@ -244,29 +499,53 @@ function generateNoActiveSeasonBubble({ ended, liffUri }) {
   return {
     type: "bubble",
     size: "kilo",
+    styles: {
+      body: { backgroundColor: C.surface },
+      footer: { backgroundColor: C.surface, separator: false },
+    },
     body: {
       type: "box",
       layout: "vertical",
-      paddingAll: "lg",
-      spacing: "sm",
+      backgroundColor: C.surface,
+      paddingAll: "0px",
       contents: [
-        textNode(headline, { weight: "bold", size: "lg", color: SURFACE.text }),
-        textNode(detail, { color: SURFACE.textMuted, size: "sm" }),
+        {
+          type: "box",
+          layout: "vertical",
+          height: "4px",
+          background: {
+            type: "linearGradient",
+            angle: "90deg",
+            startColor: C.attack,
+            endColor: C.stripEnd,
+          },
+          backgroundColor: C.attack,
+          contents: [],
+        },
+        {
+          type: "box",
+          layout: "vertical",
+          paddingTop: "16px",
+          paddingBottom: "20px",
+          paddingStart: "12px",
+          paddingEnd: "12px",
+          spacing: "sm",
+          contents: [
+            { type: "text", text: headline, size: "md", weight: "bold", color: C.text, wrap: true },
+            { type: "text", text: detail, size: "xs", color: C.textMuted, wrap: true },
+          ],
+        },
       ],
     },
     footer: {
       type: "box",
       layout: "vertical",
-      paddingAll: "md",
-      contents: [
-        {
-          type: "button",
-          style: "link",
-          color: SEMANTIC.info.main,
-          height: "sm",
-          action: { type: "uri", label: "查看世界王戰況", uri: worldBossUri(liffUri) },
-        },
-      ],
+      backgroundColor: C.surface,
+      paddingTop: "8px",
+      paddingBottom: "12px",
+      paddingStart: "12px",
+      paddingEnd: "12px",
+      contents: [outlineButton("查看世界王戰況", worldBossUri(liffUri))],
     },
   };
 }
