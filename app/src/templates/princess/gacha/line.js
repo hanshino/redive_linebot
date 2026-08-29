@@ -44,19 +44,80 @@ function genGachaContent(rewards) {
  * @param {Array}   DailyGachaInfo.newCharacters
  * @param {Number}  DailyGachaInfo.collectedCount
  * @param {Number}  DailyGachaInfo.allCount
- * @param {Number}  DailyGachaInfo.gainGodStoneAmount
- * @param {Number}  DailyGachaInfo.ownGodStone  擁有女神石
+ * @param {Array}   DailyGachaInfo.fragmentRewards 重複角色換得的碎片 [{itemId, name, amount}]
  * @param {Number}  DailyGachaInfo.costGodStone 消耗女神石
  */
 function genDailyGacha({
   newCharacters,
   collectedCount,
   allCount,
-  gainGodStoneAmount,
-  ownGodStone,
+  fragmentRewards = [],
   costGodStone,
 }) {
   let collectRate = Math.round((collectedCount / allCount) * 10000) / 100;
+
+  const newCharacterText = {
+    type: "text",
+    color: "#ebebeb",
+    size: "sm",
+    contents: [
+      {
+        type: "span",
+        text: "新角色：",
+      },
+    ],
+    wrap: true,
+  };
+
+  newCharacters.forEach(character => {
+    newCharacterText.contents.push({
+      type: "span",
+      text: `${character.name} `,
+    });
+  });
+
+  // ponytail: 十抽最多 10 種角色，overlay 是絕對定位在卡圖上的，全列出會把圖蓋掉。
+  // 顯示前 5 種（已按 amount 由多至少排序），其餘只報種類數。
+  const shown = fragmentRewards.slice(0, 5);
+  const restCount = fragmentRewards.length - shown.length;
+  const fragmentText = {
+    type: "text",
+    color: "#ebebeb",
+    size: "sm",
+    wrap: true,
+    contents: [{ type: "span", text: "碎片：" }],
+  };
+
+  if (fragmentRewards.length === 0) {
+    fragmentText.contents.push({ type: "span", text: "無" });
+  } else {
+    shown.forEach(fragment => {
+      fragmentText.contents.push({
+        type: "span",
+        text: `${fragment.name} ×${fragment.amount} `,
+      });
+    });
+    if (restCount > 0) {
+      fragmentText.contents.push({ type: "span", text: `等 ${fragmentRewards.length} 種角色` });
+    }
+  }
+
+  const infoContents = [newCharacterText, fragmentText];
+
+  if (costGodStone) {
+    infoContents.push({
+      type: "text",
+      color: "#ebebeb",
+      size: "sm",
+      contents: [
+        {
+          type: "span",
+          text: `消耗女神石：${costGodStone}`,
+        },
+      ],
+    });
+  }
+
   let bubble = {
     type: "bubble",
     body: {
@@ -90,33 +151,7 @@ function genDailyGacha({
             {
               type: "box",
               layout: "vertical",
-              contents: [
-                {
-                  type: "text",
-                  color: "#ebebeb",
-                  size: "sm",
-                  contents: [
-                    {
-                      type: "span",
-                      text: "新角色：",
-                    },
-                  ],
-                  wrap: true,
-                },
-                {
-                  type: "text",
-                  color: "#ebebeb",
-                  size: "sm",
-                  contents: [
-                    {
-                      type: "span",
-                      text: `獲得女神石：${ownGodStone} + ${gainGodStoneAmount} ${
-                        costGodStone ? `- ${costGodStone}` : ""
-                      }`,
-                    },
-                  ],
-                },
-              ],
+              contents: infoContents,
               spacing: "lg",
             },
             {
@@ -195,13 +230,6 @@ function genDailyGacha({
       paddingAll: "0px",
     },
   };
-
-  newCharacters.forEach(character => {
-    bubble.body.contents[1].contents[1].contents[0].contents.push({
-      type: "span",
-      text: `${character.name} `,
-    });
-  });
 
   return bubble;
 }

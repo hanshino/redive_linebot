@@ -230,9 +230,8 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
       newCharacters: result.newCharacters,
       collectedCount: result.ownCharactersCount + result.newCharacters.length,
       allCount: allCharactersCount,
-      ownGodStone: userOwnStone,
       costGodStone: result.godStoneCost,
-      gainGodStoneAmount: result.repeatReward,
+      fragmentRewards: result.fragmentRewards,
     })
   );
 

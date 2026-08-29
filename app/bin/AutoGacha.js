@@ -194,7 +194,10 @@ function emptyAggregate() {
     rareCount: {},
     newCharactersCount: 0,
     godStoneCost: 0,
-    repeatReward: 0,
+    // 碎片按角色分開記。`fragmentTotal` 是總片數（給列表一眼掃過去用），
+    // `fragments` 是 itemId -> 片數（回答「幫我抽到誰的碎片」這個實際會被問的問題）。
+    fragmentTotal: 0,
+    fragments: {},
   };
 }
 
@@ -202,7 +205,14 @@ function accumulate(agg, result) {
   agg.rewards.push(...(result.rewards || []));
   agg.newCharactersCount += (result.newCharacters || []).length;
   agg.godStoneCost += result.godStoneCost || 0;
-  agg.repeatReward += result.repeatReward || 0;
+  // runDailyDraw 回的是 [{ itemId, name, amount }]，不再是單一數字。
+  // 多輪之間同一角色要相加 —— 每輪各記一筆的話，月卡兩輪抽到同一隻就會少算一半。
+  for (const fragment of result.fragmentRewards || []) {
+    const amount = Number(fragment.amount) || 0;
+    if (!amount) continue;
+    agg.fragmentTotal += amount;
+    agg.fragments[fragment.itemId] = (agg.fragments[fragment.itemId] || 0) + amount;
+  }
   if (result.rareCount) {
     for (const star of Object.keys(result.rareCount)) {
       const n = Number(result.rareCount[star] || 0);
@@ -216,7 +226,10 @@ function summarizeAggregate(agg, quota, modeMeta = {}) {
     rareCount: agg.rareCount,
     newCharactersCount: agg.newCharactersCount,
     godStoneCost: agg.godStoneCost,
-    repeatReward: agg.repeatReward,
+    fragmentTotal: agg.fragmentTotal,
+    // 刻意只存 itemId 而不存角色名稱：名稱會改、也會讓這個 JSON 膨脹，
+    // 而 itemId 查 gacha_pool 就有。十抽最多 10 個 key，乘上額度仍是十位數。
+    fragments: agg.fragments,
     rounds: quota.remaining,
     quota_total: quota.total,
   };

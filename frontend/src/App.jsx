@@ -10,6 +10,7 @@ import Race from "./pages/Race";
 import RaceBet from "./pages/Race/Bet";
 import RaceDetail from "./pages/Race/Detail";
 import GachaExchange from "./pages/Gacha/Exchange";
+import GachaFragments from "./pages/Gacha/Fragments";
 import Bag from "./pages/Bag";
 import Equipment from "./pages/Equipment";
 import TradeOrder from "./pages/Trade/Order";
@@ -72,6 +73,7 @@ export default function App() {
 
           {/* Gacha */}
           <Route path="gacha/exchange" element={<GachaExchange />} />
+          <Route path="gacha/fragments" element={<GachaFragments />} />
 
           {/* Inventory */}
           <Route path="bag" element={<Bag />} />
