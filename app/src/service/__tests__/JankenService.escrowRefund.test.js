@@ -245,6 +245,85 @@ describe("JankenService.isMatchAlive", () => {
   });
 });
 
+describe("JankenService.tryEscrowOnce releases the lock when the stake fails", () => {
+  const LOCK_KEY = "jankenDecide:escrow:m1:Uaaa";
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    redis.del.mockResolvedValue(1);
+  });
+
+  it("drops the lock when the player cannot afford the bet", async () => {
+    redis.set.mockResolvedValueOnce("OK");
+    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+
+    const result = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
+
+    expect(result).toEqual({ success: false, balance: 10 });
+    expect(redis.del).toHaveBeenCalledWith(LOCK_KEY);
+  });
+
+  it("drops the lock when escrowBet rolls back after a zAdd failure", async () => {
+    redis.set.mockResolvedValueOnce("OK");
+    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+    redis.zAdd.mockRejectedValueOnce(new Error("redis down"));
+
+    const result = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
+
+    expect(result.success).toBe(false);
+    expect(redis.del).toHaveBeenCalledWith(LOCK_KEY);
+  });
+
+  it("drops the lock and rethrows when escrowBet throws", async () => {
+    redis.set.mockResolvedValueOnce("OK");
+    inventory.getUserMoney.mockRejectedValueOnce(new Error("db down"));
+
+    await expect(JankenService.tryEscrowOnce("m1", "Uaaa", 500)).rejects.toThrow("db down");
+    expect(redis.del).toHaveBeenCalledWith(LOCK_KEY);
+  });
+
+  it("keeps the lock when the stake succeeds (isMatchAlive still works)", async () => {
+    redis.set.mockResolvedValueOnce("OK");
+    redis.zAdd.mockResolvedValueOnce(1);
+    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+
+    const result = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
+
+    expect(result).toEqual({ success: true });
+    expect(redis.del).not.toHaveBeenCalled();
+  });
+
+  // The free-ride regression: broke player clicks, is rejected, clicks again. Before the
+  // lock was released the retry returned `alreadyEscrowed: true`, which callers treat as
+  // "already paid" and pass through to submitChoice — letting them play without staking.
+  it("makes a retry re-attempt the debit instead of reporting alreadyEscrowed", async () => {
+    redis.set.mockResolvedValueOnce("OK");
+    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+    const first = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
+    expect(first.alreadyEscrowed).toBeUndefined();
+    expect(first.success).toBe(false);
+
+    // Lock was deleted, so the NX set succeeds again on the second click.
+    redis.set.mockResolvedValueOnce("OK");
+    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+    const second = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
+
+    expect(second.alreadyEscrowed).toBeUndefined();
+    expect(second).toEqual({ success: false, balance: 10 });
+    expect(inventory.decreaseGodStone).not.toHaveBeenCalled();
+  });
+
+  it("still short-circuits a genuine duplicate of a successful stake", async () => {
+    redis.set.mockResolvedValueOnce(null);
+
+    const result = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
+
+    expect(result).toEqual({ alreadyEscrowed: true });
+    expect(inventory.getUserMoney).not.toHaveBeenCalled();
+    expect(redis.del).not.toHaveBeenCalled();
+  });
+});
+
 describe("JankenService.resolveMatch clears pending escrows", () => {
   beforeEach(() => {
     jest.restoreAllMocks();
