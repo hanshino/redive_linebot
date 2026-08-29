@@ -124,7 +124,20 @@ exports.tryEscrowOnce = async function (matchId, userId, amount) {
   if (!locked) {
     return { alreadyEscrowed: true };
   }
-  const result = await exports.escrowBet(userId, amount, matchId);
+  // The lock means "this player already staked". If the debit did NOT happen, the lock is
+  // a lie and must go: leaving it lets the next click take the `alreadyEscrowed` branch,
+  // which callers read as "already paid" and wave through to submitChoice — a player with
+  // too few stones could click twice and play a bet match for free.
+  let result;
+  try {
+    result = await exports.escrowBet(userId, amount, matchId);
+  } catch (err) {
+    await redis.del(escrowKey);
+    throw err;
+  }
+  if (!result.success) {
+    await redis.del(escrowKey);
+  }
   return result;
 };
 
