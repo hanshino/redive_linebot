@@ -371,6 +371,18 @@ function clearedPanel(maxHp) {
   };
 }
 
+function pendingEffectsRow(pendingEffects) {
+  const labels = [
+    ["banner", "鼓舞"],
+    ["seal", "魔力刻印"],
+  ]
+    .filter(([type]) => Number(pendingEffects?.[type]) > 0)
+    .map(([type, label]) => `${label} ×${Number(pendingEffects[type])}`);
+  return labels.length
+    ? { type: "text", text: `待接力：${labels.join("、")}`, size: "xs", color: C.textMuted }
+    : null;
+}
+
 /** A `link` button has no border of its own, so an outline box supplies one. */
 function outlineButton(label, uri) {
   return {
@@ -431,6 +443,7 @@ function generateBattleStatusBubble({ round, boss, liffUri, attackEnabled = fals
   const label = `第 ${round.cycle_no} 輪 · ${boss.position} 號`;
   const hero = bossHero({ image: boss.image, cleared, label, name: boss.name });
   const boardUri = worldBossUri(liffUri);
+  const pendingEffects = !cleared ? pendingEffectsRow(round.pending_effects) : null;
 
   return {
     type: "bubble",
@@ -464,6 +477,7 @@ function generateBattleStatusBubble({ round, boss, liffUri, attackEnabled = fals
             ]
           : []),
         cleared ? clearedPanel(maxHp) : hpBlock({ currentHp, maxHp, percent: hpPercent }),
+        ...(pendingEffects ? [pendingEffects] : []),
       ],
     },
     footer: {

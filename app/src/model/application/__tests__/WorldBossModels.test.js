@@ -14,6 +14,8 @@ const WorldBossSeasonBoss = require("../WorldBossSeasonBoss");
 const WorldBossRound = require("../WorldBossRound");
 const WorldBossContribution = require("../WorldBossContribution");
 const WorldBossSeasonReward = require("../WorldBossSeasonReward");
+const WorldBossRoundEffect = require("../WorldBossRoundEffect");
+const WorldBossScoreEvent = require("../WorldBossScoreEvent");
 
 describe("World Boss v2 models", () => {
   const prefix = `${PREFIX}models_`;
@@ -254,52 +256,41 @@ describe("World Boss v2 models", () => {
     ).rejects.toMatchObject({ code: "ER_DUP_ENTRY" });
   });
 
-  test("aggregates, bounds, orders, and competition-ranks season contributions", async () => {
+  test("aggregates season contribution damage per user without ranking it", async () => {
     const seasonId = await createSeason({ name: `${prefix}ranking-season` });
     const roster = await createRoster(seasonId, await createBosses("ranking"));
     const [round] = await createCycle(seasonId, roster, 1);
     const roundId = round.id;
-    const rows = [
-      { user_id: `${prefix}u-b`, damage: 500, cost: 10 },
-      { user_id: `${prefix}u-a`, damage: 500, cost: 20 },
-      { user_id: `${prefix}u-c`, damage: 300, cost: 30 },
-    ];
-    for (let index = 0; index < 101; index += 1) {
-      rows.push({
-        user_id: `${prefix}rank-${String(index).padStart(3, "0")}`,
-        damage: 200 - index,
-        cost: 1,
-      });
-    }
     await mysql("world_boss_contribution").insert(
-      rows.map(row => ({ season_id: seasonId, round_id: roundId, ...row }))
-    );
-
-    const publicRows = await WorldBossContribution.seasonRanking(seasonId, 100);
-    expect(publicRows).toHaveLength(100);
-    expect(publicRows.slice(0, 3).map(row => [row.user_id, row.total_damage, row.ranking])).toEqual(
       [
-        [`${prefix}u-a`, "500", 1],
-        [`${prefix}u-b`, "500", 1],
-        [`${prefix}u-c`, "300", 3],
-      ]
+        { user_id: `${prefix}u-b`, damage: 500, cost: 10 },
+        { user_id: `${prefix}u-a`, damage: 300, cost: 20 },
+        { user_id: `${prefix}u-a`, damage: 200, cost: 20 },
+        { user_id: `${prefix}u-c`, damage: 300, cost: 30 },
+      ].map(row => ({ season_id: seasonId, round_id: roundId, ...row }))
     );
 
-    const allRows = await WorldBossContribution.seasonRankingAll(seasonId);
-    expect(allRows).toHaveLength(104);
-    expect(allRows.find(row => row.ranking === 101)).toBeTruthy();
-    expect(await WorldBossContribution.sumSeasonDamage(seasonId, `${prefix}u-a`)).toBe("500");
+    // Damage is a private statistic now — the model must not hand out a damage leaderboard.
+    expect(WorldBossContribution.seasonRanking).toBeUndefined();
+    expect(WorldBossContribution.seasonRankingAll).toBeUndefined();
+    expect(WorldBossContribution.withCompetitionRank).toBeUndefined();
 
-    for (const limit of [0, 101, 1.5, Number.NaN]) {
-      await expect(WorldBossContribution.seasonRanking(seasonId, limit)).rejects.toMatchObject({
-        code: "INVALID_RANKING_LIMIT",
-      });
-    }
-    await expect(WorldBossContribution.seasonRanking(seasonId, 1)).resolves.toHaveLength(1);
-    await expect(WorldBossContribution.seasonRanking(seasonId, 100)).resolves.toHaveLength(100);
+    await expect(WorldBossContribution.sumSeasonDamage(seasonId, `${prefix}u-a`)).resolves.toBe(
+      "500"
+    );
+    await expect(WorldBossContribution.sumSeasonDamage(seasonId, `${prefix}nobody`)).resolves.toBe(
+      "0"
+    );
+    const byUser = await WorldBossContribution.seasonDamageByUser(seasonId);
+    expect([...byUser.entries()].sort()).toEqual([
+      [`${prefix}u-a`, "500"],
+      [`${prefix}u-b`, "500"],
+      [`${prefix}u-c`, "300"],
+    ]);
+    await expect(WorldBossContribution.seasonDamageByUser(999999999)).resolves.toEqual(new Map());
   });
 
-  test("preserves exact aggregate damage for ordering, ties, and user totals", async () => {
+  test("preserves exact aggregate damage for user totals beyond Number.MAX_SAFE_INTEGER", async () => {
     const seasonId = await createSeason({ name: `${prefix}exact-ranking-season` });
     const roster = await createRoster(seasonId, await createBosses("exact"));
     const [round] = await createCycle(seasonId, roster, 1);
@@ -310,21 +301,47 @@ describe("World Boss v2 models", () => {
         { user_id: `${prefix}exact-a`, damage: half },
         { user_id: `${prefix}exact-a`, damage: "4503599627370497" },
         { user_id: `${prefix}exact-b`, damage: half },
-        { user_id: `${prefix}exact-b`, damage: "4503599627370497" },
-        { user_id: `${prefix}exact-c`, damage: half },
-        { user_id: `${prefix}exact-c`, damage: half },
+        { user_id: `${prefix}exact-b`, damage: half },
       ].map(row => ({ season_id: seasonId, round_id: roundId, cost: 1, ...row }))
     );
 
-    const ranking = await WorldBossContribution.seasonRanking(seasonId, 100);
-    expect(ranking.map(row => [row.user_id, row.total_damage, row.ranking])).toEqual([
-      [`${prefix}exact-a`, "9007199254740993", 1],
-      [`${prefix}exact-b`, "9007199254740993", 1],
-      [`${prefix}exact-c`, "9007199254740992", 3],
-    ]);
     await expect(WorldBossContribution.sumSeasonDamage(seasonId, `${prefix}exact-a`)).resolves.toBe(
       "9007199254740993"
     );
+    await expect(WorldBossContribution.seasonDamageByUser(seasonId)).resolves.toEqual(
+      new Map([
+        [`${prefix}exact-a`, "9007199254740993"],
+        [`${prefix}exact-b`, "9007199254740992"],
+      ])
+    );
+  });
+
+  test("excludes v1 rows from raw/effect/overkill stats but keeps them in effective", async () => {
+    const seasonId = await createSeason({ name: `${prefix}stats-season` });
+    const roster = await createRoster(seasonId, await createBosses("stats"));
+    const [round] = await createCycle(seasonId, roster, 1);
+    const userId = `${prefix}stats-user`;
+    await mysql("world_boss_contribution").insert(
+      [
+        // v1: raw_damage IS NULL. Its 700 damage is real HP removed, so it counts as
+        // effective — but nothing may be inferred about raw / effect / overkill.
+        { raw_damage: null, effect_damage: 0, job_key: null, damage: 700 },
+        // v2 with an overkill tail: 100 + 50 swung, only 30 landed.
+        { raw_damage: 100, effect_damage: 50, job_key: "mage", damage: 30 },
+        // v2 with no waste at all.
+        { raw_damage: 40, effect_damage: 0, job_key: "thief", damage: 40 },
+      ].map(row => ({ season_id: seasonId, round_id: round.id, user_id: userId, cost: 1, ...row }))
+    );
+
+    await expect(WorldBossContribution.seasonDamageStats(seasonId, userId)).resolves.toEqual({
+      raw: "140",
+      effect: "50",
+      effective: "770",
+      overkill: "120",
+    });
+    await expect(
+      WorldBossContribution.seasonDamageStats(seasonId, `${prefix}nobody`)
+    ).resolves.toEqual({ raw: "0", effect: "0", effective: "0", overkill: "0" });
   });
 
   test("sums cost using a half-open UTC range at the Taipei midnight boundary", async () => {
@@ -402,6 +419,7 @@ describe("World Boss v2 models", () => {
       season_id: settledSeasonId,
       user_id: userId,
       ranking: 1,
+      total_score: 1200,
       total_damage: 999,
       stone_amount: 500,
       title_key: title.key,
@@ -430,6 +448,7 @@ describe("World Boss v2 models", () => {
       seasonId: String(settledSeasonId),
       seasonName: `${prefix}settled-season`,
       ranking: 1,
+      totalScore: "1200",
       totalDamage: "999",
       stoneAmount: 500,
       titleKey: title.key,
@@ -438,5 +457,458 @@ describe("World Boss v2 models", () => {
     expect(Number(latest.rewardId)).toBeGreaterThan(0);
     expect(new Date(latest.paidAt).toISOString()).toBe("2026-07-01T01:00:00.000Z");
     expect(new Date(latest.settledAt).toISOString()).toBe("2026-07-01T00:00:00.000Z");
+
+    // A pre-v2 ledger has no total_score; it must stay null rather than borrow total_damage.
+    const legacyUserId = `${prefix}reward-legacy`;
+    await WorldBossSeasonReward.tryInsert({
+      ...payload,
+      user_id: legacyUserId,
+      total_score: null,
+    });
+    await expect(
+      WorldBossSeasonReward.findLatestSettledByUser(legacyUserId)
+    ).resolves.toMatchObject({ totalScore: null, totalDamage: "999" });
+  });
+
+  describe("effect and score ledgers", () => {
+    let seasonId;
+    let rounds;
+
+    async function addContribution(userId, overrides = {}) {
+      const [id] = await mysql("world_boss_contribution").insert({
+        season_id: seasonId,
+        round_id: rounds[0].id,
+        user_id: userId,
+        raw_damage: "100",
+        effect_damage: "0",
+        job_key: "mage",
+        damage: "100",
+        cost: 1,
+        ...overrides,
+      });
+      return id;
+    }
+
+    async function addEffect(overrides = {}) {
+      const sourceContributionId =
+        overrides.source_contribution_id ?? (await addContribution(`${prefix}fx-src`));
+      const [id] = await mysql("world_boss_round_effect").insert({
+        season_id: seasonId,
+        round_id: rounds[0].id,
+        source_contribution_id: sourceContributionId,
+        source_user_id: `${prefix}fx-src`,
+        effect_type: "seal",
+        value: "50",
+        consumed_by_contribution_id: null,
+        ...overrides,
+      });
+      return id;
+    }
+
+    function scoreRow(overrides = {}) {
+      return {
+        season_id: seasonId,
+        round_id: rounds[0].id,
+        effect_id: null,
+        beneficiary_user_id: `${prefix}score-user`,
+        kind: "direct",
+        points: "100",
+        ...overrides,
+      };
+    }
+
+    beforeEach(async () => {
+      seasonId = await createSeason({
+        name: `${prefix}ledger-season`,
+        status: "active",
+        active_slot: activeSlot,
+      });
+      const roster = await createRoster(seasonId, await createBosses("ledger"));
+      rounds = await createCycle(seasonId, roster, 1);
+    });
+
+    test("allows at most one effect per source contribution", async () => {
+      const contributionId = await addContribution(`${prefix}fx-src`);
+      await addEffect({ source_contribution_id: contributionId });
+
+      await expect(addEffect({ source_contribution_id: contributionId })).rejects.toMatchObject({
+        code: "ER_DUP_ENTRY",
+      });
+    });
+
+    test("allows at most one effect consumed by the same contribution", async () => {
+      const consumerId = await addContribution(`${prefix}fx-consumer`);
+      const first = await addEffect();
+      const second = await addEffect();
+      await mysql("world_boss_round_effect")
+        .where({ id: first })
+        .update({ consumed_by_contribution_id: consumerId });
+
+      // One attack may detonate at most one effect — two rows pointing at the same
+      // contribution would mean a hit silently consumed two.
+      await expect(
+        mysql("world_boss_round_effect")
+          .where({ id: second })
+          .update({ consumed_by_contribution_id: consumerId })
+      ).rejects.toMatchObject({ code: "ER_DUP_ENTRY" });
+      // Many unconsumed effects may coexist: NULL is not "the same value" to a UNIQUE index.
+      await expect(
+        mysql("world_boss_round_effect").where({ consumed_by_contribution_id: null })
+      ).resolves.toHaveLength(1);
+    });
+
+    test("rejects a zero-value effect", async () => {
+      await expect(addEffect({ value: "0" })).rejects.toMatchObject({
+        code: "ER_CHECK_CONSTRAINT_VIOLATED",
+      });
+    });
+
+    test("planFor skips a zero-value effect instead of writing an illegal row", async () => {
+      // floor(3 * 25 / 100) === 0 for a very low level adventurer.
+      expect(WorldBossRoundEffect.planFor("adventurer", 3)).toBeNull();
+      expect(WorldBossRoundEffect.planFor("mage", 1)).toBeNull();
+      expect(WorldBossRoundEffect.planFor("adventurer", 4)).toEqual({
+        effect_type: "banner",
+        value: 1n,
+      });
+      expect(WorldBossRoundEffect.planFor("mage", 501)).toEqual({
+        effect_type: "seal",
+        value: 250n,
+      });
+      // Swordman and thief leave nothing behind at any damage.
+      expect(WorldBossRoundEffect.planFor("swordman", 1000000)).toBeNull();
+      expect(WorldBossRoundEffect.planFor("thief", 1000000)).toBeNull();
+      // BIGINT stays exact: a JS Number would round this to ...992.
+      expect(WorldBossRoundEffect.planFor("mage", "18014398509481985").value).toBe(
+        9007199254740992n
+      );
+    });
+
+    test("rejects a zero-point score event", async () => {
+      const contributionId = await addContribution(`${prefix}score-user`);
+      await expect(
+        mysql("world_boss_score_event").insert(
+          scoreRow({ contribution_id: contributionId, points: "0" })
+        )
+      ).rejects.toMatchObject({ code: "ER_CHECK_CONSTRAINT_VIOLATED" });
+    });
+
+    test("rejects a duplicate (contribution, kind, beneficiary) score event", async () => {
+      const contributionId = await addContribution(`${prefix}score-user`);
+      const row = scoreRow({ contribution_id: contributionId });
+      await mysql("world_boss_score_event").insert(row);
+
+      await expect(mysql("world_boss_score_event").insert(row)).rejects.toMatchObject({
+        code: "ER_DUP_ENTRY",
+      });
+      // A different kind for the same contribution and user is legitimate.
+      await expect(
+        mysql("world_boss_score_event").insert({ ...row, kind: "relay" })
+      ).resolves.toBeDefined();
+    });
+
+    test("rejects a duplicate (effect, kind, beneficiary) score event", async () => {
+      const effectId = await addEffect();
+      const first = await addContribution(`${prefix}score-a`);
+      const second = await addContribution(`${prefix}score-b`);
+      const base = {
+        effect_id: effectId,
+        kind: "assist",
+        beneficiary_user_id: `${prefix}fx-src`,
+      };
+      await mysql("world_boss_score_event").insert(scoreRow({ ...base, contribution_id: first }));
+
+      // One effect may only ever pay one assist, even from a different contribution.
+      await expect(
+        mysql("world_boss_score_event").insert(scoreRow({ ...base, contribution_id: second }))
+      ).rejects.toMatchObject({ code: "ER_DUP_ENTRY" });
+    });
+
+    test("lets many effect_id NULL direct events coexist", async () => {
+      const first = await addContribution(`${prefix}score-user`);
+      const second = await addContribution(`${prefix}score-user`);
+      const third = await addContribution(`${prefix}score-user`);
+
+      // UNIQUE(effect_id, kind, beneficiary) must not collapse every direct event of one
+      // player into one row: MySQL treats each NULL as distinct, which is the design.
+      await mysql("world_boss_score_event").insert([
+        scoreRow({ contribution_id: first }),
+        scoreRow({ contribution_id: second }),
+        scoreRow({ contribution_id: third }),
+      ]);
+
+      await expect(
+        mysql("world_boss_score_event").where({ season_id: seasonId, effect_id: null })
+      ).resolves.toHaveLength(3);
+    });
+
+    test("blocks deleting a contribution or effect that a ledger row still references", async () => {
+      const effectId = await addEffect();
+      const sourceContributionId = (
+        await mysql("world_boss_round_effect").where({ id: effectId }).first()
+      ).source_contribution_id;
+      const scored = await addContribution(`${prefix}score-user`);
+      await mysql("world_boss_score_event").insert(
+        scoreRow({ contribution_id: scored, effect_id: effectId, kind: "assist" })
+      );
+
+      await expect(
+        mysql("world_boss_contribution").where({ id: sourceContributionId }).del()
+      ).rejects.toMatchObject({ code: "ER_ROW_IS_REFERENCED_2" });
+      await expect(
+        mysql("world_boss_contribution").where({ id: scored }).del()
+      ).rejects.toMatchObject({ code: "ER_ROW_IS_REFERENCED_2" });
+      await expect(
+        mysql("world_boss_round_effect").where({ id: effectId }).del()
+      ).rejects.toMatchObject({ code: "ER_ROW_IS_REFERENCED_2" });
+    });
+
+    test("sums and ranks BIGINT score points beyond Number.MAX_SAFE_INTEGER exactly", async () => {
+      const half = "4503599627370496";
+      const users = [`${prefix}sc-a`, `${prefix}sc-b`, `${prefix}sc-c`];
+      const rows = [];
+      for (const [index, user] of users.entries()) {
+        const points = index === 2 ? [half, half] : [half, "4503599627370497"];
+        for (const value of points) {
+          const contributionId = await addContribution(user);
+          rows.push(
+            scoreRow({ contribution_id: contributionId, beneficiary_user_id: user, points: value })
+          );
+        }
+      }
+      await mysql("world_boss_score_event").insert(rows);
+
+      await expect(WorldBossScoreEvent.sumSeasonScore(seasonId, users[0])).resolves.toBe(
+        "9007199254740993"
+      );
+      const ranking = await WorldBossScoreEvent.seasonRanking(seasonId, 100);
+      expect(ranking.map(row => [row.user_id, row.total_score, row.ranking])).toEqual([
+        [users[0], "9007199254740993", 1],
+        [users[1], "9007199254740993", 1],
+        [users[2], "9007199254740992", 3],
+      ]);
+      await expect(WorldBossScoreEvent.seasonRankingAll(seasonId)).resolves.toHaveLength(3);
+      for (const limit of [0, 101, 1.5, Number.NaN]) {
+        await expect(WorldBossScoreEvent.seasonRanking(seasonId, limit)).rejects.toMatchObject({
+          code: "INVALID_RANKING_LIMIT",
+        });
+      }
+      await expect(WorldBossScoreEvent.sumSeasonScore(seasonId, `${prefix}nobody`)).resolves.toBe(
+        "0"
+      );
+    });
+
+    test("bounds the public leaderboard and ranks every contributor internally", async () => {
+      const rows = [];
+      for (let index = 0; index < 104; index += 1) {
+        const user = `${prefix}rank-${String(index).padStart(3, "0")}`;
+        const contributionId = await addContribution(user);
+        rows.push(
+          scoreRow({
+            contribution_id: contributionId,
+            beneficiary_user_id: user,
+            points: String(500 - index),
+          })
+        );
+      }
+      // Two ties inserted in reverse user_id order: the tie-break must come from the query,
+      // not from insertion order.
+      for (const user of [`${prefix}tie-z`, `${prefix}tie-a`]) {
+        const contributionId = await addContribution(user);
+        rows.push(
+          scoreRow({ contribution_id: contributionId, beneficiary_user_id: user, points: "500" })
+        );
+      }
+      await mysql("world_boss_score_event").insert(rows);
+
+      await expect(WorldBossScoreEvent.seasonRanking(seasonId, 1)).resolves.toHaveLength(1);
+      await expect(WorldBossScoreEvent.seasonRanking(seasonId, 100)).resolves.toHaveLength(100);
+      const all = await WorldBossScoreEvent.seasonRankingAll(seasonId);
+      expect(all).toHaveLength(106);
+      expect(all.slice(0, 3).map(row => [row.user_id, row.total_score, row.ranking])).toEqual([
+        [`${prefix}rank-000`, "500", 1],
+        [`${prefix}tie-a`, "500", 1],
+        [`${prefix}tie-z`, "500", 1],
+      ]);
+      expect(all[3]).toMatchObject({ user_id: `${prefix}rank-001`, ranking: 4 });
+      expect(all.find(row => row.ranking === 103)).toBeTruthy();
+    });
+
+    test("ranks a legacy v1 backfill and v2 kinds on one mixed leaderboard", async () => {
+      const legacyUser = `${prefix}mix-legacy`;
+      const mixedUser = `${prefix}mix-both`;
+      const v2User = `${prefix}mix-v2`;
+      const rows = [];
+      // v1 player: only a backfilled legacy direct event, whose contribution has no raw_damage.
+      const legacyContribution = await addContribution(legacyUser, {
+        raw_damage: null,
+        effect_damage: 0,
+        job_key: null,
+        damage: "300",
+      });
+      rows.push(
+        scoreRow({
+          contribution_id: legacyContribution,
+          beneficiary_user_id: legacyUser,
+          points: "300",
+        })
+      );
+      // Returning player: legacy direct 300 + v2 direct 100 + assist 50 + relay 50 = 500.
+      const mixedLegacy = await addContribution(mixedUser, {
+        raw_damage: null,
+        effect_damage: 0,
+        job_key: null,
+        damage: "300",
+      });
+      rows.push(
+        scoreRow({ contribution_id: mixedLegacy, beneficiary_user_id: mixedUser, points: "300" })
+      );
+      const mixedV2 = await addContribution(mixedUser);
+      const effectId = await addEffect();
+      rows.push(
+        scoreRow({ contribution_id: mixedV2, beneficiary_user_id: mixedUser, points: "100" }),
+        scoreRow({
+          contribution_id: mixedV2,
+          effect_id: effectId,
+          beneficiary_user_id: mixedUser,
+          kind: "assist",
+          points: "50",
+        }),
+        scoreRow({
+          contribution_id: mixedV2,
+          effect_id: effectId,
+          beneficiary_user_id: mixedUser,
+          kind: "relay",
+          points: "50",
+        })
+      );
+      // Pure v2 player, tied with the returning player on 500.
+      const v2Contribution = await addContribution(v2User, { raw_damage: "500", damage: "500" });
+      rows.push(
+        scoreRow({ contribution_id: v2Contribution, beneficiary_user_id: v2User, points: "500" })
+      );
+      await mysql("world_boss_score_event").insert(rows);
+
+      await expect(WorldBossScoreEvent.sumSeasonScore(seasonId, mixedUser)).resolves.toBe("500");
+      await expect(WorldBossScoreEvent.seasonScoreByKind(seasonId, mixedUser)).resolves.toEqual({
+        direct: "400",
+        assist: "50",
+        relay: "50",
+      });
+      await expect(WorldBossScoreEvent.seasonScoreByKind(seasonId, legacyUser)).resolves.toEqual({
+        direct: "300",
+        assist: "0",
+        relay: "0",
+      });
+      const ranking = await WorldBossScoreEvent.seasonRankingAll(seasonId);
+      expect(
+        ranking
+          .filter(row => row.user_id.startsWith(`${prefix}mix-`))
+          .map(row => [row.user_id, row.total_score, row.ranking])
+      ).toEqual([
+        [mixedUser, "500", 1],
+        [v2User, "500", 1],
+        [legacyUser, "300", 3],
+      ]);
+    });
+
+    test("lists a player's own effects newest first with the consumer joined in one query", async () => {
+      const source = `${prefix}hist-src`;
+      const taker = `${prefix}hist-taker`;
+      const stranger = `${prefix}hist-other`;
+      const consumedAt = new Date("2026-07-20T03:00:00.000Z");
+      const consumerId = await addContribution(taker, { created_at: consumedAt });
+      const takenId = await addEffect({
+        source_user_id: source,
+        effect_type: "banner",
+        value: "25",
+        consumed_by_contribution_id: consumerId,
+      });
+      const pendingId = await addEffect({ source_user_id: source, effect_type: "seal" });
+      // Someone else's effect and another season's effect must both stay out.
+      await addEffect({ source_user_id: stranger });
+      const otherSeasonId = await createSeason({ name: `${prefix}hist-other-season` });
+
+      const rows = await WorldBossRoundEffect.listSeasonHistoryBySource({
+        seasonId,
+        userId: source,
+        limit: 50,
+      });
+
+      expect(rows.map(row => String(row.id))).toEqual([String(pendingId), String(takenId)]);
+      expect(rows[0]).toMatchObject({
+        effect_type: "seal",
+        value: 50,
+        consumed_by_user_id: null,
+        consumed_at: null,
+      });
+      expect(rows[1]).toMatchObject({
+        effect_type: "banner",
+        value: 25,
+        consumed_by_user_id: taker,
+      });
+      expect(Number(rows[1].round_id)).toBe(Number(rounds[0].id));
+      // consumed_at comes from the consuming contribution, not the effect's updated_at.
+      expect(new Date(rows[1].consumed_at).toISOString()).toBe(consumedAt.toISOString());
+      expect(rows[1].created_at).toBeInstanceOf(Date);
+
+      await expect(
+        WorldBossRoundEffect.listSeasonHistoryBySource({ seasonId, userId: source, limit: 1 })
+      ).resolves.toHaveLength(1);
+      await expect(
+        WorldBossRoundEffect.listSeasonHistoryBySource({
+          seasonId: otherSeasonId,
+          userId: source,
+          limit: 50,
+        })
+      ).resolves.toEqual([]);
+      await expect(
+        WorldBossRoundEffect.listSeasonHistoryBySource({
+          seasonId,
+          userId: `${prefix}nobody`,
+          limit: 50,
+        })
+      ).resolves.toEqual([]);
+    });
+
+    test("finds the oldest consumable effect and never the caller's own", async () => {
+      const mine = await addEffect({ source_user_id: `${prefix}me` });
+      const theirs = await addEffect({ source_user_id: `${prefix}them` });
+      const consumerId = await addContribution(`${prefix}me`);
+
+      await mysql.transaction(async trx => {
+        // The exclusion is a SQL predicate, so my own older effect is skipped rather than
+        // returned and then discarded — otherwise it would block `theirs` forever.
+        const picked = await WorldBossRoundEffect.findConsumableForUpdate(trx, {
+          roundId: rounds[0].id,
+          userId: `${prefix}me`,
+        });
+        expect(Number(picked.id)).toBe(Number(theirs));
+        // Someone else sees the true oldest.
+        const other = await WorldBossRoundEffect.findConsumableForUpdate(trx, {
+          roundId: rounds[0].id,
+          userId: `${prefix}stranger`,
+        });
+        expect(Number(other.id)).toBe(Number(mine));
+
+        await WorldBossRoundEffect.consume(trx, {
+          effectId: theirs,
+          contributionId: consumerId,
+          now: new Date("2026-07-20T00:00:00.000Z"),
+        });
+        // Second consume of the same row affects 0 rows and must abort, not silently pass.
+        await expect(
+          WorldBossRoundEffect.consume(trx, {
+            effectId: theirs,
+            contributionId: consumerId,
+            now: new Date("2026-07-20T00:00:00.000Z"),
+          })
+        ).rejects.toMatchObject({ code: "EFFECT_ALREADY_CONSUMED" });
+      });
+
+      await expect(WorldBossRoundEffect.listUnconsumedByRound(rounds[0].id)).resolves.toHaveLength(
+        1
+      );
+    });
   });
 });

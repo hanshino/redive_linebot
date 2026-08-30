@@ -166,6 +166,27 @@ describe("WorldBoss Flex production contract", () => {
     });
   });
 
+  it.each([
+    [{ banner: 1, seal: 2 }, "待接力：鼓舞 ×1、魔力刻印 ×2"],
+    [{ banner: 3, seal: 0 }, "待接力：鼓舞 ×3"],
+    [{ banner: 0, seal: 4 }, "待接力：魔力刻印 ×4"],
+  ])("renders pending effects as public shared state", (pending_effects, expected) => {
+    expect(text(bubbleFor({ pending_effects }))).toContain(expected);
+  });
+
+  it("omits pending effects when empty or cleared", () => {
+    expect(text(bubbleFor({ pending_effects: { banner: 0, seal: 0 } }))).not.toContain("待接力");
+    expect(
+      text(
+        bubbleFor({
+          current_hp: "0",
+          cleared_at: new Date(),
+          pending_effects: { banner: 9, seal: 9 },
+        })
+      )
+    ).not.toContain("待接力");
+  });
+
   it("weights the attack button above the skill button in the same row", () => {
     const footer = bubbleFor({}, { attackEnabled: true }).footer;
     const [row, board] = footer.contents;

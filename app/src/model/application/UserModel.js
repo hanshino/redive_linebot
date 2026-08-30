@@ -52,6 +52,21 @@ exports.getProfile = async platformId => {
 };
 
 /**
+ * 批次取顯示名稱，回 Map<platformId, displayName|null>。
+ *
+ * 存在的理由只有一個：讓「一批 user id → 一批名字」是一次查詢。呼叫端拿到 Map 之後就地
+ * 查表，不要在迴圈裡呼叫 getProfile。查無或空字串一律 null，讓呼叫端只有一種缺值型態。
+ */
+exports.getDisplayNames = async platformIds => {
+  const ids = [...new Set(platformIds.filter(id => typeof id === "string" && id))];
+  if (!ids.length) return new Map();
+  const rows = await mysql(USER_TABLE)
+    .whereIn("platform_id", ids)
+    .select("platform_id", "display_name");
+  return new Map(rows.map(row => [row.platform_id, row.display_name?.trim() || null]));
+};
+
+/**
  * 確保用戶存在，不存在則自動建立
  * @param {String} platformId 平台ID
  * @param {String} platform 平台名稱 (預設 "line")

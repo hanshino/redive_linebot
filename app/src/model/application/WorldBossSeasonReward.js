@@ -31,6 +31,7 @@ exports.findLatestSettledByUser = async function (userId, trx) {
       "reward.season_id as seasonId",
       "season.name as seasonName",
       "reward.ranking as ranking",
+      "reward.total_score as totalScore",
       "reward.total_damage as totalDamage",
       "reward.stone_amount as stoneAmount",
       "reward.title_key as titleKey",
@@ -46,6 +47,9 @@ exports.findLatestSettledByUser = async function (userId, trx) {
         ...row,
         rewardId: canonicalPositiveInteger(row.rewardId),
         seasonId: canonicalPositiveInteger(row.seasonId),
+        // v2 之前結算的 ledger 沒有 total_score（欄位是後加的 NULLable），維持 null 表示
+        // 「這個賽季不是用分數排的」，不要用 total_damage 冒充。
+        totalScore: row.totalScore === null ? null : canonicalUnsignedInteger(row.totalScore),
         totalDamage: canonicalUnsignedInteger(row.totalDamage),
       }
     : row;

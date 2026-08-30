@@ -48,7 +48,8 @@ function attackInput({ progress, bonuses, attackType }) {
   const expBonus = nonNegativeFinite(bonuses.exp_bonus);
 
   return {
-    damage: Math.floor(baseDamage * (1 + atkPercent)),
+    rawDamage: Math.floor(baseDamage * (1 + atkPercent)),
+    jobKey: progress.job_key,
     cost: Math.max(1, baseCost - costReduction),
     exp: PER_HIT_EXP + expBonus,
   };
@@ -167,7 +168,7 @@ async function attack({ userId, roundId, attackType, groupId, displayName }) {
     EquipmentService.getEquipmentBonuses(userId),
   ]);
   const progress = storedProgress || { level: 1, job_key: "adventurer" };
-  const { damage, cost, exp } = attackInput({ progress, bonuses, attackType });
+  const { rawDamage, jobKey, cost, exp } = attackInput({ progress, bonuses, attackType });
 
   let result;
   try {
@@ -175,7 +176,8 @@ async function attack({ userId, roundId, attackType, groupId, displayName }) {
       userId,
       attackType,
       roundId: canonicalRoundId,
-      damage,
+      rawDamage,
+      jobKey,
       cost,
       exp,
     });

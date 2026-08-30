@@ -147,14 +147,15 @@ class Adventurer {
   }
 
   getSkillOneDamage() {
-    return this.getStandardDamage();
+    return Math.floor(this.getNormalDamage() * this.skillOne.rate);
   }
 
   get skillOne() {
     return {
       name: "普通攻擊",
       description: "冒險者的普通攻擊",
-      cost: 10,
+      cost: 8,
+      rate: 1.2,
     };
   }
 
@@ -190,11 +191,9 @@ class Swordman extends Adventurer {
   get skillOne() {
     return {
       name: "震地斬擊",
-      description: "穩定的重擊，造成 2.2 倍傷害",
+      description: "穩定的重擊，造成 1.8 倍傷害",
       cost: 10,
-      rate: 2.2,
-      criticalRate: 8,
-      criticalConfig: [makeCriticalConfig(1.2, 1.4, 100)],
+      rate: 1.8,
     };
   }
 
@@ -219,7 +218,7 @@ class Mage extends Adventurer {
       name: "元素之力",
       description: "低消耗的魔法攻擊，容易產生爆擊",
       cost: 7,
-      rate: 1.0,
+      rate: 0.7,
       criticalRate: 25,
       criticalConfig: [
         makeCriticalConfig(1.8, 2.2, 60),
@@ -257,7 +256,7 @@ class Thief extends Adventurer {
       name: "致命一擊",
       description: "高風險高回報的攻擊，有機會造成巨額傷害",
       cost: 20,
-      rate: 1.5,
+      rate: 2.1,
       criticalRate: 50,
       criticalConfig: [
         makeCriticalConfig(1.2, 1.5, 10),

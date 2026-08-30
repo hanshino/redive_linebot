@@ -12,17 +12,23 @@ jest.mock("../../../service/WorldBossSeasonService", () => ({
   openSeason: jest.fn(),
   getBattleStatus: jest.fn(),
   getRanking: jest.fn(),
-  getUserTotalDamage: jest.fn(),
+  getUserSeasonStats: jest.fn(),
   getLatestSettledResult: jest.fn(),
 }));
 jest.mock("../../../service/WorldBossBattleService", () => ({
   getRemainingDailyCost: jest.fn(),
 }));
 jest.mock("../../../service/WorldBossAttackService", () => ({ attack: jest.fn() }));
+jest.mock("../../../model/application/WorldBossRoundEffect", () => ({
+  listSeasonHistoryBySource: jest.fn(),
+}));
+jest.mock("../../../model/application/UserModel", () => ({ getDisplayNames: jest.fn() }));
 const CatalogService = require("../../../service/WorldBossCatalogService");
 const SeasonService = require("../../../service/WorldBossSeasonService");
 const BattleService = require("../../../service/WorldBossBattleService");
 const AttackService = require("../../../service/WorldBossAttackService");
+const WorldBossRoundEffect = require("../../../model/application/WorldBossRoundEffect");
+const UserModel = require("../../../model/application/UserModel");
 const express = require("express");
 const supertest = require("supertest");
 const admin = require("../admin");
@@ -93,6 +99,7 @@ const latestReward = {
   seasonId: 7,
   seasonName: "S1",
   ranking: 1,
+  totalScore: "1200",
   totalDamage: "500",
   stoneAmount: 100,
   titleKey: "worldboss_annihilator",
@@ -101,20 +108,61 @@ const latestReward = {
   settledAt: new Date("2026-07-19T12:00:00.000Z"),
 };
 
+// Mirrors WorldBossSeasonService.getUserSeasonStats after Lane D: score and damage are
+// two separate ledgers, every BIGINT is a decimal string.
+const seasonStats = {
+  seasonId: "8",
+  totalScore: "700",
+  score: { direct: "500", assist: "150", relay: "50" },
+  damage: { raw: "500", effect: "100", effective: "550", overkill: "50" },
+};
+
+// Mirrors the BattleService attack DTO after Lane C. `damage` / `wastedDamage` are gone;
+// keeping them here is what made the old handler test green against a dead field.
 const attackResult = {
-  damage: 500,
-  effectiveDamage: "100",
-  wastedDamage: "400",
+  rawDamage: "500",
+  effectDamage: "100",
+  effectiveDamage: "400",
+  overkillDamage: "200",
+  scoreGained: { direct: "500", assist: "100", relay: "0" },
+  consumedEffect: { id: "31", type: "seal", value: "100", sourceUserId: "Usource" },
+  createdEffect: { id: "32", type: "banner", value: "125", sourceUserId: "Uworldboss" },
   cost: 15,
   cleared: true,
   cycleAdvanced: false,
   attackedCycleNo: 3,
   cycleNo: 3,
+  round: { id: 21, position: 2, current_hp: "0", max_hp: "400" },
   boss: { id: 2, position: 2, name: "王2" },
+  rounds: status.rounds,
   levelResult: { levelUp: true, newLevel: 9, newExp: 3 },
-  seasonTotalDamage: "9007199254740993",
+  seasonTotalScore: "9007199254740993",
+  seasonTotalDamage: "9007199254740991",
   daily: { limit: 100, used: 35, remaining: 65 },
 };
+
+const effectHistoryRows = [
+  {
+    id: "31",
+    round_id: "21",
+    effect_type: "seal",
+    value: "100",
+    created_at: new Date("2026-07-20T02:00:00.000Z"),
+    consumed_by_user_id: "Utaker",
+    consumed_at: new Date("2026-07-20T02:05:00.000Z"),
+  },
+  {
+    id: "30",
+    round_id: "20",
+    effect_type: "banner",
+    value: "25",
+    created_at: new Date("2026-07-20T01:30:00.000Z"),
+    consumed_by_user_id: null,
+    consumed_at: null,
+  },
+];
+
+const displayNames = { Utaker: "接棒者", Usource: "留效果的人" };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -129,11 +177,20 @@ beforeEach(() => {
   SeasonService.openSeason.mockResolvedValue({ seasonId: 8, cycleNo: 3, rounds: status.rounds });
   SeasonService.getBattleStatus.mockResolvedValue(status);
   SeasonService.getRanking.mockResolvedValue([
-    { user_id: "Uone", total_damage: "500", ranking: 1 },
+    { user_id: "Uone", display_name: "玩家甲", total_score: "500", ranking: 1 },
   ]);
   SeasonService.getLatestSettledResult.mockResolvedValue(latestReward);
   BattleService.getRemainingDailyCost.mockResolvedValue({ limit: 100, used: 20, remaining: 80 });
-  SeasonService.getUserTotalDamage.mockResolvedValue("500");
+  SeasonService.getUserSeasonStats.mockResolvedValue(seasonStats);
+  WorldBossRoundEffect.listSeasonHistoryBySource.mockResolvedValue(effectHistoryRows);
+  UserModel.getDisplayNames.mockImplementation(
+    async ids =>
+      new Map(
+        [...new Set(ids)]
+          .filter(id => Object.hasOwn(displayNames, id))
+          .map(id => [id, displayNames[id]])
+      )
+  );
   AttackService.attack.mockResolvedValue({
     result: attackResult,
     announcementQueued: true,
@@ -440,13 +497,37 @@ describe("World Boss public handlers", () => {
     expect(SeasonService.getRanking).toHaveBeenCalledWith("8", expected);
     expect(res.json).toHaveBeenCalledWith({
       seasonId: "8",
-      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+      rows: [{ user_id: "Uone", display_name: "玩家甲", total_score: "500", ranking: 1 }],
     });
   });
 
-  it("passes display_name through in the leaderboard DTO", async () => {
+  it("ranks the leaderboard by total_score and never exposes total_damage", async () => {
+    // Guards the exact false-green Lane D found: the service stopped producing
+    // `total_damage`, but the handler forwarded rows verbatim, so the test stayed green
+    // while the board rendered blanks. A stray damage column must not survive the DTO.
     SeasonService.getRanking.mockResolvedValue([
-      { user_id: "Uone", display_name: "玩家甲", total_damage: "500", ranking: 1 },
+      {
+        user_id: "Uone",
+        display_name: "玩家甲",
+        total_score: "900",
+        ranking: 1,
+        total_damage: "7",
+      },
+    ]);
+    const res = response();
+
+    await publicHandler.leaderboard(request(), res);
+
+    const [payload] = res.json.mock.calls[0];
+    expect(payload.rows).toEqual([
+      { user_id: "Uone", display_name: "玩家甲", total_score: "900", ranking: 1 },
+    ]);
+    expect(Object.keys(payload.rows[0])).not.toContain("total_damage");
+  });
+
+  it("defaults a missing leaderboard display_name to null", async () => {
+    SeasonService.getRanking.mockResolvedValue([
+      { user_id: "Uone", display_name: null, total_score: "500", ranking: 1 },
     ]);
     const res = response();
 
@@ -454,7 +535,7 @@ describe("World Boss public handlers", () => {
 
     expect(res.json).toHaveBeenCalledWith({
       seasonId: "8",
-      rows: [{ user_id: "Uone", display_name: "玩家甲", total_damage: "500", ranking: 1 }],
+      rows: [{ user_id: "Uone", display_name: null, total_score: "500", ranking: 1 }],
     });
   });
 
@@ -488,8 +569,9 @@ describe("World Boss public handlers", () => {
     await publicHandler.me(request({ userId: "Ume" }), res);
 
     expect(SeasonService.getLatestSettledResult).toHaveBeenCalledWith("Ume");
-    expect(SeasonService.getUserTotalDamage).not.toHaveBeenCalled();
+    expect(SeasonService.getUserSeasonStats).not.toHaveBeenCalled();
     expect(BattleService.getRemainingDailyCost).not.toHaveBeenCalled();
+    expect(WorldBossRoundEffect.listSeasonHistoryBySource).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith({
       current: null,
       latestReward: {
@@ -507,45 +589,165 @@ describe("World Boss public handlers", () => {
     expect(SeasonService.getRanking).toHaveBeenCalledWith("8", 50);
     expect(leaderboardRes.json).toHaveBeenCalledWith({
       seasonId: "8",
-      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+      rows: [{ user_id: "Uone", display_name: "玩家甲", total_score: "500", ranking: 1 }],
     });
 
     const meRes = response();
     await publicHandler.me(request({ userId: "Ume" }), meRes);
-    expect(SeasonService.getUserTotalDamage).toHaveBeenCalledWith("8", "Ume");
+    expect(SeasonService.getUserSeasonStats).toHaveBeenCalledWith("8", "Ume");
     expect(meRes.json.mock.calls[0][0].current).toMatchObject({
       seasonId: "8",
-      totalDamage: "500",
+      totalScore: "700",
     });
   });
 
-  it("returns exact current damage outside the top 100 and latest reward independently", async () => {
-    SeasonService.getRanking.mockResolvedValue(
-      Array.from({ length: 100 }, (_, index) => ({
-        user_id: `Uranked${index + 1}`,
-        total_damage: 1000 - index,
-        ranking: index + 1,
-      }))
-    );
-    SeasonService.getUserTotalDamage.mockResolvedValue("500");
+  it("returns the full score breakdown and damage stats for the caller", async () => {
     const res = response();
 
     await publicHandler.me(request({ userId: "Ume" }), res);
 
     expect(SeasonService.getRanking).not.toHaveBeenCalled();
-    expect(SeasonService.getUserTotalDamage).toHaveBeenCalledWith("8", "Ume");
+    expect(SeasonService.getUserSeasonStats).toHaveBeenCalledWith("8", "Ume");
     expect(BattleService.getRemainingDailyCost).toHaveBeenCalledWith("Ume");
-    expect(res.json.mock.calls[0][0]).toEqual({
-      current: {
-        seasonId: "8",
-        totalDamage: "500",
-        daily: { limit: 100, used: 20, remaining: 80 },
+    expect(res.json.mock.calls[0][0].current).toEqual({
+      seasonId: "8",
+      totalScore: "700",
+      score: { direct: "500", assist: "150", relay: "50" },
+      damage: { raw: "500", effect: "100", effective: "550", overkill: "50" },
+      daily: { limit: 100, used: 20, remaining: 80 },
+      effects: [
+        {
+          effectId: "31",
+          type: "seal",
+          value: "100",
+          roundId: "21",
+          createdAt: "2026-07-20T02:00:00.000Z",
+          consumedAt: "2026-07-20T02:05:00.000Z",
+          consumedBy: { userId: "Utaker", displayName: "接棒者" },
+        },
+        {
+          effectId: "30",
+          type: "banner",
+          value: "25",
+          roundId: "20",
+          createdAt: "2026-07-20T01:30:00.000Z",
+          consumedAt: null,
+          consumedBy: null,
+        },
+      ],
+    });
+    expect(res.json.mock.calls[0][0].latestReward).toMatchObject({
+      totalScore: "1200",
+      totalDamage: "500",
+    });
+  });
+
+  it("reads its subject only from the authenticated profile", async () => {
+    const res = response();
+
+    // Every possible way to name a different subject: body, params and query.
+    await publicHandler.me(
+      {
+        body: { userId: "Uvictim" },
+        params: { userId: "Uvictim" },
+        query: { userId: "Uvictim", user_id: "Uvictim" },
+        profile: { userId: "Ureal" },
       },
-      latestReward: {
-        ...latestReward,
-        paidAt: "2026-07-19T12:00:00.000Z",
-        settledAt: "2026-07-19T12:00:00.000Z",
+      res
+    );
+
+    expect(SeasonService.getLatestSettledResult).toHaveBeenCalledWith("Ureal");
+    expect(SeasonService.getUserSeasonStats).toHaveBeenCalledWith("8", "Ureal");
+    expect(BattleService.getRemainingDailyCost).toHaveBeenCalledWith("Ureal");
+    expect(WorldBossRoundEffect.listSeasonHistoryBySource).toHaveBeenCalledWith({
+      seasonId: "8",
+      userId: "Ureal",
+      limit: 50,
+    });
+    for (const call of [
+      ...SeasonService.getUserSeasonStats.mock.calls,
+      ...SeasonService.getLatestSettledResult.mock.calls,
+      ...WorldBossRoundEffect.listSeasonHistoryBySource.mock.calls,
+    ]) {
+      expect(JSON.stringify(call)).not.toContain("Uvictim");
+    }
+  });
+
+  it("tolerates a v1 latestReward whose totalScore is null", async () => {
+    SeasonService.getLatestSettledResult.mockResolvedValue({ ...latestReward, totalScore: null });
+    const res = response();
+
+    await publicHandler.me(request({ userId: "Ume" }), res);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].latestReward).toMatchObject({
+      totalScore: null,
+      totalDamage: "500",
+    });
+    expect(() => JSON.stringify(res.json.mock.calls[0][0])).not.toThrow();
+  });
+
+  it("caps effect history at the newest 50 rows and never queries names per row", async () => {
+    const rows = Array.from({ length: 50 }, (_, index) => ({
+      id: String(500 - index),
+      round_id: "21",
+      effect_type: index % 2 ? "banner" : "seal",
+      value: "10",
+      created_at: new Date("2026-07-20T02:00:00.000Z"),
+      consumed_by_user_id: index % 2 ? "Utaker" : null,
+      consumed_at: index % 2 ? new Date("2026-07-20T02:05:00.000Z") : null,
+    }));
+    WorldBossRoundEffect.listSeasonHistoryBySource.mockResolvedValue(rows);
+    const res = response();
+
+    await publicHandler.me(request({ userId: "Ume" }), res);
+
+    expect(WorldBossRoundEffect.listSeasonHistoryBySource).toHaveBeenCalledTimes(1);
+    expect(WorldBossRoundEffect.listSeasonHistoryBySource).toHaveBeenCalledWith({
+      seasonId: "8",
+      userId: "Ume",
+      limit: 50,
+    });
+    // One batched name lookup for 25 consumers — not one per row.
+    expect(UserModel.getDisplayNames).toHaveBeenCalledTimes(1);
+    expect(UserModel.getDisplayNames).toHaveBeenCalledWith(new Array(25).fill("Utaker"));
+    const { effects } = res.json.mock.calls[0][0].current;
+    expect(effects).toHaveLength(50);
+    expect(effects.map(row => row.effectId)).toEqual(rows.map(row => String(row.id)));
+    expect(effects[0].effectId).toBe("500");
+    expect(effects.at(-1).effectId).toBe("451");
+  });
+
+  it("returns an empty effect history without any name lookup", async () => {
+    WorldBossRoundEffect.listSeasonHistoryBySource.mockResolvedValue([]);
+    const res = response();
+
+    await publicHandler.me(request({ userId: "Ume" }), res);
+
+    expect(res.json.mock.calls[0][0].current.effects).toEqual([]);
+    expect(UserModel.getDisplayNames).toHaveBeenCalledWith([]);
+    expect(UserModel.getDisplayNames).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps consumedBy.displayName null when the consumer has no stored profile", async () => {
+    WorldBossRoundEffect.listSeasonHistoryBySource.mockResolvedValue([
+      {
+        id: "31",
+        round_id: "21",
+        effect_type: "banner",
+        value: "25",
+        created_at: new Date("2026-07-20T02:00:00.000Z"),
+        consumed_by_user_id: "Unameless",
+        consumed_at: new Date("2026-07-20T02:05:00.000Z"),
       },
+    ]);
+    const res = response();
+
+    await publicHandler.me(request({ userId: "Ume" }), res);
+
+    expect(res.json.mock.calls[0][0].current.effects[0].consumedBy).toEqual({
+      userId: "Unameless",
+      displayName: null,
     });
   });
 
@@ -555,36 +757,51 @@ describe("World Boss public handlers", () => {
       ...status,
       season: { ...status.season, id: exactSeasonId },
     });
+    SeasonService.getUserSeasonStats.mockResolvedValue({
+      ...seasonStats,
+      seasonId: exactSeasonId,
+    });
     const leaderboardRes = response();
 
     await publicHandler.leaderboard(request(), leaderboardRes);
     expect(SeasonService.getRanking).toHaveBeenCalledWith(exactSeasonId, 50);
     expect(leaderboardRes.json).toHaveBeenCalledWith({
       seasonId: exactSeasonId,
-      rows: [{ user_id: "Uone", total_damage: "500", ranking: 1 }],
+      rows: [{ user_id: "Uone", display_name: "玩家甲", total_score: "500", ranking: 1 }],
     });
 
     const meRes = response();
     await publicHandler.me(request({ userId: "Uexact" }), meRes);
-    expect(SeasonService.getUserTotalDamage).toHaveBeenCalledWith(exactSeasonId, "Uexact");
+    expect(SeasonService.getUserSeasonStats).toHaveBeenCalledWith(exactSeasonId, "Uexact");
     expect(meRes.json.mock.calls[0][0].current).toMatchObject({ seasonId: exactSeasonId });
   });
 
-  it("serializes exact ids and damage strings without JSON BigInt", async () => {
+  it("serializes exact ids, scores and damage as strings without JSON BigInt", async () => {
     const seasonId = "9007199254740993";
     SeasonService.getBattleStatus.mockResolvedValue({
       ...status,
       season: { ...status.season, id: seasonId },
     });
     SeasonService.getRanking.mockResolvedValue([
-      { user_id: "Uexact", total_damage: "9007199254740993", ranking: 1 },
-      { user_id: "Ulower", total_damage: "9007199254740992", ranking: 2 },
+      { user_id: "Uexact", display_name: null, total_score: "9007199254740993", ranking: 1 },
+      { user_id: "Ulower", display_name: null, total_score: "9007199254740992", ranking: 2 },
     ]);
-    SeasonService.getUserTotalDamage.mockResolvedValue("9007199254740993");
+    SeasonService.getUserSeasonStats.mockResolvedValue({
+      seasonId,
+      totalScore: "9007199254740993",
+      score: { direct: "9007199254740991", assist: "1", relay: "1" },
+      damage: {
+        raw: "9007199254740993",
+        effect: "9007199254740994",
+        effective: "9007199254740995",
+        overkill: "9007199254740992",
+      },
+    });
     SeasonService.getLatestSettledResult.mockResolvedValue({
       ...latestReward,
       seasonId,
-      totalDamage: "9007199254740993",
+      totalScore: "9007199254740993",
+      totalDamage: "9007199254740991",
     });
 
     const leaderboardRes = response();
@@ -593,19 +810,34 @@ describe("World Boss public handlers", () => {
     expect(leaderboardRes.json).toHaveBeenCalledWith({
       seasonId,
       rows: [
-        { user_id: "Uexact", total_damage: "9007199254740993", ranking: 1 },
-        { user_id: "Ulower", total_damage: "9007199254740992", ranking: 2 },
+        { user_id: "Uexact", display_name: null, total_score: "9007199254740993", ranking: 1 },
+        { user_id: "Ulower", display_name: null, total_score: "9007199254740992", ranking: 2 },
       ],
     });
 
     const meRes = response();
     await publicHandler.me(request({ userId: "Uexact" }), meRes);
-    expect(SeasonService.getUserTotalDamage).toHaveBeenCalledWith(seasonId, "Uexact");
-    expect(meRes.json.mock.calls[0][0]).toMatchObject({
-      current: { seasonId, totalDamage: "9007199254740993" },
-      latestReward: { seasonId, totalDamage: "9007199254740993" },
+    const [payload] = meRes.json.mock.calls[0];
+    expect(payload).toMatchObject({
+      current: {
+        seasonId,
+        totalScore: "9007199254740993",
+        damage: { effective: "9007199254740995" },
+      },
+      latestReward: { seasonId, totalScore: "9007199254740993", totalDamage: "9007199254740991" },
     });
-    expect(() => JSON.stringify(meRes.json.mock.calls[0][0])).not.toThrow();
+    // Every BIGINT-bearing field must be a string, or JSON.parse would round it.
+    for (const value of [
+      payload.current.totalScore,
+      ...Object.values(payload.current.score),
+      ...Object.values(payload.current.damage),
+      payload.latestReward.totalScore,
+      payload.latestReward.totalDamage,
+      ...leaderboardRes.json.mock.calls[0][0].rows.map(row => row.total_score),
+    ]) {
+      expect(typeof value).toBe("string");
+    }
+    expect(() => JSON.stringify(payload)).not.toThrow();
   });
 
   it("maps service validation errors and unexpected failures centrally", async () => {
@@ -714,17 +946,30 @@ describe("World Boss attack handler", () => {
       attack: {
         roundId: "21",
         attackType: "standard",
-        damage: 500,
-        effectiveDamage: "100",
-        wastedDamage: "400",
+        rawDamage: "500",
+        effectDamage: "100",
+        effectiveDamage: "400",
+        overkillDamage: "200",
+        scoreGained: { direct: "500", assist: "100", relay: "0" },
+        consumedEffect: {
+          id: "31",
+          type: "seal",
+          value: "100",
+          sourceUserId: "Usource",
+          sourceDisplayName: "留效果的人",
+        },
+        createdEffect: { id: "32", type: "banner", value: "125", sourceUserId: "Uworldboss" },
         cost: 15,
         cleared: true,
         cycleAdvanced: false,
         attackedCycleNo: 3,
         cycleNo: 3,
+        round: { id: 21, position: 2, current_hp: "0", max_hp: "400" },
         boss: { id: 2, position: 2, name: "王2" },
+        rounds: expect.any(Array),
         levelResult: { levelUp: true, newLevel: 9, newExp: 3 },
-        seasonTotalDamage: "9007199254740993",
+        seasonTotalScore: "9007199254740993",
+        seasonTotalDamage: "9007199254740991",
         daily: { limit: 100, used: 35, remaining: 65 },
       },
       announcementQueued: true,
@@ -732,6 +977,115 @@ describe("World Boss attack handler", () => {
       status: expect.objectContaining({ season: expect.any(Object) }),
     });
     expect(() => JSON.stringify(res.json.mock.calls[0][0])).not.toThrow();
+  });
+
+  it("keeps the three damage layers consistent and BIGINT-exact as strings", async () => {
+    // raw + effect - effective === overkill, at magnitudes a JS number would round.
+    AttackService.attack.mockResolvedValue({
+      result: {
+        ...attackResult,
+        rawDamage: "9007199254740993",
+        effectDamage: "9007199254740993",
+        effectiveDamage: "9007199254740991",
+        overkillDamage: "9007199254740995",
+        seasonTotalScore: "18014398509481986",
+        seasonTotalDamage: "9007199254740991",
+      },
+      announcementQueued: false,
+      latestReward: null,
+    });
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    const { attack } = res.json.mock.calls[0][0];
+    for (const field of [
+      "rawDamage",
+      "effectDamage",
+      "effectiveDamage",
+      "overkillDamage",
+      "seasonTotalScore",
+      "seasonTotalDamage",
+    ]) {
+      expect(typeof attack[field]).toBe("string");
+    }
+    expect(
+      BigInt(attack.rawDamage) + BigInt(attack.effectDamage) - BigInt(attack.effectiveDamage)
+    ).toBe(BigInt(attack.overkillDamage));
+    expect(JSON.parse(JSON.stringify(attack)).seasonTotalScore).toBe("18014398509481986");
+  });
+
+  it("forwards each scoreGained kind and each effect slot verbatim when null", async () => {
+    AttackService.attack.mockResolvedValue({
+      result: {
+        ...attackResult,
+        scoreGained: { direct: "300", assist: "0", relay: "0" },
+        consumedEffect: null,
+        createdEffect: null,
+      },
+      announcementQueued: false,
+      latestReward: null,
+    });
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    const { attack } = res.json.mock.calls[0][0];
+    expect(attack.scoreGained).toEqual({ direct: "300", assist: "0", relay: "0" });
+    expect(attack.consumedEffect).toBeNull();
+    expect(attack.createdEffect).toBeNull();
+    // No consumed effect means no name lookup at all.
+    expect(UserModel.getDisplayNames).not.toHaveBeenCalled();
+  });
+
+  it("resolves a banner relay's assist and consumed effect source name in one lookup", async () => {
+    AttackService.attack.mockResolvedValue({
+      result: {
+        ...attackResult,
+        scoreGained: { direct: "200", assist: "7", relay: "7" },
+        consumedEffect: { id: "9", type: "banner", value: "7", sourceUserId: "Usource" },
+      },
+      announcementQueued: false,
+      latestReward: null,
+    });
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    const { attack } = res.json.mock.calls[0][0];
+    expect(attack.scoreGained).toEqual({ direct: "200", assist: "7", relay: "7" });
+    expect(attack.consumedEffect).toEqual({
+      id: "9",
+      type: "banner",
+      value: "7",
+      sourceUserId: "Usource",
+      sourceDisplayName: "留效果的人",
+    });
+    expect(UserModel.getDisplayNames).toHaveBeenCalledTimes(1);
+    expect(UserModel.getDisplayNames).toHaveBeenCalledWith(["Usource"]);
+  });
+
+  it("degrades a consumed effect to a null display name when the profile read fails", async () => {
+    UserModel.getDisplayNames.mockRejectedValue(new Error("db down"));
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].attack.consumedEffect).toMatchObject({
+      sourceUserId: "Usource",
+      sourceDisplayName: null,
+    });
+  });
+
+  it("never exposes the removed damage / wastedDamage aliases", async () => {
+    const res = response();
+
+    await publicHandler.attack(request({ body }), res);
+
+    const { attack } = res.json.mock.calls[0][0];
+    expect(Object.keys(attack)).not.toContain("damage");
+    expect(Object.keys(attack)).not.toContain("wastedDamage");
   });
 
   it("still returns 200 with announcementQueued false when nothing was enqueued", async () => {
@@ -756,7 +1110,7 @@ describe("World Boss attack handler", () => {
 
     expect(res.status).not.toHaveBeenCalled();
     expect(res.json.mock.calls[0][0].status).toBeNull();
-    expect(res.json.mock.calls[0][0].attack.effectiveDamage).toBe("100");
+    expect(res.json.mock.calls[0][0].attack.effectiveDamage).toBe("400");
   });
 
   it.each([

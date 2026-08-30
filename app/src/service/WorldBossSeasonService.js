@@ -4,6 +4,8 @@ const WorldBossSeason = require("../model/application/WorldBossSeason");
 const WorldBossSeasonBoss = require("../model/application/WorldBossSeasonBoss");
 const WorldBossRound = require("../model/application/WorldBossRound");
 const WorldBossContribution = require("../model/application/WorldBossContribution");
+const WorldBossScoreEvent = require("../model/application/WorldBossScoreEvent");
+const WorldBossRoundEffect = require("../model/application/WorldBossRoundEffect");
 const WorldBossSeasonReward = require("../model/application/WorldBossSeasonReward");
 const { inventory } = require("../model/application/Inventory");
 const UserTitle = require("../model/application/UserTitle");
@@ -114,10 +116,17 @@ function rewardFor(ranking) {
     : { stone: 0, title_key: null };
 }
 
+/**
+ * 名次由 total_score 決定，但 ledger 兩個統計欄位都要核對：只比對其中一個，另一個被寫錯
+ * 或被舊版流程寫入時會靜默通過。
+ */
 function ledgerMatches(ledger, row, reward) {
   return (
     ledger.user_id === row.user_id &&
     Number(ledger.ranking) === row.ranking &&
+    ledger.total_score !== null &&
+    ledger.total_score !== undefined &&
+    canonicalUnsignedInteger(ledger.total_score) === row.total_score &&
     canonicalUnsignedInteger(ledger.total_damage) === row.total_damage &&
     Number(ledger.stone_amount) === reward.stone &&
     (ledger.title_key || null) === reward.title_key
@@ -126,6 +135,23 @@ function ledgerMatches(ledger, row, reward) {
 
 function settlementResult(seasonId, contributors, rewarded, zeroTier) {
   return { seasonId: canonicalUnsignedInteger(seasonId), contributors, rewarded, zeroTier };
+}
+
+/**
+ * 結算用的完整名次：名次與 total_score 來自 score event，total_damage 另外從 contribution
+ * 聚合後貼上，兩者都要寫進 ledger。
+ *
+ * 名單以 score event 為準。理論上每個受益者在同賽季都至少有一筆 contribution（assist 的
+ * 受益者必須先出手才留得下效果），但 legacy backfill 只搬了 `damage > 0` 的列，所以打出
+ * 0 傷害的 v1 玩家不在榜上 —— 他分數本來就是 0，屬於 zero tier，不影響任何獎勵。反向的
+ * 缺漏則以 "0" 補齊，不讓 ledger 寫入 undefined。
+ */
+async function scoreRankingWithDamage(seasonId, trx) {
+  const [ranking, damageByUser] = await Promise.all([
+    WorldBossScoreEvent.seasonRankingAll(seasonId, trx),
+    WorldBossContribution.seasonDamageByUser(seasonId, trx),
+  ]);
+  return ranking.map(row => ({ ...row, total_damage: damageByUser.get(row.user_id) || "0" }));
 }
 
 function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks = {} } = {}) {
@@ -234,6 +260,15 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
     if (!season) return null;
     const ended = isEnded(season, serviceNow());
     const { cycleNo, rounds } = await WorldBossRound.listCurrentCycle(season.id);
+    const pendingByRound = await WorldBossRoundEffect.countPendingByRounds(
+      rounds.map(round => round.id)
+    );
+    rounds.forEach(round => {
+      round.pending_effects =
+        round.cleared_at || BigInt(round.current_hp) === 0n
+          ? { banner: 0, seal: 0 }
+          : pendingByRound.get(String(round.id)) || { banner: 0, seal: 0 };
+    });
     return { season, cycleNo, rounds, ended };
   }
 
@@ -242,7 +277,7 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
   }
 
   async function getRanking(seasonId, limit) {
-    const ranking = await WorldBossContribution.seasonRanking(seasonId, limit);
+    const ranking = await WorldBossScoreEvent.seasonRanking(seasonId, limit);
     const userIds = ranking.map(row => row.user_id);
     const profiles = userIds.length
       ? await mysql("user").whereIn("platform_id", userIds).select("platform_id", "display_name")
@@ -255,6 +290,20 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
 
   async function getUserTotalDamage(seasonId, userId) {
     return WorldBossContribution.sumSeasonDamage(seasonId, userId);
+  }
+
+  /**
+   * 個人賽季統計。分數來自 score event、傷害來自 contribution —— 兩者在 v2 之後是不同的
+   * 帳本，不可互相推導。v1 舊資料（raw_damage IS NULL）不計入 damage.raw / effect /
+   * overkill，詳見 WorldBossContribution.seasonDamageStats。
+   */
+  async function getUserSeasonStats(seasonId, userId) {
+    const [totalScore, score, damage] = await Promise.all([
+      WorldBossScoreEvent.sumSeasonScore(seasonId, userId),
+      WorldBossScoreEvent.seasonScoreByKind(seasonId, userId),
+      WorldBossContribution.seasonDamageStats(seasonId, userId),
+    ]);
+    return { seasonId: canonicalUnsignedInteger(seasonId), totalScore, score, damage };
   }
 
   async function getLatestSettledResult(userId) {
@@ -272,6 +321,7 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
         season_id: seasonId,
         user_id: row.user_id,
         ranking: row.ranking,
+        total_score: row.total_score,
         total_damage: row.total_damage,
         stone_amount: reward.stone,
         title_key: reward.title_key,
@@ -315,7 +365,7 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
       if (season.status !== "active" || !isEnded(season, now)) {
         throw fail("SEASON_NOT_EXPIRED");
       }
-      const ranking = await WorldBossContribution.seasonRankingAll(season.id, trx);
+      const ranking = await scoreRankingWithDamage(season.id, trx);
       let rewarded = 0;
       let zeroTier = 0;
       for (const row of ranking) {
@@ -366,6 +416,7 @@ function createSeasonService({ activeSlot = 1, clock = () => new Date(), hooks =
     getSeasonRoster,
     getRanking,
     getUserTotalDamage,
+    getUserSeasonStats,
     getLatestSettledResult,
     settleSeason,
     settleExpiredSeasons,
