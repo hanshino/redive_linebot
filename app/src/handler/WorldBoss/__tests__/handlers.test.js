@@ -19,14 +19,17 @@ jest.mock("../../../service/WorldBossBattleService", () => ({
   getRemainingDailyCost: jest.fn(),
 }));
 jest.mock("../../../service/WorldBossAttackService", () => ({ attack: jest.fn() }));
+jest.mock("../../../service/MinigameService", () => ({ findByUserId: jest.fn() }));
 jest.mock("../../../model/application/WorldBossRoundEffect", () => ({
   listSeasonHistoryBySource: jest.fn(),
+  listSeasonHistoryByConsumer: jest.fn(),
 }));
 jest.mock("../../../model/application/UserModel", () => ({ getDisplayNames: jest.fn() }));
 const CatalogService = require("../../../service/WorldBossCatalogService");
 const SeasonService = require("../../../service/WorldBossSeasonService");
 const BattleService = require("../../../service/WorldBossBattleService");
 const AttackService = require("../../../service/WorldBossAttackService");
+const MinigameService = require("../../../service/MinigameService");
 const WorldBossRoundEffect = require("../../../model/application/WorldBossRoundEffect");
 const UserModel = require("../../../model/application/UserModel");
 const express = require("express");
@@ -183,6 +186,8 @@ beforeEach(() => {
   BattleService.getRemainingDailyCost.mockResolvedValue({ limit: 100, used: 20, remaining: 80 });
   SeasonService.getUserSeasonStats.mockResolvedValue(seasonStats);
   WorldBossRoundEffect.listSeasonHistoryBySource.mockResolvedValue(effectHistoryRows);
+  WorldBossRoundEffect.listSeasonHistoryByConsumer.mockResolvedValue([]);
+  MinigameService.findByUserId.mockResolvedValue({ job_key: "adventurer" });
   UserModel.getDisplayNames.mockImplementation(
     async ids =>
       new Map(
@@ -615,26 +620,32 @@ describe("World Boss public handlers", () => {
       score: { direct: "500", assist: "150", relay: "50" },
       damage: { raw: "500", effect: "100", effective: "550", overkill: "50" },
       daily: { limit: 100, used: 20, remaining: 80 },
-      effects: [
-        {
-          effectId: "31",
-          type: "seal",
-          value: "100",
-          roundId: "21",
-          createdAt: "2026-07-20T02:00:00.000Z",
-          consumedAt: "2026-07-20T02:05:00.000Z",
-          consumedBy: { userId: "Utaker", displayName: "接棒者" },
-        },
-        {
-          effectId: "30",
-          type: "banner",
-          value: "25",
-          roundId: "20",
-          createdAt: "2026-07-20T01:30:00.000Z",
-          consumedAt: null,
-          consumedBy: null,
-        },
-      ],
+      jobKey: "adventurer",
+      effects: {
+        left: [
+          {
+            effectId: "31",
+            type: "seal",
+            value: "100",
+            roundId: "21",
+            createdAt: "2026-07-20T02:00:00.000Z",
+            consumedAt: "2026-07-20T02:05:00.000Z",
+            consumedBy: { userId: "Utaker", displayName: "接棒者" },
+            expired: false,
+          },
+          {
+            effectId: "30",
+            type: "banner",
+            value: "25",
+            roundId: "20",
+            createdAt: "2026-07-20T01:30:00.000Z",
+            consumedAt: null,
+            consumedBy: null,
+            expired: false,
+          },
+        ],
+        taken: [],
+      },
     });
     expect(res.json.mock.calls[0][0].latestReward).toMatchObject({
       totalScore: "1200",
@@ -712,10 +723,10 @@ describe("World Boss public handlers", () => {
     expect(UserModel.getDisplayNames).toHaveBeenCalledTimes(1);
     expect(UserModel.getDisplayNames).toHaveBeenCalledWith(new Array(25).fill("Utaker"));
     const { effects } = res.json.mock.calls[0][0].current;
-    expect(effects).toHaveLength(50);
-    expect(effects.map(row => row.effectId)).toEqual(rows.map(row => String(row.id)));
-    expect(effects[0].effectId).toBe("500");
-    expect(effects.at(-1).effectId).toBe("451");
+    expect(effects.left).toHaveLength(50);
+    expect(effects.left.map(row => row.effectId)).toEqual(rows.map(row => String(row.id)));
+    expect(effects.left[0].effectId).toBe("500");
+    expect(effects.left.at(-1).effectId).toBe("451");
   });
 
   it("returns an empty effect history without any name lookup", async () => {
@@ -724,7 +735,7 @@ describe("World Boss public handlers", () => {
 
     await publicHandler.me(request({ userId: "Ume" }), res);
 
-    expect(res.json.mock.calls[0][0].current.effects).toEqual([]);
+    expect(res.json.mock.calls[0][0].current.effects).toEqual({ left: [], taken: [] });
     expect(UserModel.getDisplayNames).toHaveBeenCalledWith([]);
     expect(UserModel.getDisplayNames).toHaveBeenCalledTimes(1);
   });
@@ -745,10 +756,60 @@ describe("World Boss public handlers", () => {
 
     await publicHandler.me(request({ userId: "Ume" }), res);
 
-    expect(res.json.mock.calls[0][0].current.effects[0].consumedBy).toEqual({
+    expect(res.json.mock.calls[0][0].current.effects.left[0].consumedBy).toEqual({
       userId: "Unameless",
       displayName: null,
     });
+  });
+
+  it("returns effects taken by the caller with the source name", async () => {
+    WorldBossRoundEffect.listSeasonHistoryByConsumer.mockResolvedValue([
+      {
+        id: "127",
+        round_id: "103",
+        effect_type: "seal",
+        value: "11692",
+        source_user_id: "Usource",
+        taken_at: new Date("2026-09-01T02:09:42.000Z"),
+      },
+    ]);
+    const res = response();
+
+    await publicHandler.me(request({ userId: "Utaker" }), res);
+
+    expect(res.json.mock.calls[0][0].current.effects.taken).toEqual([
+      {
+        effectId: "127",
+        type: "seal",
+        value: "11692",
+        roundId: "103",
+        takenAt: "2026-09-01T02:09:42.000Z",
+        source: { userId: "Usource", displayName: "留效果的人" },
+      },
+    ]);
+    expect(UserModel.getDisplayNames).toHaveBeenCalledWith(["Utaker", "Usource"]);
+  });
+
+  it("returns a job fallback and taken effects for a job without left effects", async () => {
+    MinigameService.findByUserId.mockResolvedValue(null);
+    WorldBossRoundEffect.listSeasonHistoryBySource.mockResolvedValue([]);
+    WorldBossRoundEffect.listSeasonHistoryByConsumer.mockResolvedValue([
+      {
+        id: "127",
+        round_id: "103",
+        effect_type: "seal",
+        value: "11692",
+        source_user_id: "Usource",
+        taken_at: new Date("2026-09-01T02:09:42.000Z"),
+      },
+    ]);
+    const res = response();
+
+    await publicHandler.me(request({ userId: "Uswordman" }), res);
+
+    expect(res.json.mock.calls[0][0].current.jobKey).toBe("adventurer");
+    expect(res.json.mock.calls[0][0].current.effects.left).toEqual([]);
+    expect(res.json.mock.calls[0][0].current.effects.taken).toHaveLength(1);
   });
 
   it("preserves an exact active season ID through leaderboard and me", async () => {

@@ -91,12 +91,13 @@ exports.listUnconsumedByRound = async function (roundId, trx) {
  *
  * 來源端不 join contribution —— source_user_id 已經反正規化在本表上，join 回去只會拿到
  * 同一個值。過濾條件 (season_id, source_user_id) 正好走 idx_wbre_season_source_user。
- * 顯示名稱刻意不在這裡 join：呼叫端只需要對「被接走的那幾筆」做一次批次查詢，join 進來
+ * 顯示名稱刻意不在這裡 join：呼叫端只需要對效果涉及的玩家做一次批次查詢，join 進來
  * 反而會讓每列都帶一份 user 資料。
  */
 exports.listSeasonHistoryBySource = async function ({ seasonId, userId, limit }, trx) {
   const db = trx || mysql;
   return db(`${TABLE} as effect`)
+    .leftJoin("world_boss_round as round", "effect.round_id", "round.id")
     .leftJoin(
       "world_boss_contribution as consumer",
       "effect.consumed_by_contribution_id",
@@ -111,8 +112,31 @@ exports.listSeasonHistoryBySource = async function ({ seasonId, userId, limit },
       "effect.effect_type as effect_type",
       "effect.value as value",
       "effect.created_at as created_at",
+      "round.cleared_at as cleared_at",
       "consumer.user_id as consumed_by_user_id",
       "consumer.created_at as consumed_at"
+    );
+};
+
+/** Effects consumed by this player, with the source user kept on the denormalized effect row. */
+exports.listSeasonHistoryByConsumer = async function ({ seasonId, userId, limit }, trx) {
+  const db = trx || mysql;
+  return db(`${TABLE} as effect`)
+    .join(
+      "world_boss_contribution as consumer",
+      "effect.consumed_by_contribution_id",
+      "consumer.id"
+    )
+    .where({ "effect.season_id": seasonId, "consumer.user_id": userId })
+    .orderBy("effect.id", "desc")
+    .limit(limit)
+    .select(
+      "effect.id as id",
+      "effect.round_id as round_id",
+      "effect.effect_type as effect_type",
+      "effect.value as value",
+      "effect.source_user_id as source_user_id",
+      "consumer.created_at as taken_at"
     );
 };
 
