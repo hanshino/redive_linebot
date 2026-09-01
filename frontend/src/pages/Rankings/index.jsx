@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, Grid, Tabs, Tab, Paper, Skeleton } from "@mui/material";
 import { EmojiEvents, Casino, Diamond, MilitaryTech } from "@mui/icons-material";
-import OverviewCard, { RANK_COLORS } from "./OverviewCard";
+import OverviewCard from "./OverviewCard";
 import RankingBarChart from "./RankingBarChart";
 import PrestigeRankList from "./PrestigeRankList";
 import {
@@ -10,6 +10,13 @@ import {
   useGodStoneData,
   useAchievementRankData,
 } from "./hooks";
+
+const RANK_COLORS = {
+  level: "#7c4dff",
+  gacha: "#ff6d00",
+  godStone: "#00bfa5",
+  achievement: "#d81b60",
+};
 
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null;
