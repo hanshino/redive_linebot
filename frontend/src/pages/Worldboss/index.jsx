@@ -18,6 +18,8 @@ import {
   ListItemText,
   Skeleton,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
@@ -28,6 +30,7 @@ import CampaignIcon from "@mui/icons-material/Campaign";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import HandshakeIcon from "@mui/icons-material/Handshake";
+import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -182,7 +185,7 @@ function mergeAfterAttack(previous, payload) {
                 overkill: addDecimal(current?.damage?.overkill, attack.overkillDamage),
               },
               daily: attack.daily,
-              effects: withCreatedEffect(current?.effects, attack),
+              effects: foldAttackEffects(current?.effects, attack),
             },
       latestReward: latestReward ?? previous.me?.latestReward ?? null,
     },
@@ -190,25 +193,71 @@ function mergeAfterAttack(previous, payload) {
 }
 
 /**
- * Puts the effect this hit just left at the top of "what I left behind", so the history
- * agrees with the result card that just announced it. Shaped exactly like a `/me` row.
+ * `/me` used to return `effects` as a plain array of what the player left behind. It is now
+ * `{ left, taken }`. Both shapes — and a missing one — have to render, because a cached page
+ * can outlive a deploy and a blank board is worse than a partial one.
  */
-function withCreatedEffect(effects, attack) {
-  const list = Array.isArray(effects) ? effects : [];
+function normalizeEffects(effects) {
+  if (Array.isArray(effects)) return { left: effects, taken: [] };
+  return {
+    left: Array.isArray(effects?.left) ? effects.left : [],
+    taken: Array.isArray(effects?.taken) ? effects.taken : [],
+  };
+}
+
+/**
+ * Folds both halves of a hit into the history without a refetch: the effect it left goes to
+ * the top of `left`, the effect it took goes to the top of `taken`. One attack can do both.
+ *
+ * A hit that clears the boss also ends every effect of mine still waiting on that round —
+ * the server will say so on the next read, and until then the row would keep claiming it is
+ * still up for grabs.
+ */
+function foldAttackEffects(effects, attack) {
+  const { left, taken } = normalizeEffects(effects);
   const created = attack.createdEffect;
-  if (!created) return list;
-  return [
-    {
-      effectId: created.id,
-      type: created.type,
-      value: created.value,
-      roundId: attack.roundId,
-      createdAt: new Date().toISOString(),
-      consumedAt: null,
-      consumedBy: null,
-    },
-    ...list.filter(effect => String(effect.effectId) !== String(created.id)),
-  ];
+  const consumed = attack.consumedEffect;
+  const sameRound = effect => String(effect.roundId) === String(attack.roundId);
+
+  const expiredLeft = attack.cleared
+    ? left.map(effect =>
+        !effect.consumedAt && sameRound(effect) ? { ...effect, expired: true } : effect
+      )
+    : left;
+
+  return {
+    left: created
+      ? [
+          {
+            effectId: created.id,
+            type: created.type,
+            value: created.value,
+            roundId: attack.roundId,
+            createdAt: new Date().toISOString(),
+            consumedAt: null,
+            consumedBy: null,
+            expired: false,
+          },
+          ...expiredLeft.filter(effect => String(effect.effectId) !== String(created.id)),
+        ]
+      : expiredLeft,
+    taken: consumed
+      ? [
+          {
+            effectId: consumed.id,
+            type: consumed.type,
+            value: consumed.value,
+            roundId: attack.roundId,
+            takenAt: new Date().toISOString(),
+            source: {
+              userId: consumed.sourceUserId ?? null,
+              displayName: consumed.sourceDisplayName ?? null,
+            },
+          },
+          ...taken.filter(effect => String(effect.effectId) !== String(consumed.id)),
+        ]
+      : taken,
+  };
 }
 
 function decimalToBigInt(value) {
@@ -557,121 +606,220 @@ function PersonalStats({ current, unavailable = false }) {
 }
 
 /**
- * "What I left behind, and who picked it up." A player can never consume their own effect,
- * so this list is the only place the interaction with other players is visible — an unclaimed
- * row is an open invitation, a claimed one is a name.
+ * A left-behind effect is in exactly one of three states, and they are not equally good news.
+ * `expired` is the one the board used to hide: the round died before anybody relayed it, so
+ * the row is finished — it just never paid out.
  */
-function EffectHistory({ effects }) {
-  const rows = Array.isArray(effects) ? effects : [];
-  if (rows.length === 0) {
-    return (
-      <Box
-        sx={{
-          py: 3,
-          px: 2,
-          textAlign: "center",
-          borderRadius: 2,
-          border: "1px dashed",
-          borderColor: "divider",
-        }}
-      >
-        <Typography variant="body2" color="text.secondary">
-          這個賽季還沒有留下任何效果。
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          冒險者攻擊後會留下鼓舞，法師會留下魔力刻印，等其他玩家來接。
-        </Typography>
-      </Box>
-    );
-  }
+const EFFECT_STATUS = {
+  claimed: { label: "已接走", Icon: HandshakeIcon },
+  waiting: { label: "等人接", Icon: HourglassEmptyIcon },
+  expired: { label: "已失效", Icon: HistoryToggleOffIcon },
+};
+
+function effectStatus(effect) {
+  if (effect.consumedAt) return "claimed";
+  return effect.expired ? "expired" : "waiting";
+}
+
+/** Job names, and whether the job leaves anything behind at all. */
+const JOB_META = {
+  adventurer: { name: "冒險者", leaves: "鼓舞" },
+  mage: { name: "法師", leaves: "魔力刻印" },
+  swordman: { name: "劍士", leaves: null },
+  thief: { name: "盜賊", leaves: null },
+};
+
+/**
+ * A swordman or thief never leaves an effect — not "not yet", ever. Telling them the season
+ * simply hasn't started for them reads as a bug, so the empty state names the rule and points
+ * at the list they do have rows in.
+ */
+function LeftEmptyState({ jobKey, onSeeTaken }) {
+  const job = JOB_META[jobKey];
+  const structural = Boolean(job && job.leaves === null);
+
+  return (
+    <Box
+      sx={{
+        py: 3,
+        px: 2,
+        textAlign: "center",
+        borderRadius: 2,
+        border: "1px dashed",
+        borderColor: "divider",
+      }}
+    >
+      <Typography variant="body2" color="text.secondary">
+        {structural ? `${job.name}攻擊後不會留下效果。` : "這個賽季還沒有留下任何效果。"}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+        {structural
+          ? "你的分數來自自身傷害，以及接走別人留下的效果。"
+          : job
+            ? `${job.name}攻擊後會留下${job.leaves}，等其他玩家來接。`
+            : "冒險者攻擊後會留下鼓舞，法師會留下魔力刻印，等其他玩家來接。"}
+      </Typography>
+      {structural && (
+        <Button
+          size="small"
+          variant="text"
+          endIcon={<ArrowForwardIcon />}
+          onClick={onSeeTaken}
+          sx={{ mt: 1, fontWeight: 700 }}
+        >
+          看我接走的效果
+        </Button>
+      )}
+    </Box>
+  );
+}
+
+function TakenEmptyState() {
+  return (
+    <Box
+      sx={{
+        py: 3,
+        px: 2,
+        textAlign: "center",
+        borderRadius: 2,
+        border: "1px dashed",
+        borderColor: "divider",
+      }}
+    >
+      <Typography variant="body2" color="text.secondary">
+        還沒接走任何人的效果。
+      </Typography>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+        王身上有「待接力」標記時，攻擊那隻王就會接走一個，但接不到自己留下的。
+      </Typography>
+    </Box>
+  );
+}
+
+/** Shared chrome for both lists: colour rail, icon tile, title row, one caption line, chip. */
+function EffectRow({ type, muted, rail, tint, hatched, title, caption, chip }) {
+  const { label, Icon, tone } = effectMeta(type);
+
+  return (
+    <Box
+      sx={theme => ({
+        position: "relative",
+        px: 1.5,
+        py: 1.25,
+        borderRadius: 2,
+        overflow: "hidden",
+        border: "1px solid",
+        borderStyle: rail === "dashed" ? "dashed" : "solid",
+        borderColor: rail === "solid" ? alpha(tone(theme), 0.4) : "divider",
+        bgcolor: tint ? alpha(tone(theme), 0.08) : "transparent",
+        ...(hatched && {
+          backgroundImage: `repeating-linear-gradient(135deg, ${alpha(
+            theme.palette.text.disabled,
+            0.07
+          )} 0 5px, transparent 5px 11px)`,
+        }),
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          insetBlock: 0,
+          insetInlineStart: 0,
+          width: 3,
+          bgcolor: muted ? alpha(theme.palette.text.disabled, 0.4) : tone(theme),
+        },
+      })}
+    >
+      <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ pl: 0.75 }}>
+        <Avatar
+          variant="rounded"
+          sx={theme => ({
+            width: 32,
+            height: 32,
+            bgcolor: muted ? "action.hover" : alpha(tone(theme), 0.18),
+            color: muted ? "text.disabled" : tone(theme),
+            ...(muted && { filter: "grayscale(1)" }),
+          })}
+        >
+          <Icon sx={{ fontSize: 18 }} />
+        </Avatar>
+        <Box minWidth={0} flex={1}>
+          <Stack direction="row" spacing={0.75} alignItems="baseline" flexWrap="wrap" useFlexGap>
+            <Typography
+              variant="body2"
+              sx={theme => ({
+                fontWeight: 800,
+                color: muted ? "text.disabled" : tone(theme),
+                ...(muted && { textDecoration: "line-through" }),
+              })}
+            >
+              {label}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
+              color={muted ? "text.disabled" : "text.secondary"}
+            >
+              {formatInteger(title)}
+            </Typography>
+          </Stack>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            sx={{ overflowWrap: "anywhere" }}
+          >
+            {caption}
+          </Typography>
+        </Box>
+        {chip}
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * "What I left behind, and what became of it." A player can never consume their own effect,
+ * so an unclaimed row is an open invitation, a claimed one is a name — and an expired one is
+ * a round that ended first. The expired styling is deliberately grey and struck through
+ * rather than red: nothing was done wrong, the window just closed.
+ */
+function LeftEffectList({ effects, jobKey, onSeeTaken }) {
+  if (effects.length === 0) return <LeftEmptyState jobKey={jobKey} onSeeTaken={onSeeTaken} />;
 
   return (
     <Stack spacing={1}>
-      {rows.map(effect => {
-        const { label, Icon, tone } = effectMeta(effect.type);
-        const claimed = Boolean(effect.consumedAt);
+      {effects.map(effect => {
+        const status = effectStatus(effect);
+        const { label: statusLabel, Icon: StatusIcon } = EFFECT_STATUS[status];
+        const { tone } = effectMeta(effect.type);
+        const claimed = status === "claimed";
+        const expired = status === "expired";
         const taker = effect.consumedBy?.displayName || effect.consumedBy?.userId || "某位玩家";
 
         return (
-          <Box
+          <EffectRow
             key={effect.effectId}
-            sx={theme => ({
-              position: "relative",
-              px: 1.5,
-              py: 1.25,
-              borderRadius: 2,
-              overflow: "hidden",
-              border: "1px solid",
-              borderColor: claimed ? alpha(tone(theme), 0.4) : "divider",
-              bgcolor: claimed ? alpha(tone(theme), 0.08) : "transparent",
-              borderStyle: claimed ? "solid" : "dashed",
-              "&::before": {
-                content: '""',
-                position: "absolute",
-                insetBlock: 0,
-                insetInlineStart: 0,
-                width: 3,
-                bgcolor: claimed ? tone(theme) : alpha(theme.palette.text.disabled, 0.4),
-              },
-            })}
-          >
-            <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ pl: 0.75 }}>
-              <Avatar
-                variant="rounded"
-                sx={theme => ({
-                  width: 32,
-                  height: 32,
-                  bgcolor: claimed ? alpha(tone(theme), 0.18) : "action.hover",
-                  color: claimed ? tone(theme) : "text.disabled",
-                })}
-              >
-                <Icon sx={{ fontSize: 18 }} />
-              </Avatar>
-              <Box minWidth={0} flex={1}>
-                <Stack
-                  direction="row"
-                  spacing={0.75}
-                  alignItems="baseline"
-                  flexWrap="wrap"
-                  useFlexGap
-                >
-                  <Typography
-                    variant="body2"
-                    sx={theme => ({
-                      fontWeight: 800,
-                      color: claimed ? tone(theme) : "text.primary",
-                    })}
-                  >
-                    {label}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
-                    color="text.secondary"
-                  >
-                    {formatInteger(effect.value)}
-                  </Typography>
-                </Stack>
-                {claimed ? (
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    被 <b>{taker}</b> 接走 · {formatDate(effect.consumedAt)}
-                  </Typography>
-                ) : (
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    還掛在王身上 · 留於 {formatDate(effect.createdAt)}
-                  </Typography>
-                )}
-              </Box>
+            type={effect.type}
+            muted={expired}
+            rail={claimed ? "solid" : expired ? "muted" : "dashed"}
+            tint={claimed}
+            hatched={expired}
+            title={effect.value}
+            caption={
+              claimed ? (
+                <>
+                  被 <b>{taker}</b> 接走 · {formatDate(effect.consumedAt)}
+                </>
+              ) : expired ? (
+                <>這隻王在有人接走前就被打倒了 · 留於 {formatDate(effect.createdAt)}</>
+              ) : (
+                <>還掛在王身上 · 留於 {formatDate(effect.createdAt)}</>
+              )
+            }
+            chip={
               <Chip
                 size="small"
-                icon={
-                  claimed ? (
-                    <HandshakeIcon sx={{ fontSize: 14 }} />
-                  ) : (
-                    <HourglassEmptyIcon sx={{ fontSize: 14 }} />
-                  )
-                }
-                label={claimed ? "已接走" : "等人接"}
+                icon={<StatusIcon sx={{ fontSize: 14 }} />}
+                label={statusLabel}
                 variant={claimed ? "filled" : "outlined"}
                 sx={theme => ({
                   flexShrink: 0,
@@ -679,38 +827,157 @@ function EffectHistory({ effects }) {
                   height: 24,
                   ...(claimed
                     ? { bgcolor: alpha(tone(theme), 0.16), color: tone(theme) }
-                    : { color: "text.secondary" }),
+                    : expired
+                      ? { color: "text.disabled", borderStyle: "dashed" }
+                      : { color: "text.secondary" }),
                 })}
               />
-            </Stack>
-          </Box>
+            }
+          />
         );
       })}
     </Stack>
   );
 }
 
-function EffectHistoryCard({ effects }) {
-  const rows = Array.isArray(effects) ? effects : [];
-  const claimed = rows.filter(effect => effect.consumedAt).length;
+/**
+ * "What I picked up off a boss." Every row here is settled by definition — it was consumed
+ * the moment it was taken — so the chip carries what the pickup actually did instead of
+ * repeating the tab name: a banner scores for both sides, a seal turns into damage and its
+ * score goes back to the mage who left it.
+ */
+function TakenEffectList({ effects }) {
+  if (effects.length === 0) return <TakenEmptyState />;
 
   return (
-    <Card variant="outlined">
+    <Stack spacing={1}>
+      {effects.map(effect => {
+        const { tone } = effectMeta(effect.type);
+        const banner = effect.type === "banner";
+
+        return (
+          <EffectRow
+            key={effect.effectId}
+            type={effect.type}
+            rail="solid"
+            tint
+            title={effect.value}
+            caption={
+              <>
+                接自 <b>{effect.source?.displayName || effect.source?.userId || "某位玩家"}</b> ·{" "}
+                {formatDate(effect.takenAt)}
+              </>
+            }
+            chip={
+              <Chip
+                size="small"
+                icon={
+                  banner ? (
+                    <ArrowForwardIcon sx={{ fontSize: 14 }} />
+                  ) : (
+                    <BoltIcon sx={{ fontSize: 14 }} />
+                  )
+                }
+                label={banner ? "接力加分" : "轉成傷害"}
+                sx={theme => ({
+                  flexShrink: 0,
+                  fontWeight: 700,
+                  height: 24,
+                  bgcolor: alpha(banner ? theme.palette.success.main : tone(theme), 0.16),
+                  color: banner ? theme.palette.success.main : tone(theme),
+                })}
+              />
+            }
+          />
+        );
+      })}
+    </Stack>
+  );
+}
+
+/**
+ * Both halves of the relay in one card, on tabs rather than stacked: on a phone two full
+ * lists back to back means the second one is never seen, and two separate cards double the
+ * scroll. The tab a player lands on depends on their job — a swordman has nothing in "我留下的"
+ * and never will, so opening there would be an empty screen every single time.
+ */
+function EffectHistoryCard({ effects, jobKey }) {
+  const { left, taken } = normalizeEffects(effects);
+  const leavesNothing = JOB_META[jobKey]?.leaves === null;
+  // ponytail: jobKey is present whenever this card mounts (it ships in the same `current`
+  // object the parent gates on), so the initial tab never needs to re-derive.
+  const [tab, setTab] = useState(leavesNothing ? "taken" : "left");
+
+  const claimed = left.filter(effect => effectStatus(effect) === "claimed").length;
+  const expired = left.filter(effect => effectStatus(effect) === "expired").length;
+  const waiting = left.length - claimed - expired;
+
+  return (
+    <Card variant="outlined" sx={{ height: "100%" }}>
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack spacing={1.75}>
           <Box>
             <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
-              我留下的效果
+              效果接力紀錄
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              自己不能接自己的效果，要等別人來接。
-              {rows.length > 0 && ` 已被接走 ${claimed} / ${rows.length}`}
+              效果只在留下它的那隻王身上，王被打倒就跟著結束。
             </Typography>
           </Box>
-          <EffectHistory effects={rows} />
+
+          <Tabs
+            value={tab}
+            onChange={(_event, next) => setTab(next)}
+            variant="fullWidth"
+            aria-label="效果接力紀錄"
+            sx={{ minHeight: 40, "& .MuiTab-root": { minHeight: 40, fontWeight: 700 } }}
+          >
+            <Tab value="left" id="effect-tab-left" label={`我留下的 ${left.length}`} />
+            <Tab value="taken" id="effect-tab-taken" label={`我接走的 ${taken.length}`} />
+          </Tabs>
+
+          <Box role="tabpanel" aria-labelledby={`effect-tab-${tab}`}>
+            {tab === "left" ? (
+              <Stack spacing={1.25}>
+                {left.length > 0 && (
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                    <StatusTally label="已接走" count={claimed} tone="secondary.main" />
+                    <StatusTally label="等人接" count={waiting} tone="text.secondary" />
+                    <StatusTally label="已失效" count={expired} tone="text.disabled" />
+                  </Stack>
+                )}
+                <LeftEffectList effects={left} jobKey={jobKey} onSeeTaken={() => setTab("taken")} />
+                {expired > 0 && (
+                  <Typography variant="caption" color="text.secondary">
+                    王被打倒後，還沒被接走的效果就不會再有人接，這部分不計分。血量還多的王留下的效果，比較有機會被接走。
+                  </Typography>
+                )}
+              </Stack>
+            ) : (
+              <Stack spacing={1.25}>
+                <TakenEffectList effects={taken} />
+                {taken.length > 0 && (
+                  <Typography variant="caption" color="text.secondary">
+                    接走鼓舞時你和對方都得分；接走魔力刻印會轉成傷害，那份分數歸留下的人。
+                  </Typography>
+                )}
+              </Stack>
+            )}
+          </Box>
         </Stack>
       </CardContent>
     </Card>
+  );
+}
+
+function StatusTally({ label, count, tone }) {
+  return (
+    <Typography
+      variant="caption"
+      sx={{ fontWeight: 700, color: tone, fontVariantNumeric: "tabular-nums" }}
+    >
+      {label} {count}
+    </Typography>
   );
 }
 
@@ -1629,7 +1896,7 @@ export default function Worldboss() {
           </Grid>
           {shouldRenderCurrent && (
             <Grid size={{ xs: 12, md: 7 }}>
-              <EffectHistoryCard effects={current?.effects} />
+              <EffectHistoryCard effects={current?.effects} jobKey={current?.jobKey} />
             </Grid>
           )}
           <Grid size={{ xs: 12, md: shouldRenderCurrent || !hasBattle ? 5 : 12 }}>

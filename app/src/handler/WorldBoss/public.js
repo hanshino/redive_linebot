@@ -3,6 +3,7 @@ const BattleService = require("../../service/WorldBossBattleService");
 const AttackService = require("../../service/WorldBossAttackService");
 const WorldBossRoundEffect = require("../../model/application/WorldBossRoundEffect");
 const UserModel = require("../../model/application/UserModel");
+const MinigameService = require("../../service/MinigameService");
 const { canonicalPositiveInteger, canonicalUnsignedInteger } = require("../../util/decimalInteger");
 const { toApiDto, respondError, fail, parseLeaderboardLimit } = require(".");
 
@@ -52,19 +53,27 @@ function leaderboardRow(row) {
 }
 
 /**
- * "Who took the effects I left." Two queries regardless of row count: one windowed read
- * of the effect ledger, then one batched name lookup for the consumers that exist.
+ * Read both sides of the effect ledger, then resolve all involved users in one batch.
  */
 async function effectHistory(seasonId, userId) {
-  const rows = await WorldBossRoundEffect.listSeasonHistoryBySource({
-    seasonId,
-    userId,
-    limit: EFFECT_HISTORY_LIMIT,
-  });
-  const nameByUserId = await UserModel.getDisplayNames(
-    rows.map(row => row.consumed_by_user_id).filter(Boolean)
-  );
-  return rows.map(row => ({
+  const [leftRows, takenRows] = await Promise.all([
+    WorldBossRoundEffect.listSeasonHistoryBySource({
+      seasonId,
+      userId,
+      limit: EFFECT_HISTORY_LIMIT,
+    }),
+    WorldBossRoundEffect.listSeasonHistoryByConsumer({
+      seasonId,
+      userId,
+      limit: EFFECT_HISTORY_LIMIT,
+    }),
+  ]);
+  const userIds = [
+    ...leftRows.map(row => row.consumed_by_user_id),
+    ...takenRows.map(row => row.source_user_id),
+  ].filter(Boolean);
+  const nameByUserId = await UserModel.getDisplayNames(userIds);
+  const left = leftRows.map(row => ({
     effectId: canonicalPositiveInteger(row.id),
     type: row.effect_type,
     value: canonicalPositiveInteger(row.value),
@@ -77,7 +86,20 @@ async function effectHistory(seasonId, userId) {
           displayName: nameByUserId.get(row.consumed_by_user_id) ?? null,
         }
       : null,
+    expired: !row.consumed_at && Boolean(row.cleared_at),
   }));
+  const taken = takenRows.map(row => ({
+    effectId: canonicalPositiveInteger(row.id),
+    type: row.effect_type,
+    value: canonicalPositiveInteger(row.value),
+    roundId: canonicalPositiveInteger(row.round_id),
+    takenAt: row.taken_at ?? null,
+    source: {
+      userId: row.source_user_id,
+      displayName: nameByUserId.get(row.source_user_id) ?? null,
+    },
+  }));
+  return { left, taken };
 }
 
 /**
@@ -127,10 +149,11 @@ exports.me = async function (req, res) {
     const seasonId = activeSeasonId(status);
     let current = null;
     if (seasonId) {
-      const [stats, daily, effects] = await Promise.all([
+      const [stats, daily, effects, progress] = await Promise.all([
         SeasonService.getUserSeasonStats(seasonId, userId),
         BattleService.getRemainingDailyCost(userId),
         effectHistory(seasonId, userId),
+        MinigameService.findByUserId(userId),
       ]);
       current = {
         seasonId: stats.seasonId,
@@ -138,6 +161,7 @@ exports.me = async function (req, res) {
         score: stats.score,
         damage: stats.damage,
         daily,
+        jobKey: progress ? progress.job_key : "adventurer",
         effects,
       };
     }
