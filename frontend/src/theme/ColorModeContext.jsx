@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import useMediaQuery from "@mui/material/useMediaQuery";
@@ -7,25 +7,19 @@ import { ColorModeContext } from "./useColorMode";
 
 export function ColorModeProvider({ children }) {
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)");
-  const [mode, setMode] = useState(() => {
+  // ponytail: 只把「使用者明確選過的偏好」放進 state，沒選過就直接由 prefersDark 推導，
+  // 免掉一個 setState-in-effect 的同步。
+  const [override, setOverride] = useState(() => {
     const saved = localStorage.getItem("color-mode");
-    if (saved === "light" || saved === "dark") return saved;
-    return prefersDark ? "dark" : "light";
+    return saved === "light" || saved === "dark" ? saved : null;
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem("color-mode");
-    if (!saved) {
-      setMode(prefersDark ? "dark" : "light");
-    }
-  }, [prefersDark]);
+  const mode = override ?? (prefersDark ? "dark" : "light");
 
   const toggleColorMode = () => {
-    setMode(prev => {
-      const next = prev === "dark" ? "light" : "dark";
-      localStorage.setItem("color-mode", next);
-      return next;
-    });
+    const next = mode === "dark" ? "light" : "dark";
+    localStorage.setItem("color-mode", next);
+    setOverride(next);
   };
 
   const theme = useMemo(() => (mode === "dark" ? darkTheme : lightTheme), [mode]);
