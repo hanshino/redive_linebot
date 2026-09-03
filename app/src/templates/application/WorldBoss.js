@@ -403,26 +403,20 @@ function outlineButton(label, uri) {
   };
 }
 
+// Only one attack action exists in the UI. The postback still sends attackType:
+// "skill" — the backend keeps accepting the retired "standard" value purely so old
+// Flex cards already sitting in LINE chat history don't silently stop responding.
 function attackRow(roundId) {
   return {
-    type: "box",
-    layout: "horizontal",
-    spacing: "sm",
-    contents: [
-      ["⚔️ 攻擊", "standard", C.attack, 3],
-      ["✨ 技能", "skill", C.skill, 2],
-    ].map(([label, attackType, color, flex]) => ({
-      type: "button",
-      style: "primary",
-      color,
-      height: "sm",
-      flex,
-      action: {
-        type: "postback",
-        label,
-        data: JSON.stringify({ action: "worldBossAttack", roundId, attackType }),
-      },
-    })),
+    type: "button",
+    style: "primary",
+    color: C.attack,
+    height: "sm",
+    action: {
+      type: "postback",
+      label: "⚔️ 攻擊",
+      data: JSON.stringify({ action: "worldBossAttack", roundId, attackType: "skill" }),
+    },
   };
 }
 

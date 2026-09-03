@@ -126,6 +126,17 @@ describe("WorldBossAttackService — input validation", () => {
     ).rejects.toMatchObject({ code: "INVALID_USER" });
     expect(BattleService.attack).not.toHaveBeenCalled();
   });
+
+  // Legacy-card compatibility: old group Flex cards already delivered to LINE chat
+  // history still postback attackType "standard". The button that produced it is gone
+  // from the template, but this value must keep working forever, or every old card in
+  // every group's history silently stops responding when tapped.
+  it("still accepts the retired 'standard' attackType (old Flex cards in chat history)", async () => {
+    await AttackService.attack({ userId: USER, roundId: 2, attackType: "standard" });
+    expect(BattleService.attack).toHaveBeenCalledWith(
+      expect.objectContaining({ attackType: "standard" })
+    );
+  });
 });
 
 describe("WorldBossAttackService — the shared attack seam", () => {
