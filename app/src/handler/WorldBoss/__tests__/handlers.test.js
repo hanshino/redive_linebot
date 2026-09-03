@@ -187,7 +187,9 @@ beforeEach(() => {
   SeasonService.getUserSeasonStats.mockResolvedValue(seasonStats);
   WorldBossRoundEffect.listSeasonHistoryBySource.mockResolvedValue(effectHistoryRows);
   WorldBossRoundEffect.listSeasonHistoryByConsumer.mockResolvedValue([]);
-  MinigameService.findByUserId.mockResolvedValue({ job_key: "adventurer" });
+  // Shaped like the real `minigame_level` row (see MinigameLevel.findByUserId): a bare
+  // `{ job_key }` mock would silently pass a handler that drops `level`.
+  MinigameService.findByUserId.mockResolvedValue({ job_key: "adventurer", level: 42 });
   UserModel.getDisplayNames.mockImplementation(
     async ids =>
       new Map(
@@ -621,6 +623,7 @@ describe("World Boss public handlers", () => {
       damage: { raw: "500", effect: "100", effective: "550", overkill: "50" },
       daily: { limit: 100, used: 20, remaining: 80 },
       jobKey: "adventurer",
+      level: 42,
       effects: {
         left: [
           {

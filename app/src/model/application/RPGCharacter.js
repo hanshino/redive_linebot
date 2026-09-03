@@ -152,8 +152,8 @@ class Adventurer {
 
   get skillOne() {
     return {
-      name: "普通攻擊",
-      description: "冒險者的普通攻擊",
+      name: "奮力揮擊",
+      description: "傾盡全力的一擊，造成 1.2 倍傷害",
       cost: 8,
       rate: 1.2,
     };

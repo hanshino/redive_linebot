@@ -2,8 +2,10 @@ const { text } = require("bottender/router");
 const i18n = require("../../util/i18n");
 const moment = require("moment");
 const JobTemplate = require("../../templates/application/Job");
-const { Adventurer, Swordman, Mage } = require("../../model/application/RPGCharacter");
+const RPGCharacter = require("../../model/application/RPGCharacter");
+const { Adventurer, Swordman, Mage } = RPGCharacter;
 const minigameService = require("../../service/MinigameService");
+const WorldBossRoundEffect = require("../../model/application/WorldBossRoundEffect");
 const config = require("config");
 const mageTeacher = {
   name: "法師教官",
@@ -18,7 +20,9 @@ const thiefTeacher = {
   iconUrl: "https://pcredivewiki.tw/static/images/unit/icon_unit_104661.png",
 };
 
-exports.router = [text(/^[.#/](轉職)$/, showChangeJob)];
+exports.router = [text(/^[.#/](轉職)$/, showChangeJob), text(/^[.#/](我的職業)$/, showMyJob)];
+
+exports.showMyJob = showMyJob;
 
 /**
  * Start swordman job mission.
@@ -354,6 +358,53 @@ exports.thiefSteal = async function (context, { payload }) {
     await minigameService.changeUserJob(userId, "thief");
   }
 };
+
+/**
+ * `#我的職業` — answers "what job am I" and "why do damage numbers differ", the two
+ * most common player questions. Public-facing but personal-scoped (only the caller's
+ * own job/level/skill), so it is safe to reply directly rather than to a group board.
+ *
+ * Deliberately excludes quota, EXP, season score and ranking — those are personal
+ * progress and belong in LIFF, not a chat reply (see CLAUDE.md group message rules).
+ *
+ * @param {import ("bottender").LineContext} context - The context object.
+ */
+async function showMyJob(context) {
+  const { userId } = context.event.source;
+  const progress = await minigameService.findByUserId(userId);
+  const level = progress?.level || 1;
+  const jobKey = progress?.job_key || Adventurer.key;
+  // MinigameLevel.findByUserId already joins minigame_job and returns job_name, so
+  // reading it here (rather than a second RPGCharacter.getJobName() query against the
+  // same table) avoids a redundant round trip for data already in hand.
+  const jobName = progress?.job_name || "冒險者";
+
+  const character = RPGCharacter.make(jobKey, { level });
+  const skill = character.skillOne;
+
+  // 效果種類讀自 WorldBossRoundEffect.planFor：swordman / thief 沒有對應的
+  // EFFECT_BY_JOB 項目，回傳 null 就是「不留效果」，不是憑經驗值判斷。
+  const plan = WorldBossRoundEffect.planFor(jobKey, String(character.getStandardDamage()));
+  const effectLine = !plan
+    ? "攻擊後不會留下任何效果。"
+    : plan.effect_type === WorldBossRoundEffect.TYPES.BANNER
+      ? "攻擊後會留下「鼓舞」效果：其他玩家接力消耗後，你和對方都能額外拿到分數，但不會增加傷害。"
+      : "攻擊後會留下「魔力刻印」效果：其他玩家接力消耗後可以疊加傷害，你也會額外拿到分數。";
+
+  const lines = [
+    `職業：${jobName}（等級 ${level}）`,
+    `技能：${skill.name}，消耗 ${skill.cost} 點，造成 ${skill.rate} 倍傷害`,
+    effectLine,
+    "",
+    "攻擊數值為什麼有高有低：",
+    "・等級是主要因素，基礎傷害 = 等級的平方 + 等級 × 10",
+    "・再乘上各職業的技能倍率",
+    "・同一個人每次攻擊會有 ±10% 的熟練度浮動",
+    ...(skill.criticalRate ? [`・有 ${skill.criticalRate}% 機率觸發暴擊，造成更高倍率傷害`] : []),
+  ];
+
+  context.replyText(lines.join("\n"));
+}
 
 /**
  * Check user is can accept mission.

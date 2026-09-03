@@ -141,7 +141,7 @@ describe("WorldBoss Flex production contract", () => {
     expect(new URL(uris[0].uri).pathname.endsWith("/worldboss")).toBe(true);
   });
 
-  it("renders attack postbacks only when enabled, without personal identity data", () => {
+  it("renders a single attack postback only when enabled, without personal identity data", () => {
     const reply = WorldBoss.generateWorldBossReply({
       status: makeStatus({ cleared: [2] }),
       liffUri: LIFF,
@@ -154,9 +154,8 @@ describe("WorldBoss Flex production contract", () => {
         expect(postbacks).toHaveLength(0);
         return;
       }
-      expect(postbacks).toHaveLength(2);
+      expect(postbacks).toHaveLength(1);
       expect(postbacks.map(action => JSON.parse(action.data))).toEqual([
-        { action: "worldBossAttack", roundId: 21 + index, attackType: "standard" },
         { action: "worldBossAttack", roundId: 21 + index, attackType: "skill" },
       ]);
       postbacks.forEach(action => {
@@ -187,18 +186,18 @@ describe("WorldBoss Flex production contract", () => {
     ).not.toContain("待接力");
   });
 
-  it("weights the attack button above the skill button in the same row", () => {
+  it("renders a single full-width attack button above the board link", () => {
     const footer = bubbleFor({}, { attackEnabled: true }).footer;
-    const [row, board] = footer.contents;
+    const [attackButton, board] = footer.contents;
 
-    expect(row.layout).toBe("horizontal");
-    expect(
-      row.contents.map(button => [button.style, button.color, button.height, button.flex])
-    ).toEqual([
-      ["primary", "#DC2626", "sm", 3],
-      ["primary", "#273246", "sm", 2],
-    ]);
-    // 戰況板是第三層級：純文字連結，不與兩顆攻擊鈕搶視覺權重。
+    expect(attackButton).toMatchObject({
+      type: "button",
+      style: "primary",
+      color: "#DC2626",
+      height: "sm",
+    });
+    expect(JSON.parse(attackButton.action.data)).toMatchObject({ attackType: "skill" });
+    // 戰況板是第二層級：純文字連結，不與攻擊鈕搶視覺權重。
     expect(board).toMatchObject({ type: "button", style: "link", color: "#8CC6FF" });
   });
 

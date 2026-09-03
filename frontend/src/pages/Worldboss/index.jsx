@@ -8,6 +8,7 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Collapse,
   Container,
   Divider,
   Grid,
@@ -29,7 +30,9 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HandshakeIcon from "@mui/icons-material/Handshake";
+import HelpOutlinedIcon from "@mui/icons-material/HelpOutlined";
 import HistoryToggleOffIcon from "@mui/icons-material/HistoryToggleOff";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
@@ -546,7 +549,230 @@ function DamageBreakdown({ damage }) {
   );
 }
 
-function PersonalStats({ current, unavailable = false }) {
+/** The server's base damage formula, from RPGCharacter#getStandardDamage. */
+function baseDamage(level) {
+  return level * level + level * 10;
+}
+
+/**
+ * Two example levels, only to make the point that the curve is quadratic: the gap between a
+ * new player and a veteran is not proportional to the level gap. The ratio is computed from
+ * the same formula rather than written in, so it can never drift from the text beside it.
+ */
+const DAMAGE_EXAMPLE = { low: 12, high: 140 };
+const DAMAGE_EXAMPLE_RATIO = (
+  baseDamage(DAMAGE_EXAMPLE.high) / baseDamage(DAMAGE_EXAMPLE.low)
+).toFixed(1);
+
+/** One row of the "why the numbers differ" list. `lead` is the dominant factor. */
+function FactorRow({ index, title, body, lead }) {
+  return (
+    <Stack direction="row" spacing={1.25} alignItems="flex-start">
+      <Box
+        sx={theme => ({
+          flexShrink: 0,
+          width: 20,
+          height: 20,
+          mt: 0.2,
+          borderRadius: "50%",
+          display: "grid",
+          placeItems: "center",
+          fontSize: "0.7rem",
+          fontWeight: 800,
+          color: lead ? theme.palette.primary.contrastText : theme.palette.text.secondary,
+          bgcolor: lead ? theme.palette.primary.main : alpha(theme.palette.text.disabled, 0.16),
+        })}
+      >
+        {index}
+      </Box>
+      <Box minWidth={0}>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 800, lineHeight: 1.4, ...(lead && { color: "primary.main" }) }}
+        >
+          {title}
+        </Typography>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", lineHeight: 1.55 }}
+        >
+          {body}
+        </Typography>
+      </Box>
+    </Stack>
+  );
+}
+
+/**
+ * Answers the third question players keep asking — "why is everybody's attack number
+ * different" — and, in the always-visible strip above the toggle, the second one: "what job
+ * am I". It sits at the end of PersonalStats so it lands directly under the damage figures
+ * that prompt the question, in both the in-season card and the off-season one.
+ *
+ * The strip is open, the mechanics are one tap behind a toggle: the job line is a fact a
+ * player wants at a glance, the formula is a thing they want once.
+ */
+function DamageExplainer({ jobKey, level }) {
+  const [open, setOpen] = useState(false);
+  const job = JOB_META[jobKey];
+  const skill = job?.skill;
+
+  return (
+    <Box
+      sx={theme => ({
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: alpha(theme.palette.primary.main, 0.28),
+        bgcolor: alpha(theme.palette.primary.main, 0.04),
+        overflow: "hidden",
+      })}
+    >
+      {job ? (
+        <Box sx={{ px: 1.5, pt: 1.5, pb: 1.25 }}>
+          <Stack direction="row" spacing={1.25} alignItems="flex-start">
+            <Avatar
+              variant="rounded"
+              sx={theme => ({
+                width: 34,
+                height: 34,
+                flexShrink: 0,
+                bgcolor: alpha(theme.palette.primary.main, 0.16),
+                color: "primary.main",
+              })}
+            >
+              <BoltIcon sx={{ fontSize: 20 }} />
+            </Avatar>
+            <Box minWidth={0} flex={1}>
+              <Typography variant="caption" color="text.secondary" display="block">
+                我的職業
+              </Typography>
+              <Stack
+                direction="row"
+                spacing={0.75}
+                alignItems="baseline"
+                flexWrap="wrap"
+                useFlexGap
+              >
+                <Typography sx={{ fontWeight: 800, lineHeight: 1.3 }}>{job.name}</Typography>
+                {level != null && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
+                  >
+                    Lv.{formatInteger(level)}
+                  </Typography>
+                )}
+              </Stack>
+              <Typography variant="body2" sx={{ mt: 0.5, lineHeight: 1.5 }}>
+                技能「{skill.name}」· {skill.rate} 倍 · 消耗 {skill.cost}
+                {skill.criticalRate ? ` · 暴擊 ${skill.criticalRate}%` : ""}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mt: 0.25, lineHeight: 1.5 }}
+              >
+                {job.leaves
+                  ? `攻擊後在那隻王身上留下「${job.leaves}」，數值是這刀自身傷害的 ${job.effectPercent}%。`
+                  : "攻擊後不會留下效果，分數來自自身傷害與接走別人的效果。"}
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
+      ) : null}
+
+      <Button
+        fullWidth
+        disableRipple
+        onClick={() => setOpen(previous => !previous)}
+        aria-expanded={open}
+        aria-controls="damage-explainer-body"
+        startIcon={<HelpOutlinedIcon sx={{ fontSize: 18 }} />}
+        endIcon={
+          <ExpandMoreIcon
+            sx={{
+              fontSize: 20,
+              transition: "transform .2s ease-out",
+              transform: open ? "rotate(180deg)" : "none",
+            }}
+          />
+        }
+        sx={theme => ({
+          justifyContent: "flex-start",
+          gap: 0.5,
+          px: 1.5,
+          py: 1,
+          color: "text.primary",
+          fontWeight: 700,
+          fontSize: "0.8125rem",
+          textAlign: "left",
+          borderRadius: 0,
+          ...(job && {
+            borderTop: "1px solid",
+            borderColor: alpha(theme.palette.primary.main, 0.2),
+          }),
+          "& .MuiButton-endIcon": { ml: "auto" },
+          "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.06) },
+        })}
+      >
+        為什麼每個人的攻擊數值差這麼多？
+      </Button>
+
+      <Collapse in={open} unmountOnExit>
+        <Box
+          id="damage-explainer-body"
+          sx={theme => ({
+            px: 1.5,
+            pt: 1.5,
+            pb: 1.75,
+            borderTop: "1px solid",
+            borderColor: alpha(theme.palette.primary.main, 0.2),
+          })}
+        >
+          <Stack spacing={1.5}>
+            <FactorRow
+              index={1}
+              lead
+              title="等級，影響最大"
+              body={`基礎傷害 = 等級² + 等級 × 10。等級每上升一級，傷害增加的幅度也跟著變大，所以等級差距造成的傷害差距會遠大於等級本身的倍數。Lv.${DAMAGE_EXAMPLE.low} 的基礎傷害是 ${formatInteger(baseDamage(DAMAGE_EXAMPLE.low))}，Lv.${DAMAGE_EXAMPLE.high} 是 ${formatInteger(baseDamage(DAMAGE_EXAMPLE.high))}，差 ${DAMAGE_EXAMPLE_RATIO} 倍，不是 ${(DAMAGE_EXAMPLE.high / DAMAGE_EXAMPLE.low).toFixed(1)} 倍。`}
+            />
+            <FactorRow
+              index={2}
+              title="職業技能倍率"
+              body={`基礎傷害再乘上技能倍率。四個職業目前是 ${RATE_RANGE} 倍，同時消耗的行動點也不同，倍率高的通常消耗也高。`}
+            />
+            <FactorRow
+              index={3}
+              title="熟練度浮動 ±10%"
+              body="每次攻擊都會在基礎傷害上隨機浮動 ±10%，所以同一個人連續打同一隻王，數字也不會完全一樣。"
+            />
+            <FactorRow
+              index={4}
+              title="暴擊，只有部分職業有"
+              body={`法師有 ${JOB_META.mage.skill.criticalRate}% 機率暴擊，盜賊有 ${JOB_META.thief.skill.criticalRate}%，冒險者和劍士沒有。暴擊會再乘上一個倍率，這是同職業同等級也可能打出好幾倍差距的原因。`}
+            />
+            <FactorRow
+              index={5}
+              title="裝備攻擊力加成"
+              body="裝備上的攻擊力加成會加在基礎傷害之後。目前多數玩家還沒有裝備，這一項通常是 0。"
+            />
+          </Stack>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mt: 1.75, lineHeight: 1.55 }}
+          >
+            排行榜排的是分數不是傷害。溢傷全額計分，接力和被接力也會加分，所以傷害低的人不一定分數低。
+          </Typography>
+        </Box>
+      </Collapse>
+    </Box>
+  );
+}
+
+function PersonalStats({ current, unavailable = false, jobLevel }) {
   const daily = current?.daily;
 
   return (
@@ -595,6 +821,7 @@ function PersonalStats({ current, unavailable = false }) {
 
       <ScoreBreakdown score={current?.score} />
       <DamageBreakdown damage={current?.damage} />
+      <DamageExplainer jobKey={current?.jobKey} level={jobLevel} />
 
       {unavailable && (
         <Typography variant="caption" color="warning.main">
@@ -621,13 +848,46 @@ function effectStatus(effect) {
   return effect.expired ? "expired" : "waiting";
 }
 
-/** Job names, and whether the job leaves anything behind at all. */
+/**
+ * Job name, skill numbers, and whether the job leaves anything behind at all.
+ *
+ * Mirrored by hand from the server, because `/api/world-boss/me` returns only `jobKey` —
+ * no level, no skill, no effect percentage. Sources, field by field:
+ *   - name / skill.name / cost / rate / criticalRate
+ *       → app/src/model/application/RPGCharacter.js (each class's `skillOne` getter)
+ *   - effectPercent
+ *       → app/src/model/application/WorldBossRoundEffect.js (EFFECT_BY_JOB)
+ * A skill rebalance on the server has to be re-typed here, so the panel that renders these
+ * says where they come from rather than presenting them as live values.
+ */
 const JOB_META = {
-  adventurer: { name: "冒險者", leaves: "鼓舞" },
-  mage: { name: "法師", leaves: "魔力刻印" },
-  swordman: { name: "劍士", leaves: null },
-  thief: { name: "盜賊", leaves: null },
+  adventurer: {
+    name: "冒險者",
+    leaves: "鼓舞",
+    effectPercent: 25,
+    skill: { name: "奮力揮擊", cost: 8, rate: 1.2 },
+  },
+  mage: {
+    name: "法師",
+    leaves: "魔力刻印",
+    effectPercent: 50,
+    skill: { name: "元素之力", cost: 7, rate: 0.7, criticalRate: 25 },
+  },
+  swordman: {
+    name: "劍士",
+    leaves: null,
+    skill: { name: "震地斬擊", cost: 10, rate: 1.8 },
+  },
+  thief: {
+    name: "盜賊",
+    leaves: null,
+    skill: { name: "致命一擊", cost: 20, rate: 2.1, criticalRate: 50 },
+  },
 };
+
+/** Skill multipliers across all four jobs, for the "職業技能倍率" range in the panel. */
+const SKILL_RATES = Object.values(JOB_META).map(job => job.skill.rate);
+const RATE_RANGE = `${Math.min(...SKILL_RATES)} ~ ${Math.max(...SKILL_RATES)}`;
 
 /**
  * A swordman or thief never leaves an effect — not "not yet", ever. Telling them the season
@@ -981,7 +1241,7 @@ function StatusTally({ label, count, tone }) {
   );
 }
 
-function PersonalProgressCard({ current, unavailable }) {
+function PersonalProgressCard({ current, unavailable, jobLevel }) {
   return (
     <Card variant="outlined">
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
@@ -989,7 +1249,7 @@ function PersonalProgressCard({ current, unavailable }) {
           <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
             個人討伐進度
           </Typography>
-          <PersonalStats current={current} unavailable={unavailable} />
+          <PersonalStats current={current} unavailable={unavailable} jobLevel={jobLevel} />
         </Stack>
       </CardContent>
     </Card>
@@ -1145,25 +1405,38 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
                   <PendingEffectsRow pending={pending} />
                 </Box>
               )}
+              {/*
+                One action, not two. The standard attack was strictly dominated — every job's
+                skill dealt at least as much damage per cost and left the same effects — so the
+                second button was a choice with only one right answer. `attackType` stays a
+                parameter because the server still accepts "standard" from older Flex cards.
+              */}
               <Button
                 variant="contained"
                 fullWidth
                 disabled={disabled}
-                onClick={() => onAttack(round, "standard")}
-                startIcon={busy ? <CircularProgress size={14} color="inherit" /> : null}
-                sx={{ fontWeight: 700, minHeight: 40 }}
-              >
-                普通攻擊
-              </Button>
-              <Button
-                variant="outlined"
-                color="secondary"
-                fullWidth
-                disabled={disabled}
                 onClick={() => onAttack(round, "skill")}
-                sx={{ fontWeight: 700, minHeight: 40 }}
+                startIcon={
+                  busy ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <BoltIcon sx={{ fontSize: 20 }} />
+                  )
+                }
+                sx={theme => ({
+                  fontWeight: 800,
+                  fontSize: "0.95rem",
+                  minHeight: 46,
+                  borderRadius: 2,
+                  letterSpacing: "0.05em",
+                  boxShadow: `0 2px 10px ${alpha(theme.palette.primary.main, 0.35)}`,
+                  "&:hover": {
+                    boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.45)}`,
+                  },
+                  "&.Mui-disabled": { boxShadow: "none" },
+                })}
               >
-                技能攻擊
+                攻擊
               </Button>
             </Stack>
           )}
@@ -1173,7 +1446,15 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
   );
 }
 
-function BattleCard({ status, current, currentUnavailable, onAttack, attackingRoundId, locked }) {
+function BattleCard({
+  status,
+  current,
+  currentUnavailable,
+  onAttack,
+  attackingRoundId,
+  locked,
+  jobLevel,
+}) {
   const { season, cycleNo, rounds, ended } = status;
   const clearedCount = rounds.filter(round => round.cleared_at).length;
 
@@ -1229,7 +1510,7 @@ function BattleCard({ status, current, currentUnavailable, onAttack, attackingRo
 
           <Divider />
 
-          <PersonalStats current={current} unavailable={currentUnavailable} />
+          <PersonalStats current={current} unavailable={currentUnavailable} jobLevel={jobLevel} />
 
           <Typography variant="caption" color="text.secondary">
             活動結束：{formatDate(season.end_time)}
@@ -1665,6 +1946,10 @@ export default function Worldboss() {
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [cooling, setCooling] = useState(false);
   const [lastAttack, setLastAttack] = useState(null);
+  // `/api/world-boss/me` carries the level, so it is known on first paint. An attack response
+  // also carries `levelResult.newLevel`, which is fresher after a level-up; it wins when set.
+  // Kept out of `lastAttack` so dismissing the result card does not drop it.
+  const [attackedLevel, setAttackedLevel] = useState(null);
   const requestIdRef = useRef(0);
   const loadedOnceRef = useRef(false);
   const hasLoadedDataRef = useRef(false);
@@ -1777,6 +2062,8 @@ export default function Worldboss() {
           return rest;
         });
         setLastAttack({ ...payload.attack, announcementQueued: payload.announcementQueued });
+        const newLevel = Number(payload.attack?.levelResult?.newLevel);
+        if (Number.isSafeInteger(newLevel) && newLevel > 0) setAttackedLevel(newLevel);
         hasLoadedDataRef.current = true;
         setHasLoadedData(true);
 
@@ -1821,6 +2108,9 @@ export default function Worldboss() {
   );
   const shouldRenderCurrent = currentMatchesStatus;
   const currentUnavailable = !shouldRenderCurrent && (hasBattle || current != null);
+  // `/me` carries the level on first paint; an attack that levels up is fresher, so it wins.
+  const meLevel = Number(current?.level);
+  const jobLevel = attackedLevel ?? (Number.isSafeInteger(meLevel) && meLevel > 0 ? meLevel : null);
   const leaderboard = leaderboardView(data.status, data.leaderboard, errors);
   const latestReward = data.me?.latestReward;
   const errorEntries = Object.entries(errors);
@@ -1887,6 +2177,7 @@ export default function Worldboss() {
                 onAttack={attack}
                 attackingRoundId={attackingRoundId}
                 locked={attackingRoundId !== null || cooling}
+                jobLevel={jobLevel}
               />
             ) : errors.status || data.status?.season ? (
               <UnavailableStatus />
@@ -1914,6 +2205,7 @@ export default function Worldboss() {
           <PersonalProgressCard
             current={shouldRenderCurrent ? current : undefined}
             unavailable={currentUnavailable}
+            jobLevel={jobLevel}
           />
         )}
 

@@ -162,6 +162,7 @@ exports.me = async function (req, res) {
         damage: stats.damage,
         daily,
         jobKey: progress ? progress.job_key : "adventurer",
+        level: progress?.level ?? 1,
         effects,
       };
     }
