@@ -45,7 +45,14 @@ export default function CharacterCard({
   return (
     <Card>
       <CardActionArea>
-        <CardMedia sx={{ height: 200 }} image={image} />
+        {/* 商品圖都是 16:9，固定高度會在寬卡片上把圖裁成橫條 */}
+        <CardMedia
+          component="img"
+          image={image}
+          alt={name}
+          loading="lazy"
+          sx={{ aspectRatio: "16 / 9", objectFit: "cover" }}
+        />
         <CardContent>
           <Typography gutterBottom variant="h5" component="h2">
             {name}
