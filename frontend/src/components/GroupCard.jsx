@@ -7,7 +7,9 @@ import {
   Typography,
   Button,
   Box,
+  Stack,
   Avatar,
+  Chip,
 } from "@mui/material";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -22,25 +24,27 @@ const actions = [
   { label: "自訂指令", icon: CodeIcon, path: id => `/source/${id}/customer/orders` },
 ];
 
+// 群組圖是使用者上傳的，比例不固定，統一裁成 16:9 才不會忽高忽低
+export const MEDIA_ASPECT_RATIO = "16 / 9";
+
 export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
   const navigate = useNavigate();
   const initial = groupName?.charAt(0) || "?";
 
   return (
-    <Card sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <Card variant="outlined" sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {pictureUrl ? (
         <CardMedia
           component="img"
-          height="140"
           image={pictureUrl}
           alt={groupName}
           loading="lazy"
-          sx={{ objectFit: "cover" }}
+          sx={{ aspectRatio: MEDIA_ASPECT_RATIO, objectFit: "cover" }}
         />
       ) : (
         <Box
           sx={{
-            height: 140,
+            aspectRatio: MEDIA_ASPECT_RATIO,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -63,21 +67,35 @@ export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
         </Box>
       )}
 
-      <CardContent sx={{ pb: 1 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }} noWrap>
-          {groupName}
-        </Typography>
-        {count != null && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
-            <PeopleIcon sx={{ fontSize: 16 }} color="action" />
-            <Typography variant="caption" color="text.secondary">
-              {count} 人
-            </Typography>
-          </Box>
-        )}
+      <CardContent sx={{ p: { xs: 2, sm: 2.5 }, pb: 1 }}>
+        <Stack spacing={0.75} sx={{ alignItems: "flex-start" }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, width: "100%" }} noWrap>
+            {groupName}
+          </Typography>
+          {count != null && (
+            <Chip
+              size="small"
+              variant="outlined"
+              icon={<PeopleIcon />}
+              label={`${count} 人`}
+              sx={{ color: "text.secondary" }}
+            />
+          )}
+        </Stack>
       </CardContent>
 
-      <CardActions sx={{ flexWrap: "wrap", gap: 0.75, px: 2.5, pb: 2.5, mt: "auto" }}>
+      {/* 固定兩欄，卡片變寬變窄都不會重排 */}
+      <CardActions
+        disableSpacing
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: 1,
+          px: { xs: 2, sm: 2.5 },
+          pb: { xs: 2, sm: 2.5 },
+          mt: "auto",
+        }}
+      >
         {actions.map(({ label, icon: Icon, path }) => (
           <Button
             key={label}
@@ -85,7 +103,7 @@ export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
             variant="outlined"
             startIcon={<Icon />}
             onClick={() => navigate(path(groupId))}
-            sx={{ textTransform: "none", cursor: "pointer", minHeight: 36 }}
+            sx={{ minHeight: 36, justifyContent: "flex-start" }}
           >
             {label}
           </Button>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Grid, Paper, Typography, TextField, ButtonGroup, Button, Avatar } from "@mui/material";
+import { Grid, Stack, Typography, TextField, ButtonGroup, Button, Avatar } from "@mui/material";
+import SectionCard from "../SectionCard";
 import HintSnackBar from "../HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 
@@ -45,83 +46,64 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
 
   return (
     <>
-      <Paper sx={{ p: 2, my: 1 }}>
-        <Grid
-          container
-          spacing={2}
-          sx={{
-            alignItems: "flex-end",
-          }}
-        >
-          <Grid size={{ xs: 12, sm: 8 }}>
-            <Typography variant="h6" component="h2">
-              自訂機器人頭像
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.secondary",
-              }}
-            >
-              可設定群組獨特的機器人頭像
-            </Typography>
-            <TextField
-              label="名稱"
-              fullWidth
-              value={state.name}
-              onChange={e => handleInput(e, "name")}
-              slotProps={{ htmlInput: { maxLength: 40 } }}
-              {...(!isValidName(state.name)
-                ? { error: true, helperText: "發送人長度限制0~20字" }
-                : {})}
-              sx={{ mt: 1 }}
-            />
-            <TextField
-              label="頭像"
-              fullWidth
-              value={state.iconUrl}
-              onChange={e => handleInput(e, "iconUrl")}
-              {...(!isValidIcon(state.iconUrl)
-                ? { error: true, helperText: "圖片格式需為https開頭，jpe(g),png結尾" }
-                : {})}
-              sx={{ mt: 1 }}
-            />
+      <SectionCard title="自訂機器人頭像" description="讓布丁在這個群組使用專屬的名稱與頭像">
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ alignItems: "center" }}>
+          <Grid size={{ xs: 12, sm: 7, md: 8 }}>
+            <Stack spacing={2}>
+              <TextField
+                label="名稱"
+                fullWidth
+                value={state.name}
+                onChange={e => handleInput(e, "name")}
+                slotProps={{ htmlInput: { maxLength: 40 } }}
+                {...(!isValidName(state.name)
+                  ? { error: true, helperText: "發送人長度限制0~20字" }
+                  : {})}
+              />
+              <TextField
+                label="頭像"
+                fullWidth
+                value={state.iconUrl}
+                onChange={e => handleInput(e, "iconUrl")}
+                {...(!isValidIcon(state.iconUrl)
+                  ? { error: true, helperText: "圖片格式需為https開頭，jpe(g),png結尾" }
+                  : {})}
+              />
+            </Stack>
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <Grid
-              container
-              direction="column"
-              spacing={1}
+          <Grid size={{ xs: 12, sm: 5, md: 4 }}>
+            {/* 預覽區：左邊輸入什麼，右邊立刻看到訊息會長怎樣 */}
+            <Stack
+              spacing={1.25}
               sx={{
                 alignItems: "center",
+                p: 2,
+                borderRadius: 2,
+                border: 1,
+                borderColor: "divider",
+                bgcolor: "action.hover",
               }}
             >
-              <Grid>
-                <Typography variant="subtitle1">
-                  {state.name ? `${state.name} from ` : null}布丁
-                </Typography>
-              </Grid>
-              <Grid>
-                <Avatar
-                  alt="預設"
-                  sx={{ width: 80, height: 80 }}
-                  src={isValidIcon(state.iconUrl) ? state.iconUrl : undefined}
-                />
-              </Grid>
-              <Grid>
-                <ButtonGroup color="primary" disabled={!isLoggedIn}>
-                  <Button variant="outlined" onClick={handleReset}>
-                    重設
-                  </Button>
-                  <Button variant="outlined" color="primary" onClick={handleSave}>
-                    召喚
-                  </Button>
-                </ButtonGroup>
-              </Grid>
-            </Grid>
+              <Avatar
+                alt="預設"
+                sx={{ width: 80, height: 80 }}
+                src={isValidIcon(state.iconUrl) ? state.iconUrl : undefined}
+              />
+              <Typography variant="body2" color="text.secondary" align="center">
+                {state.name ? `${state.name} from ` : null}布丁
+              </Typography>
+              <ButtonGroup color="primary" disabled={!isLoggedIn} size="small">
+                <Button variant="outlined" onClick={handleReset}>
+                  重設
+                </Button>
+                <Button variant="outlined" color="primary" onClick={handleSave}>
+                  召喚
+                </Button>
+              </ButtonGroup>
+            </Stack>
           </Grid>
         </Grid>
-      </Paper>
+      </SectionCard>
       <HintSnackBar {...hint} onClose={hintActions.handleClose} />
     </>
   );
