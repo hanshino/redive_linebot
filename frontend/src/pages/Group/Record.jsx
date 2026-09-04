@@ -21,6 +21,7 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import PeopleIcon from "@mui/icons-material/People";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AlertLogin from "../../components/AlertLogin";
+import useLiff from "../../context/useLiff";
 
 /* ---------- helpers ---------- */
 const sum = (arr, key) => arr.reduce((acc, cur) => acc + (cur[key] || 0), 0);
@@ -233,8 +234,7 @@ function TopContributors({ rank }) {
 }
 
 /* ---------- MyStats ---------- */
-function MyStats({ rank, maxTotal }) {
-  const userId = window.liff?.getContext?.()?.userId;
+function MyStats({ rank, maxTotal, userId }) {
   const me = rank.find(m => m.userId === userId);
   if (!me) return null;
 
@@ -440,7 +440,7 @@ function RecordSkeleton() {
 /* ---------- GroupRecord (main export) ---------- */
 export default function GroupRecord() {
   const { groupId } = useParams();
-  const isLoggedIn = window.liff?.isLoggedIn?.() ?? false;
+  const { loggedIn: isLoggedIn, profile } = useLiff();
 
   const [{ data: rankData, loading: rankLoading }, fetchRank] = useAxios(
     { url: `/api/groups/${groupId}/speak-rank` },
@@ -484,7 +484,7 @@ export default function GroupRecord() {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
       <GroupBanner group={groupData} rank={rank} />
       <TopContributors rank={rank} />
-      <MyStats rank={rank} maxTotal={maxTotal} />
+      <MyStats rank={rank} maxTotal={maxTotal} userId={profile?.userId} />
       <MemberList rank={rank} maxTotal={maxTotal} />
     </Box>
   );

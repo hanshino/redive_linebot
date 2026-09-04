@@ -18,6 +18,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PeopleIcon from "@mui/icons-material/People";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AlertLogin from "../../components/AlertLogin";
+import useLiff from "../../context/useLiff";
 import * as GroupAPI from "../../services/group";
 
 /* ---------- helpers ---------- */
@@ -252,7 +253,7 @@ function BattleSkeleton() {
 /* ---------- GroupBattle (main export) ---------- */
 export default function GroupBattle() {
   const { groupId } = useParams();
-  const isLoggedIn = window.liff?.isLoggedIn?.() ?? false;
+  const { loggedIn: isLoggedIn } = useLiff();
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [signDatas, setSignDatas] = useState([]);
   const [loading, setLoading] = useState(false);

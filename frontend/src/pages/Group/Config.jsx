@@ -26,6 +26,7 @@ import SectionCard from "../../components/SectionCard";
 import FeatureToggleItem from "../../components/GroupConfig/FeatureToggleItem";
 import SenderInput from "../../components/GroupConfig/SenderInput";
 import * as GroupAPI from "../../services/group";
+import useLiff from "../../context/useLiff";
 
 /* ---------- GuildHeadInfo ---------- */
 function GuildHeadInfo({ groupName, pictureUrl, count }) {
@@ -214,7 +215,7 @@ function FeatureCards({ datas, config, handle, isLoggedIn }) {
 /* ---------- GroupConfig (main export) ---------- */
 export default function GroupConfig() {
   const { groupId } = useParams();
-  const isLoggedIn = window.liff?.isLoggedIn?.() ?? false;
+  const { loggedIn: isLoggedIn } = useLiff();
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState({
     groupId: "",
