@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Box,
-  Grid,
+  Card,
+  CardContent,
+  Stack,
   Container,
-  Paper,
+  Divider,
+  List,
   Typography,
   TextField,
   Button,
   Avatar,
+  Chip,
   Alert,
   Dialog,
   DialogTitle,
@@ -17,32 +20,43 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import PeopleIcon from "@mui/icons-material/People";
 import { FullPageLoading } from "../../components/Loading";
-import ConfigCard from "../../components/GroupConfig/ConfigCard";
+import SectionCard from "../../components/SectionCard";
+import FeatureToggleItem from "../../components/GroupConfig/FeatureToggleItem";
 import SenderInput from "../../components/GroupConfig/SenderInput";
 import * as GroupAPI from "../../services/group";
 
 /* ---------- GuildHeadInfo ---------- */
 function GuildHeadInfo({ groupName, pictureUrl, count }) {
   return (
-    <Paper sx={{ mb: 2 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 2 }}>
-        <Avatar
-          variant="square"
-          sx={{ width: 80, height: 80 }}
-          alt={groupName}
-          src={pictureUrl || undefined}
-        />
-        <Box>
-          <Typography variant="subtitle1">
-            群組名稱 <b>{groupName}</b>
-          </Typography>
-          <Typography variant="subtitle1">
-            群組人數 <b>{count}</b>
-          </Typography>
-        </Box>
-      </Box>
-    </Paper>
+    <Card variant="outlined">
+      <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
+        <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+          <Avatar
+            variant="rounded"
+            sx={{ width: { xs: 56, sm: 72 }, height: { xs: 56, sm: 72 }, flexShrink: 0 }}
+            alt={groupName}
+            src={pictureUrl || undefined}
+          />
+          <Stack spacing={0.75} sx={{ minWidth: 0, alignItems: "flex-start" }}>
+            <Typography variant="caption" color="text.secondary">
+              群組設定
+            </Typography>
+            <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }} noWrap>
+              {groupName}
+            </Typography>
+            <Chip
+              size="small"
+              variant="outlined"
+              icon={<PeopleIcon />}
+              label={`${count} 人`}
+              sx={{ color: "text.secondary" }}
+            />
+          </Stack>
+        </Stack>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -71,57 +85,26 @@ function WebhookInput({ DiscordWebhook, modifyTrigger, isLoggedIn }) {
   };
 
   return (
-    <Paper sx={{ my: 1, p: 2 }}>
-      <Typography variant="h6" component="h2">
-        Discord Webhook 綁定
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{
-          color: "text.secondary",
-        }}
-      >
-        可將 Line 訊息，即時轉發至 Discord 指定頻道
-      </Typography>
-      <Grid
-        container
-        spacing={1}
-        sx={{
-          alignItems: "center",
-          mt: 1,
-        }}
-      >
-        <Grid size={{ xs: 12, sm: 8 }}>
-          <TextField
-            label="Discord Webhook"
-            fullWidth
-            disabled={!isLoggedIn}
-            value={webhook}
-            onChange={e => setWebhook(e.target.value)}
-          />
-        </Grid>
-        <Grid size={{ xs: 4, sm: 1 }}>
-          <Button disabled={testBlock} onClick={handleTest} sx={{ m: 1, mb: 0 }}>
-            測試
-          </Button>
-        </Grid>
-        <Grid size={{ xs: 4, sm: 1 }}>
-          <Button color="primary" disabled={!isLoggedIn} onClick={handleSave} sx={{ m: 1, mb: 0 }}>
-            連結
-          </Button>
-        </Grid>
-        <Grid size={{ xs: 4, sm: 1 }}>
-          <Button
-            color="secondary"
-            disabled={!isLoggedIn}
-            onClick={handleRemove}
-            sx={{ m: 1, mb: 0 }}
-          >
-            解除
-          </Button>
-        </Grid>
-      </Grid>
-    </Paper>
+    <SectionCard title="Discord Webhook 綁定" description="將群組訊息即時轉發到指定的 Discord 頻道">
+      <TextField
+        label="Discord Webhook"
+        fullWidth
+        disabled={!isLoggedIn}
+        value={webhook}
+        onChange={e => setWebhook(e.target.value)}
+      />
+      <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <Button disabled={testBlock} onClick={handleTest}>
+          測試
+        </Button>
+        <Button variant="contained" color="primary" disabled={!isLoggedIn} onClick={handleSave}>
+          連結
+        </Button>
+        <Button color="secondary" disabled={!isLoggedIn} onClick={handleRemove}>
+          解除
+        </Button>
+      </Stack>
+    </SectionCard>
   );
 }
 
@@ -144,48 +127,19 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
 
   return (
     <>
-      <Paper sx={{ my: 1, p: 2 }}>
-        <Typography variant="h6" component="h2">
-          加入歡迎訊息
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-          }}
-        >
-          可設定新成員加入發送特定訊息。
-        </Typography>
-        <Grid
-          container
-          spacing={1}
-          sx={{
-            alignItems: "center",
-            mt: 1,
-          }}
-        >
-          <Grid size={{ xs: 12, sm: 10 }}>
-            <TextField
-              label="歡迎訊息"
-              disabled
-              variant="filled"
-              fullWidth
-              multiline
-              value={message}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 2 }}>
-            <Button
-              color="primary"
-              onClick={() => setOpen(true)}
-              disabled={!isLoggedIn}
-              sx={{ m: 1 }}
-            >
-              編輯
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
+      <SectionCard title="加入歡迎訊息" description="新成員加入群組時，自動發送這段訊息">
+        <TextField label="歡迎訊息" disabled variant="filled" fullWidth multiline value={message} />
+        <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setOpen(true)}
+            disabled={!isLoggedIn}
+          >
+            編輯
+          </Button>
+        </Stack>
+      </SectionCard>
       <Dialog
         fullScreen={fullScreen}
         open={open}
@@ -195,40 +149,39 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
       >
         <DialogTitle>加入歡迎訊息</DialogTitle>
         <DialogContent dividers>
-          <Grid container spacing={2}>
-            <Grid size={12}>
-              <TextField
-                label="訊息"
-                fullWidth
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                multiline
-                rows={4}
-              />
-            </Grid>
-            <Grid>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              label="訊息"
+              fullWidth
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              multiline
+              rows={4}
+            />
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+              <Typography variant="body2" color="text.secondary" sx={{ width: "100%" }}>
+                點下方按鈕插入變數
+              </Typography>
               <Button
-                variant="contained"
+                variant="outlined"
                 color="primary"
                 onClick={() => setMessage(m => `${m} {UserName}`)}
               >
                 使用者名稱
               </Button>
-            </Grid>
-            <Grid>
               <Button
-                variant="contained"
+                variant="outlined"
                 color="primary"
                 onClick={() => setMessage(m => `${m} {GroupName}`)}
               >
                 群組名稱
               </Button>
-            </Grid>
-          </Grid>
+            </Stack>
+          </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>取消</Button>
-          <Button color="primary" onClick={handleSave}>
+          <Button variant="contained" color="primary" onClick={handleSave}>
             保存
           </Button>
         </DialogActions>
@@ -240,18 +193,21 @@ function WelcomeMessageInput({ WelcomeMessage, modifyTrigger, isLoggedIn }) {
 /* ---------- FeatureCards ---------- */
 function FeatureCards({ datas, config, handle, isLoggedIn }) {
   return (
-    <Grid container spacing={2} sx={{ mt: 1 }}>
-      {datas.map(data => (
-        <Grid size={{ xs: 12, sm: 4 }} key={data.name}>
-          <ConfigCard
-            {...data}
-            status={config[data.name]}
-            handle={handle}
-            isLoggedIn={isLoggedIn}
-          />
-        </Grid>
-      ))}
-    </Grid>
+    <SectionCard title="功能開關" description="關閉後，該功能的指令在這個群組不會有反應">
+      <List disablePadding>
+        {datas.map((data, index) => (
+          <Fragment key={data.name}>
+            {index > 0 && <Divider component="li" />}
+            <FeatureToggleItem
+              {...data}
+              status={config[data.name]}
+              handle={handle}
+              isLoggedIn={isLoggedIn}
+            />
+          </Fragment>
+        ))}
+      </List>
+    </SectionCard>
   );
 }
 
@@ -326,15 +282,11 @@ export default function GroupConfig() {
   };
 
   return (
-    <Container>
-      <Box sx={{ p: 2 }}>
+    <Container maxWidth="md" sx={{ py: 1 }}>
+      <Stack spacing={2}>
         <GuildHeadInfo {...info} />
 
-        {!isLoggedIn && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            登入後即可進行操作！
-          </Alert>
-        )}
+        {!isLoggedIn && <Alert severity="warning">登入後即可進行操作！</Alert>}
 
         <SenderInput isLoggedIn={isLoggedIn} action={setSender} Sender={state.Sender} />
 
@@ -356,7 +308,7 @@ export default function GroupConfig() {
           handle={writeConfig}
           isLoggedIn={isLoggedIn}
         />
-      </Box>
+      </Stack>
 
       <FullPageLoading open={loading} />
     </Container>

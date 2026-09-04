@@ -1,7 +1,14 @@
 import { useState } from "react";
-import { Card, CardContent, CardActions, Typography, Switch } from "@mui/material";
+import { ListItem, ListItemText, Switch } from "@mui/material";
 
-export default function ConfigCard({ title, description, status, name, handle, isLoggedIn }) {
+export default function FeatureToggleItem({
+  title,
+  description,
+  status,
+  name,
+  handle,
+  isLoggedIn,
+}) {
   const [checked, setChecked] = useState(status === "Y");
 
   const handleChange = () => {
@@ -10,21 +17,10 @@ export default function ConfigCard({ title, description, status, name, handle, i
   };
 
   return (
-    <Card sx={{ display: "grid", height: "100%", minWidth: 200 }}>
-      <CardContent>
-        <Typography variant="h6" component="h2">
-          {title}
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-          }}
-        >
-          {description}
-        </Typography>
-      </CardContent>
-      <CardActions sx={{ mt: "auto", ml: "auto" }}>
+    <ListItem
+      disableGutters
+      sx={{ py: 1.25, alignItems: "flex-start", gap: 2 }}
+      secondaryAction={
         <Switch
           checked={checked}
           onChange={isLoggedIn ? handleChange : undefined}
@@ -32,7 +28,17 @@ export default function ConfigCard({ title, description, status, name, handle, i
           disabled={!isLoggedIn}
           slotProps={{ input: { "aria-label": `toggle ${name}` } }}
         />
-      </CardActions>
-    </Card>
+      }
+    >
+      <ListItemText
+        primary={title}
+        secondary={description}
+        slotProps={{
+          primary: { variant: "body1", fontWeight: 600 },
+          secondary: { variant: "body2" },
+        }}
+        sx={{ my: 0, pr: 6 }}
+      />
+    </ListItem>
   );
 }
