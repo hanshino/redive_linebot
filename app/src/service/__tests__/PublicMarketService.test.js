@@ -34,6 +34,14 @@ jest.mock("../../model/princess/gacha", () => ({
   model: { find: jest.fn() },
 }));
 
+// 碎片餘額列。`increase(..., 0)` 是 service 用來把列 upsert 出來（gap lock → record lock）
+// 的手段，所以這裡刻意「不」讓它動到 balances —— 加 0 本來就不該改變任何餘額。
+jest.mock("../../model/princess/CharacterFragment", () => ({
+  getBalance: jest.fn(),
+  increase: jest.fn(),
+  decreaseLocked: jest.fn(),
+}));
+
 jest.mock("../ProfileService", () => ({
   resolveDisplayName: jest.fn(async id => `Name-${id}`),
 }));
@@ -46,6 +54,7 @@ const Service = require("../PublicMarketService");
 const PublicMarketModel = require("../../model/application/PublicMarket");
 const { inventory: InventoryModel } = require("../../model/application/Inventory");
 const { model: GachaPoolModel } = require("../../model/princess/gacha");
+const FragmentModel = require("../../model/princess/CharacterFragment");
 const AchievementEngine = require("../AchievementEngine");
 
 const SELLER = "U" + "1".repeat(32);
@@ -100,8 +109,20 @@ beforeEach(() => {
   PublicMarketModel.markSold.mockResolvedValue(1);
   PublicMarketModel.markFulfilled.mockResolvedValue(1);
   PublicMarketModel.markClosed.mockResolvedValue(1);
+  FragmentModel.getBalance.mockResolvedValue(0);
+  FragmentModel.increase.mockResolvedValue([0]);
+  FragmentModel.decreaseLocked.mockResolvedValue(1);
   AchievementEngine.evaluate.mockResolvedValue({ unlocked: [] });
 });
+
+/**
+ * 依 userId 給不同的碎片餘額。service 為了取 record lock 會先 `increase(..., 0)`
+ * 再 `getBalance(..., { forUpdate: true })`，兩者都吃同一份 balances。
+ * @param {Object} balances userId -> 片數
+ */
+function stubFragmentBalances(balances) {
+  FragmentModel.getBalance.mockImplementation(async userId => Number(balances[userId] || 0));
+}
 
 describe("手續費計算", () => {
   it.each([
@@ -1100,12 +1121,16 @@ describe("掛單簿形狀與方向", () => {
 
   const buyRow = { ...sellRow, id: 9, orderType: "buy", sellerId: null, buyerId: BUYER };
 
-  it("缺省方向查賣單簿", async () => {
+  it("缺省方向查角色賣單簿", async () => {
     PublicMarketModel.getOpenListingsByItemId.mockResolvedValue([sellRow]);
 
     await Service.getListingsByItemId(101, BUYER);
 
-    expect(PublicMarketModel.getOpenListingsByItemId).toHaveBeenCalledWith(101, "sell");
+    expect(PublicMarketModel.getOpenListingsByItemId).toHaveBeenCalledWith(
+      101,
+      "sell",
+      "character"
+    );
   });
 
   it("orderType=buy 查收購簿，並把還沒有意義的賣方欄位剪掉", async () => {
@@ -1113,11 +1138,19 @@ describe("掛單簿形狀與方向", () => {
 
     const [listing] = await Service.getListingsByItemId(101, SELLER, "buy");
 
-    expect(PublicMarketModel.getOpenListingsByItemId).toHaveBeenCalledWith(101, "buy");
+    expect(PublicMarketModel.getOpenListingsByItemId).toHaveBeenCalledWith(101, "buy", "character");
     expect(listing).toMatchObject({ orderType: "buy", buyerId: BUYER, netProceeds: 950 });
     expect(listing).not.toHaveProperty("sellerId");
     expect(listing).not.toHaveProperty("sellerName");
     expect(listing).not.toHaveProperty("status");
+  });
+
+  it("itemKind=fragment 查的是碎片簿，不會混進同一角色的角色單", async () => {
+    PublicMarketModel.getOpenListingsByItemId.mockResolvedValue([]);
+
+    await Service.getListingsByItemId(101, BUYER, "sell", "fragment");
+
+    expect(PublicMarketModel.getOpenListingsByItemId).toHaveBeenCalledWith(101, "sell", "fragment");
   });
 
   it("賣單簿剪掉買方欄位", async () => {
@@ -1146,16 +1179,27 @@ describe("掛單簿形狀與方向", () => {
 
     const [character] = await Service.getOpenCharacters("buy");
 
-    expect(PublicMarketModel.getOpenCharacters).toHaveBeenCalledWith("buy");
+    expect(PublicMarketModel.getOpenCharacters).toHaveBeenCalledWith("buy", "character");
     expect(character).toMatchObject({ orderType: "buy", bestPrice: 9000 });
   });
 
-  it("角色清單缺省查賣單簿", async () => {
+  it("角色清單缺省查角色賣單簿", async () => {
     PublicMarketModel.getOpenCharacters.mockResolvedValue([]);
 
     await Service.getOpenCharacters();
 
-    expect(PublicMarketModel.getOpenCharacters).toHaveBeenCalledWith("sell");
+    expect(PublicMarketModel.getOpenCharacters).toHaveBeenCalledWith("sell", "character");
+  });
+
+  it("清單的 itemKind 跟著查詢條件走，前端才知道自己在看哪個市場", async () => {
+    PublicMarketModel.getOpenCharacters.mockResolvedValue([
+      { itemId: 770, name: "可可蘿", star: "3", headImage: null, listingCount: 5, bestPrice: 30 },
+    ]);
+
+    const [character] = await Service.getOpenCharacters("sell", "fragment");
+
+    expect(PublicMarketModel.getOpenCharacters).toHaveBeenCalledWith("sell", "fragment");
+    expect(character).toMatchObject({ itemKind: "fragment", bestPrice: 30 });
   });
 });
 
@@ -1552,5 +1596,868 @@ describe("trade_complete 成就結算", () => {
 
       expect(AchievementEngine.evaluate).not.toHaveBeenCalled();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 碎片交易。與角色單的差異全部集中在這裡，每個 case 都對著一個具體的破口：
+//   - 金流以 total（price × quantity）計，不是單價
+//   - 碎片沒有「一人一隻」限制，已持有角色的人照樣能買／收
+//   - 同一角色的角色單與碎片單是兩種商品，不互相觸發 ALREADY_LISTED
+// ---------------------------------------------------------------------------
+describe("碎片：數量與總額驗證", () => {
+  it("舊 payload 缺 itemKind / quantity 時是角色單、數量 1", async () => {
+    stubInventoryReads({ balance: 0, buyerOwns: true });
+    PublicMarketModel.create.mockResolvedValue(1);
+    PublicMarketModel.getById.mockResolvedValue({
+      id: 1,
+      itemId: 101,
+      orderType: "sell",
+      sellerId: SELLER,
+      price: 1000,
+      fee: 50,
+      status: "open",
+      star: "3",
+    });
+
+    const res = await Service.createListing(SELLER, { itemId: 101, price: 1000 });
+
+    expect(res.ok).toBe(true);
+    expect(PublicMarketModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({ item_kind: "character", quantity: 1, fee: 50 })
+    );
+    // 角色單不該碰碎片餘額
+    expect(FragmentModel.decreaseLocked).not.toHaveBeenCalled();
+  });
+
+  it.each([2, 20, 9999])("角色單 quantity=%i 一律 INVALID_QUANTITY（角色不可分割）", async q => {
+    const res = await Service.createListing(SELLER, { itemId: 101, price: 1000, quantity: q });
+
+    expect(res).toEqual({ ok: false, code: "INVALID_QUANTITY" });
+    expect(PublicMarketModel.create).not.toHaveBeenCalled();
+  });
+
+  it("碎片單 quantity=1 是合法的，不會被當成角色單去刪角色", async () => {
+    stubFragmentBalances({ [SELLER]: 5 });
+    PublicMarketModel.create.mockResolvedValue(2);
+    PublicMarketModel.getById.mockResolvedValue({
+      id: 2,
+      itemId: 101,
+      itemKind: "fragment",
+      quantity: 1,
+      orderType: "sell",
+      sellerId: SELLER,
+      price: 50,
+      fee: 3,
+      status: "open",
+      star: "3",
+    });
+
+    const res = await Service.createListing(SELLER, {
+      itemId: 101,
+      price: 50,
+      itemKind: "fragment",
+      quantity: 1,
+    });
+
+    expect(res.ok).toBe(true);
+    expect(res.listing).toMatchObject({ itemKind: "fragment", quantity: 1, total: 50 });
+    expect(InventoryModel.deleteUserItem).not.toHaveBeenCalled();
+  });
+
+  it.each([0, -1, 1.5, 10000, NaN])("碎片 quantity=%p 被擋下", async q => {
+    const res = await Service.createListing(SELLER, {
+      itemId: 101,
+      price: 50,
+      itemKind: "fragment",
+      quantity: q,
+    });
+
+    expect(res).toEqual({ ok: false, code: "INVALID_QUANTITY" });
+    expect(PublicMarketModel.create).not.toHaveBeenCalled();
+  });
+
+  it("總額超過上限回 INVALID_TOTAL（單價各自合法也不行）", async () => {
+    // 5000 × 9999 遠超 MAX_TOTAL，但兩個數字單獨看都在範圍內。
+    const res = await Service.createListing(SELLER, {
+      itemId: 101,
+      price: 5000,
+      itemKind: "fragment",
+      quantity: 9999,
+    });
+
+    expect(res).toEqual({ ok: false, code: "INVALID_TOTAL" });
+    expect(PublicMarketModel.create).not.toHaveBeenCalled();
+  });
+
+  it("手續費以總額計，不是每片各進位一次", () => {
+    // 每片 21 × 20 片 = 420 ⇒ 5% = 21。逐片進位會變成 2×20 = 40，多收快一倍。
+    expect(Service.calcFee(21 * 20)).toBe(21);
+    expect(Service.calcNetProceeds(21 * 20)).toBe(399);
+  });
+});
+
+describe("碎片賣單", () => {
+  it("片數不足時不建單，並回報差額", async () => {
+    stubFragmentBalances({ [SELLER]: 12 });
+
+    const res = await Service.createListing(SELLER, {
+      itemId: 101,
+      price: 50,
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    expect(res).toMatchObject({
+      ok: false,
+      code: "INSUFFICIENT_FRAGMENTS",
+      balance: 12,
+      required: 20,
+      shortfall: 8,
+    });
+    expect(PublicMarketModel.create).not.toHaveBeenCalled();
+  });
+
+  it("片數剛好等於掛單量可以掛（邊界不能少一片）", async () => {
+    stubFragmentBalances({ [SELLER]: 20 });
+    PublicMarketModel.create.mockResolvedValue(3);
+    PublicMarketModel.getById.mockResolvedValue({
+      id: 3,
+      itemId: 101,
+      itemKind: "fragment",
+      quantity: 20,
+      orderType: "sell",
+      sellerId: SELLER,
+      price: 50,
+      fee: 50,
+      status: "open",
+      star: "3",
+    });
+
+    const res = await Service.createListing(SELLER, {
+      itemId: 101,
+      price: 50,
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    expect(res.ok).toBe(true);
+    expect(res.listing).toMatchObject({ quantity: 20, price: 50, total: 1000 });
+  });
+
+  it("餘額用 locking read 讀（同一使用者連點兩次不能掛出超過持有量的單）", async () => {
+    stubFragmentBalances({ [SELLER]: 20 });
+    PublicMarketModel.create.mockResolvedValue(4);
+    PublicMarketModel.getById.mockResolvedValue({
+      id: 4,
+      itemId: 101,
+      itemKind: "fragment",
+      quantity: 20,
+      orderType: "sell",
+      sellerId: SELLER,
+      price: 50,
+      fee: 50,
+      status: "open",
+    });
+
+    await Service.createListing(SELLER, {
+      itemId: 101,
+      price: 50,
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    expect(FragmentModel.getBalance).toHaveBeenCalledWith(SELLER, 101, expect.anything(), {
+      forUpdate: true,
+    });
+  });
+
+  it("掛單不預扣碎片：碎片直到成交才離開賣家", async () => {
+    stubFragmentBalances({ [SELLER]: 100 });
+    PublicMarketModel.create.mockResolvedValue(5);
+    PublicMarketModel.getById.mockResolvedValue({
+      id: 5,
+      itemId: 101,
+      itemKind: "fragment",
+      quantity: 20,
+      orderType: "sell",
+      sellerId: SELLER,
+      price: 50,
+      fee: 50,
+      status: "open",
+    });
+
+    await Service.createListing(SELLER, {
+      itemId: 101,
+      price: 50,
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    expect(FragmentModel.decreaseLocked).not.toHaveBeenCalled();
+  });
+
+  it("同一角色的角色單不會讓碎片單被誤判成 ALREADY_LISTED", async () => {
+    stubFragmentBalances({ [SELLER]: 100 });
+    PublicMarketModel.create.mockResolvedValue(6);
+    PublicMarketModel.getById.mockResolvedValue({
+      id: 6,
+      itemId: 101,
+      itemKind: "fragment",
+      quantity: 20,
+      orderType: "sell",
+      sellerId: SELLER,
+      price: 50,
+      fee: 50,
+      status: "open",
+    });
+
+    await Service.createListing(SELLER, {
+      itemId: 101,
+      price: 50,
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    // 重複檢查必須帶 item_kind，否則掛了角色的人就掛不了同一角色的碎片。
+    expect(PublicMarketModel.findOpenBySellerAndItem).toHaveBeenCalledWith(
+      SELLER,
+      101,
+      "fragment",
+      expect.anything()
+    );
+  });
+});
+
+describe("碎片收購單", () => {
+  function stubBuyCreated(id = 70, overrides = {}) {
+    PublicMarketModel.create.mockResolvedValue(id);
+    PublicMarketModel.getById.mockResolvedValue({
+      id,
+      itemId: 101,
+      itemKind: "fragment",
+      quantity: 20,
+      orderType: "buy",
+      sellerId: null,
+      buyerId: BUYER,
+      price: 50,
+      fee: 50,
+      status: "open",
+      star: "3",
+      ...overrides,
+    });
+  }
+
+  it("預扣的是總額（price × quantity），不是單價", async () => {
+    stubInventoryReads({ balance: 5000, buyerOwns: false });
+    stubBuyCreated(70);
+
+    const res = await Service.createListing(BUYER, {
+      itemId: 101,
+      price: 50,
+      orderType: "buy",
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    expect(res.ok).toBe(true);
+    // 只扣 price（50）的話系統要倒貼 950。
+    expect(InventoryModel.decreaseGodStone).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: BUYER,
+        amount: 1000,
+        note: "public_market:buy_order:reserve:70",
+      })
+    );
+    expect(res.listing.balanceAfter).toBe(4000);
+  });
+
+  it("已持有該角色仍可發碎片收購單（碎片可無限累積）", async () => {
+    stubInventoryReads({ balance: 5000, buyerOwns: true });
+    stubBuyCreated(71);
+
+    const res = await Service.createListing(BUYER, {
+      itemId: 101,
+      price: 50,
+      orderType: "buy",
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    // 這是市場供給的核心：老玩家買碎片囤著／轉賣。誤擋成 ALREADY_OWNED 會讓整個經濟停轉。
+    expect(res.ok).toBe(true);
+    expect(res.code).toBeUndefined();
+  });
+
+  it("餘額不足以預扣總額時回 NOT_ENOUGH_TO_RESERVE，差額以總額計", async () => {
+    stubInventoryReads({ balance: 300, buyerOwns: false });
+
+    const res = await Service.createListing(BUYER, {
+      itemId: 101,
+      price: 50,
+      orderType: "buy",
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    expect(res).toEqual({
+      ok: false,
+      code: "NOT_ENOUGH_TO_RESERVE",
+      balance: 300,
+      price: 1000,
+      shortfall: 700,
+    });
+    expect(InventoryModel.decreaseGodStone).not.toHaveBeenCalled();
+  });
+
+  it("碎片路徑跑 READ COMMITTED（RR 下女神石的 gap lock 是死鎖來源）", async () => {
+    const mysql = require("../../util/mysql");
+    stubInventoryReads({ balance: 5000, buyerOwns: false });
+    stubBuyCreated(72);
+
+    await Service.createListing(BUYER, {
+      itemId: 101,
+      price: 50,
+      orderType: "buy",
+      itemKind: "fragment",
+      quantity: 20,
+    });
+
+    expect(mysql.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: "read committed",
+    });
+  });
+
+  it("角色收購單也跑 READ COMMITTED（女神石的 gap lock 是死鎖來源）", async () => {
+    const mysql = require("../../util/mysql");
+    stubInventoryReads({ balance: 5000, buyerOwns: false });
+    PublicMarketModel.create.mockResolvedValue(73);
+    PublicMarketModel.getById.mockResolvedValue({
+      id: 73,
+      itemId: 101,
+      orderType: "buy",
+      sellerId: null,
+      buyerId: BUYER,
+      price: 1000,
+      fee: 50,
+      status: "open",
+    });
+
+    await Service.createListing(BUYER, { itemId: 101, price: 1000, orderType: "buy" });
+
+    expect(mysql.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: "read committed",
+    });
+  });
+
+  it("取消碎片收購單退回完整總額，不是單價", async () => {
+    PublicMarketModel.lockById.mockResolvedValue({
+      id: 74,
+      order_type: "buy",
+      item_kind: "fragment",
+      quantity: 20,
+      seller_id: null,
+      buyer_id: BUYER,
+      item_id: 101,
+      price: 50,
+      fee: 50,
+      status: "open",
+    });
+
+    const res = await Service.cancelListing(74, BUYER);
+
+    expect(res).toEqual({ ok: true, listingId: 74, refundedAmount: 1000 });
+    expect(InventoryModel.increaseGodStone).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: BUYER, amount: 1000 })
+    );
+  });
+});
+
+describe("碎片成交（purchase）", () => {
+  function fragmentListing(overrides = {}) {
+    return {
+      id: 80,
+      order_type: "sell",
+      item_kind: "fragment",
+      quantity: 20,
+      seller_id: SELLER,
+      buyer_id: null,
+      item_id: 101,
+      price: 50,
+      fee: 50,
+      status: "open",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    // 隔離等級已不再依 item_kind 決定（兩種標的都跑 RC），這裡保留 find 的 stub
+    // 只是因為其他 case 仍會讀到它。
+    PublicMarketModel.find.mockResolvedValue(fragmentListing());
+  });
+
+  it("整批 quantity 原子轉移：賣方扣 20、買方加 20", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing());
+    stubInventoryReads({ balance: 5000 });
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 0 });
+
+    const res = await Service.purchase(80, BUYER);
+
+    expect(res).toMatchObject({
+      ok: true,
+      itemKind: "fragment",
+      quantity: 20,
+      price: 50,
+      total: 1000,
+      fee: 50,
+      netProceeds: 950,
+      balanceAfter: 4000,
+    });
+
+    // 一次搬 20 片，不是搬 20 次 1 片
+    expect(FragmentModel.decreaseLocked).toHaveBeenCalledWith(SELLER, 101, 20, expect.anything());
+    expect(FragmentModel.increase).toHaveBeenCalledWith(BUYER, 101, 20, expect.anything());
+    // 角色本體完全沒被動到
+    expect(InventoryModel.deleteUserItem).not.toHaveBeenCalled();
+    expect(InventoryModel.create).not.toHaveBeenCalled();
+  });
+
+  it("買家付的是總額，賣家收總額 - 手續費", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing());
+    stubInventoryReads({ balance: 5000 });
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 0 });
+
+    await Service.purchase(80, BUYER);
+
+    expect(InventoryModel.decreaseGodStone).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: BUYER, amount: 1000 })
+    );
+    expect(InventoryModel.increaseGodStone).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: SELLER, amount: 950 })
+    );
+  });
+
+  it("已持有該角色的買家照樣可以買碎片", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing());
+    stubInventoryReads({ balance: 5000, buyerOwns: true });
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 999 });
+
+    const res = await Service.purchase(80, BUYER);
+
+    expect(res.ok).toBe(true);
+    expect(res.code).toBeUndefined();
+  });
+
+  it("餘額不足時以總額回報差額，且不搬碎片", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing());
+    stubInventoryReads({ balance: 300 });
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 0 });
+
+    const res = await Service.purchase(80, BUYER);
+
+    expect(res).toEqual({
+      ok: false,
+      code: "INSUFFICIENT_FUNDS",
+      balance: 300,
+      price: 1000,
+      shortfall: 700,
+    });
+    expect(FragmentModel.decreaseLocked).not.toHaveBeenCalled();
+  });
+
+  it("賣家碎片已不足：標記 invalid 自動下架，買家一毛都不扣", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing());
+    stubInventoryReads({ balance: 5000 });
+    stubFragmentBalances({ [SELLER]: 12, [BUYER]: 0 });
+
+    const res = await Service.purchase(80, BUYER);
+
+    expect(res).toEqual({
+      ok: false,
+      code: "SELLER_LOST_FRAGMENTS",
+      available: 12,
+      required: 20,
+    });
+    expect(PublicMarketModel.markClosed).toHaveBeenCalledWith(80, "invalid", expect.anything());
+    expect(InventoryModel.decreaseGodStone).not.toHaveBeenCalled();
+    expect(InventoryModel.increaseGodStone).not.toHaveBeenCalled();
+    expect(FragmentModel.decreaseLocked).not.toHaveBeenCalled();
+  });
+
+  it("扣碎片影響 0 列（鎖沒生效）時整筆回滾成 ALREADY_TAKEN，不憑空生碎片", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing());
+    stubInventoryReads({ balance: 5000 });
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 0 });
+    FragmentModel.decreaseLocked.mockResolvedValue(0);
+
+    const res = await Service.purchase(80, BUYER);
+
+    expect(res).toEqual({ ok: false, code: "ALREADY_TAKEN" });
+    // 買方不能拿到碎片
+    expect(FragmentModel.increase).not.toHaveBeenCalledWith(BUYER, 101, 20, expect.anything());
+  });
+
+  it("兩個買家同時 purchase 只有一筆成功（條件式 markSold）", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing());
+    stubInventoryReads({ balance: 5000 });
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 0 });
+    // 後到的那筆：行鎖醒來後 markSold 影響 0 列
+    PublicMarketModel.markSold.mockResolvedValue(0);
+
+    const res = await Service.purchase(80, BUYER);
+
+    expect(res).toEqual({ ok: false, code: "ALREADY_TAKEN" });
+  });
+
+  it("兩造碎片列按 user_id 字典序取鎖，且先 upsert 出來才 FOR UPDATE", async () => {
+    // 刻意讓賣方的 id 排在買方「之後」（SELLER=U111…、BUYER=U222…，
+    // 所以這裡把賣方換成 U999…）。若照「先賣方後買方」的角色順序取鎖，
+    // 這個 case 的順序就會是 [U999…, U222…]，與字典序相反 —— A 賣給 B 與
+    // B 賣給 A 同時發生時正是這個形狀成環。用原本的 SELLER 測不出差別，
+    // 因為它本來就排在前面。
+    const lateSeller = "U" + "9".repeat(32);
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing({ seller_id: lateSeller }));
+    stubInventoryReads({ balance: 5000 });
+    stubFragmentBalances({ [lateSeller]: 20, [BUYER]: 0 });
+
+    await Service.purchase(80, BUYER);
+
+    const lockOrder = FragmentModel.getBalance.mock.calls.map(([userId]) => userId);
+    expect(lockOrder).toEqual([BUYER, lateSeller]);
+    lockOrder.forEach(userId => {
+      expect(FragmentModel.getBalance).toHaveBeenCalledWith(userId, 101, expect.anything(), {
+        forUpdate: true,
+      });
+    });
+    // increase(..., 0) 把不存在的列先變成 record lock，避免 gap lock 成環
+    expect(FragmentModel.increase).toHaveBeenCalledWith(lateSeller, 101, 0, expect.anything());
+    expect(FragmentModel.increase).toHaveBeenCalledWith(BUYER, 101, 0, expect.anything());
+    // upsert 一定要排在該使用者的 FOR UPDATE 之前，否則鎖到的還是 gap
+    const seq = [
+      ...FragmentModel.increase.mock.calls.map(([userId, , amount]) => ({
+        userId,
+        kind: amount === 0 ? "upsert" : "transfer",
+      })),
+    ];
+    expect(seq[0]).toEqual({ userId: BUYER, kind: "upsert" });
+  });
+
+  it("兩種標的都跑 READ COMMITTED（RR 下女神石的 gap lock 是死鎖來源）", async () => {
+    const mysql = require("../../util/mysql");
+    PublicMarketModel.lockById.mockResolvedValue(fragmentListing());
+    stubInventoryReads({ balance: 5000 });
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 0 });
+
+    await Service.purchase(80, BUYER);
+    expect(mysql.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: "read committed",
+    });
+
+    jest.clearAllMocks();
+    const characterRow = fragmentListing({ item_kind: "character", quantity: 1, price: 1000 });
+    PublicMarketModel.find.mockResolvedValue(characterRow);
+    PublicMarketModel.lockById.mockResolvedValue(characterRow);
+    PublicMarketModel.markSold.mockResolvedValue(1);
+    InventoryModel.deleteUserItem.mockResolvedValue(1);
+    GachaPoolModel.find.mockResolvedValue({ ID: 101, Name: "佩可莉ーヌ", Star: "3" });
+    stubInventoryReads({ balance: 5000 });
+
+    // 角色路徑原本維持 RR，實測同形狀 80 筆反向交易死鎖 39 筆（graph 指向
+    // idx_inventory_userId_itemId 上的 insert intention vs gap）。改 RC 後 0/80。
+    await Service.purchase(80, BUYER);
+    expect(mysql.transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: "read committed",
+    });
+  });
+
+  it("角色成交先取得 (user,item) 標的鎖，才讀餘額與持有", async () => {
+    // 這個鎖是重複持有的唯一互斥點。RR 下原本靠 inventory 的 FOR UPDATE，
+    // 但買家還沒有那隻角色時鎖的是空區間（gap lock 可共存 → 不是互斥），
+    // 真正擋住第二筆的是 insert intention 互衝，結果是 ER_LOCK_DEADLOCK 而非
+    // ALREADY_OWNED。實測拿掉這個鎖：purchase 對打 redeem 30 回有 26 回重複持有。
+    const characterRow = fragmentListing({ item_kind: "character", quantity: 1, price: 1000 });
+    PublicMarketModel.find.mockResolvedValue(characterRow);
+    PublicMarketModel.lockById.mockResolvedValue(characterRow);
+    stubInventoryReads({ balance: 5000 });
+
+    await Service.purchase(80, BUYER);
+
+    // 先 upsert 出 (buyer, itemId) 那一列，FOR UPDATE 才命中真實紀錄而非空 gap
+    expect(FragmentModel.increase).toHaveBeenCalledWith(BUYER, 101, 0, expect.anything());
+    expect(FragmentModel.getBalance).toHaveBeenCalledWith(BUYER, 101, expect.anything(), {
+      forUpdate: true,
+    });
+    // 角色成交不需要鎖賣方 —— 賣方持有由條件式 deleteUserItem 的受影響列數把關
+    expect(FragmentModel.increase).not.toHaveBeenCalledWith(SELLER, 101, 0, expect.anything());
+    // 碎片一片都不能動（這只是借那一列當鎖）
+    expect(FragmentModel.decreaseLocked).not.toHaveBeenCalled();
+  });
+
+  it("角色履約也取得收購方的標的鎖（拿到角色的那一方）", async () => {
+    const buyOrderRow = fragmentListing({
+      id: 91,
+      order_type: "buy",
+      item_kind: "character",
+      quantity: 1,
+      price: 1000,
+      seller_id: null,
+      buyer_id: BUYER,
+    });
+    PublicMarketModel.find.mockResolvedValue(buyOrderRow);
+    PublicMarketModel.lockById.mockResolvedValue(buyOrderRow);
+    stubInventoryReads({ balance: 5000, owns: { [SELLER]: true, [BUYER]: false } });
+
+    await Service.fulfill(91, SELLER);
+
+    expect(FragmentModel.increase).toHaveBeenCalledWith(BUYER, 101, 0, expect.anything());
+    expect(FragmentModel.getBalance).toHaveBeenCalledWith(BUYER, 101, expect.anything(), {
+      forUpdate: true,
+    });
+    expect(FragmentModel.decreaseLocked).not.toHaveBeenCalled();
+  });
+});
+
+describe("碎片履約（fulfill）", () => {
+  function fragmentBuyOrder(overrides = {}) {
+    return {
+      id: 90,
+      order_type: "buy",
+      item_kind: "fragment",
+      quantity: 20,
+      seller_id: null,
+      buyer_id: BUYER,
+      item_id: 101,
+      price: 50,
+      fee: 50,
+      status: "open",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    PublicMarketModel.find.mockResolvedValue(fragmentBuyOrder());
+  });
+
+  it("成功：碎片轉給收購方、履約者實收總額 - 手續費、收購方不再扣款", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentBuyOrder());
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 0 });
+
+    const res = await Service.fulfill(90, SELLER);
+
+    expect(res).toMatchObject({
+      ok: true,
+      itemKind: "fragment",
+      quantity: 20,
+      total: 1000,
+      fee: 50,
+      netProceeds: 950,
+    });
+    expect(FragmentModel.decreaseLocked).toHaveBeenCalledWith(SELLER, 101, 20, expect.anything());
+    expect(FragmentModel.increase).toHaveBeenCalledWith(BUYER, 101, 20, expect.anything());
+    expect(InventoryModel.increaseGodStone).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: SELLER, amount: 950 })
+    );
+    // 錢在發單時就預扣了，這裡再扣一次就是收兩次
+    expect(InventoryModel.decreaseGodStone).not.toHaveBeenCalled();
+  });
+
+  it("履約者片數不足：單子保持 open、不退款、什麼都不寫", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentBuyOrder());
+    stubFragmentBalances({ [SELLER]: 5, [BUYER]: 0 });
+
+    const res = await Service.fulfill(90, SELLER);
+
+    expect(res).toMatchObject({
+      ok: false,
+      code: "INSUFFICIENT_FRAGMENTS",
+      balance: 5,
+      required: 20,
+      shortfall: 15,
+    });
+    // 若這裡把單子作廢，任何空帳號都能免費掃掉別人的收購單
+    expect(PublicMarketModel.markClosed).not.toHaveBeenCalled();
+    expect(PublicMarketModel.markFulfilled).not.toHaveBeenCalled();
+    expect(InventoryModel.increaseGodStone).not.toHaveBeenCalled();
+    expect(FragmentModel.decreaseLocked).not.toHaveBeenCalled();
+  });
+
+  it("收購方已持有該角色時碎片單仍然成交（沒有 ALREADY_OWNED_REQUESTER 這條路）", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentBuyOrder());
+    stubInventoryReads({ balance: 0, owns: { [BUYER]: true, [SELLER]: true } });
+    stubFragmentBalances({ [SELLER]: 20, [BUYER]: 0 });
+
+    const res = await Service.fulfill(90, SELLER);
+
+    expect(res.ok).toBe(true);
+    // 碎片單不因對方持有角色而失效，所以不該退款、不該作廢
+    expect(res.code).toBeUndefined();
+    expect(PublicMarketModel.markClosed).not.toHaveBeenCalled();
+    expect(InventoryModel.increaseGodStone).toHaveBeenCalledTimes(1);
+  });
+
+  it("自己履約自己的碎片收購單回 IS_BUYER，什麼都不動", async () => {
+    PublicMarketModel.lockById.mockResolvedValue(fragmentBuyOrder());
+    stubFragmentBalances({ [BUYER]: 999 });
+
+    const res = await Service.fulfill(90, BUYER);
+
+    expect(res).toEqual({ ok: false, code: "IS_BUYER" });
+    expect(FragmentModel.decreaseLocked).not.toHaveBeenCalled();
+    expect(InventoryModel.increaseGodStone).not.toHaveBeenCalled();
+  });
+});
+
+describe("碎片的回應形狀", () => {
+  const fragmentRow = {
+    id: 95,
+    itemId: 101,
+    itemKind: "fragment",
+    quantity: 20,
+    orderType: "sell",
+    sellerId: SELLER,
+    buyerId: null,
+    price: 50,
+    fee: 50,
+    status: "open",
+    name: "佩可莉ーヌ",
+    star: "3",
+  };
+
+  it("掛單簿帶 itemKind / quantity / total，星數欄位叫 baseStar 而不是 star", async () => {
+    PublicMarketModel.getOpenListingsByItemId.mockResolvedValue([fragmentRow]);
+
+    const [listing] = await Service.getListingsByItemId(101, BUYER, "sell", "fragment");
+
+    expect(listing).toMatchObject({
+      itemKind: "fragment",
+      quantity: 20,
+      price: 50,
+      total: 1000,
+      netProceeds: 950,
+      baseStar: 3,
+    });
+    // star 會讓前端把「20 片 3★ 碎片」畫成「一隻 3★ 角色」
+    expect(listing).not.toHaveProperty("star");
+  });
+
+  it("角色單維持 star 欄位，不會突然變成 baseStar", async () => {
+    PublicMarketModel.getOpenListingsByItemId.mockResolvedValue([
+      { ...fragmentRow, itemKind: "character", quantity: 1, price: 1000 },
+    ]);
+
+    const [listing] = await Service.getListingsByItemId(101, BUYER);
+
+    expect(listing.star).toBe(3);
+    expect(listing).not.toHaveProperty("baseStar");
+    expect(listing.total).toBe(1000);
+  });
+
+  it("詳情頁的碎片單給 fragmentBalance，並以片數判斷能不能履約", async () => {
+    PublicMarketModel.getById.mockResolvedValue({
+      ...fragmentRow,
+      orderType: "buy",
+      sellerId: null,
+      buyerId: BUYER,
+    });
+    stubInventoryReads({ balance: 0, buyerOwns: true });
+    stubFragmentBalances({ [SELLER]: 20 });
+
+    const detail = await Service.getListingDetail(95, SELLER);
+
+    expect(detail.viewer).toMatchObject({
+      fragmentBalance: 20,
+      canFulfill: true,
+      blockReason: null,
+    });
+  });
+
+  it("詳情頁片數不足時 blockReason=INSUFFICIENT_FRAGMENTS，不是 NOT_OWNED", async () => {
+    PublicMarketModel.getById.mockResolvedValue({
+      ...fragmentRow,
+      orderType: "buy",
+      sellerId: null,
+      buyerId: BUYER,
+    });
+    stubInventoryReads({ balance: 0, buyerOwns: false });
+    stubFragmentBalances({ [SELLER]: 3 });
+
+    const detail = await Service.getListingDetail(95, SELLER);
+
+    expect(detail.viewer).toMatchObject({
+      canFulfill: false,
+      blockReason: "INSUFFICIENT_FRAGMENTS",
+    });
+  });
+
+  it("買碎片不受 ALREADY_OWNED 限制（賣單詳情）", () => {
+    // resolveBlockReason 是純函式，直接把「已持有 + 碎片賣單」的組合釘住。
+    expect(
+      Service.resolveBlockReason({
+        orderType: "sell",
+        itemKind: "fragment",
+        status: "open",
+        isSeller: false,
+        owns: true,
+        balance: 5000,
+        price: 50,
+        total: 1000,
+        quantity: 20,
+      })
+    ).toBeNull();
+  });
+
+  it("買碎片仍要看錢夠不夠，且比的是總額", () => {
+    expect(
+      Service.resolveBlockReason({
+        orderType: "sell",
+        itemKind: "fragment",
+        status: "open",
+        isSeller: false,
+        owns: false,
+        balance: 500,
+        price: 50,
+        total: 1000,
+        quantity: 20,
+      })
+    ).toBe("INSUFFICIENT_FUNDS");
+  });
+});
+
+describe("種類解析", () => {
+  it.each([
+    [undefined, "character"],
+    [null, "character"],
+    ["", "character"],
+    ["character", "character"],
+    ["fragment", "fragment"],
+    ["FRAGMENT", "fragment"],
+    ["nonsense", "character"],
+  ])("normalizeItemKind(%p) -> %s（讀取端寬鬆）", (input, expected) => {
+    expect(Service.normalizeItemKind(input)).toBe(expected);
+  });
+
+  it.each([
+    [undefined, "character"],
+    ["", "character"],
+    ["character", "character"],
+    ["fragment", "fragment"],
+    ["FRAGMENT", "fragment"],
+  ])("parseItemKind(%p) -> %s", (input, expected) => {
+    expect(Service.parseItemKind(input)).toBe(expected);
+  });
+
+  it.each(["fragments", "char", 0, 1, [], {}])(
+    "parseItemKind(%p) -> null（寫入端嚴格，種類拼錯不能當角色）",
+    input => {
+      expect(Service.parseItemKind(input)).toBeNull();
+    }
+  );
+
+  it("totalOfRow：角色單回單價，碎片單回 price × quantity", () => {
+    expect(Service.totalOfRow({ price: 1000 })).toBe(1000);
+    expect(Service.totalOfRow({ price: 1000, item_kind: "character", quantity: 1 })).toBe(1000);
+    expect(Service.totalOfRow({ price: 50, item_kind: "fragment", quantity: 20 })).toBe(1000);
+    // quantity 缺值（第一階段資料）不能算出 NaN 把金流搞爛
+    expect(Service.totalOfRow({ price: 50, item_kind: "fragment" })).toBe(50);
   });
 });

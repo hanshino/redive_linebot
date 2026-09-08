@@ -3,6 +3,7 @@ const base = require("../base");
 const OPEN = "open";
 const SELL = "sell";
 const BUY = "buy";
+const CHARACTER = "character";
 
 class PublicMarket extends base {
   /**
@@ -32,6 +33,8 @@ class PublicMarket extends base {
       .select([
         { id: `${this.table}.id` },
         { itemId: "item_id" },
+        { itemKind: "item_kind" },
+        "quantity",
         { orderType: "order_type" },
         { sellerId: "seller_id" },
         { buyerId: "buyer_id" },
@@ -57,8 +60,9 @@ class PublicMarket extends base {
    * 但 MySQL 8 預設 ONLY_FULL_GROUP_BY 不認這層推導，所以必須列進 groupBy。
    *
    * @param {"sell"|"buy"} [orderType]
+   * @param {"character"|"fragment"} [itemKind]
    */
-  getOpenCharacters(orderType = SELL) {
+  getOpenCharacters(orderType = SELL, itemKind = CHARACTER) {
     const isBuy = orderType === BUY;
 
     return this.qb()
@@ -73,7 +77,7 @@ class PublicMarket extends base {
         },
       ])
       .leftJoin("gacha_pool", "gacha_pool.ID", `${this.table}.item_id`)
-      .where({ status: OPEN, order_type: orderType })
+      .where({ status: OPEN, order_type: orderType, item_kind: itemKind })
       .groupBy(
         `${this.table}.item_id`,
         "gacha_pool.Name",
@@ -85,15 +89,21 @@ class PublicMarket extends base {
 
   /**
    * 某角色某方向的開放掛單。賣單價低優先、收購單價高優先。
+   *
+   * price 一律是「每片／每隻」單價，碎片單的總額是 price × quantity。
+   * 排序刻意用 price 而非總額 —— 掛單簿比的是單價，不同 quantity 的單才能互相比較。
+   *
    * @param {Number} itemId
    * @param {"sell"|"buy"} [orderType]
+   * @param {"character"|"fragment"} [itemKind]
    */
-  getOpenListingsByItemId(itemId, orderType = SELL) {
+  getOpenListingsByItemId(itemId, orderType = SELL, itemKind = CHARACTER) {
     return this.selectWithName()
       .where({
         [`${this.table}.item_id`]: itemId,
         [`${this.table}.status`]: OPEN,
         [`${this.table}.order_type`]: orderType,
+        [`${this.table}.item_kind`]: itemKind,
       })
       .orderBy("price", orderType === BUY ? "desc" : "asc")
       .orderBy(`${this.table}.id`, "asc");
@@ -177,27 +187,48 @@ class PublicMarket extends base {
   }
 
   /**
-   * 賣家是否已對同一角色掛過賣單。
+   * 賣家是否已對同一標的掛過賣單。
+   *
+   * item_kind 是條件的一部分，不是可選的過濾：同一角色的「角色賣單」與「碎片賣單」
+   * 是兩種不同的商品，少了這個條件，掛了角色的人就再也掛不了同一角色的碎片
+   * （反過來也一樣），會被誤判成 ALREADY_LISTED。
+   *
    * @param {String} sellerId
    * @param {Number} itemId
+   * @param {"character"|"fragment"} itemKind
    * @param {import("knex").Knex.Transaction} [trx]
    */
-  findOpenBySellerAndItem(sellerId, itemId, trx) {
+  findOpenBySellerAndItem(sellerId, itemId, itemKind = CHARACTER, trx) {
     return this.qb(trx)
-      .where({ seller_id: sellerId, item_id: itemId, status: OPEN, order_type: SELL })
+      .where({
+        seller_id: sellerId,
+        item_id: itemId,
+        item_kind: itemKind,
+        status: OPEN,
+        order_type: SELL,
+      })
       .first();
   }
 
   /**
-   * 買家是否已對同一角色掛過收購單。同一角色同時只能有一張，
+   * 買家是否已對同一標的掛過收購單。同一標的同時只能有一張，
    * 否則同一個人可以用多張單把自己的餘額重複預扣到不成比例。
+   * item_kind 的理由同 findOpenBySellerAndItem。
+   *
    * @param {String} buyerId
    * @param {Number} itemId
+   * @param {"character"|"fragment"} itemKind
    * @param {import("knex").Knex.Transaction} [trx]
    */
-  findOpenBuyByBuyerAndItem(buyerId, itemId, trx) {
+  findOpenBuyByBuyerAndItem(buyerId, itemId, itemKind = CHARACTER, trx) {
     return this.qb(trx)
-      .where({ buyer_id: buyerId, item_id: itemId, status: OPEN, order_type: BUY })
+      .where({
+        buyer_id: buyerId,
+        item_id: itemId,
+        item_kind: itemKind,
+        status: OPEN,
+        order_type: BUY,
+      })
       .first();
   }
 
@@ -249,6 +280,8 @@ module.exports = new PublicMarket({
     "seller_id",
     "buyer_id",
     "item_id",
+    "item_kind",
+    "quantity",
     "price",
     "fee",
     "status",

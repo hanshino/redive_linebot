@@ -27,6 +27,19 @@ function makeTrxBuilder() {
 }
 let currentTrx;
 
+// 使用者「抽卡前」已持有的角色 id；測試改這個陣列就能控制新角色／重複的比例。
+let ownItemIdsStub = [];
+
+// 碎片 model 整支 mock 掉，不讓 makeTrxBuilder 去模擬 knex 的 upsert 鏈。
+// `increase()` 真正的形狀是 `.insert().onConflict().merge()` 再加上
+// `this.connection.raw` / `connection.fn.now()`，要在假 trx 上重現那條鏈等於
+// 在測試裡重寫一份 knex —— 那測到的是 knex 而不是 GachaService。
+// 這一層真正要固定的契約只有兩件事：碎片用「哪些參數」入帳、以及有沒有用「同一個 trx」，
+// 兩者都能直接從 increase 的 mock.calls 讀出來，比爬 insert payload 更有辨識力。
+jest.mock("../../src/model/princess/CharacterFragment", () => ({
+  increase: jest.fn().mockResolvedValue([0]),
+}));
+
 jest.mock("../../src/model/application/Inventory", () => {
   const inventory = {
     table: "inventory",
@@ -43,7 +56,7 @@ jest.mock("../../src/model/application/Inventory", () => {
       chain.where = jest.fn(() => chain);
       chain.select = jest.fn(() => chain);
       chain.andWhereNot = jest.fn(() => chain);
-      chain.orderBy = jest.fn(() => Promise.resolve([]));
+      chain.orderBy = jest.fn(() => Promise.resolve(ownItemIdsStub.map(itemId => ({ itemId }))));
       return chain;
     },
   });
@@ -86,6 +99,7 @@ jest.mock("config", () => ({
 const GachaModel = require("../../src/model/princess/gacha");
 const GachaBanner = require("../../src/model/princess/GachaBanner");
 const GachaService = require("../../src/service/GachaService");
+const CharacterFragment = require("../../src/model/princess/CharacterFragment");
 const mysql = require("../../src/util/mysql");
 const EventCenterService = require("../../src/service/EventCenterService");
 const AchievementEngine = require("../../src/service/AchievementEngine");
@@ -103,6 +117,8 @@ describe("GachaService.runDailyDraw", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     txInserts.length = 0;
+    ownItemIdsStub = [];
+    CharacterFragment.increase.mockResolvedValue([0]);
     // The write path now runs inside `mysql.transaction(async trx => ...)`.
     // Invoke the callback with a capturing trx so inserts land in `txInserts`.
     currentTrx = makeTrxBuilder();
@@ -121,11 +137,11 @@ describe("GachaService.runDailyDraw", () => {
     expect(result).toBeDefined();
     expect(Object.keys(result).sort()).toEqual(
       [
+        "fragmentRewards",
         "godStoneCost",
         "newCharacters",
         "ownCharactersCount",
         "rareCount",
-        "repeatReward",
         "rewards",
         "unlocks",
       ].sort()
@@ -135,9 +151,14 @@ describe("GachaService.runDailyDraw", () => {
     expect(typeof result.rareCount).toBe("object");
     expect(Array.isArray(result.newCharacters)).toBe(true);
     expect(typeof result.ownCharactersCount).toBe("number");
-    expect(typeof result.repeatReward).toBe("number");
+    expect(Array.isArray(result.fragmentRewards)).toBe(true);
     expect(typeof result.godStoneCost).toBe("number");
     expect(Array.isArray(result.unlocks)).toBe(true);
+  });
+
+  it("does not return the removed repeatReward key（重複角色改發碎片）", async () => {
+    const result = await GachaService.runDailyDraw("Uno_repeat");
+    expect(result).not.toHaveProperty("repeatReward");
   });
 
   it("does not return any context/reply-flavoured keys", async () => {
@@ -297,6 +318,224 @@ describe("GachaService.runDailyDraw", () => {
       // The other 9 should be 1-star based on our forced pool (natural rainbow chance ≈ 0.01%).
       const oneStars = result.rewards.slice(0, 9);
       expect(oneStars.every(r => r.star == "1")).toBe(true);
+    });
+  });
+
+  // 重複角色的獎勵從「女神石入帳」換成「角色專屬碎片」。這一段是那次換血的迴歸網：
+  // 恢復女神石入帳、或把碎片寫到交易外，都要在這裡爆掉。
+  //
+  // 這裡的池用 2★ 而非 1★ 純粹是「十抽必然同一隻」最省事的寫法；
+  // 純 1★ 的池以前會讓 drawRewards 的保底無限重抽（livelock），現在已由
+  // MAX_PITY_REDRAWS 修掉（見本檔最後的「保底重抽的終止性」一節），
+  // 所以 1★ 池也能安全使用了 —— 見該節的單一 1★ 角色池案例。
+  describe("重複角色發碎片（取代女神石入帳）", () => {
+    // 單一 2★ 角色池 ⇒ 十抽必然十張同一隻，重複路徑一定會被走到。
+    const singleGoldPool = [{ id: 2, name: "gold-2", rate: "100%", star: "2", isPrincess: "1" }];
+
+    it("重複角色不再有任何 999 正數入帳，只走碎片", async () => {
+      GachaModel.getDatabasePool.mockResolvedValue(singleGoldPool);
+
+      const result = await GachaService.runDailyDraw("Ufragment_only");
+
+      // 十張同一隻新角色：第一張入帳成角色，其餘 9 張換碎片（2★ = 10 片／張）。
+      expect(result.newCharacters.map(c => c.id)).toEqual([2]);
+      expect(result.fragmentRewards).toEqual([{ itemId: 2, name: "gold-2", amount: 90 }]);
+
+      // 這個 filter 就是舊行為的探針：`itemAmount > 0` 的 999 列一出現，
+      // 就代表重複角色又在發女神石了。
+      const godStoneCredits = txInserts.filter(
+        t => t.table === "inventory" && t.rows.itemId === 999 && t.rows.itemAmount > 0
+      );
+      expect(godStoneCredits).toEqual([]);
+    });
+
+    it("碎片用同一個 trx 入帳，抽卡回滾碎片就不會留下", async () => {
+      GachaModel.getDatabasePool.mockResolvedValue(singleGoldPool);
+
+      await GachaService.runDailyDraw("Utrx_fragment");
+
+      // 碎片是資產：少傳 trx（或另開一筆交易）就會在轉蛋紀錄回滾後留下憑空的碎片。
+      expect(CharacterFragment.increase).toHaveBeenCalledTimes(1);
+      expect(CharacterFragment.increase).toHaveBeenCalledWith("Utrx_fragment", 2, 90, currentTrx);
+    });
+
+    it("已持有的角色：十抽全重複，一角色只打一次 upsert 而不是十次", async () => {
+      ownItemIdsStub = [2];
+      GachaModel.getDatabasePool.mockResolvedValue(singleGoldPool);
+
+      const result = await GachaService.runDailyDraw("Uowned");
+
+      // 已持有 ⇒ 沒有新角色，十張全部換碎片 = 100 片，且彙總成單一筆 upsert。
+      expect(result.newCharacters).toEqual([]);
+      expect(result.fragmentRewards).toEqual([{ itemId: 2, name: "gold-2", amount: 100 }]);
+      expect(CharacterFragment.increase).toHaveBeenCalledTimes(1);
+      expect(CharacterFragment.increase).toHaveBeenCalledWith("Uowned", 2, 100, currentTrx);
+    });
+
+    it("彩池十抽全重複時按 3★ 計價（50 片／張）", async () => {
+      ownItemIdsStub = [3];
+      GachaModel.getDatabasePool.mockResolvedValue([
+        { id: 3, name: "rainbow-3", rate: "100%", star: "3", isPrincess: "1" },
+      ]);
+
+      const result = await GachaService.runDailyDraw("Urainbow");
+
+      expect(result.fragmentRewards).toEqual([{ itemId: 3, name: "rainbow-3", amount: 500 }]);
+    });
+
+    it("沒有任何重複時不呼叫 increase", async () => {
+      // 每個 fragmentRewards 元素對應一次 upsert，空陣列就必須一次都不打。
+      expect(GachaService.computeFragmentRewards([{ id: 1, name: "a", star: "1" }], [])).toEqual(
+        []
+      );
+
+      // 端到端：純新角色的情境無法用隨機抽卡穩定造出（十抽十種不同的機率 ≈ 0.04%），
+      // 所以這裡只驗「碎片為空 ⇒ 不入帳」這條連結 —— 由上面的空陣列 + 下面的
+      // 呼叫次數斷言共同鎖住 `for (const fragment of fragmentRewards)` 這個迴圈。
+      GachaModel.getDatabasePool.mockResolvedValue(singleGoldPool);
+      await GachaService.runDailyDraw("Uloop");
+      expect(CharacterFragment.increase).toHaveBeenCalledTimes(1);
+    });
+
+    it("多角色重複時依 amount 由多至少排序，同 amount 以 itemId 排序", () => {
+      // 直接測純函式：抽卡的隨機性沒辦法穩定造出「金 1 張 + 銀 2 張」這種組合。
+      const uniqRewards = [
+        { id: 5, name: "silver-5", star: "1" },
+        { id: 3, name: "silver-3", star: "1" },
+        { id: 9, name: "gold-9", star: "2" },
+        { id: 7, name: "rainbow-7", star: "3" },
+      ];
+      // 銀 5 出現 3 張、銀 3 / 金 9 / 彩 7 各 1 張
+      const duplicateItems = [5, 5, 5, 3, 9, 7];
+
+      expect(GachaService.computeFragmentRewards(uniqRewards, duplicateItems)).toEqual([
+        { itemId: 7, name: "rainbow-7", amount: 50 },
+        { itemId: 9, name: "gold-9", amount: 10 },
+        { itemId: 5, name: "silver-5", amount: 3 },
+        { itemId: 3, name: "silver-3", amount: 1 },
+      ]);
+    });
+
+    it("computeFragmentRewards 的星數計價：1★=1、2★=10、3★=50", () => {
+      const uniqRewards = [
+        { id: 1, name: "s", star: "1" },
+        { id: 2, name: "g", star: "2" },
+        { id: 3, name: "r", star: "3" },
+      ];
+
+      expect(GachaService.computeFragmentRewards(uniqRewards, [1])[0].amount).toBe(1);
+      expect(GachaService.computeFragmentRewards(uniqRewards, [2])[0].amount).toBe(10);
+      expect(GachaService.computeFragmentRewards(uniqRewards, [3])[0].amount).toBe(50);
+    });
+  });
+
+  // 保底重抽的終止性
+  //
+  // 「十抽全 1★ 就重抽」原本寫成無界的 `while (rareCount[1] === 10)`。抽不出非 1★ 的池
+  // （filterPool 對非公主 tag 走 `return resultPool`，不補其他星級）會讓條件恆真，
+  // 同步佔住 event loop 讓整個 bot 停止回應。
+  //
+  // 為什麼不靠 jest timeout：那個迴圈是「同步」的無限迴圈，會把 event loop 整條吃掉，
+  // jest 的 timeout 根本沒機會觸發 —— 還原 bug 後整個 worker 會直接卡死而不是判 fail。
+  // 所以這裡改用「呼叫預算」：把 gachaDrawUtil.play 包一層計數器，單次 drawRewards
+  // 超過預算就 throw。有修法時一次最多 20 輪、遠低於預算；還原成無界迴圈則會撞到預算而
+  // 拋錯，變成一個秒殺的 assertion failure 而不是 hang。
+  describe("保底重抽的終止性（livelock 迴歸）", () => {
+    // 單次 drawRewards 的 play 呼叫預算。正常情況 ≤ MAX_PITY_REDRAWS（ensure 模式每輪
+    // 兩次），200 給了十倍以上的餘裕，只有真正無界的迴圈才碰得到。
+    const PLAY_BUDGET = 200;
+
+    let budgetedService;
+    let playCalls;
+
+    beforeAll(() => {
+      // 在獨立的 module registry 裡載入一份 GachaService，讓它拿到被包過的 play。
+      // 不用全域 jest.mock：本檔其他 24 個 case 需要真實的 play。
+      jest.isolateModules(() => {
+        const realUtil = jest.requireActual("../../src/service/gachaDrawUtil");
+        jest.doMock("../../src/service/gachaDrawUtil", () => ({
+          ...realUtil,
+          play: (pool, times) => {
+            if (++playCalls > PLAY_BUDGET) {
+              throw new Error(
+                `play() 被呼叫超過 ${PLAY_BUDGET} 次 —— 保底重抽沒有終止條件（livelock 回歸）`
+              );
+            }
+            return realUtil.play(pool, times);
+          },
+        }));
+        budgetedService = require("../../src/service/GachaService");
+      });
+    });
+
+    beforeEach(() => {
+      playCalls = 0;
+    });
+
+    const onlySilver = [{ id: 1, name: "silver-1", rate: "100%", star: "1", isPrincess: "1" }];
+    const opts = { userId: "Uterm", ensure: false };
+
+    it("純 1★ 池會在上限內收斂而不是無限重抽", () => {
+      const { rewards, rareCount } = budgetedService.drawRewards(onlySilver, 10, opts);
+
+      // 池子只有 1★，所以結果本來就該是全 1★ —— 修法不是「想辦法湊出非 1★」，
+      // 而是「放棄重抽、誠實回傳最後一次」。
+      expect(rewards).toHaveLength(10);
+      expect(rareCount[1]).toBe(10);
+      expect(rewards.every(r => r.star === "1")).toBe(true);
+
+      // 終止性的直接證據：重抽次數有界。
+      expect(playCalls).toBeLessThanOrEqual(budgetedService.MAX_PITY_REDRAWS);
+    });
+
+    it("純 1★ 池在 ensure 模式下也會收斂", () => {
+      // ensure 會 pop 掉最後一抽再從彩池補一張，但這個池沒有彩 ⇒ 補不回來。
+      // 這裡要確認的是「不管保底條件成不成立都會結束」。
+      const { rewards } = budgetedService.drawRewards(onlySilver, 10, {
+        userId: "Uterm_ensure",
+        ensure: true,
+      });
+      expect(Array.isArray(rewards)).toBe(true);
+      expect(playCalls).toBeLessThanOrEqual(budgetedService.MAX_PITY_REDRAWS * 2);
+    });
+
+    it("上限是有限值，且大到正常池碰不到", () => {
+      // 正式池 1★ 佔權重 81.433/394.383 ⇒ 十抽全 1★ ≈ 1.4e-7，連 20 次 ≈ 1e-138。
+      // 上限存在（有限）是終止性的來源；夠大則保證正常抽卡的保底行為沒被削弱。
+      expect(Number.isInteger(budgetedService.MAX_PITY_REDRAWS)).toBe(true);
+      expect(budgetedService.MAX_PITY_REDRAWS).toBeGreaterThanOrEqual(2);
+      expect(budgetedService.MAX_PITY_REDRAWS).toBeLessThanOrEqual(100);
+    });
+
+    it("抽得出非 1★ 的池：保底仍然生效，回傳結果不會總是全 1★", () => {
+      // 1★ 吃 99% 權重、3★ 只有 1%：單次十抽全 1★ 的機率高（≈0.9），
+      // 但保底會重抽到出現非 1★ 為止，所以「回傳值仍是全 1★」應該極少見。
+      const skewed = [
+        { id: 1, name: "silver-1", rate: "99%", star: "1", isPrincess: "1" },
+        { id: 3, name: "rainbow-3", rate: "1%", star: "3", isPrincess: "1" },
+      ];
+
+      let allSilverRuns = 0;
+      for (let i = 0; i < 40; i++) {
+        playCalls = 0;
+        const { rareCount } = budgetedService.drawRewards(skewed, 10, opts);
+        if (rareCount[1] === 10) allSilverRuns++;
+      }
+
+      // 保底被拿掉（只抽一次不重抽）時，期望 ≈ 40 × 0.9 ≈ 36 次全 1★。
+      // 門檻放寬到 25 以免這個機率性斷言變 flaky。
+      expect(allSilverRuns).toBeLessThan(25);
+    });
+
+    it("保底條件跟著 times 走，不是寫死的 10", () => {
+      // 原本的條件是 `rareCount[1] === 10`，times !== 10 時保底永遠不觸發。
+      // 純 1★ 池 + times=3：條件現在會成立並重抽到上限，仍然必須收斂且長度正確。
+      const { rewards, rareCount } = budgetedService.drawRewards(onlySilver, 3, opts);
+      expect(rewards).toHaveLength(3);
+      expect(rareCount[1]).toBe(3);
+      expect(playCalls).toBeLessThanOrEqual(budgetedService.MAX_PITY_REDRAWS);
+      // 寫死 10 的版本在這裡只會抽一次就跳出；用 times 的版本會重抽到上限。
+      expect(playCalls).toBeGreaterThan(1);
     });
   });
 });

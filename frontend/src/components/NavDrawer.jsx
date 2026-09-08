@@ -34,6 +34,7 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
+import AutoAwesomeMosaicIcon from "@mui/icons-material/AutoAwesomeMosaic";
 
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
@@ -50,6 +51,7 @@ const chatLevelItems = [
 const princessItems = [
   { label: "轉蛋商店", path: "/gacha/exchange", icon: StorefrontIcon },
   { label: "轉蛋包包", path: "/bag", icon: LocalMallIcon },
+  { label: "角色碎片", path: "/gacha/fragments", icon: AutoAwesomeMosaicIcon },
   { label: "裝備管理", path: "/equipment", icon: FitnessCenterIcon },
 ];
 
@@ -65,6 +67,7 @@ const personalItems = [
   { label: "我的群組", path: "/groups", icon: GroupsIcon },
   { label: "聊天文字雲", path: "/topics", icon: BubbleChartIcon },
   { label: "角色交易所", path: "/trade/market", icon: ShoppingBasketIcon },
+  { label: "碎片市場", path: "/trade/market?itemKind=fragment", icon: AutoAwesomeMosaicIcon },
   { label: "我的掛單", path: "/trade/my-listings", icon: ShoppingBasketIcon },
   { label: "交易管理", path: "/trade/manage", icon: ShoppingBasketIcon },
   { label: "自動設定", path: "/auto/settings", icon: AutoAwesomeIcon },

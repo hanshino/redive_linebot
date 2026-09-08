@@ -75,7 +75,7 @@ describe("PublicMarket 接線", () => {
     expect(bubble.body.contents[1].contents[0].width).toBe(expected);
   });
 
-  it("footer 三顆按鈕都是 LIFF 連結，含發布收購單入口", () => {
+  it("footer 四顆按鈕都是 LIFF 連結，含碎片市場與發布收購單入口", () => {
     const bubble = generateMarketBubble({
       myOpenCount: 3,
       maxOpen: 10,
@@ -84,14 +84,16 @@ describe("PublicMarket 接線", () => {
     });
     const uris = bubble.footer.contents.map(b => b.action.uri);
 
-    expect(uris).toHaveLength(3);
+    expect(uris).toHaveLength(4);
     uris.forEach(uri => {
       expect(uri).toContain("https://liff.line.me/");
       expect(uri).not.toContain("PLACEHOLDER");
     });
     expect(uris[0]).toContain("/trade/market");
-    expect(uris[1]).toContain("/trade/sell");
-    expect(uris[2]).toContain("/trade/buy");
+    // 碎片市場靠 query string 區分，少了它就會退回角色市場。
+    expect(uris[1]).toContain("/trade/market?itemKind=fragment");
+    expect(uris[2]).toContain("/trade/sell");
+    expect(uris[3]).toContain("/trade/buy");
   });
 
   it("配額文案講明是買賣合計，玩家才不會以為兩種各 10 筆", () => {
@@ -127,24 +129,41 @@ describe("PublicMarket 接線", () => {
   });
 });
 
-describe("讀取端 orderType", () => {
-  it("GET /characters 缺省查賣單簿", async () => {
+describe("讀取端 orderType / itemKind", () => {
+  it("GET /characters 缺省查角色賣單簿", async () => {
     await request(createApp()).get("/api/public-market/characters");
 
-    expect(PublicMarketService.getOpenCharacters).toHaveBeenCalledWith("sell");
+    expect(PublicMarketService.getOpenCharacters).toHaveBeenCalledWith("sell", "character");
   });
 
   it("GET /characters?orderType=buy 查收購簿", async () => {
     await request(createApp()).get("/api/public-market/characters?orderType=buy");
 
-    expect(PublicMarketService.getOpenCharacters).toHaveBeenCalledWith("buy");
+    expect(PublicMarketService.getOpenCharacters).toHaveBeenCalledWith("buy", "character");
+  });
+
+  it("GET /characters?itemKind=fragment 查碎片簿，方向可獨立指定", async () => {
+    const app = createApp();
+
+    await request(app).get("/api/public-market/characters?itemKind=fragment");
+    expect(PublicMarketService.getOpenCharacters).toHaveBeenLastCalledWith("sell", "fragment");
+
+    await request(app).get("/api/public-market/characters?itemKind=fragment&orderType=buy");
+    expect(PublicMarketService.getOpenCharacters).toHaveBeenLastCalledWith("buy", "fragment");
   });
 
   it("GET /characters?orderType=亂寫 安靜退回賣單簿，不讓整頁掛掉", async () => {
     const res = await request(createApp()).get("/api/public-market/characters?orderType=nonsense");
 
     expect(res.status).toBe(200);
-    expect(PublicMarketService.getOpenCharacters).toHaveBeenCalledWith("sell");
+    expect(PublicMarketService.getOpenCharacters).toHaveBeenCalledWith("sell", "character");
+  });
+
+  it("GET /characters?itemKind=亂寫 安靜退回角色簿（讀取端寬鬆）", async () => {
+    const res = await request(createApp()).get("/api/public-market/characters?itemKind=nonsense");
+
+    expect(res.status).toBe(200);
+    expect(PublicMarketService.getOpenCharacters).toHaveBeenCalledWith("sell", "character");
   });
 
   it("GET /listings 缺省查賣單，帶 buy 查收購單", async () => {
@@ -154,14 +173,27 @@ describe("讀取端 orderType", () => {
     expect(PublicMarketService.getListingsByItemId).toHaveBeenLastCalledWith(
       101,
       expect.any(String),
-      "sell"
+      "sell",
+      "character"
     );
 
     await request(app).get("/api/public-market/listings?itemId=101&orderType=buy");
     expect(PublicMarketService.getListingsByItemId).toHaveBeenLastCalledWith(
       101,
       expect.any(String),
-      "buy"
+      "buy",
+      "character"
+    );
+  });
+
+  it("GET /listings?itemKind=fragment 把種類帶到 service", async () => {
+    await request(createApp()).get("/api/public-market/listings?itemId=101&itemKind=fragment");
+
+    expect(PublicMarketService.getListingsByItemId).toHaveBeenLastCalledWith(
+      101,
+      expect.any(String),
+      "sell",
+      "fragment"
     );
   });
 
@@ -214,6 +246,80 @@ describe("POST /listings 方向分派", () => {
     expect(res.status).toBe(400);
     expect(res.body.code).toBe("INVALID_ORDER_TYPE");
     expect(PublicMarketService.createListing).not.toHaveBeenCalled();
+  });
+
+  it("種類拼錯回 400 INVALID_ITEM_KIND，不能靜靜當成角色單去刪角色", async () => {
+    const res = await request(createApp())
+      .post("/api/public-market/listings")
+      .send({ itemId: 101, price: 1000, itemKind: "fragmentt", quantity: 20 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe("INVALID_ITEM_KIND");
+    expect(PublicMarketService.createListing).not.toHaveBeenCalled();
+  });
+
+  it("itemKind=fragment + quantity 一起帶到 service", async () => {
+    PublicMarketService.createListing.mockResolvedValue({
+      ok: true,
+      listing: { id: 3, itemKind: "fragment", quantity: 20 },
+    });
+
+    const res = await request(createApp())
+      .post("/api/public-market/listings")
+      .send({ itemId: 101, price: 50, itemKind: "fragment", quantity: 20 });
+
+    expect(res.status).toBe(201);
+    expect(PublicMarketService.createListing).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ itemId: 101, price: 50, itemKind: "fragment", quantity: 20 })
+    );
+  });
+
+  it("缺 itemKind / quantity 的舊 client 一律當角色單、數量 1", async () => {
+    PublicMarketService.createListing.mockResolvedValue({ ok: true, listing: { id: 4 } });
+
+    await request(createApp())
+      .post("/api/public-market/listings")
+      .send({ itemId: 101, price: 1000 });
+
+    expect(PublicMarketService.createListing).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ itemKind: "character", quantity: 1 })
+    );
+  });
+
+  it.each(["INVALID_QUANTITY", "INVALID_TOTAL"])("%s 回 400 且有可讀訊息", async code => {
+    PublicMarketService.createListing.mockResolvedValue({ ok: false, code });
+
+    const res = await request(createApp())
+      .post("/api/public-market/listings")
+      .send({ itemId: 101, price: 50, itemKind: "fragment", quantity: 20 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe(code);
+    expect(res.body.message.length).toBeGreaterThan(0);
+  });
+
+  it("碎片賣單片數不足回 409 INSUFFICIENT_FRAGMENTS 並附差額", async () => {
+    PublicMarketService.createListing.mockResolvedValue({
+      ok: false,
+      code: "INSUFFICIENT_FRAGMENTS",
+      balance: 12,
+      required: 20,
+      shortfall: 8,
+    });
+
+    const res = await request(createApp())
+      .post("/api/public-market/listings")
+      .send({ itemId: 101, price: 50, itemKind: "fragment", quantity: 20 });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({
+      code: "INSUFFICIENT_FRAGMENTS",
+      balance: 12,
+      required: 20,
+      shortfall: 8,
+    });
   });
 
   it("NOT_ENOUGH_TO_RESERVE 回 409 並附差額，前端才寫得出還差多少", async () => {
@@ -313,9 +419,12 @@ describe("購買 / 履約回應欄位白名單", () => {
       ok: true,
       listingId: 42,
       itemId: 101,
+      itemKind: "character",
+      quantity: 1,
       name: "佩可莉ーヌ",
       sellerId: SELLER,
       price: 1000,
+      total: 1000,
       fee: 50,
       netProceeds: 950,
       balanceAfter: 4000,
@@ -327,8 +436,11 @@ describe("購買 / 履約回應欄位白名單", () => {
     expect(res.body).toEqual({
       listingId: 42,
       itemId: 101,
+      itemKind: "character",
+      quantity: 1,
       name: "佩可莉ーヌ",
       price: 1000,
+      total: 1000,
       fee: 50,
       netProceeds: 950,
       balanceAfter: 4000,
@@ -336,14 +448,56 @@ describe("購買 / 履約回應欄位白名單", () => {
     expect(res.body).not.toHaveProperty("sellerId");
   });
 
+  it("purchase 碎片單：回應帶 quantity 與 total（total 才是實付金額）", async () => {
+    PublicMarketService.purchase.mockResolvedValue({
+      ok: true,
+      listingId: 43,
+      itemId: 101,
+      itemKind: "fragment",
+      quantity: 20,
+      name: "佩可莉ーヌ",
+      sellerId: SELLER,
+      price: 50,
+      total: 1000,
+      fee: 50,
+      netProceeds: 950,
+      balanceAfter: 4000,
+    });
+
+    const res = await request(createApp()).post("/api/public-market/listings/43/purchase");
+
+    expect(res.status).toBe(200);
+    // 前端要寫「20 片 × 50 = 1000」，只給 price 會讓它顯示成 50。
+    expect(res.body).toMatchObject({ itemKind: "fragment", quantity: 20, price: 50, total: 1000 });
+    expect(res.body).not.toHaveProperty("sellerId");
+  });
+
+  it("purchase 的 SELLER_LOST_FRAGMENTS 回 409 + 片數，前端靠這個碼說明沒有扣款", async () => {
+    PublicMarketService.purchase.mockResolvedValue({
+      ok: false,
+      code: "SELLER_LOST_FRAGMENTS",
+      available: 12,
+      required: 20,
+    });
+
+    const res = await request(createApp()).post("/api/public-market/listings/43/purchase");
+
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ code: "SELLER_LOST_FRAGMENTS", available: 12, required: 20 });
+    expect(res.body.message.length).toBeGreaterThan(0);
+  });
+
   it("fulfill：service 回傳的 buyerId 不會外洩", async () => {
     PublicMarketService.fulfill.mockResolvedValue({
       ok: true,
       listingId: 55,
       itemId: 101,
+      itemKind: "character",
+      quantity: 1,
       name: "佩可莉ーヌ",
       buyerId: BUYER,
       price: 8600,
+      total: 8600,
       fee: 430,
       netProceeds: 8170,
     });
@@ -354,13 +508,32 @@ describe("購買 / 履約回應欄位白名單", () => {
     expect(res.body).toEqual({
       listingId: 55,
       itemId: 101,
+      itemKind: "character",
+      quantity: 1,
       name: "佩可莉ーヌ",
       price: 8600,
+      total: 8600,
       fee: 430,
       netProceeds: 8170,
     });
     expect(res.body).not.toHaveProperty("buyerId");
     expect(res.body).not.toHaveProperty("sellerId");
+  });
+
+  it("fulfill 碎片收購單的 INSUFFICIENT_FRAGMENTS 回 409，且不帶退款欄位（單子還開著）", async () => {
+    PublicMarketService.fulfill.mockResolvedValue({
+      ok: false,
+      code: "INSUFFICIENT_FRAGMENTS",
+      balance: 5,
+      required: 20,
+      shortfall: 15,
+    });
+
+    const res = await request(createApp()).post("/api/public-market/listings/55/fulfill");
+
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ code: "INSUFFICIENT_FRAGMENTS", shortfall: 15 });
+    expect(res.body).not.toHaveProperty("refundedAmount");
   });
 
   it("fulfill 的 ALREADY_OWNED_REQUESTER 回 409 + refundedAmount，前端靠這個碼降級畫面", async () => {
