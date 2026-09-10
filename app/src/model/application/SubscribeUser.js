@@ -3,6 +3,21 @@ const SubscribeJobLog = require("./SubscribeJobLog");
 
 class SubscribeUser extends base {
   /**
+   * 兌換交易內用：鎖住該 (user_id, subscribe_card_key) 那一行（若存在）再讀 end_at，
+   * 序列化同一玩家同一卡種的並發兌換。查無資料回傳 undefined（走建立路徑）。
+   * 見 docs/plans/2026-09-09-sponsorship-admin-v1-plan.md §7。
+   * @param {String} userId
+   * @param {String} subscribeCardKey
+   * @param {import("knex").Knex.Transaction} trx
+   */
+  lockByUserAndCard(userId, subscribeCardKey, trx) {
+    return this.qb(trx)
+      .where({ user_id: userId, subscribe_card_key: subscribeCardKey })
+      .forUpdate()
+      .first();
+  }
+
+  /**
    * 取得每日配給的使用者
    * @param {Object} options 選填參數
    * @param {String} options.key 訂閱卡種類

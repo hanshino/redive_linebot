@@ -55,6 +55,8 @@ jest.mock("../src/middleware/validation", () => ({
   verifyId: (_id, _res, next) => next(),
   verifyLineGroupId: (_groupId, _res, next) => next(),
   verifyLineUserId: (_userId, _res, next) => next(),
+  verifySponsorshipOwner: (_req, _res, next) => next(),
+  isSponsorshipOwner: jest.fn().mockReturnValue(false),
   socketSetProfile: jest.fn(),
   socketVerifyAdmin: jest.fn(),
 }));

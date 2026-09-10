@@ -67,6 +67,45 @@ exports.getDisplayNames = async platformIds => {
 };
 
 /**
+ * 依資料庫編號查找使用者（sponsorship 後台用：user_id 是 int PK，不是 platformId）。
+ * @param {Number} id
+ * @returns {Promise<?Object>} 原始資料列（含 id / platform_id / display_name）
+ */
+exports.findById = async id => {
+  return mysql(USER_TABLE).where({ id }).first();
+};
+
+/**
+ * 玩家搜尋：platform_id 精確比對 OR display_name 模糊比對，供贊助後台選人用。
+ * 手動跳脫 LIKE 萬用字元，避免呼叫端傳入 `%`/`_` 造成非預期的大量比對。
+ *
+ * 回傳含 `pictureUrl`：前端原本要為每個搜尋結果各打一次 `/api/profile/:userId`
+ * 補頭像（N+1），這裡直接在同一次查詢帶出即可（見
+ * docs/plans/2026-09-09-sponsorship-admin-v1-api.md §1）。
+ * @param {String} q
+ * @param {Number} [limit]
+ * @returns {Promise<Array<{id: Number, userId: String, displayName: ?String, pictureUrl: ?String}>>}
+ */
+exports.search = async (q, limit = 20) => {
+  const query = typeof q === "string" ? q.trim().slice(0, 50) : "";
+  if (!query) return [];
+  const likeSafe = query.replace(/[\\%_]/g, ch => `\\${ch}`);
+
+  const rows = await mysql(USER_TABLE)
+    .where("platform_id", query)
+    .orWhere("display_name", "like", `%${likeSafe}%`)
+    .select("id", "platform_id", "display_name", "picture_url")
+    .limit(limit);
+
+  return rows.map(row => ({
+    id: row.id,
+    userId: row.platform_id,
+    displayName: row.display_name?.trim() || null,
+    pictureUrl: row.picture_url || null,
+  }));
+};
+
+/**
  * 確保用戶存在，不存在則自動建立
  * @param {String} platformId 平台ID
  * @param {String} platform 平台名稱 (預設 "line")
