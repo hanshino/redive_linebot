@@ -34,6 +34,7 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
+import VolunteerActivismIcon from "@mui/icons-material/VolunteerActivism";
 
 const mainItems = [
   { label: "首頁", path: "/", icon: HomeIcon },
@@ -79,6 +80,10 @@ const adminItems = [
   { label: "訊息實況", path: "/admin/messages", icon: MessageIcon },
   { label: "優惠券管理", path: "/admin/coupons", icon: ConfirmationNumberIcon },
   { label: "世界王管理", path: "/admin/worldboss", icon: SportsEsportsIcon },
+];
+
+const ownerItems = [
+  { label: "贊助管理", path: "/owner/sponsorships", icon: VolunteerActivismIcon },
 ];
 
 const linkItems = [
@@ -138,7 +143,8 @@ function NavSection({ title, items, open, onToggle, onNavigate, currentPath }) {
 }
 
 export default function NavDrawer({ onClose }) {
-  const { loggedIn, isAdmin } = useLiff();
+  const { loggedIn, isAdmin, profile } = useLiff();
+  const canManageSponsorship = profile?.canManageSponsorship === true;
   const location = useLocation();
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState({
@@ -148,6 +154,7 @@ export default function NavDrawer({ onClose }) {
     bot: false,
     personal: false,
     admin: false,
+    owner: false,
     links: false,
   });
 
@@ -232,6 +239,16 @@ export default function NavDrawer({ onClose }) {
           items={adminItems}
           open={openSections.admin}
           onToggle={() => toggleSection("admin")}
+          onNavigate={handleNavigate}
+          currentPath={location.pathname}
+        />
+      )}
+      {canManageSponsorship && (
+        <NavSection
+          title="站務"
+          items={ownerItems}
+          open={openSections.owner}
+          onToggle={() => toggleSection("owner")}
           onNavigate={handleNavigate}
           currentPath={location.pathname}
         />

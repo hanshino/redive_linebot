@@ -111,6 +111,43 @@ exports.verifyPrivilege = (allow = 9) => {
   };
 };
 
+/**
+ * 贊助後台的授權判斷：單一 LINE userId、非等級制、fail-closed。
+ *
+ * 見 docs/plans/2026-09-09-sponsorship-admin-v1-plan.md §5。
+ * `verifySponsorshipOwner` 與 `GET /api/me` 的 `canManageSponsorship` 欄位
+ * 必須共用這同一段邏輯，不得各自重寫一份比對規則。
+ */
+const LINE_USER_ID_PATTERN = /^U[a-f0-9]{32}$/;
+
+function sponsorshipOwnerId() {
+  const raw = process.env.SPONSORSHIP_OWNER_LINE_USER_ID;
+  return typeof raw === "string" && LINE_USER_ID_PATTERN.test(raw) ? raw : null;
+}
+
+/**
+ * @param {String} userId 待檢查的 LINE userId（例如 req.profile.userId）
+ * @returns {Boolean}
+ */
+exports.isSponsorshipOwner = userId => {
+  const ownerId = sponsorshipOwnerId();
+  // 先做格式驗證，格式無效視為「owner 未配置」——避免 env 未設定時兩邊都是
+  // undefined，`undefined === undefined` 誤判為 true 而放行。
+  if (!ownerId) return false;
+  if (typeof userId !== "string" || !userId) return false;
+  return userId === ownerId;
+};
+
+exports.verifySponsorshipOwner = (req, res, next) => {
+  // owner 未配置 / 格式無效 —— fail closed，不放行任何人，包含本人。
+  if (!sponsorshipOwnerId()) {
+    return res.status(503).json({ message: "sponsorship owner not configured." });
+  }
+
+  if (exports.isSponsorshipOwner(req.profile?.userId)) return next();
+  return Forbidden(res);
+};
+
 exports.socketSetProfile = async (socket, next) => {
   if (!isAllowedOrigin(socket.handshake.headers.origin)) {
     return next(new Error("Authentication error"));

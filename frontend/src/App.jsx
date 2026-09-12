@@ -47,6 +47,11 @@ import AdminCoupons from "./pages/Admin/Coupon";
 import AdminWorldboss from "./pages/Admin/Worldboss";
 import Worldboss from "./pages/Worldboss";
 import RequireAdmin from "./components/RequireAdmin";
+import RequireSponsorshipOwner from "./components/RequireSponsorshipOwner";
+import OwnerSponsorships from "./pages/Owner/Sponsorship";
+import OwnerSponsorshipNew from "./pages/Owner/Sponsorship/New";
+import OwnerSponsorshipDetail from "./pages/Owner/Sponsorship/Detail";
+import OwnerSponsorshipPlayer from "./pages/Owner/Sponsorship/Player";
 
 function RedirectFromTransaction() {
   const { marketId } = useParams();
@@ -134,6 +139,15 @@ export default function App() {
             <Route path="admin/messages" element={<AdminMessages />} />
             <Route path="admin/coupons" element={<AdminCoupons />} />
             <Route path="admin/worldboss" element={<AdminWorldboss />} />
+          </Route>
+
+          {/* Owner — 僅本人（canManageSponsorship），非 admin 等級制。
+              固定路徑 new / players/:id 排在 :id 之前。 */}
+          <Route element={<RequireSponsorshipOwner />}>
+            <Route path="owner/sponsorships" element={<OwnerSponsorships />} />
+            <Route path="owner/sponsorships/new" element={<OwnerSponsorshipNew />} />
+            <Route path="owner/sponsorships/players/:id" element={<OwnerSponsorshipPlayer />} />
+            <Route path="owner/sponsorships/:id" element={<OwnerSponsorshipDetail />} />
           </Route>
         </Route>
       </Routes>

@@ -1,9 +1,8 @@
-const uuid = require("uuid-random");
-const SubscribeCardCoupon = require("../src/model/application/SubscribeCardCoupon");
 const minimist = require("minimist");
 const { isNumber } = require("lodash");
+const SubscribeCardCouponService = require("../src/service/SubscribeCardCouponService");
 const argv = minimist(process.argv.slice(2));
-const allowKey = ["month", "season"];
+const allowKey = [...SubscribeCardCouponService.ALLOWED_KEYS];
 
 async function main({ count = 1, key = "month" }) {
   if (!allowKey.includes(key)) {
@@ -15,21 +14,14 @@ async function main({ count = 1, key = "month" }) {
     count = parseInt(count) || 1;
   }
 
-  if (count > 100) {
-    console.log("count must be less than 100");
+  if (count > SubscribeCardCouponService.MAX_ISSUE_COUNT) {
+    console.log(`count must be less than ${SubscribeCardCouponService.MAX_ISSUE_COUNT}`);
     return;
   }
 
   console.log(`Generate ${count} ${key} coupon`);
 
-  const coupons = Array.from({ length: count }).map(() => ({
-    subscribe_card_key: key,
-    serial_number: uuid(),
-    status: SubscribeCardCoupon.status.unused,
-    issued_by: "system",
-  }));
-
-  await SubscribeCardCoupon.insert(coupons);
+  await SubscribeCardCouponService.issue({ cardKey: key, count, issuedBy: "system" });
 
   console.log("Done");
 }
