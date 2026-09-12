@@ -249,6 +249,24 @@ describe("建立（create）：新玩家驗證", () => {
     expect(result.created).toBe(true);
   });
 
+  it(
+    "regression：Sponsorship.create 收到的 received_at 是 Date instance（非 canonical 字串），" +
+      "避免 mysql2 strict mode 對 DATETIME 欄位丟 ER_TRUNCATED_WRONG_VALUE(1292)；" +
+      "audit payload_snapshot 的 canonical 字串維持不變",
+    async () => {
+      await Service.create(VALID_NEW_INPUT, "req-1", "Uowner");
+
+      const insertPayload = Sponsorship.create.mock.calls[0][0];
+      expect(insertPayload.received_at).toBeInstanceOf(Date);
+      expect(insertPayload.received_at.toISOString()).toBe("2026-09-09T02:00:00.000Z");
+
+      const auditPayload = SponsorshipAudit.create.mock.calls[0][0];
+      const snapshot = JSON.parse(auditPayload.payload_snapshot);
+      // audit/fingerprint 仍是 normalizeCreateInput 的 canonical ISO 字串，不受入庫轉型影響。
+      expect(snapshot.received_at).toBe("2026-09-09T02:00:00Z");
+    }
+  );
+
   it("發卡贊助：同一交易內先建 sponsorship 再 issue 再寫 audit(create)", async () => {
     SubscribeCardCouponService.issue.mockResolvedValue([
       { serial_number: "s1" },

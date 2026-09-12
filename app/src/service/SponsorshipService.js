@@ -238,6 +238,11 @@ async function create(input, requestId, operatorUserId) {
           request_id: requestId,
           fingerprint,
           ...normalized,
+          // received_at 入庫需為 Date instance：normalized.received_at 是 canonical UTC
+          // ISO 字串（"YYYY-MM-DDTHH:mm:ssZ"），mysql2 在 strict mode 下直接把這種字串
+          // 塞進 DATETIME 欄位會拋 ER_TRUNCATED_WRONG_VALUE（1292）。fingerprint/audit
+          // 仍然吃 normalized 的原始字串，只有這個 insert payload 需要轉型。
+          received_at: new Date(normalized.received_at),
           operator_user_id: operatorUserId,
           bound_at: null,
         },
