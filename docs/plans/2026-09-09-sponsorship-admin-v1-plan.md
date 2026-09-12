@@ -1,7 +1,7 @@
 # 贊助管理與發卡後台 V1 規格
 
 - 建立日期：2026-09-09
-- 狀態：規則已定案，規格已完成審查並進入階段 1 實作。後端已有程式與 unit/mock 測試，前端已有 mock API 瀏覽器驗證；真實隔離 DB 整合測試尚未建立或執行，正常前端建置尚未通過。依使用者決定暫不變更環境，階段 1 尚未驗收完成；日期存取、交易與併發的正確性仍待證實，不能排除尚未發現的程式問題。詳見 roadmap §4 進度記錄及本文件 §11–12。
+- 狀態：規則已定案，規格已完成審查並進入階段 1 實作。後端已有程式與 unit/mock 測試，前端已有 mock API 瀏覽器驗證；真實隔離 DB 整合測試尚未建立或執行，正常前端建置尚未通過。依使用者決定暫不變更環境，階段 1 尚未驗收完成；日期存取、交易與併發的正確性仍待證實，不能排除尚未發現的程式問題。詳見 roadmap §4 進度記錄及本文件 §11–12。**（2026-09-10 當下狀態，僅供歷史脈絡——2026-09-12 已獲授權執行隔離測試 DB 並取得實測證據，見 §11 新增「2026-09-12 驗證結果」小節；階段 1 仍未達完整驗收門檻，該小節列出明確剩餘缺口，不可誤讀本段舊敘述為目前現況。）**
 - 依附文件：[`2026-09-09-sponsorship-subscription-roadmap.md`](./2026-09-09-sponsorship-subscription-roadmap.md) 階段 0／階段 1。
 - 本文件只涵蓋 V1 最小範圍；階段 2（福利升級）、階段 3（金流自動化）不在此列，先後順序不變。
 
@@ -150,23 +150,81 @@
 6. **前端**：`services/sponsorship.js` → `RequireSponsorshipOwner` → 頁面（由 `@designer` 出視覺，前端邏輯由前端負責串接）。
 7. **同檔案協調限制**：`buyMonthCard`（步驟 2 的重構對象）與 `subscribeCouponExchange`（步驟 5）同在 `SubscribeController.js` 一個檔案內，**不得由兩條並行分工同時編輯這支檔案**——需由單一實作者依序完成兩處改動，或明確約定交接順序（例如先完成 2 的重構並提交，5 再基於該版本繼續改），避免兩邊改動互相覆蓋。除此檔案外，2～5 涉及的其餘檔案彼此不相交，契約（§2～§6）確定後可平行進行；6 依賴 4 的路由契約確定後才能串接前端，但頁面骨架可先行；端到端驗收依賴 migration（步驟 1）與後端服務層（2、3）皆完成。
 
-## 11. 測試（狀態：不含真實 DB 整合測試檔的部分已完成，見下表備註；整體仍未達 §12 驗收門檻）
+## 11. 測試（狀態：2026-09-12 已補齊真實 DB 整合測試並實測通過，見本節末「2026-09-12 驗證結果」小節；仍未達 §12 完整驗收門檻，該小節列出明確剩餘缺口）
 
 | 檔案（擬新增） | 範圍 | 狀態 |
 | --- | --- | --- |
 | `app/src/middleware/__tests__/verifySponsorshipOwner.test.js` | fail-closed（未設定 env／格式無效 env）／本人放行／非本人 403／未登入沿用 `verifyToken` 既有 401；比照既有 [`app/src/middleware/__tests__/validation.auth.test.js`](../../app/src/middleware/__tests__/validation.auth.test.js) 的 `jest.unmock` + 真實 middleware 手法，**不使用** `app/__tests__/setup.js` 的全域 auth mock（那個 mock 直接放行一切，用它測授權等於沒測）。 | 已建立並通過（計入 §4 進度記錄的 137）。 |
 | `app/src/service/__tests__/SponsorshipService.test.js` | 金額格式驗證（含零、負數、超精度、非數字字串一律拒絕）、`card_count` 上限拒絕、冪等判斷（同 key 同內容/不同內容/併發衝突）、`history` 補綁狀態機（未綁→綁成功、已綁重送同 target 不重複 audit、已綁 target 不同 409）。用 mock DB 驗邏輯分支，非交易/併發證據。 | 已建立並通過（unit/mock，非交易/併發證據）。 |
-| `app/src/service/__tests__/SponsorshipService.integration.test.js` | **真實本機隔離測試 DB**（非 `Princess`、非遠端），驗證：`unique(request_id)` 併發寫入只成功一筆、補綁併發下不重複 audit；以及三個交易回滾情境（皆在交易外用獨立 query 驗證結果，不接受「mock 斷言呼叫過 rollback」當證據）：①發卡贊助建立時，`subscribe_card_coupon` 已插入部分序號後 `issue` 才失敗（例如插到一半觸發唯一鍵衝突）→ 交易外查無任何一筆該次的 `sponsorship_id`、`sponsorship`、`sponsorship_audit` 殘留；②`subscribe_card_coupon` 全部插入成功、`sponsorship` 也插入成功，但寫 `sponsorship_audit`（`create`）時失敗 → 交易外查無 `sponsorship`、無對應序號、無 audit 殘留；③補綁流程中 `sponsorship.user_id`/`bound_at` 已 UPDATE，但寫 `sponsorship_audit`（`bind`）時失敗 → 交易外查該筆 `sponsorship.user_id` 仍是更新前的值（未綁定或原玩家），不得停留在「已改 user_id 但沒有對應 audit」的中間狀態。比照 [`app/src/service/topic/__tests__/query.integration.test.js`](../../app/src/service/topic/__tests__/query.integration.test.js) 的手法（`jest.isolateModules` + `jest.doMock` 注入真 knex），連線目標必須是獨立的本機測試資料庫（例如另建 `Princess_test` 或用環境變數指定的測試 DB name，禁止指向 `Princess`；禁止指向任何遠端/生產主機）。 | **尚未建立、亦未執行**——需要隔離測試 DB，暫停等待使用者授權（見 roadmap §4 進度記錄）。 |
+| `app/src/service/__tests__/SponsorshipService.integration.test.js` | **真實本機隔離測試 DB**（非 `Princess`、非遠端），驗證：`unique(request_id)` 併發寫入只成功一筆、補綁併發下不重複 audit；以及三個交易回滾情境（皆在交易外用獨立 query 驗證結果，不接受「mock 斷言呼叫過 rollback」當證據）：①發卡贊助建立時，`subscribe_card_coupon` 已插入部分序號後 `issue` 才失敗（例如插到一半觸發唯一鍵衝突）→ 交易外查無任何一筆該次的 `sponsorship_id`、`sponsorship`、`sponsorship_audit` 殘留；②`subscribe_card_coupon` 全部插入成功、`sponsorship` 也插入成功，但寫 `sponsorship_audit`（`create`）時失敗 → 交易外查無 `sponsorship`、無對應序號、無 audit 殘留；③補綁流程中 `sponsorship.user_id`/`bound_at` 已 UPDATE，但寫 `sponsorship_audit`（`bind`）時失敗 → 交易外查該筆 `sponsorship.user_id` 仍是更新前的值（未綁定或原玩家），不得停留在「已改 user_id 但沒有對應 audit」的中間狀態。比照 [`app/src/service/topic/__tests__/query.integration.test.js`](../../app/src/service/topic/__tests__/query.integration.test.js) 的手法（`jest.isolateModules` + `jest.doMock` 注入真 knex），連線目標必須是獨立的本機測試資料庫（例如另建 `Princess_test` 或用環境變數指定的測試 DB name，禁止指向 `Princess`；禁止指向任何遠端/生產主機）。 | **已於 2026-09-12 建立並實測通過**（11 tests，一次性 Docker `mysql:8` 隔離 DB，見本節末「2026-09-12 驗證結果」小節）。 |
 | `app/src/router/__tests__/ownerSponsorships.test.js` | 對 `/api/owner/sponsorships/*` 全部端點（含 `players`、`players/:id/summary`、`cards`、列表、詳情、建立、補綁）逐一驗證非本人／其他 admin（`privilege: 9` 但非 owner）皆 403；驗證非同源 Origin 的寫入請求（POST）被既有 `isAllowedOrigin` CSRF 檢查擋下（走真實 `verifyToken` + `verifySponsorshipOwner`，同樣不用全域 auth mock）。 | 已建立並通過，另有 `ownerSponsorshipsCreate.test.js` 補真實 service regression（計入 §4 進度記錄）。 |
-| `app/src/controller/application/__tests__/SubscribeController.redeem.test.js` | **真實本機隔離測試 DB**（同上，非 mock），須真正安排交易重疊（例如用兩個獨立連線各自開始交易、控制執行順序讓兩者的鎖等待時間窗重疊），不能只是「湊巧序列化跑過」當證據。至少涵蓋五個情境：①同一序號被兩個玩家同時兌換，只有一個成功、另一個明確失敗（序號已使用）；②該玩家已有一筆有效 `subscribe_user`，同時兌換兩張不同序號，**兩張都必須成功**、兩張序號皆標記為 used，且 `end_at` 完整依序疊加兩次時長（不是「或只認一次」，兩次成功、期限完整累加是唯一允許結果）；③該玩家尚無 `subscribe_user`，同時兌換兩張不同序號，因交易序列化只有一次會走 INSERT、另一次走「重讀後 UPDATE」，最終結果為兩次兌換都成功、只留一筆 `subscribe_user`、`end_at` 疊加兩次時長；④單一玩家單張序號的首次兌換（無既有 `subscribe_user` 列）建立成功且 `start_at`/`end_at` 正確；⑤§8 情境：舊訂閱過期被清理後重新兌換，走建立路徑而非誤延長。單獨的 mock 版 `app/__tests__/service/SubscriptionService.test.js` 只測效果算法，不是這裡要的 redeem 交易覆蓋，也不能拿來當這五項的測試證據。 | **尚未建立、亦未執行**——需要隔離測試 DB 及交易重疊安排，暫停等待使用者授權。現有 `SubscribeController.redeem.unit.test.js` 只是 mock 版決策分支測試，**不能取代**此表列的五情境整合測試。 |
+| `app/src/controller/application/__tests__/SubscribeController.redeem.test.js` | **真實本機隔離測試 DB**（同上，非 mock），須真正安排交易重疊（例如用兩個獨立連線各自開始交易、控制執行順序讓兩者的鎖等待時間窗重疊），不能只是「湊巧序列化跑過」當證據。至少涵蓋五個情境：①同一序號被兩個玩家同時兌換，只有一個成功、另一個明確失敗（序號已使用）；②該玩家已有一筆有效 `subscribe_user`，同時兌換兩張不同序號，**兩張都必須成功**、兩張序號皆標記為 used，且 `end_at` 完整依序疊加兩次時長（不是「或只認一次」，兩次成功、期限完整累加是唯一允許結果）；③該玩家尚無 `subscribe_user`，同時兌換兩張不同序號，因交易序列化只有一次會走 INSERT、另一次走「重讀後 UPDATE」，最終結果為兩次兌換都成功、只留一筆 `subscribe_user`、`end_at` 疊加兩次時長；④單一玩家單張序號的首次兌換（無既有 `subscribe_user` 列）建立成功且 `start_at`/`end_at` 正確；⑤§8 情境：舊訂閱過期被清理後重新兌換，走建立路徑而非誤延長。單獨的 mock 版 `app/__tests__/service/SubscriptionService.test.js` 只測效果算法，不是這裡要的 redeem 交易覆蓋，也不能拿來當這五項的測試證據。 | **已於 2026-09-12 建立並實測通過**（18 tests，含真實交易重疊安排，見本節末「2026-09-12 驗證結果」小節）。與 `SubscribeController.redeem.unit.test.js`（mock 版決策分支測試）並存、用途不同，互不取代。 |
 | `app/bin/__tests__/IssueSubscribeCard.test.js` | 改用共用 service 後行為不變的回歸（張數/卡種/既有 CLI 輸出）。 | 已建立並通過。 |
 | `app/src/controller/application/__tests__/SubscribeController.buyMonthCard.test.js` | 改走共用發卡 service 後，購卡扣款與發卡仍在同一交易；扣款成功但發卡失敗（或反之）需完整回滾，女神石不能被扣走卻沒拿到序號。 | 已建立並通過（unit/mock）。 |
 
-前端無測試 runner；驗收改用「建置成功 + 瀏覽器人工操作」，見 §12。**目前 `yarn build` 因本機 `node_modules` 缺 `wordcloud` 套件且 integrity 不吻合而無法在本機驗證通過**（`wordcloud` 確實存在於 `frontend/package.json` 與 `frontend/yarn.lock`，非 lock 檔缺漏；修復需重新安裝依賴，本輪未經使用者授權不安裝）；瀏覽器操作驗收目前僅完成 mock 後端版本，未對真實後端做過 e2e。
+前端無測試 runner；驗收改用「建置成功 + 瀏覽器人工操作」，見 §12。**2026-09-10 當時 `yarn build` 因本機 `node_modules` 缺 `wordcloud` 套件且 integrity 不吻合而無法在本機驗證通過**（`wordcloud` 確實存在於 `frontend/package.json` 與 `frontend/yarn.lock`，非 lock 檔缺漏）；**2026-09-12 已重新執行 `yarn build`（未重裝依賴、未變更任何 lock/package 檔）並成功**，唯有 chunk size 超過 500KB 的建置警告（效能優化建議，非錯誤，不影響建置成功與否，不在本輪驗收範圍）。瀏覽器操作驗收已完成 owner 列表/詳情/新增表單三頁的唯讀真實瀏覽器 QA（見「2026-09-12 驗證結果」小節），但**非完整 e2e**：未執行任何表單 submit／玩家搜尋互動／補綁動作，也未驗證非本人已登入時對真實 API 的拒絕行為（僅驗證了 SPA client-side route guard 的 redirect，未做 API 層 401/403 status code 驗證）。
+
+### 2026-09-12 驗證結果（授權執行隔離測試 DB 後）
+
+本節記錄 2026-09-12 在使用者明確授權下，啟動一次性 Docker MySQL 容器執行真實 DB 整合測試與相關驗證的實測結果。**這是新增的當輪證據，不覆蓋、不否定上方 §11 表格中標註「2026-09-10」的既有 unit/mock 測試證據**，兩者並存。
+
+**測試環境**：一次性 Docker 容器，image `mysql:8`，實際拉取版本為 `8.4.11`；容器 process env 映射 `127.0.0.1:33082`；每個 suite 各自建立獨立的隔離測試資料庫（`Princess_wbtest_*` 前綴），完整跑過 knex migrations 後才執行測試，結束後各自 `DROP` 自己建立的 DB。**全程未連接、未讀取、未寫入任何既有 `Princess` 資料庫**；容器與匿名 volume 於測試結束後已清除。
+
+**測試結果彙總（7 個目標 suite，129 tests，全數通過；此為 targeted 執行結果，非全 repo test suite，未涵蓋的既有 legacy 測試——例如可能牽涉既有 `Princess` 的其他 suite——本輪刻意不跑，避免碰觸正式資料）**：
+
+| Suite | Tests |
+| --- | --- |
+| `SponsorshipService.integration.test.js` | 11 |
+| `SubscribeController.redeem.test.js`（整合） | 18 |
+| `Inventory.test.js`（unit，本輪新增） | 6 |
+| `SubscribeController.buyMonthCard.test.js`（unit） | 12 |
+| `SubscribeController.redeem.unit.test.js`（unit） | 15 |
+| `SponsorshipService.test.js`（unit） | 57 |
+| `ownerSponsorshipsCreate.test.js` | 10 |
+| **合計** | **129** |
+
+上表為單次執行的通過數，未因重跑或分批執行而重複加總。
+
+**本輪新修正並經上述測試驗證的行為**：
+
+- `Inventory.getUserOwnCountByItemId`／`getUserMoney`：`SUM(itemAmount)` 對空集合回傳 `{ amount: null }` 時正規化為 `{ amount: 0 }`；非 `null` 的數值（含 DECIMAL 字串、負數、`0`）原樣保留，不經 `Number()`/`parseInt()` 轉型或吞值。修正前的舊行為會讓從未持有女神石的玩家買到負餘額的月卡，此 regression 已由 `Inventory.test.js`（6 tests，本輪新增）與 `SubscribeController.redeem.test.js` 的真實 DB 案例覆蓋。
+- `SubscribeController.buyMonthCard`：購卡流程在對女神石所在列上鎖（row lock）後，於**同一交易內重新讀取**餘額才做扣款判斷，避免鎖前讀到的舊餘額被沿用；已驗證兩名玩家各持 50 萬女神石同時各買 1 張月卡（各自餘額足夠）皆成功、另一情境驗證餘額剛好夠買 1 張但同時發起 2 次購買請求時僅 1 次成功。
+- 交易回滾三情境（發卡中途失敗、`sponsorship_audit`(create) 失敗、`sponsorship_audit`(bind) 失敗）：皆在交易外用獨立 query 確認相關列（`sponsorship`／`subscribe_card_coupon`／`sponsorship_audit`／已 debit 的女神石）已完整回滾或未殘留，非 mock 斷言「呼叫過 rollback」。
+- 冪等：同 `request_id` 併發重送（含發卡贊助的併發建立、補綁併發、序號兌換併發）已用真實交易重疊驗證只有一個成功路徑落地，其餘走既有衝突/重試分支。
+- `DECIMAL` 金額與 `received_at` 的 UTC ↔ `+08:00` 連線時區設定 round-trip：已用真實 DB 寫入/讀回驗證數值與時間點正確對應，不再是 §11 表格舊版所述「尚未經真實 DB 驗證」的狀態。
+- migrations 在全新隔離 DB 上從零跑過並成功建表，可支撐上述所有測試情境。
+
+**獨立覆核（另一角色執行的 review）結果**：未發現 production 等級的 P0／P1 問題。原先標記的一項測試基礎設施 P1（缺 Docker 容器 port/image 版本紀錄）已透過本節記載的資訊補齊；一項 rollback 測試的 P2（測試涵蓋不足）已補齊對應案例並通過。另有一個測試斷言方式（spy 未正確 restore）被判定為測試本身的缺陷（非 production 程式問題），已修正。
+
+**本輪明確 defer、未處理的風險（不在本輪修正範圍，留待後續）**：
+
+- 其他消費／轉帳路徑（非本次修正的購卡/兌換）尚未逐一排查是否共用相同的「行鎖 + 交易內重讀」保護，此風險維持已知、明確 defer，不在本輪動作範圍。
+- 測試 fixture（`worldBossFixture` 等）在建立隔離測試 DB 時對 MySQL 帳號授予的權限（grants），測試結束 `DROP DATABASE` 後不會一併撤銷該帳號的權限設定；這是既有的 test fixture 維運層級風險（並非本輪新增），本輪未變更、未清理既有 grants 設定，維持原狀。
+
+**唯讀真實瀏覽器 QA（同日執行，非本節 DB 測試的一部分，但同屬 2026-09-12 驗證範圍）**：
+
+已用 `agent-browser` 對 owner 列表頁、詳情頁（`/owner/sponsorships/3`）、新增表單頁三頁執行唯讀瀏覽（未 submit、未搜尋、未補綁），並驗證乾淨匿名 session 對三頁的存取皆被 SPA client-side route guard redirect 回首頁，測試用 `redive_session` cookie 有效。**這不構成完整 e2e 驗收**：
+
+- 未執行任何表單提交、玩家搜尋互動、補綁動作。
+- 未驗證非本人但已登入使用者對真實 API 端點的拒絕行為（本次只驗證了前端 route guard 的 redirect，未做 API 層 401/403 status code 的直接驗證）。
+- 詳情頁 `id=3` 的資料是既有 curl 測試遺留的紀錄，**不是**本輪整合測試新建立的產物；瀏覽器 QA 只是拿它來驗證 render 正確，不代表這筆資料本身是本輪測試證據鏈的一部分。
+- 頁面顯示的入帳時間（如「2026/09/12 11:23」）是前端 `fmtDate` 依**瀏覽器本地時區**格式化的結果；本次 QA 未特別取得或鎖定該瀏覽器 session 的實際時區設定，**不能**以此畫面顯示值反推或宣稱「UTC → 台北時間（+08:00）換算已驗證正確」——時區轉換正確性的證據來自上方本節所述的 DB round-trip 測試，不是這次瀏覽器畫面觀察。
+- 本機 owner 後台功能與 migrations 已確認可用，但**正式（production）環境的 owner 配置與部署行為本輪未驗證**。
+
+**本輪未涵蓋、仍待後續的項目（不再等待「是否授權 Docker」——該授權已於本輪取得並執行完畢，下一步不是重新請示環境變更）**：
+
+- 完整 CI / 完整 backend test suite 尚未跑過（本輪為刻意排除既有 legacy／`Princess` 相關 suite 的 targeted 129 tests，非全 repo 測試）。
+- 完整真實瀏覽器「寫入類」操作（表單 submit、搜尋、補綁）與正式人工端到端驗收流程尚未執行。
+- 正式（production）環境的 `SPONSORSHIP_OWNER_LINE_USER_ID` 配置與實際部署行為尚未驗證。
+- 本文件與 §2.1 定義的 API 契約中，`received_at` 等時間欄位在既有規格描述為「秒精度 ISO 字串」，但目前程式實測寫入/序列化路徑上觀察到 `Date` 物件的 `.toISOString()`／JSON 序列化格式帶有毫秒（`.000Z`）——這是**規格文件描述的精度示例與實際觀察到的序列化格式之間尚待確認的差異**，本輪不擅自變更 API 契約或程式行為來「修正」這個差異，僅在此列出待日後確認是否需要調整規格措辭或程式序列化方式。
+
+以上「階段 1 尚未完成」的結論维持不變：全 CI、完整真實瀏覽器寫入流程與正式上線 gate 仍是明確待辦，不是本節記錄的範圍。
 
 ## 12. 驗收與 rollout gate
 
-**現況（2026-09-10）：以下清單多數項目仍未有可重現證據，暫停於等待使用者授權環境變更（安裝依賴／啟動隔離測試 DB），詳見 §11 表格「狀態」欄與 [`2026-09-09-sponsorship-subscription-roadmap.md`](./2026-09-09-sponsorship-subscription-roadmap.md) §4「進度記錄」小節。前三項（授權、部分金額格式驗證、`card_count` 上限的輸入驗證）已有 unit/mock 測試證據；標註「真實本機測試 DB」或「build/e2e」字樣的項目尚未完成。**
+**現況（2026-09-10 原始記錄，見下方 2026-09-12 更新）：以下清單多數項目仍未有可重現證據，暫停於等待使用者授權環境變更（安裝依賴／啟動隔離測試 DB），詳見 §11 表格「狀態」欄與 [`2026-09-09-sponsorship-subscription-roadmap.md`](./2026-09-09-sponsorship-subscription-roadmap.md) §4「進度記錄」小節。前三項（授權、部分金額格式驗證、`card_count` 上限的輸入驗證）已有 unit/mock 測試證據；標註「真實本機測試 DB」或「build/e2e」字樣的項目尚未完成。**
+
+**2026-09-12 更新：** 上述環境授權已取得，§11「2026-09-12 驗證結果」小節記錄了真實隔離測試 DB（Docker `mysql:8`/實測 `8.4.11`）129 tests 全綠的實測證據，涵蓋本清單下方多數「以 §11 整合測試證明」「真實本機測試 DB」字樣的項目（交易回滾三情境、冪等併發、兌換併發、`SUM` decimal 加總、`received_at` UTC/+08:00 round-trip、發卡回歸、A 贊助 B 兌換的資料落點等）。前端 `yarn build` 已成功（未重裝依賴）。**惟本清單逐項勾選仍需由下方「全部以上由非實作者覆核」的角色依實際證據逐項核對後才能打勾**——本次文件更新只記錄「證據已存在於何處」，不代替該覆核角色勾選任何項目；且清單中「本人登入可見並操作完整流程」「歷史補綁 UI 走完整流程」等需要真實寫入操作的人工瀏覽器驗收項目，本輪只完成唯讀 QA（見 §11 小節說明），尚未有對應證據可勾選。全 CI／完整 backend suite、正式環境部署配置亦未驗證，不屬於本次已完成範圍。
 
 - [ ] `verifySponsorshipOwner` 對「本人／非本人／未設定 env／env 格式無效」四態皆有測試證據，非本人（含其他 `privilege: 9` 的既有 admin）呼叫任何 `/api/owner/sponsorships/*` 一律被拒（含 GET 查詢）；非同源 Origin 的寫入請求被 CSRF 檢查擋下，皆為走真實 middleware 的 regression test，非全域 mock 下的假通過。
 - [ ] 金額精度：API 拒絕零、負數、超過兩位小數、非數字字串；SUM 加總以 DB decimal 驗證，不用 float 比對測試斷言。
