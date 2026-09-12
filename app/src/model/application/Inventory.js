@@ -77,8 +77,27 @@ class Inventory extends base {
       .update({ attributes: JSON.stringify(attributes) });
   }
 
+  /**
+   * SUM(itemAmount) 在該 userId+itemId 完全沒有任何 inventory 列時，MySQL 回傳一列
+   * `{ amount: null }`（聚合函式對空集合的定義行為），不是「查無此列」。過去呼叫端
+   * `const { amount = 0 } = await getUserMoney(...)` 的解構預設值只對 `undefined`
+   * 生效，對 `null` 無效，導致 `parseInt(null)` = `NaN`，餘額檢查 `NaN < cost` 恆為
+   * false，跳過餘額檢查（production bug：從未持有女神石的玩家可以扣成負數）。
+   *
+   * 這裡只把 `amount === null` 正規化成 `0`；其餘數值（含 DECIMAL 以字串型式回傳、
+   * 負數）原樣保留，不經 `Number()`/`parseInt()`，避免大數精度流失或把非法值吞成 0。
+   * `row` 本身在聚合查詢下不會是 `undefined`（SELECT SUM(...) 恆回一列），若真的拿到
+   * falsy row 一律原樣回傳，不替「查無此列」發明新的回傳形狀。
+   * @param {String} userId
+   * @param {Number} itemId
+   * @returns {Promise<{amount: (Number|String)}>}
+   */
   getUserOwnCountByItemId(userId, itemId) {
-    return this.knex.sum({ amount: "itemAmount" }).where({ userId, itemId }).first();
+    return this.knex
+      .sum({ amount: "itemAmount" })
+      .where({ userId, itemId })
+      .first()
+      .then(row => (row && row.amount === null ? { ...row, amount: 0 } : row));
   }
 
   getUserMoney(userId) {

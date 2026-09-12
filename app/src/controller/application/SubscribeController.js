@@ -33,7 +33,6 @@ exports.privateRouter = [text(/^[.#/](我要買月卡)\s(?<number>[135]{1})$/, b
 async function buyMonthCard(context, props) {
   const { userId } = context.event.source;
   const number = parseInt(get(props, "match.groups.number", "1"), 10);
-  const { amount: ownMoney = 0 } = await inventoryModel.getUserMoney(userId);
   let cost;
 
   switch (number) {
@@ -50,15 +49,23 @@ async function buyMonthCard(context, props) {
       throw new Error("Invalid number");
   }
 
-  if (parseInt(ownMoney) < cost) {
-    await context.replyText(i18n.__("message.subscribe.not_enough_money"));
-    return;
-  }
-
   try {
     let coupons;
 
+    // 「讀餘額 → 判斷 → 發卡 → 扣款」整段同一交易，且先鎖同玩家再讀：
+    //   1. 鎖 user 列（platform_id 為 UNIQUE，setProfile 已 ensureUser）—— 同一玩家的並發購買
+    //      在這裡序列化；查無列時 FOR UPDATE 只會拿到 gap lock、擋不住另一筆，故 fail closed。
+    //   2. 拿到鎖之後才在同一條交易連線上讀 SUM：這是本交易第一個 consistent read，
+    //      snapshot 在此刻建立，看得到前一筆已 commit 的扣款，不會沿用交易外的舊餘額。
+    //   3. issue + decreaseGodStone 維持原順序，任一步失敗整筆回滾。
+    // 只保證「購卡對購卡」不重複成交；其他女神石消費路徑不取這把鎖，不在此保證範圍。
     await mysql.transaction(async trx => {
+      const player = await trx("user").where({ platform_id: userId }).forUpdate().first("id");
+      if (!player) throw exchangeFail("USER_NOT_FOUND");
+
+      const balance = await readGodStoneBalance(userId, trx);
+      if (!(balance >= cost)) throw exchangeFail("NOT_ENOUGH_MONEY");
+
       coupons = await SubscribeCardCouponService.issue(
         { cardKey: "month", count: number, issuedBy: "system" },
         trx
@@ -86,17 +93,46 @@ async function buyMonthCard(context, props) {
     }));
     await notifyUnlocks(context, userId, unlocked);
   } catch (e) {
+    if (e && e.code === "NOT_ENOUGH_MONEY") {
+      await context.replyText(i18n.__("message.subscribe.not_enough_money"));
+      return;
+    }
+
     // 不印 e.message（Knex 例外的 message 可能夾帶 SQL/bindings，含女神石金額等敏感值），
     // 只留事件名 + 錯誤分類碼。
     console.error("[subscribe] buy month card failed", safeErrorCode(e));
     await context.replyText(
       i18n.__("message.error_contact_admin", {
         user_id: userId,
-        error_key: "buy_month_card",
+        error_key:
+          e && e.code === "USER_NOT_FOUND" ? "buy_month_card_user_not_found" : "buy_month_card",
       })
     );
     return;
   }
+}
+
+// 女神石 itemId 與 Inventory.getUserMoney 相同（那邊寫死 999）；這裡另寫一份是因為購卡的
+// 餘額必須在「已鎖住玩家的同一條交易連線」上讀，model 既有方法不吃 trx。
+const GOD_STONE_ITEM_ID = 999;
+
+/**
+ * 交易內讀女神石餘額。SUM 對空集合回 null → 0；遊戲幣是整數，沿用 parseInt 整數比較，
+ * 解析不出安全整數時回 NaN，讓呼叫端的 `!(balance >= cost)` 判斷 fail closed。
+ * @param {String} userId
+ * @param {import("knex").Knex.Transaction} trx
+ * @returns {Promise<Number>}
+ */
+async function readGodStoneBalance(userId, trx) {
+  const row = await inventoryModel
+    .qb(trx)
+    .sum({ amount: "itemAmount" })
+    .where({ userId, itemId: GOD_STONE_ITEM_ID })
+    .first();
+  const raw = row && row.amount;
+  if (raw === null || raw === undefined) return 0;
+  const value = parseInt(raw, 10);
+  return Number.isSafeInteger(value) ? value : NaN;
 }
 
 /**
@@ -142,6 +178,8 @@ const LOGGABLE_ERROR_CODES = new Set([
   "SERIAL_NOT_FOUND",
   "SERIAL_USED",
   "CARD_NOT_FOUND",
+  "USER_NOT_FOUND",
+  "NOT_ENOUGH_MONEY",
   "INVALID_CARD_KEY",
   "INVALID_COUNT",
   "INVALID_ISSUED_BY",
