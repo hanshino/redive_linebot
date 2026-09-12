@@ -1,11 +1,11 @@
 // 兌換交易的「決策邏輯」單元測試：鎖序、重試分類、handleUser 延長/建立分支。
 // model 層全部 mock，測的是 SubscribeController 內的決策，不是真實交易/併發。
 //
-// 這不是規格 §11 要求的
-// `SubscribeController.redeem.test.js`（真實本機隔離測試 DB、真正交易重疊，
-// 涵蓋雙玩家搶序號/雙序號並發/過期清理後重兌五種情境）——那支測試需要一個
-// 安全的本機測試 MySQL 連線，本輪環境沒有提供（見完成回報的 blocker 說明），
-// 此檔只覆蓋不需要真實 DB 也能驗證的決策分支，作為權宜的部分證據。
+// 規格 §11 要求的真實 DB 整合測試
+// `SubscribeController.redeem.test.js`（真實隔離測試 DB、真正交易重疊，涵蓋
+// 雙玩家搶序號/雙序號並發/過期清理後重兌等情境）已於另一輪建立並通過，
+// 此檔不重複那份證據，只覆蓋不需要真實 DB 也能驗證的決策分支，兩者並存、
+// 用途不同、互不取代。
 //
 // 全域 setup.js 把 bottender/router 的 text() mock 成回傳 `jest.fn()`（丟棄真正的
 // handler），這裡需要拿到真正的 action 函式，故對這個模組 unmock。
