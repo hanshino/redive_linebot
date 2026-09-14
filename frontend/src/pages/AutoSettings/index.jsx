@@ -1,12 +1,20 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   FormControlLabel,
   IconButton,
@@ -17,17 +25,27 @@ import {
   Snackbar,
   Stack,
   Switch,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HistoryIcon from "@mui/icons-material/History";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
-import { getPreference, setPreference } from "../../services/autoPreference";
+import {
+  getPreference,
+  setPreference,
+  getMatchPreference,
+  setMatchPreference,
+  getMatchBetPreference,
+  setMatchBetPreference,
+} from "../../services/autoPreference";
 
 const FLAGS = [
   {
@@ -250,6 +268,436 @@ function SettingsSkeleton() {
   );
 }
 
+// ── 月卡自動猜拳 ────────────────────────────────────────────────────────────
+// 兩個偏好走各自的端點，彼此不連動：只開配對就是免費參與，下注要另外同意。
+
+const MAX_BET_CAP = 4294967295;
+
+// 開啟下注一律要求正整數（沿用核可的規格）。伺服器允許 0，但 0 不是能開啟的值。
+function validateCap(raw) {
+  const v = String(raw ?? "").trim();
+  if (v === "") return "請填寫下注上限。";
+  if (!/^\d+$/.test(v)) return "只能填寫數字，不可有小數點或符號。";
+  const n = Number(v);
+  if (n <= 0) return "下注上限必須大於 0。";
+  if (n > MAX_BET_CAP) return `下注上限不可超過 ${MAX_BET_CAP.toLocaleString("en-US")}。`;
+  return "";
+}
+
+// 伺服器的 0 是合法值，用 nullish 判斷；truthy 會把 0 當成沒填、reload 後默默清空欄位。
+function capToDraft(cap) {
+  return cap === null || cap === undefined ? "" : String(cap);
+}
+
+function putErrorMessage(err) {
+  const code = err?.response?.data?.error;
+  if (code === "subscription_required") {
+    return { severity: "warning", message: "需要有效的月卡或季卡才能開啟" };
+  }
+  if (code === "invalid_cap") {
+    return { severity: "warning", message: "下注上限格式不正確，尚未儲存" };
+  }
+  return { severity: "error", message: "更新失敗，請稍後再試" };
+}
+
+function MatchSwitchRow({ title, checked, disabled, onToggle, stateLabel }) {
+  return (
+    <Stack direction="row" spacing={2} sx={{ alignItems: "center", minHeight: 48 }}>
+      <Switch checked={checked} disabled={disabled} onChange={e => onToggle(e.target.checked)} />
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, flex: 1, minWidth: 0 }}>
+        {title}
+      </Typography>
+      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
+        {stateLabel}
+      </Typography>
+    </Stack>
+  );
+}
+
+function MatchRules() {
+  return (
+    <Accordion
+      disableGutters
+      elevation={0}
+      sx={{ borderRadius: 3, "&:before": { display: "none" } }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          規則說明
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Stack spacing={1.5}>
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: "block" }}>
+              資格
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              持有有效月卡或季卡即可參加，不分取得管道；訂閱到期就停止參加。不中斷續期會保留原本的開關。
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: "block" }}>
+              配對
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              每天台灣時間 21:00
+              全站配對一次，每人最多一場，不佔用手動猜拳場數。雙方出拳由系統隨機決定。前一天輪空的人隔天優先配對。
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: "block" }}>
+              下注
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              只有雙方都同意才會下注，金額取雙方上限與雙方段位上限的最小值。任一方女神石不足，整場改為不下注。
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: "block" }}>
+              結果
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              不下注的場次不更新 ELO、連勝與懸賞。結果只在這裡看得到，不會發送群組通知。
+            </Typography>
+          </Box>
+        </Stack>
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
+function AutoMatchSection() {
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [match, setMatch] = useState(null);
+  const [bet, setBet] = useState(null);
+  const [snack, setSnack] = useState(null);
+
+  const [matchAckOpen, setMatchAckOpen] = useState(false);
+  const [betAckOpen, setBetAckOpen] = useState(false);
+  const [capDraft, setCapDraft] = useState("");
+  const [capError, setCapError] = useState("");
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const [m, b] = await Promise.all([getMatchPreference(), getMatchBetPreference()]);
+      setMatch(m);
+      setBet(b);
+      setCapDraft(capToDraft(b.cap));
+      setCapError("");
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const runPut = useCallback(async (fn, payload, okMessage, apply) => {
+    setSaving(true);
+    try {
+      const updated = await fn(payload);
+      apply(updated);
+      setSnack({ severity: "success", message: okMessage });
+      return true;
+    } catch (err) {
+      // 非樂觀更新：失敗時畫面維持伺服器上一次回傳的值，不需要回滾。
+      setSnack(putErrorMessage(err));
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  const handleMatchToggle = next => {
+    if (next) {
+      setMatchAckOpen(true);
+      return;
+    }
+    runPut(setMatchPreference, { enabled: false }, "已關閉參與每日自動配對", setMatch);
+  };
+
+  const confirmMatchAck = async () => {
+    const ok = await runPut(
+      setMatchPreference,
+      { enabled: true, acknowledged: true },
+      "已開啟參與每日自動配對",
+      setMatch
+    );
+    if (ok) setMatchAckOpen(false);
+  };
+
+  const applyBet = updated => {
+    setBet(updated);
+    setCapDraft(capToDraft(updated.cap));
+    setCapError("");
+  };
+
+  const handleBetToggle = next => {
+    if (next) {
+      setCapDraft(capToDraft(bet?.cap));
+      setCapError("");
+      setBetAckOpen(true);
+      return;
+    }
+    // 關閉不送 cap，保留原本設定的數字。
+    runPut(setMatchBetPreference, { enabled: false }, "已關閉自動配對下注", applyBet);
+  };
+
+  const confirmBetAck = async () => {
+    const msg = validateCap(capDraft);
+    if (msg) {
+      setCapError(msg);
+      return;
+    }
+    const ok = await runPut(
+      setMatchBetPreference,
+      { enabled: true, acknowledged: true, cap: Number(capDraft.trim()) },
+      "已同意下注並設定上限",
+      applyBet
+    );
+    if (ok) setBetAckOpen(false);
+  };
+
+  // cap 改動仍是「在開啟狀態下重新確認」，所以照樣帶 acknowledged: true。
+  const saveCap = async () => {
+    const msg = validateCap(capDraft);
+    if (msg) {
+      setCapError(msg);
+      return;
+    }
+    await runPut(
+      setMatchBetPreference,
+      { enabled: true, acknowledged: true, cap: Number(capDraft.trim()) },
+      "已更新下注上限",
+      applyBet
+    );
+  };
+
+  if (loading) {
+    return <Skeleton variant="rounded" height={280} animation="wave" />;
+  }
+
+  if (loadError || !match || !bet) {
+    return (
+      <Alert
+        severity="error"
+        action={
+          <Button color="inherit" size="small" onClick={reload}>
+            重試
+          </Button>
+        }
+      >
+        讀取月卡自動猜拳設定失敗
+      </Alert>
+    );
+  }
+
+  const eligible = Boolean(match.eligible);
+  const capDirty = capToDraft(bet.cap) !== capDraft.trim();
+
+  return (
+    <Stack spacing={2}>
+      <Stack
+        direction="row"
+        spacing={1.5}
+        sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 1 }}
+      >
+        <SportsMmaIcon color="primary" />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            月卡自動猜拳
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            每天台灣時間 21:00 全站配對一次，布丁自動替你出拳。
+          </Typography>
+        </Box>
+        <Button
+          component={RouterLink}
+          to="/auto/match"
+          size="small"
+          variant="outlined"
+          sx={{ whiteSpace: "nowrap" }}
+        >
+          今日結果
+        </Button>
+      </Stack>
+
+      {!eligible && (
+        <Alert severity="warning" icon={<LockOutlinedIcon fontSize="inherit" />}>
+          目前沒有有效的月卡或季卡，無法開啟這兩個開關；已開啟的項目仍可隨時關閉。
+        </Alert>
+      )}
+
+      <Card>
+        <CardContent>
+          <MatchSwitchRow
+            title="參與每日自動配對"
+            checked={match.enabled}
+            disabled={saving || (!eligible && !match.enabled)}
+            onToggle={handleMatchToggle}
+            stateLabel={match.enabled ? (match.effective ? "已開啟" : "已開啟（暫停中）") : "關閉"}
+          />
+          <Typography variant="body2" sx={{ color: "text.secondary", mt: 1 }}>
+            開啟後會被排入每天 21:00
+            的配對，每天最多一場，不佔用手動猜拳的場數。雙方出拳都由系統隨機決定。
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 1 }}>
+            這和「猜拳自動出手（被挑戰時）」是兩個獨立功能，互不影響。
+          </Typography>
+          {match.enabled && !match.effective && (
+            <Typography variant="caption" sx={{ color: "warning.main", display: "block", mt: 1 }}>
+              訂閱目前無效，這個開關暫時不會生效。
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <MatchSwitchRow
+            title="同意自動配對下注"
+            checked={bet.enabled}
+            disabled={saving || (!eligible && !bet.enabled)}
+            onToggle={handleBetToggle}
+            stateLabel={bet.enabled ? (bet.effective ? "已開啟" : "已開啟（暫停中）") : "關閉"}
+          />
+          <Typography variant="body2" sx={{ color: "text.secondary", mt: 1 }}>
+            獨立開關，不是上面那個的附屬選項。免費參與配對不需要開啟這一項。
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 1 }}>
+            只有雙方都同意才會下注，金額取雙方上限與雙方段位上限的最小值；任一方女神石不足時整場不下注。不會顯示對手的餘額或上限。
+          </Typography>
+
+          {bet.enabled && (
+            <Box sx={{ mt: 2 }}>
+              <Divider sx={{ mb: 2 }} />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="flex-start">
+                <TextField
+                  label="下注上限（女神石）"
+                  size="small"
+                  fullWidth
+                  value={capDraft}
+                  disabled={saving}
+                  onChange={e => {
+                    setCapDraft(e.target.value);
+                    setCapError("");
+                  }}
+                  error={Boolean(capError)}
+                  helperText={capError || "正整數，單位為女神石。"}
+                  slotProps={{ htmlInput: { inputMode: "numeric" } }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={saveCap}
+                  disabled={saving || !capDirty || !eligible}
+                  sx={{ whiteSpace: "nowrap", mt: { sm: 0.25 } }}
+                >
+                  儲存上限
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+
+      <MatchRules />
+
+      <Dialog open={matchAckOpen} onClose={() => !saving && setMatchAckOpen(false)}>
+        <DialogTitle>開啟前請確認</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            開啟「參與每日自動配對」後，配對成功的對手會看到你的暱稱與頭像。
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 1.5 }}>
+            不會顯示你的
+            UID、聯絡方式，也不會顯示你所屬的群組。結果只在這個頁面查看，不會發送群組通知。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMatchAckOpen(false)} disabled={saving}>
+            取消
+          </Button>
+          <Button
+            variant="contained"
+            onClick={confirmMatchAck}
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            我同意
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={betAckOpen}
+        onClose={() => !saving && setBetAckOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>同意下注並設定上限</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            只有雙方都同意下注才會下注。實際金額取雙方上限與雙方段位上限的最小值。
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 1.5 }}>
+            任一方女神石不足時整場不下注，不會改押剩餘餘額。不會顯示對手的餘額或上限。
+          </Typography>
+          <TextField
+            autoFocus
+            label="下注上限（女神石）"
+            size="small"
+            fullWidth
+            sx={{ mt: 2.5 }}
+            value={capDraft}
+            disabled={saving}
+            onChange={e => {
+              setCapDraft(e.target.value);
+              setCapError("");
+            }}
+            error={Boolean(capError)}
+            helperText={capError || "正整數，單位為女神石。"}
+            slotProps={{ htmlInput: { inputMode: "numeric" } }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBetAckOpen(false)} disabled={saving}>
+            取消
+          </Button>
+          <Button
+            variant="contained"
+            onClick={confirmBetAck}
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            我同意並開啟
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!snack}
+        autoHideDuration={3000}
+        onClose={() => setSnack(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        {snack ? (
+          <Alert onClose={() => setSnack(null)} severity={snack.severity} variant="filled">
+            {snack.message}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
+    </Stack>
+  );
+}
+
 export default function AutoSettings() {
   const { loggedIn: isLoggedIn } = useLiff();
   const [loading, setLoading] = useState(true);
@@ -433,6 +881,8 @@ export default function AutoSettings() {
           })}
         </Stack>
       )}
+      <Divider />
+      <AutoMatchSection />
       <Snackbar
         open={!!snack}
         autoHideDuration={3000}

@@ -48,11 +48,29 @@ jest.mock("../../src/util/mysql", () => {
     whereIn: jest.fn().mockReturnThis(),
     update: jest.fn().mockResolvedValue(1),
     first: jest.fn().mockResolvedValue(undefined),
+    forUpdate: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
   });
   const knex = jest.fn(mockChain);
   knex.fn = { now: jest.fn() };
   knex.raw = jest.fn(v => v);
+  knex.transaction = jest.fn(async cb => {
+    // Transaction callback gets a dedicated builder: mutex locking is always a real row in
+    // production after ensureUserLock's autocommit INSERT IGNORE. Keeping this separate from
+    // per-test mysql table stubs lets legacy pure-mock tests focus on their original behavior.
+    const trx = jest.fn(table => {
+      if (table === "achievement_user_lock") {
+        return {
+          where: jest.fn().mockReturnThis(),
+          forUpdate: jest.fn().mockReturnThis(),
+          first: jest.fn().mockResolvedValue({ user_id: "test" }),
+        };
+      }
+      return knex(table);
+    });
+    trx.raw = knex.raw;
+    return cb(trx);
+  });
   return knex;
 });
 
@@ -112,7 +130,8 @@ describe("AchievementEngine", () => {
       expect(UserProgressModel.upsertMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ userId: "user1", achievementId: 1, currentValue: 51 }),
-        ])
+        ]),
+        expect.any(Function)
       );
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
     });
@@ -133,8 +152,8 @@ describe("AchievementEngine", () => {
 
       expect(DefaultLogger.error).not.toHaveBeenCalled();
       // chat_100: 99 + 1 = 100, equals target → unlock
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 1);
-      expect(UserProgressModel.delete).toHaveBeenCalledWith("user1", 1);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 1, expect.any(Function));
+      expect(UserProgressModel.delete).toHaveBeenCalledWith("user1", 1, expect.any(Function));
     });
 
     it("should not throw on event with no mapped achievements", async () => {
@@ -156,10 +175,13 @@ describe("AchievementEngine", () => {
 
       // N+1 collapse: one write for the whole pass, carrying both rows.
       expect(UserProgressModel.upsertMany).toHaveBeenCalledTimes(1);
-      expect(UserProgressModel.upsertMany).toHaveBeenCalledWith([
-        { userId: "user1", achievementId: 1, currentValue: 51 },
-        { userId: "user1", achievementId: 2, currentValue: 81 },
-      ]);
+      expect(UserProgressModel.upsertMany).toHaveBeenCalledWith(
+        [
+          { userId: "user1", achievementId: 1, currentValue: 51 },
+          { userId: "user1", achievementId: 2, currentValue: 81 },
+        ],
+        expect.any(Function)
+      );
     });
 
     it("does not call upsertMany when no candidate value changes", async () => {
@@ -176,7 +198,7 @@ describe("AchievementEngine", () => {
       expect(UserProgressModel.upsertMany).not.toHaveBeenCalled();
     });
 
-    it("still unlocks when the batched progress write fails (write/unlock isolation)", async () => {
+    it("rolls back the pass when the batched progress write fails", async () => {
       // chat_100 (id1) and chat_1000 (id2) both cross their target this pass.
       AchievementEngine._setCache([
         { id: 1, key: "chat_100", target_value: 100, reward_stones: 50, condition: null },
@@ -195,17 +217,16 @@ describe("AchievementEngine", () => {
 
       const result = await AchievementEngine.evaluate("user1", "chat_message", {});
 
-      // Batch failure is logged but does NOT abort the unlocks.
+      // KTD6: core errors abort the transaction; legacy evaluate catches only at the outer edge.
       expect(DefaultLogger.error).toHaveBeenCalledWith(
-        "AchievementEngine.evaluate batch upsert error:",
+        "AchievementEngine.evaluate error:",
         expect.any(Error)
       );
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 1);
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 2);
-      expect(result.unlocked.map(a => a.key)).toEqual(["chat_100", "chat_1000"]);
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
+      expect(result).toEqual({ unlocked: [] });
     });
 
-    it("isolates a failing unlock so the remaining achievements still unlock", async () => {
+    it("aborts remaining unlocks when one unlock fails", async () => {
       AchievementEngine._setCache([
         { id: 1, key: "chat_100", target_value: 100, reward_stones: 50, condition: null },
         { id: 2, key: "chat_1000", target_value: 1000, reward_stones: 200, condition: null },
@@ -217,7 +238,7 @@ describe("AchievementEngine", () => {
           [2, 999],
         ])
       );
-      // First unlock (id1) blows up inside unlockAchievement; second must survive.
+      // First unlock blows up; the shared transaction must not continue to a partial second unlock.
       UserAchievementModel.unlock.mockRejectedValueOnce(new Error("write conflict"));
       UserAchievementModel.unlock.mockResolvedValue(true);
       UserProgressModel.delete.mockResolvedValue();
@@ -225,9 +246,13 @@ describe("AchievementEngine", () => {
       const result = await AchievementEngine.evaluate("user1", "chat_message", {});
 
       expect(DefaultLogger.error).toHaveBeenCalledTimes(1);
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 2);
-      // id1 threw before its push, so only chat_1000 ends up in the result.
-      expect(result.unlocked.map(a => a.key)).toEqual(["chat_1000"]);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("user1", 1, expect.any(Function));
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith(
+        "user1",
+        2,
+        expect.any(Function)
+      );
+      expect(result).toEqual({ unlocked: [] });
     });
   });
 
@@ -406,7 +431,7 @@ describe("AchievementEngine", () => {
       await AchievementEngine.evaluate("user1", "chat_message", {});
 
       // progress 已無意義，不論誰贏都該清掉
-      expect(UserProgressModel.delete).toHaveBeenCalledWith("user1", 7);
+      expect(UserProgressModel.delete).toHaveBeenCalledWith("user1", 7, expect.any(Function));
     });
 
     it("unlockByKey reports already_unlocked and pays nothing when it loses the race", async () => {
@@ -629,9 +654,10 @@ describe("AchievementEngine", () => {
       const result = await AchievementEngine.evaluate("Ualice", "signin", { streak: 5 });
 
       expect(result.unlocked).toEqual([]);
-      expect(UserProgressModel.upsertMany).toHaveBeenCalledWith([
-        { userId: "Ualice", achievementId: 900, currentValue: 5 },
-      ]);
+      expect(UserProgressModel.upsertMany).toHaveBeenCalledWith(
+        [{ userId: "Ualice", achievementId: 900, currentValue: 5 }],
+        expect.any(Function)
+      );
     });
 
     it("tracks total independently of streak", async () => {
@@ -1129,6 +1155,14 @@ describe("AchievementEngine", () => {
       expect(_isEligible("Uany", { condition: { availableFrom: "2026-07-01" } })).toBe(true);
     });
 
+    it("availableFrom 可用事件原日判定；未傳 asOfDate 時維持 today fallback", () => {
+      const achievement = { condition: { availableFrom: "2026-08-08" } };
+
+      expect(_isEligible("Uany", achievement, "2026-08-07")).toBe(false);
+      expect(_isEligible("Uany", achievement, "2026-08-08")).toBe(true);
+      expect(_isEligible("Uany", achievement)).toBe(false);
+    });
+
     it("availableFrom rejects regardless of an otherwise passing eligibility block", () => {
       const a = {
         condition: {
@@ -1211,7 +1245,8 @@ describe("AchievementEngine", () => {
       expect(UserProgressModel.upsertMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ userId: "Uadmin", achievementId: 60, currentValue: 4 }),
-        ])
+        ]),
+        expect.any(Function)
       );
       expect(UserAchievementModel.unlock).not.toHaveBeenCalled();
     });
@@ -1292,7 +1327,7 @@ describe("AchievementEngine", () => {
 
       expect(result.unlocked).toBe(true);
       expect(result.achievement.key).toBe("prestige_departure");
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Uabc", 101);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Uabc", 101, expect.any(Function));
       expect(mysql).toHaveBeenCalledWith("inventory");
     });
 
@@ -1422,9 +1457,13 @@ describe("AchievementEngine", () => {
 
       await AchievementEngine.batchEvaluate();
 
-      expect(UserProgressModel.upsert).toHaveBeenCalledWith("Ualice", 1, 150);
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ualice", 1);
-      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith("Ualice", 2);
+      expect(UserProgressModel.upsert).toHaveBeenCalledWith("Ualice", 1, 150, expect.any(Function));
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ualice", 1, expect.any(Function));
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith(
+        "Ualice",
+        2,
+        expect.any(Function)
+      );
     });
 
     it("unlocks all three chat tiers for a user with banked-cycle XP (>= 5000)", async () => {
@@ -1432,9 +1471,9 @@ describe("AchievementEngine", () => {
 
       await AchievementEngine.batchEvaluate();
 
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 1);
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 2);
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 3);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 1, expect.any(Function));
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 2, expect.any(Function));
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Ubob", 3, expect.any(Function));
     });
 
     it("unlocks chat_100+chat_1000 but not chat_5000 at mid-tier lifetime_exp", async () => {
@@ -1442,9 +1481,9 @@ describe("AchievementEngine", () => {
 
       await AchievementEngine.batchEvaluate();
 
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Umid", 1);
-      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Umid", 2);
-      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith("Umid", 3);
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Umid", 1, expect.any(Function));
+      expect(UserAchievementModel.unlock).toHaveBeenCalledWith("Umid", 2, expect.any(Function));
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith("Umid", 3, expect.any(Function));
     });
 
     it("skips already-unlocked achievements", async () => {
@@ -1455,7 +1494,11 @@ describe("AchievementEngine", () => {
 
       await AchievementEngine.batchEvaluate();
 
-      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith("Ucarl", 1);
+      expect(UserAchievementModel.unlock).not.toHaveBeenCalledWith(
+        "Ucarl",
+        1,
+        expect.any(Function)
+      );
     });
   });
 });

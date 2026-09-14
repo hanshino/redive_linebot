@@ -12,7 +12,6 @@ const GachaBanner = require("../model/princess/GachaBanner");
 const SubscribeUser = require("../model/application/SubscribeUser");
 const SubscribeCard = require("../model/application/SubscribeCard");
 
-const EventCenterService = require("./EventCenterService");
 const SigninService = require("./SigninService");
 const AchievementEngine = require("./AchievementEngine");
 const {
@@ -291,10 +290,6 @@ async function runDailyDraw(userId, opts = {}) {
       signinDate = signin.date;
     });
   });
-
-  await time("rd.side", () =>
-    EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId })
-  );
 
   // 成就評估必須在 commit 之後 —— 交易內查 streak/total 會讀到未提交的狀態。
   // 只有真的新增了 ledger 才評估，同一天重抽不重複觸發。

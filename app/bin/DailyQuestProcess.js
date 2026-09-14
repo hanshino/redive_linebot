@@ -1,9 +1,5 @@
-const mysql = require("../src/util/mysql");
-const redis = require("../src/util/redis");
-const moment = require("moment");
-const config = require("config");
 const { DefaultLogger } = require("../src/util/Logger");
-const { todayUtc8 } = require("../src/util/date");
+const DailyQuestService = require("../src/service/DailyQuestService");
 
 module.exports = main;
 
@@ -13,108 +9,23 @@ async function main() {
   if (running) return;
   running = true;
   try {
-    await run();
-  } catch (err) {
-    console.error(err);
+    DefaultLogger.info("[DailyQuest] Start");
+    const result = await DailyQuestService.run();
+    DefaultLogger.info(
+      `[DailyQuest] End activated=${result.activated} processed=${result.processed} ` +
+        `rewarded=${result.rewarded} weekly=${result.weeklyRewarded} failed=${result.failed}`
+    );
+    return result;
+  } finally {
+    running = false;
   }
-  running = false;
-}
-
-async function run() {
-  const handleCount = { value: 0 };
-  const handleUsers = [];
-
-  DefaultLogger.info(`[DailyQuest] Start`);
-
-  while (handleCount.value < 1000) {
-    const strPayload = await redis.rPop(config.get("event_center.daily_quest"));
-    if (!strPayload) break;
-    try {
-      const payload = JSON.parse(strPayload);
-      if (!payload.userId) continue;
-      if (handleUsers.includes(payload.userId)) continue;
-      handleUsers.push(payload.userId);
-
-      await handle(payload);
-      handleCount.value++;
-    } catch (e) {
-      DefaultLogger.error(e);
-      continue;
-    }
-  }
-
-  DefaultLogger.info(`[DailyQuest] handle ${handleCount.value}`);
-  DefaultLogger.info(`[DailyQuest] End`);
-}
-
-async function handle(payload) {
-  const { userId } = payload;
-  const { gacha, janken } = await getTodayRecord(userId);
-
-  if (!gacha || !janken) {
-    DefaultLogger.info(`[DailyQuest] ${userId} not complete`);
-    return;
-  }
-
-  const dailyRecord = await mysql("daily_quest")
-    .first()
-    .where("created_at", ">=", moment().startOf("day").toDate())
-    .where("created_at", "<=", moment().endOf("day").toDate())
-    .where("user_id", userId);
-
-  if (dailyRecord) {
-    DefaultLogger.info(`[DailyQuest] ${userId} already complete. Gaven Reward`);
-    return;
-  }
-
-  const trx = await mysql.transaction();
-  try {
-    DefaultLogger.info(`[DailyQuest] ${userId} complete. Give reward`);
-    await trx("daily_quest").insert({ user_id: userId });
-    await trx("inventory").insert({
-      userId,
-      itemId: config.get("daily_quest.reward.itemId"),
-      itemAmount: config.get("daily_quest.reward.itemAmount"),
-    });
-  } catch (e) {
-    DefaultLogger.error(e);
-    await trx.rollback();
-    return;
-  }
-  await trx.commit();
-
-  const weeklyRecords = await mysql("daily_quest")
-    .where("created_at", ">=", moment().startOf("week").toDate())
-    .where("created_at", "<=", moment().endOf("week").toDate())
-    .where("user_id", userId);
-
-  if (weeklyRecords.length === 7) {
-    await mysql("inventory").insert({
-      userId,
-      itemId: config.get("daily_quest.weekly_reward.itemId"),
-      itemAmount: config.get("daily_quest.weekly_reward.itemAmount"),
-    });
-  }
-}
-
-async function getTodayRecord(userId) {
-  const start = moment().startOf("day").toDate();
-  const end = moment().endOf("day").toDate();
-
-  const [gacha, janken] = await Promise.all([
-    // 每日一抽的簽到來源已從 signin_days 換成 signin_ledger（一天一列）。
-    // 舊表不再被寫入，繼續讀它會讓每日任務永遠判定未完成。
-    mysql("signin_ledger").where("user_id", userId).where("signin_date", todayUtc8()).first(),
-    mysql("janken_result")
-      .where("user_id", userId)
-      .where("created_at", ">=", start)
-      .where("created_at", "<=", end)
-      .first(),
-  ]);
-
-  return { gacha: !!gacha, janken: !!janken };
 }
 
 if (require.main === module) {
-  main().then(() => process.exit(0));
+  main()
+    .then(() => process.exit(0))
+    .catch(error => {
+      DefaultLogger.error(`[DailyQuest] fatal code=${error.code || "UNKNOWN"}`);
+      process.exit(1);
+    });
 }

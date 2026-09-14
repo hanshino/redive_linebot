@@ -23,6 +23,7 @@ jest.mock("config", () => {
 jest.mock("../../model/application/Inventory", () => ({
   inventory: {
     getUserMoney: jest.fn(),
+    lockGodStoneBalance: jest.fn(),
     decreaseGodStone: jest.fn().mockResolvedValue(undefined),
     increaseGodStone: jest.fn().mockResolvedValue(undefined),
   },
@@ -31,16 +32,14 @@ jest.mock("../../model/application/Inventory", () => ({
 jest.mock("../../model/application/JankenRecords", () => ({
   create: jest.fn().mockResolvedValue(1),
   update: jest.fn().mockResolvedValue(1),
+  // refundStaleEscrows 的 durable settled check：預設查無（未結算）
+  find: jest.fn().mockResolvedValue(undefined),
+  SOURCE: { MANUAL: "manual", ARENA: "arena", AUTO: "auto" },
 }));
 jest.mock("../../model/application/JankenResult", () => ({
   insert: jest.fn().mockResolvedValue(1),
   resultMap: { win: 1, lose: 2, draw: 3 },
 }));
-jest.mock("../../service/EventCenterService", () => ({
-  add: jest.fn().mockResolvedValue(undefined),
-  getEventName: jest.fn(n => n),
-}));
-
 const redis = require("../../util/redis");
 const { inventory } = require("../../model/application/Inventory");
 const JankenService = require("../JankenService");
@@ -144,16 +143,15 @@ describe("JankenService.escrowBet pending tracking", () => {
   });
 
   it("registers the escrow in the pending set after the ledger debit", async () => {
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10000);
 
     const result = await JankenService.escrowBet("Uaaa", 500, "match-1");
 
     expect(result).toEqual({ success: true });
-    expect(inventory.decreaseGodStone).toHaveBeenCalledWith({
-      userId: "Uaaa",
-      amount: 500,
-      note: "janken_bet_escrow",
-    });
+    // debit 現在帶交易（trx）在鎖讀之後執行，只斷言金額與 note
+    expect(inventory.decreaseGodStone).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "Uaaa", amount: 500, note: "janken_bet_escrow" })
+    );
     expect(redis.zAdd).toHaveBeenCalledWith(PENDING_KEY, {
       score: expect.any(Number),
       value: "match-1|Uaaa|500",
@@ -161,7 +159,7 @@ describe("JankenService.escrowBet pending tracking", () => {
   });
 
   it("does not register anything when the balance is insufficient", async () => {
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10);
 
     const result = await JankenService.escrowBet("Uaaa", 500, "match-1");
 
@@ -171,18 +169,17 @@ describe("JankenService.escrowBet pending tracking", () => {
   });
 
   it("reverses the debit when zAdd throws, so stones are never lost untracked", async () => {
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10000);
     redis.zAdd.mockRejectedValueOnce(new Error("redis down"));
 
     const result = await JankenService.escrowBet("Uaaa", 500, "match-1");
 
     expect(result).toEqual({ success: false, balance: 10000 });
     // The rollback credit must exactly match the debit.
-    expect(inventory.decreaseGodStone).toHaveBeenCalledWith({
-      userId: "Uaaa",
-      amount: 500,
-      note: "janken_bet_escrow",
-    });
+    // debit 現在帶交易（trx）在鎖讀之後執行，只斷言金額與 note
+    expect(inventory.decreaseGodStone).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "Uaaa", amount: 500, note: "janken_bet_escrow" })
+    );
     expect(inventory.increaseGodStone).toHaveBeenCalledTimes(1);
     expect(inventory.increaseGodStone).toHaveBeenCalledWith({
       userId: "Uaaa",
@@ -195,7 +192,7 @@ describe("JankenService.escrowBet pending tracking", () => {
   });
 
   it("leaves no pending member behind on the rollback path", async () => {
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10000);
     redis.zAdd.mockRejectedValueOnce(new Error("redis down"));
     redis.zRangeByScore.mockResolvedValueOnce([]);
 
@@ -231,7 +228,7 @@ describe("JankenService.isMatchAlive", () => {
     jest.clearAllMocks();
     redis.set.mockResolvedValueOnce("OK");
     redis.zAdd.mockResolvedValueOnce(1);
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10000);
 
     await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
 
@@ -255,7 +252,7 @@ describe("JankenService.tryEscrowOnce releases the lock when the stake fails", (
 
   it("drops the lock when the player cannot afford the bet", async () => {
     redis.set.mockResolvedValueOnce("OK");
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10);
 
     const result = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
 
@@ -265,7 +262,7 @@ describe("JankenService.tryEscrowOnce releases the lock when the stake fails", (
 
   it("drops the lock when escrowBet rolls back after a zAdd failure", async () => {
     redis.set.mockResolvedValueOnce("OK");
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10000);
     redis.zAdd.mockRejectedValueOnce(new Error("redis down"));
 
     const result = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
@@ -276,7 +273,7 @@ describe("JankenService.tryEscrowOnce releases the lock when the stake fails", (
 
   it("drops the lock and rethrows when escrowBet throws", async () => {
     redis.set.mockResolvedValueOnce("OK");
-    inventory.getUserMoney.mockRejectedValueOnce(new Error("db down"));
+    inventory.lockGodStoneBalance.mockRejectedValueOnce(new Error("db down"));
 
     await expect(JankenService.tryEscrowOnce("m1", "Uaaa", 500)).rejects.toThrow("db down");
     expect(redis.del).toHaveBeenCalledWith(LOCK_KEY);
@@ -285,7 +282,7 @@ describe("JankenService.tryEscrowOnce releases the lock when the stake fails", (
   it("keeps the lock when the stake succeeds (isMatchAlive still works)", async () => {
     redis.set.mockResolvedValueOnce("OK");
     redis.zAdd.mockResolvedValueOnce(1);
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10000);
 
     const result = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
 
@@ -298,14 +295,14 @@ describe("JankenService.tryEscrowOnce releases the lock when the stake fails", (
   // "already paid" and pass through to submitChoice — letting them play without staking.
   it("makes a retry re-attempt the debit instead of reporting alreadyEscrowed", async () => {
     redis.set.mockResolvedValueOnce("OK");
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10);
     const first = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
     expect(first.alreadyEscrowed).toBeUndefined();
     expect(first.success).toBe(false);
 
     // Lock was deleted, so the NX set succeeds again on the second click.
     redis.set.mockResolvedValueOnce("OK");
-    inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+    inventory.lockGodStoneBalance.mockResolvedValueOnce(10);
     const second = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
 
     expect(second.alreadyEscrowed).toBeUndefined();
@@ -319,7 +316,7 @@ describe("JankenService.tryEscrowOnce releases the lock when the stake fails", (
     const result = await JankenService.tryEscrowOnce("m1", "Uaaa", 500);
 
     expect(result).toEqual({ alreadyEscrowed: true });
-    expect(inventory.getUserMoney).not.toHaveBeenCalled();
+    expect(inventory.lockGodStoneBalance).not.toHaveBeenCalled();
     expect(redis.del).not.toHaveBeenCalled();
   });
 });
@@ -331,12 +328,18 @@ describe("JankenService.resolveMatch clears pending escrows", () => {
     redis.set.mockResolvedValue("OK");
     redis.del.mockResolvedValue(1);
     redis.zRem.mockResolvedValue(1);
-    // Elo/streak run real knex transactions (forUpdate) that the shared mock builder
-    // doesn't model; they're covered by JankenService.elo.test.js.
-    jest.spyOn(JankenService, "updateElo").mockResolvedValue({ p1EloChange: 0, p2EloChange: 0 });
-    jest
-      .spyOn(JankenService, "updateStreaks")
-      .mockResolvedValue({ winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 });
+    // 結算 core 走真 knex 鎖讀（forUpdate）與交易，不在共用 mock builder 的模擬範圍；
+    // 這裡只驗 wrapper 在 commit 後的 Redis 清理，core 由 JankenService.settleCore.test.js（隔離 DB）覆蓋。
+    jest.spyOn(JankenService, "settleMatchInTransaction").mockResolvedValue({
+      p1Result: "win",
+      p2Result: "lose",
+      betFee: 0,
+      p1EloChange: 0,
+      p2EloChange: 0,
+      winnerStreak: 0,
+      loserPreviousStreak: 0,
+      loserBounty: 0,
+    });
   });
 
   afterAll(() => jest.restoreAllMocks());
@@ -372,5 +375,74 @@ describe("JankenService.resolveMatch clears pending escrows", () => {
     });
 
     expect(redis.zRem).not.toHaveBeenCalled();
+  });
+
+  // --- Orchestrator 回報的修正項 2：post-commit 副作用各自獨立 catch，不互相牽連、result 一律回傳 ---
+
+  it("zRem 失敗不擋 del，且回傳已 commit 的 result（不是 undefined／拋出）", async () => {
+    redis.zRem.mockRejectedValue(new Error("redis zRem down"));
+
+    const result = await JankenService.resolveMatch({
+      ...baseParams,
+      p1Choice: "rock",
+      p2Choice: "scissors",
+    });
+
+    // zRem 兩次都失敗，但 del 仍要被嘗試（不因 zRem reject 而被跳過）。
+    expect(redis.zRem).toHaveBeenCalledTimes(2);
+    expect(redis.del).toHaveBeenCalledWith(`jankenDecide:m1:Uaaa`);
+    expect(redis.del).toHaveBeenCalledWith(`jankenDecide:m1:Ubbb`);
+    // 結算 core 的 result 已經 commit，controller 靠它觸發成就通知——即使清理失敗也必須拿得到。
+    expect(result).toMatchObject({ p1Result: "win", p2Result: "lose" });
+  });
+
+  it("del 失敗不擋 zRem，且回傳已 commit 的 result", async () => {
+    redis.del.mockRejectedValue(new Error("redis del down"));
+
+    const result = await JankenService.resolveMatch({
+      ...baseParams,
+      p1Choice: "rock",
+      p2Choice: "scissors",
+    });
+
+    expect(redis.zRem).toHaveBeenCalledTimes(2);
+    expect(redis.del).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ p1Result: "win", p2Result: "lose" });
+  });
+
+  it("兩類清理同時失敗：兩者都仍被嘗試、result 仍正確回傳", async () => {
+    redis.zRem.mockRejectedValue(new Error("zRem down"));
+    redis.del.mockRejectedValue(new Error("del down"));
+
+    const result = await JankenService.resolveMatch({
+      ...baseParams,
+      p1Choice: "rock",
+      p2Choice: "scissors",
+    });
+
+    expect(redis.zRem).toHaveBeenCalledTimes(2);
+    expect(redis.del).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ p1Result: "win", p2Result: "lose" });
+  });
+
+  it("resolveMatch 不會把 post-commit 副作用的錯誤吞成靜默失敗：settleMatchInTransaction 本身失敗仍要 throw（不是回傳 result 或 null）", async () => {
+    // 這是修正項 2 的邊界：只有 commit 之後的清理副作用可以各自 catch；交易本身（結算 core）
+    // 失敗必須讓整個 resolveMatch 往外拋，不能被本次修正的「各自 catch」邏輯誤蓋住。
+    JankenService.settleMatchInTransaction.mockRejectedValueOnce(new Error("settle core failed"));
+
+    await expect(
+      JankenService.resolveMatch({ ...baseParams, p1Choice: "rock", p2Choice: "scissors" })
+    ).rejects.toThrow("settle core failed");
+    // 交易本身失敗時，不應該進入任何 post-commit 副作用（沒有東西可清理）
+    expect(redis.zRem).not.toHaveBeenCalled();
+    expect(redis.del).not.toHaveBeenCalled();
+  });
+
+  it("資金只落一次：即使 post-commit 副作用全部失敗，settleMatchInTransaction 仍只被呼叫一次（不因清理失敗而重新結算）", async () => {
+    redis.zRem.mockRejectedValue(new Error("zRem down"));
+    redis.del.mockRejectedValue(new Error("del down"));
+    await JankenService.resolveMatch({ ...baseParams, p1Choice: "rock", p2Choice: "scissors" });
+
+    expect(JankenService.settleMatchInTransaction).toHaveBeenCalledTimes(1);
   });
 });

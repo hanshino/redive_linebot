@@ -1,11 +1,13 @@
 const redis = require("../util/redis");
+const mysql = require("../util/mysql");
 const config = require("config");
 const JankenRecords = require("../model/application/JankenRecords");
 const JankenResult = require("../model/application/JankenResult");
+const JankenAutoMatchParticipant = require("../model/application/JankenAutoMatchParticipant");
+const JankenAutoMatchOutbox = require("../model/application/JankenAutoMatchOutbox");
 const JankenAutoFateLog = require("../model/application/JankenAutoFateLog");
 const UserAutoPreference = require("../model/application/UserAutoPreference");
 const { inventory } = require("../model/application/Inventory");
-const EventCenterService = require("./EventCenterService");
 const SubscriptionService = require("./SubscriptionService");
 const { DefaultLogger } = require("../util/Logger");
 const JankenRating = require("../model/application/JankenRating");
@@ -87,14 +89,23 @@ exports.validateBet = function (amount, maxBet) {
 };
 
 exports.escrowBet = async function (userId, amount, matchId) {
-  const { amount: balance } = (await inventory.getUserMoney(userId)) || { amount: 0 };
-  if (balance < amount) {
-    return { success: false, balance };
+  // KTD3：扣款前在交易內鎖 user 列（鎖序 ①）＋鎖讀 wallet（鎖序 ⑥）再重讀餘額，
+  // 同一 user 的兩筆並發 escrow 不會都看到「扣款前」的餘額。
+  const debit = await mysql.transaction(async trx => {
+    await lockUserRows(trx, [userId]);
+    const balance = await inventory.lockGodStoneBalance(userId, trx);
+    if (balance < amount) return { success: false, balance };
+    await inventory.decreaseGodStone({ userId, amount, note: "janken_bet_escrow", trx });
+    return { success: true, balance };
+  });
+  if (!debit.success) {
+    return { success: false, balance: debit.balance };
   }
-  await inventory.decreaseGodStone({ userId, amount, note: "janken_bet_escrow" });
+  const { balance } = debit;
   // Track the escrow so refundStaleEscrows can return it if the match never resolves.
   // Ledger-first ordering: if we crash between the debit and the zAdd, zAdd-first would
   // let the cron refund an escrow that was never actually taken (minting stones).
+  // 已知 deferred gap（計畫 KTD3）：debit 已 commit → zAdd 之前 crash，該筆 escrow 不會被 cron 退。
   try {
     await redis.zAdd(PENDING_ESCROW_KEY, {
       score: Date.now(),
@@ -189,6 +200,14 @@ exports.refundStaleEscrows = async function () {
         continue;
       }
 
+      // Durable settled check（KTD3）：resolveMatch 已 commit 但在 zRem 之前 crash 的場次，
+      // janken_records 已有該 matchId —— 賭金已結算，只清 member、不退款。
+      if (await JankenRecords.find(matchId)) {
+        await redis.zRem(PENDING_ESCROW_KEY, member);
+        DefaultLogger.info(`[JankenEscrowRefund] skipped settled match_id=${matchId}`);
+        continue;
+      }
+
       const claimed = await redis.zRem(PENDING_ESCROW_KEY, member);
       if (claimed !== 1) {
         // Settled or claimed elsewhere — never pay out on an unclaimed member.
@@ -216,6 +235,461 @@ exports.calculateBountyIncrement = function (fee) {
   return fee;
 };
 
+// ---------------------------------------------------------------------------------------
+// 結算 core（KTD3）。所有 Janken 寫入路徑共用同一把鎖序，逐列 await、不用 Promise.all 取鎖：
+//   ① user 兩列依 user_id ASC → ② participant（auto）→ ③ subscribe_user／user_auto_preference（auto，
+//   由 auto.authorize 在 hook 內依序鎖）→ ④ janken_pair_stats canonical orderedPair →
+//   ⑤ janken_rating 兩列 ASC → ⑥ inventory itemId=999 依 user_id ASC（鎖讀／扣款／payout／bounty
+//   全部在 ⑤ 之後才碰 inventory）。
+// core 不開交易、不碰 Redis／LINE／Bottender context；呼叫端負責 mysql.transaction 與 commit 後的副作用。
+// ---------------------------------------------------------------------------------------
+
+const RETRYABLE_LOCK_CODES = new Set(["ER_LOCK_DEADLOCK", "ER_LOCK_WAIT_TIMEOUT"]);
+exports.isRetryableLockError = err => Boolean(err && RETRYABLE_LOCK_CODES.has(err.code));
+
+class SettlementError extends Error {
+  constructor(code, message) {
+    super(message || code);
+    this.code = code;
+  }
+}
+exports.SettlementError = SettlementError;
+
+const ascending = ids => [...ids].sort();
+
+async function lockUserRows(trx, userIds) {
+  for (const userId of ascending(userIds)) {
+    await trx("user").where({ platform_id: userId }).forUpdate().first("id");
+  }
+}
+
+/** 段位下注上限；0 是合法值，不能寫成 `maxByRank[tier] || fallback`（計畫 Q1）。 */
+function rankMaxBet(rankTier) {
+  const maxByRank = config.get("minigame.janken.bet.maxAmountByRank");
+  return Object.prototype.hasOwnProperty.call(maxByRank, rankTier)
+    ? maxByRank[rankTier]
+    : maxByRank.beginner;
+}
+
+function defaultRating(userId) {
+  return {
+    user_id: userId,
+    elo: config.get("minigame.janken.elo.initial"),
+    rank_tier: "beginner",
+    streak: 0,
+    max_streak: 0,
+    bounty: 0,
+    last_won_opponent_id: null,
+  };
+}
+
+/** ⑤：依 user_id ASC 逐列 FOR UPDATE 讀 rating；不存在的列不在此建立（避免非下注場多出 rating 列）。 */
+async function lockRatings(trx, userIds) {
+  const ratings = {};
+  for (const userId of ascending(userIds)) {
+    const row = await trx("janken_rating").where({ user_id: userId }).forUpdate().first();
+    ratings[userId] = row || defaultRating(userId);
+  }
+  return ratings;
+}
+
+async function ensureRatingRows(trx, userIds) {
+  for (const userId of ascending(userIds)) {
+    await JankenRating.findOrCreate(userId, trx);
+  }
+}
+
+/**
+ * Elo／勝負場數／pair_stats（原 updateElo 的交易內本體）。ratings／priorPairStats 由呼叫端在 ④⑤ 鎖好後傳入。
+ */
+async function applyEloInTransaction(
+  trx,
+  { p1UserId, p2UserId, p1Result, betAmount, ratings, priorPairStats }
+) {
+  const zero = { p1EloChange: 0, p2EloChange: 0, p1NewElo: null, p2NewElo: null };
+  const [playerA, playerB] = orderedPair(p1UserId, p2UserId);
+
+  if (p1Result === "draw") {
+    if (betAmount > 0) {
+      await ensureRatingRows(trx, [p1UserId, p2UserId]);
+      await upsertPairStats(trx, playerA, playerB, { draws: 1 });
+      for (const userId of [playerA, playerB]) {
+        await trx("janken_rating")
+          .where({ user_id: userId })
+          .update({ draw_count: trx.raw("draw_count + 1") });
+      }
+    }
+    return zero;
+  }
+
+  const nonBetK = config.get("minigame.janken.elo.nonBetK");
+  if ((!betAmount || betAmount <= 0) && (!nonBetK || nonBetK <= 0)) {
+    return zero;
+  }
+
+  await ensureRatingRows(trx, [p1UserId, p2UserId]);
+  const p1Rating = ratings[p1UserId];
+  const p2Rating = ratings[p2UserId];
+  const pairDampening = exports.calculatePairDampening(priorPairStats || undefined);
+
+  const p1EloChange = exports.calculateEloChange(p1Rating.elo, p2Rating.elo, p1Result, betAmount, {
+    streak: p1Rating.streak || 0,
+    pairDampening,
+  });
+  const p2Result = p1Result === "win" ? "lose" : "win";
+  const p2EloChange = exports.calculateEloChange(p2Rating.elo, p1Rating.elo, p2Result, betAmount, {
+    streak: p2Rating.streak || 0,
+    pairDampening,
+  });
+
+  const p1NewElo = Math.max(0, p1Rating.elo + p1EloChange);
+  const p2NewElo = Math.max(0, p2Rating.elo + p2EloChange);
+  const p1WinKey = p1Result === "win" ? "win_count" : "lose_count";
+  const p2WinKey = p1Result === "win" ? "lose_count" : "win_count";
+
+  const winnerIsA =
+    (p1Result === "win" && p1UserId === playerA) || (p1Result === "lose" && p2UserId === playerA);
+  await upsertPairStats(trx, playerA, playerB, {
+    aWins: winnerIsA ? 1 : 0,
+    bWins: winnerIsA ? 0 : 1,
+  });
+
+  const updates = {
+    [p1UserId]: {
+      elo: p1NewElo,
+      rank_tier: JankenRating.getRankTier(p1NewElo),
+      [p1WinKey]: trx.raw(`${p1WinKey} + 1`),
+    },
+    [p2UserId]: {
+      elo: p2NewElo,
+      rank_tier: JankenRating.getRankTier(p2NewElo),
+      [p2WinKey]: trx.raw(`${p2WinKey} + 1`),
+    },
+  };
+  for (const userId of [playerA, playerB]) {
+    await trx("janken_rating").where({ user_id: userId }).update(updates[userId]);
+  }
+
+  return {
+    p1EloChange,
+    p2EloChange,
+    p1NewElo,
+    p2NewElo,
+    p1RankLabel: JankenRating.getRankLabel(p1NewElo),
+    p2RankLabel: JankenRating.getRankLabel(p2NewElo),
+  };
+}
+
+/**
+ * 連勝／懸賞（原 updateStreaks 的交易內本體）。ratings 為 ⑤ 鎖讀結果；`winnerTier` 是 Elo 更新後的
+ * 段位（既有行為：懸賞上限用結算後的 tier），未給時退回鎖讀到的 rank_tier。
+ */
+async function applyStreaksInTransaction(
+  trx,
+  { p1UserId, p2UserId, p1Result, betAmount = 0, fee = 0, ratings, winnerTier }
+) {
+  if (p1Result === "draw" || !betAmount || betAmount <= 0) {
+    return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
+  }
+
+  const winnerId = p1Result === "win" ? p1UserId : p2UserId;
+  const loserId = p1Result === "win" ? p2UserId : p1UserId;
+  await ensureRatingRows(trx, [winnerId, loserId]);
+  const winnerRating = ratings[winnerId];
+  const loserRating = ratings[loserId];
+
+  // Streak only grows when the winner beats a different opponent than their previous streak win.
+  // This is the core anti-self-farm gate for streak/bounty: hammering the same alt account
+  // keeps the streak stuck.
+  const sameOpponentAsLastStreakWin =
+    winnerRating.streak > 0 && winnerRating.last_won_opponent_id === loserId;
+  const newStreak = sameOpponentAsLastStreakWin ? winnerRating.streak : winnerRating.streak + 1;
+  const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
+  // Bounty funded from match fee — no new money created
+  const bountyIncrement =
+    newStreak >= 2 && betAmount >= BOUNTY_MIN_BET ? exports.calculateBountyIncrement(fee) : 0;
+  const maxBounty = JankenRating.getMaxBounty(winnerTier || winnerRating.rank_tier);
+  const newBounty = Math.min(winnerRating.bounty + bountyIncrement, maxBounty);
+  // Bounty claim capped by claimer's bet amount
+  const loserBounty = Math.min(loserRating.bounty, betAmount * BOUNTY_CLAIM_MULTIPLIER);
+
+  const updates = {
+    [winnerId]: {
+      streak: newStreak,
+      max_streak: newMaxStreak,
+      bounty: newBounty,
+      last_won_opponent_id: loserId,
+    },
+    [loserId]: { streak: 0, bounty: 0, last_won_opponent_id: null },
+  };
+  for (const userId of ascending([winnerId, loserId])) {
+    await trx("janken_rating").where({ user_id: userId }).update(updates[userId]);
+  }
+
+  if (loserBounty > 0) {
+    await inventory.increaseGodStone({
+      userId: winnerId,
+      amount: loserBounty,
+      note: "janken_bounty_claim",
+      trx,
+    });
+  }
+
+  return {
+    winnerStreak: newStreak,
+    winnerBounty: newBounty,
+    loserPreviousStreak: loserRating.streak,
+    loserBounty,
+  };
+}
+
+/**
+ * 單一共用結算 core。呼叫端開交易並傳入 `trx`；本函式內任何 throw 都要讓呼叫端 rollback。
+ *
+ * @param {import("knex").Knex.Transaction} trx
+ * @param {Object} params
+ * @param {String} params.matchId
+ * @param {?String} [params.groupId]
+ * @param {String} params.p1UserId
+ * @param {String} params.p2UserId
+ * @param {String} params.p1Choice
+ * @param {String} params.p2Choice
+ * @param {"pre_escrowed"|"inline"} params.funding
+ *   pre_escrowed：手動對戰，賭金已由 escrow 扣過，core 只 payout／refund、絕不二次扣款。
+ *   inline：自動配對，core 在 ③ 授權交集後於 ⑥ 鎖讀餘額決定金額並雙方 debit。
+ * @param {Number} [params.betAmount=0] pre_escrowed 的固定賭金；inline 忽略
+ * @param {"manual"|"arena"|"auto"} [params.source="manual"] 寫入 janken_records.source
+ * @param {Object} [params.auto] inline 必填：
+ *   `{ runDate, occurredAt, authorize: async ({ trx, participants }) => ({ proceed, betCandidate }) }`
+ *   authorize 在 ② 之後被呼叫，負責 ③ 的鎖與 KTD12 授權交集；`betCandidate` 已是 min(雙方快照/即時 cap)，
+ *   core 再交集段位上限與鎖讀餘額（餘額不進 min，任一不足即 0）。
+ * @returns {Promise<Object>} 與舊 resolveMatch 相同鍵值，另加 `betAmount`（inline 實際下注額）
+ */
+exports.settleMatchInTransaction = async function (
+  trx,
+  {
+    matchId,
+    groupId = null,
+    p1UserId,
+    p2UserId,
+    p1Choice,
+    p2Choice,
+    funding,
+    betAmount = 0,
+    source = "manual",
+    auto = null,
+  }
+) {
+  if (funding !== "pre_escrowed" && funding !== "inline") {
+    throw new Error(`[Janken] unknown funding mode: ${funding}`);
+  }
+  if (funding === "inline" && (!auto || typeof auto.authorize !== "function")) {
+    throw new Error("[Janken] inline funding requires auto.authorize");
+  }
+
+  const [p1Result, p2Result] = exports.determineWinner(p1Choice, p2Choice);
+  const isDraw = p1Result === "draw";
+  const nonBetK = config.get("minigame.janken.elo.nonBetK");
+
+  // ① user 列 ASC
+  await lockUserRows(trx, [p1UserId, p2UserId]);
+
+  // ②③ 自動配對：participant 兩列 → authorize（subscribe_user／preference）
+  let betCandidate = 0;
+  if (funding === "inline") {
+    const participants = await JankenAutoMatchParticipant.lockByMatchId(matchId, trx);
+    const pending =
+      participants.length === 2 &&
+      participants.every(p => p.status === JankenAutoMatchParticipant.STATUS.NOT_STARTED);
+    if (!pending) throw new SettlementError("MATCH_NOT_PENDING");
+    const authorized = await auto.authorize({ trx, participants });
+    if (!authorized || !authorized.proceed) {
+      throw new SettlementError("AUTHORIZATION_REVOKED", authorized && authorized.reason);
+    }
+    betCandidate =
+      Number.isSafeInteger(authorized.betCandidate) && authorized.betCandidate > 0
+        ? authorized.betCandidate
+        : 0;
+  } else {
+    betAmount = Number.isSafeInteger(betAmount) && betAmount > 0 ? betAmount : 0;
+  }
+
+  // ④⑤：只有可能動到 rating／pair_stats 時才鎖（條件同既有 updateElo／updateStreaks 的觸發條件）
+  const mayBet = funding === "inline" ? betCandidate > 0 : betAmount > 0;
+  const needsRating = mayBet || (!isDraw && nonBetK > 0);
+  const [playerA, playerB] = orderedPair(p1UserId, p2UserId);
+  let priorPairStats = null;
+  let ratings = { [p1UserId]: defaultRating(p1UserId), [p2UserId]: defaultRating(p2UserId) };
+  if (needsRating) {
+    priorPairStats = await trx("janken_pair_stats")
+      .where({ player_a: playerA, player_b: playerB })
+      .forUpdate()
+      .first();
+    ratings = await lockRatings(trx, [p1UserId, p2UserId]);
+  }
+
+  // ⑥ inline：段位上限交集 → 鎖讀餘額（不進 min）→ 雙方 debit
+  if (funding === "inline") {
+    betAmount = 0;
+    if (betCandidate > 0) {
+      const candidate = Math.min(
+        betCandidate,
+        rankMaxBet(JankenRating.getRankTier(ratings[p1UserId].elo)),
+        rankMaxBet(JankenRating.getRankTier(ratings[p2UserId].elo))
+      );
+      if (Number.isSafeInteger(candidate) && candidate > 0) {
+        const balances = {};
+        for (const userId of [playerA, playerB]) {
+          balances[userId] = await inventory.lockGodStoneBalance(userId, trx);
+        }
+        if (balances[playerA] >= candidate && balances[playerB] >= candidate) {
+          betAmount = candidate;
+        }
+      }
+    }
+    if (betAmount > 0) {
+      for (const userId of [playerA, playerB]) {
+        await inventory.decreaseGodStone({
+          userId,
+          amount: betAmount,
+          note: "janken_auto_bet",
+          trx,
+        });
+      }
+    }
+  }
+
+  // payout／refund（pre_escrowed 的賭金已在 escrow 扣過，這裡只加不扣）
+  let betFee = 0;
+  if (betAmount > 0) {
+    if (isDraw) {
+      for (const userId of [playerA, playerB]) {
+        await inventory.increaseGodStone({
+          userId,
+          amount: betAmount,
+          note: "janken_bet_refund",
+          trx,
+        });
+      }
+    } else {
+      const { winnerGets, fee } = exports.calculateBetSettlement(betAmount, "win");
+      betFee = fee;
+      const winnerId = p1Result === "win" ? p1UserId : p2UserId;
+      await inventory.increaseGodStone({
+        userId: winnerId,
+        amount: winnerGets,
+        note: "janken_bet_win",
+        trx,
+      });
+    }
+  }
+
+  await JankenRecords.create(
+    {
+      id: matchId,
+      user_id: p1UserId,
+      target_user_id: p2UserId,
+      group_id: groupId,
+      bet_amount: betAmount,
+      bet_fee: betFee,
+      p1_choice: p1Choice,
+      p2_choice: p2Choice,
+      source,
+    },
+    trx
+  );
+
+  await JankenResult.insert(
+    [
+      { record_id: matchId, user_id: p1UserId, result: JankenResult.resultMap[p1Result] },
+      { record_id: matchId, user_id: p2UserId, result: JankenResult.resultMap[p2Result] },
+    ],
+    trx
+  );
+
+  const eloResult = await applyEloInTransaction(trx, {
+    p1UserId,
+    p2UserId,
+    p1Result,
+    betAmount,
+    ratings,
+    priorPairStats,
+  });
+  const winnerNewElo = p1Result === "win" ? eloResult.p1NewElo : eloResult.p2NewElo;
+  const streakResult = await applyStreaksInTransaction(trx, {
+    p1UserId,
+    p2UserId,
+    p1Result,
+    betAmount,
+    fee: betFee,
+    ratings,
+    winnerTier: winnerNewElo === null ? undefined : JankenRating.getRankTier(winnerNewElo),
+  });
+
+  // Persist match details for frontend leaderboard
+  const matchDetails = {};
+  if (!isDraw) {
+    matchDetails.elo_change = p1Result === "win" ? eloResult.p1EloChange : eloResult.p2EloChange;
+  }
+  if (streakResult.loserPreviousStreak > 0) {
+    matchDetails.streak_broken = streakResult.loserPreviousStreak;
+  }
+  if (streakResult.loserBounty > 0) {
+    matchDetails.bounty_won = streakResult.loserBounty;
+  }
+  if (Object.keys(matchDetails).length > 0) {
+    await JankenRecords.update(matchId, matchDetails, trx);
+  }
+
+  // 自動配對：participant completed 與結算同 commit；成就事件只進 outbox（KTD4），不呼叫成就引擎
+  if (funding === "inline") {
+    const affected = await JankenAutoMatchParticipant.markCompleted(matchId, trx);
+    if (affected !== 2) throw new SettlementError("PARTICIPANT_CAS_FAILED");
+    if (!isDraw) {
+      const winnerRole = p1Result === "win" ? "p1" : "p2";
+      const winnerId = p1Result === "win" ? p1UserId : p2UserId;
+      const occurredAt = auto.occurredAt || new Date();
+      await JankenAutoMatchOutbox.insertEvents(
+        [
+          {
+            match_id: matchId,
+            role: winnerRole,
+            event_name: "janken_win",
+            run_date: auto.runDate,
+            user_id: winnerId,
+            occurred_at: occurredAt,
+            payload: { result: "win", streak: streakResult.winnerStreak, feature: "janken" },
+          },
+          {
+            match_id: matchId,
+            role: "p2",
+            event_name: "janken_challenge",
+            run_date: auto.runDate,
+            user_id: p2UserId,
+            occurred_at: occurredAt,
+            payload: { feature: "janken" },
+          },
+        ],
+        trx
+      );
+    }
+  }
+
+  return {
+    p1Result,
+    p2Result,
+    p1Choice,
+    p2Choice,
+    betAmount,
+    betFee,
+    ...eloResult,
+    ...streakResult,
+  };
+};
+
+/**
+ * 舊 API（只剩測試與相容用途在呼叫）：自己開交易，依鎖序 ④⑤ 後套用連勝邏輯。
+ */
 exports.updateStreaks = async function (
   p1UserId,
   p2UserId,
@@ -225,65 +699,16 @@ exports.updateStreaks = async function (
   if (p1Result === "draw" || !betAmount || betAmount <= 0) {
     return { winnerStreak: 0, loserPreviousStreak: 0, loserBounty: 0 };
   }
-
-  const mysql = require("../util/mysql");
-  const winnerId = p1Result === "win" ? p1UserId : p2UserId;
-  const loserId = p1Result === "win" ? p2UserId : p1UserId;
-
   return mysql.transaction(async trx => {
-    await Promise.all([
-      JankenRating.findOrCreate(winnerId, trx),
-      JankenRating.findOrCreate(loserId, trx),
-    ]);
-
-    const [winnerRating, loserRating] = await Promise.all([
-      trx("janken_rating").where({ user_id: winnerId }).forUpdate().first(),
-      trx("janken_rating").where({ user_id: loserId }).forUpdate().first(),
-    ]);
-
-    // Streak only grows when the winner beats a different opponent than their previous streak win.
-    // This is the core anti-self-farm gate for streak/bounty: hammering the same alt account
-    // keeps the streak stuck.
-    const sameOpponentAsLastStreakWin =
-      winnerRating.streak > 0 && winnerRating.last_won_opponent_id === loserId;
-    const newStreak = sameOpponentAsLastStreakWin ? winnerRating.streak : winnerRating.streak + 1;
-    const newMaxStreak = Math.max(newStreak, winnerRating.max_streak);
-    // Bounty funded from match fee — no new money created
-    const bountyIncrement =
-      newStreak >= 2 && betAmount >= BOUNTY_MIN_BET ? exports.calculateBountyIncrement(fee) : 0;
-    const maxBounty = JankenRating.getMaxBounty(winnerRating.rank_tier);
-    const newBounty = Math.min(winnerRating.bounty + bountyIncrement, maxBounty);
-    // Bounty claim capped by claimer's bet amount
-    const loserBounty = Math.min(loserRating.bounty, betAmount * BOUNTY_CLAIM_MULTIPLIER);
-
-    await Promise.all([
-      trx("janken_rating").where({ user_id: winnerId }).update({
-        streak: newStreak,
-        max_streak: newMaxStreak,
-        bounty: newBounty,
-        last_won_opponent_id: loserId,
-      }),
-      trx("janken_rating").where({ user_id: loserId }).update({
-        streak: 0,
-        bounty: 0,
-        last_won_opponent_id: null,
-      }),
-    ]);
-
-    if (loserBounty > 0) {
-      await inventory.increaseGodStone({
-        userId: winnerId,
-        amount: loserBounty,
-        note: "janken_bounty_claim",
-      });
-    }
-
-    return {
-      winnerStreak: newStreak,
-      winnerBounty: newBounty,
-      loserPreviousStreak: loserRating.streak,
-      loserBounty,
-    };
+    const ratings = await lockRatings(trx, [p1UserId, p2UserId]);
+    return applyStreaksInTransaction(trx, {
+      p1UserId,
+      p2UserId,
+      p1Result,
+      betAmount,
+      fee,
+      ratings,
+    });
   });
 };
 
@@ -375,6 +800,7 @@ exports.resolveMatch = async function ({
   p1Choice,
   p2Choice,
   betAmount = 0,
+  source = "manual",
 }) {
   const resolveKey = `${REDIS_PREFIX}:resolve:${matchId}`;
   const locked = await redis.set(resolveKey, "1", { EX: 60, NX: true });
@@ -383,198 +809,89 @@ exports.resolveMatch = async function ({
     return null;
   }
 
-  const [p1Result, p2Result] = exports.determineWinner(p1Choice, p2Choice);
+  // 手動對戰（duel／arena）：賭金已由 escrow 扣過 → pre_escrowed。整場結算在同一交易內；
+  // 交易本身失敗（含 rollback）仍要讓錯誤往外拋，呼叫端才知道這場沒有結算成功。
+  const result = await mysql.transaction(trx =>
+    exports.settleMatchInTransaction(trx, {
+      matchId,
+      groupId,
+      p1UserId,
+      p2UserId,
+      p1Choice,
+      p2Choice,
+      funding: "pre_escrowed",
+      betAmount,
+      source,
+    })
+  );
 
-  let betFee = 0;
+  // commit 之後的 Redis 清理只是「清理」，不是結算本身；
+  // `result` 已經是資金與戰績都落地的事實。任何一類副作用失敗都不能：
+  //   (a) 讓另一類清理被跳過（例如 escrow zRem 失敗，choice key 清理仍要嘗試）
+  //   (b) 讓呼叫端拿不到已經結算好的 `result`（controller 靠它觸發成就通知；漏掉的話玩家贏了
+  //       這場但成就永遠不會補上，即使之後重跑也查不到「這場其實已經結算過」）。
+  // 因此兩類效果各自獨立 catch＋log，只影響自己那組 key，不互相牽連；
+  // 不論任何一類是否失敗，函式最終都回傳同一個已 commit 的 `result`。
+  const postCommitEffects = [];
+
   if (betAmount > 0) {
-    if (p1Result === "draw") {
-      await Promise.all([
-        inventory.increaseGodStone({
-          userId: p1UserId,
-          amount: betAmount,
-          note: "janken_bet_refund",
-        }),
-        inventory.increaseGodStone({
-          userId: p2UserId,
-          amount: betAmount,
-          note: "janken_bet_refund",
-        }),
-      ]);
-    } else {
-      const { winnerGets, fee } = exports.calculateBetSettlement(betAmount, "win");
-      betFee = fee;
-      const winnerId = p1Result === "win" ? p1UserId : p2UserId;
-      await inventory.increaseGodStone({
-        userId: winnerId,
-        amount: winnerGets,
-        note: "janken_bet_win",
-      });
-    }
-
     // Settled — drop both escrows from the pending set so the refund cron can't pay again.
     // Safe to do after payout: MATCH_WINDOW_SECONDS (1h) < REFUND_THRESHOLD_MS (2h), so a
     // match that is still resolvable can never be inside the cron's scan window.
-    await Promise.all([
-      redis.zRem(PENDING_ESCROW_KEY, packEscrowMember(matchId, p1UserId, betAmount)),
-      redis.zRem(PENDING_ESCROW_KEY, packEscrowMember(matchId, p2UserId, betAmount)),
-    ]);
+    postCommitEffects.push(
+      Promise.all([
+        redis.zRem(PENDING_ESCROW_KEY, packEscrowMember(matchId, p1UserId, betAmount)),
+        redis.zRem(PENDING_ESCROW_KEY, packEscrowMember(matchId, p2UserId, betAmount)),
+      ]).catch(err => {
+        DefaultLogger.error(
+          `[Janken] post-commit escrow zRem failed match_id=${matchId}: ${err && err.message}`,
+          err
+        );
+      })
+    );
   }
 
-  await JankenRecords.create({
-    id: matchId,
-    user_id: p1UserId,
-    target_user_id: p2UserId,
-    group_id: groupId,
-    bet_amount: betAmount,
-    bet_fee: betFee,
-    p1_choice: p1Choice,
-    p2_choice: p2Choice,
-  });
+  postCommitEffects.push(
+    Promise.all([
+      redis.del(`${REDIS_PREFIX}:${matchId}:${p1UserId}`),
+      redis.del(`${REDIS_PREFIX}:${matchId}:${p2UserId}`),
+    ]).catch(err => {
+      DefaultLogger.error(
+        `[Janken] post-commit choice key del failed match_id=${matchId}: ${err && err.message}`,
+        err
+      );
+    })
+  );
 
-  await JankenResult.insert([
-    { record_id: matchId, user_id: p1UserId, result: JankenResult.resultMap[p1Result] },
-    { record_id: matchId, user_id: p2UserId, result: JankenResult.resultMap[p2Result] },
-  ]);
+  await Promise.all(postCommitEffects);
 
-  await Promise.all([
-    redis.del(`${REDIS_PREFIX}:${matchId}:${p1UserId}`),
-    redis.del(`${REDIS_PREFIX}:${matchId}:${p2UserId}`),
-  ]);
-
-  await Promise.all([
-    EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId: p1UserId }),
-    EventCenterService.add(EventCenterService.getEventName("daily_quest"), { userId: p2UserId }),
-  ]);
-
-  const eloResult = await exports.updateElo(p1UserId, p2UserId, p1Result, betAmount);
-  const streakResult = await exports.updateStreaks(p1UserId, p2UserId, p1Result, {
-    betAmount,
-    fee: betFee,
-  });
-
-  // Persist match details for frontend leaderboard
-  const matchDetails = {};
-  if (p1Result !== "draw") {
-    matchDetails.elo_change = p1Result === "win" ? eloResult.p1EloChange : eloResult.p2EloChange;
-  }
-  if (streakResult.loserPreviousStreak > 0) {
-    matchDetails.streak_broken = streakResult.loserPreviousStreak;
-  }
-  if (streakResult.loserBounty > 0) {
-    matchDetails.bounty_won = streakResult.loserBounty;
-  }
-  if (Object.keys(matchDetails).length > 0) {
-    await JankenRecords.update(matchId, matchDetails);
-  }
-
-  return { p1Result, p2Result, p1Choice, p2Choice, betFee, ...eloResult, ...streakResult };
+  return result;
 };
 
+/**
+ * 舊 API（只剩測試與相容用途在呼叫）：自己開交易，依鎖序 ④⑤ 後套用 Elo 邏輯。
+ */
 exports.updateElo = async function (p1UserId, p2UserId, p1Result, betAmount) {
-  if (p1Result === "draw") {
-    if (betAmount > 0) {
-      const mysql = require("../util/mysql");
-      await mysql.transaction(async trx => {
-        await Promise.all([
-          JankenRating.findOrCreate(p1UserId, trx),
-          JankenRating.findOrCreate(p2UserId, trx),
-        ]);
-        const [playerA, playerB] = orderedPair(p1UserId, p2UserId);
-        await upsertPairStats(trx, playerA, playerB, { draws: 1 });
-        await Promise.all([
-          trx("janken_rating")
-            .where({ user_id: p1UserId })
-            .update({ draw_count: trx.raw("draw_count + 1") }),
-          trx("janken_rating")
-            .where({ user_id: p2UserId })
-            .update({ draw_count: trx.raw("draw_count + 1") }),
-        ]);
-      });
-    }
-    return { p1EloChange: 0, p2EloChange: 0, p1NewElo: null, p2NewElo: null };
-  }
-
+  const zero = { p1EloChange: 0, p2EloChange: 0, p1NewElo: null, p2NewElo: null };
   const nonBetK = config.get("minigame.janken.elo.nonBetK");
-  if ((!betAmount || betAmount <= 0) && (!nonBetK || nonBetK <= 0)) {
-    return { p1EloChange: 0, p2EloChange: 0, p1NewElo: null, p2NewElo: null };
-  }
-
-  const mysql = require("../util/mysql");
+  const needsRating = betAmount > 0 || (p1Result !== "draw" && nonBetK > 0);
+  if (!needsRating) return zero;
 
   return mysql.transaction(async trx => {
-    await Promise.all([
-      JankenRating.findOrCreate(p1UserId, trx),
-      JankenRating.findOrCreate(p2UserId, trx),
-    ]);
-
     const [playerA, playerB] = orderedPair(p1UserId, p2UserId);
     const priorPairStats = await trx("janken_pair_stats")
       .where({ player_a: playerA, player_b: playerB })
       .forUpdate()
       .first();
-    const pairDampening = exports.calculatePairDampening(priorPairStats);
-
-    const [p1Rating, p2Rating] = await Promise.all([
-      trx("janken_rating").where({ user_id: p1UserId }).forUpdate().first(),
-      trx("janken_rating").where({ user_id: p2UserId }).forUpdate().first(),
-    ]);
-
-    const p1Streak = p1Rating.streak || 0;
-    const p2Streak = p2Rating.streak || 0;
-    const p1EloChange = exports.calculateEloChange(
-      p1Rating.elo,
-      p2Rating.elo,
+    const ratings = await lockRatings(trx, [p1UserId, p2UserId]);
+    return applyEloInTransaction(trx, {
+      p1UserId,
+      p2UserId,
       p1Result,
       betAmount,
-      { streak: p1Streak, pairDampening }
-    );
-    const p2Result = p1Result === "win" ? "lose" : "win";
-    const p2EloChange = exports.calculateEloChange(
-      p2Rating.elo,
-      p1Rating.elo,
-      p2Result,
-      betAmount,
-      { streak: p2Streak, pairDampening }
-    );
-
-    const p1NewElo = Math.max(0, p1Rating.elo + p1EloChange);
-    const p2NewElo = Math.max(0, p2Rating.elo + p2EloChange);
-
-    const p1WinKey = p1Result === "win" ? "win_count" : "lose_count";
-    const p2WinKey = p1Result === "win" ? "lose_count" : "win_count";
-
-    const winnerIsA =
-      (p1Result === "win" && p1UserId === playerA) || (p1Result === "lose" && p2UserId === playerA);
-    await upsertPairStats(trx, playerA, playerB, {
-      aWins: winnerIsA ? 1 : 0,
-      bWins: winnerIsA ? 0 : 1,
+      ratings,
+      priorPairStats,
     });
-
-    await Promise.all([
-      trx("janken_rating")
-        .where({ user_id: p1UserId })
-        .update({
-          elo: p1NewElo,
-          rank_tier: JankenRating.getRankTier(p1NewElo),
-          [p1WinKey]: trx.raw(`${p1WinKey} + 1`),
-        }),
-      trx("janken_rating")
-        .where({ user_id: p2UserId })
-        .update({
-          elo: p2NewElo,
-          rank_tier: JankenRating.getRankTier(p2NewElo),
-          [p2WinKey]: trx.raw(`${p2WinKey} + 1`),
-        }),
-    ]);
-
-    return {
-      p1EloChange,
-      p2EloChange,
-      p1NewElo,
-      p2NewElo,
-      p1RankLabel: JankenRating.getRankLabel(p1NewElo),
-      p2RankLabel: JankenRating.getRankLabel(p2NewElo),
-    };
   });
 };
 

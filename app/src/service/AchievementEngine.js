@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const AchievementModel = require("../model/application/Achievement");
 const UserAchievementModel = require("../model/application/UserAchievement");
 const UserProgressModel = require("../model/application/UserAchievementProgress");
@@ -29,7 +30,7 @@ exports._setCache = data => {
 
 // Shared by evaluate() and getUserSummary() so ineligible rows are filtered
 // from both the unlock path and the collection-rate denominator.
-function isEligible(userId, achievement) {
+function isEligible(userId, achievement, asOfDate) {
   const condition = (achievement && achievement.condition) || null;
 
   // `availableFrom` (YYYY-MM-DD, Asia/Taipei) hides a not-yet-released row from
@@ -38,7 +39,7 @@ function isEligible(userId, achievement) {
   // There is deliberately no `availableUntil`: once live, a row stays live, so
   // an already-unlocked achievement can never vanish from a user's collection.
   const availableFrom = condition && condition.availableFrom;
-  if (availableFrom && todayUtc8() < availableFrom) return false;
+  if (availableFrom && (asOfDate || todayUtc8()) < availableFrom) return false;
 
   const eligibility = (condition && condition.eligibility) || null;
   if (!eligibility) return true;
@@ -200,7 +201,9 @@ const ACHIEVEMENT_STRATEGY = {
   chat_1000: cv => STRATEGIES.increment(cv),
   chat_5000: cv => STRATEGIES.increment(cv),
   chat_night_owl: (cv, a) => STRATEGIES.timeWindow(cv, a, 3, 4),
-  chat_multi_group: (cv, a, ctx) => handleTrackedSet(ctx._userId, a.id, ctx.groupId, cv),
+  // Durable tracked-set is intercepted in evaluateInTransaction. Keep these no-op entries so
+  // resolveAchievements still treats the keys as hardcoded and cannot drag them into a foreign event.
+  chat_multi_group: cv => cv,
   gacha_first: (cv, a) => STRATEGIES.instant(cv, a),
   gacha_100: cv => STRATEGIES.increment(cv),
   gacha_500: cv => STRATEGIES.increment(cv),
@@ -221,7 +224,7 @@ const ACHIEVEMENT_STRATEGY = {
   janken_streak_10: (cv, a, ctx) => STRATEGIES.contextValue(cv, a, ctx, "streak"),
   janken_challenged_10: cv => STRATEGIES.increment(cv),
   social_first_command: (cv, a) => STRATEGIES.instant(cv, a),
-  social_all_features: (cv, a, ctx) => handleTrackedSet(ctx._userId, a.id, ctx.feature, cv),
+  social_all_features: cv => cv,
   subscribe_first: cv => STRATEGIES.increment(cv),
   subscribe_3: cv => STRATEGIES.increment(cv),
   subscribe_6: cv => STRATEGIES.increment(cv),
@@ -250,7 +253,12 @@ const ACHIEVEMENT_STRATEGY = {
 };
 
 const GODDESS_STONE_ITEM_ID = 999;
-const REDIS_TTL = 90 * 24 * 60 * 60; // 90 days
+// Distinct-feature 的 item 語意固定在 code；tracking_key 同時是 definition revision。
+// 不保存原始 item，只保存 achievement_id | tracking_key | item 的 SHA-256。
+const TRACKED_CONTEXT_KEYS = Object.freeze({
+  chat_multi_group: "groupId",
+  social_all_features: "feature",
+});
 
 /**
  * Candidate rows for an event = the hardcoded key list (legacy events) UNION
@@ -296,134 +304,202 @@ function resolveStrategy(achievement) {
 }
 
 /**
- * Evaluate achievements for a user after an event.
- * Errors are logged and swallowed, never thrown.
- * @returns {Promise<{ unlocked: Array }>} newly unlocked achievement rows (empty if none).
+ * Mutex ensure 必須在交易外 autocommit 執行。若在交易內 INSERT IGNORE 撞既有列，MySQL 會先取得
+ * shared lock，再於 SELECT FOR UPDATE 升級 exclusive lock，兩連線可能互相等待。
+ * 獨立 lock table 不依賴 user 表，所以被 mention 但尚無 user row 的 userId 也能安全序列化。
  */
-exports.evaluate = async (userId, eventType, context = {}) => {
-  const unlocked = [];
-  try {
-    const cache = await getCache();
-    const achievements = resolveAchievements(cache, eventType).filter(a => isEligible(userId, a));
-    if (achievements.length === 0) return { unlocked };
-
-    const allIds = achievements.map(a => a.id);
-    const [unlockedIds, progressMap] = await Promise.all([
-      UserAchievementModel.getUnlockedIds(userId, allIds),
-      UserProgressModel.getProgressByIds(userId, allIds),
-    ]);
-
-    const ctx = { ...context, _userId: userId };
-    const candidates = achievements.filter(a => !unlockedIds.has(a.id));
-
-    // Phase 1: compute the new value for every candidate. Strategy evaluation
-    // stays serial because some strategies (handleTrackedSet) do a Redis
-    // read-before-write that must not interleave. Per-candidate try/catch keeps
-    // one bad strategy from aborting the rest.
-    const updates = [];
-    const toUnlock = [];
-    for (const achievement of candidates) {
-      try {
-        const currentValue = progressMap.get(achievement.id) || 0;
-        const strategy = resolveStrategy(achievement);
-        const newValue = strategy ? await strategy(currentValue, achievement, ctx) : currentValue;
-        if (newValue === null || newValue === currentValue) continue;
-
-        updates.push({ userId, achievementId: achievement.id, currentValue: newValue });
-        if (newValue >= achievement.target_value) toUnlock.push(achievement);
-      } catch (innerErr) {
-        DefaultLogger.error(
-          `AchievementEngine.evaluate error for key ${achievement.key}:`,
-          innerErr
-        );
-      }
-    }
-
-    // Phase 2: collapse the per-candidate progress writes into one statement.
-    // Guarded on its own so a batch-write failure is logged but does NOT skip
-    // the unlocks below — this preserves the per-candidate failure isolation the
-    // original row-by-row loop had. unlockAchievement deletes the progress row
-    // regardless, so proceeding to unlock after a failed write is safe.
-    if (updates.length > 0) {
-      try {
-        await UserProgressModel.upsertMany(updates);
-      } catch (batchErr) {
-        DefaultLogger.error("AchievementEngine.evaluate batch upsert error:", batchErr);
-      }
-    }
-
-    // Phase 3: unlock serially — each unlock writes a stone-ledger row and
-    // deletes the progress row, and is order-sensitive, so it is not batched.
-    for (const achievement of toUnlock) {
-      try {
-        // Only push when this pass actually won the INSERT IGNORE race —
-        // otherwise a concurrent evaluate would re-notify an old unlock.
-        const created = await unlockAchievement(userId, achievement);
-        if (created) unlocked.push(achievement);
-      } catch (innerErr) {
-        DefaultLogger.error(
-          `AchievementEngine.evaluate unlock error for key ${achievement.key}:`,
-          innerErr
-        );
-      }
-    }
-  } catch (err) {
-    DefaultLogger.error("AchievementEngine.evaluate error:", err);
-  }
-  return { unlocked };
+exports.ensureUserLock = async userId => {
+  await mysql.raw("INSERT IGNORE INTO achievement_user_lock (user_id) VALUES (?)", [userId]);
 };
 
-async function handleTrackedSet(userId, achievementId, newItem, currentValue) {
+async function lockUserMutex(trx, userId) {
+  const row = await trx("achievement_user_lock").where({ user_id: userId }).forUpdate().first();
+  if (!row) {
+    throw new Error("achievement_user_lock missing; call ensureUserLock before transaction");
+  }
+}
+exports.lockUserInTransaction = lockUserMutex;
+
+function trackedItemHash(achievementId, trackingKey, item) {
+  return crypto
+    .createHash("sha256")
+    .update(`${achievementId}|${trackingKey}|${item}`)
+    .digest("hex");
+}
+
+function parseTrackedItems(data) {
+  if (data === null || data === undefined) return { found: false, items: [] };
+  let items;
+  try {
+    items = JSON.parse(data);
+  } catch (error) {
+    throw new Error("achievement tracked Redis payload malformed", { cause: error });
+  }
+  if (!Array.isArray(items) || items.some(item => typeof item !== "string" || !item)) {
+    throw new Error("achievement tracked Redis payload malformed");
+  }
+  return { found: true, items: [...new Set(items)] };
+}
+
+/**
+ * Per-(user, achievement) lazy migration + durable distinct marker（KTD7）。
+ * - migration 不存在：成功交易內對 legacy Redis key 唯讀 GET，保留當下仍可觀測 membership；nil 是合法空集合。
+ * - migration 已存在：永遠不再 GET；tracking_key 不符視為 definition revision mismatch，throw。
+ * - item_hash 不存在才 INSERT marker 並 +1；既有 MySQL progress 只作 opaque baseline，不重算。
+ * Redis error／malformed／revision mismatch 一律 throw，讓 strict pending 或 legacy 外層整筆 rollback。
+ */
+async function handleTrackedSetInTransaction(
+  trx,
+  userId,
+  achievement,
+  trackingKey,
+  newItem,
+  currentValue
+) {
+  const migration = await trx("achievement_tracked_migration")
+    .where({ user_id: userId, achievement_id: achievement.id })
+    .first();
+  if (migration && migration.tracking_key !== trackingKey) {
+    throw new Error("achievement tracked definition revision mismatch");
+  }
+
+  if (!migration) {
+    const redisKey = `achievement:tracked:${userId}:${achievement.id}`;
+    // Deliberately read-only. This branch is permanent for users who have not yet entered the new core.
+    const observed = parseTrackedItems(await redis.get(redisKey));
+    if (observed.items.length > 0) {
+      await trx("achievement_tracked_item").insert(
+        observed.items.map(item => ({
+          user_id: userId,
+          achievement_id: achievement.id,
+          item_hash: trackedItemHash(achievement.id, trackingKey, item),
+        }))
+      );
+    }
+    await trx("achievement_tracked_migration").insert({
+      user_id: userId,
+      achievement_id: achievement.id,
+      tracking_key: trackingKey,
+      redis_found: observed.found,
+      item_count: observed.items.length,
+      baseline_value: currentValue,
+    });
+  }
+
   if (!newItem) return currentValue;
-  const redisKey = `achievement:tracked:${userId}:${achievementId}`;
-  const data = await redis.get(redisKey);
-  const items = data ? JSON.parse(data) : [];
-  if (items.includes(newItem)) return currentValue;
-  items.push(newItem);
-  await redis.set(redisKey, JSON.stringify(items), { EX: REDIS_TTL });
+  const itemHash = trackedItemHash(achievement.id, trackingKey, String(newItem));
+  const exists = await trx("achievement_tracked_item")
+    .where({ user_id: userId, achievement_id: achievement.id, item_hash: itemHash })
+    .first();
+  if (exists) return currentValue;
+  await trx("achievement_tracked_item").insert({
+    user_id: userId,
+    achievement_id: achievement.id,
+    item_hash: itemHash,
+  });
   return currentValue + 1;
 }
 
 /**
- * Award one achievement. Returns false when another concurrent pass already
- * inserted the row — the caller must then NOT treat it as newly unlocked.
- *
- * The INSERT IGNORE is the concurrency gate: only the writer that actually
- * created the row credits stones. Without this, two evaluate() passes racing
- * on the same achievement each saw "not unlocked yet" during phase 1 and both
- * paid the reward.
- *
- * @returns {Promise<Boolean>} true when this call performed the unlock
+ * 共用 unlock + reward。INSERT IGNORE 保留為 mutex 後的第二道防線；unlock、刪 progress、reward
+ * 全部使用呼叫端 trx。錯誤不吞，讓整筆 rollback。
  */
-async function unlockAchievement(userId, achievement) {
-  const created = await UserAchievementModel.unlock(userId, achievement.id);
-  // Progress row is dead weight once unlocked, regardless of who won the race.
-  await UserProgressModel.delete(userId, achievement.id);
-
-  if (!created) {
-    DefaultLogger.info(
-      `Achievement ${achievement.key} for user ${userId} already unlocked by a concurrent pass; skipping reward`
-    );
-    return false;
-  }
+async function unlockAchievementInTransaction(trx, userId, achievement) {
+  const created = await UserAchievementModel.unlock(userId, achievement.id, trx);
+  await UserProgressModel.delete(userId, achievement.id, trx);
+  if (!created) return false;
 
   if (achievement.reward_stones > 0) {
-    // Append a new ledger row — balance is SUM(itemAmount) across rows.
-    // The prior UPDATE-without-row-ID version multiplied the reward by the
-    // user's existing row count (see project_stone_ledger_refactor memo).
-    await mysql("inventory").insert({
+    await trx("inventory").insert({
       userId,
       itemId: GODDESS_STONE_ITEM_ID,
       itemAmount: achievement.reward_stones,
       note: "成就獎勵",
     });
   }
+  return true;
+}
 
+function logUnlocked(userId, achievement) {
   DefaultLogger.info(
     `Achievement unlocked: ${achievement.key} for user ${userId} (+${achievement.reward_stones} stones)`
   );
-  return true;
 }
+
+/**
+ * Strict internal transaction core（U4 outbox consumer 可直接呼叫）。呼叫前必須先在 trx 外
+ * `ensureUserLock(userId)`；本函式只在 trx 內 FOR UPDATE mutex，不自行開／提交交易。
+ * progress／marker／unlock／reward 任一錯誤都 throw，讓呼叫端 rollback。
+ */
+exports.evaluateInTransaction = async (trx, userId, eventType, context = {}) => {
+  await lockUserMutex(trx, userId);
+  const cache = await getCache();
+  const achievements = resolveAchievements(cache, eventType).filter(a =>
+    isEligible(userId, a, context.date)
+  );
+  if (achievements.length === 0) return { unlocked: [] };
+
+  const allIds = achievements.map(a => a.id);
+  const [unlockedIds, progressMap] = await Promise.all([
+    UserAchievementModel.getUnlockedIds(userId, allIds, trx),
+    UserProgressModel.getProgressByIds(userId, allIds, trx),
+  ]);
+  const ctx = { ...context, _userId: userId };
+  const updates = [];
+  const toUnlock = [];
+
+  for (const achievement of achievements.filter(a => !unlockedIds.has(a.id))) {
+    const currentValue = progressMap.get(achievement.id) || 0;
+    const trackingKey = TRACKED_CONTEXT_KEYS[achievement.key];
+    let newValue;
+    if (trackingKey) {
+      newValue = await handleTrackedSetInTransaction(
+        trx,
+        userId,
+        achievement,
+        trackingKey,
+        ctx[trackingKey],
+        currentValue
+      );
+    } else {
+      const strategy = resolveStrategy(achievement);
+      newValue = strategy ? await strategy(currentValue, achievement, ctx) : currentValue;
+    }
+    if (newValue === null || newValue === currentValue) continue;
+    updates.push({ userId, achievementId: achievement.id, currentValue: newValue });
+    if (newValue >= achievement.target_value) toUnlock.push(achievement);
+  }
+
+  if (updates.length > 0) await UserProgressModel.upsertMany(updates, trx);
+  const unlocked = [];
+  for (const achievement of toUnlock) {
+    if (await unlockAchievementInTransaction(trx, userId, achievement)) unlocked.push(achievement);
+  }
+  return { unlocked };
+};
+
+/** Strict wrapper：errors propagate；供 U4 使用或需要自行交易的 strict caller。 */
+exports.evaluateStrict = async (userId, eventType, context = {}) => {
+  await exports.ensureUserLock(userId);
+  const result = await mysql.transaction(trx =>
+    exports.evaluateInTransaction(trx, userId, eventType, context)
+  );
+  result.unlocked.forEach(achievement => logUnlocked(userId, achievement));
+  return result;
+};
+
+/**
+ * Legacy 外部 API：回傳形狀與吞錯行為不變；內部改走同一 strict core。`unlocked` 只有 transaction
+ * commit 成功後才回傳，任何 core 錯誤整筆 rollback、最外層唯一 catch 回 `{ unlocked: [] }`。
+ */
+exports.evaluate = async (userId, eventType, context = {}) => {
+  try {
+    return await exports.evaluateStrict(userId, eventType, context);
+  } catch (err) {
+    DefaultLogger.error("AchievementEngine.evaluate error:", err);
+    return { unlocked: [] };
+  }
+};
 
 exports.getUserSummary = async userId => {
   const [
@@ -518,16 +594,19 @@ exports.unlockByKey = async (userId, key) => {
     if (!isEligible(userId, achievement)) {
       return { unlocked: false, reason: "ineligible" };
     }
-    const unlockedIds = await UserAchievementModel.getUnlockedIds(userId, [achievement.id]);
-    if (unlockedIds.has(achievement.id)) {
-      return { unlocked: false, reason: "already_unlocked" };
-    }
-    // The pre-check above is only a fast path; the INSERT IGNORE result is the
-    // authority, so a racing caller reports already_unlocked instead of a
-    // second unlock (and never gets a duplicate reward).
-    const created = await unlockAchievement(userId, achievement);
-    if (!created) return { unlocked: false, reason: "already_unlocked" };
-    return { unlocked: true, achievement };
+    await exports.ensureUserLock(userId);
+    const result = await mysql.transaction(async trx => {
+      await lockUserMutex(trx, userId);
+      const unlockedIds = await UserAchievementModel.getUnlockedIds(userId, [achievement.id], trx);
+      if (unlockedIds.has(achievement.id)) {
+        return { unlocked: false, reason: "already_unlocked" };
+      }
+      const created = await unlockAchievementInTransaction(trx, userId, achievement);
+      if (!created) return { unlocked: false, reason: "already_unlocked" };
+      return { unlocked: true, achievement };
+    });
+    if (result.unlocked) logUnlocked(userId, achievement);
+    return result;
   } catch (err) {
     DefaultLogger.error(`AchievementEngine.unlockByKey error for ${key}:`, err);
     return { unlocked: false, reason: "error" };
@@ -560,13 +639,39 @@ exports.batchEvaluate = async () => {
     for (const user of chatUsers) {
       const userId = user.user_id;
       const count = user.lifetime_exp || 0;
-      for (const achievement of chatAchievements) {
-        if (unlockedSet.has(`${userId}:${achievement.id}`)) continue;
-        await UserProgressModel.upsert(userId, achievement.id, count);
-        if (count >= achievement.target_value) {
-          await unlockAchievement(userId, achievement);
+      const candidates = chatAchievements.filter(
+        achievement => !unlockedSet.has(`${userId}:${achievement.id}`)
+      );
+      if (candidates.length === 0) continue;
+      await exports.ensureUserLock(userId);
+      const unlocked = await mysql.transaction(async trx => {
+        await lockUserMutex(trx, userId);
+        const unlockedIds = await UserAchievementModel.getUnlockedIds(
+          userId,
+          candidates.map(a => a.id),
+          trx
+        );
+        const progressMap = await UserProgressModel.getProgressByIds(
+          userId,
+          candidates.map(a => a.id),
+          trx
+        );
+        const newlyUnlocked = [];
+        for (const achievement of candidates) {
+          if (unlockedIds.has(achievement.id)) continue;
+          // Broad scan happened before the mutex. Never let its stale absolute count overwrite a
+          // newer event-path increment that committed before this transaction acquired the lock.
+          const currentValue = Math.max(count, progressMap.get(achievement.id) || 0);
+          await UserProgressModel.upsert(userId, achievement.id, currentValue, trx);
+          if (currentValue >= achievement.target_value) {
+            if (await unlockAchievementInTransaction(trx, userId, achievement)) {
+              newlyUnlocked.push(achievement);
+            }
+          }
         }
-      }
+        return newlyUnlocked;
+      });
+      unlocked.forEach(achievement => logUnlocked(userId, achievement));
     }
   }
 
@@ -584,7 +689,20 @@ exports.batchEvaluate = async () => {
 
     for (const user of veterans) {
       if (unlockedUserIds.has(user.platform_id)) continue;
-      await unlockAchievement(user.platform_id, veteranAchievement);
+      await exports.ensureUserLock(user.platform_id);
+      const unlocked = await mysql.transaction(async trx => {
+        await lockUserMutex(trx, user.platform_id);
+        const unlockedIds = await UserAchievementModel.getUnlockedIds(
+          user.platform_id,
+          [veteranAchievement.id],
+          trx
+        );
+        if (!unlockedIds.has(veteranAchievement.id)) {
+          return unlockAchievementInTransaction(trx, user.platform_id, veteranAchievement);
+        }
+        return false;
+      });
+      if (unlocked) logUnlocked(user.platform_id, veteranAchievement);
     }
   }
 

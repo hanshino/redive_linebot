@@ -464,6 +464,7 @@ exports.challenge = async (context, { payload }) => {
       p1Choice: resolvedHolderChoice,
       p2Choice: challengerChoice,
       betAmount: 0,
+      source: "arena",
     });
 
     if (!arenaMatchResult) {

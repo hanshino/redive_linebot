@@ -93,6 +93,7 @@ function createMockQueryBuilder() {
     "clearSelect",
     "clearWhere",
     "clearOrder",
+    "forUpdate",
   ];
   chainMethods.forEach(m => {
     qb[m] = jest.fn().mockReturnValue(qb);

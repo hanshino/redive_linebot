@@ -18,8 +18,18 @@ jest.mock("../../../model/application/SubscribeCardCoupon", () => ({
 }));
 jest.mock("../../../model/application/SubscribeUser", () => ({
   lockByUserAndCard: jest.fn(),
+  lockEligibleByUser: jest.fn(),
+  hasActiveAt: jest.fn((rows, now) =>
+    rows.some(row => new Date(row.start_at) <= now && now < new Date(row.end_at))
+  ),
+  isEligibleCardKey: jest.fn(key => ["month", "season"].includes(key)),
   create: jest.fn(),
   update: jest.fn(),
+}));
+jest.mock("../../../model/application/UserAutoPreference", () => ({
+  lockByUserId: jest.fn().mockResolvedValue(undefined),
+  updateByUserId: jest.fn(),
+  create: jest.fn(),
 }));
 jest.mock("../../../model/application/Inventory", () => ({
   inventory: { getUserMoney: jest.fn(), decreaseGodStone: jest.fn() },
@@ -61,6 +71,7 @@ function callExchange(context, serialNumber) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mysql.raw.mockResolvedValue([[{ id: 1 }]]);
   mysql.transaction.mockImplementation(cb => cb(mysql));
   mysql.update.mockReturnValue(mysql);
   // 全域 mock 的 chainMethods 清單沒有 "table"（SubscribeController 用
@@ -72,6 +83,10 @@ beforeEach(() => {
     name: "月卡",
     duration: 30,
     effects: [],
+  });
+  SubscribeUser.lockEligibleByUser.mockImplementation(async (userId, trx) => {
+    const row = await SubscribeUser.lockByUserAndCard(userId, "month", trx);
+    return row ? [{ subscribe_card_key: "month", ...row }] : [];
   });
   SubscribeUser.create.mockResolvedValue(1);
   SubscribeUser.update.mockResolvedValue(1);
