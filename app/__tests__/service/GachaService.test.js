@@ -148,16 +148,13 @@ describe("GachaService.runDailyDraw", () => {
     expect(result).not.toHaveProperty("message");
   });
 
-  it("invokes recordNormal, EventCenterService.add, AchievementEngine.evaluate with the contract args", async () => {
+  it("invokes recordNormal and AchievementEngine.evaluate without legacy daily queue", async () => {
     await GachaService.runDailyDraw("Uabc");
 
     expect(signinService.recordNormal).toHaveBeenCalledTimes(1);
     expect(signinService.recordNormal).toHaveBeenCalledWith("Uabc", { trx: currentTrx });
 
-    expect(EventCenterService.add).toHaveBeenCalledTimes(1);
-    expect(EventCenterService.add).toHaveBeenCalledWith("event_center:daily_quest", {
-      userId: "Uabc",
-    });
+    expect(EventCenterService.add).not.toHaveBeenCalled();
 
     expect(AchievementEngine.evaluate).toHaveBeenCalledTimes(1);
     const [userIdArg, eventArg, metaArg] = AchievementEngine.evaluate.mock.calls[0];

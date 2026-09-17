@@ -8,6 +8,7 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import SportsMmaIcon from "@mui/icons-material/SportsMma";
 
 const features = [
   {
@@ -59,6 +60,13 @@ const features = [
     description: "訂閱者自動行為",
     path: "/auto/settings",
     color: "#9775FA",
+  },
+  {
+    icon: SportsMmaIcon,
+    label: "今日自動配對",
+    description: "月卡 Plus 自動猜拳結果",
+    path: "/auto/match",
+    color: "#00ACC1",
   },
 ];
 

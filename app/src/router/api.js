@@ -398,9 +398,15 @@ router.get("/chat-levels/rankings", ChatLevelController.api.queryRank);
 router.get("/announcements/:page", AnnounceController.api.queryData);
 
 const JankenController = require("../controller/application/JankenController");
+const JankenAutoMatchController = require("../controller/application/JankenAutoMatchController");
 
 router.get("/janken/rankings", JankenController.api.rankings);
 router.get("/janken/recent-matches", JankenController.api.recentMatches);
+router.use("/janken/auto-match", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+router.get("/janken/auto-match/today", verifyToken, JankenAutoMatchController.api.today);
 router.get("/janken/seasons", JankenController.api.seasons);
 router.get("/janken/seasons/:id/top", JankenController.api.seasonTop);
 router.get("/janken/me/today-reward", JankenController.api.todayReward);
@@ -420,6 +426,18 @@ router.get("/titles/user/:userId", AchievementController.api.getUserTitles);
  * 訂閱者自動行為偏好 / 歷史
  */
 const AutoPreferenceController = require("../controller/application/AutoPreferenceController");
+router.get("/auto-preference/match", verifyToken, AutoPreferenceController.api.getMatchPreference);
+router.put("/auto-preference/match", verifyToken, AutoPreferenceController.api.setMatchPreference);
+router.get(
+  "/auto-preference/match-bet",
+  verifyToken,
+  AutoPreferenceController.api.getMatchBetPreference
+);
+router.put(
+  "/auto-preference/match-bet",
+  verifyToken,
+  AutoPreferenceController.api.setMatchBetPreference
+);
 router.get("/auto-preference", verifyToken, AutoPreferenceController.api.getPreference);
 router.put("/auto-preference", verifyToken, AutoPreferenceController.api.setPreference);
 router.get("/auto-history", verifyToken, AutoPreferenceController.api.getHistory);

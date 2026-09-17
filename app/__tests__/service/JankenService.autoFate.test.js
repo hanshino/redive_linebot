@@ -32,6 +32,7 @@ jest.mock("../../src/service/SubscriptionService", () => ({
 jest.mock("../../src/model/application/Inventory", () => ({
   inventory: {
     getUserMoney: jest.fn(),
+    lockGodStoneBalance: jest.fn(),
     decreaseGodStone: jest.fn().mockResolvedValue(undefined),
     increaseGodStone: jest.fn().mockResolvedValue(undefined),
   },
@@ -135,9 +136,9 @@ describe("JankenService.autoFateIfEligible", () => {
         auto_janken_fate_with_bet: 1,
       });
       // First redis.set is tryEscrowOnce's NX lock acquiring → "OK"; escrowBet then
-      // calls inventory.getUserMoney which returns insufficient balance.
+      // calls inventory.lockGodStoneBalance which returns insufficient balance.
       const { inventory } = require("../../src/model/application/Inventory");
-      inventory.getUserMoney.mockResolvedValueOnce({ amount: 10 });
+      inventory.lockGodStoneBalance.mockResolvedValueOnce(10);
       redis.set.mockResolvedValue("OK"); // escrow NX succeeds
 
       const result = await JankenService.autoFateIfEligible("Up2", "match-b2", "p2", {
@@ -157,7 +158,7 @@ describe("JankenService.autoFateIfEligible", () => {
         auto_janken_fate_with_bet: 1,
       });
       const { inventory } = require("../../src/model/application/Inventory");
-      inventory.getUserMoney.mockResolvedValueOnce({ amount: 10000 });
+      inventory.lockGodStoneBalance.mockResolvedValueOnce(10000);
       redis.set.mockResolvedValue("OK");
 
       const result = await JankenService.autoFateIfEligible("Up2", "match-b3", "p2", {

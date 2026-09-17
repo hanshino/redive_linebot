@@ -20,6 +20,7 @@ import LocalMallIcon from "@mui/icons-material/LocalMall";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import GroupsIcon from "@mui/icons-material/Groups";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
+import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import MessageIcon from "@mui/icons-material/Message";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
@@ -69,6 +70,7 @@ const personalItems = [
   { label: "我的掛單", path: "/trade/my-listings", icon: ShoppingBasketIcon },
   { label: "交易管理", path: "/trade/manage", icon: ShoppingBasketIcon },
   { label: "自動設定", path: "/auto/settings", icon: AutoAwesomeIcon },
+  { label: "今日自動配對", path: "/auto/match", icon: SportsMmaIcon },
   { label: "自動行為紀錄", path: "/auto/history", icon: HistoryIcon },
 ];
 

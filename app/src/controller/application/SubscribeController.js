@@ -15,6 +15,7 @@ const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
 const SubscriptionService = require("../../service/SubscriptionService");
 const SubscribeCardCouponService = require("../../service/SubscribeCardCouponService");
+const UserAutoPreference = require("../../model/application/UserAutoPreference");
 
 exports.router = [
   text(/^[.#/](訂閱|sub)$/, showInformation),
@@ -207,11 +208,9 @@ function isRetryableExchangeError(error) {
 }
 
 /**
- * 兌換單一序號：「讀 coupon 狀態＋讀既有 SubscribeUser＋算延長/建立＋寫入」整段
- * 包在同一交易內，且對兩把鎖都取 `SELECT ... FOR UPDATE`：
- *   1. coupon 那一行 —— 同一序號不會被兩個玩家同時判定「未使用」。
- *   2. 同一 (user_id, subscribe_card_key) 那一行（若存在）—— 序列化同玩家同卡種的並發兌換，
- *      交易內重讀 end_at 才計算延長，不沿用進交易前的舊值。
+ * 兌換單一序號整段包在同一交易，鎖序固定為 user → coupon → 該 user 所有
+ * subscribe_user → user_auto_preference。以同一個 `now` 判 Plus 資格；只有 inactive→active
+ * 才 reset 新自動配對 consent 並遞增 generation，舊 auto flags/cap 不動。
  * MySQL deadlock / 鎖等待逾時 / 首次建立時的唯一鍵 INSERT 競態，整個函式重新來過，
  * 最多額外重試 2 次；其餘錯誤（含序號不存在/已使用/查無卡片）一律不重試、直接拋出。
  * @param {String} serialNumber
@@ -224,6 +223,13 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
   for (let attempt = 1; attempt <= EXCHANGE_MAX_ATTEMPTS; attempt += 1) {
     try {
       return await mysql.transaction(async trx => {
+        // KTD11 lock order: user → coupon → all subscribe rows → preference.
+        // A missing user row only yields a gap lock, not the per-user mutex this flow requires.
+        const [players] = await trx.raw("SELECT id FROM `user` WHERE platform_id = ? FOR UPDATE", [
+          userId,
+        ]);
+        if (!players.length) throw exchangeFail("USER_NOT_FOUND");
+        const now = mement();
         const coupon = await SubscribeCardCoupon.lockBySerialNumber(serialNumber, trx);
         if (!coupon) throw exchangeFail("SERIAL_NOT_FOUND");
         if (get(coupon, "status") === SubscribeCardCoupon.status.used) {
@@ -236,12 +242,15 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
         );
         if (!card) throw exchangeFail("CARD_NOT_FOUND");
 
-        const existing = await SubscribeUser.lockByUserAndCard(userId, get(card, "key"), trx);
+        const subscriptions = await SubscribeUser.lockAllByUser(userId, trx);
+        const wasActive = SubscribeUser.hasActiveAutoMatchAt(subscriptions, now.toDate());
+        const preference = await UserAutoPreference.lockByUserId(userId, trx);
+        const existing = subscriptions.find(row => row.subscribe_card_key === get(card, "key"));
         let userData;
         let isContinue;
 
         if (existing) {
-          const { user: data, isContinue: cont } = handleUser(existing, card);
+          const { user: data, isContinue: cont } = handleUser(existing, card, now);
           userData = data;
           isContinue = cont;
           await SubscribeUser.update(get(existing, "id"), userData, {}, trx);
@@ -249,17 +258,35 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
           userData = {
             user_id: userId,
             subscribe_card_key: get(card, "key"),
-            start_at: mement().toDate(),
-            end_at: mement().add(get(card, "duration"), "days").toDate(),
+            start_at: now.toDate(),
+            end_at: now.clone().add(get(card, "duration"), "days").toDate(),
           };
           isContinue = false;
           await SubscribeUser.create(userData, trx);
         }
 
+        const becameActive =
+          !wasActive && SubscribeUser.hasActiveAutoMatchAt([userData], now.toDate());
+        if (becameActive) {
+          const reset = {
+            auto_match_enabled: 0,
+            auto_match_generation:
+              Number((preference && preference.auto_match_generation) || 0) + 1,
+            auto_match_bet_enabled: 0,
+            auto_match_bet_generation:
+              Number((preference && preference.auto_match_bet_generation) || 0) + 1,
+          };
+          if (preference) {
+            await UserAutoPreference.updateByUserId(userId, reset, trx);
+          } else {
+            await UserAutoPreference.create({ user_id: userId, ...reset }, trx);
+          }
+        }
+
         await trx
           .update({
             status: SubscribeCardCoupon.status.used,
-            used_at: mement().toDate(),
+            used_at: now.toDate(),
             used_by: userId,
           })
           .table(SubscribeCardCoupon.table)
@@ -360,12 +387,12 @@ async function subscribeCouponExchange(context, props) {
  * @param {Object} user
  * @param {Object} card
  */
-function handleUser(user, card) {
-  const now = mement();
+function handleUser(user, card, fixedNow) {
+  const now = fixedNow ? fixedNow.clone() : mement();
   const endAt = mement(get(user, "end_at"));
   let isContinue;
 
-  if (endAt.isBefore(now)) {
+  if (endAt.isSameOrBefore(now)) {
     // 已過期
     user.start_at = now.toDate();
     user.end_at = now.add(get(card, "duration"), "days").toDate();

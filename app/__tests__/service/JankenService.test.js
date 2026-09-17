@@ -21,14 +21,22 @@ jest.mock("../../src/model/application/JankenRating", () => ({
 }));
 
 const mockUpdate = jest.fn().mockResolvedValue(undefined);
-const mockTrxQuery = jest.fn(() => ({
-  where: jest.fn(() => ({
-    forUpdate: jest.fn(() => ({
-      first: jest.fn(),
-    })),
-    update: mockUpdate,
+// janken_rating 鎖讀現在依 user_id ASC 逐列進行（KTD3 鎖序 ⑤），不再是呼叫方的 p1/p2 順序，
+// 所以 FOR UPDATE ... first() 的回傳值用 where({ user_id }) 的參數查表，而不是靠呼叫順序。
+let ratingRows = {};
+const setRatings = (...rows) => {
+  ratingRows = {};
+  rows.forEach(row => {
+    ratingRows[row.user_id] = row;
+  });
+};
+const ratingBuilder = filter => ({
+  forUpdate: jest.fn(() => ({
+    first: jest.fn().mockResolvedValue(filter && ratingRows[filter.user_id]),
   })),
-}));
+  update: mockUpdate,
+});
+const mockTrxQuery = jest.fn(() => ({ where: jest.fn(ratingBuilder) }));
 mockTrxQuery.transaction = jest.fn(async cb => cb(mockTrxQuery));
 mockTrxQuery.transactionProvider = jest.fn(() => jest.fn(async () => mockTrxQuery));
 
@@ -156,31 +164,22 @@ describe("JankenService", () => {
   });
 
   describe("updateStreaks", () => {
-    let mockFirst;
-
     beforeEach(() => {
-      mockFirst = jest.fn();
-      mockTrxQuery.mockImplementation(() => ({
-        where: jest.fn(() => ({
-          forUpdate: jest.fn(() => ({
-            first: mockFirst,
-          })),
-          update: mockUpdate,
-        })),
-      }));
+      setRatings();
     });
 
     it("increments winner streak and resets loser streak", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 2,
           max_streak: 5,
           bounty: 100,
           rank_tier: "beginner",
-        })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 3, max_streak: 4, bounty: 300 });
+        },
+        { user_id: "loser", streak: 3, max_streak: 4, bounty: 300 }
+      );
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 1000,
@@ -197,15 +196,16 @@ describe("JankenService", () => {
 
     it("updates max_streak when new record", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 5,
           max_streak: 5,
           bounty: 200,
           rank_tier: "beginner",
-        })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
+        },
+        { user_id: "loser", streak: 0, max_streak: 2, bounty: 0 }
+      );
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 1000,
@@ -240,15 +240,16 @@ describe("JankenService", () => {
 
     it("handles p2 winning (p1Result is lose)", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "p2",
           streak: 0,
           max_streak: 1,
           bounty: 0,
           rank_tier: "beginner",
-        })
-        .mockResolvedValueOnce({ user_id: "p1", streak: 4, max_streak: 7, bounty: 500 });
+        },
+        { user_id: "p1", streak: 4, max_streak: 7, bounty: 500 }
+      );
 
       const result = await JankenService.updateStreaks("p1", "p2", "lose", {
         betAmount: 1000,
@@ -261,15 +262,16 @@ describe("JankenService", () => {
 
     it("does not accumulate bounty when bet below minimum threshold", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 3,
           max_streak: 5,
           bounty: 100,
           rank_tier: "beginner",
-        })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
+        },
+        { user_id: "loser", streak: 0, max_streak: 2, bounty: 0 }
+      );
 
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 100,
@@ -282,15 +284,16 @@ describe("JankenService", () => {
 
     it("caps bounty claim by bet multiplier", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 0,
           max_streak: 1,
           bounty: 0,
           rank_tier: "beginner",
-        })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 5, max_streak: 5, bounty: 10000 });
+        },
+        { user_id: "loser", streak: 5, max_streak: 5, bounty: 10000 }
+      );
 
       // Bet 100 -> max claim = 100 * 5 = 500
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
@@ -303,15 +306,16 @@ describe("JankenService", () => {
 
     it("claims full bounty when bet is large enough", async () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 0,
           max_streak: 1,
           bounty: 0,
           rank_tier: "beginner",
-        })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 5, max_streak: 5, bounty: 5000 });
+        },
+        { user_id: "loser", streak: 5, max_streak: 5, bounty: 5000 }
+      );
 
       // Bet 5000 -> max claim = 5000 * 5 = 25000, bounty is 5000 so full claim
       const result = await JankenService.updateStreaks("winner", "loser", "win", {
@@ -468,32 +472,23 @@ describe("JankenService", () => {
   });
 
   describe("updateStreaks opponent-switch gating", () => {
-    let mockFirst;
-
     beforeEach(() => {
-      mockFirst = jest.fn();
-      mockTrxQuery.mockImplementation(() => ({
-        where: jest.fn(() => ({
-          forUpdate: jest.fn(() => ({
-            first: mockFirst,
-          })),
-          update: mockUpdate,
-        })),
-      }));
+      setRatings();
     });
 
     it("does NOT increment streak when winner beats the same opponent as last streak win", () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 5,
           max_streak: 5,
           bounty: 100,
           rank_tier: "beginner",
           last_won_opponent_id: "loser",
-        })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 2, bounty: 0 });
+        },
+        { user_id: "loser", streak: 0, max_streak: 2, bounty: 0 }
+      );
 
       return JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 1000,
@@ -505,16 +500,17 @@ describe("JankenService", () => {
 
     it("DOES increment streak when winner beats a different opponent", () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 5,
           max_streak: 5,
           bounty: 100,
           rank_tier: "beginner",
           last_won_opponent_id: "previousLoser",
-        })
-        .mockResolvedValueOnce({ user_id: "newLoser", streak: 0, max_streak: 2, bounty: 0 });
+        },
+        { user_id: "newLoser", streak: 0, max_streak: 2, bounty: 0 }
+      );
 
       return JankenService.updateStreaks("winner", "newLoser", "win", {
         betAmount: 1000,
@@ -526,16 +522,17 @@ describe("JankenService", () => {
 
     it("starts a fresh streak (1) after a previous loss reset, even against the same opponent", () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 0, // streak got reset by an earlier loss
           max_streak: 5,
           bounty: 0,
           rank_tier: "beginner",
           last_won_opponent_id: null, // also cleared on loss
-        })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 0, bounty: 0 });
+        },
+        { user_id: "loser", streak: 0, max_streak: 0, bounty: 0 }
+      );
 
       return JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 1000,
@@ -549,16 +546,17 @@ describe("JankenService", () => {
       JankenRating.findOrCreate.mockResolvedValue(undefined);
       // Winner has streak=1 from a single previous win against this same opponent.
       // Repeat win should keep streak at 1, so bounty should NOT accumulate (needs streak >= 2).
-      mockFirst
-        .mockResolvedValueOnce({
+      setRatings(
+        {
           user_id: "winner",
           streak: 1,
           max_streak: 1,
           bounty: 0,
           rank_tier: "beginner",
           last_won_opponent_id: "loser",
-        })
-        .mockResolvedValueOnce({ user_id: "loser", streak: 0, max_streak: 0, bounty: 0 });
+        },
+        { user_id: "loser", streak: 0, max_streak: 0, bounty: 0 }
+      );
 
       return JankenService.updateStreaks("winner", "loser", "win", {
         betAmount: 5000,

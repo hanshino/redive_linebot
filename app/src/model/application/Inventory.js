@@ -104,6 +104,24 @@ class Inventory extends base {
     return this.getUserOwnCountByItemId(userId, 999);
   }
 
+  /**
+   * 交易內鎖讀女神石餘額（KTD3 wallet authority）。`SELECT SUM ... FOR UPDATE` 鎖住該 user 所有
+   * itemId=999 的列與索引區間，commit 前其他交易對同一 user 的女神石 INSERT 會等待，
+   * 所以「讀到的餘額 → 同 trx 內扣款」之間不會被別的扣款插隊。`getUserMoney` 走全域連線、
+   * 不在交易內，不能當作扣款前的權威餘額。無任何列時回 0。
+   * @param {String} userId
+   * @param {import("knex").Knex.Transaction} trx
+   * @returns {Promise<Number>}
+   */
+  async lockGodStoneBalance(userId, trx) {
+    const row = await this.qb(trx)
+      .sum({ amount: "itemAmount" })
+      .where({ userId, itemId: 999 })
+      .forUpdate()
+      .first();
+    return row && row.amount !== null && row.amount !== undefined ? Number(row.amount) : 0;
+  }
+
   deleteUserItem(userId, itemId, trx) {
     return this.qb(trx).where({ userId, itemId }).del();
   }

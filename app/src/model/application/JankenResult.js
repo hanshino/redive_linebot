@@ -26,14 +26,22 @@ exports.all = async (options = {}) => {
   return await query.select("*");
 };
 
-exports.create = async (attributes = {}) => {
+/**
+ * @param {Object} attributes
+ * @param {import("knex").Knex.Transaction} [trx] 選填；傳入則在該交易內執行，不傳行為不變
+ */
+exports.create = async (attributes = {}, trx) => {
   let data = pick(attributes, fillable);
-  return await mysql(TABLE).insert(data);
+  return await (trx || mysql)(TABLE).insert(data);
 };
 
-exports.insert = async (data = []) => {
+/**
+ * @param {Array<Object>} data
+ * @param {import("knex").Knex.Transaction} [trx] 選填
+ */
+exports.insert = async (data = [], trx) => {
   let insertData = data.map(item => pick(item, fillable));
-  return await mysql(TABLE).insert(insertData);
+  return await (trx || mysql)(TABLE).insert(insertData);
 };
 
 exports.findUserGrade = async userId => {
