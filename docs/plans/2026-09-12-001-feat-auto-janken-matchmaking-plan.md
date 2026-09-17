@@ -169,6 +169,8 @@ execution: code
   - **對 U6 的約束：** U6 實作上述全部 core／schema／測試；不做任何 snapshot 指令、不掃線上 Redis、不對 `Princess` 執行資料操作。管轄 R11、R17。
 - KTD8. **使用者授權範圍：Janken 局部的手動扣款防護與 shared reward 必要改動已批准；全域 wallet 重構 deferred。** 已批准：KTD3（含手動 escrow 鎖序防護、`resolveMatch` wrapper 化）、KTD5、KTD6 中為達成 R17 與交易安全所必需的局部改動。未批准、明確 deferred：`Inventory` model 與商城／抽卡等其他消費路徑的一般性 wallet 重構；本計畫只沿用 `increaseGodStone`／`decreaseGodStone` 既有的 `trx` 參數（`Inventory.js:136-142`）並新增鎖讀版本的餘額查詢。對應 Scope Boundaries「全域 wallet／inventory 其他消費路徑的一般性重構」。
 - KTD9. **`daily_quest` cutover 協定（定案）：單一天 D_c 由 operator 事先固定、同日切換為 KTD5 單一 writer；舊歷史凍結不反推、切換日靠 durable 來源去重與補結、preflight 任一異常即整體延後。** 既有事實：舊表無 `quest_date`／unique，可能有同日重複列；weekly 獎勵在 `inventory` 的 ledger（`DailyQuestProcess.js:92-96`）沒有可辨識 `note`，**不能靠 DB 反推某週是否已付**；legacy Redis payload 無日期；legacy worker 每分鐘 `rPop`；legacy weekly 在 trx 外（`:86-97`），故 D_c 之前任何一週的 weekly 是否已付都是 unknown；repo 內沒有任何 `daily_quest` 的刪除 caller（`app/bin`、`app/src` 全查），但**不代表線上未曾人工改刪**，故列入 preflight 而非假設。
+
+  **2026-09-17 release-order supersession：** 本節原有的 KTD9 release ordering 已被前版發現順序風險，現由 [`docs/runbooks/2026-09-17-auto-janken-cutover.md`](../runbooks/2026-09-17-auto-janken-cutover.md) 的 ordered checklist 取代；實際 release 必須以該 runbook 為準。特別是先暫停 pull timer／等待 active deploy、核對 merged main SHA images、migration-only runner、舊 producer／consumer admission-stop、兩次 archive＋完整 `--audit`、preflight，再 activation 的順序，不得照用下方舊版步驟。下方原 numbered release steps 僅保留設計背景，**不是現行操作程序**。
   - **不變規範：**
     1. 切換本身不得新增任何漏獎或重複發獎；「佇列為空」不足以證明處理完成，「來源 key 不存在」不等於為 0。
     2. legacy 無 `note` 的週獎不反推；D_c 之前的舊週 weekly 一律 unknown、凍結、不補不查。

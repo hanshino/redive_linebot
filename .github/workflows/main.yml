@@ -83,4 +83,4 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: Ilshidur/action-discord@master
         with:
-          args: "{{ EVENT_PAYLOAD.repository.full_name }} image 已建置並推送到 GHCR（尚未自動部署，需在機器上手動 pull + restart）"
+          args: "{{ EVENT_PAYLOAD.repository.full_name }} main image 已發佈至 GHCR；這不代表部署成功，主機 timer 可能在後續拉取。planned maintenance 前請先暫停 timer。"
