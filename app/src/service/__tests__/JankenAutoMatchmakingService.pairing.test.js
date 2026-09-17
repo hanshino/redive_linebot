@@ -1,5 +1,8 @@
 // U2：JankenAutoMatchmakingService 純函式配對演算法（R8）＋可注入 RNG（KTD15）。
 // 這裡只驗證純函式本身：不連 DB/Redis、不建立 match_id/manifest、不做金流判斷（U3 以後）。
+jest.mock("../../model/application/SubscribeUser", () => {
+  throw new Error("Pure pairing must not load subscription runtime");
+});
 const { pairForDailyRun } = require("../JankenAutoMatchmakingService");
 
 // 固定序列 rng：每次成功配對只消耗一個值（pool.length===1 時仍會呼叫 rng()，只是結果恆為 index 0）。

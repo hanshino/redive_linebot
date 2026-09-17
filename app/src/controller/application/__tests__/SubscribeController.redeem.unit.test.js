@@ -16,16 +16,14 @@ jest.mock("../../../model/application/SubscribeCardCoupon", () => ({
   table: "subscribe_card_coupon",
   lockBySerialNumber: jest.fn(),
 }));
-jest.mock("../../../model/application/SubscribeUser", () => ({
-  lockByUserAndCard: jest.fn(),
-  lockEligibleByUser: jest.fn(),
-  hasActiveAt: jest.fn((rows, now) =>
-    rows.some(row => new Date(row.start_at) <= now && now < new Date(row.end_at))
-  ),
-  isEligibleCardKey: jest.fn(key => ["month", "season"].includes(key)),
-  create: jest.fn(),
-  update: jest.fn(),
-}));
+jest.mock("../../../model/application/SubscribeUser", () => {
+  const model = jest.requireActual("../../../model/application/SubscribeUser");
+  model.lockByUserAndCard = jest.fn();
+  model.lockAllByUser = jest.fn();
+  model.create = jest.fn();
+  model.update = jest.fn();
+  return model;
+});
 jest.mock("../../../model/application/UserAutoPreference", () => ({
   lockByUserId: jest.fn().mockResolvedValue(undefined),
   updateByUserId: jest.fn(),
@@ -84,12 +82,105 @@ beforeEach(() => {
     duration: 30,
     effects: [],
   });
-  SubscribeUser.lockEligibleByUser.mockImplementation(async (userId, trx) => {
+  GachaController.purgeDailyGachaCache.mockResolvedValue(undefined);
+  SubscribeUser.lockAllByUser.mockImplementation(async (userId, trx) => {
     const row = await SubscribeUser.lockByUserAndCard(userId, "month", trx);
     return row ? [{ subscribe_card_key: "month", ...row }] : [];
   });
   SubscribeUser.create.mockResolvedValue(1);
   SubscribeUser.update.mockResolvedValue(1);
+});
+
+describe("Plus eligibility does not change ordinary renewal", () => {
+  const Preference = require("../../../model/application/UserAutoPreference");
+  const now = new Date("2026-09-16T12:00:00Z");
+  const day = 86400000;
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(now);
+    Preference.lockByUserId.mockResolvedValue({
+      auto_match_generation: 4,
+      auto_match_bet_generation: 7,
+    });
+    SubscribeCardCoupon.lockBySerialNumber.mockResolvedValue({ id: 1, status: 0 });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  test.each(["month", "season"])(
+    "%s renews existing row without INSERT or consent reset",
+    async key => {
+      SubscribeCard.first.mockResolvedValue({ key, duration: 30, effects: [] });
+      SubscribeUser.lockAllByUser.mockResolvedValue([
+        {
+          id: 9,
+          subscribe_card_key: key,
+          start_at: new Date(+now - day),
+          end_at: new Date(+now + day),
+        },
+      ]);
+      await callExchange(ctx(), "serial");
+      expect(SubscribeUser.create).not.toHaveBeenCalled();
+      expect(SubscribeUser.update).toHaveBeenCalledWith(
+        9,
+        expect.objectContaining({
+          end_at: new Date(+now + 31 * day),
+        }),
+        {},
+        mysql
+      );
+      expect(Preference.updateByUserId).not.toHaveBeenCalled();
+      expect(Preference.create).not.toHaveBeenCalled();
+    }
+  );
+
+  test.each(["month", "season"])(
+    "expired Plus requires reconsent despite active %s",
+    async baseKey => {
+      SubscribeCard.first.mockResolvedValue({ key: "month_plus", duration: 30, effects: [] });
+      SubscribeUser.lockAllByUser.mockResolvedValue([
+        {
+          id: 8,
+          subscribe_card_key: baseKey,
+          start_at: new Date(+now - day),
+          end_at: new Date(+now + day),
+        },
+        { id: 9, subscribe_card_key: "month_plus", start_at: new Date(+now - day), end_at: now },
+      ]);
+      await callExchange(ctx(), "serial");
+      expect(SubscribeUser.create).not.toHaveBeenCalled();
+      expect(Preference.updateByUserId).toHaveBeenCalledWith(
+        ctx().event.source.userId,
+        {
+          auto_match_enabled: 0,
+          auto_match_generation: 5,
+          auto_match_bet_enabled: 0,
+          auto_match_bet_generation: 8,
+        },
+        mysql
+      );
+      expect(mysql.raw.mock.invocationCallOrder[0]).toBeLessThan(
+        SubscribeUser.lockAllByUser.mock.invocationCallOrder[0]
+      );
+      expect(SubscribeUser.lockAllByUser.mock.invocationCallOrder[0]).toBeLessThan(
+        Preference.lockByUserId.mock.invocationCallOrder[0]
+      );
+    }
+  );
+
+  test("continuous Plus renewal preserves consent", async () => {
+    SubscribeCard.first.mockResolvedValue({ key: "month_plus", duration: 30, effects: [] });
+    SubscribeUser.lockAllByUser.mockResolvedValue([
+      {
+        id: 9,
+        subscribe_card_key: "month_plus",
+        start_at: now,
+        end_at: new Date(+now + day),
+      },
+    ]);
+    await callExchange(ctx(), "serial");
+    expect(SubscribeUser.update).toHaveBeenCalledTimes(1);
+    expect(Preference.updateByUserId).not.toHaveBeenCalled();
+    expect(Preference.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("subscribeCouponExchange：查無序號 / 已使用 / 查無卡片", () => {

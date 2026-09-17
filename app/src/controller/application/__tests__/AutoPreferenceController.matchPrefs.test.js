@@ -72,7 +72,7 @@ async function seedUser(userId, { active = true, pref = {} } = {}) {
   if (active) {
     await mysql("subscribe_user").insert({
       user_id: userId,
-      subscribe_card_key: "month",
+      subscribe_card_key: "month_plus",
       start_at: new Date(Date.now() - DAY),
       end_at: new Date(Date.now() + DAY),
     });
@@ -229,7 +229,7 @@ describe("AutoPreference match APIs (isolated DB + real verifyToken)", () => {
     });
   });
 
-  test("無有效月/季卡不能啟用，但可關閉；兩 consent 彼此獨立", async () => {
+  test("無有效 Plus 不能啟用，但可關閉；兩 consent 彼此獨立", async () => {
     await seedUser(A, {
       active: false,
       pref: { auto_match_enabled: 1, auto_match_bet_enabled: 1 },

@@ -50,7 +50,7 @@ async function seedUser(userId) {
   await mysql("user").insert({ platform: "line", platform_id: userId });
   await mysql("subscribe_user").insert({
     user_id: userId,
-    subscribe_card_key: "month",
+    subscribe_card_key: "month_plus",
     start_at: ACTIVE_START,
     end_at: ACTIVE_END,
   });

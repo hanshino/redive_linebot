@@ -64,7 +64,7 @@ const features = [
   {
     icon: SportsMmaIcon,
     label: "今日自動配對",
-    description: "月卡自動猜拳結果",
+    description: "月卡 Plus 自動猜拳結果",
     path: "/auto/match",
     color: "#00ACC1",
   },

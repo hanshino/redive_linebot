@@ -2,7 +2,11 @@ const base = require("../base");
 const SubscribeJobLog = require("./SubscribeJobLog");
 
 class SubscribeUser extends base {
-  static ELIGIBLE_AUTO_MATCH_CARD_KEYS = Object.freeze(["month", "season"]);
+  static ELIGIBLE_AUTO_MATCH_CARD_KEYS = Object.freeze(["month_plus"]);
+
+  get eligibleAutoMatchCardKeys() {
+    return SubscribeUser.ELIGIBLE_AUTO_MATCH_CARD_KEYS;
+  }
 
   /**
    * 兌換交易內用：鎖住該 (user_id, subscribe_card_key) 那一行（若存在）再讀 end_at，
@@ -19,27 +23,22 @@ class SubscribeUser extends base {
       .first();
   }
 
-  /** KTD11/U8：同一 user 的月卡＋季卡一律按 id 取得 FOR UPDATE。 */
-  lockEligibleByUser(userId, trx) {
-    return this.qb(trx)
-      .where({ user_id: userId })
-      .whereIn("subscribe_card_key", SubscribeUser.ELIGIBLE_AUTO_MATCH_CARD_KEYS)
-      .orderBy("id", "asc")
-      .forUpdate();
+  /** 續期查找不可限於 Plus；所有訂閱按 id 鎖定，呼叫端先鎖 user。 */
+  lockAllByUser(userId, trx) {
+    return this.findAllByUser(userId, trx).forUpdate();
   }
 
-  findEligibleByUser(userId, trx) {
-    return this.qb(trx)
-      .where({ user_id: userId })
-      .whereIn("subscribe_card_key", SubscribeUser.ELIGIBLE_AUTO_MATCH_CARD_KEYS)
-      .orderBy("id", "asc");
+  findAllByUser(userId, trx) {
+    return this.qb(trx).where({ user_id: userId }).orderBy("id", "asc");
   }
 
-  hasActiveAt(rows, now) {
+  hasActiveAutoMatchAt(rows, now) {
     const timestamp = new Date(now).getTime();
     return rows.some(
       row =>
-        new Date(row.start_at).getTime() <= timestamp && timestamp < new Date(row.end_at).getTime()
+        this.isEligibleCardKey(row.subscribe_card_key) &&
+        new Date(row.start_at).getTime() <= timestamp &&
+        timestamp < new Date(row.end_at).getTime()
     );
   }
 

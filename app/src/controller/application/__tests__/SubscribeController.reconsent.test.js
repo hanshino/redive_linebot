@@ -86,7 +86,7 @@ async function seedUser(userId) {
   await mysql("user").insert({ platform: "line", platform_id: userId });
 }
 
-async function seedCoupon(cardKey = "month") {
+async function seedCoupon(cardKey = "month_plus") {
   const serial = uuid();
   await mysql("subscribe_card_coupon").insert({
     subscribe_card_key: cardKey,
@@ -139,6 +139,7 @@ describe("SubscribeController re-consent (isolated DB)", () => {
     await mysql("subscribe_card").insert([
       { key: "month", name: "month", price: 50, duration: 30, effects: "[]" },
       { key: "season", name: "season", price: 150, duration: 90, effects: "[]" },
+      { key: "month_plus", name: "Plus fixture", price: 0, duration: 30, effects: "[]" },
     ]);
   }, SETUP_TIMEOUT_MS);
 
@@ -159,7 +160,7 @@ describe("SubscribeController re-consent (isolated DB)", () => {
     await mysql("subscribe_user").insert([
       {
         user_id: userId,
-        subscribe_card_key: "month",
+        subscribe_card_key: "month_plus",
         start_at: new Date(Date.now() - 20 * DAY),
         end_at: new Date(Date.now() - DAY),
       },
@@ -193,7 +194,7 @@ describe("SubscribeController re-consent (isolated DB)", () => {
       auto_janken_fate_with_bet: 1,
     });
     const redeemed = await mysql("subscribe_user")
-      .where({ user_id: userId, subscribe_card_key: "month" })
+      .where({ user_id: userId, subscribe_card_key: "month_plus" })
       .first();
     const usedCoupon = await mysql("subscribe_card_coupon")
       .where({ serial_number: serial })
@@ -210,17 +211,23 @@ describe("SubscribeController re-consent (isolated DB)", () => {
     expect(lockOrder).toEqual([...lockOrder].sort((a, b) => a - b));
   });
 
-  test("active union 邊界固定為 start_at <= now < end_at", () => {
+  test("Plus 邊界固定為 start_at <= now < end_at", () => {
     const now = new Date("2026-09-13T12:00:00.000Z");
     expect(
-      SubscribeUser.hasActiveAt([{ start_at: now, end_at: new Date(now.getTime() + 1) }], now)
+      SubscribeUser.hasActiveAutoMatchAt(
+        [{ subscribe_card_key: "month_plus", start_at: now, end_at: new Date(now.getTime() + 1) }],
+        now
+      )
     ).toBe(true);
     expect(
-      SubscribeUser.hasActiveAt([{ start_at: new Date(now.getTime() - 1), end_at: now }], now)
+      SubscribeUser.hasActiveAutoMatchAt(
+        [{ subscribe_card_key: "month_plus", start_at: new Date(now.getTime() - 1), end_at: now }],
+        now
+      )
     ).toBe(false);
   });
 
-  test("有效 season 覆蓋 month 兌換：整體未中斷，不 reset consent/generation", async () => {
+  test("普通 month 兌換不 reset consent/generation（season 不授予 Plus 資格）", async () => {
     const userId = U("b");
     await seedUser(userId);
     await seedPreference(userId);
@@ -269,7 +276,7 @@ describe("SubscribeController re-consent (isolated DB)", () => {
   test("inactive 且尚無 preference row：兌換建立預設關閉 consent，generation 從 1 開始", async () => {
     const userId = U("e");
     await seedUser(userId);
-    const serial = await seedCoupon("month");
+    const serial = await seedCoupon("month_plus");
 
     await callExchange(ctx(userId), serial);
 
@@ -301,7 +308,7 @@ describe("SubscribeController re-consent (isolated DB)", () => {
     const userId = U("c");
     await seedUser(userId);
     await seedPreference(userId);
-    const serial = await seedCoupon("month");
+    const serial = await seedCoupon("month_plus");
     const holder = await mysql.transaction();
     let pending;
     try {

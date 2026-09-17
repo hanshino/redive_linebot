@@ -179,7 +179,7 @@ async function seedCurrentPreference(userId, enabled) {
   if (enabled) {
     await mysql("subscribe_user").insert({
       user_id: userId,
-      subscribe_card_key: "month",
+      subscribe_card_key: "month_plus",
       start_at: new Date("2029-01-01T00:00:00.000Z"),
       end_at: new Date("2031-01-01T00:00:00.000Z"),
     });

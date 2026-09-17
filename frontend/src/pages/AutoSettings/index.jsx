@@ -268,7 +268,7 @@ function SettingsSkeleton() {
   );
 }
 
-// ── 月卡自動猜拳 ────────────────────────────────────────────────────────────
+// ── 月卡 Plus 自動猜拳 ──────────────────────────────────────────────────────
 // 兩個偏好走各自的端點，彼此不連動：只開配對就是免費參與，下注要另外同意。
 
 const MAX_BET_CAP = 4294967295;
@@ -292,7 +292,7 @@ function capToDraft(cap) {
 function putErrorMessage(err) {
   const code = err?.response?.data?.error;
   if (code === "subscription_required") {
-    return { severity: "warning", message: "需要有效的月卡或季卡才能開啟" };
+    return { severity: "warning", message: "需要有效的月卡 Plus 才能開啟" };
   }
   if (code === "invalid_cap") {
     return { severity: "warning", message: "下注上限格式不正確，尚未儲存" };
@@ -333,7 +333,8 @@ function MatchRules() {
               資格
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              持有有效月卡或季卡即可參加，不分取得管道；訂閱到期就停止參加。不中斷續期會保留原本的開關。
+              持有有效月卡 Plus
+              即可參加，不分取得管道；訂閱到期就停止參加。不中斷續期會保留原本的開關。
             </Typography>
           </Box>
           <Box>
@@ -495,7 +496,7 @@ function AutoMatchSection() {
           </Button>
         }
       >
-        讀取月卡自動猜拳設定失敗
+        讀取月卡 Plus 自動猜拳設定失敗
       </Alert>
     );
   }
@@ -513,7 +514,7 @@ function AutoMatchSection() {
         <SportsMmaIcon color="primary" />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            月卡自動猜拳
+            月卡 Plus 自動猜拳
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             每天台灣時間 21:00 全站配對一次，布丁自動替你出拳。
@@ -532,7 +533,7 @@ function AutoMatchSection() {
 
       {!eligible && (
         <Alert severity="warning" icon={<LockOutlinedIcon fontSize="inherit" />}>
-          目前沒有有效的月卡或季卡，無法開啟這兩個開關；已開啟的項目仍可隨時關閉。
+          目前沒有有效的月卡 Plus，無法開啟這兩個開關；已開啟的項目仍可隨時關閉。
         </Alert>
       )}
 

@@ -58,8 +58,8 @@ async function loadPreference(userId) {
 }
 
 async function activeMatchEligibility(userId, now = new Date(), trx) {
-  const subscriptions = await SubscribeUser.findEligibleByUser(userId, trx);
-  return SubscribeUser.hasActiveAt(subscriptions, now);
+  const subscriptions = await SubscribeUser.findAllByUser(userId, trx);
+  return SubscribeUser.hasActiveAutoMatchAt(subscriptions, now);
 }
 
 function matchView(kind, row, eligible) {
@@ -115,8 +115,8 @@ async function setMatchPreference(kind, req, res) {
       const user = await trx("user").where({ platform_id: userId }).forUpdate().first("id");
       if (!user) return { error: "user_not_found", status: 404 };
       const now = new Date();
-      const subscriptions = await SubscribeUser.lockEligibleByUser(userId, trx);
-      const eligible = SubscribeUser.hasActiveAt(subscriptions, now);
+      const subscriptions = await SubscribeUser.lockAllByUser(userId, trx);
+      const eligible = SubscribeUser.hasActiveAutoMatchAt(subscriptions, now);
       const current = await UserAutoPreference.lockByUserId(userId, trx);
       if (body.enabled && !eligible) return { error: "subscription_required", status: 403 };
 

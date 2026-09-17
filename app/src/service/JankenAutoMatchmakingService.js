@@ -97,6 +97,7 @@ function deps() {
       JankenAutoMatchRun: require("../model/application/JankenAutoMatchRun"),
       JankenAutoMatchParticipant: require("../model/application/JankenAutoMatchParticipant"),
       UserAutoPreference: require("../model/application/UserAutoPreference"),
+      SubscribeUser: require("../model/application/SubscribeUser"),
       JankenRecords: require("../model/application/JankenRecords"),
       DefaultLogger: require("../util/Logger").DefaultLogger,
     };
@@ -105,8 +106,6 @@ function deps() {
   }
   return runtime;
 }
-/** R1：月卡或季卡（不分取得管道）。與 KTD11 re-consent 的卡種集合一致。 */
-const ELIGIBLE_CARD_KEYS = ["month", "season"];
 /** 有界重試次數，比照 SubscribeController.EXCHANGE_MAX_ATTEMPTS 的風格。 */
 const EXECUTE_MAX_ATTEMPTS = 3;
 const CHOICES = ["rock", "paper", "scissors"];
@@ -114,19 +113,15 @@ const CHOICES = ["rock", "paper", "scissors"];
 const drawChoice = rng => CHOICES[Math.min(CHOICES.length - 1, Math.floor(rng() * CHOICES.length))];
 const yesterdayOf = runDate =>
   moment(runDate, "YYYY-MM-DD").subtract(1, "day").format("YYYY-MM-DD");
-const isActiveAt = (row, now) => new Date(row.start_at) <= now && now < new Date(row.end_at);
 
 /**
- * 交易內鎖住該使用者所有 month/season 的 subscribe_user 列，並以固定 `now` 判斷是否仍有任一有效（R1／R4）。
+ * 交易內鎖住該使用者所有 subscribe_user 列，並以固定 `now` 判斷 Plus 資格（R1／R4）。
  * 鎖序 ③ 的前半（subscribe_user）；與 KTD11 的 `start_at <= now < end_at` 邊界一致。
  */
 async function lockActiveEligibility(trx, userId, now) {
-  const rows = await trx("subscribe_user")
-    .where({ user_id: userId })
-    .whereIn("subscribe_card_key", ELIGIBLE_CARD_KEYS)
-    .orderBy("id", "asc")
-    .forUpdate();
-  return rows.some(row => isActiveAt(row, now));
+  const { SubscribeUser } = deps();
+  const rows = await SubscribeUser.lockAllByUser(userId, trx);
+  return SubscribeUser.hasActiveAutoMatchAt(rows, now);
 }
 
 /**
@@ -146,7 +141,8 @@ async function createDailyManifest({
   rng = Math.random,
   newMatchId = uuid,
 }) {
-  const { mysql, JankenAutoMatchRun, JankenAutoMatchParticipant, STATUS, ROLE } = deps();
+  const { mysql, JankenAutoMatchRun, JankenAutoMatchParticipant, SubscribeUser, STATUS, ROLE } =
+    deps();
   return mysql.transaction(async trx => {
     const claimed = await JankenAutoMatchRun.tryClaim(runDate, trx);
     if (!claimed) return { claimed: false, runDate, matches: [], byeUserIds: [] };
@@ -154,7 +150,7 @@ async function createDailyManifest({
     const rows = await trx("user_auto_preference as p")
       .join("subscribe_user as s", "s.user_id", "p.user_id")
       .where("p.auto_match_enabled", 1)
-      .whereIn("s.subscribe_card_key", ELIGIBLE_CARD_KEYS)
+      .whereIn("s.subscribe_card_key", SubscribeUser.eligibleAutoMatchCardKeys)
       .where("s.start_at", "<=", now)
       .where("s.end_at", ">", now)
       .distinct(
@@ -397,6 +393,8 @@ module.exports = {
   createDailyManifest,
   executeMatch,
   runDailyAutoMatch,
-  ELIGIBLE_CARD_KEYS,
+  get ELIGIBLE_CARD_KEYS() {
+    return require("../model/application/SubscribeUser").eligibleAutoMatchCardKeys;
+  },
   EXECUTE_MAX_ATTEMPTS,
 };

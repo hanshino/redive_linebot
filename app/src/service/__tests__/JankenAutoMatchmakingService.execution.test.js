@@ -55,7 +55,7 @@ async function seedUser(userId, { elo = 1000, stones = 0, sub = "active", pref =
   if (sub !== "none") {
     await mysql("subscribe_user").insert({
       user_id: userId,
-      subscribe_card_key: "month",
+      subscribe_card_key: "month_plus",
       start_at: PAST,
       end_at: sub === "active" ? FAR : new Date("2026-09-13T20:00:00+08:00"),
     });
@@ -589,7 +589,7 @@ describe("JankenAutoMatchmakingService manifest + execution (isolated DB)", () =
     await mysql("janken_rating").insert({ user_id: I, elo: 1000, rank_tier: "beginner" });
     await mysql("subscribe_user").insert({
       user_id: I,
-      subscribe_card_key: "month",
+      subscribe_card_key: "month_plus",
       start_at: PAST,
       end_at: cardExpiry, // T0 時仍有效，T0+10min 執行時已過期
     });
@@ -641,7 +641,7 @@ describe("JankenAutoMatchmakingService manifest + execution (isolated DB)", () =
     await mysql("janken_rating").insert({ user_id: J, elo: 1000, rank_tier: "beginner" });
     await mysql("subscribe_user").insert({
       user_id: J,
-      subscribe_card_key: "month",
+      subscribe_card_key: "month_plus",
       start_at: PAST,
       end_at: cardExpiry,
     });
@@ -686,7 +686,7 @@ describe("JankenAutoMatchmakingService manifest + execution (isolated DB)", () =
     await mysql("janken_rating").insert({ user_id: K, elo: 1000, rank_tier: "beginner" });
     await mysql("subscribe_user").insert({
       user_id: K,
-      subscribe_card_key: "month",
+      subscribe_card_key: "month_plus",
       start_at: PAST,
       end_at: cardExpiry,
     });
@@ -758,7 +758,7 @@ describe("JankenAutoMatchmakingService manifest + execution (isolated DB)", () =
       await mysql("janken_rating").insert({ user_id: id, elo: 1000, rank_tier: "beginner" });
       await mysql("subscribe_user").insert({
         user_id: id,
-        subscribe_card_key: "month",
+        subscribe_card_key: "month_plus",
         start_at: PAST,
         end_at: FAR,
       });
@@ -810,7 +810,7 @@ describe("JankenAutoMatchmakingService manifest + execution (isolated DB)", () =
       await mysql("janken_rating").insert({ user_id: id, elo: 1000, rank_tier: "beginner" });
       await mysql("subscribe_user").insert({
         user_id: id,
-        subscribe_card_key: "month",
+        subscribe_card_key: "month_plus",
         start_at: PAST,
         end_at: FAR,
       });

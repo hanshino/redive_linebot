@@ -19,12 +19,12 @@ function response(runDate, status, reason, match = null) {
 async function isCurrentlyParticipating(userId, now) {
   const [preference, subscriptions] = await Promise.all([
     UserAutoPreference.first({ filter: { user_id: userId } }),
-    SubscribeUser.findEligibleByUser(userId),
+    SubscribeUser.findAllByUser(userId),
   ]);
   return Boolean(
     preference &&
     preference.auto_match_enabled === 1 &&
-    SubscribeUser.hasActiveAt(subscriptions, now)
+    SubscribeUser.hasActiveAutoMatchAt(subscriptions, now)
   );
 }
 

@@ -15,6 +15,7 @@ const JankenAutoMatchRun = require("../JankenAutoMatchRun");
 const JankenAutoMatchParticipant = require("../JankenAutoMatchParticipant");
 const JankenAutoMatchOutbox = require("../JankenAutoMatchOutbox");
 const UserAutoPreference = require("../UserAutoPreference");
+const SubscribeUser = require("../SubscribeUser");
 
 const sqlOnly = knex({ client: "mysql2" }); // 不連線，只拿 toSQL()
 
@@ -30,6 +31,16 @@ function fakeTrx() {
 }
 
 afterEach(() => jest.clearAllMocks());
+
+test("subscription renewal locks all card rows in id order on the supplied transaction", () => {
+  const { sql, bindings } = SubscribeUser.lockAllByUser("U1", sqlOnly).toSQL().toNative();
+  expect(sql).toBe(
+    "select * from `subscribe_user` where `user_id` = ? order by `id` asc for update"
+  );
+  expect(bindings).toEqual(["U1"]);
+  expect(SubscribeUser.findAllByUser("U1", sqlOnly).toSQL().sql).not.toContain("for update");
+  expect(mysql).not.toHaveBeenCalled();
+});
 
 describe("optional trx 傳遞", () => {
   test("JankenRecords.create / update：有 trx 走 trx，沒 trx 走全域 mysql", async () => {

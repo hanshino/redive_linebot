@@ -208,8 +208,8 @@ function isRetryableExchangeError(error) {
 }
 
 /**
- * 兌換單一序號整段包在同一交易，鎖序固定為 user → coupon → 該 user 所有 month/season
- * subscribe_user → user_auto_preference。以同一個 `now` 判 active 聯集；只有 inactive→active
+ * 兌換單一序號整段包在同一交易，鎖序固定為 user → coupon → 該 user 所有
+ * subscribe_user → user_auto_preference。以同一個 `now` 判 Plus 資格；只有 inactive→active
  * 才 reset 新自動配對 consent 並遞增 generation，舊 auto flags/cap 不動。
  * MySQL deadlock / 鎖等待逾時 / 首次建立時的唯一鍵 INSERT 競態，整個函式重新來過，
  * 最多額外重試 2 次；其餘錯誤（含序號不存在/已使用/查無卡片）一律不重試、直接拋出。
@@ -223,7 +223,7 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
   for (let attempt = 1; attempt <= EXCHANGE_MAX_ATTEMPTS; attempt += 1) {
     try {
       return await mysql.transaction(async trx => {
-        // KTD11 lock order: user → coupon → all eligible subscribe rows → preference.
+        // KTD11 lock order: user → coupon → all subscribe rows → preference.
         // A missing user row only yields a gap lock, not the per-user mutex this flow requires.
         const [players] = await trx.raw("SELECT id FROM `user` WHERE platform_id = ? FOR UPDATE", [
           userId,
@@ -242,12 +242,10 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
         );
         if (!card) throw exchangeFail("CARD_NOT_FOUND");
 
-        const eligibleSubscriptions = await SubscribeUser.lockEligibleByUser(userId, trx);
-        const wasActive = SubscribeUser.hasActiveAt(eligibleSubscriptions, now.toDate());
+        const subscriptions = await SubscribeUser.lockAllByUser(userId, trx);
+        const wasActive = SubscribeUser.hasActiveAutoMatchAt(subscriptions, now.toDate());
         const preference = await UserAutoPreference.lockByUserId(userId, trx);
-        const existing = eligibleSubscriptions.find(
-          row => row.subscribe_card_key === get(card, "key")
-        );
+        const existing = subscriptions.find(row => row.subscribe_card_key === get(card, "key"));
         let userData;
         let isContinue;
 
@@ -268,9 +266,7 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
         }
 
         const becameActive =
-          !wasActive &&
-          SubscribeUser.isEligibleCardKey(get(card, "key")) &&
-          SubscribeUser.hasActiveAt([userData], now.toDate());
+          !wasActive && SubscribeUser.hasActiveAutoMatchAt([userData], now.toDate());
         if (becameActive) {
           const reset = {
             auto_match_enabled: 0,
