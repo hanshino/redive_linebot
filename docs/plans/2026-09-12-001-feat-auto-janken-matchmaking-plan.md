@@ -378,10 +378,11 @@ stateDiagram-v2
 - 共用：既有手動猜拳指令已經在用的判定、下注、ELO、連勝結算規則與段位下注上限——本計畫是這套既有邏輯的新呼叫來源，不是另外做一套（見 Planning Contract KTD3）。
 - 可獨立進行：世界王自動攻擊是本次討論中提出、明確列為未來候選的項目，目前任何文件都未將其列為已承諾範圍。
 
-## 2026-09-16 eligibility addendum（本節覆蓋前文月／季卡資格敘述）
+## 2026-09-17 eligibility addendum（本節覆蓋前文月／季卡資格敘述）
 
 - 僅新「每日自動配對」與其獨立下注同意收窄為有效 `month_plus` 專屬；普通 `month`、`season` 及既有 `auto_daily_gacha`、`auto_janken_fate` 福利保留，取消移除季卡。無價格、升級折算或 migration 變更。
 - 資格以 `start_at <= now < end_at` 判斷；manifest 篩選與 execution 即時授權共用 Plus 卡種。無資格仍可分別關閉偏好，過期不阻擋本人既有結果。連續 Plus 續期保留同意；真正 Plus 到期後重兌須重新同意，即使普通月／季卡仍有效。
 - 續期交易維持 user-first，所有訂閱列依 id ASC 鎖定並查找原卡種，與 Plus 資格判斷分離，避免普通月／季卡續期誤 INSERT。既有 flags 與下注 cap 不因 reconsent 被改動。
 - 本次僅 dormant recognition，**未 provision `month_plus`，未修改發卡 allowlist 或發行流程**。isolated test 中的 Plus card 僅為 fixture，不是正式發卡資料。
 - **Cron 維持 disabled**。正式 provisioning、福利定義／配給支援與 issuance 流程核可仍為啟用前置；現有 DailyRation 僅處理 month／season，不在本次範圍，不能宣稱 Plus 已是完整可販售產品。原 operator release gates 仍適用。
+- 上層產品層決策（卡種結構、直接購買、售價未定、升級折算原則同意但公式未定案、不規劃新季卡商品）已於 2026-09-17 記錄於 `docs/plans/2026-09-09-sponsorship-subscription-roadmap.md` §5；本節只描述本計畫程式層的資格限制範圍，不重複、也不取代該文件內容。
