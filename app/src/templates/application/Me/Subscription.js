@@ -1,6 +1,14 @@
+const i18n = require("../../../util/i18n");
 const { COLORS, buildAccentBar, buildSubPanel } = require("./_shared");
 
-function header(count) {
+function countText(panels) {
+  const paused = panels.filter(p => p.paused).length;
+  return paused
+    ? i18n.__("message.subscribe.card_count_with_paused", { total: panels.length, paused })
+    : `${panels.length} 張啟用中`;
+}
+
+function header(panels) {
   return {
     type: "box",
     layout: "horizontal",
@@ -15,7 +23,7 @@ function header(count) {
       },
       {
         type: "text",
-        text: `${count} 張啟用中`,
+        text: countText(panels),
         size: "xxs",
         color: COLORS.textMuted,
         align: "end",
@@ -34,7 +42,7 @@ function header(count) {
 exports.build = ({ panels }) => {
   const contents = [
     buildAccentBar({ startColor: COLORS.amber500, endColor: COLORS.amber300 }),
-    header(panels.length),
+    header(panels),
   ];
   panels.forEach(p => contents.push(buildSubPanel(p)));
 

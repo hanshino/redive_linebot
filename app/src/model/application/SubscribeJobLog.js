@@ -7,6 +7,7 @@ class SubscribeJobLog extends base {
     this.type = {
       month_daily_ration: "month_daily_ration",
       season_daily_ration: "season_daily_ration",
+      month_plus_daily_ration: "month_plus_daily_ration",
     };
   }
 }

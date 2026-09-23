@@ -29,7 +29,9 @@ const Subscription = require("./Subscription");
  * @param {Number|String|null} data.lastRainbowDays
  * @param {Number|String|null} data.lastHasNewDays
  * @param {Object} data.janken           {win, lose, draw, rate}
- * @param {Array}  data.subscriptionCards [{key, titleText, expireText, effects: string[]}]
+ * @param {Array}  data.subscriptionCards
+ *   [{key, titleText, expireText, effects: [{text, exclusive}], paused: null|"resume"|"expire"}]
+ *   already sorted by the controller (active first, paused last); badge lists titleText only.
  * @returns {Array} bubbles
  */
 exports.buildBubbles = data => {

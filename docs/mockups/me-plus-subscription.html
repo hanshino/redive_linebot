@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <title>/me · 月卡 Plus 訂閱呈現 mockup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /*
+       * 尺寸全部照 LINE Flex keyword 換算：
+       *   font  xxs 11px · xs 13px · sm 14px · md 16px
+       *   space xs 2px · sm 4px · md 8px · lg 12px
+       *   radius sm 4px · md 8px · xl 16px
+       *   bubble size "mega" = 300px 寬
+       * 色票全部來自 app/src/templates/common/theme.js（Plus 用的紫色是 RARITY.epic.main）。
+       */
+      :root {
+        --chat-bg: #8caab2;
+        --text: #1a2332;
+        --muted: #5a6b7f;
+
+        --cyan-700: #00838f;
+        --cyan-600: #00acc1;
+        --cyan-500: #26c6da;
+        --cyan-bg: #e0f7fa;
+        --amber-500: #f59e0b;
+        --amber-400: #fbbf24;
+        --amber-300: #fcd34d;
+        --amber-bg: #fff7e6;
+        --green-500: #22c55e;
+        --green-bg: #e8f9ef;
+        --red-500: #ef4444;
+        --red-bg: #fdecec;
+
+        --hero-800: #12243a;
+        --hero-700: #1a2e4a;
+        --hero-600: #2d4068;
+        --hero-text: #e8eef4;
+        --hero-muted: #b0bec5;
+
+        --epic: #a834ff; /* RARITY.epic.main */
+        --epic-soft: #d8b4fe; /* 新增：Plus 專屬字色（深底上的淡紫） */
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f4f5f7;
+        font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", sans-serif;
+        color: var(--text);
+      }
+      header.page {
+        padding: 28px 32px 4px;
+        max-width: 1280px;
+      }
+      header.page h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      header.page p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+      .toolbar {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .toolbar label {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      section.scene {
+        padding: 20px 32px 8px;
+        max-width: 1280px;
+      }
+      .scene h2 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+      .scene h2 .no {
+        display: inline-block;
+        min-width: 22px;
+        padding: 0 6px;
+        margin-right: 6px;
+        border-radius: 999px;
+        background: var(--hero-800);
+        color: #fff;
+        font-size: 12px;
+        text-align: center;
+      }
+      .scene h2 .ref {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+        background: #e6eaef;
+        padding: 1px 8px;
+        border-radius: 999px;
+        margin-left: 6px;
+        vertical-align: 2px;
+      }
+      .scene .why {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin: 0 0 12px;
+        line-height: 1.7;
+      }
+      .chat {
+        background: var(--chat-bg);
+        border-radius: 18px;
+        padding: 18px;
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        align-items: flex-start;
+      }
+
+      /* ---------- Flex primitives ---------- */
+      .bubble {
+        flex: none;
+        width: 300px;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .v {
+        display: flex;
+        flex-direction: column;
+      }
+      .h {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+      }
+      .t {
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .xxs {
+        font-size: 11px;
+      }
+      .xs {
+        font-size: 13px;
+      }
+      .sm {
+        font-size: 14px;
+      }
+      .md {
+        font-size: 16px;
+      }
+      .b {
+        font-weight: 700;
+      }
+      .grow {
+        flex: 1;
+        min-width: 0;
+      }
+      .end {
+        text-align: right;
+      }
+      .wrap {
+        white-space: normal;
+      }
+
+      /* debug：顯示每個 Flex box 邊界 */
+      body.debug .v,
+      body.debug .h {
+        outline: 1px dashed rgba(255, 0, 128, 0.55);
+        outline-offset: -1px;
+      }
+
+      /* ---------- Profile ---------- */
+      .hero {
+        padding: 12px;
+        background: linear-gradient(135deg, var(--cyan-700), var(--cyan-600));
+        color: #fff;
+      }
+      .avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 100px;
+        border: 2px solid #fff;
+        background: #fff3e6;
+        display: grid;
+        place-items: center;
+        font-size: 28px;
+        flex: 0 0 auto;
+        margin-right: 8px;
+      }
+      .lv {
+        background: var(--amber-400);
+        color: #3a2800;
+        border-radius: 16px;
+        padding: 2px 4px;
+        min-width: 44px;
+        text-align: center;
+        margin-left: 4px;
+      }
+      .bar {
+        background: #ffffff44;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 2px;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        background: var(--amber-400);
+        border-radius: 8px;
+      }
+      .stats {
+        padding: 8px 12px 0;
+        gap: 4px;
+        align-items: stretch;
+      }
+      .stat {
+        flex: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+      }
+      .stat > .lb {
+        width: 3px;
+      }
+      .stat > .c {
+        flex: 1;
+        padding: 4px;
+        text-align: center;
+      }
+      .stat.done > .lb {
+        background: var(--green-500);
+      }
+      .stat.done > .c {
+        background: var(--green-bg);
+        color: var(--green-500);
+      }
+      .stat.miss > .lb {
+        background: var(--red-500);
+      }
+      .stat.miss > .c {
+        background: var(--red-bg);
+        color: var(--red-500);
+      }
+      .stat.prog > .lb {
+        background: var(--cyan-600);
+      }
+      .stat.prog > .c {
+        background: var(--cyan-bg);
+        color: var(--cyan-700);
+      }
+      .stat .lab {
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .streak {
+        margin: 8px 12px 8px;
+        background: var(--amber-bg);
+        border-radius: 8px;
+        padding: 4px 8px;
+      }
+      .pill {
+        background: var(--cyan-bg);
+        color: var(--cyan-700);
+        padding: 4px 8px;
+      }
+      .pill .chev {
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1;
+        margin-left: 4px;
+      }
+      .pill.r {
+        border-radius: 8px;
+      }
+
+      /* ---------- Subscription panel ---------- */
+      .hair {
+        height: 3px;
+        background: linear-gradient(90deg, var(--amber-500), var(--amber-300));
+      }
+      .panel {
+        background: var(--hero-800);
+        color: var(--hero-text);
+        padding: 8px 12px;
+        gap: 2px;
+      }
+      .chip {
+        border-radius: 4px;
+        padding: 2px 4px;
+        font-weight: 700;
+        flex: 0 0 auto;
+        margin-right: 4px;
+      }
+      .chip.month {
+        background: var(--cyan-500);
+        color: #002a30;
+      }
+      .chip.season {
+        background: var(--amber-400);
+        color: #3a2800;
+      }
+      .expire {
+        color: var(--hero-muted);
+      }
+      .dia {
+        color: var(--amber-400);
+        font-weight: 700;
+      }
+
+      /* Plus：紫→金 hairline、底色抬一階、紫色 tag */
+      .sub.plus .hair {
+        background: linear-gradient(90deg, var(--epic), var(--amber-300));
+      }
+      .sub.plus .panel {
+        background: var(--hero-700);
+      }
+      .chip.plus {
+        background: var(--epic);
+        color: #fff;
+      }
+      .excl {
+        color: var(--epic-soft);
+        font-weight: 700;
+      }
+
+      /* 被 Plus 覆蓋的月卡：沒有金線、tag 與文字全部降成灰藍 */
+      .sub.paused .hair {
+        background: var(--hero-600);
+      }
+      .chip.paused {
+        background: var(--hero-600);
+        color: var(--hero-muted);
+      }
+      .sub.paused .note {
+        color: var(--hero-muted);
+      }
+
+      .sub-head {
+        padding: 8px 12px 4px;
+      }
+      .accent4 {
+        height: 4px;
+        background: linear-gradient(90deg, var(--amber-500), var(--amber-300));
+      }
+
+      .stub {
+        flex: 0 0 300px;
+        height: 120px;
+        border: 2px dashed #ffffff99;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 12px;
+        text-align: center;
+        line-height: 1.6;
+      }
+      .cap {
+        font-size: 11px;
+        color: #f5f5f5;
+        font-weight: 600;
+        text-align: center;
+        margin-top: 6px;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ---------- notes ---------- */
+      .notes {
+        padding: 12px 32px 64px;
+        max-width: 1280px;
+      }
+      .notes h3 {
+        font-size: 15px;
+        margin: 28px 0 8px;
+      }
+      .notes ul,
+      .notes table {
+        font-size: 13px;
+        line-height: 1.7;
+      }
+      .notes ul {
+        padding-left: 20px;
+        margin: 0;
+      }
+      .notes code {
+        background: #e8edf2;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .notes table {
+        border-collapse: collapse;
+        width: 100%;
+        background: #fff;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .notes th,
+      .notes td {
+        text-align: left;
+        padding: 7px 10px;
+        border-bottom: 1px solid #eef2f6;
+        vertical-align: top;
+      }
+      .notes th {
+        background: #eef2f6;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .notes .new {
+        color: var(--epic);
+        font-weight: 700;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page">
+      <h1>/me · 月卡 Plus 訂閱呈現</h1>
+      <p>
+        以目前的 <code>app/src/templates/application/Me/</code> 實作為底（1 張卡內嵌 Profile、2 張以上拆出「訂閱特權」bubble），
+        只加 Plus 的樣式與「被 Plus 覆蓋的月卡」樣式。Progress bubble 全部情境都不變，以虛線框代替。<br />
+        福利數字：月卡 +1 抽 / 200 石、季卡 +2 抽 / 500 石（與 <code>app/seeds/SubscribeCardSeeder.js</code> 及線上一致）、Plus +2 抽 / 500 石。
+      </p>
+      <div class="toolbar">
+        <label><input type="checkbox" id="dbg" /> 顯示 Flex box 邊界（對照實作用）</label>
+      </div>
+    </header>
+
+    <div id="scenes"></div>
+
+    <div class="notes">
+      <h3>元件 → Flex 結構對照</h3>
+      <table>
+        <tr>
+          <th style="width: 22%">元件</th>
+          <th>Flex 結構</th>
+        </tr>
+        <tr>
+          <td>Plus 面板頂端紫→金細線</td>
+          <td>
+            沿用 <code>buildAccentBar</code>：<code>box</code> height <code>3px</code>，
+            <code>background: { type: "linearGradient", angle: "90deg", startColor: "#A834FF", endColor: "#FCD34D" }</code>，
+            <code>backgroundColor</code> 放 <code>#A834FF</code> 當舊版 fallback。
+          </td>
+        </tr>
+        <tr>
+          <td>Plus 面板底色</td>
+          <td><code>HERO_SURFACE.bgRaised</code>（#1A2E4A）取代 <code>bgAlt</code>，比其他卡亮一階，其餘 padding / spacing 與 <code>buildSubPanel</code> 相同。</td>
+        </tr>
+        <tr>
+          <td>「月卡 Plus」tag</td>
+          <td>跟現有 tagChip 同結構（<code>box</code> + <code>text</code> xxs bold，cornerRadius <code>sm</code>），bg <code>RARITY.epic.main</code>、字色 <code>#FFFFFF</code>（對比約 4.6:1）。</td>
+        </tr>
+        <tr>
+          <td>Plus 專屬福利列</td>
+          <td>
+            單一 <code>text</code> + 3 個 <code>span</code>：<code>◆ </code>（amber400 bold）＋ 福利文字（heroText）＋
+            <code>  Plus 專屬</code>（#D8B4FE bold）。不用額外 box。
+          </td>
+        </tr>
+        <tr>
+          <td>被覆蓋的月卡</td>
+          <td>
+            headRow 結構不變，只換色：hairline 改純色 <code>HERO_SURFACE.bgButton</code>（#2D4068，不給漸層），tag bg 同色、字色 <code>heroTextMuted</code>。
+            福利列整段拿掉，換成一行 <code>text</code>（xxs、heroTextMuted、<code>wrap: true</code>）。Flex 沒有 opacity，所以「變淡」一律用換色做。
+          </td>
+        </tr>
+        <tr>
+          <td>訂閱特權 header 右側</td>
+          <td>現有 <code>text</code> 換文字而已：有暫停卡時顯示「N 張・M 張暫停」，否則維持「N 張啟用中」。</td>
+        </tr>
+        <tr>
+          <td>Profile 的訂閱 badge</td>
+          <td>沿用 <code>buildSubBadge</code> / <code>buildLinkPill</code>（無圓角、無 action），文字依新排序 join。3 張最長「🎟 訂閱中 · 月卡 Plus + 季卡 + 月卡」約 20 字，xxs 在 mega 寬內放得下不會被截斷。</td>
+        </tr>
+      </table>
+
+      <h3>實作時要動的地方（僅記錄，這次不改 code）</h3>
+      <ul>
+        <li>
+          <code>ChatLevelController.js:159</code> 的 <code>subscriptionRank</code>：改成 <b>生效中的卡在前、被覆蓋的卡在後</b>，
+          即 <code>month_plus → season → month</code>；只有月卡或月卡+季卡時排序跟現在一樣。
+        </li>
+        <li>
+          卡片資料多兩個欄位：<code>paused: boolean</code>（持有 Plus 時月卡為 true），effects 從 <code>string[]</code> 改成
+          <code>{ text, exclusive }[]</code>（或在 template 內用 effect type 判斷），讓 template 知道哪一列要加「Plus 專屬」。
+        </li>
+        <li><code>buildSubPanel</code> 依 <code>key === "month_plus"</code> / <code>paused</code> 分三種樣式；<code>Subscription.build</code> header 計算暫停張數。暫停提示依到期日二選一：月卡 <code>end_at</code> 晚於 Plus <code>end_at</code> 用 <code>paused_by_plus_resume</code>，否則（早於或同一天）用 <code>paused_by_plus_expire</code>。</li>
+        <li>locale：<code>message.subscribe.month_plus</code>、<code>effects.auto_janken_match</code>（名稱暫定，依實際 effect type 命名）、暫停提示、header 計數。</li>
+        <li>高度：Plus 單卡內嵌讓 Profile 比現在月卡內嵌多約 50px（多 3 列福利），仍在 mega 可接受範圍；3 張卡的訂閱特權 bubble 約 300px，比 Profile 矮。</li>
+      </ul>
+
+      <h3>新增文案清單</h3>
+      <table>
+        <tr>
+          <th style="width: 34%">建議 key</th>
+          <th style="width: 34%">文案</th>
+          <th>出現位置</th>
+        </tr>
+        <tr>
+          <td><code>message.subscribe.month_plus</code></td>
+          <td>月卡 Plus</td>
+          <td>tag、Profile badge</td>
+        </tr>
+        <tr>
+          <td><code>message.subscribe.effects.auto_janken_match</code></td>
+          <td>每日自動配對猜拳</td>
+          <td>Plus 福利列（套 <code>effects_row_feature</code> → 「✨ 每日自動配對猜拳」）</td>
+        </tr>
+        <tr>
+          <td><code>message.subscribe.effect_exclusive_plus</code></td>
+          <td>Plus 專屬</td>
+          <td>Plus 專屬福利列尾端</td>
+        </tr>
+        <tr>
+          <td><code>message.subscribe.paused_by_plus_resume</code></td>
+          <td>⏸ Plus 到期後恢復發放</td>
+          <td>被覆蓋月卡面板（取代福利列）；月卡到期日晚於 Plus 到期日</td>
+        </tr>
+        <tr>
+          <td><code>message.subscribe.paused_by_plus_expire</code></td>
+          <td>⏸ Plus 期間不發放，天數照常倒數</td>
+          <td>被覆蓋月卡面板（取代福利列）；月卡到期日早於或等於 Plus 到期日</td>
+        </tr>
+        <tr>
+          <td><code>message.subscribe.card_count_with_paused</code></td>
+          <td>{{ total }} 張・{{ paused }} 張暫停</td>
+          <td>訂閱特權 bubble header 右側（有暫停卡時）</td>
+        </tr>
+      </table>
+      <p style="font-size: 12px; color: var(--muted)">
+        「N 張啟用中」「YYYY-MM-DD 到期」「🎟 訂閱中 · …」與既有福利列格式（<code>+ 每日寶石 +500</code> 等）都沿用現有字串，不列入新增。
+      </p>
+    </div>
+
+    <script>
+      // ponytail: 用 JS 拼 HTML 只是為了 5 個情境不要重複貼 5 份 Profile；每個 div 都對應一個 Flex box。
+      const MONTH = {
+        key: "month",
+        title: "月卡",
+        expire: "2026-11-02",
+        effects: [{ text: "+ 每日單抽次數 +1" }, { text: "+ 每日寶石 +200" }],
+      };
+      const SEASON = {
+        key: "season",
+        title: "季卡",
+        expire: "2027-01-15",
+        effects: [{ text: "+ 每日單抽次數 +2" }, { text: "+ 每日寶石 +500" }],
+      };
+      const PLUS = {
+        key: "plus",
+        title: "月卡 Plus",
+        expire: "2026-12-20",
+        effects: [
+          { text: "+ 每日寶石 +500" },
+          { text: "+ 每日單抽次數 +2" },
+          { text: "✨ 每日自動抽卡" },
+          { text: "✨ 猜拳自動代打" },
+          { text: "✨ 每日自動配對猜拳", exclusive: true },
+        ],
+      };
+      const PAUSED_MONTH = { ...MONTH, paused: true }; // 2026-11-02 ≤ Plus 2026-12-20
+      const PAUSED_MONTH_RESUME = { ...MONTH, expire: "2027-02-10", paused: true }; // 晚於 Plus
+
+      const panel = c => {
+        const cls = c.paused ? "paused" : c.key;
+        const lines = c.paused
+          ? `<div class="t xxs wrap note">${
+              c.expire > PLUS.expire ? "⏸ Plus 到期後恢復發放" : "⏸ Plus 期間不發放，天數照常倒數"
+            }</div>`
+          : c.effects
+              .map(
+                e =>
+                  `<div class="t xxs"><span class="dia">◆ </span>${e.text}${
+                    e.exclusive ? `<span class="excl">  Plus 專屬</span>` : ""
+                  }</div>`
+              )
+              .join("");
+        return `<div class="v sub ${c.paused ? "paused" : c.key}">
+          <div class="hair"></div>
+          <div class="v panel">
+            <div class="h">
+              <div class="chip ${cls} xxs">${c.title}</div>
+              <div class="t xxs expire grow end">${c.expire} 到期</div>
+            </div>
+            ${lines}
+          </div>
+        </div>`;
+      };
+
+      const profile = ({ inline, badge }) => `
+        <div class="bubble">
+          <div class="v hero">
+            <div class="h">
+              <div class="avatar">🍮</div>
+              <div class="v grow">
+                <div class="h">
+                  <div class="t md b grow">Minghan</div>
+                  <div class="lv t xxs b">Lv.87</div>
+                </div>
+                <div class="t xxs b" style="color: var(--amber-300); margin-top: 2px">✨ 覺醒者</div>
+              </div>
+            </div>
+            <div class="h" style="margin-top: 8px">
+              <div class="t xxs">EXP</div>
+              <div class="t xxs b grow end" style="color: var(--amber-300)">48.2K / 82.0K</div>
+            </div>
+            <div class="bar" style="height: 7px"><i style="width: 58%"></i></div>
+            <div class="h" style="margin-top: 4px">
+              <div class="t xxs">今日經驗區段</div>
+              <div class="t xxs b grow end" style="color: var(--amber-300)">86 / 150 · 🟢 滿速</div>
+            </div>
+            <div class="bar" style="height: 5px"><i style="width: 24%"></i></div>
+          </div>
+          ${inline ? panel(inline) : ""}
+          ${
+            badge
+              ? `<div class="v" style="padding: 8px 12px 0">
+                  <div class="h pill"><div class="t xxs b grow">🎟 訂閱中 · ${badge
+                    .map(c => c.title)
+                    .join(" + ")}</div><div class="chev">›</div></div>
+                </div>`
+              : ""
+          }
+          <div class="h stats">
+            <div class="stat done"><div class="lb"></div><div class="c"><div class="t sm b">✓ 1/1</div><div class="t xxs lab">今日轉蛋</div></div></div>
+            <div class="stat miss"><div class="lb"></div><div class="c"><div class="t sm b">! 0/1</div><div class="t xxs lab">今日猜拳</div></div></div>
+            <div class="stat prog"><div class="lb"></div><div class="c"><div class="t sm b">⋯ 3/7</div><div class="t xxs lab">週任務</div></div></div>
+          </div>
+          <div class="v streak">
+            <div class="h">
+              <div class="t xs grow" style="color: var(--muted)">🔥 連續簽到</div>
+              <div class="t"><b style="color: var(--amber-500); font-size: 16px">12</b> <span class="xs" style="color: var(--muted)">天</span></div>
+            </div>
+            <div class="h" style="margin-top: 2px">
+              <div class="t xxs grow" style="color: var(--muted)">本月 18/23 天</div>
+              <div class="t xxs" style="color: var(--muted)">累積 312 天</div>
+            </div>
+          </div>
+          <div class="v" style="padding: 0 12px 12px">
+            <div class="h pill r"><div class="t xs b grow">🗓 查看簽到月曆</div><div class="chev">›</div></div>
+            <div class="h pill r" style="margin-top: 4px"><div class="t xs b grow">📈 查看經驗歷程</div><div class="chev">›</div></div>
+          </div>
+        </div>`;
+
+      const subBubble = cards => {
+        const paused = cards.filter(c => c.paused).length;
+        const count = paused ? `${cards.length} 張・${paused} 張暫停` : `${cards.length} 張啟用中`;
+        return `<div class="bubble">
+          <div class="accent4"></div>
+          <div class="h sub-head">
+            <div class="t sm b grow">訂閱特權</div>
+            <div class="t xxs" style="color: var(--muted)">${count}</div>
+          </div>
+          ${cards.map(panel).join("")}
+        </div>`;
+      };
+
+      const stub = `<div class="stub">Progress bubble<br />（不變）</div>`;
+      const col = (html, cap) => `<div class="col">${html}<div class="cap">${cap}</div></div>`;
+
+      const build = cards =>
+        cards.length <= 1
+          ? col(profile({ inline: cards[0] }), "Profile（訂閱內嵌）") + stub
+          : col(profile({ badge: cards }), "Profile（badge）") +
+            col(subBubble(cards), "訂閱特權") +
+            stub;
+
+      const SCENES = [
+        {
+          title: "只有月卡",
+          ref: "現況，不改",
+          why: "現行樣式：cyan tag、金色細線、深 navy 底。作為下面幾個情境的對照組。",
+          cards: [MONTH],
+        },
+        {
+          title: "只有 Plus",
+          why: "1 張卡照規則內嵌 Profile。上位感只靠三件事：紫→金細線、底色亮一階、紫色 tag；專屬福利放最後一列並標「Plus 專屬」。其餘結構與月卡完全一樣，不會搶 hero 的戲。",
+          cards: [PLUS],
+        },
+        {
+          no: "3a",
+          title: "Plus + 月卡（月卡比 Plus 晚到期）",
+          why: "月卡 2027-02-10 到期、Plus 2026-12-20 到期 → 月卡在 Plus 結束後還有剩，提示寫「⏸ Plus 到期後恢復發放」。其餘同 3b：月卡整張降成灰藍、不列福利，header 顯示「2 張・1 張暫停」。",
+          cards: [PLUS, PAUSED_MONTH_RESUME],
+        },
+        {
+          no: "3b",
+          title: "Plus + 月卡（月卡比 Plus 早到期或同一天）",
+          why: "月卡 2026-11-02 到期、Plus 2026-12-20 到期 → 月卡會在 Plus 期間內用完，提示寫「⏸ Plus 期間不發放，天數照常倒數」，讓玩家知道這張月卡之後不會再發。",
+          cards: [PLUS, PAUSED_MONTH],
+        },
+        {
+          no: "4",
+          title: "Plus + 季卡（疊加）",
+          why: "兩張都生效，正常並列：Plus 在前、季卡維持原樣。header 維持「2 張啟用中」。",
+          cards: [PLUS, SEASON],
+        },
+        {
+          no: "5",
+          title: "Plus + 月卡 + 季卡（邊界）",
+          why: "排序＝生效中在前、暫停在後：Plus → 季卡 → 月卡。月卡 2026-11-02 早於 Plus 2026-12-20，所以用「Plus 期間不發放」那句。暫停月卡不列福利所以很矮，整個 bubble 約 300px，比 Profile 還短，不爆版。badge 3 個卡名約 20 字，不會被截斷。",
+          cards: [PLUS, SEASON, PAUSED_MONTH],
+        },
+      ];
+
+      document.getElementById("scenes").innerHTML = SCENES.map(
+        (s, i) => `<section class="scene">
+          <h2><span class="no">${s.no || i + 1}</span>${s.title}${s.ref ? `<span class="ref">${s.ref}</span>` : ""}</h2>
+          <p class="why">${s.why}</p>
+          <div class="chat">${build(s.cards)}</div>
+        </section>`
+      ).join("");
+
+      document.getElementById("dbg").addEventListener("change", e =>
+        document.body.classList.toggle("debug", e.target.checked)
+      );
+    </script>
+  </body>
+</html>
