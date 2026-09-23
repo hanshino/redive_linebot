@@ -40,7 +40,7 @@ scope: PR824 / DailyQuest 由 Redis 佇列切換為 durable scanner
    下一分鐘 scanner 開始跑，補結今天所有已完成者。
 5. **（可選）清舊佇列**：`DEL event_center:daily_quest`。
 6. **觀察**：worker log 有 scanner 處理紀錄、`daily_quest_completion` 有今天的列、沒有同 user 同日兩筆 `daily_quest`。
-7. `sudo systemctl start stack-deploy.timer`。自動配對 cron（`app/config/crontab.config.js` 的 `Auto Janken Matchmaking` 與 outbox）維持 `enabled: false`，另行決定啟用時機。
+7. `sudo systemctl start stack-deploy.timer`。自動配對 cron（`app/config/crontab.config.js` 的 `Auto Janken Matchmaking` 與 outbox）當時維持 `enabled: false`；2026-09-23 隨 Plus 開賣改為 `enabled: true`（緊急關閉改回 `false` 即可）。
 
 ## Rollback
 

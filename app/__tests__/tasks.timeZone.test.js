@@ -29,7 +29,7 @@ function loadScheduler() {
   return config.map((entry, index) => ({ entry, options: fromMock.mock.calls[index][0] }));
 }
 
-describe("tasks.js timeZone + disabled U9 wiring", () => {
+describe("tasks.js timeZone + U9 wiring", () => {
   let registrations;
 
   beforeAll(() => {
@@ -63,10 +63,10 @@ describe("tasks.js timeZone + disabled U9 wiring", () => {
     });
   });
 
-  test("每日配對預設 disabled、21:00 Asia/Taipei、沒有 immediate", async () => {
+  test("每日配對已啟用、21:00 Asia/Taipei、沒有 immediate", async () => {
     const job = registrations.find(({ entry }) => entry.name === "Auto Janken Matchmaking");
     expect(job.entry).toMatchObject({
-      enabled: false,
+      enabled: true,
       period: ["0", "0", "21", "*", "*", "*"],
       immediate: false,
       timeZone: "Asia/Taipei",
@@ -80,16 +80,16 @@ describe("tasks.js timeZone + disabled U9 wiring", () => {
     });
 
     await job.options.onTick();
-    expect(AutoJankenMatchmaking).not.toHaveBeenCalled();
-    expect(Task.write).not.toHaveBeenCalled();
+    expect(AutoJankenMatchmaking).toHaveBeenCalledTimes(1);
+    expect(Task.write).toHaveBeenCalledTimes(1);
   });
 
-  test("outbox drainer 已接線但預設 disabled，不會 require-time 或 tick 消費", async () => {
+  test("outbox drainer 已啟用、不 runOnInit，tick 會消費", async () => {
     const job = registrations.find(
       ({ entry }) => entry.name === "Janken Auto Match Outbox Drainer"
     );
     expect(job.entry).toMatchObject({
-      enabled: false,
+      enabled: true,
       immediate: false,
       timeZone: "Asia/Taipei",
       require_path: "./bin/JankenAutoMatchOutboxDrainer",
@@ -97,21 +97,20 @@ describe("tasks.js timeZone + disabled U9 wiring", () => {
     expect(job.options.runOnInit).toBe(false);
 
     await job.options.onTick();
-    expect(JankenAutoMatchOutboxDrainer).not.toHaveBeenCalled();
-    expect(Task.write).not.toHaveBeenCalled();
+    expect(JankenAutoMatchOutboxDrainer).toHaveBeenCalledTimes(1);
+    expect(Task.write).toHaveBeenCalledTimes(1);
   });
 
-  test("明確 enabled=true 才會執行新 job；測試後 source config 維持 false", async () => {
+  test("enabled=false 時 tick 不執行 job（緊急關閉開關）", async () => {
     const job = registrations.find(({ entry }) => entry.name === "Auto Janken Matchmaking");
     try {
-      job.entry.enabled = true;
-      await job.options.onTick();
-      expect(AutoJankenMatchmaking).toHaveBeenCalledTimes(1);
-      expect(Task.write).toHaveBeenCalledTimes(1);
-    } finally {
       job.entry.enabled = false;
+      await job.options.onTick();
+      expect(AutoJankenMatchmaking).not.toHaveBeenCalled();
+      expect(Task.write).not.toHaveBeenCalled();
+    } finally {
+      job.entry.enabled = true;
     }
-    expect(job.entry.enabled).toBe(false);
   });
 
   test("舊 job omitted enabled 仍可執行並寫 Task", async () => {
