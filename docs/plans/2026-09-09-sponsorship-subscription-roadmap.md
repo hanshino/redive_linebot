@@ -145,7 +145,15 @@
   - 持有有效 Plus 時兌換月卡（例如別人送的）：月卡天數 × 1/2 加到 Plus，不建立或延長月卡列。
   - 季卡不參與折算，照舊疊加。
   - 前面的 `SUPERSEDED_BY` 覆蓋規則保留，作為並存時的保險（例如折算上線前就已並存的資料）。
-- **上線需一起完成（同一 PR）：** 建 `month_plus` 卡種的 knex migration（含 effects、price 60）、`subscribe.month_plus_icon` 設定、`SubscribeCardCouponService.ALLOWED_KEYS` 加入 `month_plus`、兌換折算邏輯與測試。
+- **上線需一起完成（同一 PR）：** 建 `month_plus` 卡種的 knex migration（含 effects、price 60）、`SubscribeCardCouponService.ALLOWED_KEYS` 加入 `month_plus`、兌換折算邏輯與測試。（原本列的 `subscribe.month_plus_icon` 設定已隨 PR #830 移除 `#訂閱` 指令／`templates/application/Subscribe.js`／`config.subscribe` 區塊一併作廢，不再需要。）
+
+### 2026-09-23 Plus 開賣實作（`feature/month-plus-launch`）
+
+- `month_plus` 卡種：migration `20260923092351_create_month_plus_subscribe_card`（冪等），seed 同步。
+- `SubscribeCardCouponService.ALLOWED_KEYS` 加入 `month_plus`，後台與 CLI 皆可發 Plus 序號；`我要買月卡` 維持只賣 month。
+- 兌換折算：`SubscribeController.js#exchangeCouponWithRetry`，依 `SubscribeCard.SUPERSEDED_BY` 推導折算方向，數學在 `SubscriptionService.convertDurationByPrice`；有真實 DB 整合測試（含並發不重複折算）。
+- 已知且接受：升級當天若已領月卡配給，折算成 Plus 後當天可能再領一次 Plus 配給（每次升級最多一次，影響小，不另做防重）。
+- 開賣前仍需：決定每日自動配對 cron 何時啟用（Plus 專屬福利，/me 已顯示），以及本人以測試序號走一次兌換驗收。
 
 - [ ] 由授權人員核對現行卡種、福利、售價及存量，不從 seed 推定正式設定。
 - [ ] 選定首波福利；候選為自動化升級、補簽容錯、可永久收藏的外觀，並非全部承諾實作。

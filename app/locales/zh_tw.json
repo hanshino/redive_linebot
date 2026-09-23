@@ -164,6 +164,8 @@
       "serial_number_used": "您的序號已經被使用過了，請確認您的序號是否正確",
       "coupon_exchange_success": "感謝您的訂閱，您已經成功兌換了 *{{ name }}*",
       "coupon_exchange_success_continue": "已成功為您延期至 *{{ end_at }}*",
+      "conversion_absorbs_other": "月卡剩餘 {{ from_days }} 天已折算為 Plus {{ to_days }} 天",
+      "conversion_absorbed_by_plus": "已折算為 Plus {{ to_days }} 天",
       "effects_row_positive": "+ {{ type }} +{{ value }}",
       "effects_row_negative": "- {{ type }} -{{ value }}",
       "effects_row_feature": "✨ {{ type }}",
