@@ -154,6 +154,11 @@
     "subscribe": {
       "month": "月卡",
       "season": "季卡",
+      "month_plus": "月卡 Plus",
+      "effect_exclusive_plus": "Plus 專屬",
+      "paused_by_plus_resume": "⏸ Plus 到期後恢復發放",
+      "paused_by_plus_expire": "⏸ Plus 期間不發放，天數照常倒數",
+      "card_count_with_paused": "{{ total }} 張・{{ paused }} 張暫停",
       "coupon_exchange_manual": "請輸入 `#訂閱兌換 {兌換碼}` 來兌換訂閱禮包",
       "serial_number_not_found": "找不到您的序號，請確認您的序號是否正確",
       "serial_number_used": "您的序號已經被使用過了，請確認您的序號是否正確",
@@ -166,7 +171,8 @@
         "gacha_times": "每日單抽次數",
         "daily_ration": "每日寶石",
         "auto_daily_gacha": "每日自動抽卡",
-        "auto_janken_fate": "猜拳自動代打"
+        "auto_janken_fate": "猜拳自動代打",
+        "auto_janken_match": "每日自動配對猜拳"
       },
       "not_enough_money": "女神石不足，無法購買月卡",
       "buy_month_card_success": "成功購買月卡，以下是您的月卡序號，請複製再發送此訊息",

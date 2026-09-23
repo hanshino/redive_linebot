@@ -11,8 +11,6 @@ const moment = require("moment");
 const { isNull, get, countBy, shuffle } = require("lodash");
 const GachaRecord = require("../../model/princess/GachaRecord");
 const GachaBanner = require("../../model/princess/GachaBanner");
-const SubscribeUser = require("../../model/application/SubscribeUser");
-const SubscribeCard = require("../../model/application/SubscribeCard");
 const config = require("config");
 const i18n = require("../../util/i18n");
 const commonTemplate = require("../../templates/common");
@@ -259,7 +257,6 @@ async function detectCanDaily(userId) {
   const now = moment();
   const key = `daily_gacha_${userId}_${now.format("MMDD")}`;
   const content = await redis.get(key);
-  const dailyLimit = config.get("gacha.daily_limit");
 
   if (!isNull(content)) {
     // redis 中有資料，表示今日已經抽過了
@@ -279,33 +276,12 @@ async function detectCanDaily(userId) {
 
   // 轉蛋次數
   const usedCount = Number(get(record, "count", 0));
-  // 注意：這裡必須傳 Date 而非 Moment。mysql2 不認得 Moment 物件，
-  // 會序列化成 "Mon Aug 03 2026 ..." 而讓 MySQL 丟 ER_WRONG_VALUE。
-  const nowDate = now.toDate();
-  // 直接用 query builder，不走 base.all() 的 filter：後者以 lodash get(filter, `${key}.operator`)
-  // 取運算子，key 帶了 "table.column" 的點號時會被當成路徑解析而找不到 operator，
-  // 於是整個 {operator, value} 物件被當成值丟給 knex（ERR_ASSERTION）。
-  // 這裡有 join，欄位必須帶表名，所以改用明確的 where 三參數形式。
-  const subscribeUser = await SubscribeUser.knex
-    .where(SubscribeUser.getColumnName("user_id"), userId)
-    .andWhere(SubscribeUser.getColumnName("start_at"), "<=", nowDate)
-    .andWhere(SubscribeUser.getColumnName("end_at"), ">", nowDate)
-    .join(
-      SubscribeCard.table,
-      SubscribeCard.getColumnName("key"),
-      SubscribeUser.getColumnName("subscribe_card_key")
-    );
-
-  const activeSubs = subscribeUser;
-  const bonusCount = activeSubs.reduce((acc, data) => {
-    const effects = Array.isArray(data.effects)
-      ? data.effects
-      : typeof data.effects === "string"
-        ? JSON.parse(data.effects || "[]")
-        : [];
-    const gachaEffect = effects.find(effect => effect && effect.type === "gacha_times");
-    return acc + get(gachaEffect, "value", 0);
-  }, dailyLimit);
+  // gacha_times 加總（含覆蓋規則）與 GachaService.getRemainingDailyQuota 共用同一份實作，
+  // 不在此重複維護一份 query + reduce。
+  const dailyLimit = config.get("gacha.daily_limit");
+  const activeSubs = await GachaService.getActiveGachaSubscriptions(userId, now);
+  const bonus = GachaService.sumGachaTimesBonus(activeSubs);
+  const bonusCount = dailyLimit + bonus;
 
   CustomLogger.debug(`detectCanDaily: ${userId} useCount: ${usedCount} bonusCount: ${bonusCount}`);
 
@@ -327,8 +303,9 @@ async function detectCanDaily(userId) {
   });
   if (isNull(claimed)) return false;
 
-  if (activeSubs.length === 0) {
-    // 無訂閱用戶只有一個每日額度，成功 claim 後以負快取避免重查資料庫。
+  if (bonus === 0) {
+    // 無加成（無訂閱，或持有的訂閱卡全被 Plus 覆蓋）只有一個每日額度，
+    // 成功 claim 後以負快取避免重查資料庫。
     await redis.set(key, "1", { EX: ttl });
   }
   return claimKey;

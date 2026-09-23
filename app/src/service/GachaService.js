@@ -14,6 +14,7 @@ const SubscribeCard = require("../model/application/SubscribeCard");
 
 const SigninService = require("./SigninService");
 const AchievementEngine = require("./AchievementEngine");
+const SubscriptionService = require("./SubscriptionService");
 const {
   play,
   filterPool,
@@ -328,8 +329,46 @@ async function runDailyDraw(userId, opts = {}) {
 }
 
 /**
+ * 取得某玩家「當下有效」的訂閱列（含覆蓋規則的 paused 標記，見 SubscriptionService.resolveActive）。
+ * GachaService.getRemainingDailyQuota 與 controller/princess/gacha.js#detectCanDaily
+ * 共用同一次查詢＋覆蓋判斷結果，避免兩處各自維護一份 join + 加總邏輯。
+ * @param {String} userId
+ * @param {Date|import("moment").Moment} now
+ * @returns {Promise<Array<Object>>} 每列含 paused/supersededByEndAt，見 SubscriptionService.resolveActive
+ */
+async function getActiveGachaSubscriptions(userId, now) {
+  const nowDate = moment(now).toDate();
+  const rows = await SubscribeUser.all({ filter: { user_id: userId } }).join(
+    SubscribeCard.table,
+    SubscribeCard.getColumnName("key"),
+    SubscribeUser.getColumnName("subscribe_card_key")
+  );
+  return SubscriptionService.resolveActive(rows, nowDate);
+}
+
+/**
+ * 加總「未被覆蓋」訂閱卡的 gacha_times effect。輸入為 getActiveGachaSubscriptions 的結果，
+ * 純函式、不查詢。
+ * @param {Array<Object>} activeSubs
+ * @returns {Number}
+ */
+function sumGachaTimesBonus(activeSubs) {
+  return activeSubs
+    .filter(sub => !sub.paused)
+    .reduce((acc, sub) => {
+      const effects = Array.isArray(sub.effects)
+        ? sub.effects
+        : typeof sub.effects === "string"
+          ? JSON.parse(sub.effects || "[]")
+          : [];
+      const eff = effects.find(e => e && e.type === "gacha_times");
+      return acc + (eff && eff.value ? eff.value : 0);
+    }, 0);
+}
+
+/**
  * 回傳使用者今日的每日抽卡配額狀態。邏輯對齊 controller 內的 detectCanDaily：
- * 基礎額度 = config.gacha.daily_limit，每張有效訂閱卡額外加上其 gacha_times effect。
+ * 基礎額度 = config.gacha.daily_limit，每張有效且未被覆蓋的訂閱卡額外加上其 gacha_times effect。
  * @param {string} userId
  * @returns {Promise<{total:number, used:number, remaining:number}>}
  */
@@ -337,24 +376,8 @@ async function getRemainingDailyQuota(userId) {
   const base = config.get("gacha.daily_limit");
   const now = moment();
 
-  const subs = await SubscribeUser.all({ filter: { user_id: userId } }).join(
-    SubscribeCard.table,
-    SubscribeCard.getColumnName("key"),
-    SubscribeUser.getColumnName("subscribe_card_key")
-  );
-  const activeSubs = subs.filter(
-    s => moment(s.start_at).isSameOrBefore(now) && moment(s.end_at).isAfter(now)
-  );
-
-  const bonus = activeSubs.reduce((acc, sub) => {
-    const effects = Array.isArray(sub.effects)
-      ? sub.effects
-      : typeof sub.effects === "string"
-        ? JSON.parse(sub.effects || "[]")
-        : [];
-    const eff = effects.find(e => e && e.type === "gacha_times");
-    return acc + (eff && eff.value ? eff.value : 0);
-  }, 0);
+  const activeSubs = await getActiveGachaSubscriptions(userId, now);
+  const bonus = sumGachaTimesBonus(activeSubs);
   const total = base + bonus;
 
   const countRow = await GachaRecord.knex
@@ -370,5 +393,7 @@ async function getRemainingDailyQuota(userId) {
 module.exports = {
   runDailyDraw,
   getRemainingDailyQuota,
+  getActiveGachaSubscriptions,
+  sumGachaTimesBonus,
   resolveCost,
 };

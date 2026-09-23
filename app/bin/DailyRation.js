@@ -5,7 +5,11 @@ const SubscribeJobLog = require("../src/model/application/SubscribeJobLog");
 const { inventory: Inventory } = require("../src/model/application/Inventory");
 const { get } = require("lodash");
 const { CustomLogger } = require("../src/util/Logger");
-const processKeys = [SubscribeCard.key.month, SubscribeCard.key.season];
+const processKeys = [
+  SubscribeCard.key.month,
+  SubscribeCard.key.season,
+  SubscribeCard.key.month_plus,
+];
 
 async function main() {
   for (const key of processKeys) {
@@ -15,7 +19,7 @@ async function main() {
 
 async function handleUser(key) {
   const now = moment();
-  if (![SubscribeCard.key.month, SubscribeCard.key.season].includes(key)) {
+  if (!processKeys.includes(key)) {
     throw new Error("key is not valid");
   }
   const users = await SubscribeUser.getDailyRation({
@@ -53,12 +57,9 @@ async function handleUser(key) {
     return;
   }
 
-  let type;
-  if (key === SubscribeCard.key.month) {
-    type = SubscribeJobLog.type.month_daily_ration;
-  } else if (key === SubscribeCard.key.season) {
-    type = SubscribeJobLog.type.season_daily_ration;
-  }
+  // type key 與 SubscribeJobLog.type 的既有慣例一致：`${key}_daily_ration`。
+  // processKeys 內每個 key 都對應到 SubscribeJobLog.type 裡的一個常數，見該檔。
+  const type = SubscribeJobLog.type[`${key}_daily_ration`];
 
   const usersContext = userIds.map(userId => ({
     userId,

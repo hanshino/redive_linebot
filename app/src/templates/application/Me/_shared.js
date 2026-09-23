@@ -1,4 +1,5 @@
-const { PALETTE, SEMANTIC, SURFACE, HERO_SURFACE } = require("../../common/theme");
+const { PALETTE, SEMANTIC, RARITY, SURFACE, HERO_SURFACE } = require("../../common/theme");
+const i18n = require("../../../util/i18n");
 
 const COLORS = {
   cyan700: PALETTE.cyan700,
@@ -25,6 +26,10 @@ const COLORS = {
   whiteOverlay: "#FFFFFF44",
 
   heroBgAlt: HERO_SURFACE.bgAlt,
+  heroBgRaised: HERO_SURFACE.bgRaised,
+  heroButton: HERO_SURFACE.bgButton,
+  epic: RARITY.epic.main,
+  epicSoft: "#D8B4FE",
   heroText: HERO_SURFACE.text,
   heroTextMuted: HERO_SURFACE.textMuted,
   tagCyanText: "#002A30",
@@ -45,16 +50,59 @@ const buildAccentBar = ({ startColor, endColor, height = "4px" }) => ({
   backgroundColor: startColor,
 });
 
-const buildSubPanel = ({ key, titleText, expireText, effects }) => {
+// Three looks: normal (month/season), Plus (upper tier), paused (overridden by Plus).
+// Flex has no opacity, so "paused" is expressed purely through muted colors.
+function panelStyle(key, paused) {
+  if (paused) {
+    return {
+      hairline: { startColor: COLORS.heroButton, endColor: COLORS.heroButton },
+      bodyBg: COLORS.heroBgAlt,
+      tagBg: COLORS.heroButton,
+      tagFg: COLORS.heroTextMuted,
+    };
+  }
+  if (key === "month_plus") {
+    return {
+      hairline: { startColor: COLORS.epic, endColor: COLORS.amber300 },
+      bodyBg: COLORS.heroBgRaised,
+      tagBg: COLORS.epic,
+      tagFg: "#FFFFFF",
+    };
+  }
   const isSeason = key === "season";
-  const tagBg = isSeason ? COLORS.amber400 : COLORS.cyan500;
-  const tagFg = isSeason ? COLORS.tagAmberText : COLORS.tagCyanText;
+  return {
+    hairline: { startColor: COLORS.amber500, endColor: COLORS.amber300 },
+    bodyBg: COLORS.heroBgAlt,
+    tagBg: isSeason ? COLORS.amber400 : COLORS.cyan500,
+    tagFg: isSeason ? COLORS.tagAmberText : COLORS.tagCyanText,
+  };
+}
 
-  const goldHairline = buildAccentBar({
-    startColor: COLORS.amber500,
-    endColor: COLORS.amber300,
-    height: "3px",
-  });
+const PAUSED_TEXT_KEY = {
+  resume: "message.subscribe.paused_by_plus_resume",
+  expire: "message.subscribe.paused_by_plus_expire",
+};
+
+const buildEffectLine = ({ text, exclusive }) => {
+  const spans = [
+    { type: "span", text: "◆ ", color: COLORS.amber400, weight: "bold" },
+    { type: "span", text, color: COLORS.heroText },
+  ];
+  if (exclusive) {
+    spans.push({
+      type: "span",
+      text: `  ${i18n.__("message.subscribe.effect_exclusive_plus")}`,
+      color: COLORS.epicSoft,
+      weight: "bold",
+    });
+  }
+  return { type: "text", contents: spans, size: "xxs" };
+};
+
+const buildSubPanel = ({ key, titleText, expireText, effects = [], paused = null }) => {
+  const { hairline, bodyBg, tagBg, tagFg } = panelStyle(key, paused);
+
+  const goldHairline = buildAccentBar({ ...hairline, height: "3px" });
 
   const tagChip = {
     type: "box",
@@ -97,20 +145,23 @@ const buildSubPanel = ({ key, titleText, expireText, effects }) => {
     alignItems: "center",
   };
 
-  const effectLines = effects.map(text => ({
-    type: "text",
-    contents: [
-      { type: "span", text: "◆ ", color: COLORS.amber400, weight: "bold" },
-      { type: "span", text, color: COLORS.heroText },
-    ],
-    size: "xxs",
-  }));
+  const lines = PAUSED_TEXT_KEY[paused]
+    ? [
+        {
+          type: "text",
+          text: i18n.__(PAUSED_TEXT_KEY[paused]),
+          size: "xxs",
+          color: COLORS.heroTextMuted,
+          wrap: true,
+        },
+      ]
+    : effects.map(buildEffectLine);
 
   const body = {
     type: "box",
     layout: "vertical",
-    contents: [headRow, ...effectLines],
-    backgroundColor: COLORS.heroBgAlt,
+    contents: [headRow, ...lines],
+    backgroundColor: bodyBg,
     paddingStart: "lg",
     paddingEnd: "lg",
     paddingTop: "md",

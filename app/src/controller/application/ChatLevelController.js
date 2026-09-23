@@ -67,6 +67,51 @@ const { todayUtc8 } = require("../../util/date");
 const XP_HISTORY_LIFF_PATH = "/xp-history";
 const SIGNIN_LIFF_PATH = "/signin";
 
+// 未暫停在前、暫停在後；同組內依此排序（其餘 key 排最後）。
+const SUBSCRIPTION_RANK = { month_plus: 0, month: 1, season: 2 };
+const subscriptionRank = key => (key in SUBSCRIPTION_RANK ? SUBSCRIPTION_RANK[key] : 99);
+
+/**
+ * 組出 /me 用的 subscriptionCards 契約（固定欄位，template lane 依此渲染，不得改欄位名）：
+ * `{ key, titleText, expireText, effects: [{text, exclusive}], paused: null|"resume"|"expire" }[]`
+ *
+ * @param {Array<{key:String, effects:Array|String, end_at:Date|String, start_at:Date|String}>} subscribeInfo
+ *   getSubscribeInfo() 的原始輸出，欄位名為 "key"（非 subscribe_card_key）。
+ * @param {Date} now
+ * @returns {Array<Object>}
+ */
+function buildSubscriptionCards(subscribeInfo, now) {
+  // resolveActive 依 subscribe_card_key 判斷覆蓋規則；這裡的查詢欄位叫 "key"
+  // （沿用既有輸出契約，未更動查詢），餵給 helper 前先映射一次欄位名。
+  const resolved = SubscriptionService.resolveActive(
+    (subscribeInfo || []).map(card => ({ ...card, subscribe_card_key: card.key })),
+    now
+  );
+
+  return resolved
+    .slice()
+    .sort((a, b) => {
+      if (a.paused !== b.paused) return a.paused ? 1 : -1;
+      return subscriptionRank(a.key) - subscriptionRank(b.key);
+    })
+    .map(card => {
+      let paused = null;
+      if (card.paused) {
+        paused = moment(card.end_at).isAfter(moment(card.supersededByEndAt)) ? "resume" : "expire";
+      }
+      return {
+        key: card.key,
+        titleText: i18n.__(`message.subscribe.${card.key}`),
+        expireText: moment(card.end_at).format("YYYY-MM-DD"),
+        effects: (card.effects || []).map(effect => ({
+          text: SubscriptionService.formatEffectRow(effect),
+          exclusive: effect.type === "auto_janken_match",
+        })),
+        paused,
+      };
+    });
+}
+
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
  * @param {import("bottender").LineContext} context
@@ -156,16 +201,7 @@ exports.showStatus = async (context, props) => {
     const decisive = winCount + loseCount;
     const winRate = decisive > 0 ? Math.floor((winCount / decisive) * 100) : null;
 
-    const subscriptionRank = k => (k === "month" ? 0 : k === "season" ? 1 : 99);
-    const subscriptionCards = (subscribeInfo || [])
-      .slice()
-      .sort((a, b) => subscriptionRank(a.key) - subscriptionRank(b.key))
-      .map(card => ({
-        key: card.key,
-        titleText: i18n.__(`message.subscribe.${card.key}`),
-        expireText: moment(card.end_at).format("YYYY-MM-DD"),
-        effects: (card.effects || []).map(effect => SubscriptionService.formatEffectRow(effect)),
-      }));
+    const subscriptionCards = buildSubscriptionCards(subscribeInfo, new Date());
 
     const bubbles = MeTemplate.buildBubbles({
       displayName,
@@ -263,10 +299,19 @@ async function getGachaHistory(userId) {
   };
 }
 
+/**
+ * 取得使用者「當下有效」的訂閱列（含 start_at，供 SubscriptionService.resolveActive 判斷覆蓋規則）。
+ * 原查詢沒有 active 時間窗過濾、也沒有選 start_at —— 過期的訂閱列會一路顯示在 /me，
+ * 且缺 start_at 會讓 resolveActive 的邊界判斷失真（Invalid Date 一律視為非有效）。
+ * 這裡補上 active 過濾與 start_at，行為變更：過期訂閱不再出現在 /me。
+ */
 function getSubscribeInfo(userId) {
+  const now = new Date();
   return SubscribeUserModel.knex
-    .select(["effects", "end_at", "key"])
+    .select(["effects", "end_at", "start_at", "key"])
     .where({ user_id: userId })
+    .andWhere(SubscribeUserModel.getColumnName("start_at"), "<=", now)
+    .andWhere(SubscribeUserModel.getColumnName("end_at"), ">", now)
     .join(
       SubscribeCardModel.table,
       SubscribeCardModel.getColumnName("key"),
@@ -551,4 +596,4 @@ exports.api.queryRank = async (req, res) => {
 };
 
 // Exposed for unit tests.
-exports._internal = { buildPrestigeFlags, resolveActiveTrialStar };
+exports._internal = { buildPrestigeFlags, resolveActiveTrialStar, buildSubscriptionCards };

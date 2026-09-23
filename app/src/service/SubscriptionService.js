@@ -5,7 +5,8 @@ const { DefaultLogger } = require("../util/Logger");
 
 // Effect types that represent a feature unlock (binary perk) rather than a
 // numeric bonus. Rendered without a "+N" suffix since the value is always 1.
-const FEATURE_EFFECT_TYPES = new Set(["auto_daily_gacha", "auto_janken_fate"]);
+// auto_janken_match = Plus 專屬「每日自動配對猜拳」展示用 effect，只有開關無數值。
+const FEATURE_EFFECT_TYPES = new Set(["auto_daily_gacha", "auto_janken_fate", "auto_janken_match"]);
 
 function parseEffects(raw) {
   if (Array.isArray(raw)) return raw;
@@ -81,7 +82,48 @@ function formatEffectRow(effect) {
   });
 }
 
+/**
+ * 篩出某玩家「當下有效」的訂閱列，並依 SubscribeCard.SUPERSEDED_BY 標記被覆蓋者。
+ * 有效邊界與 SubscribeUser.hasActiveAutoMatchAt 一致：start_at <= now < end_at。
+ * 被覆蓋的卡（例如持有中 month_plus 時的 month）daily_ration / gacha_times 不發不計，
+ * 但仍照常倒數（本函式不動 end_at），故回傳時原樣保留 end_at，只加註 paused 資訊。
+ * season 目前沒有任何 SUPERSEDED_BY 條目，永遠不會被標記 paused（與 Plus 疊加，舊承諾）。
+ *
+ * @param {Array<{subscribe_card_key: String, start_at: Date|String, end_at: Date|String}>} rows
+ * @param {Date|String|Number} now
+ * @returns {Array<Object>} 每列原樣保留輸入欄位，並附加：
+ *   - paused {Boolean} 是否被覆蓋
+ *   - supersededByEndAt {Date|null} 覆蓋它的那張卡的 end_at（paused=false 時為 null）
+ */
+function resolveActive(rows, now) {
+  const ts = new Date(now).getTime();
+  const active = (rows || []).filter(row => {
+    const start = new Date(row.start_at).getTime();
+    const end = new Date(row.end_at).getTime();
+    return start <= ts && ts < end;
+  });
+
+  return active.map(row => {
+    const overriddenByKeys = SubscribeCard.SUPERSEDED_BY[row.subscribe_card_key];
+    const overriders = overriddenByKeys
+      ? active.filter(other => overriddenByKeys.includes(other.subscribe_card_key))
+      : [];
+
+    if (overriders.length === 0) {
+      return { ...row, paused: false, supersededByEndAt: null };
+    }
+
+    const supersededByEndAt = overriders.reduce((latest, other) => {
+      const end = new Date(other.end_at);
+      return !latest || end > latest ? end : latest;
+    }, null);
+
+    return { ...row, paused: true, supersededByEndAt };
+  });
+}
+
 module.exports = {
   hasEffect,
   formatEffectRow,
+  resolveActive,
 };

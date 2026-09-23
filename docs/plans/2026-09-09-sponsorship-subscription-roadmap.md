@@ -126,6 +126,15 @@
 - **待補的發放路徑：** 現有每日福利發放白名單 `app/bin/DailyRation.js:8`（`processKeys = [SubscribeCard.key.month, SubscribeCard.key.season]`）目前僅辨識 `month`／`season` 兩種卡種；要讓 Plus 成為「完整可販售並可正常取得每日福利」的產品，**必須先擴充該白名單納入 `month_plus`**，這是階段 2 待辦之一，不在本次已完成範圍內。
 - **與階段 1 的關係：** 階段 1 的正式驗收（非實作者覆核、完整真實瀏覽器寫入流程、正式環境部署配置）仍是使用者本人待辦，責任與 release gate 不變；但依使用者 2026-09-17 的明確決定，階段 1 驗收**不再是**階段 2 實作開始的前置阻塞條件。階段 2 目前實際**已完成**的部分僅限於每日自動配對資格收窄為 Plus-only（`b273e83a` 建立自動配對本體，`7e26a936` 收斂為 `month_plus` 專屬）；Plus 卡種本身的售價、購買／升級路徑、發卡 allowlist、每日福利白名單擴充、正式上線，皆**尚未實作、尚未可販售、尚未發布**，仍待另行排入開發並完成 operator release gate。
 
+### 2026-09-23 Plus 福利數值與並存規則決策
+
+- **線上現況（2026-09-23 唯讀查詢 `subscribe_card`）：** 月卡 NT$50／30 天，`daily_ration` 200、`gacha_times` 1、`auto_daily_gacha`、`auto_janken_fate`；季卡 NT$130／90 天，`daily_ration` 500、`gacha_times` 2，其餘同月卡。當下有效訂閱為月卡 1、季卡 1，無人同時持有月卡與季卡。
+- **Plus effects：** 完整一套（不是增量）：`daily_ration` 500、`gacha_times` 2、`auto_daily_gacha`、`auto_janken_fate`，加上 Plus 專屬的每日自動配對。定位是接替停售的季卡。
+- **月卡與 Plus 並存時由 Plus 覆蓋月卡：** Plus 有效期間，月卡的 `daily_ration` 與 `gacha_times` 都不發，月卡照常倒數（不暫停、不順延）；被浪費的天數交給期中升級折算規則處理。季卡不適用覆蓋，與 Plus 仍然疊加（保留舊承諾）。
+- **程式影響點：** `app/bin/DailyRation.js:8` 白名單加入 `month_plus`，且持有有效 Plus 的人跳過月卡配給；`app/src/service/GachaService.js:349` 與 `app/src/controller/princess/gacha.js:300` 的 `gacha_times` 加總，同樣在持有有效 Plus 時略過月卡。
+- **/me：** Plus 排在第一張主卡，顯示完整福利。並存的月卡標註「Plus 期間不發放・到期 YYYY-MM-DD」。影響點為 `ChatLevelController.js:159` 的排序、`locales/zh_tw.json` 補上 `message.subscribe.month_plus`、`templates/application/Me/`。
+- **仍未定：** Plus 售價、期中升級折算公式。
+
 - [ ] 由授權人員核對現行卡種、福利、售價及存量，不從 seed 推定正式設定。
 - [ ] 選定首波福利；候選為自動化升級、補簽容錯、可永久收藏的外觀，並非全部承諾實作。
 - [ ] 確認額度、週期、到期與續卡行為，以及送卡時外觀／回饋屬於誰。

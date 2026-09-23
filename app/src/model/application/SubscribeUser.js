@@ -1,5 +1,6 @@
 const base = require("../base");
 const SubscribeJobLog = require("./SubscribeJobLog");
+const SubscribeCard = require("./SubscribeCard");
 
 class SubscribeUser extends base {
   static ELIGIBLE_AUTO_MATCH_CARD_KEYS = Object.freeze(["month_plus"]);
@@ -48,16 +49,23 @@ class SubscribeUser extends base {
 
   /**
    * 取得每日配給的使用者
+   * 排除「當下持有有效覆蓋卡」的玩家（見 SubscribeCard.SUPERSEDED_BY）——
+   * 例如持有中 month_plus 時，month 的每日配給不發（月卡倒數不受影響，本查詢不動 end_at）。
    * @param {Object} options 選填參數
    * @param {String} options.key 訂閱卡種類
    * @param {import("moment").Moment} options.now 當下時間
    * @returns {import("knex").Knex.QueryBuilder}
    */
   getDailyRation({ key, now }) {
-    const query = this.knex
+    // now 在下方會被 startOf("day")/endOf("day") 原地改變（既有行為，見下方 whereNotIn），
+    // 這裡先取一份不受影響的時間點快照，供「當下是否持有覆蓋卡」判斷使用。
+    const pointInTime = now.clone().toDate();
+    const supersededByKeys = SubscribeCard.SUPERSEDED_BY[key] || [];
+
+    let query = this.knex
       .where("subscribe_card_key", key)
-      .andWhere("start_at", "<=", now.toDate())
-      .andWhere("end_at", ">", now.toDate())
+      .andWhere("start_at", "<=", pointInTime)
+      .andWhere("end_at", ">", pointInTime)
       .whereNotIn("user_id", function (builder) {
         builder
           .select("user_id")
@@ -66,6 +74,17 @@ class SubscribeUser extends base {
           .andWhere("created_at", ">=", now.startOf("day").toDate())
           .andWhere("created_at", "<=", now.endOf("day").toDate());
       });
+
+    if (supersededByKeys.length > 0) {
+      query = query.whereNotIn("user_id", builder => {
+        builder
+          .select("user_id")
+          .from(this.table)
+          .whereIn("subscribe_card_key", supersededByKeys)
+          .andWhere("start_at", "<=", pointInTime)
+          .andWhere("end_at", ">", pointInTime);
+      });
+    }
 
     // console.log(query.toQuery());
 
