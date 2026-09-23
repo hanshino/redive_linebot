@@ -30,5 +30,7 @@ module.exports = new UserAutoPreference({
     "auto_match_bet_enabled",
     "auto_match_bet_generation",
     "auto_match_bet_cap",
+    "auto_world_boss",
+    "auto_world_boss_mode",
   ],
 });

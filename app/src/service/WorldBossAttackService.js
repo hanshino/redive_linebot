@@ -15,6 +15,11 @@ const { canonicalPositiveInteger } = require("../util/decimalInteger");
 const COOLDOWN_SECONDS = config.get("worldboss.attack_cooldown_seconds");
 const PER_HIT_EXP = config.get("worldboss.per_hit_exp");
 const ATTACK_TYPES = new Set(["standard", "skill"]);
+// The standard attack has no per-job skill definition to draw a cost from, so it is a
+// flat constant shared by every job. Exported via resolveCosts() so nothing outside
+// this file needs to hardcode "10" again (AutoPreferenceController's world_boss_context,
+// the AutoWorldBossAttack cron).
+const STANDARD_ATTACK_BASE_COST = 10;
 // LINE group ids start with C. Multi-person rooms (R) are deliberately out of
 // scope: the world boss board is a group feature, so a room id is not a valid
 // announcement destination.
@@ -42,7 +47,7 @@ function attackInput({ progress, bonuses, attackType }) {
   const character = RPGCharacter.make(progress.job_key, { level: progress.level });
   const isSkill = attackType === "skill";
   const baseDamage = isSkill ? character.getSkillOneDamage() : character.getStandardDamage();
-  const baseCost = isSkill ? character.skillOne.cost : 10;
+  const baseCost = isSkill ? character.skillOne.cost : STANDARD_ATTACK_BASE_COST;
   const atkPercent = nonNegativeFinite(bonuses.atk_percent);
   const costReduction = nonNegativeFinite(bonuses.cost_reduction);
   const expBonus = nonNegativeFinite(bonuses.exp_bonus);
@@ -52,6 +57,24 @@ function attackInput({ progress, bonuses, attackType }) {
     jobKey: progress.job_key,
     cost: Math.max(1, baseCost - costReduction),
     exp: PER_HIT_EXP + expBonus,
+  };
+}
+
+/**
+ * Per-user standard/skill attack costs after equipment cost_reduction, plus the
+ * job's skill display name. Shared by AutoPreferenceController's world_boss_context
+ * (display only) and AutoWorldBossAttack (the actual skill→standard fallback decision)
+ * so the two can never compute a different number for the same player.
+ * @param {{job_key: string, level: number}} progress
+ * @param {{cost_reduction?: number}} bonuses
+ */
+function resolveCosts(progress, bonuses) {
+  const character = RPGCharacter.make(progress.job_key, { level: progress.level });
+  const costReduction = nonNegativeFinite(bonuses && bonuses.cost_reduction);
+  return {
+    standardCost: Math.max(1, STANDARD_ATTACK_BASE_COST - costReduction),
+    skillCost: Math.max(1, character.skillOne.cost - costReduction),
+    skillName: character.skillOne.name,
   };
 }
 
@@ -128,41 +151,39 @@ async function releaseCooldown(key, token) {
 }
 
 /**
- * The single application seam for a world boss attack. Identity, damage, cost, exp,
- * cooldown and the announcement decision live here so no transport (HTTP today,
- * anything later) can drift from another.
+ * Validates the three player-facing inputs shared by both entry points. Kept separate
+ * from the cooldown reservation so the cron path (`autoAttack`) can reuse the exact
+ * same validation without touching Redis at all.
+ */
+function validateAttackArgs({ userId, roundId, attackType }) {
+  if (typeof userId !== "string" || !userId) throw fail("INVALID_USER");
+  if (!ATTACK_TYPES.has(attackType)) throw fail("INVALID_ATTACK_TYPE");
+  try {
+    return canonicalPositiveInteger(roundId);
+  } catch {
+    throw fail("INVALID_ROUND_ID");
+  }
+}
+
+/**
+ * The actual attack: damage/cost/exp computation, the BattleService transaction, and
+ * every post-commit side effect (announcement, achievement, latest reward). Contains
+ * no cooldown logic of its own — `onNoAttackError` is an optional hook the caller can
+ * use to give back a reservation it made, so this function stays identical whether or
+ * not a cooldown wraps it.
  *
  * The daily quota is deliberately NOT prechecked here: BattleService re-computes it
  * inside the row lock and is the only authority, so a precheck would be a second
  * non-authoritative copy of the rule plus an extra round trip.
  */
-async function attack({ userId, roundId, attackType, groupId, displayName }) {
-  if (typeof userId !== "string" || !userId) throw fail("INVALID_USER");
-  if (!ATTACK_TYPES.has(attackType)) throw fail("INVALID_ATTACK_TYPE");
-  let canonicalRoundId;
-  try {
-    canonicalRoundId = canonicalPositiveInteger(roundId);
-  } catch {
-    throw fail("INVALID_ROUND_ID");
-  }
-
-  // ponytail: chose option (b) — reserve first, release on provably-no-attack errors.
-  // Option (a), reserving after target validation, cannot work: target validation only
-  // exists inside BattleService's transaction, so moving the reservation past it would
-  // leave the transaction itself unguarded and let a tap burst open concurrent
-  // transactions — trading a UX annoyance for a load hole. The reservation therefore
-  // stays an atomic NX in front of all work, and the two rejections a player can hit by
-  // tapping a stale card (plus the quota rejection) give it back with an ownership-token
-  // compare-and-delete. ROUND_NOT_FOUND / SEASON_ENDED / NO_ACTIVE_SEASON keep the
-  // cooldown on purpose: those come from a client sending ids it was never shown.
-  const cooldownKey = `worldboss-v2:${userId}`;
-  const cooldownToken = crypto.randomUUID();
-  const cooldownReserved = await redis.set(cooldownKey, cooldownToken, {
-    EX: COOLDOWN_SECONDS,
-    NX: true,
-  });
-  if (!cooldownReserved) throw fail("ATTACK_COOLDOWN");
-
+async function performAttack({
+  userId,
+  canonicalRoundId,
+  attackType,
+  groupId,
+  displayName,
+  onNoAttackError,
+}) {
   const [storedProgress, bonuses] = await Promise.all([
     MinigameService.findByUserId(userId),
     EquipmentService.getEquipmentBonuses(userId),
@@ -182,8 +203,8 @@ async function attack({ userId, roundId, attackType, groupId, displayName }) {
       exp,
     });
   } catch (error) {
-    if (error && NO_ATTACK_CODES.has(error.code)) {
-      await releaseCooldown(cooldownKey, cooldownToken);
+    if (onNoAttackError && error && NO_ATTACK_CODES.has(error.code)) {
+      await onNoAttackError();
     }
     throw error;
   }
@@ -210,7 +231,60 @@ async function attack({ userId, roundId, attackType, groupId, displayName }) {
   return { result, announcementQueued, latestReward: latestReward || null };
 }
 
-module.exports = { attack };
+/**
+ * The single application seam for a player-initiated world boss attack (HTTP `/api`
+ * only — see `app/src/controller/application/WorldBossController.js` and
+ * `app/src/handler/WorldBoss/public.js`, both of which only ever call this function).
+ * Identity, damage, cost, exp, cooldown and the announcement decision live here so no
+ * transport can drift from another.
+ */
+async function attack({ userId, roundId, attackType, groupId, displayName }) {
+  const canonicalRoundId = validateAttackArgs({ userId, roundId, attackType });
+
+  // ponytail: chose option (b) — reserve first, release on provably-no-attack errors.
+  // Option (a), reserving after target validation, cannot work: target validation only
+  // exists inside BattleService's transaction, so moving the reservation past it would
+  // leave the transaction itself unguarded and let a tap burst open concurrent
+  // transactions — trading a UX annoyance for a load hole. The reservation therefore
+  // stays an atomic NX in front of all work, and the two rejections a player can hit by
+  // tapping a stale card (plus the quota rejection) give it back with an ownership-token
+  // compare-and-delete. ROUND_NOT_FOUND / SEASON_ENDED / NO_ACTIVE_SEASON keep the
+  // cooldown on purpose: those come from a client sending ids it was never shown.
+  const cooldownKey = `worldboss-v2:${userId}`;
+  const cooldownToken = crypto.randomUUID();
+  const cooldownReserved = await redis.set(cooldownKey, cooldownToken, {
+    EX: COOLDOWN_SECONDS,
+    NX: true,
+  });
+  if (!cooldownReserved) throw fail("ATTACK_COOLDOWN");
+
+  return performAttack({
+    userId,
+    canonicalRoundId,
+    attackType,
+    groupId,
+    displayName,
+    onNoAttackError: () => releaseCooldown(cooldownKey, cooldownToken),
+  });
+}
+
+/**
+ * The cron-only counterpart of `attack()`. Used exclusively by
+ * `app/bin/AutoWorldBossAttack.js` (23:30 Asia/Taipei) to spend a subscriber's
+ * remaining daily quota without the player-facing 5 second Redis cooldown — a scripted
+ * loop attacking many times per user in one run is the intended behaviour here, not a
+ * client tapping too fast. No HTTP/postback input reaches this function: every caller
+ * in `app/src/controller/**` and `app/src/handler/**` uses `attack()` above instead.
+ *
+ * Never announces into a group (the caller never passes `groupId`) and identical
+ * validation/BattleService/achievement/reward semantics to `attack()`.
+ */
+async function autoAttack({ userId, roundId, attackType }) {
+  const canonicalRoundId = validateAttackArgs({ userId, roundId, attackType });
+  return performAttack({ userId, canonicalRoundId, attackType, groupId: null, displayName: null });
+}
+
+module.exports = { attack, autoAttack, resolveCosts };
 module.exports._internal = {
   attackInput,
   nonNegativeFinite,

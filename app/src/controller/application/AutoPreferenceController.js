@@ -1,4 +1,5 @@
 const { get } = require("lodash");
+const config = require("config");
 const mysql = require("../../util/mysql");
 const UserAutoPreference = require("../../model/application/UserAutoPreference");
 const SubscribeUser = require("../../model/application/SubscribeUser");
@@ -6,18 +7,28 @@ const SubscriptionService = require("../../service/SubscriptionService");
 const GachaService = require("../../service/GachaService");
 const GachaModel = require("../../model/princess/gacha");
 const GachaBanner = require("../../model/princess/GachaBanner");
+const MinigameService = require("../../service/MinigameService");
+const EquipmentService = require("../../service/EquipmentService");
+const WorldBossAttackService = require("../../service/WorldBossAttackService");
 const commonTemplate = require("../../templates/common");
 const { DefaultLogger } = require("../../util/Logger");
 
-const VALID_FLAGS = ["auto_daily_gacha", "auto_janken_fate", "auto_janken_fate_with_bet"];
+const VALID_FLAGS = [
+  "auto_daily_gacha",
+  "auto_janken_fate",
+  "auto_janken_fate_with_bet",
+  "auto_world_boss",
+];
 // Each flag declares which subscription effect gates it. with_bet re-uses the
 // auto_janken_fate effect (it's a sub-option of the same feature).
 const FLAG_EFFECT = {
   auto_daily_gacha: "auto_daily_gacha",
   auto_janken_fate: "auto_janken_fate",
   auto_janken_fate_with_bet: "auto_janken_fate",
+  auto_world_boss: "auto_world_boss",
 };
 const VALID_MODES = ["normal", "pickup", "ensure", "europe"];
+const VALID_WORLD_BOSS_MODES = ["standard", "skill"];
 const HISTORY_DEFAULT_LIMIT = 30;
 const HISTORY_MAX_LIMIT = 100;
 const MAX_AUTO_MATCH_BET_CAP = 0xffffffff;
@@ -34,26 +45,41 @@ const MATCH_FIELDS = Object.freeze({
 });
 
 async function loadEntitlements(userId) {
-  const [autoDailyGacha, autoJankenFate] = await Promise.all([
+  const [autoDailyGacha, autoJankenFate, autoWorldBoss] = await Promise.all([
     SubscriptionService.hasEffect(userId, "auto_daily_gacha"),
     SubscriptionService.hasEffect(userId, "auto_janken_fate"),
+    SubscriptionService.hasEffect(userId, "auto_world_boss"),
   ]);
   return {
     auto_daily_gacha: autoDailyGacha,
     auto_janken_fate: autoJankenFate,
     auto_janken_fate_with_bet: autoJankenFate,
+    auto_world_boss: autoWorldBoss,
   };
 }
 
+/**
+ * auto_world_boss 預設開啟：沒有 user_auto_preference 列，或該列是在本功能上線前建立
+ * （沒填過 auto_world_boss，DB 端已用欄位 DEFAULT 1 補上，見 migration
+ * 20260923132724_add_auto_world_boss.js），一律視為已啟用。因此這裡刻意用
+ * `row.auto_world_boss === 0` 當唯一的「關閉」條件，而不是像其它旗標那樣用
+ * `=== 1` 當唯一的「開啟」條件 —— 兩者在語意上互為反相，此欄位的預設方向不同。
+ */
 async function loadPreference(userId) {
   const row = await UserAutoPreference.first({ filter: { user_id: userId } });
   const mode =
     row && VALID_MODES.includes(row.auto_daily_gacha_mode) ? row.auto_daily_gacha_mode : "normal";
+  const worldBossMode =
+    row && VALID_WORLD_BOSS_MODES.includes(row.auto_world_boss_mode)
+      ? row.auto_world_boss_mode
+      : "standard";
   return {
     auto_daily_gacha: row && row.auto_daily_gacha === 1 ? 1 : 0,
     auto_daily_gacha_mode: mode,
     auto_janken_fate: row && row.auto_janken_fate === 1 ? 1 : 0,
     auto_janken_fate_with_bet: row && row.auto_janken_fate_with_bet === 1 ? 1 : 0,
+    auto_world_boss: row && row.auto_world_boss === 0 ? 0 : 1,
+    auto_world_boss_mode: worldBossMode,
   };
 }
 
@@ -169,6 +195,32 @@ async function loadGachaContext(userId) {
   };
 }
 
+/**
+ * 前端 AutoSettings 的世界王攻擊方式選單要顯示「這位玩家」standard/skill 每次實際消耗
+ * 的額度與技能名稱，算法必須跟 WorldBossAttackService#attackInput 完全一致
+ * （RPGCharacter + 裝備 cost_reduction），否則兩邊數字會對不上——因此直接重用
+ * WorldBossAttackService.resolveCosts，不在這裡另外算一份。
+ * 純唯讀展示用途，失敗時整段 context 直接視為不可用（呼叫端用 .catch(() => null)）。
+ */
+async function loadWorldBossContext(userId) {
+  const [progress, bonuses] = await Promise.all([
+    MinigameService.findByUserId(userId),
+    EquipmentService.getEquipmentBonuses(userId),
+  ]);
+  const resolvedProgress = progress || { level: 1, job_key: "adventurer" };
+  const { standardCost, skillCost, skillName } = WorldBossAttackService.resolveCosts(
+    resolvedProgress,
+    bonuses
+  );
+
+  return {
+    daily_cost_limit: config.get("worldboss.daily_cost_limit"),
+    standard_cost: standardCost,
+    skill_cost: skillCost,
+    skill_name: skillName,
+  };
+}
+
 exports.api = {};
 
 exports.api.getPreference = async (req, res) => {
@@ -176,12 +228,18 @@ exports.api.getPreference = async (req, res) => {
     const userId = get(req, "profile.userId");
     if (!userId) return res.status(401).json({ error: "unauthenticated" });
 
-    const [preference, entitlements, gachaContext] = await Promise.all([
+    const [preference, entitlements, gachaContext, worldBossContext] = await Promise.all([
       loadPreference(userId),
       loadEntitlements(userId),
       loadGachaContext(userId),
+      loadWorldBossContext(userId).catch(() => null),
     ]);
-    return res.json({ ...preference, entitlements, gacha_context: gachaContext });
+    return res.json({
+      ...preference,
+      entitlements,
+      gacha_context: gachaContext,
+      world_boss_context: worldBossContext,
+    });
   } catch (err) {
     DefaultLogger.error(`auto-preference.get failed: ${err && err.message}`);
     return res.status(500).json({ error: "internal_error" });
@@ -207,13 +265,30 @@ exports.api.setPreference = async (req, res) => {
       }
       modeUpdate = body.auto_daily_gacha_mode;
     }
-    if (Object.keys(update).length === 0 && modeUpdate === undefined) {
-      const [preference, entitlements, gachaContext] = await Promise.all([
+    let worldBossModeUpdate;
+    if (body.auto_world_boss_mode !== undefined && body.auto_world_boss_mode !== null) {
+      if (!VALID_WORLD_BOSS_MODES.includes(body.auto_world_boss_mode)) {
+        return res.status(400).json({ error: "invalid_mode", field: "auto_world_boss_mode" });
+      }
+      worldBossModeUpdate = body.auto_world_boss_mode;
+    }
+    if (
+      Object.keys(update).length === 0 &&
+      modeUpdate === undefined &&
+      worldBossModeUpdate === undefined
+    ) {
+      const [preference, entitlements, gachaContext, worldBossContext] = await Promise.all([
         loadPreference(userId),
         loadEntitlements(userId),
         loadGachaContext(userId),
+        loadWorldBossContext(userId).catch(() => null),
       ]);
-      return res.json({ ...preference, entitlements, gacha_context: gachaContext });
+      return res.json({
+        ...preference,
+        entitlements,
+        gacha_context: gachaContext,
+        world_boss_context: worldBossContext,
+      });
     }
 
     const entitlements = await loadEntitlements(userId);
@@ -225,31 +300,46 @@ exports.api.setPreference = async (req, res) => {
 
     await mysql.raw(
       `INSERT INTO user_auto_preference
-        (user_id, auto_daily_gacha, auto_daily_gacha_mode, auto_janken_fate, auto_janken_fate_with_bet)
-       VALUES (?, ?, ?, ?, ?)
+        (user_id, auto_daily_gacha, auto_daily_gacha_mode, auto_janken_fate, auto_janken_fate_with_bet,
+         auto_world_boss, auto_world_boss_mode)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          auto_daily_gacha = COALESCE(?, auto_daily_gacha),
          auto_daily_gacha_mode = COALESCE(?, auto_daily_gacha_mode),
          auto_janken_fate = COALESCE(?, auto_janken_fate),
-         auto_janken_fate_with_bet = COALESCE(?, auto_janken_fate_with_bet)`,
+         auto_janken_fate_with_bet = COALESCE(?, auto_janken_fate_with_bet),
+         auto_world_boss = COALESCE(?, auto_world_boss),
+         auto_world_boss_mode = COALESCE(?, auto_world_boss_mode)`,
       [
         userId,
         update.auto_daily_gacha === undefined ? 0 : update.auto_daily_gacha,
         modeUpdate === undefined ? "normal" : modeUpdate,
         update.auto_janken_fate === undefined ? 0 : update.auto_janken_fate,
         update.auto_janken_fate_with_bet === undefined ? 0 : update.auto_janken_fate_with_bet,
+        // 新建列預設沿用 DB 欄位預設值（1/'standard'）：新建的 VALUES 分支沒有現成行可
+        // COALESCE，只能顯式帶入同一組預設，行為對新舊列一致。
+        update.auto_world_boss === undefined ? 1 : update.auto_world_boss,
+        worldBossModeUpdate === undefined ? "standard" : worldBossModeUpdate,
         update.auto_daily_gacha === undefined ? null : update.auto_daily_gacha,
         modeUpdate === undefined ? null : modeUpdate,
         update.auto_janken_fate === undefined ? null : update.auto_janken_fate,
         update.auto_janken_fate_with_bet === undefined ? null : update.auto_janken_fate_with_bet,
+        update.auto_world_boss === undefined ? null : update.auto_world_boss,
+        worldBossModeUpdate === undefined ? null : worldBossModeUpdate,
       ]
     );
 
-    const [preference, gachaContext] = await Promise.all([
+    const [preference, gachaContext, worldBossContext] = await Promise.all([
       loadPreference(userId),
       loadGachaContext(userId),
+      loadWorldBossContext(userId).catch(() => null),
     ]);
-    return res.json({ ...preference, entitlements, gacha_context: gachaContext });
+    return res.json({
+      ...preference,
+      entitlements,
+      gacha_context: gachaContext,
+      world_boss_context: worldBossContext,
+    });
   } catch (err) {
     DefaultLogger.error(`auto-preference.put failed: ${err && err.message}`);
     return res.status(500).json({ error: "internal_error" });
@@ -371,6 +461,8 @@ exports._internal = {
   loadEntitlements,
   loadPreference,
   loadGachaContext,
+  loadWorldBossContext,
   parseJsonSafe,
   VALID_MODES,
+  VALID_WORLD_BOSS_MODES,
 };

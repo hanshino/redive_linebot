@@ -65,6 +65,27 @@ const FLAGS = [
       "上面那個開關啟用後才生效。開啟後被下戰書含賭金時也自動出拳，系統會先替你把女神石押上（餘額不足時自動放棄代打）。",
     dependsOn: "auto_janken_fate",
   },
+  {
+    key: "auto_world_boss",
+    title: "世界王自動攻擊",
+    description:
+      "每天 23:30 自動把當天沒用完的世界王攻擊額度打完，已手動打過的不受影響。自動挑剩餘血量最少的王，不會在群組公告。",
+    lockLabel: "月卡 Plus 專屬",
+    lockMessage: "此功能需要月卡 Plus",
+  },
+];
+
+const WORLD_BOSS_MODE_OPTIONS = [
+  {
+    value: "standard",
+    label: "普通攻擊",
+    description: "用普通攻擊打完剩下的額度。",
+  },
+  {
+    value: "skill",
+    label: "技能攻擊",
+    description: "剩下的額度不夠放一次技能時，會改用普通攻擊打完。",
+  },
 ];
 
 const MODE_OPTIONS = [
@@ -121,7 +142,7 @@ function ToggleRow({ flag, value, entitled, disabled, onChange }) {
                 <Chip
                   size="small"
                   icon={<LockOutlinedIcon sx={{ fontSize: 14 }} />}
-                  label="需要月卡/季卡"
+                  label={flag.lockLabel || "需要月卡/季卡"}
                   color="warning"
                   variant="outlined"
                 />
@@ -252,6 +273,74 @@ function GachaModeSelector({ mode, context, disabled, onChange }) {
               執行時不足會自動降為普通抽。
             </Alert>
           )}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+// world_boss_context 是選配欄位，沒有就只顯示固定說明。
+function WorldBossModeSelector({ mode, context, disabled, onChange }) {
+  const costs = { standard: context?.standard_cost, skill: context?.skill_cost };
+  return (
+    <Card>
+      <CardContent>
+        <Stack spacing={1.5}>
+          <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              攻擊方式
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              {context?.daily_cost_limit
+                ? `每日攻擊額度 ${context.daily_cost_limit}。`
+                : "二選一，之後隨時可以更改。"}
+            </Typography>
+          </Box>
+          <Divider />
+          <RadioGroup value={mode} onChange={e => onChange(e.target.value)} sx={{ gap: 0.5 }}>
+            {WORLD_BOSS_MODE_OPTIONS.map(opt => {
+              const cost = costs[opt.value];
+              const hint =
+                opt.value === "skill" && context?.skill_name
+                  ? `技能：${context.skill_name}${cost ? `（每次消耗 ${cost}）` : ""}`
+                  : cost
+                    ? `每次消耗 ${cost}`
+                    : "";
+              return (
+                <FormControlLabel
+                  key={opt.value}
+                  value={opt.value}
+                  disabled={disabled}
+                  control={<Radio size="small" />}
+                  sx={{ alignItems: "flex-start", m: 0, py: 0.75 }}
+                  label={
+                    <Box sx={{ ml: 0.5 }}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{ alignItems: "center", flexWrap: "wrap" }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {opt.label}
+                        </Typography>
+                        {hint && (
+                          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                            {hint}
+                          </Typography>
+                        )}
+                      </Stack>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "text.secondary", display: "block" }}
+                      >
+                        {opt.description}
+                      </Typography>
+                    </Box>
+                  }
+                />
+              );
+            })}
+          </RadioGroup>
         </Stack>
       </CardContent>
     </Card>
@@ -708,12 +797,16 @@ export default function AutoSettings() {
     auto_daily_gacha_mode: "normal",
     auto_janken_fate: 0,
     auto_janken_fate_with_bet: 0,
+    auto_world_boss: 0,
+    auto_world_boss_mode: "standard",
     entitlements: {
       auto_daily_gacha: false,
       auto_janken_fate: false,
       auto_janken_fate_with_bet: false,
+      auto_world_boss: false,
     },
     gacha_context: null,
+    world_boss_context: null,
   });
   const [snack, setSnack] = useState(null);
 
@@ -753,7 +846,7 @@ export default function AutoSettings() {
         if (code === "entitlement_missing") {
           setSnack({
             severity: "warning",
-            message: "此功能需要月卡/季卡訂閱",
+            message: FLAGS.find(f => f.key === key)?.lockMessage || "此功能需要月卡/季卡訂閱",
           });
         } else {
           setSnack({ severity: "error", message: "更新失敗，請稍後再試" });
@@ -766,12 +859,12 @@ export default function AutoSettings() {
   );
 
   const handleModeChange = useCallback(
-    async nextMode => {
+    async (nextMode, key = "auto_daily_gacha_mode") => {
       setSaving(true);
       const prev = state;
-      setState(s => ({ ...s, auto_daily_gacha_mode: nextMode }));
+      setState(s => ({ ...s, [key]: nextMode }));
       try {
-        const updated = await setPreference({ auto_daily_gacha_mode: nextMode });
+        const updated = await setPreference({ [key]: nextMode });
         setState(updated);
         setSnack({ severity: "success", message: "已更新" });
       } catch {
@@ -789,6 +882,8 @@ export default function AutoSettings() {
   const dailyGachaEntitled = Boolean(state.entitlements?.auto_daily_gacha);
   const showModeSelector =
     !loading && state.auto_daily_gacha === 1 && dailyGachaEntitled && state.gacha_context;
+  const showWorldBossMode =
+    state.auto_world_boss === 1 && Boolean(state.entitlements?.auto_world_boss);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
@@ -873,6 +968,21 @@ export default function AutoSettings() {
                       context={state.gacha_context}
                       disabled={saving}
                       onChange={handleModeChange}
+                    />
+                  )}
+                </Box>
+              );
+            }
+            if (flag.key === "auto_world_boss") {
+              return (
+                <Box key={flag.key} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {row}
+                  {showWorldBossMode && (
+                    <WorldBossModeSelector
+                      mode={state.auto_world_boss_mode || "standard"}
+                      context={state.world_boss_context}
+                      disabled={saving}
+                      onChange={m => handleModeChange(m, "auto_world_boss_mode")}
                     />
                   )}
                 </Box>
