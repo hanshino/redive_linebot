@@ -157,7 +157,6 @@ describe("DailyQuestService (isolated DB)", () => {
     jest.clearAllMocks();
     await mysql("daily_quest_weekly_claim").del();
     await mysql("daily_quest_completion").del();
-    await mysql("daily_quest_legacy_queue_archive").del();
     await mysql("daily_quest_bridge_state").del();
     await mysql("daily_quest").del();
     await mysql("inventory").del();

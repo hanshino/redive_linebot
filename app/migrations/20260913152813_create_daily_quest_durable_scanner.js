@@ -30,13 +30,6 @@ exports.up = async function (knex) {
     table.check("?? = 1", ["id"], "chk_daily_quest_bridge_singleton");
   });
 
-  await knex.schema.createTable("daily_quest_legacy_queue_archive", table => {
-    table.bigIncrements("id").primary();
-    table.longText("raw").notNullable().comment("legacy LRANGE 原文；不得輸出至 log");
-    table.datetime("captured_at").notNullable();
-    table.index("captured_at", "idx_daily_quest_legacy_archive_captured");
-  });
-
   await knex.schema.alterTable("janken_result", table => {
     table.index(["created_at", "id"], "idx_janken_result_created_id");
     table.index(["user_id", "created_at", "id"], "idx_janken_result_user_created_id");
@@ -54,7 +47,6 @@ exports.down = async function (knex) {
     table.dropIndex(["user_id", "created_at", "id"], "idx_janken_result_user_created_id");
     table.dropIndex(["created_at", "id"], "idx_janken_result_created_id");
   });
-  await knex.schema.dropTableIfExists("daily_quest_legacy_queue_archive");
   await knex.schema.dropTableIfExists("daily_quest_bridge_state");
   await knex.schema.dropTableIfExists("daily_quest_weekly_claim");
   await knex.schema.dropTableIfExists("daily_quest_completion");
