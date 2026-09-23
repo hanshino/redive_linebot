@@ -28,7 +28,8 @@ async function handleUser(key) {
   }).select({ userId: "user_id" });
 
   if (users.length === 0) {
-    CustomLogger.info("No user to handle");
+    CustomLogger.info(`No user to handle for key: ${key}`);
+    return;
   }
 
   const userIds = users.map(user => get(user, "userId"));
