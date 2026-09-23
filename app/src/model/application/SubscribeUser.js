@@ -2,6 +2,12 @@ const base = require("../base");
 const SubscribeJobLog = require("./SubscribeJobLog");
 
 class SubscribeUser extends base {
+  static ELIGIBLE_AUTO_MATCH_CARD_KEYS = Object.freeze(["month_plus"]);
+
+  get eligibleAutoMatchCardKeys() {
+    return SubscribeUser.ELIGIBLE_AUTO_MATCH_CARD_KEYS;
+  }
+
   /**
    * 兌換交易內用：鎖住該 (user_id, subscribe_card_key) 那一行（若存在）再讀 end_at，
    * 序列化同一玩家同一卡種的並發兌換。查無資料回傳 undefined（走建立路徑）。
@@ -15,6 +21,29 @@ class SubscribeUser extends base {
       .where({ user_id: userId, subscribe_card_key: subscribeCardKey })
       .forUpdate()
       .first();
+  }
+
+  /** 續期查找不可限於 Plus；所有訂閱按 id 鎖定，呼叫端先鎖 user。 */
+  lockAllByUser(userId, trx) {
+    return this.findAllByUser(userId, trx).forUpdate();
+  }
+
+  findAllByUser(userId, trx) {
+    return this.qb(trx).where({ user_id: userId }).orderBy("id", "asc");
+  }
+
+  hasActiveAutoMatchAt(rows, now) {
+    const timestamp = new Date(now).getTime();
+    return rows.some(
+      row =>
+        this.isEligibleCardKey(row.subscribe_card_key) &&
+        new Date(row.start_at).getTime() <= timestamp &&
+        timestamp < new Date(row.end_at).getTime()
+    );
+  }
+
+  isEligibleCardKey(key) {
+    return SubscribeUser.ELIGIBLE_AUTO_MATCH_CARD_KEYS.includes(key);
   }
 
   /**

@@ -1,6 +1,7 @@
 const { get } = require("lodash");
 const mysql = require("../../util/mysql");
 const UserAutoPreference = require("../../model/application/UserAutoPreference");
+const SubscribeUser = require("../../model/application/SubscribeUser");
 const SubscriptionService = require("../../service/SubscriptionService");
 const GachaService = require("../../service/GachaService");
 const GachaModel = require("../../model/princess/gacha");
@@ -19,6 +20,18 @@ const FLAG_EFFECT = {
 const VALID_MODES = ["normal", "pickup", "ensure", "europe"];
 const HISTORY_DEFAULT_LIMIT = 30;
 const HISTORY_MAX_LIMIT = 100;
+const MAX_AUTO_MATCH_BET_CAP = 0xffffffff;
+const MATCH_FIELDS = Object.freeze({
+  match: {
+    enabled: "auto_match_enabled",
+    generation: "auto_match_generation",
+  },
+  match_bet: {
+    enabled: "auto_match_bet_enabled",
+    generation: "auto_match_bet_generation",
+    cap: "auto_match_bet_cap",
+  },
+});
 
 async function loadEntitlements(userId) {
   const [autoDailyGacha, autoJankenFate] = await Promise.all([
@@ -42,6 +55,94 @@ async function loadPreference(userId) {
     auto_janken_fate: row && row.auto_janken_fate === 1 ? 1 : 0,
     auto_janken_fate_with_bet: row && row.auto_janken_fate_with_bet === 1 ? 1 : 0,
   };
+}
+
+async function activeMatchEligibility(userId, now = new Date(), trx) {
+  const subscriptions = await SubscribeUser.findAllByUser(userId, trx);
+  return SubscribeUser.hasActiveAutoMatchAt(subscriptions, now);
+}
+
+function matchView(kind, row, eligible) {
+  const fields = MATCH_FIELDS[kind];
+  const enabled = Boolean(row && row[fields.enabled] === 1);
+  const view = {
+    preference: kind,
+    eligible,
+    enabled,
+    effective: eligible && enabled,
+    generation: Number((row && row[fields.generation]) || 0),
+  };
+  if (fields.cap) view.cap = Number((row && row[fields.cap]) || 0);
+  return view;
+}
+
+async function getMatchPreference(kind, req, res) {
+  const userId = get(req, "profile.userId");
+  if (!userId) return res.status(401).json({ error: "unauthenticated" });
+  try {
+    const now = new Date();
+    const [row, eligible] = await Promise.all([
+      UserAutoPreference.first({ filter: { user_id: userId } }),
+      activeMatchEligibility(userId, now),
+    ]);
+    return res.json(matchView(kind, row, eligible));
+  } catch {
+    DefaultLogger.error(`auto-preference.${kind}.get failed`);
+    return res.status(500).json({ error: "internal_error" });
+  }
+}
+
+async function setMatchPreference(kind, req, res) {
+  const userId = get(req, "profile.userId");
+  if (!userId) return res.status(401).json({ error: "unauthenticated" });
+  const body = req.body || {};
+  if (typeof body.enabled !== "boolean") {
+    return res.status(400).json({ error: "invalid_type", field: "enabled" });
+  }
+  if (body.enabled && body.acknowledged !== true) {
+    return res.status(400).json({ error: "acknowledgement_required", field: "acknowledged" });
+  }
+  if (
+    kind === "match_bet" &&
+    body.cap !== undefined &&
+    (!Number.isSafeInteger(body.cap) || body.cap < 0 || body.cap > MAX_AUTO_MATCH_BET_CAP)
+  ) {
+    return res.status(400).json({ error: "invalid_cap", field: "cap" });
+  }
+
+  try {
+    const view = await mysql.transaction(async trx => {
+      const user = await trx("user").where({ platform_id: userId }).forUpdate().first("id");
+      if (!user) return { error: "user_not_found", status: 404 };
+      const now = new Date();
+      const subscriptions = await SubscribeUser.lockAllByUser(userId, trx);
+      const eligible = SubscribeUser.hasActiveAutoMatchAt(subscriptions, now);
+      const current = await UserAutoPreference.lockByUserId(userId, trx);
+      if (body.enabled && !eligible) return { error: "subscription_required", status: 403 };
+
+      const fields = MATCH_FIELDS[kind];
+      const wasEnabled = Boolean(current && current[fields.enabled] === 1);
+      const update = {
+        [fields.enabled]: body.enabled ? 1 : 0,
+        [fields.generation]:
+          Number((current && current[fields.generation]) || 0) +
+          (!wasEnabled && body.enabled ? 1 : 0),
+      };
+      if (fields.cap && body.cap !== undefined) update[fields.cap] = body.cap;
+      if (current) {
+        await UserAutoPreference.updateByUserId(userId, update, trx);
+      } else {
+        await UserAutoPreference.create({ user_id: userId, ...update }, trx);
+      }
+      const saved = await trx(UserAutoPreference.table).where({ user_id: userId }).first();
+      return matchView(kind, saved, eligible);
+    });
+    if (view.error) return res.status(view.status).json({ error: view.error });
+    return res.json(view);
+  } catch {
+    DefaultLogger.error(`auto-preference.${kind}.put failed`);
+    return res.status(500).json({ error: "internal_error" });
+  }
 }
 
 /**
@@ -154,6 +255,11 @@ exports.api.setPreference = async (req, res) => {
     return res.status(500).json({ error: "internal_error" });
   }
 };
+
+exports.api.getMatchPreference = (req, res) => getMatchPreference("match", req, res);
+exports.api.setMatchPreference = (req, res) => setMatchPreference("match", req, res);
+exports.api.getMatchBetPreference = (req, res) => getMatchPreference("match_bet", req, res);
+exports.api.setMatchBetPreference = (req, res) => setMatchPreference("match_bet", req, res);
 
 exports.api.getHistory = async (req, res) => {
   try {

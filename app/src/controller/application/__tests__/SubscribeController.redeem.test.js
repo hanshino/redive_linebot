@@ -277,6 +277,7 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
   describe("④ 首次兌換：無既有 subscribe_user", () => {
     it("建立一列，start_at≈now、end_at=start_at+30d，序號標記 used", async () => {
       const user = LINE("4");
+      await seedLineUser(user);
       const serial = await seedCoupon();
       const c = ctx(user);
 
@@ -304,7 +305,8 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
     });
 
     it("查無序號 / 已使用序號：不寫入任何 subscribe_user", async () => {
-      const user = LINE("e");
+      const user = LINE("g");
+      await seedLineUser(user);
       const used = await seedCoupon();
       await mysql("subscribe_card_coupon")
         .where({ serial_number: used })
@@ -328,6 +330,8 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
     it("兩筆交易真的同時卡在 coupon 列鎖；釋放後只有一人取得權益，另一人明確得到「序號已使用」", async () => {
       const A = LINE("a");
       const B = LINE("b");
+      await seedLineUser(A);
+      await seedLineUser(B);
       const serial = await seedCoupon();
       const cA = ctx(A);
       const cB = ctx(B);
@@ -359,8 +363,9 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
 
   // ---------------------------------------------------------------------------------------
   describe("② 同一玩家已有有效訂閱，同時兌換兩張不同序號", () => {
-    it("兩筆同時卡在 subscribe_user 列鎖；釋放後兩張都成功、end_at 完整疊加兩次時長", async () => {
+    it("兩筆同時卡在 user 列鎖（KTD11 鎖序 user 先於 subscribe_user）；釋放後兩張都成功、end_at 完整疊加兩次時長", async () => {
       const user = LINE("2");
+      await seedLineUser(user);
       const startAt = new Date(Math.floor((Date.now() - 5 * DAY_MS) / 1000) * 1000);
       const endAt = new Date(Math.floor((Date.now() + 10 * DAY_MS) / 1000) * 1000);
       await mysql("subscribe_user").insert({
@@ -373,13 +378,13 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
       const c1 = ctx(user);
       const c2 = ctx(user);
 
+      // KTD11 鎖序固定為 user → coupon → subscribe_user → preference：兩筆兌換會先卡在
+      // user 列鎖（早於原本斷言的 subscribe_user 列鎖），故 holder 與 blockedRe 都改鎖 user
+      // 表，比照下方 ⑩ 的作法；重疊後的行為結果（延長不變量）維持原斷言不變。
       const overlapped = await runOverlapped({
-        lockFn: holder =>
-          holder("subscribe_user")
-            .where({ user_id: user, subscribe_card_key: "month" })
-            .forUpdate(),
+        lockFn: holder => holder("user").where({ platform_id: user }).forUpdate().first("id"),
         start: () => Promise.all([callExchange(c1, s1), callExchange(c2, s2)]),
-        blockedRe: /subscribe_user.*for update/i,
+        blockedRe: /from `user`.*for update/i,
       });
       expect(overlapped).toBe(true);
 
@@ -406,8 +411,9 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
 
   // ---------------------------------------------------------------------------------------
   describe("③ 同一玩家尚無訂閱，同時兌換兩張不同序號", () => {
-    it("兩筆同時卡在 subscribe_user 鍵位；釋放後兩張都成功、只留一列、end_at 疊加兩次時長", async () => {
+    it("兩筆同時卡在 user 列鎖（KTD11 鎖序 user 先於 subscribe_user）；釋放後兩張都成功、只留一列、end_at 疊加兩次時長", async () => {
       const user = LINE("3");
+      await seedLineUser(user);
       const [s1, s2] = [await seedCoupon(), await seedCoupon()];
       const c1 = ctx(user);
       const c2 = ctx(user);
@@ -415,18 +421,17 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
       const errorsBefore = observedErrorCodes.length;
 
       const before = Date.now();
+      // KTD11 鎖序固定為 user → coupon → subscribe_user → preference：本情境原本想製造的
+      // 「兩筆同時搶 INSERT 同一 (user_id, card_key)」已被 user 列鎖先行序列化——同一 user 的
+      // 兩筆兌換會先卡在 user 列鎖，第二筆永遠不會與第一筆同時抵達 subscribe_user 的
+      // INSERT／唯一鍵競態。因此改為驗證「兩筆同時卡在 user 列鎖」這個現在實際存在、且仍具
+      // 相同結果不變量意義的重疊點；不再需要 holder 預先未提交插入 subscribe_user（那個
+      // 唯一鍵競態場景在 user-first 鎖序下已不會由這兩筆真實兌換觸發，只是產品鎖序收斂的
+      // 副作用，不是本測試檔要斷言或防止的迴歸）。
       const overlapped = await runOverlapped({
-        // holder 先「未提交地」INSERT 同一 (user_id, card_key)，兩筆兌換的 FOR UPDATE 都會卡在
-        // 這筆未提交列；ROLLBACK 後兩筆同時看到「查無列」→ 同時搶 INSERT。
-        lockFn: holder =>
-          holder("subscribe_user").insert({
-            user_id: user,
-            subscribe_card_key: "month",
-            start_at: new Date(),
-            end_at: new Date(Date.now() + DAY_MS),
-          }),
+        lockFn: holder => holder("user").where({ platform_id: user }).forUpdate().first("id"),
         start: () => Promise.all([callExchange(c1, s1), callExchange(c2, s2)]),
-        blockedRe: /subscribe_user.*for update/i,
+        blockedRe: /from `user`.*for update/i,
       });
       const after = Date.now();
       expect(overlapped).toBe(true);
@@ -463,7 +468,8 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
   // ---------------------------------------------------------------------------------------
   describe("⑤ 過期清理後重新兌換", () => {
     it("CleanExpiredSubscriber 刪掉過期列後，兌換走建立路徑（新 id），不是延長舊列", async () => {
-      const user = LINE("5");
+      const user = LINE("h");
+      await seedLineUser(user);
       const [expiredId] = await mysql("subscribe_user").insert({
         user_id: user,
         subscribe_card_key: "month",
@@ -498,6 +504,7 @@ describe("SubscribeController redeem — 真實隔離 DB", () => {
       const aLine = LINE("a").replace(/a/g, "6");
       const bLine = LINE("b").replace(/b/g, "7");
       const aId = await seedLineUser(aLine);
+      await seedLineUser(bLine);
       const sponsorshipsBefore = await count("sponsorship");
 
       const { created, sponsorship, coupons } = await SponsorshipService.create(

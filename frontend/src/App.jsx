@@ -34,6 +34,7 @@ import XpHistory from "./pages/XpHistory";
 import XpHistoryAbout from "./pages/XpHistory/About";
 import AutoSettings from "./pages/AutoSettings";
 import AutoHistory from "./pages/AutoHistory";
+import AutoMatch from "./pages/AutoMatch";
 import Topics from "./pages/Topics";
 import Signin from "./pages/Signin";
 import AdminGachaPool from "./pages/Admin/GachaPool";
@@ -119,6 +120,7 @@ export default function App() {
           {/* Subscriber auto-actions (LIFF) */}
           <Route path="auto/settings" element={<AutoSettings />} />
           <Route path="auto/history" element={<AutoHistory />} />
+          <Route path="auto/match" element={<AutoMatch />} />
 
           {/* Chat word-cloud (LIFF) — must match getLiffUri("full", "/topics") */}
           <Route path="topics" element={<Topics />} />

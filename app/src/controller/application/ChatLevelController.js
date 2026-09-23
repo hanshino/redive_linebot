@@ -277,6 +277,8 @@ function getSubscribeInfo(userId) {
 async function getQuestInfo(userId) {
   const start = moment().startOf("day").toDate();
   const end = moment().endOf("day").toDate();
+  const questNow = moment().utcOffset(8 * 60);
+  const questWeekStart = questNow.clone().subtract(questNow.day(), "days");
   let jankenOptions = {
     filter: {
       userId,
@@ -295,9 +297,9 @@ async function getQuestInfo(userId) {
 
   let weeklyQuestOptions = {
     filter: {
-      createdAt: {
-        start: moment().startOf("week").toDate(),
-        end: moment().endOf("week").toDate(),
+      questDate: {
+        start: questWeekStart.format("YYYY-MM-DD"),
+        end: questWeekStart.clone().add(6, "days").format("YYYY-MM-DD"),
       },
     },
   };

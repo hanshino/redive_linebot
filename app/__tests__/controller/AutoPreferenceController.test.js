@@ -2,6 +2,9 @@
 
 jest.mock("../../src/model/application/UserAutoPreference", () => ({
   first: jest.fn(),
+  lockByUserId: jest.fn(),
+  updateByUserId: jest.fn(),
+  create: jest.fn(),
 }));
 jest.mock("../../src/service/SubscriptionService", () => ({
   hasEffect: jest.fn(),
@@ -29,6 +32,7 @@ const GachaModel = require("../../src/model/princess/gacha");
 const GachaBanner = require("../../src/model/princess/GachaBanner");
 const mysql = require("../../src/util/mysql");
 const controller = require("../../src/controller/application/AutoPreferenceController");
+const SubscribeUser = require("../../src/model/application/SubscribeUser");
 
 function mockRes() {
   const res = {};
@@ -36,6 +40,80 @@ function mockRes() {
   res.json = jest.fn(() => res);
   return res;
 }
+
+describe("Plus-only match preferences (mocked IO, real eligibility)", () => {
+  const now = new Date("2026-09-16T12:00:00Z");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers().setSystemTime(now);
+    mysql.first.mockResolvedValue({ id: 1 });
+    UserAutoPreference.lockByUserId.mockResolvedValue({
+      auto_match_enabled: 1,
+      auto_match_bet_enabled: 1,
+    });
+    jest.spyOn(SubscribeUser, "lockAllByUser").mockResolvedValue([]);
+    jest.spyOn(SubscribeUser, "findAllByUser").mockResolvedValue([]);
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  test.each(["setMatchPreference", "setMatchBetPreference"])(
+    "%s gates both independent opt-ins",
+    async handler => {
+      for (const key of ["month", "season", "month_plus"]) {
+        SubscribeUser.lockAllByUser.mockResolvedValue([
+          {
+            subscribe_card_key: key,
+            start_at: now,
+            end_at: new Date(+now + 1),
+          },
+        ]);
+        UserAutoPreference.updateByUserId.mockClear();
+        const res = mockRes();
+        await controller.api[handler](
+          { profile: { userId: "Uabc" }, body: { enabled: true, acknowledged: true } },
+          res
+        );
+        if (key === "month_plus") {
+          expect(res.status).not.toHaveBeenCalled();
+          expect(UserAutoPreference.updateByUserId).toHaveBeenCalledTimes(1);
+          expect(Object.keys(UserAutoPreference.updateByUserId.mock.calls[0][1])).toEqual(
+            handler === "setMatchPreference"
+              ? ["auto_match_enabled", "auto_match_generation"]
+              : ["auto_match_bet_enabled", "auto_match_bet_generation"]
+          );
+        } else {
+          expect(res.status).toHaveBeenCalledWith(403);
+          expect(UserAutoPreference.updateByUserId).not.toHaveBeenCalled();
+        }
+      }
+    }
+  );
+
+  test.each(["setMatchPreference", "setMatchBetPreference"])(
+    "%s allows ineligible opt-out",
+    async handler => {
+      const res = mockRes();
+      await controller.api[handler]({ profile: { userId: "Uabc" }, body: { enabled: false } }, res);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(UserAutoPreference.updateByUserId).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  test("expired Plus retains preference but is ineffective", async () => {
+    SubscribeUser.findAllByUser.mockResolvedValue([
+      { subscribe_card_key: "month_plus", start_at: new Date(+now - 1), end_at: now },
+    ]);
+    UserAutoPreference.first.mockResolvedValue({ auto_match_enabled: 1 });
+    const res = mockRes();
+    await controller.api.getMatchPreference({ profile: { userId: "Uabc" } }, res);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true, eligible: false, effective: false })
+    );
+  });
+});
 
 describe("AutoPreferenceController", () => {
   beforeEach(() => {

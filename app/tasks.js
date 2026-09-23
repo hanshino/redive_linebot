@@ -18,15 +18,19 @@ Task.init();
 // args wiring (befa043) silently misrouted `immediate` into the `start`
 // slot and left every `immediate: false` job dormant for weeks.
 crontab.forEach(job => {
-  const { name, description, period, immediate, require_path } = job;
+  const { name, description, period, immediate, require_path, timeZone } = job;
   const task = CronJob.from({
     cronTime: period.join(" "),
     onTick: async () => {
+      // Omitted remains enabled for every legacy entry. New release-gated jobs stay inert until
+      // their explicit flag is flipped; disabled ticks do not load the bin or write Task history.
+      if (job.enabled === false) return;
       await require(require_path)();
       await Task.write({ name, description }, moment().toDate());
     },
     start: true,
     runOnInit: Boolean(immediate),
+    ...(timeZone ? { timeZone } : {}),
   });
 
   jobs.push({

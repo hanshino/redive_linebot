@@ -14,7 +14,10 @@ const fillable = [
   "elo_change",
   "streak_broken",
   "bounty_won",
+  "source",
 ];
+
+exports.SOURCE = Object.freeze({ MANUAL: "manual", ARENA: "arena", AUTO: "auto" });
 
 exports.find = async id => {
   return await mysql(TABLE).where({ id }).first();
@@ -37,14 +40,23 @@ exports.findByTargetUserId = async targetUserId => {
   return await mysql(TABLE).where({ target_user_id: targetUserId }).first();
 };
 
-exports.create = async (attributes = {}) => {
+/**
+ * @param {Object} attributes fillable 欄位；`source` 未給時由 DB 預設 manual
+ * @param {import("knex").Knex.Transaction} [trx] 選填；傳入則在該交易內執行，不傳行為不變
+ */
+exports.create = async (attributes = {}, trx) => {
   let data = pick(attributes, fillable);
-  return await mysql(TABLE).insert(data);
+  return await (trx || mysql)(TABLE).insert(data);
 };
 
-exports.update = async (id, attributes = {}) => {
+/**
+ * @param {String} id
+ * @param {Object} attributes
+ * @param {import("knex").Knex.Transaction} [trx] 選填
+ */
+exports.update = async (id, attributes = {}, trx) => {
   let data = pick(attributes, fillable);
-  return await mysql(TABLE).update(data).where({ id });
+  return await (trx || mysql)(TABLE).update(data).where({ id });
 };
 
 exports.getRecentMatches = async (limit = 20) => {
@@ -77,6 +89,7 @@ exports.getRecentMatches = async (limit = 20) => {
     })
     .join("user as u1", "u1.platform_id", "=", `${TABLE}.user_id`)
     .join("user as u2", "u2.platform_id", "=", `${TABLE}.target_user_id`)
+    .whereIn(`${TABLE}.source`, [exports.SOURCE.MANUAL, exports.SOURCE.ARENA])
     .whereNotNull(`${TABLE}.p1_choice`)
     .orderBy(`${TABLE}.created_at`, "desc")
     .limit(limit);
