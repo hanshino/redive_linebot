@@ -139,8 +139,13 @@ describe("SubscribeController re-consent (isolated DB)", () => {
     await mysql("subscribe_card").insert([
       { key: "month", name: "month", price: 50, duration: 30, effects: "[]" },
       { key: "season", name: "season", price: 150, duration: 90, effects: "[]" },
-      { key: "month_plus", name: "Plus fixture", price: 0, duration: 30, effects: "[]" },
     ]);
+    // month_plus 已由 20260923092351_create_month_plus_subscribe_card migration 在
+    // migrate.latest 時建立（真實 price/effects），這裡改用 update 正規化成本測試檔既有的
+    // fixture 值，不能再 insert 同一個 key（會撞唯一鍵）。
+    await mysql("subscribe_card")
+      .where({ key: "month_plus" })
+      .update({ name: "Plus fixture", price: 0, duration: 30, effects: "[]" });
   }, SETUP_TIMEOUT_MS);
 
   afterAll(() => testDatabase.teardown());

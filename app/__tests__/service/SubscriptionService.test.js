@@ -149,3 +149,53 @@ describe("SubscriptionService.resolveActive", () => {
     expect(SubscriptionService.resolveActive(undefined, now)).toEqual([]);
   });
 });
+
+describe("SubscriptionService.convertDurationByPrice", () => {
+  const day = 86400000;
+
+  it("converts remaining month time to Plus time at the current 30/60 = 1/2 ratio", () => {
+    // 月卡剩 10 天折算進 Plus：10 天 × (30/60) = 5 天。
+    expect(SubscriptionService.convertDurationByPrice(10 * day, 30, 60)).toBe(5 * day);
+  });
+
+  it("converts month duration into Plus at the same ratio when Plus absorbs month", () => {
+    // 月卡整段 30 天折算進 Plus：30 天 × (30/60) = 15 天。
+    expect(SubscriptionService.convertDurationByPrice(30 * day, 30, 60)).toBe(15 * day);
+  });
+
+  it("is precise to the millisecond (no rounding)", () => {
+    // 1 天 × (30/60) = 12 小時整；換一個不整除的例子驗證真的沒有四捨五入。
+    expect(SubscriptionService.convertDurationByPrice(day, 30, 60)).toBe(12 * 60 * 60 * 1000);
+    expect(SubscriptionService.convertDurationByPrice(1000, 1, 3)).toBeCloseTo(333.333, 2);
+  });
+
+  it("returns 0 when the remaining duration is zero or negative (already expired / exactly due)", () => {
+    expect(SubscriptionService.convertDurationByPrice(0, 30, 60)).toBe(0);
+    expect(SubscriptionService.convertDurationByPrice(-1, 30, 60)).toBe(0);
+  });
+
+  it("returns 0 when either price is missing, zero, or negative (fail closed)", () => {
+    expect(SubscriptionService.convertDurationByPrice(10 * day, 0, 60)).toBe(0);
+    expect(SubscriptionService.convertDurationByPrice(10 * day, 30, 0)).toBe(0);
+    expect(SubscriptionService.convertDurationByPrice(10 * day, null, 60)).toBe(0);
+    expect(SubscriptionService.convertDurationByPrice(10 * day, 30, undefined)).toBe(0);
+    expect(SubscriptionService.convertDurationByPrice(10 * day, -30, 60)).toBe(0);
+  });
+
+  it("bulk pricing (5-pack, both at the same 8% discount) keeps the ratio unchanged", () => {
+    // 五張裝：月卡 120/5=24、Plus 240/5=48 —— 比例仍是 1/2。
+    expect(SubscriptionService.convertDurationByPrice(10 * day, 24, 48)).toBe(5 * day);
+  });
+});
+
+describe("SubscriptionService.keysSupersededBy / supersedingKeysOf", () => {
+  it("keysSupersededBy(month_plus) → [month]; season is never a value in SUPERSEDED_BY", () => {
+    expect(SubscriptionService.keysSupersededBy("month_plus")).toEqual(["month"]);
+    expect(SubscriptionService.keysSupersededBy("season")).toEqual([]);
+  });
+
+  it("supersedingKeysOf(month) → [month_plus]; season has no superseding key", () => {
+    expect(SubscriptionService.supersedingKeysOf("month")).toEqual(["month_plus"]);
+    expect(SubscriptionService.supersedingKeysOf("season")).toEqual([]);
+  });
+});

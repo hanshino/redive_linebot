@@ -4,7 +4,7 @@ const SubscribeCardCoupon = require("../model/application/SubscribeCardCoupon");
 // 與 app/bin/IssueSubscribeCard.js 既有 CLI 門檻對齊：count > 100 一律拒絕。
 // sponsorship 後台的 card_count 上限與此共用同一個常數，不另訂數字。
 const MAX_ISSUE_COUNT = 100;
-const ALLOWED_KEYS = new Set(["month", "season"]);
+const ALLOWED_KEYS = new Set(["month", "season", "month_plus"]);
 
 function fail(code) {
   return Object.assign(new Error(code), { code });
@@ -18,7 +18,7 @@ function fail(code) {
  * 行為不變（見 docs/plans/2026-09-09-sponsorship-admin-v1-plan.md §6）。
  *
  * @param {Object} param0
- * @param {String} param0.cardKey subscribe_card.key（目前為 "month" 或 "season"）
+ * @param {String} param0.cardKey subscribe_card.key（目前為 "month"、"season" 或 "month_plus"）
  * @param {Number} param0.count 張數，1 ~ MAX_ISSUE_COUNT
  * @param {String} param0.issuedBy 發行者（"system" 或站務 LINE userId）
  * @param {?Number} [param0.sponsorshipId] 贊助後台發卡時關聯的 sponsorship.id；

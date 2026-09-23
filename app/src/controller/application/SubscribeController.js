@@ -139,6 +139,30 @@ const EXCHANGE_MAX_ATTEMPTS = 3;
 // subscribe_user 的既有複合唯一鍵（見 20221025034215_create_subscribe_user_table.js），
 // 只有「首次建立」INSERT 競態撞到這個鍵時才視為可重試的 ER_DUP_ENTRY。
 const SUBSCRIBE_USER_UNIQUE = /subscribe_user_user_id_subscribe_card_key_unique/;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 折算天數顯示：取到小數 1 位，整數不帶 ".0"（15 天、5.5 天）。
+ * @param {Number} ms
+ * @returns {String}
+ */
+function formatDays(ms) {
+  return String(Math.round((ms / DAY_MS) * 10) / 10);
+}
+
+/**
+ * subscribe_user.start_at / end_at 是 MySQL TIMESTAMP（無小數秒），INSERT/UPDATE 時
+ * 會四捨五入到最近的整秒 —— 代表寫入的「現在」有可能被無條件進位成比真實時間點更晚
+ * （最多 +500ms）。折算把某張卡的 end_at 設成 now 用來表示「立刻結束」時，若真的被進位，
+ * 下一筆幾乎同時抵達的並發交易讀回這個 end_at 可能仍判定為「尚未到期」，導致同一張卡
+ * 被折算兩次。無條件捨去到整秒可保證寫入值不會晚於任何後續交易讀到的真實時間，
+ * 徹底消除這個進位造成的競態視窗。
+ * @param {import("moment").Moment} momentInstance
+ * @returns {Date}
+ */
+function floorToSecond(momentInstance) {
+  return new Date(Math.floor(momentInstance.valueOf() / 1000) * 1000);
+}
 
 // Knex/mysql2 例外的 .message／.sqlMessage 可能夾帶 SQL 語句與 bindings
 // （含女神石金額、訂閱序號等敏感值），一律不得寫進 log。只允許記錄這個白名單內的
@@ -184,11 +208,22 @@ function isRetryableExchangeError(error) {
  * 兌換單一序號整段包在同一交易，鎖序固定為 user → coupon → 該 user 所有
  * subscribe_user → user_auto_preference。以同一個 `now` 判 Plus 資格；只有 inactive→active
  * 才 reset 新自動配對 consent 並遞增 generation，舊 auto flags/cap 不動。
+ *
+ * 期中升級折算（見 docs/plans/2026-09-09-sponsorship-subscription-roadmap.md §5
+ * 「2026-09-23 Plus 售價與折算決策」）：月卡與 Plus 不並存，哪些卡種折算進哪張由
+ * SubscribeCard.SUPERSEDED_BY 推導（不寫死字串），分兩種情況：
+ *   - 兌換卡種吸收其他持有中的卡種（例如持有有效月卡時兌換 Plus）：被吸收卡種立刻
+ *     結束（end_at = now），剩餘時間依單價比例折算加到本次兌換卡種的 end_at。
+ *   - 兌換卡種被其他持有中的卡種吸收（例如持有有效 Plus 時兌換月卡）：完全不建立或
+ *     延長被兌換卡種自己的列，改把它的整段 duration 折算加到吸收者的 end_at。
+ * 兩種情況全部落在 lockAllByUser 已鎖住的同一批列內，並發兌換靠這把既有的
+ * 「鎖住該 user 全部 subscribe_user 列」序列化，不需要額外鎖。
+ *
  * MySQL deadlock / 鎖等待逾時 / 首次建立時的唯一鍵 INSERT 競態，整個函式重新來過，
  * 最多額外重試 2 次；其餘錯誤（含序號不存在/已使用/查無卡片）一律不重試、直接拋出。
  * @param {String} serialNumber
  * @param {String} userId
- * @returns {Promise<{card: Object, userData: Object, isContinue: Boolean}>}
+ * @returns {Promise<{card: Object, userData: Object, isContinue: Boolean, conversion: ?Object}>}
  */
 async function exchangeCouponWithRetry(serialNumber, userId) {
   let lastError;
@@ -214,28 +249,111 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
           trx
         );
         if (!card) throw exchangeFail("CARD_NOT_FOUND");
+        const cardKey = get(card, "key");
 
         const subscriptions = await SubscribeUser.lockAllByUser(userId, trx);
         const wasActive = SubscribeUser.hasActiveAutoMatchAt(subscriptions, now.toDate());
         const preference = await UserAutoPreference.lockByUserId(userId, trx);
-        const existing = subscriptions.find(row => row.subscribe_card_key === get(card, "key"));
+
+        // 邊界與 SubscribeUser.hasActiveAutoMatchAt 一致：start_at <= now < end_at，
+        // 恰好到期（end_at === now）或已過期一律視為非有效、不折算。
+        const activeRowFor = key =>
+          subscriptions.find(
+            row =>
+              row.subscribe_card_key === key &&
+              mement(row.start_at).isSameOrBefore(now) &&
+              mement(row.end_at).isAfter(now)
+          );
+
         let userData;
         let isContinue;
+        let conversion = null;
 
-        if (existing) {
-          const { user: data, isContinue: cont } = handleUser(existing, card, now);
-          userData = data;
-          isContinue = cont;
-          await SubscribeUser.update(get(existing, "id"), userData, {}, trx);
+        // 兌換卡種是否被某張「持有中」的卡種吸收？（例：持有有效 Plus 時兌換月卡）
+        const absorbedByRow = SubscriptionService.supersedingKeysOf(cardKey)
+          .map(activeRowFor)
+          .find(Boolean);
+
+        if (absorbedByRow) {
+          // 完全不建立或延長 cardKey 自己的列；改把它的整段 duration 折算進吸收者。
+          const absorberCard = await SubscribeCard.first(
+            { filter: { key: absorbedByRow.subscribe_card_key } },
+            trx
+          );
+          const durationMs = get(card, "duration") * DAY_MS;
+          const convertedMs = absorberCard
+            ? SubscriptionService.convertDurationByPrice(
+                durationMs,
+                get(card, "price"),
+                get(absorberCard, "price")
+              )
+            : 0;
+          const newEndAt = new Date(new Date(absorbedByRow.end_at).getTime() + convertedMs);
+          await SubscribeUser.update(get(absorbedByRow, "id"), { end_at: newEndAt }, {}, trx);
+          userData = { ...absorbedByRow, end_at: newEndAt };
+          // 對玩家而言這是「延期」而非「首次啟用」：吸收者本來就有效，只是到期日變晚。
+          isContinue = true;
+          conversion = { mode: "absorbedByOther", toDays: formatDays(convertedMs) };
         } else {
-          userData = {
-            user_id: userId,
-            subscribe_card_key: get(card, "key"),
-            start_at: now.toDate(),
-            end_at: now.clone().add(get(card, "duration"), "days").toDate(),
-          };
-          isContinue = false;
-          await SubscribeUser.create(userData, trx);
+          // 兌換卡種是否吸收某張「持有中」的卡種？（例：持有有效月卡時兌換 Plus）
+          const absorbedRow = SubscriptionService.keysSupersededBy(cardKey)
+            .map(activeRowFor)
+            .find(Boolean);
+          let bonusMs = 0;
+
+          if (absorbedRow) {
+            const absorbedCard = await SubscribeCard.first(
+              { filter: { key: absorbedRow.subscribe_card_key } },
+              trx
+            );
+            const remainingMs = new Date(absorbedRow.end_at).getTime() - now.valueOf();
+            bonusMs = absorbedCard
+              ? SubscriptionService.convertDurationByPrice(
+                  remainingMs,
+                  get(absorbedCard, "price"),
+                  get(card, "price")
+                )
+              : 0;
+            // 月卡被 Plus 吸收就一律當下結束（end_at = now），不管折算出多少加成——
+            // 折算金額只影響加到 Plus 的時間，被吸收卡種「結束」這件事本身不看金額。
+            // 用 floorToSecond 而非 now.toDate()：避免 TIMESTAMP 欄位的秒級進位讓並發交易
+            // 誤判這張卡仍有效而重複折算（見 floorToSecond 註解）。
+            await SubscribeUser.update(
+              get(absorbedRow, "id"),
+              { end_at: floorToSecond(now) },
+              {},
+              trx
+            );
+            conversion = {
+              mode: "absorbsOther",
+              fromDays: formatDays(remainingMs),
+              toDays: formatDays(bonusMs),
+            };
+          }
+
+          const existing = subscriptions.find(row => row.subscribe_card_key === cardKey);
+          if (existing) {
+            const { user: data, isContinue: cont } = handleUser(existing, card, now);
+            userData = data;
+            isContinue = cont;
+          } else {
+            userData = {
+              user_id: userId,
+              subscribe_card_key: cardKey,
+              start_at: now.toDate(),
+              end_at: now.clone().add(get(card, "duration"), "days").toDate(),
+            };
+            isContinue = false;
+          }
+          if (bonusMs > 0) {
+            userData.end_at = new Date(userData.end_at.getTime() + bonusMs);
+          }
+
+          if (existing) {
+            await SubscribeUser.update(get(existing, "id"), userData, {}, trx);
+          } else {
+            await SubscribeUser.create(userData, trx);
+          }
         }
 
         const becameActive =
@@ -265,7 +383,7 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
           .table(SubscribeCardCoupon.table)
           .where({ id: get(coupon, "id") });
 
-        return { card, userData, isContinue };
+        return { card, userData, isContinue, conversion };
       });
     } catch (error) {
       if (!isRetryableExchangeError(error) || attempt === EXCHANGE_MAX_ATTEMPTS) throw error;
@@ -288,9 +406,13 @@ async function subscribeCouponExchange(context, props) {
   let card;
   let userData;
   let isContinue;
+  let conversion;
 
   try {
-    ({ card, userData, isContinue } = await exchangeCouponWithRetry(serialNumber, userId));
+    ({ card, userData, isContinue, conversion } = await exchangeCouponWithRetry(
+      serialNumber,
+      userId
+    ));
   } catch (e) {
     if (e && e.code === "SERIAL_NOT_FOUND") {
       await context.sendText(i18n.__("message.subscribe.serial_number_not_found"));
@@ -327,22 +449,52 @@ async function subscribeCouponExchange(context, props) {
 
   let messages = [];
 
-  if (isContinue) {
-    messages.push(
-      i18n.__("message.subscribe.coupon_exchange_success_continue", {
-        end_at: mement(get(userData, "end_at")).format("YYYY-MM-DD"),
-      })
-    );
-  }
-
   messages.push(
     i18n.__("message.subscribe.coupon_exchange_success", {
       name: get(card, "name"),
     })
   );
 
-  const effects = get(card, "effects", []);
-  effects.forEach(effect => messages.push(SubscriptionService.formatEffectRow(effect)));
+  if (conversion && conversion.mode === "absorbsOther") {
+    // 兌換卡種（Plus）吸收了持有中的月卡剩餘時間：先講折算，再用既有「延期至」文案
+    // 顯示折算後的到期日——userData.end_at 此時已是 Plus 本身折算後的到期日。
+    messages.push(
+      i18n.__("message.subscribe.conversion_absorbs_other", {
+        from_days: conversion.fromDays,
+        to_days: conversion.toDays,
+      })
+    );
+    messages.push(
+      i18n.__("message.subscribe.coupon_exchange_success_continue", {
+        end_at: mement(get(userData, "end_at")).format("YYYY-MM-DD"),
+      })
+    );
+    const effects = get(card, "effects", []);
+    effects.forEach(effect => messages.push(SubscriptionService.formatEffectRow(effect)));
+  } else if (conversion && conversion.mode === "absorbedByOther") {
+    // 兌換卡種（月卡）被持有中的 Plus 吸收：card 是月卡，其 effects 不會生效，不列出。
+    // userData 此時是被延長的 Plus 列本身，到期日對應 Plus，不是月卡。
+    messages.push(
+      i18n.__("message.subscribe.conversion_absorbed_by_plus", {
+        to_days: conversion.toDays,
+      })
+    );
+    messages.push(
+      i18n.__("message.subscribe.coupon_exchange_success_continue", {
+        end_at: mement(get(userData, "end_at")).format("YYYY-MM-DD"),
+      })
+    );
+  } else {
+    if (isContinue) {
+      messages.push(
+        i18n.__("message.subscribe.coupon_exchange_success_continue", {
+          end_at: mement(get(userData, "end_at")).format("YYYY-MM-DD"),
+        })
+      );
+    }
+    const effects = get(card, "effects", []);
+    effects.forEach(effect => messages.push(SubscriptionService.formatEffectRow(effect)));
+  }
 
   await context.replyText(messages.join("\n"));
   !isContinue && (await DailyRation());
