@@ -16,7 +16,7 @@ exports.seed = async function (knex) {
   // Deletes ALL existing entries
   await knex("subscribe_card").del();
   await knex("subscribe_card").insert([
-    { key: "month", name: "月卡", price: 50, duration: 30, effects: JSON.stringify(monthEffects) },
+    { key: "month", name: "月卡", price: 30, duration: 30, effects: JSON.stringify(monthEffects) },
     {
       key: "season",
       name: "季卡",

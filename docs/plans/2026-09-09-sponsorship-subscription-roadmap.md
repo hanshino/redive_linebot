@@ -133,7 +133,19 @@
 - **月卡與 Plus 並存時由 Plus 覆蓋月卡：** Plus 有效期間，月卡的 `daily_ration` 與 `gacha_times` 都不發，月卡照常倒數（不暫停、不順延）；被浪費的天數交給期中升級折算規則處理。季卡不適用覆蓋，與 Plus 仍然疊加（保留舊承諾）。
 - **程式影響點：** `app/bin/DailyRation.js:8` 白名單加入 `month_plus`，且持有有效 Plus 的人跳過月卡配給；`app/src/service/GachaService.js:349` 與 `app/src/controller/princess/gacha.js:300` 的 `gacha_times` 加總，同樣在持有有效 Plus 時略過月卡。
 - **/me：** Plus 排在第一張主卡，顯示完整福利。並存的月卡標註「Plus 期間不發放・到期 YYYY-MM-DD」。影響點為 `ChatLevelController.js:159` 的排序、`locales/zh_tw.json` 補上 `message.subscribe.month_plus`、`templates/application/Me/`。
-- **仍未定：** Plus 售價、期中升級折算公式。
+- **實作狀態：** 覆蓋規則、每日配給、/me 已上線（PR #827、#828）；`month_plus` 卡種資料列尚未建立。
+
+### 2026-09-23 Plus 售價與折算決策
+
+- **實際現金售價（取代 DB `subscribe_card.price` 的 50）：** 月卡 NT$30，五張 NT$120。DB `price` 只在贊助後台卡種清單 API 回傳（`SponsorshipService.js:445`），前端不顯示；已由 migration `20260923083743_fix_month_card_price` 修正為 30。
+- **Plus 售價：** NT$60，五張 NT$240（月卡的 2 倍，五張同樣打 8 折）。
+- **女神石購買：** Plus **只能用現金購買**，不開放女神石購卡；`我要買月卡` 仍只賣普通月卡。
+- **月卡與 Plus 不並存（兌換時折算）：** 兌換時把月卡剩餘時間 × (月卡單張價 ÷ Plus 單張價) = × 1/2 換成 Plus 時間，月卡當下結束（`end_at = now`）；精確到毫秒，不做進位。比例用單張售價，五張裝兩邊同樣打 8 折，比例不變。
+  - 持有有效月卡時兌換 Plus：Plus 延長「卡片天數 + 月卡剩餘 × 1/2」。
+  - 持有有效 Plus 時兌換月卡（例如別人送的）：月卡天數 × 1/2 加到 Plus，不建立或延長月卡列。
+  - 季卡不參與折算，照舊疊加。
+  - 前面的 `SUPERSEDED_BY` 覆蓋規則保留，作為並存時的保險（例如折算上線前就已並存的資料）。
+- **上線需一起完成（同一 PR）：** 建 `month_plus` 卡種的 knex migration（含 effects、price 60）、`subscribe.month_plus_icon` 設定、`SubscribeCardCouponService.ALLOWED_KEYS` 加入 `month_plus`、兌換折算邏輯與測試。
 
 - [ ] 由授權人員核對現行卡種、福利、售價及存量，不從 seed 推定正式設定。
 - [ ] 選定首波福利；候選為自動化升級、補簽容錯、可永久收藏的外觀，並非全部承諾實作。
