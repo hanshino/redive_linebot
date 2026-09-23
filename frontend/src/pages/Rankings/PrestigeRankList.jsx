@@ -17,6 +17,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { getBlessingIcon } from "../Prestige/blessingIcons";
 import { getBuildIcon } from "../Prestige/buildIcons";
 import { BLESSING_CATALOG } from "./blessingCatalog";
+import { MEDAL_COLORS_BY_MODE, DEFAULT_AVATAR_COLOR } from "./medalColors";
 
 const BUILD_TAG_MAP = {
   breeze: { displayName: "疾風" },
@@ -24,14 +25,6 @@ const BUILD_TAG_MAP = {
   temperature: { displayName: "溫度" },
   solitude: { displayName: "孤獨" },
 };
-
-// Per-mode medal palette: light mode keeps the saturated metallics;
-// dark mode dims them so they don't bloom against dark surfaces.
-const MEDAL_COLORS_BY_MODE = {
-  light: ["#FFD700", "#C0C0C0", "#CD7F32"],
-  dark: ["#D4AF37", "#A8A8A8", "#A05A2C"],
-};
-const DEFAULT_AVATAR_COLOR = { light: "#90a4ae", dark: "#546e7a" };
 
 // Sub-component: prestige star visualization or awakened chip
 function PrestigeStars({ prestigeCount, awakened }) {

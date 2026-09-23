@@ -7,8 +7,9 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// 403 keeps its old behaviour (bounce home). 401 only announces itself:
-// LiffProvider listens and syncs its logged-out state. Redirecting or
+// 403 keeps its old behaviour (bounce home) unless the request opts out with
+// `skipForbiddenRedirect: true` (403 as a business error, e.g. no_support).
+// 401 only announces itself: LiffProvider listens and syncs its logged-out state. Redirecting or
 // re-authenticating from here would race the provider's one-shot session
 // exchange into a login loop.
 api.interceptors.response.use(
@@ -17,7 +18,7 @@ api.interceptors.response.use(
     const status = err.response?.status;
     if (status === 401) {
       window.dispatchEvent(new CustomEvent("auth:unauthorized"));
-    } else if (status === 403) {
+    } else if (status === 403 && !err.config?.skipForbiddenRedirect) {
       window.dispatchEvent(new CustomEvent("auth:forbidden"));
       window.location.href = "/";
     }
