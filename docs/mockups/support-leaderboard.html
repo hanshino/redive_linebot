@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <title>各大排行榜 · 支持榜 mockup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /*
+       * 色票照 frontend/src/theme/index.js（lightTheme / darkTheme）。
+       * 名次徽章色照 PrestigeRankList.jsx 的 MEDAL_COLORS_BY_MODE。
+       * 支持榜主色 = theme secondary（布丁琥珀），文字用深一階確保對比。
+       */
+      .phone {
+        --bg: #f5f7fa;
+        --paper: #ffffff;
+        --text: #1a2332;
+        --muted: #5a6b7f;
+        --disabled: rgba(26, 35, 50, 0.38);
+        --divider: rgba(0, 172, 193, 0.12);
+        --primary: #00acc1;
+        --primary-tint: rgba(0, 172, 193, 0.08);
+        --accent: #f59e0b; /* secondary.main */
+        --accent-text: #b45309; /* 白底上 4.5:1 以上 */
+        --accent-tint: rgba(245, 158, 11, 0.1);
+        --gold: #ffd700;
+        --silver: #c0c0c0;
+        --bronze: #cd7f32;
+        --avatar-default: #90a4ae;
+        --switch-off: #9e9e9e;
+        --shadow:
+          0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14),
+          0 1px 3px 0 rgba(0, 0, 0, 0.12);
+      }
+      body:has(#dark:checked) .phone {
+        --bg: #0a1a2a;
+        --paper: #12243a;
+        --text: #e8eef4;
+        --muted: #8da4be;
+        --disabled: rgba(232, 238, 244, 0.38);
+        --divider: rgba(38, 198, 218, 0.12);
+        --primary: #26c6da;
+        --primary-tint: rgba(38, 198, 218, 0.12);
+        --accent: #fbbf24;
+        --accent-text: #fbbf24;
+        --accent-tint: rgba(251, 191, 36, 0.1);
+        --gold: #d4af37;
+        --silver: #a8a8a8;
+        --bronze: #a05a2c;
+        --avatar-default: #546e7a;
+        --switch-off: #6b7c8f;
+        --shadow: 0 0 0 1px rgba(38, 198, 218, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #e9edf2;
+        font-family: Roboto, "Noto Sans TC", "Helvetica Neue", Arial, sans-serif;
+        color: #1a2332;
+      }
+      header.page {
+        padding: 28px 32px 8px;
+        max-width: 1400px;
+      }
+      header.page h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      header.page p {
+        margin: 0;
+        color: #5a6b7f;
+        font-size: 13px;
+        line-height: 1.7;
+      }
+      .toolbar {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #5a6b7f;
+      }
+      .toolbar label {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .stage {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 28px;
+        padding: 20px 32px 48px;
+        align-items: flex-start;
+      }
+      .scene {
+        width: 390px;
+      }
+      .scene h2 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+      .scene h2 .no {
+        display: inline-block;
+        min-width: 22px;
+        padding: 0 6px;
+        margin-right: 6px;
+        border-radius: 999px;
+        background: #12243a;
+        color: #fff;
+        font-size: 12px;
+        text-align: center;
+      }
+      .scene .why {
+        font-size: 12.5px;
+        color: #5a6b7f;
+        margin: 0 0 12px;
+        line-height: 1.7;
+        min-height: 64px;
+      }
+
+      /* ---------- phone ---------- */
+      .phone {
+        width: 390px;
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 28px;
+        border: 8px solid #1a2332;
+        overflow: hidden;
+        box-shadow: 0 18px 40px rgba(18, 36, 58, 0.18);
+      }
+      .liff-bar {
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        background: var(--paper);
+        border-bottom: 1px solid var(--divider);
+      }
+      .content {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .content h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+      .stub {
+        height: 56px;
+        border: 1px dashed var(--divider);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: var(--disabled);
+      }
+      .paper {
+        background: var(--paper);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 8px;
+      }
+
+      /* Tabs（scrollable，已捲到最右） */
+      .tabs {
+        display: flex;
+        align-items: stretch;
+        border-bottom: 1px solid var(--divider);
+        overflow: hidden;
+        position: relative;
+      }
+      .tabs .scroll-btn {
+        width: 28px;
+        flex: 0 0 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .tab {
+        flex: 0 0 auto;
+        min-width: 72px;
+        padding: 12px 14px;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+        opacity: 0.6;
+        position: relative;
+        white-space: nowrap;
+      }
+      .tab.active {
+        opacity: 1;
+      }
+      .tab.active::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 2px;
+        background: var(--primary);
+      }
+
+      .panel {
+        padding-top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      /* 感謝標頭 */
+      .thanks {
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent-tint) 0%, transparent 100%);
+        border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .thanks svg {
+        flex: 0 0 28px;
+        color: var(--accent);
+      }
+      .thanks .t1 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        line-height: 1.4;
+      }
+      .thanks .t2 {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* 上榜設定（MUI ListItem + Switch） */
+      .optout {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--divider);
+      }
+      .optout.on {
+        background: var(--primary-tint);
+        border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+      }
+      .optout .txt {
+        flex: 1;
+        min-width: 0;
+      }
+      .optout .l1 {
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+      .optout .l2 {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-top: 2px;
+        line-height: 1.5;
+      }
+      .switch {
+        position: relative;
+        width: 38px;
+        height: 22px;
+        flex: 0 0 auto;
+        cursor: pointer;
+      }
+      .switch input {
+        position: absolute;
+        opacity: 0;
+        inset: 0;
+        margin: 0;
+        cursor: pointer;
+      }
+      .switch .track {
+        position: absolute;
+        left: 2px;
+        right: 2px;
+        top: 4px;
+        height: 14px;
+        border-radius: 7px;
+        background: var(--switch-off);
+        opacity: 0.5;
+        transition: background 0.15s;
+      }
+      .switch .thumb {
+        position: absolute;
+        top: 1px;
+        left: 0;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #fafafa;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+        transition:
+          transform 0.15s,
+          background 0.15s;
+      }
+      .switch input:checked ~ .track {
+        background: var(--primary);
+      }
+      .switch input:checked ~ .thumb {
+        transform: translateX(18px);
+        background: var(--primary);
+      }
+      .switch input:focus-visible ~ .thumb {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      /* 名單 */
+      .list-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 0 8px;
+        margin-top: 4px;
+      }
+      .list-head .h {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      .list-head .c {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      ol.rank {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 56px;
+        padding: 6px 12px 6px 8px;
+        border-radius: 12px;
+        position: relative;
+      }
+      .row .no {
+        width: 26px;
+        flex: 0 0 26px;
+        text-align: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .row .medal {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+      }
+      .row .av {
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .row .name {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .row .name span {
+        font-size: 0.875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .you {
+        flex: 0 0 auto;
+        font-style: normal;
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1;
+        padding: 3px 7px;
+        border-radius: 999px;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+      }
+      .row .months {
+        flex: 0 0 auto;
+        text-align: right;
+        white-space: nowrap;
+        color: var(--muted);
+        font-size: 0.75rem;
+      }
+      .row .months b {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--accent-text);
+        margin-right: 2px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* 前三名：金銀銅徽章 + 頭像細框 + 極淡底色，不放大字級 */
+      .row.top1 {
+        --m: var(--gold);
+      }
+      .row.top2 {
+        --m: var(--silver);
+      }
+      .row.top3 {
+        --m: var(--bronze);
+      }
+      .row.top1,
+      .row.top2,
+      .row.top3 {
+        background: linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--m) 14%, transparent),
+          transparent 70%
+        );
+      }
+      .row.top1 .medal,
+      .row.top2 .medal,
+      .row.top3 .medal {
+        background: var(--m);
+      }
+      .row.top1 .av,
+      .row.top2 .av,
+      .row.top3 .av {
+        box-shadow:
+          0 0 0 2px var(--paper),
+          0 0 0 4px var(--m);
+      }
+
+      /* 自己那一列 */
+      .row.me {
+        background: var(--primary-tint);
+        box-shadow: inset 3px 0 0 var(--primary);
+      }
+
+      .foot-hint {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--muted);
+        padding: 4px 8px 8px;
+        line-height: 1.6;
+      }
+
+      /* 空狀態（沿用 RankingBarChart 空資料的置中寫法，加一點溫度） */
+      .empty {
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 8px;
+        padding: 24px;
+      }
+      .empty .ring {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: var(--accent-tint);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
+      .empty .e1 {
+        font-size: 1rem;
+        font-weight: 700;
+      }
+      .empty .e2 {
+        font-size: 0.8rem;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      /* 進場：名單逐列淡入（尊重 reduced-motion） */
+      @media (prefers-reduced-motion: no-preference) {
+        .row {
+          animation: rise 0.35s ease-out both;
+          animation-delay: calc(var(--i) * 35ms);
+        }
+        @keyframes rise {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page">
+      <h1>各大排行榜 · 新分頁「支持榜」</h1>
+      <p>
+        以 390px LIFF 畫面呈現，放在現有「成就蒐集」後面當第 5
+        個分頁。只顯示名次、頭像、暱稱、支持月數，不出現任何金額。<br />
+        四個畫面：① 自己在榜上 ② 自己選擇不上榜 ③ 自己沒有支持紀錄 ④
+        榜上還沒有人。開關可以點，會即時切換提示文字。
+      </p>
+      <div class="toolbar">
+        <label><input type="checkbox" id="dark" /> 深色模式（darkTheme）</label>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="scene" id="state-1">
+        <h2><span class="no">1</span>自己在榜上（第 5 名）</h2>
+        <p class="why">
+          自己那列用主色淡底 + 左側色條 +「你」標籤。第 4、5 名同為 12
+          個月，較早支持者在前，畫面上不特別說明。
+        </p>
+        <div class="phone" data-state="listed"></div>
+      </section>
+
+      <section class="scene" id="state-2">
+        <h2><span class="no">2</span>有支持紀錄，但選擇不上榜</h2>
+        <p class="why">
+          開關為開啟，設定框改成主色淡底，說明文字直接告訴他「你目前沒有顯示在榜上」。名單內沒有他，名次自動往前遞補。
+        </p>
+        <div class="phone" data-state="hidden"></div>
+      </section>
+
+      <section class="scene" id="state-3">
+        <h2><span class="no">3</span>沒有支持紀錄</h2>
+        <p class="why">完全不出現開關。名單下方只留一行小字提示，灰字、置中、無按鈕，不做推銷。</p>
+        <div class="phone" data-state="none"></div>
+      </section>
+
+      <section class="scene" id="state-4">
+        <h2><span class="no">4</span>榜上還沒有人</h2>
+        <p class="why">
+          保留感謝標頭讓分頁有主題，下方是置中空狀態。此狀態下 viewer
+          不可能有支持紀錄（否則自己就會在榜上或是隱藏），唯一例外是「全部人都隱藏」，見報告。
+        </p>
+        <div class="phone" data-state="empty"></div>
+      </section>
+    </main>
+
+    <script>
+      // 假資料：已依「月數 DESC、首次支持時間 ASC」排好。
+      const ROWS = [
+        { name: "凱留今天也在減肥", months: 24 },
+        { name: "佩可的便當", months: 20 },
+        { name: "布丁守護者", months: 18 },
+        { name: "小小甜心", months: 12 },
+        { name: "宮子的布丁", months: 12, me: true },
+        { name: "Nekomata", months: 9 },
+        { name: "拉比林斯達・副會長", months: 6 },
+        { name: "優衣", months: 4 },
+        { name: "七七香散步中", months: 2 },
+        { name: "碧", months: 1 },
+      ];
+      const AV = [
+        "#7c4dff",
+        "#ff7043",
+        "#26a69a",
+        "#ec407a",
+        "#00acc1",
+        "#8d6e63",
+        "#5c6bc0",
+        "#66bb6a",
+        "#ffa726",
+        "#78909c",
+      ];
+
+      const HEART = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+      const HANDS = `<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zM4 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm1.5 18v-7H3l2.54-7.63A2 2 0 0 1 7.44 6h-.01 .01c.83 0 1.58.52 1.87 1.3L12 14l2.69-6.7A2 2 0 0 1 16.56 6c.86 0 1.63.55 1.9 1.37L21 15h-2.5v7h-4v-7h.29L12 18.5 9.21 15h.29v7h-4z"/></svg>`;
+
+      const OPTOUT_COPY = {
+        off: "開啟後，其他人在這裡看不到你的名字和月數。",
+        on: "你目前沒有顯示在榜上。關掉就會重新出現。",
+      };
+
+      function row(r, i, markMe) {
+        const rank = i + 1;
+        const cls = ["row", rank <= 3 ? `top${rank}` : "", markMe && r.me ? "me" : ""].join(" ");
+        const no = rank <= 3 ? `<span class="medal">${rank}</span>` : rank;
+        return `<li class="${cls}" style="--i:${i}">
+          <div class="no">${no}</div>
+          <div class="av" style="background:${AV[ROWS.indexOf(r) % AV.length]}">${[...r.name][0]}</div>
+          <div class="name"><span>${r.name}</span>${markMe && r.me ? '<em class="you">你</em>' : ""}</div>
+          <div class="months"><b>${r.months}</b>個月</div>
+        </li>`;
+      }
+
+      function optout(on) {
+        return `<label class="optout ${on ? "on" : ""}">
+          <div class="txt">
+            <div class="l1">不要讓我上榜</div>
+            <div class="l2">${on ? OPTOUT_COPY.on : OPTOUT_COPY.off}</div>
+          </div>
+          <span class="switch">
+            <input type="checkbox" role="switch" aria-label="不要讓我上榜" ${on ? "checked" : ""} />
+            <span class="track"></span><span class="thumb"></span>
+          </span>
+        </label>`;
+      }
+
+      function panel(state) {
+        const thanks = `<div class="thanks">${HEART}<div>
+            <div class="t1">謝謝每一位支持布丁的人</div>
+            <div class="t2">依累積支持月數排列</div>
+          </div></div>`;
+
+        if (state === "empty") {
+          return `${thanks}<div class="empty">
+            <div class="ring">${HANDS}</div>
+            <div class="e1">目前還沒有人上榜</div>
+            <div class="e2">第一位支持者會出現在這裡。</div>
+          </div>`;
+        }
+
+        const rows = state === "hidden" ? ROWS.filter(r => !r.me) : ROWS;
+        const list = rows.map((r, i) => row(r, i, state === "listed")).join("");
+        const sw = state === "listed" || state === "hidden" ? optout(state === "hidden") : "";
+        const foot =
+          state === "none" ? `<div class="foot-hint">想一起支持布丁，可以私訊站務聊聊。</div>` : "";
+        return `${thanks}${sw}
+          <div class="list-head"><span class="h">支持者名單</span><span class="c">共 ${rows.length} 人</span></div>
+          <ol class="rank">${list}</ol>${foot}`;
+      }
+
+      document.querySelectorAll(".phone").forEach(el => {
+        const state = el.dataset.state;
+        el.innerHTML = `
+          <div class="liff-bar">布丁 Pudding</div>
+          <div class="content">
+            <h1>各大排行榜</h1>
+            <div class="stub">總覽卡片（不變，略）</div>
+            <div class="paper">
+              <div class="tabs">
+                <div class="scroll-btn">&#8249;</div>
+                <div class="tab">女神石</div>
+                <div class="tab">成就蒐集</div>
+                <div class="tab active">支持榜</div>
+              </div>
+              <div class="panel">${panel(state)}</div>
+            </div>
+          </div>`;
+      });
+
+      // 開關互動：只切換文字與底色，示意用。
+      document.addEventListener("change", e => {
+        if (!e.target.matches(".switch input")) return;
+        const box = e.target.closest(".optout");
+        box.classList.toggle("on", e.target.checked);
+        box.querySelector(".l2").textContent = e.target.checked ? OPTOUT_COPY.on : OPTOUT_COPY.off;
+      });
+    </script>
+  </body>
+</html>

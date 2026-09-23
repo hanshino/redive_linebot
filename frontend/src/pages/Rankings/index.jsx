@@ -4,6 +4,7 @@ import { EmojiEvents, Casino, Diamond, MilitaryTech } from "@mui/icons-material"
 import OverviewCard from "./OverviewCard";
 import RankingBarChart from "./RankingBarChart";
 import PrestigeRankList from "./PrestigeRankList";
+import SupportRankList from "./SupportRankList";
 import {
   useChatLevelData,
   useGachaRankData,
@@ -110,6 +111,7 @@ export default function Rankings() {
           <Tab label="轉蛋蒐集" />
           <Tab label="女神石" />
           <Tab label="成就蒐集" />
+          <Tab label="支持榜" />
         </Tabs>
         <TabPanel value={tab} index={0}>
           <RankingBarChart data={level.rows} color={RANK_COLORS.level} />
@@ -123,6 +125,9 @@ export default function Rankings() {
         </TabPanel>
         <TabPanel value={tab} index={3}>
           <RankingBarChart data={achievement.rows} color={RANK_COLORS.achievement} />
+        </TabPanel>
+        <TabPanel value={tab} index={4}>
+          <SupportRankList />
         </TabPanel>
       </Paper>
     </Box>

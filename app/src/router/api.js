@@ -24,6 +24,7 @@ const ChatLevelController = require("../controller/application/ChatLevelControll
 const AnnounceController = require("../controller/application/AnnounceController");
 const WeatherController = require("../controller/application/WeatherController");
 const SigninController = require("../controller/application/SigninController");
+const SupportRankingController = require("../controller/application/SupportRankingController");
 const { api: GodStoneShopRouter } = require("../controller/princess/GodStoneShop");
 const AdminModel = require("../model/application/Admin");
 const ImgurRouter = require("./Imgur");
@@ -394,6 +395,13 @@ router.put(
 router.get("/characters/images", PrincessCharacterController.api.getCharacterImages);
 
 router.get("/chat-levels/rankings", ChatLevelController.api.queryRank);
+
+/**
+ * 支持榜（sponsorship 排行）
+ */
+router.get("/support-rankings", SupportRankingController.getRankings);
+router.get("/support-rankings/me", verifyToken, SupportRankingController.getMe);
+router.put("/support-rankings/me", verifyToken, SupportRankingController.putMe);
 
 router.get("/announcements/:page", AnnounceController.api.queryData);
 
