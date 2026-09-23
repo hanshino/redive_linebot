@@ -166,4 +166,14 @@ module.exports = [
     immediate: false,
     require_path: "./bin/WorldBossSeasonSettle",
   },
+  {
+    name: "Auto World Boss Attack",
+    description:
+      "spend subscribers' remaining daily world boss attack quota (month_plus auto_world_boss opt-in)",
+    period: ["0", "30", "23", "*", "*", "*"],
+    immediate: false,
+    enabled: true,
+    timeZone: "Asia/Taipei",
+    require_path: "./bin/AutoWorldBossAttack",
+  },
 ];

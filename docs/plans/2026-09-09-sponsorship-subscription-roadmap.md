@@ -12,15 +12,15 @@
 
 已查到的程式依據：
 
-| 範圍 | 現況／參考路徑 |
-| --- | --- |
-| CLI 發卡 | `app/bin/IssueSubscribeCard.js` 依卡種與數量產生序號；尚無現金明細。機器端是否另有包裝指令待確認。 |
-| 訂閱序號 | `app/src/model/application/SubscribeCardCoupon.js`；與女神石活動 Coupon 是不同領域。 |
-| 購卡與兌換 | `app/src/controller/application/SubscribeController.js`：1／3／5 張月卡各為 50／135／220 萬女神石；兌換時才啟用或延長訂閱。 |
-| 站務權限 | `app/src/router/api.js`、`app/src/middleware/validation.js`：已有 `/admin` 授權鏈，不能用群組管理員身分取代；贊助後台改用僅本人的獨立授權，不沿用此等級制（見階段 0／V1 規格）。 |
-| 後台入口 | `frontend/src/App.jsx`、`frontend/src/components/NavDrawer.jsx`、`frontend/src/components/RequireAdmin.jsx`。 |
-| 現有介面參考 | `frontend/src/pages/Admin/Coupon/index.jsx` 是活動兌換碼管理，可參考操作慣例，但不能當作贊助帳本。 |
-| 訂閱福利 | `app/src/service/SubscriptionService.js` 已辨識自動抽卡／猜拳效果；須確認現行卡種設定及既有權益再調整。 |
+| 範圍         | 現況／參考路徑                                                                                                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI 發卡     | `app/bin/IssueSubscribeCard.js` 依卡種與數量產生序號；尚無現金明細。機器端是否另有包裝指令待確認。                                                                               |
+| 訂閱序號     | `app/src/model/application/SubscribeCardCoupon.js`；與女神石活動 Coupon 是不同領域。                                                                                             |
+| 購卡與兌換   | `app/src/controller/application/SubscribeController.js`：1／3／5 張月卡各為 50／135／220 萬女神石；兌換時才啟用或延長訂閱。                                                      |
+| 站務權限     | `app/src/router/api.js`、`app/src/middleware/validation.js`：已有 `/admin` 授權鏈，不能用群組管理員身分取代；贊助後台改用僅本人的獨立授權，不沿用此等級制（見階段 0／V1 規格）。 |
+| 後台入口     | `frontend/src/App.jsx`、`frontend/src/components/NavDrawer.jsx`、`frontend/src/components/RequireAdmin.jsx`。                                                                    |
+| 現有介面參考 | `frontend/src/pages/Admin/Coupon/index.jsx` 是活動兌換碼管理，可參考操作慣例，但不能當作贊助帳本。                                                                               |
+| 訂閱福利     | `app/src/service/SubscriptionService.js` 已辨識自動抽卡／猜拳效果；須確認現行卡種設定及既有權益再調整。                                                                          |
 
 `app/seeds/SubscribeCardSeeder.js` 是初始化資料，不能當作正式售價、線上福利或既有資料升級程序。
 
@@ -154,6 +154,20 @@
 - 兌換折算：`SubscribeController.js#exchangeCouponWithRetry`，依 `SubscribeCard.SUPERSEDED_BY` 推導折算方向，數學在 `SubscriptionService.convertDurationByPrice`；有真實 DB 整合測試（含並發不重複折算）。
 - 已知且接受：升級當天若已領月卡配給，折算成 Plus 後當天可能再領一次 Plus 配給（每次升級最多一次，影響小，不另做防重）。
 - 已上線（PR #832）；每日自動配對 cron 隨後啟用。開賣前仍需：本人以測試序號走一次兌換驗收。
+
+### 2026-09-23 Plus 世界王自動攻擊（`feat/auto-world-boss-attack`）
+
+- **資格：** 持有有效訂閱且卡的 effects 含 `auto_world_boss`（目前只有 `month_plus`，migration `20260923132724_add_auto_world_boss` 冪等補上）+ `user_auto_preference.auto_world_boss` 未被明確關閉。**預設開啟**：沒有 preference 列，或該列是本功能上線前建立（欄位未填），一律視為已啟用；只有明確存 0 才算關閉。攻擊方式 `auto_world_boss_mode` 預設 `standard`。
+- **排程：** 每日 23:30 Asia/Taipei，`app/bin/AutoWorldBossAttack.js`。花的是「今天剩餘」的世界王攻擊額度（`worldboss.daily_cost_limit`，Taipei 曆日），不管手動已經打掉多少；額度本身是唯一權威（`BattleService.attack` 交易內重算），同一天重跑不會超打。
+- **攻擊方式與降級：** 依 `auto_world_boss_mode` 選 standard/skill；skill 但剩餘額度（扣裝備 cost_reduction 後）不夠放技能時，剩下的攻擊降級為 standard；剩餘額度連 standard 都打不起就停止這個玩家。
+- **目標挑選：** 每一擊都重新挑「當前 cycle 內尚未擊破、血量最低」的目標；遇到 ROUND_STALE / ROUND_CLEARED 重新挑選並重試（上限 3 次）。DAILY_LIMIT_EXCEEDED 只停止這個玩家；NO_ACTIVE_SEASON / SEASON_ENDED / NO_ACTIVE_ROUND 視為整批不可用，中止整個批次並只記一次 log。
+- **靜默：** 不帶 groupId、不發任何 LINE 訊息；成就評估與手動攻擊完全一致（`WorldBossAttackService` 內建的 post-commit 流程）。
+- **無冷卻的 cron 專用入口：** `WorldBossAttackService.js` 拆成 `performAttack`（實際攻擊 + 副作用，無冷卻邏輯）與兩個入口——`attack()`（HTTP `/api` 專用，保留原本 5 秒 Redis 冷卻，`WorldBossController.js`／`handler/WorldBoss/public.js` 皆只呼叫這個）、`autoAttack()`（cron 專用，跳過冷卻，僅 `AutoWorldBossAttack.js` 呼叫）。無任何 HTTP/postback 入口能碰到 `autoAttack`。
+- **`AutoPreferenceController` 契約新增：** `GET`/`PUT /api/auto-preference` 回應多出 `auto_world_boss`（0|1）、`auto_world_boss_mode`（'standard'|'skill'）、`entitlements.auto_world_boss`（bool）、`world_boss_context: { daily_cost_limit, standard_cost, skill_cost, skill_name }`（該玩家當下 standard/skill 每次實際消耗，算法重用 `WorldBossAttackService.resolveCosts`，與實際攻擊扣的數字保證一致）。`PUT` 接受同兩個欄位，`auto_world_boss_mode` 不在白名單內回 400 `invalid_mode`。
+- **已知且接受、不另做防重：** 升級/續期當天已手動打過的額度與這支 cron 花的是同一份「剩餘額度」計算，不會超打；但這支 cron 與「補簽容錯」類似，只服務已訂閱玩家，不處理漏打的歷史補償。
+- 前端（`frontend/src/pages/AutoSettings/index.jsx`）已由另一條並行工作線完成，本輪未變更 frontend。
+- 測試：`WorldBossAttackService.test.js`（+`resolveCosts`/`autoAttack` 案例）、`AutoWorldBossAttack.test.js`（新檔：挑目標、額度權威、skill 降級、ROUND_CLEARED 重試、DAILY_LIMIT_EXCEEDED 單人停止、NO_ACTIVE_SEASON 整批中止、資格重檢跳過）、`AutoPreferenceController.test.js`（+`auto_world_boss` 旗標/模式驗證與預設開啟）、`tasks.timeZone.test.js`（+23:30 排程驗證）；`yarn test` 全套 180 suites / 2262 tests 綠燈；migration 已在本機 `migrate:latest`/`rollback`/`migrate:latest` 驗證含冪等重跑。
+- **候選福利更新：** 「補簽容錯」自候選清單移除——`auto_daily_gacha` 的每日代抽已透過 `GachaService.runDailyDraw → SigninService.recordNormal` 同時記錄簽到，Plus 持有者只要有開這個舊福利就不會漏簽；補簽容錯只在「尚未訂閱」之前有意義，訂閱後這個問題已被既有福利間接解決，不需要再另立一個福利。
 
 - [ ] 由授權人員核對現行卡種、福利、售價及存量，不從 seed 推定正式設定。
 - [ ] 選定首波福利；候選為自動化升級、補簽容錯、可永久收藏的外觀，並非全部承諾實作。

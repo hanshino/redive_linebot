@@ -455,6 +455,66 @@ describe("WorldBossAttackService — the shared attack seam", () => {
   });
 });
 
+describe("WorldBossAttackService.resolveCosts", () => {
+  it("returns standard/skill cost after equipment cost_reduction, plus the skill's display name", () => {
+    RPGCharacter.make.mockReturnValue(character({ skillCost: 10 }));
+    const costs = AttackService.resolveCosts(
+      { job_key: "swordman", level: 8 },
+      { cost_reduction: 3 }
+    );
+    expect(RPGCharacter.make).toHaveBeenCalledWith("swordman", { level: 8 });
+    expect(costs).toEqual({ standardCost: 7, skillCost: 7, skillName: undefined });
+  });
+
+  it("reads the skill's actual name field, not a hardcoded string", () => {
+    RPGCharacter.make.mockReturnValue({ skillOne: { cost: 20, name: "致命一擊" } });
+    const costs = AttackService.resolveCosts({ job_key: "thief", level: 5 }, { cost_reduction: 0 });
+    expect(costs.skillName).toBe("致命一擊");
+    expect(costs.standardCost).toBe(10);
+    expect(costs.skillCost).toBe(20);
+  });
+
+  it("never returns a cost below 1, even with a cost_reduction larger than the base cost", () => {
+    RPGCharacter.make.mockReturnValue({ skillOne: { cost: 8, name: "奮力揮擊" } });
+    const costs = AttackService.resolveCosts(
+      { job_key: "adventurer", level: 1 },
+      { cost_reduction: 999 }
+    );
+    expect(costs.standardCost).toBe(1);
+    expect(costs.skillCost).toBe(1);
+  });
+
+  it("treats a missing/negative/NaN cost_reduction as 0 — never lets a bad bonus inflate cost", () => {
+    RPGCharacter.make.mockReturnValue({ skillOne: { cost: 8, name: "奮力揮擊" } });
+    for (const bonuses of [undefined, {}, { cost_reduction: -5 }, { cost_reduction: NaN }]) {
+      const costs = AttackService.resolveCosts({ job_key: "adventurer", level: 1 }, bonuses);
+      expect(costs.standardCost).toBe(10);
+      expect(costs.skillCost).toBe(8);
+    }
+  });
+
+  it("produces the exact same standardCost as attackInput's standard-attack baseCost path", async () => {
+    // resolveCosts and attackInput must never drift — both are called with identical
+    // progress/bonuses shapes and must agree on the number a player will actually pay.
+    RPGCharacter.make.mockReturnValue(character({ standard: 40, skillCost: 8 }));
+    EquipmentService.getEquipmentBonuses.mockResolvedValue({
+      atk_percent: 0,
+      cost_reduction: 2,
+      exp_bonus: 0,
+    });
+    MinigameService.findByUserId.mockResolvedValue({ level: 3, job_key: "adventurer" });
+
+    await AttackService.attack({ userId: USER, roundId: 2, attackType: "standard" });
+    const actualCostPaid = BattleService.attack.mock.calls[0][0].cost;
+
+    const costs = AttackService.resolveCosts(
+      { job_key: "adventurer", level: 3 },
+      { cost_reduction: 2 }
+    );
+    expect(costs.standardCost).toBe(actualCostPaid);
+  });
+});
+
 describe("WorldBossAttackService — announcement gating", () => {
   const cleared = { cleared: true };
 
@@ -737,5 +797,128 @@ describe("WorldBossAttackService — display name resolution", () => {
     expect(mockLineClient.pushMessage).not.toHaveBeenCalled();
     expect(Object.keys(mockLineClient)).not.toContain("getGroupMemberProfile");
     expectReplyOnlyDelivery();
+  });
+});
+
+describe("WorldBossAttackService.autoAttack — cron-only, no cooldown", () => {
+  it("validates userId/attackType/roundId exactly like attack(), before touching Redis or BattleService", async () => {
+    await expect(
+      AttackService.autoAttack({ userId: "", roundId: 2, attackType: "standard" })
+    ).rejects.toMatchObject({ code: "INVALID_USER" });
+    await expect(
+      AttackService.autoAttack({ userId: USER, roundId: 2, attackType: "ultimate" })
+    ).rejects.toMatchObject({ code: "INVALID_ATTACK_TYPE" });
+    await expect(
+      AttackService.autoAttack({ userId: USER, roundId: "abc", attackType: "standard" })
+    ).rejects.toMatchObject({ code: "INVALID_ROUND_ID" });
+    expect(redis.set).not.toHaveBeenCalled();
+    expect(BattleService.attack).not.toHaveBeenCalled();
+  });
+
+  it("never touches the Redis cooldown at all — no reservation, no release, even on a no-attack error", async () => {
+    await AttackService.autoAttack({ userId: USER, roundId: 2, attackType: "standard" });
+    expect(redis.set).not.toHaveBeenCalled();
+
+    BattleService.attack.mockRejectedValueOnce(error("ROUND_CLEARED"));
+    await expect(
+      AttackService.autoAttack({ userId: USER, roundId: 2, attackType: "standard" })
+    ).rejects.toMatchObject({ code: "ROUND_CLEARED" });
+    expect(redis.set).not.toHaveBeenCalled();
+    expect(redis.eval).not.toHaveBeenCalled();
+  });
+
+  it("runs back-to-back without any cooldown blocking a second call for the same user", async () => {
+    await AttackService.autoAttack({ userId: USER, roundId: 2, attackType: "standard" });
+    await AttackService.autoAttack({ userId: USER, roundId: 2, attackType: "standard" });
+    expect(BattleService.attack).toHaveBeenCalledTimes(2);
+  });
+
+  it("computes damage/cost/exp identically to attack() (same attackInput seam)", async () => {
+    RPGCharacter.make.mockReturnValue(character({ standard: 50, skill: 400, skillCost: 12 }));
+    EquipmentService.getEquipmentBonuses.mockResolvedValue({
+      atk_percent: 0.1,
+      cost_reduction: 4,
+      exp_bonus: 2,
+    });
+
+    await AttackService.autoAttack({ userId: USER, roundId: 9, attackType: "standard" });
+
+    expect(BattleService.attack).toHaveBeenCalledWith({
+      userId: USER,
+      attackType: "standard",
+      roundId: "9",
+      rawDamage: 55,
+      jobKey: "swordman",
+      cost: 6,
+      exp: 122,
+    });
+  });
+
+  it("is silent: never queues a group announcement even when the caller could have supplied a groupId", async () => {
+    BattleService.attack.mockResolvedValue(result({ cleared: true }));
+
+    const response = await AttackService.autoAttack({
+      userId: USER,
+      roundId: 2,
+      attackType: "standard",
+    });
+
+    expect(redis.get).not.toHaveBeenCalled();
+    expect(broadcastQueue.pushEvent).not.toHaveBeenCalled();
+    expect(response.announcementQueued).toBe(false);
+  });
+
+  it("autoAttack does not accept a groupId parameter at all (always silent by construction)", async () => {
+    BattleService.attack.mockResolvedValue(result({ cleared: true }));
+
+    // Even if a caller mistakenly passed groupId, the function signature ignores it —
+    // this is the actual silence guarantee, not just "nobody happens to pass one".
+    await AttackService.autoAttack({
+      userId: USER,
+      roundId: 2,
+      attackType: "standard",
+      groupId: GROUP,
+    });
+
+    expect(broadcastQueue.pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("still evaluates achievements exactly like attack() (post-commit, same event/context)", async () => {
+    await AttackService.autoAttack({ userId: USER, roundId: 2, attackType: "standard" });
+
+    expect(AchievementEngine.evaluate).toHaveBeenCalledWith(USER, "boss_attack", {
+      feature: "world_boss",
+    });
+  });
+
+  it("still returns latestReward, degrading to null on lookup failure like attack()", async () => {
+    const reward = { rewardId: 3, seasonName: "夏季" };
+    SeasonService.getLatestSettledResult.mockResolvedValueOnce(reward);
+    const withReward = await AttackService.autoAttack({
+      userId: USER,
+      roundId: 2,
+      attackType: "standard",
+    });
+    expect(withReward.latestReward).toEqual(reward);
+
+    SeasonService.getLatestSettledResult.mockRejectedValueOnce(new Error("reward down"));
+    const withoutReward = await AttackService.autoAttack({
+      userId: USER,
+      roundId: 2,
+      attackType: "standard",
+    });
+    expect(withoutReward.latestReward).toBeNull();
+  });
+
+  it("propagates DAILY_LIMIT_EXCEEDED and NO_ACTIVE_SEASON exactly as attack() does", async () => {
+    BattleService.attack.mockRejectedValueOnce(error("DAILY_LIMIT_EXCEEDED"));
+    await expect(
+      AttackService.autoAttack({ userId: USER, roundId: 2, attackType: "standard" })
+    ).rejects.toMatchObject({ code: "DAILY_LIMIT_EXCEEDED" });
+
+    BattleService.attack.mockRejectedValueOnce(error("NO_ACTIVE_SEASON"));
+    await expect(
+      AttackService.autoAttack({ userId: USER, roundId: 2, attackType: "standard" })
+    ).rejects.toMatchObject({ code: "NO_ACTIVE_SEASON" });
   });
 });

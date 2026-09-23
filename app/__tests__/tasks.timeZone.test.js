@@ -13,11 +13,13 @@ jest.mock("../bin/JankenAutoMatchOutboxDrainer", () =>
   jest.fn().mockResolvedValue({ processed: 0, failed: 0 })
 );
 jest.mock("../bin/DailyCleanup", () => jest.fn().mockResolvedValue(undefined));
+jest.mock("../bin/AutoWorldBossAttack", () => jest.fn().mockResolvedValue(undefined));
 
 const Task = require("../src/model/application/Task");
 const AutoJankenMatchmaking = require("../bin/AutoJankenMatchmaking");
 const JankenAutoMatchOutboxDrainer = require("../bin/JankenAutoMatchOutboxDrainer");
 const DailyCleanup = require("../bin/DailyCleanup");
+const AutoWorldBossAttack = require("../bin/AutoWorldBossAttack");
 
 function loadScheduler() {
   fromMock.mockClear();
@@ -43,7 +45,11 @@ describe("tasks.js timeZone + U9 wiring", () => {
   test("舊 jobs omitted enabled/timeZone 保持 start=true、原 immediate/cronTime 不變", () => {
     const oldJobs = registrations.filter(
       ({ entry }) =>
-        !["Auto Janken Matchmaking", "Janken Auto Match Outbox Drainer"].includes(entry.name)
+        ![
+          "Auto Janken Matchmaking",
+          "Janken Auto Match Outbox Drainer",
+          "Auto World Boss Attack",
+        ].includes(entry.name)
     );
     expect(oldJobs.length).toBeGreaterThan(0);
     for (const { entry, options } of oldJobs) {
@@ -123,5 +129,38 @@ describe("tasks.js timeZone + U9 wiring", () => {
       { name: job.entry.name, description: job.entry.description },
       expect.any(Date)
     );
+  });
+
+  test("世界王自動攻擊已啟用、23:30 Asia/Taipei、沒有 immediate", async () => {
+    const job = registrations.find(({ entry }) => entry.name === "Auto World Boss Attack");
+    expect(job.entry).toMatchObject({
+      enabled: true,
+      period: ["0", "30", "23", "*", "*", "*"],
+      immediate: false,
+      timeZone: "Asia/Taipei",
+      require_path: "./bin/AutoWorldBossAttack",
+    });
+    expect(job.options).toMatchObject({
+      cronTime: "0 30 23 * * *",
+      start: true,
+      runOnInit: false,
+      timeZone: "Asia/Taipei",
+    });
+
+    await job.options.onTick();
+    expect(AutoWorldBossAttack).toHaveBeenCalledTimes(1);
+    expect(Task.write).toHaveBeenCalledTimes(1);
+  });
+
+  test("世界王自動攻擊 enabled=false 時 tick 不執行 job（緊急關閉開關）", async () => {
+    const job = registrations.find(({ entry }) => entry.name === "Auto World Boss Attack");
+    try {
+      job.entry.enabled = false;
+      await job.options.onTick();
+      expect(AutoWorldBossAttack).not.toHaveBeenCalled();
+      expect(Task.write).not.toHaveBeenCalled();
+    } finally {
+      job.entry.enabled = true;
+    }
   });
 });

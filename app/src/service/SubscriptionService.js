@@ -6,7 +6,13 @@ const { DefaultLogger } = require("../util/Logger");
 // Effect types that represent a feature unlock (binary perk) rather than a
 // numeric bonus. Rendered without a "+N" suffix since the value is always 1.
 // auto_janken_match = Plus 專屬「每日自動配對猜拳」展示用 effect，只有開關無數值。
-const FEATURE_EFFECT_TYPES = new Set(["auto_daily_gacha", "auto_janken_fate", "auto_janken_match"]);
+// auto_world_boss = Plus 專屬「世界王自動攻擊」展示用 effect，只有開關無數值。
+const FEATURE_EFFECT_TYPES = new Set([
+  "auto_daily_gacha",
+  "auto_janken_fate",
+  "auto_janken_match",
+  "auto_world_boss",
+]);
 
 function parseEffects(raw) {
   if (Array.isArray(raw)) return raw;

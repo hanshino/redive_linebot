@@ -9,13 +9,15 @@ const seasonEffects = [
 ];
 
 // 完整一套（非月卡的增量），比照線上 month_plus 卡種的 effects JSON 格式。
-// 見 migrations/20260923092351_create_month_plus_subscribe_card.js。
+// 見 migrations/20260923092351_create_month_plus_subscribe_card.js
+// 與 20260923132724_add_auto_world_boss.js（世界王自動攻擊）。
 const monthPlusEffects = [
   { type: "gacha_times", value: 2 },
   { type: "daily_ration", value: 500 },
   { type: "auto_daily_gacha", value: 1 },
   { type: "auto_janken_fate", value: 1 },
   { type: "auto_janken_match", value: 1 },
+  { type: "auto_world_boss", value: 1 },
 ];
 
 /**

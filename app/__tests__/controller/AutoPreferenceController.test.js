@@ -24,12 +24,24 @@ jest.mock("../../src/model/princess/gacha", () => ({
 jest.mock("../../src/model/princess/GachaBanner", () => ({
   getActiveBannersWithCharacters: jest.fn(),
 }));
+jest.mock("../../src/service/MinigameService", () => ({
+  findByUserId: jest.fn(),
+}));
+jest.mock("../../src/service/EquipmentService", () => ({
+  getEquipmentBonuses: jest.fn(),
+}));
+jest.mock("../../src/service/WorldBossAttackService", () => ({
+  resolveCosts: jest.fn(),
+}));
 
 const UserAutoPreference = require("../../src/model/application/UserAutoPreference");
 const SubscriptionService = require("../../src/service/SubscriptionService");
 const GachaService = require("../../src/service/GachaService");
 const GachaModel = require("../../src/model/princess/gacha");
 const GachaBanner = require("../../src/model/princess/GachaBanner");
+const MinigameService = require("../../src/service/MinigameService");
+const EquipmentService = require("../../src/service/EquipmentService");
+const WorldBossAttackService = require("../../src/service/WorldBossAttackService");
 const mysql = require("../../src/util/mysql");
 const controller = require("../../src/controller/application/AutoPreferenceController");
 const SubscribeUser = require("../../src/model/application/SubscribeUser");
@@ -123,6 +135,14 @@ describe("AutoPreferenceController", () => {
     GachaService.getRemainingDailyQuota.mockResolvedValue({ total: 2, used: 0, remaining: 2 });
     GachaModel.getUserGodStoneCount.mockResolvedValue(5000);
     GachaBanner.getActiveBannersWithCharacters.mockResolvedValue([]);
+    // Defaults for the newly-added world_boss_context lookup.
+    MinigameService.findByUserId.mockResolvedValue({ level: 1, job_key: "adventurer" });
+    EquipmentService.getEquipmentBonuses.mockResolvedValue({ cost_reduction: 0 });
+    WorldBossAttackService.resolveCosts.mockReturnValue({
+      standardCost: 10,
+      skillCost: 8,
+      skillName: "奮力揮擊",
+    });
   });
 
   describe("GET /api/auto-preference", () => {
@@ -152,16 +172,25 @@ describe("AutoPreferenceController", () => {
         auto_daily_gacha_mode: "ensure",
         auto_janken_fate: 0,
         auto_janken_fate_with_bet: 0,
+        auto_world_boss: 1,
+        auto_world_boss_mode: "standard",
         entitlements: {
           auto_daily_gacha: true,
           auto_janken_fate: false,
           auto_janken_fate_with_bet: false,
+          auto_world_boss: false,
         },
         gacha_context: {
           stone_balance: 5000,
           daily_quota: { total: 2, used: 0, remaining: 2 },
           costs: { normal: 0, pickup: 1500, ensure: 3000, europe: 10000 },
           europe_banner_active: false,
+        },
+        world_boss_context: {
+          daily_cost_limit: 100,
+          standard_cost: 10,
+          skill_cost: 8,
+          skill_name: "奮力揮擊",
         },
       });
     });
@@ -179,10 +208,13 @@ describe("AutoPreferenceController", () => {
           auto_daily_gacha_mode: "normal",
           auto_janken_fate: 0,
           auto_janken_fate_with_bet: 0,
+          auto_world_boss: 1,
+          auto_world_boss_mode: "standard",
           entitlements: {
             auto_daily_gacha: false,
             auto_janken_fate: false,
             auto_janken_fate_with_bet: false,
+            auto_world_boss: false,
           },
         })
       );
@@ -319,11 +351,12 @@ describe("AutoPreferenceController", () => {
       );
       expect(mysql.raw).toHaveBeenCalledTimes(1);
       const [sql, args] = mysql.raw.mock.calls[0];
-      // Column order in INSERT is fixed: user_id, auto_daily_gacha, mode, janken, with_bet
+      // Column order in INSERT is fixed: user_id, auto_daily_gacha, mode, janken, with_bet,
+      // auto_world_boss, auto_world_boss_mode.
       expect(sql).toMatch(/auto_daily_gacha_mode/);
       expect(args[2]).toBe("ensure");
       // COALESCE slot for mode should also carry the new value (not null)
-      expect(args[6]).toBe("ensure");
+      expect(args[8]).toBe("ensure");
       const payload = res.json.mock.calls[0][0];
       expect(payload.auto_daily_gacha_mode).toBe("ensure");
     });
@@ -363,13 +396,172 @@ describe("AutoPreferenceController", () => {
         res
       );
       const args = mysql.raw.mock.calls[0][1];
-      // COALESCE null for flags → keep existing values
-      expect(args[5]).toBeNull(); // auto_daily_gacha COALESCE slot
-      expect(args[7]).toBeNull(); // auto_janken_fate COALESCE slot
-      expect(args[8]).toBeNull(); // auto_janken_fate_with_bet COALESCE slot
+      // COALESCE null for flags → keep existing values. Column order:
+      // [0]user_id [1]gacha [2]mode [3]janken [4]with_bet [5]world_boss [6]world_boss_mode
+      // [7]COALESCE(gacha) [8]COALESCE(mode) [9]COALESCE(janken) [10]COALESCE(with_bet)
+      // [11]COALESCE(world_boss) [12]COALESCE(world_boss_mode)
+      expect(args[7]).toBeNull(); // auto_daily_gacha COALESCE slot
+      expect(args[9]).toBeNull(); // auto_janken_fate COALESCE slot
+      expect(args[10]).toBeNull(); // auto_janken_fate_with_bet COALESCE slot
+      expect(args[11]).toBeNull(); // auto_world_boss COALESCE slot
+      expect(args[12]).toBeNull(); // auto_world_boss_mode COALESCE slot
       // Mode COALESCE slot must carry the new value
-      expect(args[6]).toBe("europe");
+      expect(args[8]).toBe("europe");
       void res;
+    });
+  });
+
+  describe("auto_world_boss（Plus 專屬，預設開啟）", () => {
+    it("no preference row at all → auto_world_boss defaults to 1, mode defaults to standard", async () => {
+      UserAutoPreference.first.mockResolvedValue(null);
+      SubscriptionService.hasEffect.mockResolvedValue(false);
+      const res = mockRes();
+      await controller.api.getPreference({ profile: { userId: "Ufresh" } }, res);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.auto_world_boss).toBe(1);
+      expect(payload.auto_world_boss_mode).toBe("standard");
+    });
+
+    it("a pre-existing row from before this feature (auto_world_boss undefined) also defaults to 1", async () => {
+      // Simulates a row inserted before the migration's DEFAULT took effect on this column
+      // in application code — the row exists but the field is missing/undefined, not 0.
+      UserAutoPreference.first.mockResolvedValue({
+        user_id: "Uold",
+        auto_daily_gacha: 0,
+        auto_daily_gacha_mode: "normal",
+        auto_janken_fate: 0,
+        auto_janken_fate_with_bet: 0,
+      });
+      SubscriptionService.hasEffect.mockResolvedValue(false);
+      const res = mockRes();
+      await controller.api.getPreference({ profile: { userId: "Uold" } }, res);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.auto_world_boss).toBe(1);
+    });
+
+    it("only an explicit auto_world_boss=0 row is reported as disabled", async () => {
+      UserAutoPreference.first.mockResolvedValue({
+        user_id: "Uoff",
+        auto_world_boss: 0,
+        auto_world_boss_mode: "skill",
+      });
+      SubscriptionService.hasEffect.mockResolvedValue(true);
+      const res = mockRes();
+      await controller.api.getPreference({ profile: { userId: "Uoff" } }, res);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.auto_world_boss).toBe(0);
+      expect(payload.auto_world_boss_mode).toBe("skill");
+    });
+
+    it("entitlements.auto_world_boss reflects SubscriptionService.hasEffect('auto_world_boss')", async () => {
+      SubscriptionService.hasEffect.mockImplementation(
+        async (_userId, effect) => effect === "auto_world_boss"
+      );
+      const res = mockRes();
+      await controller.api.getPreference({ profile: { userId: "Uabc" } }, res);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.entitlements.auto_world_boss).toBe(true);
+      expect(payload.entitlements.auto_daily_gacha).toBe(false);
+    });
+
+    it("world_boss_context surfaces per-user standard/skill cost from WorldBossAttackService.resolveCosts", async () => {
+      MinigameService.findByUserId.mockResolvedValue({ level: 8, job_key: "swordman" });
+      EquipmentService.getEquipmentBonuses.mockResolvedValue({ cost_reduction: 3 });
+      WorldBossAttackService.resolveCosts.mockReturnValue({
+        standardCost: 7,
+        skillCost: 7,
+        skillName: "震地斬擊",
+      });
+
+      const res = mockRes();
+      await controller.api.getPreference({ profile: { userId: "Uabc" } }, res);
+
+      expect(WorldBossAttackService.resolveCosts).toHaveBeenCalledWith(
+        { level: 8, job_key: "swordman" },
+        { cost_reduction: 3 }
+      );
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.world_boss_context).toEqual({
+        daily_cost_limit: 100,
+        standard_cost: 7,
+        skill_cost: 7,
+        skill_name: "震地斬擊",
+      });
+    });
+
+    it("world_boss_context degrades to null (not a thrown error) when the lookup fails", async () => {
+      MinigameService.findByUserId.mockRejectedValue(new Error("db down"));
+      const res = mockRes();
+      await controller.api.getPreference({ profile: { userId: "Uabc" } }, res);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.world_boss_context).toBeNull();
+      expect(res.status).not.toHaveBeenCalledWith(500);
+    });
+
+    it("setPreference rejects auto_world_boss=1 without entitlement (403 entitlement_missing)", async () => {
+      SubscriptionService.hasEffect.mockResolvedValue(false);
+      const res = mockRes();
+      await controller.api.setPreference(
+        { profile: { userId: "Uabc" }, body: { auto_world_boss: 1 } },
+        res
+      );
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "entitlement_missing",
+        field: "auto_world_boss",
+      });
+      expect(mysql.raw).not.toHaveBeenCalled();
+    });
+
+    it("setPreference allows turning auto_world_boss off without entitlement", async () => {
+      SubscriptionService.hasEffect.mockResolvedValue(false);
+      const res = mockRes();
+      await controller.api.setPreference(
+        { profile: { userId: "Uabc" }, body: { auto_world_boss: 0 } },
+        res
+      );
+      expect(res.status).not.toHaveBeenCalledWith(403);
+      expect(mysql.raw).toHaveBeenCalledTimes(1);
+    });
+
+    it("setPreference accepts auto_world_boss_mode='skill' and persists it", async () => {
+      SubscriptionService.hasEffect.mockResolvedValue(true);
+      const res = mockRes();
+      await controller.api.setPreference(
+        { profile: { userId: "Uabc" }, body: { auto_world_boss_mode: "skill" } },
+        res
+      );
+      expect(mysql.raw).toHaveBeenCalledTimes(1);
+      const args = mysql.raw.mock.calls[0][1];
+      expect(args[6]).toBe("skill"); // VALUES slot for auto_world_boss_mode
+      expect(args[12]).toBe("skill"); // COALESCE slot for auto_world_boss_mode
+    });
+
+    it("setPreference rejects an unknown auto_world_boss_mode with 400 invalid_mode", async () => {
+      SubscriptionService.hasEffect.mockResolvedValue(true);
+      const res = mockRes();
+      await controller.api.setPreference(
+        { profile: { userId: "Uabc" }, body: { auto_world_boss_mode: "ultimate" } },
+        res
+      );
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: "invalid_mode",
+        field: "auto_world_boss_mode",
+      });
+      expect(mysql.raw).not.toHaveBeenCalled();
+    });
+
+    it("new row created via UPSERT defaults auto_world_boss=1 / mode='standard' when unspecified", async () => {
+      SubscriptionService.hasEffect.mockResolvedValue(true);
+      const res = mockRes();
+      await controller.api.setPreference(
+        { profile: { userId: "Uabc" }, body: { auto_daily_gacha: 1 } },
+        res
+      );
+      const args = mysql.raw.mock.calls[0][1];
+      expect(args[5]).toBe(1); // VALUES slot for auto_world_boss
+      expect(args[6]).toBe("standard"); // VALUES slot for auto_world_boss_mode
     });
   });
 
