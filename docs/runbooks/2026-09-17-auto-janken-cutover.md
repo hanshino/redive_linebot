@@ -7,6 +7,10 @@ scope: PR824 / DailyQuest 由 Redis 佇列切換為 durable scanner
 
 # 每日自動猜拳切換 Runbook
 
+> **2026-09-23 已完成切換**（D_c = 2026-09-23 週三）：PR #824 merge → 新 image migrate（Batch 68，6 支）→ 新 bot／worker 05:37:52 UTC 啟動 → 05:39:00 UTC activation。首輪 scanner `processed=18 rewarded=0 weekly=0 failed=0`（全為 legacy 已付的 seed），無同 user 同日重複，Redis 舊佇列 LLEN 0。
+>
+> 更正：host compose 有 `redive-migrate` 一次性 service，bot／worker 依賴其 `service_completed_successfully`，所以 `docker compose up`（含 deploy timer）本來就會先用新 image migrate；下方「暫停 timer、手動 migrate」其實不需要。
+>
 > 2026-09-23 簡化：使用者接受切換時少量漏記（side project），原本「零遺失」的 archive／audit／preflight 與舊 worker graceful-drain gate 全部撤除。
 
 ## 為什麼這樣就夠
