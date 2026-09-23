@@ -9,8 +9,6 @@ const DailyRation = require("../../../bin/DailyRation");
 const mement = require("moment");
 const i18n = require("../../util/i18n");
 const GachaController = require("../princess/gacha");
-const config = require("config");
-const { generateCard, generateEffect } = require("../../templates/application/Subscribe");
 const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
 const SubscriptionService = require("../../service/SubscriptionService");
@@ -18,7 +16,6 @@ const SubscribeCardCouponService = require("../../service/SubscribeCardCouponSer
 const UserAutoPreference = require("../../model/application/UserAutoPreference");
 
 exports.router = [
-  text(/^[.#/](訂閱|sub)$/, showInformation),
   text(/^[.#/](訂閱兌換|sub-coupon)$/, context =>
     context.replyText(i18n.__("message.subscribe.coupon_exchange_manual"))
   ),
@@ -134,30 +131,6 @@ async function readGodStoneBalance(userId, trx) {
   if (raw === null || raw === undefined) return 0;
   const value = parseInt(raw, 10);
   return Number.isSafeInteger(value) ? value : NaN;
-}
-
-/**
- * 訂閱卡片資訊
- * @param {import("bottender").LineContext} context
- */
-async function showInformation(context) {
-  const cards = await SubscribeCard.all();
-  const bubbles = cards.map(card => {
-    const effects = get(card, "effects", []).map(effect =>
-      generateEffect(SubscriptionService.formatEffectRow(effect))
-    );
-
-    return generateCard({
-      title: i18n.__(`message.subscribe.${card.key}`),
-      effects,
-      image: config.get(`subscribe.${card.key}_icon`),
-    });
-  });
-
-  await context.replyFlex("訂閱卡片資訊", {
-    type: "carousel",
-    contents: bubbles,
-  });
 }
 
 // 兌換交易的重試上限：首次嘗試 + 最多 2 次重試 = 總共 3 次。
