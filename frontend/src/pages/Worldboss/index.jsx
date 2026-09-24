@@ -1167,6 +1167,15 @@ function EffectHistoryCard({ effects, jobKey }) {
   // ponytail: jobKey is present whenever this card mounts (it ships in the same `current`
   // object the parent gates on), so the initial tab never needs to re-derive.
   const [tab, setTab] = useState(leavesNothing ? "taken" : "left");
+  // Per-tab row count, kept across tab switches for as long as the card stays mounted.
+  const [shown, setShown] = useState({ left: HISTORY_PAGE, taken: HISTORY_PAGE });
+  const moreControl = list => (
+    <HistoryMoreControl
+      total={list.length}
+      shown={shown[tab]}
+      onChange={count => setShown(prev => ({ ...prev, [tab]: count }))}
+    />
+  );
 
   const claimed = left.filter(effect => effectStatus(effect) === "claimed").length;
   const expired = left.filter(effect => effectStatus(effect) === "expired").length;
@@ -1206,7 +1215,12 @@ function EffectHistoryCard({ effects, jobKey }) {
                     <StatusTally label="已失效" count={expired} tone="text.disabled" />
                   </Stack>
                 )}
-                <LeftEffectList effects={left} jobKey={jobKey} onSeeTaken={() => setTab("taken")} />
+                <LeftEffectList
+                  effects={left.slice(0, shown.left)}
+                  jobKey={jobKey}
+                  onSeeTaken={() => setTab("taken")}
+                />
+                {moreControl(left)}
                 {expired > 0 && (
                   <Typography variant="caption" color="text.secondary">
                     王被打倒後，還沒被接走的效果就不會再有人接，這部分不計分。血量還多的王留下的效果，比較有機會被接走。
@@ -1215,7 +1229,8 @@ function EffectHistoryCard({ effects, jobKey }) {
               </Stack>
             ) : (
               <Stack spacing={1.25}>
-                <TakenEffectList effects={taken} />
+                <TakenEffectList effects={taken.slice(0, shown.taken)} />
+                {moreControl(taken)}
                 {taken.length > 0 && (
                   <Typography variant="caption" color="text.secondary">
                     接走鼓舞時你和對方都得分；接走魔力刻印會轉成傷害，那份分數歸留下的人。
@@ -1227,6 +1242,50 @@ function EffectHistoryCard({ effects, jobKey }) {
         </Stack>
       </CardContent>
     </Card>
+  );
+}
+
+const HISTORY_PAGE = 5;
+const HISTORY_STEP = 10;
+
+/**
+ * The relay history is the longest block on the page, so each tab opens on the newest few rows
+ * and grows on demand. `/me` only ever sends the newest 50 per side, hence the note.
+ */
+function HistoryMoreControl({ total, shown, onChange }) {
+  if (total <= HISTORY_PAGE) return null;
+  const visible = Math.min(shown, total);
+  const remaining = total - visible;
+
+  return (
+    <Stack spacing={0.5}>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        {remaining > 0 && (
+          <Button
+            size="small"
+            variant="outlined"
+            endIcon={<ExpandMoreIcon />}
+            onClick={() => onChange(Math.min(visible + HISTORY_STEP, total))}
+            sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+          >
+            顯示更多（還有 {remaining} 筆）
+          </Button>
+        )}
+        {visible > HISTORY_PAGE && (
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => onChange(HISTORY_PAGE)}
+            sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+          >
+            收合
+          </Button>
+        )}
+      </Stack>
+      <Typography variant="caption" color="text.secondary">
+        最多查看最近 50 筆
+      </Typography>
+    </Stack>
   );
 }
 
