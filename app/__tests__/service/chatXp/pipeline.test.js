@@ -5,6 +5,10 @@ const ChatExpDaily = require("../../../src/model/application/ChatExpDaily");
 const ChatExpEvent = require("../../../src/model/application/ChatExpEvent");
 const ChatExpUnit = require("../../../src/model/application/ChatExpUnit");
 const redis = require("../../../src/util/redis");
+const { PRESTIGE_CAP } = require("../../../src/service/PrestigeService");
+const { LV_MAX_TOTAL_EXP } = require("../../../seeds/ChatExpUnitSeeder");
+const ChatWeatherService = require("../../../src/service/ChatWeatherService");
+const mysql = require("../../../src/util/mysql");
 
 // 101-row curve used for level lookups in tests
 const EXP_UNIT_ROWS = Array.from({ length: 101 }, (_, i) => ({
@@ -41,6 +45,7 @@ describe("pipeline.processBatch", () => {
     upsertDailySpy = jest.spyOn(ChatExpDaily, "upsertByUserDate").mockResolvedValue();
     insertEventSpy = jest.spyOn(ChatExpEvent, "insertEvent").mockResolvedValue(1);
     allExpUnitSpy = jest.spyOn(ChatExpUnit, "all").mockResolvedValue(EXP_UNIT_ROWS);
+    jest.spyOn(ChatWeatherService, "getWeatherForDate").mockResolvedValue(null);
     redis.get.mockImplementation(key => {
       if (key === "CHAT_GLOBAL_RATE") return Promise.resolve(null);
       return Promise.resolve(null);
@@ -51,6 +56,117 @@ describe("pipeline.processBatch", () => {
     await pipeline.processBatch([]);
     expect(loadSpy).not.toHaveBeenCalled();
     expect(upsertSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([PRESTIGE_CAP, PRESTIGE_CAP + 1])(
+    "records the crossing event time at prestige %s, not batch end or processing time",
+    async prestige_count => {
+      loadSpy.mockResolvedValue({ ...baseState, prestige_count: 0 }); // stale cache is not authority
+      findByUserDateSpy.mockResolvedValue(null);
+      findByUserIdSpy.mockResolvedValue({
+        prestige_count,
+        current_exp: LV_MAX_TOTAL_EXP - 150,
+        current_level: 99,
+        final_max_level_reached_at: null,
+      });
+      const times = [1700000020123, 1700000000123, 1700000010123];
+      await pipeline.processBatch(
+        times.map(ts => ({
+          userId: "Ua",
+          groupId: "Gx",
+          ts,
+          timeSinceLastMsg: 10000,
+          groupCount: 3,
+        }))
+      );
+      expect(upsertSpy.mock.calls[0][1]).toMatchObject({
+        current_exp: LV_MAX_TOTAL_EXP,
+        final_max_level_reached_at: new Date(1700000010123),
+      });
+      expect(mysql.transaction).toHaveBeenCalledTimes(1);
+      expect(findByUserIdSpy).toHaveBeenCalledWith("Ua", mysql);
+      expect(upsertSpy.mock.calls[0][2]).toBe(mysql);
+    }
+  );
+
+  it.each([
+    [PRESTIGE_CAP - 1, LV_MAX_TOTAL_EXP - 50, null],
+    [PRESTIGE_CAP, LV_MAX_TOTAL_EXP - 1000, null],
+    [PRESTIGE_CAP, LV_MAX_TOTAL_EXP, null],
+    [PRESTIGE_CAP, LV_MAX_TOTAL_EXP, new Date(1600000000000)],
+    [PRESTIGE_CAP, LV_MAX_TOTAL_EXP - 50, new Date(1600000000000)],
+  ])(
+    "does not stamp or overwrite prestige=%s exp=%s timestamp=%s",
+    async (prestige_count, current_exp, final_max_level_reached_at) => {
+      loadSpy.mockResolvedValue({ ...baseState, prestige_count: PRESTIGE_CAP });
+      findByUserDateSpy.mockResolvedValue(null);
+      findByUserIdSpy.mockResolvedValue({
+        prestige_count,
+        current_exp,
+        current_level: 99,
+        final_max_level_reached_at,
+      });
+      await pipeline.processBatch([
+        { userId: "Ua", groupId: "Gx", ts: 1700000000123, timeSinceLastMsg: 10000, groupCount: 3 },
+      ]);
+      expect(upsertSpy.mock.calls[0][1]).not.toHaveProperty("final_max_level_reached_at");
+    }
+  );
+
+  it("preserves the first crossing through subsequent batches", async () => {
+    const row = {
+      prestige_count: PRESTIGE_CAP,
+      current_exp: LV_MAX_TOTAL_EXP - 50,
+      current_level: 99,
+      final_max_level_reached_at: null,
+    };
+    loadSpy.mockResolvedValue(baseState);
+    findByUserDateSpy.mockResolvedValue(null);
+    findByUserIdSpy.mockImplementation(async () => ({ ...row }));
+    upsertSpy.mockImplementation(async (_userId, updates) => Object.assign(row, updates));
+    for (const ts of [1700000000123, 1700000010123]) {
+      await pipeline.processBatch([
+        { userId: "Ua", groupId: "Gx", ts, timeSinceLastMsg: 10000, groupCount: 3 },
+      ]);
+    }
+    expect(row.final_max_level_reached_at).toEqual(new Date(1700000000123));
+    expect(upsertSpy.mock.calls[1][1]).not.toHaveProperty("final_max_level_reached_at");
+  });
+
+  it.each([false, true])("excludes alchemy EXP, with later protection=%s", async protectedLater => {
+    loadSpy.mockResolvedValue(baseState);
+    findByUserDateSpy.mockResolvedValue(null);
+    findByUserIdSpy.mockResolvedValue({
+      prestige_count: PRESTIGE_CAP,
+      current_exp: LV_MAX_TOTAL_EXP - 50,
+      current_level: 99,
+      final_max_level_reached_at: null,
+    });
+    ChatWeatherService.getWeatherForDate.mockResolvedValue({
+      weather_key: "alchemy_mist",
+      category: "debuff",
+      effects: { exp_to_stone_rate: 1000 },
+    });
+    jest
+      .spyOn(ChatWeatherService, "getUserProtection")
+      .mockResolvedValue(protectedLater ? { purchased_at: new Date(1700000010123) } : null);
+    await pipeline.processBatch(
+      [1700000000123, 1700000010123].map(ts => ({
+        userId: "Ua",
+        groupId: "Gx",
+        ts,
+        timeSinceLastMsg: 10000,
+        groupCount: 3,
+      }))
+    );
+    if (protectedLater) {
+      expect(upsertSpy.mock.calls[0][1].final_max_level_reached_at).toEqual(
+        new Date(1700000010123)
+      );
+    } else {
+      expect(upsertSpy.mock.calls[0][1]).not.toHaveProperty("final_max_level_reached_at");
+      expect(upsertSpy.mock.calls[0][1].current_exp).toBe(LV_MAX_TOTAL_EXP - 50);
+    }
   });
 
   it("processes a single-user single-event batch with defaults", async () => {
@@ -69,7 +185,8 @@ describe("pipeline.processBatch", () => {
     // raw = 90 * 1 * 1 * 1 = 90; diminish: dailyBefore=0, all in tier1 -> 90; final = 90
     expect(upsertSpy).toHaveBeenCalledWith(
       "Ua",
-      expect.objectContaining({ current_exp: 6840, current_level: expect.any(Number) })
+      expect.objectContaining({ current_exp: 6840, current_level: expect.any(Number) }),
+      expect.anything()
     );
     expect(upsertDailySpy).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "Ua", rawExp: 90, effectiveExp: 90, msgCount: 1 })
@@ -124,7 +241,8 @@ describe("pipeline.processBatch", () => {
       expect.objectContaining({
         current_exp: 6813, // 6750 + 63
         active_trial_exp_progress: 563,
-      })
+      }),
+      expect.anything()
     );
     expect(upsertDailySpy).toHaveBeenCalledWith(
       expect.objectContaining({ effectiveExp: 63, trialId: 2 })
@@ -147,7 +265,8 @@ describe("pipeline.processBatch", () => {
     // raw=90, effective=90, would push to 130040 but cap at 130000
     expect(upsertSpy).toHaveBeenCalledWith(
       "Ua",
-      expect.objectContaining({ current_exp: 130000, current_level: 100 })
+      expect.objectContaining({ current_exp: 130000, current_level: 100 }),
+      expect.anything()
     );
   });
 
