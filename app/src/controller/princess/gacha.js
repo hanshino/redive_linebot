@@ -5,8 +5,6 @@ const GachaTemplate = require("../../templates/princess/gacha");
 const allowParameter = ["name", "headimage_url", "star", "rate", "is_princess", "tag"];
 const redis = require("../../util/redis");
 const { DefaultLogger, CustomLogger } = require("../../util/Logger");
-const { getClient } = require("bottender");
-const lineClient = getClient("line");
 const moment = require("moment");
 const { isNull, get, countBy, shuffle } = require("lodash");
 const GachaRecord = require("../../model/princess/GachaRecord");
@@ -18,6 +16,7 @@ const { notifyUnlocks } = require("../../service/achievementNotifier");
 const GachaService = require("../../service/GachaService");
 const { play, filterPool, summarizePool, fmtRate } = require("../../service/gachaDrawUtil");
 const { time } = require("../../middleware/timing");
+const UserModel = require("../../model/application/UserModel");
 
 function GachaException(message, code) {
   this.message = message;
@@ -455,19 +454,14 @@ async function showGachaRank(req, res) {
 async function showGodStoneRank(req, res) {
   try {
     const rankData = await inventory.getGodStoneRank({ limit: 10 });
-    const result = await Promise.all(
-      rankData.map(async (data, index) => {
-        // 將 userId 轉換成 userName
-        const { userId } = data;
-        const profile = await lineClient.getUserProfile(userId);
-        const displayName = get(profile, "displayName", `未知${index + 1}`);
-
-        return {
-          ...data,
-          displayName,
-        };
-      })
-    );
+    const userIds = rankData.map(data => data.userId);
+    // Batch-resolve displayName once (DB-backed cache, no LINE call) instead of
+    // one LINE profile fetch per ranked user.
+    const nameByUserId = await UserModel.getDisplayNames(userIds);
+    const result = rankData.map((data, index) => ({
+      ...data,
+      displayName: nameByUserId.get(data.userId) || `未知${index + 1}`,
+    }));
 
     res.json(result);
   } catch (e) {

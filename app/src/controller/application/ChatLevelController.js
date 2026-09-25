@@ -8,6 +8,7 @@ const UserBlessing = require("../../model/application/UserBlessing");
 const PrestigeBlessing = require("../../model/application/PrestigeBlessing");
 const UserPrestigeTrial = require("../../model/application/UserPrestigeTrial");
 const UserPrestigeHistory = require("../../model/application/UserPrestigeHistory");
+const UserModel = require("../../model/application/UserModel");
 const MeTemplate = require("../../templates/application/Me");
 const PrestigeStatusTemplate = require("../../templates/application/Prestige/Status");
 const commonTemplate = require("../../templates/common");
@@ -538,12 +539,31 @@ function resolveBuildTag(keys, ownedBlessingIds) {
 
 // Global top-10 across all groups (intentional). Per-group rankings live
 // at GET /api/groups/:groupId/speak-rank (see api.js:79).
+//
+// Tie-break (after unchanged primary prestige_count DESC, current_exp DESC):
+// final_max_level_reached_at ASC already puts the legacy (NULL) cohort
+// ahead of every timestamped finisher and orders timestamped finishers by
+// actual time (MySQL ASC sorts NULL first). Two CASE clauses, both scoped
+// to `WHEN final_max_level_reached_at IS NULL` (ELSE NULL — a no-op for
+// timestamped rows), then order the legacy cohort: explicit
+// final_max_level_legacy_order ASC (1 = earliest, adopted from historical
+// evidence, never inferred) ranks ahead of legacy rows with no known order.
+// user_id ASC is the final stable fallback.
 exports.api.queryRank = async (req, res) => {
   const rows = await mysql("chat_user_data")
     .select("user_id", "current_level", "current_exp", "prestige_count")
     .where("current_exp", ">", 0)
     .orderBy("prestige_count", "desc")
     .orderBy("current_exp", "desc")
+    .orderBy("final_max_level_reached_at", "asc")
+    .orderByRaw("case when ?? is null then (?? is null) end asc", [
+      "final_max_level_reached_at",
+      "final_max_level_legacy_order",
+    ])
+    .orderByRaw("case when ?? is null then ?? end asc", [
+      "final_max_level_reached_at",
+      "final_max_level_legacy_order",
+    ])
     .orderBy("user_id", "asc")
     .limit(10);
 
@@ -565,32 +585,31 @@ exports.api.queryRank = async (req, res) => {
     blessingMap[row.user_id].push(row.blessing_id);
   }
 
-  // Resolve displayName for each user in parallel (user_id IS the LINE platform id in new schema)
-  const result = await Promise.all(
-    rows.map(async (row, index) => {
-      const { displayName } = await LineClient.getUserProfile(row.user_id)
-        .then(user => ({ displayName: user.displayName || `未知${index + 1}` }))
-        .catch(() => ({ displayName: `未知${index + 1}` }));
+  // Batch-resolve displayName once (DB-backed cache, no LINE call) instead of
+  // one LINE profile fetch per ranked user.
+  const nameByUserId = await UserModel.getDisplayNames(userIds);
 
-      const ownedBlessingIds = blessingMap[row.user_id] || [];
-      const buildKeys = evaluateBuildAchievementKeys(ownedBlessingIds);
-      const buildTag = resolveBuildTag(buildKeys, ownedBlessingIds);
+  const result = rows.map((row, index) => {
+    const displayName = nameByUserId.get(row.user_id) || `未知${index + 1}`;
 
-      // awakened = reached prestige cap (5); PRESTIGE_CAP imported from PrestigeService
-      const awakened = row.prestige_count >= PRESTIGE_CAP;
+    const ownedBlessingIds = blessingMap[row.user_id] || [];
+    const buildKeys = evaluateBuildAchievementKeys(ownedBlessingIds);
+    const buildTag = resolveBuildTag(buildKeys, ownedBlessingIds);
 
-      return {
-        rank: index + 1,
-        level: row.current_level,
-        experience: row.current_exp,
-        prestigeCount: row.prestige_count,
-        awakened,
-        blessingIds: ownedBlessingIds,
-        buildTag,
-        displayName,
-      };
-    })
-  );
+    // awakened = reached prestige cap (5); PRESTIGE_CAP imported from PrestigeService
+    const awakened = row.prestige_count >= PRESTIGE_CAP;
+
+    return {
+      rank: index + 1,
+      level: row.current_level,
+      experience: row.current_exp,
+      prestigeCount: row.prestige_count,
+      awakened,
+      blessingIds: ownedBlessingIds,
+      buildTag,
+      displayName,
+    };
+  });
 
   res.json(result);
 };

@@ -2,12 +2,13 @@
 
 // pipeline.js — XP batch orchestrator
 //
-// No transaction wrapper: we write sequentially without an explicit DB transaction.
+// Only the user-row read/modify/write is transactional; the rest is sequential.
 // The batch is popped from Redis exactly once, so re-running doesn't happen unless
 // the process crashes mid-batch — acceptable for v1 (eventual-consistency trade-off).
 
 const config = require("config");
 const redis = require("../../util/redis");
+const mysql = require("../../util/mysql");
 const { todayUtc8 } = require("../../util/date");
 const chatUserState = require("../../util/chatUserState");
 const ChatUserData = require("../../model/application/ChatUserData");
@@ -237,28 +238,50 @@ async function processUserEvents(userId, events, ctx) {
 }
 
 async function writeBatch(userId, state, batch) {
-  const existing = await ChatUserData.findByUserId(userId);
-  const prevExp = existing?.current_exp ?? 0;
-  const prevLevel = existing?.current_level ?? 0;
-  const prevTrialProgress = existing?.active_trial_exp_progress ?? 0;
-  // Use the fresh DB row's active_trial_id (not the cached state's) as the
-  // authority for the write phase. state.active_trial_id is a 10-min Redis
-  // cache and M3 may end a trial between cache population and this batch;
-  // writing against state would advance progress on an already-resolved trial.
-  const activeTrialId = existing?.active_trial_id ?? null;
   const alchemyDelta = batch.alchemyDelta ?? 0;
-  // Alchemy exp never touches current_exp / current_level.
-  const newExp = Math.min(LEVEL_CAP_EXP, prevExp + batch.effectiveDelta);
-  const newLevel = ChatExpUnit.getLevelFromExp(newExp, batch.expUnitRows);
+  const { existing, prevExp, prevLevel, newExp, newLevel, activeTrialId } = await mysql.transaction(
+    async trx => {
+      const existing = await ChatUserData.findByUserId(userId, trx);
+      const prevExp = existing?.current_exp ?? 0;
+      const prevLevel = existing?.current_level ?? 0;
+      const prevTrialProgress = existing?.active_trial_exp_progress ?? 0;
+      // Use the fresh DB row's active_trial_id (not the cached state's) as the
+      // authority for the write phase. state.active_trial_id is a 10-min Redis
+      // cache and M3 may end a trial between cache population and this batch;
+      // writing against state would advance progress on an already-resolved trial.
+      const activeTrialId = existing?.active_trial_id ?? null;
+      // Alchemy exp never touches current_exp / current_level.
+      const newExp = Math.min(LEVEL_CAP_EXP, prevExp + batch.effectiveDelta);
+      const newLevel = ChatExpUnit.getLevelFromExp(newExp, batch.expUnitRows);
 
-  const updates = { current_exp: newExp, current_level: newLevel };
-  if (activeTrialId) {
-    // INVARIANT: trial progress advances by the FULL earned amount. Weather must
-    // never eat trial progress — trials have a hard 60-day deadline.
-    updates.active_trial_exp_progress = prevTrialProgress + batch.effectiveDelta + alchemyDelta;
-  }
+      const updates = { current_exp: newExp, current_level: newLevel };
+      if (
+        existing?.prestige_count >= PrestigeService.PRESTIGE_CAP &&
+        existing.final_max_level_reached_at == null &&
+        prevExp < LEVEL_CAP_EXP &&
+        newExp === LEVEL_CAP_EXP
+      ) {
+        // Events are sorted by ts. Use the actual crossing event, not worker time
+        // or batch end; alchemy earnings do not advance level EXP.
+        let earned = prevExp;
+        for (const rec of batch.eventRecords) {
+          if (!rec.weather_effects?.exp_to_stone_rate) earned += rec.effective_exp;
+          if (earned >= LEVEL_CAP_EXP) {
+            updates.final_max_level_reached_at = rec.ts;
+            break;
+          }
+        }
+      }
+      if (activeTrialId) {
+        // INVARIANT: trial progress advances by the FULL earned amount. Weather must
+        // never eat trial progress — trials have a hard 60-day deadline.
+        updates.active_trial_exp_progress = prevTrialProgress + batch.effectiveDelta + alchemyDelta;
+      }
 
-  await ChatUserData.upsert(userId, updates);
+      await ChatUserData.upsert(userId, updates, trx);
+      return { existing, prevExp, prevLevel, newExp, newLevel, activeTrialId };
+    }
+  );
 
   await ChatExpDaily.upsertByUserDate({
     userId,
