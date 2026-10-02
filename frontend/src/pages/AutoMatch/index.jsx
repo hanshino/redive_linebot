@@ -18,7 +18,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import AlertLogin from "../../components/AlertLogin";
 import useLiff from "../../context/useLiff";
-import { getAutoMatchToday } from "../../services/janken";
+import { getAutoMatchHistory, getAutoMatchToday } from "../../services/janken";
 
 const HAND = { rock: "✊", paper: "🖐️", scissors: "✌️" };
 const HAND_LABEL = { rock: "石頭", paper: "布", scissors: "剪刀" };
@@ -65,6 +65,7 @@ const STATE_VIEW = {
   },
   "bye:no_opponent": {
     chip: { label: "輪空", color: "warning" },
+    historyLine: "沒有配到對手，不扣女神石",
     headline: "今日輪空",
     lines: [
       "今天沒有配到對手，不扣女神石、不留戰績。",
@@ -74,6 +75,7 @@ const STATE_VIEW = {
   },
   "failed:match_failed": {
     chip: { label: "未完成", color: "error" },
+    historyLine: "這一場沒有完成，不扣女神石",
     headline: "這一場未完成",
     lines: [
       "配對成功，但這一場沒有完成，不扣女神石、不留戰績，也不補打。",
@@ -85,6 +87,7 @@ const STATE_VIEW = {
   // 只講此刻為真、且兩種情況都成立的事實。
   "failed:not_started": {
     chip: { label: "尚無結算", color: "default" },
+    historyLine: "這一場沒有可顯示的結算結果",
     headline: "尚無完成的結算結果",
     lines: [
       "今天已為你排定一場自動對戰，目前沒有可顯示的結算結果。",
@@ -93,11 +96,13 @@ const STATE_VIEW = {
   },
   "failed:result_unavailable": {
     chip: { label: "暫無資料", color: "warning" },
+    historyLine: "結算資料暫時讀不到",
     headline: "結算資料暫時無法載入",
     lines: ["今天這一場的結算內容目前讀不到，稍後再回來看看。"],
   },
   "failed:invalid_manifest_status": {
     chip: { label: "狀態異常", color: "warning" },
+    historyLine: "這一場的狀態無法判讀",
     headline: "這一場的狀態無法判讀",
     lines: ["今天這一場的狀態目前無法正常顯示，稍後再回來查看。"],
   },
@@ -309,6 +314,166 @@ function UnknownStateCard({ data }) {
   );
 }
 
+const WEEKDAY = ["日", "一", "二", "三", "四", "五", "六"];
+
+/** "2026-10-01" → "10/01（四）"；run_date 是台灣日期，用 UTC 解析避免時區偏移。 */
+function formatRunDate(runDate) {
+  const d = new Date(`${runDate}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return runDate;
+  return `${runDate.slice(5, 7)}/${runDate.slice(8, 10)}（${WEEKDAY[d.getUTCDay()]}）`;
+}
+
+// 下注淨額：贏家拿回彩池扣手續費（淨賺 bet − fee），輸家失去 bet，平手退回。
+// ponytail: 不含懸賞，懸賞另外顯示在今日卡片的細節裡。
+function betSummary(match) {
+  const s = match.settlement || {};
+  const bet = Number(s.betAmount || 0);
+  if (bet <= 0) return null;
+  if (match.result === "win") {
+    return { text: `+${formatStones(bet - Number(s.fee || 0))}`, color: "success.main" };
+  }
+  if (match.result === "lose") return { text: `−${formatStones(bet)}`, color: "error.main" };
+  return { text: "退回", color: "text.secondary" };
+}
+
+function HistoryRow({ item }) {
+  const date = (
+    <Typography
+      variant="caption"
+      sx={{
+        color: "text.secondary",
+        width: "4.6em",
+        flex: "none",
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      {formatRunDate(item.run_date)}
+    </Typography>
+  );
+
+  if (item.status === "completed" && item.match) {
+    const m = item.match;
+    const view = RESULT_VIEW[m.result] || { label: m.result, color: "default" };
+    const name = opponentName(m.opponent?.displayName);
+    const bet = betSummary(m);
+    return (
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", py: 1.25 }}>
+        {date}
+        <Avatar src={m.opponent?.pictureUrl || undefined} sx={{ width: 32, height: 32 }}>
+          {name[0]}
+        </Avatar>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
+            {name}
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            我 {HAND[m.choice] || "—"} vs {HAND[m.opponentChoice] || "—"}
+          </Typography>
+        </Box>
+        <Stack spacing={0.25} sx={{ alignItems: "flex-end", flex: "none" }}>
+          <Chip size="small" label={view.label} color={view.color} />
+          {bet && (
+            <Typography
+              variant="caption"
+              sx={{ color: bet.color, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}
+            >
+              {bet.text}
+            </Typography>
+          )}
+        </Stack>
+      </Stack>
+    );
+  }
+
+  const state = STATE_VIEW[`${item.status}:${item.reason}`];
+  return (
+    <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", py: 1.25 }}>
+      {date}
+      <Typography variant="body2" sx={{ flex: 1, minWidth: 0, color: "text.secondary" }}>
+        {state?.historyLine || "這一場的狀態無法顯示"}
+      </Typography>
+      <Chip
+        size="small"
+        variant="outlined"
+        label={state?.chip.label || "未知"}
+        sx={{ flex: "none", color: "text.secondary" }}
+      />
+    </Stack>
+  );
+}
+
+function HistorySection({ todayRunDate }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [items, setItems] = useState([]);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await getAutoMatchHistory();
+      setItems(res?.items || []);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  // 今天的那一筆已經在上方卡片顯示，這裡不重複。
+  const past = items.filter(i => i.run_date !== todayRunDate);
+
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1 }}>
+          歷史紀錄
+        </Typography>
+
+        {loading && (
+          <Stack spacing={1} sx={{ mt: 1 }}>
+            {[0, 1, 2].map(i => (
+              <Skeleton key={i} variant="rounded" height={44} animation="wave" />
+            ))}
+          </Stack>
+        )}
+
+        {!loading && error && (
+          <Alert
+            severity="error"
+            sx={{ mt: 1 }}
+            action={
+              <Button color="inherit" size="small" onClick={reload}>
+                重試
+              </Button>
+            }
+          >
+            讀取歷史紀錄失敗
+          </Alert>
+        )}
+
+        {!loading && !error && past.length === 0 && (
+          <Typography variant="body2" sx={{ color: "text.secondary", mt: 1 }}>
+            還沒有過往紀錄
+          </Typography>
+        )}
+
+        {!loading && !error && past.length > 0 && (
+          <Stack divider={<Divider flexItem />}>
+            {past.map(item => (
+              <HistoryRow key={item.run_date} item={item} />
+            ))}
+          </Stack>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AutoMatch() {
   const { loggedIn: isLoggedIn } = useLiff();
   const [loading, setLoading] = useState(true);
@@ -409,6 +574,8 @@ export default function AutoMatch() {
           </Typography>
         </>
       )}
+
+      <HistorySection todayRunDate={data?.run_date} />
     </Box>
   );
 }

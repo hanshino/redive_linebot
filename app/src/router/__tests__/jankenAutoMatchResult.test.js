@@ -1,4 +1,4 @@
-// U10 / KTD13：本人今日自動配對結果、真 verifyToken、privacy allowlist 與 public feed。
+// U10 / KTD13：本人今日結果與歷史、真 verifyToken、privacy allowlist 與 public feed。
 // DB 只使用隨機 Princess_wbtest_auto_result_*；Redis session 是 Jest mock。
 const { execFileSync } = require("child_process");
 
@@ -41,8 +41,10 @@ const express = require("express");
 const request = require("supertest");
 const { getClient } = require("bottender");
 const AuthSessionService = require("../../service/AuthSessionService");
-const { todayUtc8 } = require("../../util/date");
+const { todayUtc8, daysAgoUtc8 } = require("../../util/date");
 const JankenAutoMatchController = require("../../controller/application/JankenAutoMatchController");
+const JankenAutoMatchParticipant = require("../../model/application/JankenAutoMatchParticipant");
+const { DefaultLogger } = require("../../util/Logger");
 
 jest.setTimeout(90000);
 
@@ -73,6 +75,13 @@ function privateGet(userId, suffix = "") {
   auth(userId);
   return request(app)
     .get(`/api/janken/auto-match/today${suffix}`)
+    .set("Cookie", "redive_session=fixture-token");
+}
+
+function historyGet(userId, suffix = "") {
+  auth(userId);
+  return request(app)
+    .get(`/api/janken/auto-match/history${suffix}`)
     .set("Cookie", "redive_session=fixture-token");
 }
 
@@ -221,6 +230,7 @@ describe("Janken auto-match private result + public allowlist (isolated DB)", ()
   });
 
   beforeEach(async () => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
     await mysql("janken_auto_match_outbox").del();
     await mysql("janken_result").del();
@@ -237,6 +247,147 @@ describe("Janken auto-match private result + public allowlist (isolated DB)", ()
     expect(response.status).toBe(401);
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(AuthSessionService.getSession).not.toHaveBeenCalled();
+  });
+
+  test("history 未登入及 session 缺 userId 均為 401 unauthenticated，不讀 participant", async () => {
+    const findRecent = jest.spyOn(JankenAutoMatchParticipant, "findRecentByUser");
+    const anonymous = await request(app).get("/api/janken/auto-match/history");
+    expect(anonymous.status).toBe(401);
+    expect(anonymous.headers["cache-control"]).toBe("no-store");
+    expect(AuthSessionService.getSession).not.toHaveBeenCalled();
+
+    AuthSessionService.getSession.mockResolvedValue({ displayName: "no userId" });
+    const incomplete = await request(app)
+      .get("/api/janken/auto-match/history")
+      .set("Cookie", "redive_session=fixture-token");
+    expect(incomplete.status).toBe(401);
+    expect(incomplete.body).toEqual({ error: "unauthenticated" });
+    expect(findRecent).not.toHaveBeenCalled();
+  });
+
+  test("history 混合狀態依日期降冪、包含今天、不含缺席日或別人資料，保持 privacy", async () => {
+    const dates = [TODAY, daysAgoUtc8(1), daysAgoUtc8(3), daysAgoUtc8(4)];
+    await mysql("janken_auto_match_run").insert(dates.map(run_date => ({ run_date })));
+    const matchId = await seedCompleted();
+    await mysql("janken_auto_match_participant").insert([
+      participant(A, "failed", { run_date: dates[2] }),
+      participant(A, "not_started", { run_date: dates[3] }),
+      participant(A, "bye", { run_date: dates[1] }),
+      participant(B, "bye"),
+    ]);
+    const queries = [];
+    const capture = query => queries.push(query.sql);
+    mysql.on("query", capture);
+    let response;
+    try {
+      response = await historyGet(A, `?userId=${B}`);
+    } finally {
+      mysql.off("query", capture);
+    }
+
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(Object.keys(response.body)).toEqual(["items"]);
+    expect(response.body.items.map(item => item.run_date)).toEqual(dates);
+    expect(response.body.items[0]).toEqual((await privateGet(A)).body);
+    expect(response.body.items.slice(1)).toEqual([
+      { run_date: dates[1], status: "bye", reason: "no_opponent", match: null },
+      { run_date: dates[2], status: "failed", reason: "match_failed", match: null },
+      { run_date: dates[3], status: "failed", reason: "not_started", match: null },
+    ]);
+    for (const item of response.body.items) {
+      expect(Object.keys(item).sort()).toEqual(["match", "reason", "run_date", "status"]);
+      expect(typeof item.run_date).toBe("string");
+      expect(item.run_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+    expect(response.body.items[0].match.opponent).toEqual({
+      displayName: "對手",
+      pictureUrl: "https://example.invalid/opponent.png",
+    });
+    const body = JSON.stringify(response.body);
+    for (const secret of [A, B, OPPONENT, G, matchId, "OUTBOX_MUST_NOT_APPEAR"]) {
+      expect(body).not.toContain(secret);
+    }
+    expect(
+      collectKeys(response.body).some(key => /user.?id|match.?id|payload|outbox/i.test(key))
+    ).toBe(false);
+    expect(queries.some(sql => /janken_auto_match_outbox/i.test(sql))).toBe(false);
+  });
+
+  test("history 正規化 mysql2 +08:00 DATE object，不把曆日退回 UTC 前一天", async () => {
+    await seedRun();
+    await mysql("janken_auto_match_participant").insert(participant(A, "bye"));
+    const row = await JankenAutoMatchParticipant.findByUserAndDate(A, TODAY);
+    expect(row.run_date).toBeInstanceOf(Date);
+    expect(row.run_date.toISOString()).toBe(new Date(`${TODAY}T00:00:00+08:00`).toISOString());
+    expect((await historyGet(A)).body.items).toEqual([
+      { run_date: TODAY, status: "bye", reason: "no_opponent", match: null },
+    ]);
+  });
+
+  test("history 同樣接受 DATE string；未知 manifest 狀態依共用映射回 failed", async () => {
+    jest
+      .spyOn(JankenAutoMatchParticipant, "findRecentByUser")
+      .mockResolvedValue([participant(A, "invalid", { run_date: "2030-01-01" })]);
+    const response = await historyGet(A);
+    expect(response.status).toBe(200);
+    expect(response.body.items).toEqual([
+      {
+        run_date: "2030-01-01",
+        status: "failed",
+        reason: "invalid_manifest_status",
+        match: null,
+      },
+    ]);
+  });
+
+  test("history limit 預設 30、非數字用預設、限制 1..60 並只取最近列", async () => {
+    const dates = Array.from({ length: 65 }, (_, index) => daysAgoUtc8(index));
+    await mysql("janken_auto_match_run").insert(dates.map(run_date => ({ run_date })));
+    await mysql("janken_auto_match_participant").insert(
+      dates.map(run_date => participant(A, "bye", { run_date }))
+    );
+    for (const [suffix, limit] of [
+      ["", 30],
+      ["?limit=garbage", 30],
+      ["?limit=12abc", 30],
+      ["?limit=Infinity", 30],
+      ["?limit=", 30],
+      ["?limit=0", 1],
+      ["?limit=-10", 1],
+      ["?limit=1", 1],
+      ["?limit=2", 2],
+      ["?limit=2.9", 2],
+      ["?limit=60", 60],
+      ["?limit=999", 60],
+    ]) {
+      const response = await historyGet(A, suffix);
+      expect(response.status).toBe(200);
+      expect(response.body.items.map(item => item.run_date)).toEqual(dates.slice(0, limit));
+    }
+    expect((await historyGet(B)).body).toEqual({ items: [] });
+  });
+
+  test("history completed 缺持久化結果沿用 result_unavailable", async () => {
+    await seedRun();
+    await mysql("janken_auto_match_participant").insert(participant(A, "completed"));
+    const response = await historyGet(A);
+    expect(response.status).toBe(200);
+    expect(response.body.items).toEqual([
+      { run_date: TODAY, status: "failed", reason: "result_unavailable", match: null },
+    ]);
+  });
+
+  test("history DB 失敗回 500，DefaultLogger 不含 user 資料或原始 error", async () => {
+    jest
+      .spyOn(JankenAutoMatchParticipant, "findRecentByUser")
+      .mockRejectedValue(new Error(`private DB details: ${A}`));
+    const response = await historyGet(A);
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: "internal_error" });
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(DefaultLogger.error).toHaveBeenCalledTimes(1);
+    expect(DefaultLogger.error).toHaveBeenCalledWith("janken.auto-match.history failed");
   });
 
   test("completed 本人可見、query userId 被忽略、結果投影可直接使用且不讀 outbox", async () => {

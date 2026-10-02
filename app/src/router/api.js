@@ -415,6 +415,7 @@ router.use("/janken/auto-match", (_req, res, next) => {
   next();
 });
 router.get("/janken/auto-match/today", verifyToken, JankenAutoMatchController.api.today);
+router.get("/janken/auto-match/history", verifyToken, JankenAutoMatchController.api.history);
 router.get("/janken/seasons", JankenController.api.seasons);
 router.get("/janken/seasons/:id/top", JankenController.api.seasonTop);
 router.get("/janken/me/today-reward", JankenController.api.todayReward);
