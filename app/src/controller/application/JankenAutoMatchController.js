@@ -77,23 +77,25 @@ async function completedResult(participant, runDate) {
   });
 }
 
+function resultForParticipant(participant, runDate) {
+  switch (participant.status) {
+    case JankenAutoMatchParticipant.STATUS.COMPLETED:
+      return completedResult(participant, runDate);
+    case JankenAutoMatchParticipant.STATUS.BYE:
+      return response(runDate, "bye", "no_opponent");
+    case JankenAutoMatchParticipant.STATUS.FAILED:
+      return response(runDate, "failed", "match_failed");
+    case JankenAutoMatchParticipant.STATUS.NOT_STARTED:
+      return response(runDate, "failed", "not_started");
+    default:
+      return response(runDate, "failed", "invalid_manifest_status");
+  }
+}
+
 async function getTodayResult(userId, now = new Date()) {
   const runDate = toUtc8Date(now);
   const participant = await JankenAutoMatchParticipant.findByUserAndDate(userId, runDate);
-  if (participant) {
-    switch (participant.status) {
-      case JankenAutoMatchParticipant.STATUS.COMPLETED:
-        return completedResult(participant, runDate);
-      case JankenAutoMatchParticipant.STATUS.BYE:
-        return response(runDate, "bye", "no_opponent");
-      case JankenAutoMatchParticipant.STATUS.FAILED:
-        return response(runDate, "failed", "match_failed");
-      case JankenAutoMatchParticipant.STATUS.NOT_STARTED:
-        return response(runDate, "failed", "not_started");
-      default:
-        return response(runDate, "failed", "invalid_manifest_status");
-    }
-  }
+  if (participant) return resultForParticipant(participant, runDate);
 
   const run = await JankenAutoMatchRun.findByDate(runDate);
   if (run) return response(runDate, "not_executed", "not_in_run");
@@ -118,6 +120,35 @@ exports.api = {
       return res.status(500).json({ error: "internal_error" });
     }
   },
+  history: async (req, res) => {
+    const userId = req.profile && req.profile.userId;
+    if (!userId) return res.status(401).json({ error: "unauthenticated" });
+    try {
+      const rawLimit = req.query.limit;
+      const requestedLimit =
+        typeof rawLimit === "string" && rawLimit.trim() ? Number(rawLimit) : NaN;
+      const limit = Number.isFinite(requestedLimit)
+        ? Math.max(1, Math.min(60, Math.trunc(requestedLimit)))
+        : 30;
+      const participants = await JankenAutoMatchParticipant.findRecentByUser(userId, limit);
+      // ponytail: at most 60 rows, ~3 queries per completed result; batch if this ceiling grows.
+      const items = await Promise.all(
+        participants.map(participant =>
+          resultForParticipant(
+            participant,
+            // mysql2 parses DATE at +08:00 midnight, independent of the Node process timezone.
+            participant.run_date instanceof Date
+              ? toUtc8Date(participant.run_date)
+              : participant.run_date
+          )
+        )
+      );
+      return res.json({ items });
+    } catch {
+      DefaultLogger.error("janken.auto-match.history failed");
+      return res.status(500).json({ error: "internal_error" });
+    }
+  },
 };
 
-exports._internal = { getTodayResult, completedResult };
+exports._internal = { getTodayResult, completedResult, resultForParticipant };

@@ -58,6 +58,10 @@ class JankenAutoMatchParticipant extends base {
     return this.qb(trx).where({ user_id: userId, run_date: runDate }).first();
   }
 
+  findRecentByUser(userId, limit) {
+    return this.qb().where({ user_id: userId }).orderBy("run_date", "desc").limit(limit);
+  }
+
   /**
    * 該日 status = bye 的 user_id 清單（R8 昨日輪空優先層的資料來源）。
    * @param {String} runDate
