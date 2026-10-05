@@ -1,3 +1,6 @@
+const { default: axios } = require("axios");
+const token = process.env.LINE_ACCESS_TOKEN;
+const apiURL = "https://api.line.me/v2";
 const { getClient } = require("../lib/bot");
 const LineClient = getClient("line");
 const redis = require("./redis");
@@ -6,7 +9,7 @@ exports.getGroupSummary = groupId => {
   let key = `${groupId}_summary`;
   return redis.get(key).then(cache => {
     if (cache !== null) return JSON.parse(cache);
-    return LineClient.getGroupSummary(groupId).then(res => {
+    return doGet(`/bot/group/${groupId}/summary`).then(res => {
       redis.set(key, JSON.stringify(res), {
         EX: 60,
       });
@@ -19,8 +22,7 @@ exports.getGroupCount = groupId => {
   let key = `${groupId}_count`;
   return redis.get(key).then(cache => {
     if (cache !== null) return JSON.parse(cache);
-    return LineClient.getGroupMembersCount(groupId).then(count => {
-      const res = { count };
+    return doGet(`/bot/group/${groupId}/members/count`).then(res => {
       redis.set(key, JSON.stringify(res), {
         EX: 60,
       });
@@ -87,3 +89,13 @@ exports.trimMentionees = (text, mentionees) => {
 exports.getMentionName = (text, mention) => {
   return text.substring(mention.index, mention.index + mention.length).replace("@", "");
 };
+
+function doGet(path) {
+  return axios
+    .get(`${apiURL}${path}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    .then(res => res.data);
+}

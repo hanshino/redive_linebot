@@ -1,6 +1,7 @@
 const express = require("express");
 const request = require("supertest");
 const { createHmac } = require("node:crypto");
+const http = require("node:http");
 const { createWebhookHandler, mountWebhook } = require("../server");
 const { createStateStore } = require("../state-store");
 
@@ -97,6 +98,80 @@ test.each([null, "invalid-signature"])(
   }
 );
 
+test("oversize Content-Length is rejected without waiting for body bytes", async () => {
+  const h = harness();
+  const server = h.app.listen(0);
+  try {
+    const status = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          port: server.address().port,
+          path: "/webhooks/line",
+          method: "POST",
+          headers: { "Content-Length": 3 * 1024 * 1024 + 1, "Content-Type": "application/json" },
+        },
+        res => {
+          res.resume();
+          res.on("end", () => {
+            req.destroy();
+            resolve(res.statusCode);
+          });
+        }
+      );
+      req.on("error", reject);
+      req.flushHeaders();
+    });
+    expect(status).toBe(413);
+    await h.handler.drain();
+    expect(h.entry).not.toHaveBeenCalled();
+    expect(h.redis.get).not.toHaveBeenCalled();
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test("chunked body without Content-Length is limited by actual bytes", async () => {
+  const h = harness();
+  const server = h.app.listen(0);
+  try {
+    const status = await new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          port: server.address().port,
+          path: "/webhooks/line",
+          method: "POST",
+          // No Content-Type either: it must not bypass the bounded reader.
+          headers: { "Transfer-Encoding": "chunked", "x-line-signature": "invalid" },
+        },
+        res => {
+          res.resume();
+          res.on("end", () => resolve(res.statusCode));
+        }
+      );
+      req.on("error", reject);
+      // UTF-8 character count is below 3mb; byte count is over it.
+      req.write("字".repeat(512 * 1024));
+      req.end("字".repeat(512 * 1024 + 1));
+    });
+    expect(status).toBe(413);
+    await h.handler.drain();
+    expect(h.entry).not.toHaveBeenCalled();
+    expect(h.redis.get).not.toHaveBeenCalled();
+    expect(h.redis.set).not.toHaveBeenCalled();
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test("bounded reader preserves exact signed UTF-8 bytes including whitespace", async () => {
+  const h = harness();
+  const body = JSON.stringify({ events: [event("文字")] }, null, 2) + "\n";
+  await h.post(body).expect(200);
+  await h.handler.drain();
+  expect(h.entry).toHaveBeenCalledTimes(1);
+  expect(h.entry.mock.calls[0][0].event.text).toBe("文字");
+});
+
 test.each([
   '{"events":',
   "null",
@@ -138,18 +213,29 @@ test("empty and legacy verify events skip all state operations; mixed webhook re
   expect(h.redis.set).toHaveBeenCalledTimes(1);
 });
 
-test("unknown/missing sources skip only those events; unknown event type with valid source runs", async () => {
+test.each([undefined, { type: "other", otherId: "bad" }, { type: "group" }])(
+  "invalid source %p rejects the entire batch before enqueue",
+  async invalidSource => {
+    const h = harness();
+    await h
+      .post([
+        event("valid-first"),
+        { ...event(), source: invalidSource },
+        { ...event(), type: "future-line-event" },
+      ])
+      .expect(400);
+    await h.handler.drain();
+    expect(h.logger.error).toHaveBeenCalledTimes(1);
+    expect(h.entry).not.toHaveBeenCalled();
+    expect(h.redis.get).not.toHaveBeenCalled();
+    expect(h.redis.set).not.toHaveBeenCalled();
+  }
+);
+
+test("unknown event type with valid source still runs", async () => {
   const h = harness();
-  await h
-    .post([
-      { ...event(), source: undefined },
-      event("bad", { type: "other", otherId: "bad" }),
-      event("missing-id", { type: "group" }),
-      { ...event(), type: "future-line-event" },
-    ])
-    .expect(200);
+  await h.post([{ ...event(), type: "future-line-event" }]).expect(200);
   await h.handler.drain();
-  expect(h.logger.error).toHaveBeenCalledTimes(3);
   expect(h.entry).toHaveBeenCalledTimes(1);
   expect(h.redis.set).toHaveBeenCalledTimes(1);
 });
@@ -291,7 +377,7 @@ test("drain includes ACKed callbacks not yet enqueued in the store", async () =>
   const immediate = jest.spyOn(global, "setImmediate").mockImplementation(fn => scheduled.push(fn));
   try {
     await h.post().expect(200);
-    expect(h.store.pendingCount()).toBe(0);
+    expect(h.store.activeSourceCount()).toBe(0);
     expect(h.entry).not.toHaveBeenCalled();
     let done = false;
     const draining = h.handler.drain().then(() => {
