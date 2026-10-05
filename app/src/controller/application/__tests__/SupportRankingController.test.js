@@ -124,7 +124,13 @@ describe("support-rankings API (isolated DB + real verifyToken)", () => {
   describe("GET /api/support-rankings", () => {
     test("public, no auth required; shape is rank/display_name/picture_url/months only", async () => {
       const a = await seedUser(A, { displayName: "Alice", pictureUrl: "https://x/a.png" });
-      await sponsorship({ userId: a, cardKey: "month", cardCount: 3, receivedAt: "2026-01-01" });
+      await sponsorship({
+        userId: a,
+        cardKey: "month",
+        cardCount: 3,
+        amount: "90.00",
+        receivedAt: "2026-01-01",
+      });
 
       const response = await request(app).get("/api/support-rankings");
 
@@ -166,8 +172,20 @@ describe("support-rankings API (isolated DB + real verifyToken)", () => {
     test("supporter sees months + rank; hidden supporter sees rank null", async () => {
       const a = await seedUser(A);
       const b = await seedUser(B, { hidden: true });
-      await sponsorship({ userId: a, cardKey: "month", cardCount: 1, receivedAt: "2026-01-01" });
-      await sponsorship({ userId: b, cardKey: "season", cardCount: 5, receivedAt: "2026-01-01" });
+      await sponsorship({
+        userId: a,
+        cardKey: "month",
+        cardCount: 1,
+        amount: "30.00",
+        receivedAt: "2026-01-01",
+      });
+      await sponsorship({
+        userId: b,
+        cardKey: "season",
+        cardCount: 5,
+        amount: "450.00",
+        receivedAt: "2026-01-01",
+      });
 
       auth(A);
       const respA = await api("get", "/api/support-rankings/me");
@@ -187,7 +205,13 @@ describe("support-rankings API (isolated DB + real verifyToken)", () => {
 
     test("400 invalid_hidden when body.hidden is not a strict boolean", async () => {
       const a = await seedUser(A);
-      await sponsorship({ userId: a, cardKey: "month", cardCount: 1, receivedAt: "2026-01-01" });
+      await sponsorship({
+        userId: a,
+        cardKey: "month",
+        cardCount: 1,
+        amount: "30.00",
+        receivedAt: "2026-01-01",
+      });
       auth(A);
 
       for (const bad of ["true", 1, null, undefined, {}]) {
@@ -215,7 +239,13 @@ describe("support-rankings API (isolated DB + real verifyToken)", () => {
 
     test("updates hide_support_ranking and returns the refreshed /me shape", async () => {
       const a = await seedUser(A);
-      await sponsorship({ userId: a, cardKey: "season", cardCount: 1, receivedAt: "2026-01-01" });
+      await sponsorship({
+        userId: a,
+        cardKey: "season",
+        cardCount: 1,
+        amount: "90.00",
+        receivedAt: "2026-01-01",
+      });
       auth(A);
 
       const hideResponse = await api("put", "/api/support-rankings/me").send({ hidden: true });

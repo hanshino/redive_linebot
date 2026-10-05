@@ -1,38 +1,18 @@
 const mysql = require("../util/mysql");
 const UserModel = require("../model/application/UserModel");
 
-// 卡種 → 月數權重。未知 card_key 一律 0（CASE 的 ELSE 分支），不拋錯——sponsorship
-// 是站務人工登記的自由欄位，排行榜計算不該因一筆舊資料/未知卡種而整支查詢炸掉。
-// ponytail: 固定小表，寫死在這裡；卡種變動需求出現前不做成 config。
-const CARD_MONTH_WEIGHT = { month: 1, month_plus: 2, season: 3 };
-
-// 無卡贊助（card_count=0）：金額換算月數，30 元 = 1 個月，無條件捨去。
+// 月數 = 實收金額換算：30 元 = 1 個月，無條件捨去。不看卡種／張數——促銷、折扣、
+// 送卡（登記 0 元）都依實際付款金額計，排行榜才不會被卡種權重放大。
 const AMOUNT_PER_MONTH = 30;
-
-const CARD_MONTHS_CASE = mysql.raw(
-  `SUM(CASE WHEN card_count > 0 THEN card_count * (CASE card_key
-      WHEN 'month' THEN ?
-      WHEN 'month_plus' THEN ?
-      WHEN 'season' THEN ?
-      ELSE 0 END)
-    ELSE 0 END) AS card_months`,
-  [CARD_MONTH_WEIGHT.month, CARD_MONTH_WEIGHT.month_plus, CARD_MONTH_WEIGHT.season]
-);
-
-const CARDLESS_AMOUNT_SUM = mysql.raw(
-  "SUM(CASE WHEN card_count = 0 THEN amount ELSE 0 END) AS cardless_amount"
-);
 
 /**
  * 依 sponsorship 表，用單一 GROUP BY 聚合算出每位「已綁定付款人」的支持月數。
  *
- * 規則（見任務規格）：
+ * 規則：
  * - 只計 user_id NOT NULL 的列（未綁定的 history 排除）。
- * - card_count>0 的列：月數 = Σ(card_count × WEIGHT[card_key])，未知 card_key 記 0。
- * - card_count=0 的列：金額另外加總，FLOOR(Σamount / 30) 併入月數（FLOOR 在 JS 端做，
- *   避免 DECIMAL/DOUBLE 在 SQL 端做除法時的精度陷阱）。
- * - 月數 <=0 的使用者不上榜（filter 在 JS 端做：FLOOR 混合 card_months + cardless_amount/30
- *   無法只靠 SQL HAVING 一次表示，交給 DB 算完 SUM 後在這裡做最後判斷）。
+ * - 月數 = FLOOR(Σamount / 30)，對個人總額捨去（零頭可累積）；FLOOR 在 JS 端做，
+ *   避免 DECIMAL/DOUBLE 在 SQL 端做除法時的精度陷阱。
+ * - 月數 <=0 的使用者不上榜。
  *
  * @returns {Promise<Array<{userId:Number, months:Number, firstReceivedAt:Date}>>}
  *   未排序（呼叫端依 months desc, firstReceivedAt asc, userId asc 排序）。
@@ -42,14 +22,13 @@ async function computeMonthsByUser() {
     .whereNotNull("user_id")
     .groupBy("user_id")
     .select({ userId: "user_id" })
-    .select(CARD_MONTHS_CASE)
-    .select(CARDLESS_AMOUNT_SUM)
+    .sum({ totalAmount: "amount" })
     .min({ firstReceivedAt: "received_at" });
 
   return rows
     .map(row => ({
       userId: row.userId,
-      months: Number(row.card_months) + Math.floor(Number(row.cardless_amount) / AMOUNT_PER_MONTH),
+      months: Math.floor(Number(row.totalAmount) / AMOUNT_PER_MONTH),
       firstReceivedAt: row.firstReceivedAt,
     }))
     .filter(row => row.months > 0);
@@ -157,7 +136,6 @@ async function setHidden(userId, hidden) {
 }
 
 module.exports = {
-  CARD_MONTH_WEIGHT,
   AMOUNT_PER_MONTH,
   computeMonthsByUser,
   rankRows,
