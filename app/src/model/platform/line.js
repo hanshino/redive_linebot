@@ -2,83 +2,6 @@ const { CustomLogger } = require("../../util/Logger");
 const mysql = require("../../util/mysql");
 
 /**
- * 新增一筆群組資料
- * @param {String} guildId
- */
-exports.insertGroup = guildId => {
-  return mysql.insert({ guildId, created_at: new Date() }).into(this.table.Guild);
-};
-
-/**
- * 取得群組資料
- * @param {String} guildId
- */
-exports.getGroup = async guildId => {
-  return mysql.select("*").from(this.table.Guild).where({ guildId });
-};
-
-/**
- * 關閉群組，Status設為0
- * @param {String} groupId
- */
-exports.closeGroup = groupId => {
-  CustomLogger.info("closeGroup", groupId);
-  return setStatus(
-    this.table.Guild,
-    {
-      status: 0,
-      closed_at: new Date(),
-    },
-    {
-      status: 1,
-      GuildId: groupId,
-    }
-  );
-};
-
-/**
- * 開啟群組，Status設為1
- * @param {String} groupId
- */
-exports.openGroup = groupId => {
-  CustomLogger.info("openGroup", groupId);
-  return setStatus(
-    this.table.Guild,
-    {
-      status: 1,
-      closed_at: null,
-    },
-    {
-      status: 0,
-      guildId: groupId,
-    }
-  );
-};
-
-/**
- * 新增User資料
- * @param {String} userId
- * @param {String} platform
- */
-exports.insertUser = (userId, platform) => {
-  return mysql
-    .insert({
-      platform: platform,
-      platform_id: userId,
-      created_at: new Date(),
-    })
-    .into(this.table.User);
-};
-
-/**
- * 取得User資料
- * @param {String} userId
- */
-exports.getUser = userId => {
-  return mysql.select("*").from(this.table.User).where({ platform_id: userId });
-};
-
-/**
  * 關閉User，status設為0
  * @param {String} userId
  */
@@ -91,24 +14,6 @@ exports.closeUser = userId => {
     },
     {
       status: 1,
-      platform_id: userId,
-    }
-  );
-};
-
-/**
- * 開啟User，status設為1
- * @param {String} userId
- */
-exports.openUser = userId => {
-  return setStatus(
-    this.table.User,
-    {
-      status: 1,
-      closed_at: null,
-    },
-    {
-      status: 0,
       platform_id: userId,
     }
   );
@@ -191,15 +96,6 @@ exports.table = {
   Guild: "guild",
   GuildMembers: "guild_members",
   User: "user",
-};
-
-exports.increaseSpeakTimes = (userId, guildId) => {
-  mysql
-    .update({ LastSpeakDTM: new Date() })
-    .increment("SpeakTimes", 1)
-    .from("guild_members")
-    .where({ userId, guildId })
-    .then();
 };
 
 /**

@@ -8,7 +8,6 @@ jest.mock("../../src/model/princess/GodStoneShop", () => ({
   create: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
-  deleteByItemId: jest.fn(),
 }));
 
 jest.mock("../../src/controller/princess/GodStoneShop/handler", () => ({

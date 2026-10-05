@@ -4,14 +4,6 @@ const mysql = require("../../util/mysql");
 const { clearLineSession } = require("../../lib/bot");
 
 /**
- * @param {String} groupId
- * @returns {Promise<{ID: Number, GuildId: String}>}
- */
-exports.findByGroupId = async groupId => {
-  return await mysql.select("*").from("guild").where({ GuildId: groupId }).first();
-};
-
-/**
  * 取得用戶所在的群組
  * @param {String} userId
  */

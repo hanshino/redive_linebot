@@ -6,8 +6,6 @@
 
 jest.mock("../../../../model/application/Inventory", () => ({
   fetchUserOwnItems: jest.fn(),
-  deleteItem: jest.fn(),
-  insertItems: jest.fn(),
   inventory: {
     create: jest.fn(),
     increaseGodStone: jest.fn(),
@@ -99,8 +97,6 @@ const req = () => ({ profile: { userId: USER }, body: { itemId: 101, itemCount: 
 function expectNothingWritten() {
   expect(InventoryModel.inventory.create).not.toHaveBeenCalled();
   expect(InventoryModel.inventory.decreaseGodStone).not.toHaveBeenCalled();
-  expect(InventoryModel.deleteItem).not.toHaveBeenCalled();
-  expect(InventoryModel.insertItems).not.toHaveBeenCalled();
 }
 
 describe("itemCount 信任邊界", () => {
@@ -311,9 +307,6 @@ describe("女神石兌換金流", () => {
     expect(InventoryModel.inventory.decreaseGodStone).toHaveBeenCalledWith(
       expect.objectContaining({ userId: USER, amount: 3000 })
     );
-    // 這兩支就是舊寫法吃掉並發退款的元兇，改完之後不該再被呼叫
-    expect(InventoryModel.deleteItem).not.toHaveBeenCalled();
-    expect(InventoryModel.insertItems).not.toHaveBeenCalled();
   });
 
   it("餘額檢查在交易內，並發兌換才會排隊", async () => {

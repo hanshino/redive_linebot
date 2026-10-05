@@ -1,7 +1,5 @@
 import api from "./api";
 
-export const fetchGroupSpeakRank = groupId =>
-  api.get(`/api/groups/${groupId}/speak-rank`).then(r => r.data);
 export const fetchGroupConfig = groupId =>
   api.get(`/api/groups/${groupId}/config`).then(r => r.data);
 export const fetchGroupConfigData = () => api.get("/api/group-config").then(r => r.data);

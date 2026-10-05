@@ -11,14 +11,6 @@ exports.getId = async platformId => {
 };
 
 /**
- * 取得平台ID
- * @param {Array<Number>} ids
- */
-exports.getPlatformIds = ids => {
-  return mysql.select({ userId: "platform_id", id: "id" }).whereIn("id", ids).from(USER_TABLE);
-};
-
-/**
  * 更新用戶 LINE profile 資訊
  * @param {String} platformId 平台ID
  * @param {Object} profile LINE profile 物件

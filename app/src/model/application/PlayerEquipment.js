@@ -21,18 +21,6 @@ class PlayerEquipment extends Base {
       .where({ "player_equipment.user_id": userId, "player_equipment.is_equipped": true });
   }
 
-  async getByUserIdAndSlot(userId, slot) {
-    return await mysql(TABLE)
-      .select(...EQUIPMENT_COLUMNS)
-      .leftJoin("equipment", "player_equipment.equipment_id", "equipment.id")
-      .where({
-        "player_equipment.user_id": userId,
-        "player_equipment.slot": slot,
-        "player_equipment.is_equipped": true,
-      })
-      .first();
-  }
-
   async equipItem(userId, equipmentId, slot) {
     const updated = await this.knex
       .where({ user_id: userId, equipment_id: equipmentId, is_equipped: false })
@@ -81,7 +69,6 @@ const model = new PlayerEquipment({
 exports.table = TABLE;
 exports.model = model;
 exports.getByUserId = userId => model.getByUserId(userId);
-exports.getByUserIdAndSlot = (userId, slot) => model.getByUserIdAndSlot(userId, slot);
 exports.equipItem = (userId, equipmentId, slot) => model.equipItem(userId, equipmentId, slot);
 exports.unequipSlot = (userId, slot) => model.unequipSlot(userId, slot);
 exports.getInventory = userId => model.getInventory(userId);
