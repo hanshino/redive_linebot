@@ -1,13 +1,5 @@
 const native = require("../router");
 const { LineEvent } = require("../context");
-const bottender = jest.requireActual("bottender");
-const legacyRoutes = jest.requireActual("bottender/router");
-const legacyRun = jest.requireActual("bottender/dist/bot/Bot").run;
-const legacy = {
-  ...bottender,
-  ...legacyRoutes,
-  run: (action, context, props) => legacyRun(action)(context, props),
-};
 
 function context(text = "Hello") {
   return {
@@ -18,11 +10,9 @@ function context(text = "Hello") {
   };
 }
 
-describe.each([
-  ["native", native],
-  ["bottender", legacy],
-])("%s routing contract", (_name, api) => {
-  const { chain, withProps, router, route, text, line, run } = api;
+// Fixed expectations characterized against the former engine; keep every native scenario.
+describe("routing contract", () => {
+  const { chain, withProps, router, route, text, line, run } = native;
 
   test.each([
     ["Hello", "Hello", true],

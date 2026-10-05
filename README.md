@@ -1,6 +1,6 @@
 # 布丁機器人 — 公主連結 LINE Bot
 
-公主連結 Re:Dive 的 LINE 聊天機器人，用 [Bottender](https://bottender.js.org/) 寫的。除了遊戲相關功能之外，也有不少群組互動的玩法，還附了一個 Web 管理後台。
+公主連結 Re:Dive 的 LINE 聊天機器人，使用 `app/src/lib/bot` 自有 bot layer 與 `@line/bot-sdk`。除了遊戲相關功能之外，也有不少群組互動的玩法，還附了一個 Web 管理後台。
 
 ## 功能
 
@@ -48,11 +48,11 @@ React + MUI 做的後台，有深色模式，手機也能用。可以管理卡�
 
 三個服務跑在 Docker Compose 上：
 
-| 服務 | 說明 |
-| --- | --- |
-| **app** | Bottender Bot + Express API（port 5000） |
+| 服務         | 說明                                          |
+| ------------ | --------------------------------------------- |
+| **app**      | Native LINE Bot + Express API（port 9527）    |
 | **frontend** | React 19 + MUI 7 + Vite 管理後台（port 3000） |
-| **job** | Node.js 定時排程 |
+| **job**      | Node.js 定時排程                              |
 
 資料庫用 MySQL，快取用 Redis，前面擋一層 nginx。
 

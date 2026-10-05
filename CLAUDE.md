@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Princess Connect Re:Dive LINE chatbot — a production LINE messaging bot built on the [Bottender](https://bottender.js.org/) framework with a React admin frontend. Provides game features (gacha simulation, character lookup, guild battle coordination, raid boss, janken arena, trade market), group management (levels, rankings, custom commands), and AI conversation via Google Gemini.
+Princess Connect Re:Dive LINE chatbot — a production LINE messaging bot using an in-house layer in `app/src/lib/bot` over `@line/bot-sdk`, with a React admin frontend. Provides game features (gacha simulation, character lookup, guild battle coordination, raid boss, janken arena, trade market), group management (levels, rankings, custom commands), and AI conversation via Google Gemini.
 
 ## Repository Layout
 
@@ -37,12 +37,12 @@ Yarn workspaces root: `app/` (all backend code) and `frontend/` (admin dashboard
 
 Both run from `app/`, sharing the same codebase and `.env`:
 
-- **bot** (`yarn dev` / `yarn start` → `server.js`): Bottender + Express + Socket.IO on port 9527. Handles LINE webhooks, REST API under `/api`, static assets at `/bot-assets`.
+- **bot** (`yarn dev` / `yarn start` → `server.js`): native bot layer + Express + Socket.IO on port 9527. Handles LINE webhooks, REST API under `/api`, static assets at `/bot-assets`.
 - **worker** (`yarn worker` → `tasks.js`): cron scheduler that reads `app/config/crontab.config.js` and executes scripts in `app/bin/` (auto-gacha, chat-exp aggregation, daily cleanup, achievement evaluation, race lifecycle, etc.). Never starts the HTTP server.
 
 ## Backend (app/) Internals
 
-### Bottender middleware chain (`app/src/app.js#App`)
+### Bot middleware chain (`app/src/app.js#App`)
 
 Order matters — this is the actual chain:
 
@@ -59,12 +59,12 @@ Command routing in `OrderBased` composes routers from every domain controller (g
 `app/src/` splits into `controller/`, `service/`, `model/`, `templates/` (LINE Flex builders), `middleware/`, `router/`. Inside `controller/`, `model/`, and `templates/` the same two-way split repeats: `princess/` = game features, `application/` = group/system features.
 
 - **Models** all extend `app/src/model/base.js` — supply `{ table, fillable }`, get `all()` / `first()` / `find()` / `create()` / `update()` / `delete()` plus `transaction()` / `setTransaction(trx)` for trx propagation.
-- **Middleware** holds both Bottender-chain middleware and the Express `/api` token auth (`validation.js`).
+- **Middleware** holds both bot-chain middleware and the Express `/api` token auth (`validation.js`).
 
 ### Data layer
 
 - **MySQL** via Knex (`app/knexfile.js`) — database is hardcoded `Princess`. Host-run migrations read the root `.env` (`DB_HOST=mysql` maps to the docker-exposed port 3306 on localhost).
-- **Redis** — Bottender session store + general cache (`app/src/util/redis.js`). Session TTL 60 min, state TTL 15 min (`app/bottender.config.js`).
+- **Redis** — per-source bot state + general cache (`app/src/util/redis.js`). State TTL is 3600 seconds, refreshed on write (`app/src/lib/bot/native/state-store.js`); defaults live in `app/bot.config.js`. There is no separate 15-minute state TTL.
 - **SQLite** — read-only game data (`app/assets/redive_tw.db`) and a local task log (`app/assets/task.db`); accessed via `better-sqlite3` through `app/src/model/princess/character/index.js`, with `app/src/util/sqlite.js` as the connection factory.
 - **Migrations** — `app/migrations/`. Create new ones with `cd app && yarn knex migrate:make <name>` — never hand-write. knex is the single schema source (the old docker `Princess.sql` init was folded into the `20210101000000_baseline_initial_schema` migration). **Fresh DB bootstrap**: `cd app && yarn migrate && yarn knex seed:run` (migrate builds all tables, seeders fill `chat_exp_unit` / `GachaPool` / etc.) — there is no more SQL injected at container first-boot. **Do not specify a collation when creating the database** (or specify `utf8mb4_0900_ai_ci` explicitly) — MySQL 8's default must match what `20260327_unify_all_collation_to_0900.js` assumes, or later migrations fail with `Illegal mix of collations`; see the comment in `20210101000000_baseline_initial_schema.js` for the full story.
 
@@ -90,12 +90,11 @@ cd app && yarn worker                         # cron scheduler (tasks.js + app/b
 cd app && yarn test -- path/to/file.test.js   # single test file
 cd app && yarn knex migrate:make <name>       # never hand-write a migration
 cd app && yarn migrate && yarn knex seed:run  # fresh-DB bootstrap
-cd app && yarn debug                          # DEBUG=bottender:action node server.js
 ```
 
 ## LINE Webhook Flow
 
-LINE channel is the only enabled webhook (`app/bottender.config.js`): `POST /webhooks/line`. Messenger / WhatsApp / Telegram / Slack / Viber blocks exist but are disabled. To rotate the public URL during development, run `make cf-go` (or just `make cf-tunnel` if cloudflared is already up) and restart the bot.
+`POST /webhooks/line` is mounted by `app/src/lib/bot/native/server.js`; `app/bot.config.js` contains only initial state. `BOT_ENGINE` accepts unset or `native`; rollback requires a git revert. To rotate the public URL during development, run `make cf-go` (or just `make cf-tunnel` if cloudflared is already up) and restart the bot.
 
 ### Group message design
 

@@ -100,7 +100,7 @@ function computeRepeatReward(uniqRewards, duplicateItems) {
 }
 
 /**
- * 執行每日一抽的完整流水線（資料層，不涉及任何 Bottender context / reply 動作）。
+ * 執行每日一抽的完整流水線（資料層，不涉及任何 bot context / reply 動作）。
  * Caller（controller 或 cron）負責：pre-flight（detectCanDaily、cooldown、訂閱效果）、
  * 成功後的回覆 flex 訊息、以及 notifyUnlocks。Service 只回傳原始資料 + unlocks。
  *

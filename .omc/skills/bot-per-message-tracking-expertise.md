@@ -1,5 +1,5 @@
 ---
-name: bottender-per-message-tracking
+name: bot-per-message-tracking
 description: Per-message tracking (like achievement evaluate) must go in statistics middleware, not in command controllers which only run on specific commands
 triggers:
   - every message tracking
@@ -11,11 +11,11 @@ triggers:
   - no achievement progress
 ---
 
-# Bottender Per-Message Tracking Must Use statistics Middleware
+# Bot Per-Message Tracking Must Use statistics Middleware
 
 ## The Insight
 
-In this Bottender codebase, there are two very different execution contexts that look similar but have completely different reach:
+In this bot codebase, there are two very different execution contexts that look similar but have completely different reach:
 
 1. **Middleware** (`app/src/middleware/`) — runs on EVERY incoming message, chained in `app/src/app.js`
 2. **Controller handlers** (`app/src/controller/`) — only run when a specific command pattern matches (e.g., `.等級`, `.成就`)

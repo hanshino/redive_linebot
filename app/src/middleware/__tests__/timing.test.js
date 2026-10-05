@@ -1,4 +1,4 @@
-// Use the real bottender chain (setup.js stubs it for other suites).
+// Use the real bot chain (setup.js stubs it for other suites).
 const { chain } = jest.requireActual("../../lib/bot");
 const { withTiming, wrapChain } = require("../timing");
 const { DefaultLogger } = require("../../util/Logger");
@@ -9,9 +9,9 @@ function makeContext() {
   return { event: { isText: true, text: "test" }, client: null };
 }
 
-// Faithful copy of bottender Bot.run's dialog driver loop. Bottender's
+// Faithful copy of the bot dialog driver loop. The bot's
 // `chain()` is a builder, not a runner: it returns the first bound action,
-// and Bot.run is what unwraps the dialog chain. Tests must do the same.
+// and run() unwraps the dialog chain. Tests must do the same.
 async function runDialog(action, context) {
   let next = await action(context, {});
   while (typeof next === "function") {

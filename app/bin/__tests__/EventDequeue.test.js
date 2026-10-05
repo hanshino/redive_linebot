@@ -1,12 +1,7 @@
-// Regression: bottender@1.5.5 `getClient()` is not memoized — each call opens
-// a fresh ioredis session-store socket that's never quit() when the bot
-// reference is GC'd. The worker's `tryDrainBroadcast` runs per inbound
-// group/room message, so calling getClient inside the function body leaks
-// a Redis connection per event (production: ~10k connections in 18h →
-// maxclients ceiling). This test guards the hoist to module load.
+// Keep client resolution outside the per-message drain path.
 
 describe("bin/EventDequeue ioredis leak guard", () => {
-  let mockBottender;
+  let mockBot;
   let bin;
 
   beforeAll(() => {
@@ -14,13 +9,13 @@ describe("bin/EventDequeue ioredis leak guard", () => {
     // Grab the fresh mock factory instance AFTER resetModules — the bin
     // script will receive the same instance because both requires happen
     // post-reset.
-    mockBottender = require("../../src/lib/bot");
+    mockBot = require("../../src/lib/bot");
     bin = require("../EventDequeue");
   });
 
   it("requires getClient exactly once at module load", () => {
-    expect(mockBottender.getClient).toHaveBeenCalledTimes(1);
-    expect(mockBottender.getClient).toHaveBeenCalledWith("line");
+    expect(mockBot.getClient).toHaveBeenCalledTimes(1);
+    expect(mockBot.getClient).toHaveBeenCalledWith("line");
   });
 
   it("never reinvokes getClient when tryDrainBroadcast fires repeatedly", () => {
@@ -32,6 +27,6 @@ describe("bin/EventDequeue ioredis leak guard", () => {
       bin.__testing.tryDrainBroadcast(event);
     }
 
-    expect(mockBottender.getClient).toHaveBeenCalledTimes(1);
+    expect(mockBot.getClient).toHaveBeenCalledTimes(1);
   });
 });

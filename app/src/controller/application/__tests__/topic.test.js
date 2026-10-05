@@ -1,4 +1,4 @@
-// mysql + bottender mocks live in __tests__/setup.js (global setupFile).
+// mysql + bot mocks live in __tests__/setup.js (global setupFile).
 // Mock the query module so the controller is tested in isolation (no real DB).
 // jest.mock is NOT hoisted here (jest config has transform:{}), so it must come
 // before requiring the controller.

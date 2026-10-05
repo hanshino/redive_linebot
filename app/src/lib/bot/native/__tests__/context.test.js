@@ -1,6 +1,5 @@
 const { Context, LineContext, LineEvent } = require("../context");
 const { chain, router, text, run } = require("../router");
-const legacy = jest.requireActual("bottender");
 
 function raw(source = { type: "user", userId: "U1" }) {
   return {
@@ -12,7 +11,7 @@ function raw(source = { type: "user", userId: "U1" }) {
   };
 }
 
-function make(options = {}, engine = "native") {
+function make(options = {}) {
   const client = {
     reply: jest.fn().mockResolvedValue({ sent: true }),
     getUserProfile: jest.fn().mockResolvedValue({ name: "user" }),
@@ -21,28 +20,12 @@ function make(options = {}, engine = "native") {
   };
   const logger = { warn: jest.fn(), error: jest.fn() };
   const args = { rawEvent: raw(), initialState: {}, client, logger, ...options };
-  if (engine === "native") return new LineContext(args);
-  const source = args.rawEvent.source;
-  const session = {
-    id: `line:${source[`${source.type}Id`]}`,
-    type: source.type,
-    [source.type]: { id: source[`${source.type}Id`] },
-    _state: args.state,
-  };
-  if (source.userId) session.user = { id: source.userId };
-  return new legacy.LineContext({
-    client: args.client,
-    event: new legacy.LineEvent(args.rawEvent, { destination: args.destination }),
-    session,
-    initialState: args.initialState,
-    shouldBatch: true,
-  });
+  return new LineContext(args);
 }
 
-describe.each([
-  ["native", LineEvent],
-  ["bottender", legacy.LineEvent],
-])("%s LineEvent contract", (_engine, Event) => {
+// Fixed expectations characterized against the former engine.
+describe("LineEvent contract", () => {
+  const Event = LineEvent;
   test("raw references and all message fields remain live", () => {
     const input = raw();
     input.message.mention = { mentionees: [] };
@@ -124,7 +107,7 @@ describe.each([
     }
   );
 
-  test("non-text message has null text; malformed message matches Bottender's throw", () => {
+  test("non-text message has null text; malformed message throws TypeError", () => {
     const event = new Event({ type: "message", message: { type: "image", id: "1" } });
     expect(event.isMessage).toBe(true);
     expect(event.isText).toBe(false);
@@ -134,13 +117,13 @@ describe.each([
   });
 });
 
-describe.each(["native", "bottender"])("%s Context shared contract", engine => {
+describe("Context contract", () => {
   test.each([undefined, null, false, 0])(
     "falsy persisted state %p gets isolated deep defaults",
     state => {
       const initialState = { nested: { list: [1] }, keep: true };
-      const first = make({ initialState, state }, engine);
-      const second = make({ initialState, state }, engine);
+      const first = make({ initialState, state });
+      const second = make({ initialState, state });
       expect(first.state).toEqual(initialState);
       expect(first.state).toBe(first.session._state);
       expect(first.state).not.toBe(initialState);
@@ -154,7 +137,7 @@ describe.each(["native", "bottender"])("%s Context shared contract", engine => {
   test("persisted state is reused without defaults; setState shallow-replaces; reset deep-clones", () => {
     const initialState = { nested: { default: true }, newDefault: true };
     const persisted = { nested: { a: 1, b: 2 }, keep: 3 };
-    const ctx = make({ initialState, state: persisted }, engine);
+    const ctx = make({ initialState, state: persisted });
     expect(ctx.state).toBe(persisted);
     expect(ctx.state.newDefault).toBeUndefined();
     const nested = { a: 10 };
@@ -169,13 +152,13 @@ describe.each(["native", "bottender"])("%s Context shared contract", engine => {
     const reset = ctx.state;
     ctx.resetState();
     expect(ctx.state.nested).not.toBe(reset.nested);
-    expect(make({ state: {}, initialState }, engine).state).toEqual({});
+    expect(make({ state: {}, initialState }).state).toEqual({});
   });
 
   test.each([1, 5])(
     "%i replies enqueue synchronously then flush once without changing isReplied",
     async count => {
-      const ctx = make({}, engine);
+      const ctx = make();
       expect(ctx.platform).toBe("line");
       expect(ctx.isReplied).toBe(false);
       for (let i = 0; i < count; i++) expect(ctx.replyText(String(i))).toBeUndefined();
@@ -193,7 +176,7 @@ describe.each(["native", "bottender"])("%s Context shared contract", engine => {
   );
 
   test("helpers spread options at message level and reply preserves object identity", async () => {
-    const ctx = make({}, engine);
+    const ctx = make();
     const options = { sender: { name: "bot" }, quoteToken: "q", quickReply: { items: [] } };
     const contents = { type: "bubble", body: { type: "box", layout: "vertical", contents: [] } };
     const custom = { type: "textV2", text: "{name}", substitution: { name: { type: "mention" } } };
@@ -221,7 +204,7 @@ describe.each(["native", "bottender"])("%s Context shared contract", engine => {
   test.each([true, false])(
     "late reply uses immediate path even after batch flush=%p",
     async queued => {
-      const ctx = make({}, engine);
+      const ctx = make();
       if (queued) ctx.replyText("queued");
       await ctx.handlerDidEnd();
       const response = { late: true };
@@ -241,7 +224,7 @@ describe.each(["native", "bottender"])("%s Context shared contract", engine => {
   test("missing replyToken skips batch but late reply still calls client with null", async () => {
     const input = raw();
     delete input.replyToken;
-    const ctx = make({ rawEvent: input }, engine);
+    const ctx = make({ rawEvent: input });
     ctx.replyText("queued");
     await ctx.handlerDidEnd();
     expect(ctx.client.reply).not.toHaveBeenCalled();
@@ -252,7 +235,7 @@ describe.each(["native", "bottender"])("%s Context shared contract", engine => {
   });
 
   test("batch rejection propagates, disables batching, does not mark replied or retry", async () => {
-    const ctx = make({}, engine);
+    const ctx = make();
     const error = new Error("LINE rejection");
     ctx.client.reply.mockRejectedValue(error);
     ctx.replyText("queued");
@@ -268,7 +251,7 @@ describe.each(["native", "bottender"])("%s Context shared contract", engine => {
 
   test.each(["user", "group", "room"])("getUserProfile dispatches %s source", async type => {
     const source = { type, userId: "U1", [`${type}Id`]: `${type}-id` };
-    const ctx = make({ rawEvent: raw(source) }, engine);
+    const ctx = make({ rawEvent: raw(source) });
     expect(ctx.session.id).toBe(`line:${source[`${type}Id`]}`);
     expect(await ctx.getUserProfile()).toEqual({ name: type });
     for (const [sourceType, method] of [
@@ -289,19 +272,19 @@ describe.each(["native", "bottender"])("%s Context shared contract", engine => {
 });
 
 describe("native-specific context contract", () => {
-  test("approved six-message difference: Bottender sends five, native sends all six", async () => {
-    const warning = jest.spyOn(console, "error").mockImplementation(() => {});
-    try {
-      for (const engine of ["bottender", "native"]) {
-        const ctx = make({}, engine);
-        for (let i = 0; i < 6; i++) ctx.replyText(String(i));
-        await ctx.handlerDidEnd();
-        expect(ctx.client.reply).toHaveBeenCalledTimes(1);
-        expect(ctx.client.reply.mock.calls[0][1]).toHaveLength(engine === "native" ? 6 : 5);
-      }
-    } finally {
-      warning.mockRestore();
-    }
+  test("six-message batch preserves the sixth message instead of legacy truncation", async () => {
+    const ctx = make();
+    for (let i = 0; i < 6; i++) ctx.replyText(String(i));
+    await ctx.handlerDidEnd();
+    expect(ctx.client.reply).toHaveBeenCalledTimes(1);
+    expect(ctx.client.reply.mock.calls[0][1]).toEqual([
+      { type: "text", text: "0" },
+      { type: "text", text: "1" },
+      { type: "text", text: "2" },
+      { type: "text", text: "3" },
+      { type: "text", text: "4" },
+      { type: "text", text: "5" },
+    ]);
   });
 
   test("Context identity, handled helpers, state helper and minimal error hook", () => {

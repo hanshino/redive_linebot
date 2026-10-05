@@ -33,59 +33,43 @@ const limiter = rateLimit({
 const port = Number(process.env.PORT) || 9527;
 
 console.log(`> Bot engine: ${bot.engine}`);
-let webhook;
-let handle;
-let prepared;
-if (bot.engine === "native") {
-  webhook = bot.mountWebhook(server, {
-    app: require("./index"),
-    errorHandler: require("./_error"),
-    initialState: require("./bottender.config").initialState,
-    channelSecret: process.env.LINE_CHANNEL_SECRET,
-  });
-  prepared = Promise.resolve();
-} else {
-  const app = bot.bottender({ dev: process.env.NODE_ENV !== "production" });
-  handle = app.getRequestHandler();
-  prepared = app.prepare();
-}
+const webhook = bot.mountWebhook(server, {
+  app: require("./index"),
+  errorHandler: require("./_error"),
+  initialState: require("./bot.config").initialState,
+  channelSecret: process.env.LINE_CHANNEL_SECRET,
+});
+const verify = (req, _, buf) => {
+  req.rawBody = buf.toString();
+};
 
-prepared.then(() => {
-  const verify = (req, _, buf) => {
-    req.rawBody = buf.toString();
-  };
+// No CORS middleware: auth is a same-origin HttpOnly cookie, and the old
+// wildcard `cors()` would have handed any origin a credentialed read path.
+server.use(express.json({ verify, limit: "3mb" }));
+server.use(express.urlencoded({ extended: false, verify }));
 
-  // No CORS middleware: auth is a same-origin HttpOnly cookie, and the old
-  // wildcard `cors()` would have handed any origin a credentialed read path.
-  server.use(express.json({ verify, limit: "3mb" }));
-  server.use(express.urlencoded({ extended: false, verify }));
+server.use("/bot-assets", express.static(path.join(__dirname, "assets")));
 
-  server.use("/bot-assets", express.static(path.join(__dirname, "assets")));
+// api group router
+server.use("/api", limiter, apiRouter);
 
-  // api group router
-  server.use("/api", limiter, apiRouter);
-
-  // route for webhook request
-  server.all("*", (req, res) => {
-    return handle ? handle(req, res) : res.sendStatus(404);
-  });
-
-  http.listen(port, err => {
-    if (err) throw err;
-    console.log(`> Ready on http://localhost:${port}`);
-  });
+// Unknown routes are not webhook requests.
+server.all("*", (req, res) => {
+  return res.sendStatus(404);
 });
 
-if (webhook) {
-  process.once("SIGTERM", () => {
-    const closed = new Promise(resolve => http.close(resolve));
-    io.close();
-    Promise.all([closed, webhook.drain()]).then(
-      () => process.exit(0),
-      error => {
-        console.error("Native shutdown failed", { name: error.name, code: error.code });
-        process.exit(1);
-      }
-    );
-  });
-}
+http.listen(port, err => {
+  if (err) throw err;
+  console.log(`> Ready on http://localhost:${port}`);
+});
+process.once("SIGTERM", () => {
+  const closed = new Promise(resolve => http.close(resolve));
+  io.close();
+  Promise.all([closed, webhook.drain()]).then(
+    () => process.exit(0),
+    error => {
+      console.error("Native shutdown failed", { name: error.name, code: error.code });
+      process.exit(1);
+    }
+  );
+});

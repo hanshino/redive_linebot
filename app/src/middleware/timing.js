@@ -100,8 +100,8 @@ function wrapChain(chainAction) {
       if (ENABLED && context && context.client) patchLineClient(context.client);
       const runChain = async () => {
         try {
-          // Bottender's `chain()` is a builder, not a runner: it returns the
-          // first bound action and Bot.run drives the dialog loop. Replicate
+          // The bot's `chain()` is a builder, not a runner: it returns the
+          // first bound action and run() drives the dialog loop. Replicate
           // that loop here so this finally observes the real total.
           let nextDialog = await chainAction(context, props);
           while (typeof nextDialog === "function") {

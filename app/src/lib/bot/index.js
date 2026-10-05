@@ -1,24 +1,7 @@
-const engine = process.env.BOT_ENGINE === undefined ? "bottender" : process.env.BOT_ENGINE;
-
-if (engine === "native") {
-  module.exports = { ...require("./native"), engine };
-} else if (engine === "bottender") {
-  const { chain, withProps, getClient, Context, LineContext, bottender } = require("bottender");
-  const { router, route, text, line } = require("bottender/router");
-  module.exports = {
-    chain,
-    withProps,
-    getClient,
-    Context,
-    LineContext,
-    bottender,
-    router,
-    route,
-    text,
-    line,
-    engine,
-    clearLineSession: groupId => require("../../util/redis").del(`line:${groupId}`),
-  };
-} else {
-  throw new Error(`Unknown BOT_ENGINE: ${engine}`);
+if (process.env.BOT_ENGINE !== undefined && process.env.BOT_ENGINE !== "native") {
+  throw new Error(
+    `Unsupported BOT_ENGINE: ${process.env.BOT_ENGINE}. Only native is supported; unset BOT_ENGINE or set it to native.`
+  );
 }
+
+module.exports = { ...require("./native"), engine: "native" };

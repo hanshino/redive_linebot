@@ -1,4 +1,4 @@
-// mysql + bottender mocks live in __tests__/setup.js (global setupFile).
+// mysql + bot mocks live in __tests__/setup.js (global setupFile).
 const {
   _internal: { buildPrestigeFlags, resolveActiveTrialStar, buildSubscriptionCards },
 } = require("../ChatLevelController");

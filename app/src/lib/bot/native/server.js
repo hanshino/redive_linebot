@@ -47,7 +47,7 @@ function createWebhookHandler({
       } catch (error) {
         if (!errorHandler) throw error;
         phase = "errorHandler";
-        // Bottender Bot.js:174-178 drives the error action with exactly { error }.
+        // Drive the error action with exactly { error }, including its continuations.
         await run(errorHandler, context, { error });
       }
       phase = "write";
