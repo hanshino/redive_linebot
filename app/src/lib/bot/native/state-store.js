@@ -1,3 +1,5 @@
+const { AsyncLocalStorage } = require("node:async_hooks");
+
 function createStateStore({
   redis,
   ttlSeconds = 3600,
@@ -6,6 +8,9 @@ function createStateStore({
 }) {
   // ponytail: single webhook process; horizontal replicas require a Redis-backed per-source queue/lock
   const queues = new Map();
+  const depths = new Map();
+  const running = new AsyncLocalStorage();
+  let pendingTasks = 0;
 
   function log(level, ...args) {
     try {
@@ -62,21 +67,39 @@ function createStateStore({
 
   function runSerial(source, task) {
     const key = sourceKey(source);
+    const ancestors = running.getStore() || [];
+    if (ancestors.some(frame => frame.active && frame.key === key)) {
+      const error = new Error("Cannot enqueue a source from inside its own state task");
+      error.code = "STATE_REENTRANT";
+      return Promise.reject(error);
+    }
+    const depth = (depths.get(key) || 0) + 1;
+    depths.set(key, depth);
+    pendingTasks++;
+    if (depth > 1)
+      log("debug", "Native state queue enqueued", { key, depth, pendingTaskCount: pendingTasks });
     const enqueuedAt = Date.now();
     const result = (queues.get(key) || Promise.resolve()).then(async () => {
       const startedAt = Date.now();
+      const frame = { key, active: true };
       try {
-        return await task();
+        return await running.run([...ancestors.filter(parent => parent.active), frame], task);
       } finally {
+        frame.active = false;
         log("debug", "Native state queue", {
           key,
           waitMs: startedAt - enqueuedAt,
           executionMs: Date.now() - startedAt,
-          pendingCount: queues.size,
+          activeSourceCount: queues.size,
+          pendingTaskCount: pendingTasks,
         });
       }
     });
     const cleanup = () => {
+      pendingTasks--;
+      const remaining = depths.get(key) - 1;
+      if (remaining) depths.set(key, remaining);
+      else depths.delete(key);
       if (queues.get(key) === settled) queues.delete(key);
     };
     const settled = result.then(cleanup, cleanup);
@@ -94,8 +117,8 @@ function createStateStore({
     write,
     destroy,
     runSerial,
-    // Count source queues, including both running and waiting work.
-    pendingCount: () => queues.size,
+    activeSourceCount: () => queues.size,
+    pendingTaskCount: () => pendingTasks,
     drain,
   };
 }

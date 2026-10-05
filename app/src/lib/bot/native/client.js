@@ -1,10 +1,9 @@
-const { buffer } = require("node:stream/consumers");
 const { messagingApi, HTTPFetchError } = require("@line/bot-sdk");
 
 function createLineClient({
   channelAccessToken,
   api = new messagingApi.MessagingApiClient({ channelAccessToken }),
-  blob = new messagingApi.MessagingApiBlobClient({ channelAccessToken }),
+  fetch: fetchContent = globalThis.fetch,
 }) {
   async function getUserProfile(userId) {
     try {
@@ -23,7 +22,25 @@ function createLineClient({
     getGroupSummary: groupId => api.getGroupSummary(groupId),
     getGroupCount: groupId => api.getGroupMemberCount(groupId),
     getGroupMembersCount: async groupId => (await client.getGroupCount(groupId)).count,
-    getMessageContent: async messageId => buffer(await blob.getMessageContent(messageId)),
+    getMessageContent: async messageId => {
+      // SDK 11's Web-to-Node stream bridge loses reader rejections. Consume the Web body directly.
+      const response = await fetchContent(
+        `https://api-data.line.me/v2/bot/message/${encodeURIComponent(messageId)}/content`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${channelAccessToken}` },
+          signal: AbortSignal.timeout(10_000),
+        }
+      );
+      if (!response.ok) {
+        // Neither request headers nor the remote response body belongs in this error.
+        const error = new Error(`LINE message content request failed (${response.status})`);
+        error.status = response.status;
+        response.body?.cancel().catch(() => {});
+        throw error;
+      }
+      return Buffer.from(await response.arrayBuffer());
+    },
     reply: (replyToken, messages) =>
       client.replyMessage({
         replyToken,

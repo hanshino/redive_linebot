@@ -1,6 +1,6 @@
-const { Readable } = require("node:stream");
 const { HTTPFetchError } = require("@line/bot-sdk");
 const { createLineClient } = require("../client");
+const { createStateStore } = require("../state-store");
 
 function httpError(status) {
   return new HTTPFetchError("LINE request failed", {
@@ -13,7 +13,7 @@ function httpError(status) {
 
 describe("native LINE client adapter", () => {
   let api;
-  let blob;
+  let fetchContent;
   let client;
 
   beforeEach(() => {
@@ -25,8 +25,8 @@ describe("native LINE client adapter", () => {
       getGroupMemberCount: jest.fn(),
       replyMessage: jest.fn(),
     };
-    blob = { getMessageContent: jest.fn() };
-    client = createLineClient({ api, blob });
+    fetchContent = jest.fn();
+    client = createLineClient({ api, fetch: fetchContent, channelAccessToken: "test-token" });
   });
 
   test.each([
@@ -94,35 +94,104 @@ describe("native LINE client adapter", () => {
 
   test("getMessageContent collects multiple binary chunks into a Buffer", async () => {
     const chunks = [Buffer.from([0, 255]), Buffer.from("image"), Buffer.from([128])];
-    blob.getMessageContent.mockResolvedValue(Readable.from(chunks));
+    fetchContent.mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            chunks.forEach(chunk => controller.enqueue(chunk));
+            controller.close();
+          },
+        })
+      )
+    );
     const result = await client.getMessageContent("M1");
     expect(Buffer.isBuffer(result)).toBe(true);
     expect(result).toEqual(Buffer.concat(chunks));
-    expect(blob.getMessageContent).toHaveBeenCalledWith("M1");
+    expect(fetchContent).toHaveBeenCalledWith(
+      "https://api-data.line.me/v2/bot/message/M1/content",
+      {
+        method: "GET",
+        headers: { Authorization: "Bearer test-token" },
+        signal: expect.any(AbortSignal),
+      }
+    );
   });
 
   test("getMessageContent returns an empty Buffer for an empty stream", async () => {
-    blob.getMessageContent.mockResolvedValue(Readable.from([]));
+    fetchContent.mockResolvedValue(new Response(null));
     await expect(client.getMessageContent("M1")).resolves.toEqual(Buffer.alloc(0));
   });
 
-  test("getMessageContent rejects on a stream error instead of returning partial content", async () => {
+  test("Web body failure rejects without unhandled rejection and releases the same-source queue", async () => {
     const error = new Error("Stream failure");
-    blob.getMessageContent.mockResolvedValue(
-      Readable.from(
-        (async function* () {
-          yield Buffer.from("partial");
-          throw error;
-        })()
+    let pulls = 0;
+    fetchContent.mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          pull(controller) {
+            if (pulls++ === 0) controller.enqueue(Buffer.from("partial"));
+            else controller.error(error);
+          },
+        })
       )
     );
+    const store = createStateStore({ redis: {}, logger: { debug: jest.fn() } });
+    const source = { type: "group", groupId: "C1" };
+    const first = store.runSerial(source, () => client.getMessageContent("M1"));
+    const rejection = expect(first).rejects.toBe(error);
+    const next = store.runSerial(source, () => "next ran");
+    await rejection;
+    await expect(next).resolves.toBe("next ran");
+    await store.drain();
+    expect(store.pendingTaskCount()).toBe(0);
+    // Let unhandled rejections surface to Jest; do not install process-level handlers.
+    await new Promise(resolve => setImmediate(resolve));
+  });
+
+  test("getMessageContent forwards fetch network errors", async () => {
+    const error = new Error("Network failure");
+    fetchContent.mockRejectedValue(error);
     await expect(client.getMessageContent("M1")).rejects.toBe(error);
   });
 
-  test("getMessageContent forwards blob API errors", async () => {
-    const error = httpError(404);
-    blob.getMessageContent.mockRejectedValue(error);
-    await expect(client.getMessageContent("M1")).rejects.toBe(error);
+  test.each([404, 500])(
+    "content HTTP %i has status but no token, headers or response body",
+    async status => {
+      fetchContent.mockResolvedValue(new Response("sensitive remote body", { status }));
+      const error = await client.getMessageContent("M1").catch(error => error);
+      expect(error).toBeInstanceOf(Error);
+      expect(error.status).toBe(status);
+      expect(error.headers).toBeUndefined();
+      expect(error.message).toBe(`LINE message content request failed (${status})`);
+      expect(JSON.stringify(error)).not.toMatch(/test-token|Authorization|sensitive/);
+    }
+  );
+
+  test("content timeout covers body consumption and message ID is URL-encoded", async () => {
+    const controller = new AbortController();
+    const timeout = jest.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    fetchContent.mockImplementation(
+      async (_url, { signal }) =>
+        new Response(
+          new ReadableStream({
+            start(body) {
+              signal.addEventListener("abort", () => body.error(signal.reason), { once: true });
+            },
+          })
+        )
+    );
+    try {
+      const result = client.getMessageContent("M/1?query");
+      const rejection = expect(result).rejects.toMatchObject({ name: "TimeoutError" });
+      controller.abort(new DOMException("Timed out", "TimeoutError"));
+      await rejection;
+      expect(timeout).toHaveBeenCalledWith(10_000);
+      expect(fetchContent.mock.calls[0][0]).toBe(
+        "https://api-data.line.me/v2/bot/message/M%2F1%3Fquery/content"
+      );
+    } finally {
+      timeout.mockRestore();
+    }
   });
 
   test("reply normalizes a single message and returns the API response", async () => {
@@ -195,9 +264,8 @@ describe("getClient", () => {
       const first = getClient("line");
       expect(getClient("line")).toBe(first);
       expect(apiConstructor).toHaveBeenCalledTimes(1);
-      expect(blobConstructor).toHaveBeenCalledTimes(1);
+      expect(blobConstructor).not.toHaveBeenCalled();
       expect(apiConstructor).toHaveBeenCalledWith({ channelAccessToken: "test-token" });
-      expect(blobConstructor).toHaveBeenCalledWith({ channelAccessToken: "test-token" });
       expect(() => getClient("unknown")).toThrow("Unknown bot client: unknown");
     });
   });

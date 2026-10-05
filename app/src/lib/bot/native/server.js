@@ -2,6 +2,7 @@ const express = require("express");
 const { middleware, SignatureValidationFailed, JSONParseError } = require("@line/bot-sdk");
 const { LineContext } = require("./context");
 const { run } = require("./router");
+const BODY_LIMIT = 3 * 1024 * 1024;
 
 function createWebhookHandler({
   app: entry,
@@ -60,6 +61,10 @@ function createWebhookHandler({
   handler.post(
     "/",
     (req, res, next) => (closing ? res.sendStatus(503) : next()),
+    (req, res, next) =>
+      Number(req.headers["content-length"]) > BODY_LIMIT ? res.sendStatus(413) : next(),
+    // Always consume the bounded raw bytes, even without Content-Type. Do not inflate signed bytes.
+    express.raw({ type: () => true, limit: BODY_LIMIT, inflate: false }),
     middleware({ channelSecret }),
     (req, res) => {
       const body = req.body;
@@ -82,6 +87,7 @@ function createWebhookHandler({
           events.push({ event, source: { ...event.source } });
         } catch (error) {
           report("source", error);
+          return res.sendStatus(400);
         }
       }
       res.status(200).end();
@@ -105,9 +111,13 @@ function createWebhookHandler({
     const status =
       error instanceof SignatureValidationFailed
         ? 401
-        : error instanceof JSONParseError
-          ? 400
-          : 500;
+        : error.status === 413
+          ? 413
+          : error.type === "encoding.unsupported"
+            ? 415
+            : error instanceof JSONParseError || error.status === 400
+              ? 400
+              : 500;
     if (status === 500) report("request", error);
     return res.sendStatus(status);
   });
