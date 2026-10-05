@@ -61,10 +61,6 @@ jest.mock("../../src/service/SigninService", () => ({
   evaluateAchievements: jest.fn().mockResolvedValue({ unlocked: [] }),
 }));
 
-jest.mock("../../src/service/EventCenterService", () => ({
-  add: jest.fn().mockResolvedValue(undefined),
-  getEventName: jest.fn(name => `event_center:${name}`),
-}));
 jest.mock("../../src/service/AchievementEngine", () => ({
   evaluate: jest.fn().mockResolvedValue({ unlocked: [] }),
 }));
@@ -87,7 +83,6 @@ const GachaModel = require("../../src/model/princess/gacha");
 const GachaBanner = require("../../src/model/princess/GachaBanner");
 const GachaService = require("../../src/service/GachaService");
 const mysql = require("../../src/util/mysql");
-const EventCenterService = require("../../src/service/EventCenterService");
 const AchievementEngine = require("../../src/service/AchievementEngine");
 const signinService = require("../../src/service/SigninService");
 
@@ -153,8 +148,6 @@ describe("GachaService.runDailyDraw", () => {
 
     expect(signinService.recordNormal).toHaveBeenCalledTimes(1);
     expect(signinService.recordNormal).toHaveBeenCalledWith("Uabc", { trx: currentTrx });
-
-    expect(EventCenterService.add).not.toHaveBeenCalled();
 
     expect(AchievementEngine.evaluate).toHaveBeenCalledTimes(1);
     const [userIdArg, eventArg, metaArg] = AchievementEngine.evaluate.mock.calls[0];

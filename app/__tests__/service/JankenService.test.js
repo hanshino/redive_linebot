@@ -1,8 +1,3 @@
-jest.mock("../../src/service/EventCenterService", () => ({
-  add: jest.fn().mockResolvedValue(undefined),
-  getEventName: jest.fn(name => `event_center:${name}`),
-}));
-
 jest.mock("../../src/model/application/Inventory", () => ({
   inventory: {
     getUserMoney: jest.fn(),
