@@ -2,6 +2,9 @@
   "name": "hanshino-bot",
   "version": "1.0.1",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "nodemon -L server.js",
     "lint": "eslint . ",
@@ -14,6 +17,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.27.0",
+    "@line/bot-sdk": "^11",
     "@node-rs/jieba": "^2.0.3",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",

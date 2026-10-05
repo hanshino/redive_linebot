@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-unused-vars
 const { Knex } = require("knex");
 const mysql = require("../../util/mysql");
-const redis = require("../../util/redis");
+const { clearLineSession } = require("../../lib/bot");
 
 /**
  * @param {String} groupId
@@ -34,12 +34,12 @@ exports.fetchGuildMembers = guildId => {
 };
 
 /**
- * 強制性的將`bottender`設置的`session`清除
+ * 清除目前 bot engine 的群組 session
  * @param {String} guildId
  * @returns {Promise}
  */
 exports.clearLineSession = guildId => {
-  return redis.del(`line:${guildId}`);
+  return clearLineSession(guildId);
 };
 
 /**

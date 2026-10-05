@@ -7,10 +7,10 @@ if (process.env.NODE_ENV !== "production") {
 
 const express = require("express");
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
-const { bottender } = require("./src/lib/bot");
+const bot = require("./src/lib/bot");
 const apiRouter = require("./src/router/api");
 const { checkOriginConfig } = require("./src/service/AuthSessionService");
-const { server, http } = require("./src/util/connection");
+const { server, http, io } = require("./src/util/connection");
 require("./src/router/socket");
 
 // Surfaced at boot rather than on the first rejected request — a bad
@@ -30,16 +30,27 @@ const limiter = rateLimit({
   },
 });
 
-const app = bottender({
-  dev: process.env.NODE_ENV !== "production",
-});
-
 const port = Number(process.env.PORT) || 9527;
 
-// the request handler of the bottender app
-const handle = app.getRequestHandler();
+console.log(`> Bot engine: ${bot.engine}`);
+let webhook;
+let handle;
+let prepared;
+if (bot.engine === "native") {
+  webhook = bot.mountWebhook(server, {
+    app: require("./index"),
+    errorHandler: require("./_error"),
+    initialState: require("./bottender.config").initialState,
+    channelSecret: process.env.LINE_CHANNEL_SECRET,
+  });
+  prepared = Promise.resolve();
+} else {
+  const app = bot.bottender({ dev: process.env.NODE_ENV !== "production" });
+  handle = app.getRequestHandler();
+  prepared = app.prepare();
+}
 
-app.prepare().then(() => {
+prepared.then(() => {
   const verify = (req, _, buf) => {
     req.rawBody = buf.toString();
   };
@@ -56,7 +67,7 @@ app.prepare().then(() => {
 
   // route for webhook request
   server.all("*", (req, res) => {
-    return handle(req, res);
+    return handle ? handle(req, res) : res.sendStatus(404);
   });
 
   http.listen(port, err => {
@@ -64,3 +75,17 @@ app.prepare().then(() => {
     console.log(`> Ready on http://localhost:${port}`);
   });
 });
+
+if (webhook) {
+  process.once("SIGTERM", () => {
+    const closed = new Promise(resolve => http.close(resolve));
+    io.close();
+    Promise.all([closed, webhook.drain()]).then(
+      () => process.exit(0),
+      error => {
+        console.error("Native shutdown failed", { name: error.name, code: error.code });
+        process.exit(1);
+      }
+    );
+  });
+}
