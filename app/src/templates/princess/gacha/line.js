@@ -473,7 +473,7 @@ function genCharacterBubble(title, rows) {
 
 /**
  * 發送轉蛋結果訊息
- * @param {import("bottender").LineContext} context
+ * @param {import("../../../lib/bot").LineContext} context
  * @param {Object} objData
  * @param {Object} objData.rewards
  * @param {Object} objData.rareCount

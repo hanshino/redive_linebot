@@ -126,8 +126,8 @@ function createMockQueryBuilder() {
 const mockKnex = createMockQueryBuilder();
 jest.mock("../src/util/mysql", () => mockKnex);
 
-// Mock bottender (prevents LINE client initialization)
-jest.mock("bottender", () => ({
+// Mock the bot facade (prevents LINE client initialization)
+jest.mock("../src/lib/bot", () => ({
   getClient: jest.fn(() => ({
     getGroupMemberProfile: jest.fn().mockResolvedValue({ displayName: "TestUser" }),
     getProfile: jest.fn().mockResolvedValue({ displayName: "TestUser", userId: "Utest" }),
@@ -141,9 +141,6 @@ jest.mock("bottender", () => ({
   withProps: jest.fn(fn => fn),
   Context: jest.fn(),
   LineContext: jest.fn(),
-}));
-
-jest.mock("bottender/router", () => ({
   router: jest.fn(routes => routes),
   route: jest.fn(),
   text: jest.fn(() => jest.fn()),

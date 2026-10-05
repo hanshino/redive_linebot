@@ -4,7 +4,7 @@ const { defaultAiResponder } = require("../../service/ai/AiResponder");
 
 /**
  * 自然言語理解
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 exports.naturalLanguageUnderstanding = async function (context, { next }) {
   // 只處理文字訊息
@@ -31,7 +31,7 @@ exports.naturalLanguageUnderstanding = async function (context, { next }) {
 
 /**
  * 只記錄對話
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 exports.recordSession = async function (context, { next }) {
   // 只處理文字訊息

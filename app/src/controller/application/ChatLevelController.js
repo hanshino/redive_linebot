@@ -13,7 +13,7 @@ const MeTemplate = require("../../templates/application/Me");
 const PrestigeStatusTemplate = require("../../templates/application/Prestige/Status");
 const commonTemplate = require("../../templates/common");
 const { DefaultLogger } = require("../../util/Logger");
-const { getClient } = require("bottender");
+const { getClient } = require("../../lib/bot");
 const mysql = require("../../util/mysql");
 const { evaluateBuildAchievementKeys, PRESTIGE_CAP } = require("../../service/PrestigeService");
 const LineClient = getClient("line");
@@ -115,7 +115,7 @@ function buildSubscriptionCards(subscribeInfo, now) {
 
 /**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 exports.showStatus = async (context, props) => {
   try {
@@ -393,7 +393,7 @@ function parseRestrictionMeta(raw) {
 /**
  * `!轉生狀態` — Flex bubble of prestige progress (4 scenarios: honeymoon /
  * in-trial / ready-to-prestige / awakened).
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 exports.showPrestigeStatus = async context => {
   try {
@@ -486,7 +486,7 @@ exports.showPrestigeStatus = async context => {
 
 /**
  * `#經驗歷程` — Flex bubble of today's XP summary + last event breakdown.
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 exports.showXpHistory = async context => {
   try {

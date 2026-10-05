@@ -9,7 +9,7 @@ describe("bin/BroadcastQueueDrainer ioredis leak guard", () => {
 
   beforeAll(() => {
     jest.resetModules();
-    mockBottender = require("bottender");
+    mockBottender = require("../../src/lib/bot");
     const mockRedis = require("../../src/util/redis");
     mockRedis.scanIterator = jest.fn(() => (async function* () {})());
     main = require("../BroadcastQueueDrainer");

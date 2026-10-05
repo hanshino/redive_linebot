@@ -42,7 +42,7 @@ function send(payload) {
 
 /**
  * 從 context 提取來源資訊
- * @param {import("bottender").LineContext} context
+ * @param {import("../lib/bot").LineContext} context
  */
 exports.getSourceData = function getSourceData(context) {
   const { type, groupId } = context.event.source;

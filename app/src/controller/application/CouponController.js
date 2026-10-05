@@ -1,4 +1,4 @@
-const { text } = require("bottender/router");
+const { text } = require("../../lib/bot");
 const { get } = require("lodash");
 const minimist = require("minimist");
 const i18n = require("../../util/i18n");
@@ -17,7 +17,7 @@ exports.router = [text(/^[/.#]兌換 (?<code>\S+)$/, userUse)];
 
 /**
  * [管理員] 新增優惠券
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  */
 async function adminAdd(context) {
   const args = minimist(context.event.text.split(" "));
@@ -50,7 +50,7 @@ async function adminAdd(context) {
 
 /**
  * 使用者使用優惠券
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  */
 async function userUse(context, props) {
   const { code } = props.match.groups;
@@ -128,7 +128,7 @@ async function userUse(context, props) {
 
 /**
  * 獎勵派送
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  * @param {Object} reward
  */
 async function dispatch(context, reward) {
@@ -147,7 +147,7 @@ async function dispatch(context, reward) {
 
 /**
  * 發送女神石
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  * @param {Object} reward
  * @returns {Promise<int>}
  */

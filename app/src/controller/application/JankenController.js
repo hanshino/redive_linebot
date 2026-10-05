@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-unused-vars
-const { Context, getClient } = require("bottender");
-const { text } = require("bottender/router");
+const { Context, getClient } = require("../../lib/bot");
+const { text } = require("../../lib/bot");
 const get = require("lodash/get");
 const i18n = require("../../util/i18n");
 const LineClient = getClient("line");
@@ -209,7 +209,7 @@ async function duel(context) {
 /**
  * 決定出拳 (postback handler for action: "janken")
  * @param {Context} context
- * @param {import("bottender").Props} props
+ * @param {import("../../lib/bot").Props} props
  * @param {Object} props.payload
  */
 exports.decide = async (context, { payload }) => {
@@ -393,7 +393,7 @@ async function holdingChallenge(context) {
 /**
  * 挑戰/舉辦方出拳 (postback handler for action: "challenge")
  * @param {Context} context
- * @param {import("bottender").Props} props
+ * @param {import("../../lib/bot").Props} props
  */
 exports.challenge = async (context, { payload }) => {
   const { userId: holderUserId, groupId } = payload;

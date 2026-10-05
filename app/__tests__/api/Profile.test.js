@@ -2,12 +2,12 @@ jest.mock("../../src/model/application/UserModel", () => ({
   getProfile: jest.fn(),
   updateProfile: jest.fn(),
 }));
-jest.mock("bottender", () => ({ getClient: jest.fn() }));
+jest.mock("../../src/lib/bot", () => ({ getClient: jest.fn() }));
 
 const { getProfile } = require("../../src/handler/Profile");
 const redis = require("../../src/util/redis");
 const UserModel = require("../../src/model/application/UserModel");
-const { getClient } = require("bottender");
+const { getClient } = require("../../src/lib/bot");
 
 function makeRes() {
   return {

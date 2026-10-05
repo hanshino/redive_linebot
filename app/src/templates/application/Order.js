@@ -4,7 +4,7 @@ const CharacterModel = require("../../model/princess/character");
 
 /**
  * 發送訊息整合，整合多平台發送方式
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  * @param {Array.<Object>} replyData
  * @param {String|Number} replyData.no
  * @param {String} replyData.messageType
@@ -161,8 +161,6 @@ function getUserName(context) {
       let userData = context.state.userDatas[context.event.source.userId];
       return userData ? userData.displayName : "路人甲";
     }
-    case "telegram":
-      return context.event.message.from.username;
   }
 }
 
@@ -186,9 +184,6 @@ function _sendImage(context, url, sender) {
           sender,
         }
       );
-      break;
-    case "telegram":
-      context.sendPhoto(url);
       break;
     default:
       context.replyText(url);

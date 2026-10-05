@@ -32,7 +32,7 @@ const mysql = testDatabase.mysql;
 jest.mock("../../src/util/mysql", () => mysql);
 
 // Runtime service/bin load only after guard + isolated mysql mock.
-const { getClient } = require("bottender");
+const { getClient } = require("../../src/lib/bot");
 const redis = require("../../src/util/redis");
 const Service = require("../../src/service/JankenAutoMatchmakingService");
 const runSpy = jest.spyOn(Service, "runDailyAutoMatch");

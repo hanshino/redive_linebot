@@ -1,5 +1,5 @@
 const getUserProfileMock = jest.fn();
-jest.mock("bottender", () => ({
+jest.mock("../../src/lib/bot", () => ({
   getClient: () => ({ getUserProfile: getUserProfileMock }),
 }));
 jest.mock("../../src/util/line", () => ({

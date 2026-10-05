@@ -8,7 +8,8 @@ const mockLineClient = {
   reply: jest.fn(),
 };
 
-jest.mock("bottender", () => ({
+jest.mock("../../../lib/bot", () => ({
+  ...jest.requireActual("../../../lib/bot"),
   getClient: jest.fn(() => mockLineClient),
   chain: jest.fn(),
   withProps: (handler, providedProps) => (context, props) =>
@@ -16,7 +17,6 @@ jest.mock("bottender", () => ({
   Context: jest.fn(),
   LineContext: jest.fn(),
 }));
-jest.mock("bottender/router", () => jest.requireActual("bottender/router"));
 jest.mock("../../../templates/application/Job", () => ({}));
 jest.mock("../../../controller/application/OpenaiController", () => ({ recordSession: jest.fn() }));
 jest.mock("../../../service/WorldBossBattleService", () => ({

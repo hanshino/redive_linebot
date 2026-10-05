@@ -1,7 +1,7 @@
 const { default: axios } = require("axios");
 const token = process.env.LINE_ACCESS_TOKEN;
 const apiURL = "https://api.line.me/v2";
-const { getClient } = require("bottender");
+const { getClient } = require("../lib/bot");
 const LineClient = getClient("line");
 const redis = require("./redis");
 

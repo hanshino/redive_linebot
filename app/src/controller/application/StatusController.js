@@ -1,4 +1,4 @@
-const { text } = require("bottender/router");
+const { text } = require("../../lib/bot");
 const { inventory: inventoryModel } = require("../../model/application/Inventory");
 const i18n = require("../../util/i18n");
 
@@ -9,7 +9,7 @@ exports.router = [
 
 /**
  * 查詢我的女神石
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  */
 async function godStone(context) {
   const { userId } = context.event.source;
@@ -20,7 +20,7 @@ async function godStone(context) {
 
 /**
  * 查詢我擁有的角色數量
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  */
 async function ownCharacter(context) {
   const { userId } = context.event.source;

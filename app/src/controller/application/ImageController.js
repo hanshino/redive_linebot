@@ -1,5 +1,5 @@
-const { text } = require("bottender/router");
-const { getClient } = require("bottender");
+const { text } = require("../../lib/bot");
+const { getClient } = require("../../lib/bot");
 const i18n = require("../../util/i18n");
 const LineClient = getClient("line");
 const pictshare = require("../../util/pictshare");
@@ -8,7 +8,7 @@ exports.router = [text(/^[./#]圖片上傳$/, handleUpload)];
 
 /**
  * 處理圖片上傳
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  */
 async function handleUpload(context) {
   const { quotedMessageId: id } = context.event.message;

@@ -1,4 +1,4 @@
-const { getClient } = require("bottender");
+const { getClient } = require("../../lib/bot");
 const UserModel = require("../../model/application/UserModel");
 const { DefaultLogger } = require("../../util/Logger");
 const {

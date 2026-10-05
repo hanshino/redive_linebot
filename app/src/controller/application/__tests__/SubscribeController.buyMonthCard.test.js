@@ -3,10 +3,10 @@
 // 另含購卡競態修正的決策分支：交易內先鎖 user 列 → 同交易讀餘額 → 判斷 → issue → debit；
 // 查無 user 列 fail closed。真實鎖/併發行為見 SubscribeController.redeem.test.js（真 DB）。
 //
-// 全域 setup.js 把 bottender/router 的 text() mock 成回傳 `jest.fn()`（丟棄真正的
-// handler），這支測試需要拿到真正的 buyMonthCard 函式本體，所以對這個模組
-// unmock，改用真正的 text()（只是把 route 陣列的第二個參數存起來，不做任何比對邏輯）。
-jest.unmock("bottender/router");
+// 使用 facade 的真 router symbols 取得 buyMonthCard handler，保留全域 fake getClient/chain。
+const mockBot = jest.requireMock("../../../lib/bot");
+const { router, route, text, line } = jest.requireActual("../../../lib/bot");
+Object.assign(mockBot, { router, route, text, line });
 jest.mock("../../../model/application/Inventory", () => ({
   inventory: {
     qb: jest.fn(),

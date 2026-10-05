@@ -6,7 +6,7 @@
 // Reads topic_daily via service/topic/query and replies a 排行條 giga bubble
 // (templates/application/TopicCloud). See the concept doc's 對外體驗 section.
 
-const { text } = require("bottender/router");
+const { text } = require("../../lib/bot");
 const { get } = require("lodash");
 const query = require("../../service/topic/query");
 const TopicCloudTemplate = require("../../templates/application/TopicCloud");
@@ -34,7 +34,7 @@ function periodLabel(days) {
 
 /**
  * /我的文字雲：個人近 N 天高頻用字。群組內查只看本群；私聊則跨群聚合。
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 async function showMyWordCloud(context, props) {
   const { userId, type } = context.event.source;
@@ -57,7 +57,7 @@ async function showMyWordCloud(context, props) {
 
 /**
  * /群組話題：群組近 N 天聚合高頻用字（不掛人名）。限群組使用。
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 async function showGroupTopics(context, props) {
   const { type, groupId } = context.event.source;

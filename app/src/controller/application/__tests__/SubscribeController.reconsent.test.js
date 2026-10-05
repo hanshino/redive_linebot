@@ -30,7 +30,9 @@ if (!/^Princess_wbtest_reconsent_/.test(testDatabase.databaseName)) {
 }
 const mysql = testDatabase.mysql;
 jest.mock("../../../util/mysql", () => mysql);
-jest.unmock("bottender/router");
+const mockBot = jest.requireMock("../../../lib/bot");
+const { router, route, text, line } = jest.requireActual("../../../lib/bot");
+Object.assign(mockBot, { router, route, text, line });
 jest.mock("../../princess/gacha", () => ({ purgeDailyGachaCache: jest.fn().mockResolvedValue() }));
 jest.mock("../../../../bin/DailyRation", () => jest.fn().mockResolvedValue());
 jest.mock("../../../service/AchievementEngine", () => ({

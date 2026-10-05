@@ -1,5 +1,5 @@
 const redis = require("../src/util/redis");
-const { getClient } = require("bottender");
+const { getClient } = require("../src/lib/bot");
 const { DefaultLogger } = require("../src/util/Logger");
 const broadcastQueue = require("../src/util/broadcastQueue");
 const replyTokenQueue = require("../src/util/replyTokenQueue");

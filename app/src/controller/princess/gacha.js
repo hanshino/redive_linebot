@@ -61,7 +61,7 @@ async function userCooldown(userId) {
 
 /**
  * 檢視自己的轉蛋包包
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 async function showGachaBag(context) {
   if (context.state.guildConfig.Gacha === "N") return;
@@ -80,8 +80,8 @@ async function showGachaBag(context) {
 
 /**
  * 進行模擬轉蛋
- * @param {import("bottender").LineContext} context
- * @param {import("bottender").Props} param1
+ * @param {import("../../lib/bot").LineContext} context
+ * @param {import("../../lib/bot").Props} param1
  * @param {Boolean} param1.pickup
  * @param {Boolean} param1.ensure
  */

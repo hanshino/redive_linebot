@@ -1,4 +1,4 @@
-const { getClient } = require("bottender");
+const { getClient } = require("../lib/bot");
 const { get } = require("lodash");
 const mysql = require("../util/mysql");
 const lineUtil = require("../util/line");

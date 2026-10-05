@@ -2,7 +2,7 @@ const path = require("path");
 const rediveTW = require("../../util/sqlite")(path.join(process.cwd(), "assets", "redive_tw.db"));
 const config = require("config");
 const { format } = require("util");
-const { text } = require("bottender/router");
+const { text } = require("../../lib/bot");
 const i18n = require("../../util/i18n");
 const characterTemplate = require("../../templates/princess/Character");
 const Inventory = require("../../model/application/Inventory");
@@ -22,8 +22,8 @@ exports.router = [
 
 /**
  * 升滿星
- * @param {import ("bottender").LineContext} context
- * @param {import ("bottender").Props} props
+ * @param {import ("../../lib/bot").LineContext} context
+ * @param {import ("../../lib/bot").Props} props
  */
 async function fullRankup(context, props) {
   const { name } = props.match.groups;
@@ -105,8 +105,8 @@ async function fullRankup(context, props) {
 
 /**
  * 升星
- * @param {import ("bottender").LineContext} context
- * @param {import ("bottender").Props} props
+ * @param {import ("../../lib/bot").LineContext} context
+ * @param {import ("../../lib/bot").Props} props
  * @returns {Promise<void>}
  * @throws {Error}
  */

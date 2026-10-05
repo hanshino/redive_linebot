@@ -1,5 +1,5 @@
-const { text } = require("bottender/router");
-const { getClient } = require("bottender");
+const { text } = require("../../lib/bot");
+const { getClient } = require("../../lib/bot");
 const SeasonService = require("../../service/WorldBossSeasonService");
 const WorldBossAttackService = require("../../service/WorldBossAttackService");
 const WorldBossTemplate = require("../../templates/application/WorldBoss");

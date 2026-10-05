@@ -1,4 +1,4 @@
-const { text } = require("bottender/router");
+const { text } = require("../../lib/bot");
 const i18n = require("../../util/i18n");
 const moment = require("moment");
 const JobTemplate = require("../../templates/application/Job");
@@ -27,7 +27,7 @@ exports.showMyJob = showMyJob;
 /**
  * Start swordman job mission.
  *
- * @param {import ("bottender").LineContext} context - The context object.
+ * @param {import ("../../lib/bot").LineContext} context - The context object.
  */
 exports.startSwordmanJobMission = async function (context) {
   const { changeJobMission } = context.state;
@@ -132,7 +132,7 @@ exports.startThiefChangeJobMission = async function (context) {
 /**
  * Show change job flex message.
  *
- * @param {import ("bottender").LineContext} context - The context object.
+ * @param {import ("../../lib/bot").LineContext} context - The context object.
  */
 async function showChangeJob(context) {
   const { quoteToken } = context.event.message;
@@ -149,7 +149,7 @@ async function showChangeJob(context) {
 
 /**
  * Swordman attack target.
- * @param {import ("bottender").LineContext} context - The context object.
+ * @param {import ("../../lib/bot").LineContext} context - The context object.
  */
 exports.swordmanAttackTarget = async function (context) {
   const { changeJobMission } = context.state;
@@ -367,7 +367,7 @@ exports.thiefSteal = async function (context, { payload }) {
  * Deliberately excludes quota, EXP, season score and ranking — those are personal
  * progress and belong in LIFF, not a chat reply (see CLAUDE.md group message rules).
  *
- * @param {import ("bottender").LineContext} context - The context object.
+ * @param {import ("../../lib/bot").LineContext} context - The context object.
  */
 async function showMyJob(context) {
   const { userId } = context.event.source;
@@ -408,7 +408,7 @@ async function showMyJob(context) {
 
 /**
  * Check user is can accept mission.
- * @param {import ("bottender").LineContext} context - The context object.
+ * @param {import ("../../lib/bot").LineContext} context - The context object.
  * @returns {Promise<boolean>} - True if user can accept mission.
  */
 async function isUserCanAcceptMission(context) {

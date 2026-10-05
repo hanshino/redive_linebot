@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-unused-vars
-const { Context } = require("bottender");
-const { text } = require("bottender/router");
+const { Context } = require("../../../lib/bot");
+const { text } = require("../../../lib/bot");
 const GodStoneShopModel = require("../../../model/princess/GodStoneShop");
 const GodStoneShopTemplate = require("../../../templates/princess/GodStoneShop");
 const chunk = require("lodash/chunk");

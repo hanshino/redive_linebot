@@ -1,5 +1,5 @@
-const { router, text, route } = require("bottender/router");
-const { chain, withProps } = require("bottender");
+const { router, text, route } = require("./lib/bot");
+const { chain, withProps } = require("./lib/bot");
 const gacha = require("./controller/princess/gacha");
 const AutoPreferenceController = require("./controller/application/AutoPreferenceController");
 const battle = require("./controller/princess/battle");
@@ -150,7 +150,7 @@ async function HandlePostback(context, { next }) {
 
 /**
  * 基於功能指令優先辨識
- * @param {import("bottender").LineContext} context
+ * @param {import("./lib/bot").LineContext} context
  */
 async function OrderBased(context, { next }) {
   const { userId, type } = context.event.source;
@@ -363,7 +363,7 @@ async function recordLatestGroupUser(context, { next }) {
 
 /**
  * 誰的問題
- * @param {import("bottender").LineContext} context
+ * @param {import("./lib/bot").LineContext} context
  */
 async function whosProblem(context) {
   if (context.event.source.type !== "group") return;
@@ -404,11 +404,6 @@ function Nothing(context) {
   switch (context.platform) {
     case "line":
       if (context.event.source.type === "user") {
-        context.replyText("沒有任何符合的指令");
-      }
-      break;
-    case "telegram":
-      if (context.event.message.chat.type === "private") {
         context.replyText("沒有任何符合的指令");
       }
       break;

@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-unused-vars
-const { Context } = require("bottender");
-const { text } = require("bottender/router");
+const { Context } = require("../../lib/bot");
+const { text } = require("../../lib/bot");
 const minimist = require("minimist");
 const i18n = require("../../util/i18n");
 const adModel = require("../../model/application/Advertisement");
@@ -10,7 +10,7 @@ exports.router = [text(/^\/addad/, addAdvertisement)];
 /**
  * 為特定群組建立服務權限
  * @param {Context} context
- * @param {import("bottender").Props} props
+ * @param {import("../../lib/bot").Props} props
  */
 async function addAdvertisement(context) {
   // 僅限於管理員
