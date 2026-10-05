@@ -186,22 +186,31 @@ describe("native state store", () => {
     await entered.promise;
     expect(order).toEqual([1]);
     expect(redis.get).toHaveBeenCalledTimes(1);
-    expect(store.pendingCount()).toBe(1);
+    expect(store.activeSourceCount()).toBe(1);
+    expect(store.pendingTaskCount()).toBe(3);
+    expect(logger.debug).toHaveBeenCalledWith("Native state queue enqueued", {
+      key: store.sourceKey(group),
+      depth: 3,
+      pendingTaskCount: 3,
+    });
     release.resolve();
     await first;
     await enteredSecond.promise;
     expect(order).toEqual([1, 2]);
-    expect(store.pendingCount()).toBe(1);
+    expect(store.activeSourceCount()).toBe(1);
+    expect(store.pendingTaskCount()).toBe(2);
     releaseSecond.resolve();
     expect(await Promise.all([first, second, third])).toEqual(["first", "second", "third"]);
     expect(order).toEqual([1, 2, 3]);
     expect(await store.read(group)).toEqual({ userDatas: { U1: true, U2: true } });
-    expect(store.pendingCount()).toBe(0);
+    expect(store.activeSourceCount()).toBe(0);
+    expect(store.pendingTaskCount()).toBe(0);
     expect(logger.debug).toHaveBeenCalledWith("Native state queue", {
       key: store.sourceKey(group),
       waitMs: expect.any(Number),
       executionMs: expect.any(Number),
-      pendingCount: 1,
+      activeSourceCount: 1,
+      pendingTaskCount: 1,
     });
   });
 
@@ -221,7 +230,7 @@ describe("native state store", () => {
     await event;
     await invalidation;
     await expect(next).resolves.toBeNull();
-    expect(store.pendingCount()).toBe(0);
+    expect(store.activeSourceCount()).toBe(0);
   });
 
   test.each([false, true])("task rejection (async=%s) does not poison the queue", async isAsync => {
@@ -234,7 +243,8 @@ describe("native state store", () => {
     const next = store.runSerial(otherMember, () => "recovered");
     await rejection;
     await expect(next).resolves.toBe("recovered");
-    expect(store.pendingCount()).toBe(0);
+    expect(store.activeSourceCount()).toBe(0);
+    expect(store.pendingTaskCount()).toBe(0);
     await store.drain();
   });
 
@@ -255,7 +265,8 @@ describe("native state store", () => {
     });
     const rejection = expect(userTask).rejects.toThrow("expected rejection");
     await Promise.all([enteredGroup.promise, enteredUser.promise]);
-    expect(store.pendingCount()).toBe(2);
+    expect(store.activeSourceCount()).toBe(2);
+    expect(store.pendingTaskCount()).toBe(2);
     let drained = false;
     const draining = store.drain().then(() => {
       drained = true;
@@ -263,17 +274,18 @@ describe("native state store", () => {
     const roomTask = store.runSerial({ type: "room", roomId: "R1" }, () => releaseRoom.promise);
     releaseGroup.resolve();
     await groupTask;
-    expect(store.pendingCount()).toBe(2);
+    expect(store.activeSourceCount()).toBe(2);
     expect(drained).toBe(false);
     releaseUser.resolve();
     await rejection;
-    expect(store.pendingCount()).toBe(1);
+    expect(store.activeSourceCount()).toBe(1);
     expect(drained).toBe(false);
     releaseRoom.resolve();
     await roomTask;
     await draining;
     expect(drained).toBe(true);
-    expect(store.pendingCount()).toBe(0);
+    expect(store.activeSourceCount()).toBe(0);
+    expect(store.pendingTaskCount()).toBe(0);
     await store.drain();
   });
 
@@ -284,7 +296,53 @@ describe("native state store", () => {
     await expect(store.runSerial(user, () => "ok")).resolves.toBe("ok");
     const error = new Error("task failed");
     await expect(store.runSerial(user, () => Promise.reject(error))).rejects.toBe(error);
-    expect(store.pendingCount()).toBe(0);
+    expect(store.activeSourceCount()).toBe(0);
     await store.drain();
+  });
+
+  test("same-source reentry rejects immediately after await and leaves the queue usable", async () => {
+    const nested = jest.fn();
+    const first = store.runSerial(group, async () => {
+      await Promise.resolve();
+      expect(store.pendingTaskCount()).toBe(2);
+      await expect(store.runSerial(otherMember, nested)).rejects.toMatchObject({
+        code: "STATE_REENTRANT",
+      });
+      expect(store.pendingTaskCount()).toBe(2);
+      throw new Error("outer failed");
+    });
+    const rejection = expect(first).rejects.toThrow("outer failed");
+    const next = store.runSerial(group, () => "recovered");
+    await rejection;
+    await expect(next).resolves.toBe("recovered");
+    expect(nested).not.toHaveBeenCalled();
+    await store.drain();
+    expect(store.activeSourceCount()).toBe(0);
+    expect(store.pendingTaskCount()).toBe(0);
+  });
+
+  test("different-source nesting works but cannot reenter an active ancestor", async () => {
+    await store.runSerial(group, () =>
+      store.runSerial(user, async () => {
+        await expect(store.runSerial(group, () => {})).rejects.toMatchObject({
+          code: "STATE_REENTRANT",
+        });
+        expect(store.activeSourceCount()).toBe(2);
+      })
+    );
+    await store.drain();
+    expect(store.pendingTaskCount()).toBe(0);
+  });
+
+  test("async descendants of a completed task can enqueue normally", async () => {
+    const release = deferred();
+    let later;
+    await store.runSerial(group, () => {
+      later = release.promise.then(() => store.runSerial(group, () => "allowed"));
+    });
+    release.resolve();
+    await expect(later).resolves.toBe("allowed");
+    await store.drain();
+    expect(store.pendingTaskCount()).toBe(0);
   });
 });

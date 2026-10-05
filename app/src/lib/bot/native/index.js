@@ -12,6 +12,7 @@ function getStateStore() {
 }
 
 function clearLineSession(groupId) {
+  // Queue-external invalidation boundary (Express API); same-source handler calls reject STATE_REENTRANT.
   const store = getStateStore();
   const source = { type: "group", groupId };
   return store.runSerial(source, () => store.destroy(source));

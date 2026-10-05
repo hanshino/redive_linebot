@@ -143,17 +143,17 @@ test("Guild delegates and preserves the facade return value", () => {
   });
 });
 
-test("group cache transport keeps summary/count keys, return shapes and EX 60", async () => {
+test("group cache uses axios with the shared timeout, preserving keys, shapes and EX 60", async () => {
   let line;
-  let client;
+  let axios;
   let redis;
   jest.isolateModules(() => {
-    const facade = require("../../index");
-    client = {
-      getGroupSummary: jest.fn().mockResolvedValue({ groupId: "C1", groupName: "name" }),
-      getGroupMembersCount: jest.fn().mockResolvedValue(3),
-    };
-    facade.getClient.mockReturnValue(client);
+    axios = jest.requireActual("axios").default;
+    axios.defaults.timeout = 5000;
+    jest
+      .spyOn(axios, "get")
+      .mockResolvedValueOnce({ data: { groupId: "C1", groupName: "name" } })
+      .mockResolvedValueOnce({ data: { count: 3 } });
     redis = require("../../../../util/redis");
     redis.get.mockResolvedValue(null);
     line = require("../../../../util/line");
@@ -169,6 +169,17 @@ test("group cache transport keeps summary/count keys, return shapes and EX 60", 
   redis.get.mockResolvedValueOnce('{"groupName":"cached"}').mockResolvedValueOnce('{"count":9}');
   expect(await line.getGroupSummary("C1")).toEqual({ groupName: "cached" });
   expect(await line.getGroupCount("C1")).toEqual({ count: 9 });
-  expect(client.getGroupSummary).toHaveBeenCalledTimes(1);
-  expect(client.getGroupMembersCount).toHaveBeenCalledTimes(1);
+  expect(axios.get).toHaveBeenCalledTimes(2);
+  expect(axios.get).toHaveBeenNthCalledWith(1, "https://api.line.me/v2/bot/group/C1/summary", {
+    headers: { Authorization: expect.any(String) },
+  });
+  expect(axios.get).toHaveBeenNthCalledWith(
+    2,
+    "https://api.line.me/v2/bot/group/C1/members/count",
+    {
+      headers: { Authorization: expect.any(String) },
+    }
+  );
+  expect(axios.defaults.timeout).toBe(5000);
+  axios.get.mockRestore();
 });
