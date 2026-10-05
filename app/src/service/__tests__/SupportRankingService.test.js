@@ -81,36 +81,70 @@ beforeEach(async () => {
 });
 
 describe("computeMonthsByUser", () => {
-  test("weights card rows by CARD_MONTH_WEIGHT and sums cardless amounts / 30 (floor)", async () => {
+  test("months = floor(total amount / 30) across card and cardless rows", async () => {
     const a = await seedUser("a");
 
-    await sponsorship({ userId: a, cardKey: "month", cardCount: 3, receivedAt: "2026-01-01" }); // 3
-    await sponsorship({ userId: a, cardKey: "month_plus", cardCount: 2, receivedAt: "2026-01-02" }); // 4
-    await sponsorship({ userId: a, cardKey: "season", cardCount: 1, receivedAt: "2026-01-03" }); // 3
-    // cardless: 20 + 25 = 45 -> floor(45/30) = 1
+    await sponsorship({
+      userId: a,
+      cardKey: "month",
+      cardCount: 3,
+      amount: "90.00",
+      receivedAt: "2026-01-01",
+    });
+    await sponsorship({
+      userId: a,
+      cardKey: "season",
+      cardCount: 1,
+      amount: "90.00",
+      receivedAt: "2026-01-03",
+    });
+    // 零頭對個人總額累積：20 + 25 = 45，不是各自捨去成 0
     await sponsorship({ userId: a, amount: "20.00", receivedAt: "2026-01-04" });
     await sponsorship({ userId: a, amount: "25.00", receivedAt: "2026-01-05" });
 
     const rows = await Service.computeMonthsByUser();
-    const row = rows.find(r => r.userId === a);
-    expect(row.months).toBe(3 + 4 + 3 + 1);
+    expect(rows.find(r => r.userId === a).months).toBe(Math.floor(225 / 30)); // 7
   });
 
-  test("unknown card_key contributes 0 months for that row", async () => {
-    const a = await seedUser("unknown_card");
+  test("promo month_plus sold at 30 counts 1 month, not card weight", async () => {
+    const promo = await seedUser("promo");
+    const full = await seedUser("full");
     await sponsorship({
-      userId: a,
-      cardKey: "mystery_card",
-      cardCount: 5,
+      userId: promo,
+      cardKey: "month_plus",
+      cardCount: 1,
+      amount: "30.00",
+      receivedAt: "2026-01-01",
+    });
+    await sponsorship({
+      userId: full,
+      cardKey: "month_plus",
+      cardCount: 1,
+      amount: "60.00",
       receivedAt: "2026-01-01",
     });
 
     const rows = await Service.computeMonthsByUser();
-    expect(rows.find(r => r.userId === a)).toBeUndefined(); // months=0 -> excluded
+    expect(rows.find(r => r.userId === promo).months).toBe(1);
+    expect(rows.find(r => r.userId === full).months).toBe(2);
+  });
+
+  test("gifted card registered at 0 contributes no months", async () => {
+    const a = await seedUser("gift");
+    await sponsorship({
+      userId: a,
+      cardKey: "month_plus",
+      cardCount: 5,
+      amount: "0.00",
+      receivedAt: "2026-01-01",
+    });
+
+    const rows = await Service.computeMonthsByUser();
+    expect(rows.find(r => r.userId === a)).toBeUndefined();
   });
 
   test("unbound history rows (user_id NULL) are excluded entirely", async () => {
-    await sponsorship({ userId: null, cardKey: "season", cardCount: 5, receivedAt: "2026-01-01" });
+    await sponsorship({ userId: null, amount: "450.00", receivedAt: "2026-01-01" });
 
     const rows = await Service.computeMonthsByUser();
     expect(rows).toHaveLength(0);
@@ -131,13 +165,21 @@ describe("computeMonthsByUser", () => {
       userId: a,
       cardKey: "month",
       cardCount: 1,
+      amount: "30.00",
       receivedAt: new Date("2026-03-10T00:00:00.000Z"),
     });
-    await sponsorship({ userId: a, cardKey: "month", cardCount: 1, receivedAt: earliest });
     await sponsorship({
       userId: a,
       cardKey: "month",
       cardCount: 1,
+      amount: "30.00",
+      receivedAt: earliest,
+    });
+    await sponsorship({
+      userId: a,
+      cardKey: "month",
+      cardCount: 1,
+      amount: "30.00",
       receivedAt: new Date("2026-02-01T00:00:00.000Z"),
     });
 
@@ -167,9 +209,27 @@ describe("getPublicRanking", () => {
     const b = await seedUser("pub_b", { displayName: "Bob", hidden: true });
     const c = await seedUser("pub_c", { displayName: "Carol" });
 
-    await sponsorship({ userId: a, cardKey: "month", cardCount: 5, receivedAt: "2026-01-01" }); // 5
-    await sponsorship({ userId: b, cardKey: "season", cardCount: 5, receivedAt: "2026-01-01" }); // 15, hidden
-    await sponsorship({ userId: c, cardKey: "month", cardCount: 2, receivedAt: "2026-01-01" }); // 2
+    await sponsorship({
+      userId: a,
+      cardKey: "month",
+      cardCount: 5,
+      amount: "150.00",
+      receivedAt: "2026-01-01",
+    }); // 5
+    await sponsorship({
+      userId: b,
+      cardKey: "season",
+      cardCount: 5,
+      amount: "450.00",
+      receivedAt: "2026-01-01",
+    }); // 15, hidden
+    await sponsorship({
+      userId: c,
+      cardKey: "month",
+      cardCount: 2,
+      amount: "60.00",
+      receivedAt: "2026-01-01",
+    }); // 2
 
     const result = await Service.getPublicRanking();
     const names = result.items.map(i => i.display_name);
@@ -188,7 +248,13 @@ describe("getPublicRanking", () => {
 
   test("display_name falls back to 玩家 when null; picture_url may be null", async () => {
     const a = await seedUser("no_name", { displayName: null, pictureUrl: null });
-    await sponsorship({ userId: a, cardKey: "month", cardCount: 1, receivedAt: "2026-01-01" });
+    await sponsorship({
+      userId: a,
+      cardKey: "month",
+      cardCount: 1,
+      amount: "30.00",
+      receivedAt: "2026-01-01",
+    });
 
     const result = await Service.getPublicRanking();
     const row = result.items.find(i => i.rank === result.items.length || true);
@@ -208,7 +274,13 @@ describe("getMyStatus", () => {
 
   test("supporter with hide_support_ranking=true -> rank null even though has_support true", async () => {
     const a = await seedUser("hidden_self", { hidden: true });
-    await sponsorship({ userId: a, cardKey: "season", cardCount: 1, receivedAt: "2026-01-01" });
+    await sponsorship({
+      userId: a,
+      cardKey: "season",
+      cardCount: 1,
+      amount: "90.00",
+      receivedAt: "2026-01-01",
+    });
 
     const status = await Service.getMyStatus(a);
     expect(status).toEqual({ has_support: true, hidden: true, months: 3, rank: null });
@@ -217,8 +289,20 @@ describe("getMyStatus", () => {
   test("visible supporter gets a rank consistent with getPublicRanking", async () => {
     const a = await seedUser("rank_a");
     const b = await seedUser("rank_b");
-    await sponsorship({ userId: a, cardKey: "season", cardCount: 2, receivedAt: "2026-01-01" }); // 6
-    await sponsorship({ userId: b, cardKey: "month", cardCount: 1, receivedAt: "2026-01-01" }); // 1
+    await sponsorship({
+      userId: a,
+      cardKey: "season",
+      cardCount: 2,
+      amount: "180.00",
+      receivedAt: "2026-01-01",
+    }); // 6
+    await sponsorship({
+      userId: b,
+      cardKey: "month",
+      cardCount: 1,
+      amount: "30.00",
+      receivedAt: "2026-01-01",
+    }); // 1
 
     const statusA = await Service.getMyStatus(a);
     const statusB = await Service.getMyStatus(b);
@@ -230,7 +314,13 @@ describe("getMyStatus", () => {
 describe("setHidden", () => {
   test("toggling hidden flips rank between null and a real rank", async () => {
     const a = await seedUser("toggle");
-    await sponsorship({ userId: a, cardKey: "month", cardCount: 1, receivedAt: "2026-01-01" });
+    await sponsorship({
+      userId: a,
+      cardKey: "month",
+      cardCount: 1,
+      amount: "30.00",
+      receivedAt: "2026-01-01",
+    });
 
     expect((await Service.getMyStatus(a)).rank).toBe(1);
     await Service.setHidden(a, true);
