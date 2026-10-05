@@ -1,5 +1,5 @@
 const LineModel = require("../../model/platform/line");
-const { getClient } = require("bottender");
+const { getClient } = require("../../lib/bot");
 const LineClient = getClient("line");
 
 exports.getRankDatas = async (req, res) => {

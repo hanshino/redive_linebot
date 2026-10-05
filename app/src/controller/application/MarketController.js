@@ -1,8 +1,8 @@
-const { text } = require("bottender/router");
+const { text } = require("../../lib/bot");
 const { get } = require("lodash");
 const i18n = require("../../util/i18n");
 const { genActionBubble, getLiffUri } = require("../../templates/common");
-const { getClient } = require("bottender");
+const { getClient } = require("../../lib/bot");
 const { trimMentionees, getMentionName } = require("../../util/line");
 const { removeOrder, isLineUserId } = require("../../util/string");
 const lineClient = getClient("line");
@@ -38,7 +38,7 @@ function showManage(context) {
 
 /**
  * 申請交易
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  */
 async function trade(context) {
   const { mention } = context.event.message;
@@ -76,7 +76,7 @@ function getProfile(context, userId) {
 }
 
 /**
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  */
 async function transferMoney(context) {
   const { text: rawText } = context.event.message;
@@ -144,7 +144,7 @@ function isMoneyParam(param) {
 
 /**
  * 進行快速轉帳
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 function doFastTransfer(context) {
   const { userId } = context.event.source;
@@ -189,7 +189,7 @@ function doFastTransfer(context) {
 
 /**
  * 確定交易
- * @param {import ("bottender").LineContext} context
+ * @param {import ("../../lib/bot").LineContext} context
  */
 const doTransfer = async (context, { payload }) => {
   const { transferId } = payload;

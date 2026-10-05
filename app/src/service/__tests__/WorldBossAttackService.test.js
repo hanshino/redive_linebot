@@ -17,7 +17,7 @@ const mockLineClient = {
   replyMessage: jest.fn(),
   reply: jest.fn(),
 };
-jest.mock("bottender", () => ({ getClient: jest.fn(() => mockLineClient) }));
+jest.mock("../../lib/bot", () => ({ getClient: jest.fn(() => mockLineClient) }));
 
 const BattleService = require("../WorldBossBattleService");
 const SeasonService = require("../WorldBossSeasonService");

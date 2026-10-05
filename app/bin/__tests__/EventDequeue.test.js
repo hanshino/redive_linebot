@@ -14,7 +14,7 @@ describe("bin/EventDequeue ioredis leak guard", () => {
     // Grab the fresh mock factory instance AFTER resetModules — the bin
     // script will receive the same instance because both requires happen
     // post-reset.
-    mockBottender = require("bottender");
+    mockBottender = require("../../src/lib/bot");
     bin = require("../EventDequeue");
   });
 

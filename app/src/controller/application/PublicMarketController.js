@@ -1,4 +1,4 @@
-const { text } = require("bottender/router");
+const { text } = require("../../lib/bot");
 const PublicMarketService = require("../../service/PublicMarketService");
 const { generateMarketBubble } = require("../../templates/application/PublicMarket");
 const { DefaultLogger } = require("../../util/Logger");
@@ -7,7 +7,7 @@ exports.router = [text(/^[./#](市場|market)$/i, showMarket)];
 
 /**
  * 顯示公開市場總覽
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 async function showMarket(context) {
   const { userId } = context.event.source;

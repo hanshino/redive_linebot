@@ -1,4 +1,4 @@
-const { text } = require("bottender/router");
+const { text } = require("../../lib/bot");
 const { get } = require("lodash");
 const SubscribeCard = require("../../model/application/SubscribeCard");
 const SubscribeCardCoupon = require("../../model/application/SubscribeCardCoupon");
@@ -26,7 +26,7 @@ exports.privateRouter = [text(/^[.#/](我要買月卡)\s(?<number>[135]{1})$/, b
 
 /**
  * 用女神石購買月卡
- * @param {import("bottender").LineContext} context
+ * @param {import("../../lib/bot").LineContext} context
  */
 async function buyMonthCard(context, props) {
   const { userId } = context.event.source;
@@ -396,8 +396,8 @@ async function exchangeCouponWithRetry(serialNumber, userId) {
 
 /**
  * 兌換訂閱卡
- * @param {import("bottender").LineContext} context
- * @param {import("bottender").Props} param1
+ * @param {import("../../lib/bot").LineContext} context
+ * @param {import("../../lib/bot").Props} param1
  */
 async function subscribeCouponExchange(context, props) {
   const serialNumber = get(props, "match.groups.serial_number");

@@ -1,5 +1,5 @@
 const mysql = require("../../../util/mysql");
-const { getClient } = require("bottender");
+const { getClient } = require("../../../lib/bot");
 const LineClient = getClient("line");
 const redis = require("../../../util/redis");
 const { get } = require("lodash");

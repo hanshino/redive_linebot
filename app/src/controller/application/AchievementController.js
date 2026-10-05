@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-unused-vars
-const { Context, getClient } = require("bottender");
-const { text } = require("bottender/router");
+const { Context, getClient } = require("../../lib/bot");
+const { text } = require("../../lib/bot");
 const { get } = require("lodash");
 const redis = require("../../util/redis");
 const AchievementEngine = require("../../service/AchievementEngine");

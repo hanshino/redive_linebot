@@ -1,5 +1,5 @@
 // Use the real bottender chain (setup.js stubs it for other suites).
-const { chain } = jest.requireActual("bottender");
+const { chain } = jest.requireActual("../../lib/bot");
 const { withTiming, wrapChain } = require("../timing");
 const { DefaultLogger } = require("../../util/Logger");
 

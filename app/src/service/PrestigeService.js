@@ -1,4 +1,4 @@
-const { getClient } = require("bottender");
+const { getClient } = require("../lib/bot");
 const redis = require("../util/redis");
 const chatUserState = require("../util/chatUserState");
 const broadcastQueue = require("../util/broadcastQueue");

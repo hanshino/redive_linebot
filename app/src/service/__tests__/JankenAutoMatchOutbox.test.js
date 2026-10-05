@@ -32,7 +32,7 @@ jest.mock("../../util/mysql", () => mysql);
 
 // Runtime modules are deliberately required only after the local guard and mysql mock above.
 const redis = require("../../util/redis");
-const { getClient } = require("bottender");
+const { getClient } = require("../../lib/bot");
 const { DefaultLogger } = require("../../util/Logger");
 const AchievementEngine = require("../AchievementEngine");
 const Outbox = require("../../model/application/JankenAutoMatchOutbox");

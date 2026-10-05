@@ -112,7 +112,7 @@ describe("gacha.api.showGodStoneRank", () => {
   });
 
   it("never touches the LINE client (module no longer imports getClient)", async () => {
-    const bottender = require("bottender");
+    const bottender = require("../../../lib/bot");
     inventory.getGodStoneRank.mockResolvedValue([{ userId: A, amount: 300 }]);
     UserModel.getDisplayNames.mockResolvedValue(new Map([[A, "Alice"]]));
 

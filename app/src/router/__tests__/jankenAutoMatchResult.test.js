@@ -39,7 +39,7 @@ jest.mock("../../service/AuthSessionService", () => {
 // Runtime router/controller load only after guard and isolated mysql mock.
 const express = require("express");
 const request = require("supertest");
-const { getClient } = require("bottender");
+const { getClient } = require("../../lib/bot");
 const AuthSessionService = require("../../service/AuthSessionService");
 const { todayUtc8, daysAgoUtc8 } = require("../../util/date");
 const JankenAutoMatchController = require("../../controller/application/JankenAutoMatchController");

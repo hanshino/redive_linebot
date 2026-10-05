@@ -7,9 +7,10 @@
 // 此檔不重複那份證據，只覆蓋不需要真實 DB 也能驗證的決策分支，兩者並存、
 // 用途不同、互不取代。
 //
-// 全域 setup.js 把 bottender/router 的 text() mock 成回傳 `jest.fn()`（丟棄真正的
-// handler），這裡需要拿到真正的 action 函式，故對這個模組 unmock。
-jest.unmock("bottender/router");
+// 使用 facade 的真 router symbols 取得 action，保留全域 fake getClient/chain。
+const mockBot = jest.requireMock("../../../lib/bot");
+const { router, route, text, line } = jest.requireActual("../../../lib/bot");
+Object.assign(mockBot, { router, route, text, line });
 jest.mock("../../../model/application/SubscribeCard", () => ({ first: jest.fn() }));
 jest.mock("../../../model/application/SubscribeCardCoupon", () => ({
   status: { unused: 0, used: 1 },

@@ -1,10 +1,10 @@
-const { router, route, line } = require("bottender/router");
+const { router, route, line } = require("../lib/bot");
 const CustomerOrderModel = require("../model/application/CustomerOrder");
 const GuildConfigModel = require("../model/application/GuildConfig");
 const welcome = require("../templates/common/welcome");
 const lineAPI = require("../util/line");
 const { assemble } = require("../templates/common");
-const { getClient } = require("bottender");
+const { getClient } = require("../lib/bot");
 const LineClient = getClient("line");
 
 module.exports = (context, props) => {

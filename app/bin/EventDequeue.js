@@ -3,7 +3,7 @@ const redis = require("../src/util/redis");
 const { DefaultLogger } = require("../src/util/Logger");
 const replyTokenQueue = require("../src/util/replyTokenQueue");
 const broadcastQueue = require("../src/util/broadcastQueue");
-const { getClient } = require("bottender");
+const { getClient } = require("../src/lib/bot");
 
 // bottender 1.x getClient() is NOT memoized — every call constructs a fresh
 // LineBot whose RedisSessionStore opens a new ioredis socket that's never

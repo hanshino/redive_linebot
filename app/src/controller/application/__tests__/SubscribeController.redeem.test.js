@@ -50,8 +50,10 @@ const mysql = testDatabase.mysql;
 // 全域 setup.js 的 mock knex 在這裡被真 knex 取代；必須在任何 model/controller require 之前。
 jest.mock("../../../util/mysql", () => mysql);
 
-// 全域 setup.js 把 bottender/router 的 text() mock 成丟棄 handler 的 jest.fn()，這裡要真 handler。
-jest.unmock("bottender/router");
+// 使用 facade 的真 router symbols 取得 handler，保留全域 fake getClient/chain。
+const mockBot = jest.requireMock("../../../lib/bot");
+const { router, route, text, line } = jest.requireActual("../../../lib/bot");
+Object.assign(mockBot, { router, route, text, line });
 
 // 外部副作用：不打 Redis、不跑每日配給、不評估成就、不推 LINE 通知。
 jest.mock("../../princess/gacha", () => ({ purgeDailyGachaCache: jest.fn().mockResolvedValue() }));

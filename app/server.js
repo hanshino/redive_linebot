@@ -7,7 +7,7 @@ if (process.env.NODE_ENV !== "production") {
 
 const express = require("express");
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
-const { bottender } = require("bottender");
+const { bottender } = require("./src/lib/bot");
 const apiRouter = require("./src/router/api");
 const { checkOriginConfig } = require("./src/service/AuthSessionService");
 const { server, http } = require("./src/util/connection");
