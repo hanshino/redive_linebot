@@ -31,26 +31,6 @@ exports.getGroupCount = groupId => {
   });
 };
 
-exports.getUsersProfile = async userDatas => {
-  return await Promise.all(
-    userDatas.map(async data => {
-      if (data.groupId !== undefined) {
-        return LineClient.getGroupMemberProfile(data.groupId, data.userId);
-      } else if (data.roomId !== undefined) {
-        return LineClient.getRoomMemberProfile(data.roomId, data.userId);
-      } else {
-        return LineClient.getUserProfile(data.userId);
-      }
-    })
-  )
-    .then(userProfiles => {
-      let hashProfile = {};
-      userProfiles.forEach(profile => (hashProfile[profile.userId] = profile));
-      return hashProfile;
-    })
-    .catch(console.error);
-};
-
 exports.getGroupMemberProfile = async (groupId, userId) => {
   let key = `GroupMemberProfile_${groupId}_${userId}`;
   let profile = await redis.get(key);

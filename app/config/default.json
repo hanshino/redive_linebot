@@ -3,8 +3,7 @@
   "app": {
     "funds": {
       "server": 3000,
-      "available": 550,
-      "used": 0
+      "available": 550
     }
   },
   "redis": {
@@ -12,15 +11,11 @@
       "jankenDecide": "jankenDecide",
       "jankenChallenge": "jankenChallenge",
       "adminList": "adminList",
-      "gamebleGame": "gamebleGame",
-      "groupSession": "group:session:%s",
-      "revokeHasCharm": "revokeHasCharm:%s",
-      "todayHasRevoke": "todayHasRevoke:%s:%s"
+      "groupSession": "group:session:%s"
     },
     "prefix": {
       "alias": "alias",
-      "atm": "atm",
-      "command_attack": "command_attack"
+      "atm": "atm"
     }
   },
   "worldboss": {
@@ -80,9 +75,6 @@
       }
     },
     "janken": {
-      "paper": "🖐️",
-      "rock": "✊",
-      "scissors": "✌️",
       "season": {
         "snapshotTopN": 50,
         "enableSeasonEndRewards": false,
@@ -153,15 +145,6 @@
           { "minStreak": 5, "multiplier": 1.5 },
           { "minStreak": 3, "multiplier": 1.25 }
         ]
-      },
-      "images": {
-        "rock": "/assets/janken/rock.png",
-        "scissors": "/assets/janken/scissors.png",
-        "paper": "/assets/janken/paper.png",
-        "win": "/assets/janken/win.png",
-        "lose": "/assets/janken/lose.png",
-        "draw": "/assets/janken/draw.png",
-        "vs": "/assets/janken/vs.png"
       },
       "pairDampening": {
         "matchesThreshold": 3,
@@ -255,9 +238,6 @@
       }
     }
   },
-  "event_center": {
-    "daily_quest": "event_center:daily_quest"
-  },
   "daily_quest": {
     "reward": {
       "itemId": 999,
@@ -268,36 +248,13 @@
       "itemAmount": 500
     }
   },
-  "event": {
-    "expire": 86400,
-    "daily_quest": "daily_quest"
-  },
   "links": {
     "github": "https://github.com/hanshino/redive_linebot",
     "bahamut": "https://forum.gamer.com.tw/C.php?bsn=30861&snA=32345&tnum=11"
   },
   "color": {
-    "discord": "#5865F2",
     "github": "#171515",
     "bahamut": "#117e96"
-  },
-  "message": {
-    "yes": [
-      "是",
-      "Y",
-      "y",
-      "yes",
-      "Yes",
-      "YES"
-    ],
-    "no": [
-      "否",
-      "N",
-      "n",
-      "no",
-      "No",
-      "NO"
-    ]
   },
   "trade": {
     "transfer_countdown": 10

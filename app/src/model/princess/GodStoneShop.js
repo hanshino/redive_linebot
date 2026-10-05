@@ -45,7 +45,3 @@ exports.update = async function (id, attributes) {
 exports.delete = async function (id) {
   return await mysql(GOD_STONE_SHOP_TABLE).where({ id }).del();
 };
-
-exports.deleteByItemId = async function (itemId) {
-  return await mysql(GOD_STONE_SHOP_TABLE).where({ item_id: itemId }).del();
-};

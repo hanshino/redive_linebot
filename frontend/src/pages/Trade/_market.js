@@ -82,10 +82,6 @@ export const ORDER_COPY = {
   },
 };
 
-/** 掛出這張單的人：賣單是賣家，收購單是收購方（買家）。 */
-export const posterIdOf = listing =>
-  orderTypeOf(listing) === "buy" ? (listing?.buyerId ?? listing?.sellerId) : listing?.sellerId;
-
 export const posterNameOf = listing =>
   orderTypeOf(listing) === "buy"
     ? (listing?.buyerName ?? listing?.sellerName)

@@ -7,8 +7,3 @@ export function FullPageLoading({ open = true }) {
     </Backdrop>
   );
 }
-
-// For inline loading
-export function InlineLoading() {
-  return <CircularProgress size={24} />;
-}

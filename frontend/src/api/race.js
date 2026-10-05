@@ -7,8 +7,6 @@ export const placeBet = (raceId, runnerId, amount) =>
 
 export const getMyBets = () => api.get("/api/race/current/my-bets").then(r => r.data);
 
-export const getRecentFinished = () => api.get("/api/race/recent-finished").then(r => r.data);
-
 export const getRaceHistory = (limit = 5) =>
   api.get(`/api/race/history?limit=${limit}`).then(r => r.data);
 

@@ -19,11 +19,6 @@ exports.findByUser = async userId => {
     .orderBy("titles.order", "asc");
 };
 
-exports.clearAll = async trx => {
-  const db = trx || mysql;
-  return db(TABLE).delete();
-};
-
 exports.clearAllExcept = async (titleKeyPrefix, trx) => {
   const db = trx || mysql;
   return db(TABLE)
@@ -34,13 +29,6 @@ exports.clearAllExcept = async (titleKeyPrefix, trx) => {
         .select("id")
     )
     .delete();
-};
-
-exports.grant = async (userId, titleId, trx) => {
-  const db = trx || mysql;
-  const existing = await db(TABLE).where({ user_id: userId, title_id: titleId }).first();
-  if (existing) return;
-  return db(TABLE).insert({ user_id: userId, title_id: titleId });
 };
 
 exports.grantByPlatformId = async (platformId, titleId, trx) => {

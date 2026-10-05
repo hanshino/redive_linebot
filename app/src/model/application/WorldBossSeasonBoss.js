@@ -2,11 +2,9 @@ const mysql = require("../../util/mysql");
 
 const TABLE = "world_boss_season_boss";
 const ROSTER_SIZE = 5;
-const POSITIONS = Object.freeze(Array.from({ length: ROSTER_SIZE }, (_, index) => index + 1));
 
 exports.TABLE = TABLE;
 exports.ROSTER_SIZE = ROSTER_SIZE;
-exports.POSITIONS = POSITIONS;
 
 exports.listBySeason = async function (seasonId, trx) {
   const db = trx || mysql;

@@ -67,10 +67,6 @@ exports.queryOrderBySourceId = async (sourceId, status = "") => {
   return orders;
 };
 
-exports.queryOrderByKey = (orderKey, sourceId) => {
-  return mysql.select(this.columnsAlias).table(this.table).where({ orderKey, sourceId });
-};
-
 /**
  * 取得可刪除指令列表
  * @param {String} cusOrder
