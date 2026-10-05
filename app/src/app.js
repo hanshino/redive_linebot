@@ -94,6 +94,8 @@ async function HandlePostback(context, { next }) {
     let payload = JSON.parse(context.event.payload);
     let { action, cooldown = 1 } = payload;
     const { userId } = context.event.source;
+    const isPrivateAction = expectedAction =>
+      context.event.source.type === "user" && action === expectedAction;
 
     let memkey = `Postback_${userId}_${action}`;
 
@@ -117,27 +119,27 @@ async function HandlePostback(context, { next }) {
         withProps(MarketController.doTransfer, { payload })
       ),
       route(
-        () => action === "startSwordmanChangeJobMission",
+        () => isPrivateAction("startSwordmanChangeJobMission"),
         withProps(JobController.startSwordmanJobMission, { payload })
       ),
       route(
-        () => action === "swordmanChangeJobMission",
+        () => isPrivateAction("swordmanChangeJobMission"),
         withProps(JobController.swordmanAttackTarget, { payload })
       ),
       route(
-        () => action === "startMageChangeJobMission",
+        () => isPrivateAction("startMageChangeJobMission"),
         withProps(JobController.startMageChangeJobMission, { payload })
       ),
       route(
-        () => action === "mageChangeJobMission",
+        () => isPrivateAction("mageChangeJobMission"),
         withProps(JobController.mageUseElement, { payload })
       ),
       route(
-        () => action === "startThiefChangeJobMission",
+        () => isPrivateAction("startThiefChangeJobMission"),
         withProps(JobController.startThiefChangeJobMission, { payload })
       ),
       route(
-        () => action === "thiefChangeJobMission",
+        () => isPrivateAction("thiefChangeJobMission"),
         withProps(JobController.thiefSteal, { payload })
       ),
       route("*", next),
