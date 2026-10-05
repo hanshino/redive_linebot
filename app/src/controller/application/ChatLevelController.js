@@ -22,7 +22,7 @@ const GachaRecord = require("../../model/princess/GachaRecord");
 const JankenResult = require("../../model/application/JankenResult");
 const SigninService = require("../../service/SigninService");
 const DailyQuestModel = require("../../model/application/DailyQuest");
-const DonateModel = require("../../model/application/DonateList");
+const SponsorshipModel = require("../../model/application/Sponsorship");
 const SubscribeUserModel = require("../../model/application/SubscribeUser");
 const SubscribeCardModel = require("../../model/application/SubscribeCard");
 const SubscriptionService = require("../../service/SubscriptionService");
@@ -114,6 +114,19 @@ function buildSubscriptionCards(subscribeInfo, now) {
 }
 
 /**
+ * 累積贊助金額，讀贊助後台登記的 sponsorship 帳本（user.id 對應，DB decimal SUM 回字串）。
+ * ponytail: 舊 donate_list 不再計入，歷史贊助需走後台 history 補登 + 綁定。
+ * @param {String} platformId LINE userId
+ * @returns {Promise<Number>}
+ */
+async function getSponsorAmount(platformId) {
+  const id = await UserModel.getId(platformId);
+  if (!id) return 0;
+  const row = await SponsorshipModel.sumAmountByUser(id);
+  return Number((row && row.total) || 0);
+}
+
+/**
  * 顯示個人狀態，現複合了其他布丁系統的資訊
  * @param {import("../../lib/bot").LineContext} context
  */
@@ -178,7 +191,7 @@ exports.showStatus = async (context, props) => {
       time("me.janken", () => JankenResult.findUserGrade(userId)),
       time("me.signin", () => SigninService.getSummary(userId)),
       getQuestInfo(userId),
-      time("me.donate", () => DonateModel.getUserTotalAmount(userId)),
+      time("me.donate", () => getSponsorAmount(userId)),
       time("me.subscribe", () => getSubscribeInfo(userId)),
       getGachaHistory(userId),
       getGachaCollectProgress(userId),
@@ -615,4 +628,9 @@ exports.api.queryRank = async (req, res) => {
 };
 
 // Exposed for unit tests.
-exports._internal = { buildPrestigeFlags, resolveActiveTrialStar, buildSubscriptionCards };
+exports._internal = {
+  buildPrestigeFlags,
+  resolveActiveTrialStar,
+  buildSubscriptionCards,
+  getSponsorAmount,
+};
