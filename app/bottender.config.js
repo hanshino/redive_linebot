@@ -2,7 +2,7 @@ module.exports = {
   session: {
     driver: "redis",
     expiresIn: 60,
-    state: 15,
+    state: 15, // Unused by Bottender; not a separate state TTL (expiresIn is minutes).
     stores: {
       memory: {
         maxSize: 500,

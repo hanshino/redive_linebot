@@ -128,6 +128,8 @@ jest.mock("../src/util/mysql", () => mockKnex);
 
 // Mock the bot facade (prevents LINE client initialization)
 jest.mock("../src/lib/bot", () => ({
+  engine: "bottender",
+  clearLineSession: jest.fn().mockResolvedValue(1),
   getClient: jest.fn(() => ({
     getGroupMemberProfile: jest.fn().mockResolvedValue({ displayName: "TestUser" }),
     getProfile: jest.fn().mockResolvedValue({ displayName: "TestUser", userId: "Utest" }),
@@ -135,6 +137,7 @@ jest.mock("../src/lib/bot", () => ({
     replyMessage: jest.fn().mockResolvedValue({}),
     reply: jest.fn().mockResolvedValue({}),
     getGroupMembersCount: jest.fn().mockResolvedValue(0),
+    getGroupSummary: jest.fn().mockResolvedValue({ groupName: "TestGroup" }),
     getGroupMemberIds: jest.fn().mockResolvedValue([]),
   })),
   chain: jest.fn((...fns) => fns),
