@@ -241,7 +241,7 @@ exports.calculateBountyIncrement = function (fee) {
 //   由 auto.authorize 在 hook 內依序鎖）→ ④ janken_pair_stats canonical orderedPair →
 //   ⑤ janken_rating 兩列 ASC → ⑥ inventory itemId=999 依 user_id ASC（鎖讀／扣款／payout／bounty
 //   全部在 ⑤ 之後才碰 inventory）。
-// core 不開交易、不碰 Redis／LINE／Bottender context；呼叫端負責 mysql.transaction 與 commit 後的副作用。
+// core 不開交易、不碰 Redis／LINE／bot context；呼叫端負責 mysql.transaction 與 commit 後的副作用。
 // ---------------------------------------------------------------------------------------
 
 const RETRYABLE_LOCK_CODES = new Set(["ER_LOCK_DEADLOCK", "ER_LOCK_WAIT_TIMEOUT"]);

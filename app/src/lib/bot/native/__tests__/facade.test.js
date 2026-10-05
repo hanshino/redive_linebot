@@ -9,50 +9,58 @@ afterEach(() => {
   else process.env.BOT_ENGINE = originalEngine;
 });
 
-test.each(["invalid", "", "Native"])("invalid BOT_ENGINE %p throws on load", engine => {
-  process.env.BOT_ENGINE = engine;
-  jest.isolateModules(() => {
-    expect(() => jest.requireActual("../../index")).toThrow(`Unknown BOT_ENGINE: ${engine}`);
-  });
-});
+test.each(["invalid", "", "Native", "bottender"])(
+  "invalid BOT_ENGINE %p throws on load",
+  engine => {
+    process.env.BOT_ENGINE = engine;
+    jest.isolateModules(() => {
+      expect(() => jest.requireActual("../../index")).toThrow(
+        `Unsupported BOT_ENGINE: ${engine}. Only native is supported`
+      );
+    });
+  }
+);
 
-test.each([undefined, "bottender"])(
-  "engine %p preserves legacy symbol identity and exact invalidation",
+test.each([undefined, "native"])(
+  "engine %p exports native symbols and invalidates only native state",
   async engine => {
     if (engine === undefined) delete process.env.BOT_ENGINE;
     else process.env.BOT_ENGINE = engine;
-    let result;
-    jest.isolateModules(() => {
+    await jest.isolateModulesAsync(async () => {
       const facade = jest.requireActual("../../index");
-      const legacy = jest.requireActual("bottender");
-      expect(facade.engine).toBe("bottender");
+      const native = require("../index");
+      expect(facade.engine).toBe("native");
       for (const name of [
         "chain",
         "withProps",
         "getClient",
         "Context",
         "LineContext",
-        "bottender",
+        "router",
+        "route",
+        "text",
+        "line",
+        "clearLineSession",
+        "mountWebhook",
       ]) {
-        expect(facade[name]).toBe(legacy[name]);
+        expect(facade[name]).toBe(native[name]);
       }
       const redis = require("../../../../util/redis");
       redis.del.mockResolvedValueOnce(7);
-      result = facade.clearLineSession("C1");
-      expect(redis.del).toHaveBeenLastCalledWith("line:C1");
+      expect(await facade.clearLineSession("C1")).toBe(7);
+      expect(redis.del).toHaveBeenLastCalledWith("bot:native:v1:line:group:C1");
     });
-    expect(await result).toBe(7);
   }
 );
 
-test("native selects once and does not load Bottender, server, or Redis merely by importing facade", () => {
+test("native selects once and does not load the removed engine, server, or Redis on import", () => {
   process.env.BOT_ENGINE = "native";
   jest.isolateModules(() => {
     const before = new Set(Object.keys(require.cache));
     const facade = jest.requireActual("../../index");
     expect(facade.engine).toBe("native");
     expect(facade.bottender).toBeUndefined();
-    process.env.BOT_ENGINE = "bottender";
+    process.env.BOT_ENGINE = "invalid";
     expect(jest.requireActual("../../index")).toBe(facade);
     const added = Object.keys(require.cache).filter(path => !before.has(path));
     expect(added.some(path => /node_modules\/bottender\//.test(path))).toBe(false);

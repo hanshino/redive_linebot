@@ -251,7 +251,7 @@ class LineContext extends Context {
       this._shouldBatch = false;
       if (this._replyMessages.length && this._event.replyToken) {
         // Deliberate difference: let LINE reject >5 messages rather than truncate.
-        // Like Bottender, flushing does not set _isReplied or clear the queue.
+        // Preserve the contract: flushing does not set _isReplied or clear the queue.
         await this._client.reply(this._event.replyToken, this._replyMessages);
       }
     }

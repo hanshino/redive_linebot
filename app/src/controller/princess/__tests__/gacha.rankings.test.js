@@ -112,15 +112,15 @@ describe("gacha.api.showGodStoneRank", () => {
   });
 
   it("never touches the LINE client (module no longer imports getClient)", async () => {
-    const bottender = require("../../../lib/bot");
+    const bot = require("../../../lib/bot");
     inventory.getGodStoneRank.mockResolvedValue([{ userId: A, amount: 300 }]);
     UserModel.getDisplayNames.mockResolvedValue(new Map([[A, "Alice"]]));
 
     await gacha.api.showGodStoneRank({}, createRes());
 
-    // gacha.js no longer requires bottender's getClient at module scope
+    // gacha.js does not require the bot getClient at module scope
     // (removed alongside the per-row profile lookup); getClient must never
     // fire as a side effect of ranking requests.
-    expect(bottender.getClient).not.toHaveBeenCalled();
+    expect(bot.getClient).not.toHaveBeenCalled();
   });
 });

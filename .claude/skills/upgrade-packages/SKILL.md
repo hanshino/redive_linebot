@@ -5,7 +5,7 @@ description: Audit and upgrade npm packages in app/ and frontend/ to mitigate se
 
 # Upgrade Packages
 
-Two workspaces only: `app/` (Bottender backend + Express + Socket.IO) and `frontend/` (React 19 + MUI 7 + Vite). Both use **yarn**, not npm. Run every workspace step inside its own directory.
+Two workspaces only: `app/` (native LINE backend + Express + Socket.IO) and `frontend/` (React 19 + MUI 7 + Vite). Both use **yarn**, not npm. Run every workspace step inside its own directory.
 
 ## Workflow
 
@@ -24,11 +24,11 @@ yarn audit --level moderate   # security advisory scan
 
 Parallelise across workspaces: 4 commands total, all independent.
 
-**Transitive advisories matter.** Most advisories in `app/` come through `bottender` (→ `ngrok`, `@slack/rtm-api`, `body-parser`, etc.), not direct deps. `ncu -u` only rewrites top-level `package.json`, so it cannot fix these. For each transitive advisory, consider:
+**Transitive advisories matter.** `ncu -u` only rewrites top-level `package.json`, so it cannot fix all transitive advisories. For each transitive advisory, consider:
 
-- Is the vulnerable path reachable from our code? (e.g. `bottender>ngrok>*` is dev-tunnel-only; we use ngrok standalone on the host — largely not reachable in prod.)
+- Is the vulnerable path reachable from our code or only used by development tooling?
 - Can a yarn `resolutions` block in the root `package.json` pin the transitive dep to a patched version without breaking the parent?
-- Is there a newer `bottender` or fork that cuts the dep chain?
+- Is there a newer parent dependency that cuts the vulnerable chain?
 
 Include these questions in the needs-review bucket when the CVE is critical/high.
 
@@ -36,13 +36,14 @@ Include these questions in the needs-review bucket when the CVE is critical/high
 
 For every package `ncu` flags, tag it into one of three buckets using semver + context:
 
-| Bucket | Criteria |
-|--------|----------|
-| **safe** | patch / minor bump, no known breaking changelog entry, or explicitly addresses a `yarn audit` advisory |
-| **needs-review** | major bump, or minor bump on a package known to change APIs (React, MUI, Knex, Bottender, Vite, ESLint, Jest, Socket.IO, react-router-dom) |
-| **skip** | pinned on purpose (e.g. React 19 ecosystem locks, Bottender 1.x), or breaking change with no security benefit |
+| Bucket           | Criteria                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **safe**         | patch / minor bump, no known breaking changelog entry, or explicitly addresses a `yarn audit` advisory                                         |
+| **needs-review** | major bump, or minor bump on a package known to change APIs (React, MUI, Knex, @line/bot-sdk, Vite, ESLint, Jest, Socket.IO, react-router-dom) |
+| **skip**         | pinned on purpose (e.g. React 19 ecosystem locks), or breaking change with no security benefit                                                 |
 
 Hints from `CLAUDE.md`:
+
 - Frontend is mid-migration to MUI 7 card layouts — watch MUI/Emotion majors.
 - Backend is CommonJS. Don't silently bump packages that have gone ESM-only (chalk, node-fetch, got v12+, nanoid v4+, etc.) — those are `skip` or `needs-review`.
 - Knex + `better-sqlite3` have native bindings — major bumps are `needs-review`.
@@ -120,6 +121,7 @@ After install succeeds, verify each workspace hasn't obviously regressed:
 Run lint synchronously (fast), tests/build in the background. Collect results when they finish.
 
 If anything fails:
+
 1. Report the failure with the exact error.
 2. Ask the user whether to roll back (`git checkout -- package.json yarn.lock && yarn install`) or investigate. Don't auto-rollback.
 

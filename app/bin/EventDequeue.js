@@ -5,10 +5,7 @@ const replyTokenQueue = require("../src/util/replyTokenQueue");
 const broadcastQueue = require("../src/util/broadcastQueue");
 const { getClient } = require("../src/lib/bot");
 
-// bottender 1.x getClient() is NOT memoized — every call constructs a fresh
-// LineBot whose RedisSessionStore opens a new ioredis socket that's never
-// quit() when the bot reference is GC'd. Resolve once at module load so the
-// hot per-event path doesn't leak a connection per call.
+// Resolve the shared LINE client once outside the hot per-event path.
 const lineClient = getClient("line");
 
 // Mirrors src/middleware/statistics.js — leading /, # or . followed by a

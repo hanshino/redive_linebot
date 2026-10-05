@@ -128,17 +128,20 @@ jest.mock("../src/util/mysql", () => mockKnex);
 
 // Mock the bot facade (prevents LINE client initialization)
 jest.mock("../src/lib/bot", () => ({
-  engine: "bottender",
+  engine: "native",
   clearLineSession: jest.fn().mockResolvedValue(1),
+  mountWebhook: jest.fn(),
   getClient: jest.fn(() => ({
     getGroupMemberProfile: jest.fn().mockResolvedValue({ displayName: "TestUser" }),
     getProfile: jest.fn().mockResolvedValue({ displayName: "TestUser", userId: "Utest" }),
-    pushMessage: jest.fn().mockResolvedValue({}),
+    getUserProfile: jest.fn().mockResolvedValue({ displayName: "TestUser", userId: "Utest" }),
+    getRoomMemberProfile: jest.fn().mockResolvedValue({ displayName: "TestUser" }),
+    getMessageContent: jest.fn().mockResolvedValue(Buffer.alloc(0)),
+    getGroupCount: jest.fn().mockResolvedValue({ count: 0 }),
     replyMessage: jest.fn().mockResolvedValue({}),
     reply: jest.fn().mockResolvedValue({}),
     getGroupMembersCount: jest.fn().mockResolvedValue(0),
     getGroupSummary: jest.fn().mockResolvedValue({ groupName: "TestGroup" }),
-    getGroupMemberIds: jest.fn().mockResolvedValue([]),
   })),
   chain: jest.fn((...fns) => fns),
   withProps: jest.fn(fn => fn),
@@ -153,6 +156,8 @@ jest.mock("../src/lib/bot", () => ({
     unfollow: jest.fn(),
     join: jest.fn(),
     leave: jest.fn(),
+    memberJoined: jest.fn(),
+    memberLeft: jest.fn(),
   },
 }));
 

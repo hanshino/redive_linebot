@@ -18,6 +18,7 @@ Business Logic (e.g. GachaController)
 ```
 
 Key files:
+
 - `app/src/service/AchievementEngine.js` — Event mapping, strategies, evaluate/unlock logic
 - `app/migrations/` — Achievement definitions (seed data)
 - `frontend/src/pages/Achievement/index.jsx` — Icon mapping (optional)
@@ -67,6 +68,7 @@ exports.down = async function (knex) {
 ```
 
 If a new **category** is needed (rare), also insert into `achievement_categories`:
+
 ```js
 await knex("achievement_categories").insert({
   key: "<key>", name: "<name>", icon: "<emoji>", order: <number>
@@ -82,7 +84,7 @@ In `EVENT_ACHIEVEMENT_MAP`, either add the achievement key to an existing event 
 ```js
 const EVENT_ACHIEVEMENT_MAP = {
   // ... existing mappings ...
-  purchase: ["purchase_monthly_card"],  // new event type
+  purchase: ["purchase_monthly_card"], // new event type
 };
 ```
 
@@ -90,13 +92,13 @@ const EVENT_ACHIEVEMENT_MAP = {
 
 In `ACHIEVEMENT_STRATEGY`, define how progress is calculated. Choose from built-in strategies:
 
-| Strategy | Use When | Example |
-|----------|----------|---------|
-| `instant` | One-time trigger, immediately unlocks | First purchase, first kill |
-| `increment` | Count occurrences | Buy N times, win N matches |
-| `contextValue` | Progress comes from external data | Level reached, unique count |
-| `threshold` | Context value must exceed a minimum | Score >= 100 in one game |
-| `timeWindow` | Must happen during specific hours | Action between 3-4 AM |
+| Strategy         | Use When                                           | Example                              |
+| ---------------- | -------------------------------------------------- | ------------------------------------ |
+| `instant`        | One-time trigger, immediately unlocks              | First purchase, first kill           |
+| `increment`      | Count occurrences                                  | Buy N times, win N matches           |
+| `contextValue`   | Progress comes from external data                  | Level reached, unique count          |
+| `threshold`      | Context value must exceed a minimum                | Score >= 100 in one game             |
+| `timeWindow`     | Must happen during specific hours                  | Action between 3-4 AM                |
 | `mentionKeyword` | @mention a target userId, optionally with keywords | Greet an admin; touch a specific god |
 
 ```js
@@ -107,6 +109,7 @@ const ACHIEVEMENT_STRATEGY = {
 ```
 
 For custom logic, write a plain function:
+
 ```js
   some_complex_achievement: (cv, a, ctx) => {
     // Custom calculation, return new progress value
@@ -122,7 +125,7 @@ In the relevant controller or service, add the fire-and-forget call:
 const AchievementEngine = require("../service/AchievementEngine");
 
 // After the action completes:
-AchievementEngine.evaluate(userId, "purchase", { /* optional context */ });
+AchievementEngine.evaluate(userId, "purchase", {/* optional context */});
 ```
 
 The `context` object passes extra data that strategies might need (e.g. `{ streak: 5 }`, `{ level: 10 }`, `{ uniqueCount: 50 }`).
@@ -136,7 +139,7 @@ In `frontend/src/pages/Achievement/index.jsx`, add to `ACHIEVEMENT_ICONS`:
 ```js
 const ACHIEVEMENT_ICONS = {
   // ... existing ...
-  purchase_monthly_card: ShoppingCartIcon,  // import from @mui/icons-material
+  purchase_monthly_card: ShoppingCartIcon, // import from @mui/icons-material
 };
 ```
 
@@ -158,12 +161,13 @@ A data-driven trigger that fires when a user sends a text message that @mentions
 
 ```json
 {
-  "targetUserIds": ["U123...", "U456..."],  // ALL must be @mentioned
-  "keywords": ["謝謝", "感謝"]               // ALL must appear as substrings. May be empty.
+  "targetUserIds": ["U123...", "U456..."], // ALL must be @mentioned
+  "keywords": ["謝謝", "感謝"] // ALL must appear as substrings. May be empty.
 }
 ```
 
 Semantics:
+
 - `targetUserIds` is **required**. Empty → never unlocks.
 - `keywords` is **optional**. Empty array (`[]`) means "mention-only trigger" — the achievement fires on any message that @mentions all target userIds, regardless of text content.
 - Both lists use all-must-match (AND) semantics, not any-match.
@@ -171,6 +175,7 @@ Semantics:
 ### When to use empty keywords
 
 Use mention-only triggers (`keywords: []`) when:
+
 - The target userId is rarely @mentioned (e.g. a niche persona), so the trigger threshold is naturally low.
 - You want the achievement to feel serendipitous — the user doesn't need to know what to say.
 
@@ -217,7 +222,7 @@ await knex("achievements").insert({
   order: 100,
   condition: JSON.stringify({
     targetUserIds: ["U80ca6f24809c9a00981562b771fb6b84"],
-    keywords: [],  // ← empty: fires on any mention of the target userId
+    keywords: [], // ← empty: fires on any mention of the target userId
   }),
   notify_on_unlock: true,
   notify_message:
@@ -239,17 +244,19 @@ No controller changes needed — `statistics.js` already dispatches `mention_key
 
 ## Unlock Notifications (`notify_on_unlock`)
 
-Select achievements can send a reply back to the chat where the unlock was triggered, via Bottender's batched reply queue (zero extra LINE API cost — batched into the same `reply` call as other messages).
+Select achievements can send a reply back to the chat where the unlock was triggered, via the native bot's batched reply queue (batched into the same `reply` call as other messages).
 
 ### How to enable
 
 Set two columns on the achievement row:
+
 - `notify_on_unlock: true` (default `false` → silent, logs only)
 - `notify_message: "<template>"` (or `null` to use the default template)
 
 ### Template placeholders
 
 Supported in custom `notify_message`:
+
 - `{user}` — the unlocker's `display_name` (falls back to literal `"玩家"` if missing)
 - `{name}` — achievement name
 - `{icon}` — achievement icon
@@ -264,14 +271,15 @@ Repeated placeholders are replaced globally. `{description}` is intentionally no
 
 ### Call-site pattern
 
-`AchievementEngine.evaluate()` returns `{ unlocked: Achievement[] }`. For any call site that has a Bottender `context`, use the `notifyUnlocks` helper to emit replies:
+`AchievementEngine.evaluate()` returns `{ unlocked: Achievement[] }`. For any call site that has a bot `context`, use the `notifyUnlocks` helper to emit replies:
 
 ```js
 const AchievementEngine = require("../service/AchievementEngine");
 const { notifyUnlocks } = require("../service/achievementNotifier");
 
-const { unlocked } = await AchievementEngine.evaluate(userId, "<eventType>", ctx)
-  .catch(() => ({ unlocked: [] }));
+const { unlocked } = await AchievementEngine.evaluate(userId, "<eventType>", ctx).catch(() => ({
+  unlocked: [],
+}));
 await notifyUnlocks(context, userId, unlocked);
 ```
 
@@ -279,25 +287,25 @@ Batch/cron call sites (no `context`) simply ignore the return value — that's f
 
 ### Reply-queue cap
 
-LINE reply tokens cap at 5 messages per reply. If a single event generates >5 `context.replyText` calls (controller replies + unlock notifications combined), Bottender drops the overflow and logs a warning. This is tolerated as-is — unlikely in practice and harmless.
+LINE reply tokens cap at 5 messages per reply. The native bot sends the entire batch in one request without truncation; LINE rejects an oversized batch. There is no retry or push fallback.
 
 ## Achievement Types Reference
 
-| Type | Behavior | Example |
-|------|----------|---------|
-| `milestone` | Visible progress, straightforward goal | "Send 100 messages" |
-| `hidden` | Name/description hidden until unlocked | "Trigger easter egg" |
-| `challenge` | Visible but harder to achieve | "Win 10 in a row" |
-| `social` | Involves interaction with others | "Be challenged by 10 users" |
+| Type        | Behavior                               | Example                     |
+| ----------- | -------------------------------------- | --------------------------- |
+| `milestone` | Visible progress, straightforward goal | "Send 100 messages"         |
+| `hidden`    | Name/description hidden until unlocked | "Trigger easter egg"        |
+| `challenge` | Visible but harder to achieve          | "Win 10 in a row"           |
+| `social`    | Involves interaction with others       | "Be challenged by 10 users" |
 
 ## Rarity Reference
 
 | Value | Name | Typical reward_stones |
-|-------|------|----------------------|
-| 0 | 普通 | 30-50 |
-| 1 | 稀有 | 150-200 |
-| 2 | 史詩 | 300-500 |
-| 3 | 傳說 | 300+ |
+| ----- | ---- | --------------------- |
+| 0     | 普通 | 30-50                 |
+| 1     | 稀有 | 150-200               |
+| 2     | 史詩 | 300-500               |
+| 3     | 傳說 | 300+                  |
 
 ## Tracked Sets (for unique-count achievements)
 
@@ -305,10 +313,9 @@ For achievements that track unique items (e.g. "chat in 5 different groups"), us
 
 ```js
 // In ACHIEVEMENT_STRATEGY:
-my_unique_achievement: "tracked_groups",  // or "tracked_features"
-
-// The context must include the item to track:
-AchievementEngine.evaluate(userId, "some_event", { groupId: "..." });
+my_unique_achievement: ("tracked_groups", // or "tracked_features"
+  // The context must include the item to track:
+  AchievementEngine.evaluate(userId, "some_event", { groupId: "..." }));
 // or
 AchievementEngine.evaluate(userId, "some_event", { feature: "gacha" });
 ```
@@ -318,6 +325,7 @@ If you need a new tracked set type, model it after `handleTrackedSet()` in Achie
 ## Checklist
 
 Before finishing, verify:
+
 - [ ] Migration created via `yarn knex migrate:make` (not manually)
 - [ ] Achievement key is unique across all achievements
 - [ ] Event type added to `EVENT_ACHIEVEMENT_MAP`

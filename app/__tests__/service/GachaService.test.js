@@ -239,7 +239,7 @@ describe("GachaService.runDailyDraw", () => {
     expect(txInserts.some(t => t.table === "gacha_record")).toBe(true);
   });
 
-  it("accepts only a userId (no bottender context) without throwing", async () => {
+  it("accepts only a userId (no bot context) without throwing", async () => {
     await expect(GachaService.runDailyDraw("Uonly")).resolves.toBeDefined();
   });
 
