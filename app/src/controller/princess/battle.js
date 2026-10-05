@@ -18,13 +18,14 @@ function BattleException(message, code) {
  * 回報戰隊出完三刀，並寫進資料庫
  * @param {Context} context
  */
-exports.reportFinish = context => {
+exports.reportFinish = async context => {
   const { groupId, userId } = context.event.source;
   let userName = context.state.userDatas[userId].displayName || "路人甲";
 
-  BattleModel.setFinishBattle(groupId, userId).then(() =>
-    context.replyText(`恭喜${userName}今日已成為成功人士(出完三刀)！`, { sender: BattleSender })
-  );
+  await BattleModel.setFinishBattle(groupId, userId);
+  await context.replyText(`恭喜${userName}今日已成為成功人士(出完三刀)！`, {
+    sender: BattleSender,
+  });
 };
 
 /**
