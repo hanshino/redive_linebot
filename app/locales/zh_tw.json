@@ -71,14 +71,6 @@
       "add_usage": "使用方法： !addad <純文字訊息內容|json訊息格式> --senderName=<發送者姓名> --senderIcon=<發送者圖像> --title=<標題>",
       "add_success": "成功新增廣告： {{ id }}, 請記住ID, 方便後續操作\n標題： {{ title }}\n發送人： {{ senderName }}\n發送頭像： {{ senderIcon }}"
     },
-    "donate": {
-      "no_data": "沒有資料",
-      "list_usage": "使用方法： !donate list",
-      "add_usage": "使用方法： !donate add <斗內金額> <@標記某人>",
-      "add_no_mention": "沒有標記任何人",
-      "add_fail": "新增失敗",
-      "add_success": "成功紀錄 {{ amount }} 元斗內金額"
-    },
     "achievement": {
       "no_data": "還沒有任何成就，快去探索各種功能吧！",
       "no_titles": "目前沒有持有任何稱號"
