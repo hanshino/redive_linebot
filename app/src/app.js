@@ -24,7 +24,6 @@ const GodStoneShopController = require("./controller/princess/GodStoneShop");
 const CharacterController = require("./controller/princess/character");
 const JankenController = require("./controller/application/JankenController");
 const AchievementController = require("./controller/application/AchievementController");
-const DonateListController = require("./controller/application/DonateListController");
 const AliasController = require("./controller/application/AliasController");
 const MarketController = require("./controller/application/MarketController");
 const PublicMarketController = require("./controller/application/PublicMarketController");
@@ -282,7 +281,6 @@ function AdminOrder() {
   return [
     text(/^[.#/](後台管理|system(call)?)/i, showManagePlace),
     ...AchievementController.adminRouter,
-    ...DonateListController.adminRouter,
     ...AliasController.adminRouter,
     ...CouponController.adminRouter,
   ];
