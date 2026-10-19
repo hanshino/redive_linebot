@@ -120,7 +120,11 @@
 
 - **圖庫**：在 Gemini 網頁手動生成，每一階段都拿上一階段的圖當參考圖，只加或升級裝備，維持同一隻。
   - 每個角色 5 張，每個種族 1 張蛋。v1 每種特性 3 個角色，共 15 個角色、約 82 張。
-  - 圖片路徑由 `theme_unit_id` 和外觀階段推出來，不存 URL。由 `/bot-assets` 提供。
+  - 圖片放在 PictShare（`img.hanshino.dev`，上傳用 `app/src/util/pictshare.js`），不進 repo。
+    PictShare 的 hash 是隨機產生的，推不出路徑，所以在 `default.json` 存一張對照表：
+    `group_pet.gallery.units.<unit_id> = [5 個階段的 hash]`、`group_pet.gallery.eggs.<種族> = hash`。
+  - 縮圖用 PictShare 的網址參數即時產生，例如 `/{寬}x{高}/{hash}`，加 `/webp` 可以轉格式。
+    原圖約 2～3MB，卡片用 `512x512`（約 550KB），縮圖用 `240x240`（約 135KB）。
   - 缺某個階段的圖時，退回該角色已有的最高階段圖；完全沒圖就用該種族的預設圖。
 - **為什麼不在執行時生圖**：Gemini API 的圖片模型沒有免費額度；個人訂閱（Google AI Pro、ChatGPT、Claude）的條款不允許拿來當 bot 的自動生圖後端。
   手動做圖庫零執行成本、每張都人工挑過。之後要每群獨一無二，再改接 Gemini API（Google AI Pro 每月附 $10 Cloud credit，可能可以抵）。
@@ -314,7 +318,10 @@ group_pet_member                -- 玩家的所屬群組
 
 ## 待決 / 風險
 
-- [ ] 圖庫：先拿佩可試做 5 階段，確認一致性後再量產；圖片放 repo（像 `assets/janken/`）還是只放線上掛載目錄。
+- [x] 圖庫試做：佩可（`105801`）5 個階段加人族的蛋已完成，一致性 OK，已上傳 PictShare：
+  蛋 `jo4v25`，階段 1～5 分別是 `07vi38`、`rxfxfk`、`n9b69q`、`nwp3br`、`dkuewa`（都是 `.png`）。
+  做法：用 ChatGPT 生圖，雛鳥附 3★ 立繪（`units/full/105831`），之後每階段附「前一階段的圖 + 立繪」
+  （第 4、5 階段改附 6★ 立繪 `105861`），prompt 指定只參考服裝；傳說階段先生角色，再另外叫它補光效與背景。
 - [ ] 角色→特性的分類清單（Gemini 跑一次，人工審）。
 - [x] 各詞綴的步進值與單項上限：改用點數制，見〈數值〉。EXP 曲線已依線上數據定案。
 - [x] 寵物打出世界王最後一擊：現行沒有擊殺獎勵，不需處理，見〈寵物助攻〉。
