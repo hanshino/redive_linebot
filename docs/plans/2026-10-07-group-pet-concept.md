@@ -141,6 +141,42 @@
   - 縮圖用 PictShare 的網址參數即時產生，例如 `/{寬}x{高}/{hash}`，加 `/webp` 可以轉格式。
     原圖約 2～3MB，卡片用 `512x512`（約 550KB），縮圖用 `240x240`（約 135KB）。
   - 缺某個階段的圖時，退回該角色已有的最高階段圖；完全沒圖就用該種族的預設圖。
+- **v1 圖庫名單**（15 個角色，每種特性 3 個）：從兩個模型都判定一致、而且都給高信心的角色裡挑，
+  並盡量讓動物不重複。**排除聯動角色**（偶像大師、Re:Zero、碧藍幻想、殭屍哪有那麼萌等），因為那些是其他作品的版權。
+  立繪網址是 `units/full/<前 4 碼>31.png`（3★）和 `<前 4 碼>61.png`（6★）。
+
+  | 特性 | 角色 | unit_id | 種族 → 動物 | 6★ 立繪 |
+  |---|---|---|---|---|
+  | 話癆 | 貪吃佩可 | 105801 | 人族 → 小雞 | 有（**已完成**） |
+  | 話癆 | 鈴奈 | 101601 | 魔族 → 小蝙蝠 | 有 |
+  | 話癆 | 璃乃 | 101101 | 人族 → 小雞 | 有 |
+  | 佛系 | 可可蘿 | 105901 | 精靈族 → 小兔 | 有 |
+  | 佛系 | 烏爾姆 | 127801 | 龍人族 → 小龍 | **無**，全程用 3★ |
+  | 佛系 | 優衣 | 100201 | 人族 → 小雞 | 有 |
+  | 戰鬥狂 | 真琴 | 104301 | 獸人族 → 小狼 | 有 |
+  | 戰鬥狂 | 嘉夜 | 106501 | 龍人族 → 小龍 | 有 |
+  | 戰鬥狂 | 怜 | 100301 | 魔族 → 小蝙蝠 | 有 |
+  | 賭徒 | 秋乃 | 103201 | 人族 → 小雞 | 有 |
+  | 賭徒 | 珠希 | 104601 | 獸人族 → 小貓 | 有 |
+  | 賭徒 | 克蕾琪塔 | 118001 | 人族 → 小雞 | **無**，全程用 3★ |
+  | 好勝 | 伊莉亞 | 104401 | 魔族 → 小蝙蝠 | 有 |
+  | 好勝 | 莫妮卡 | 105301 | 人族 → 小雞 | 有 |
+  | 好勝 | 凱留 | 106001 | 獸人族 → 小貓 | 有 |
+
+  - 蛋：人族已完成，還要做魔族、精靈族、龍人族、獸人族 4 顆。總計 14 個角色 × 5 張 + 4 顆蛋 = 74 張。
+  - 分類原始資料不進 repo（含兩個模型的分歧 40 筆、耳型分歧 11 筆），擴充圖庫時再補審。
+- **生圖 prompt 範本**（ChatGPT／Gemini 網頁，每段開頭都要加風格基底）：
+  - 風格基底：`Cute chibi mascot illustration, a small round baby {動物}, soft cel shading, clean thick outlines, pastel colors, centered full body, plain soft cream background, square 1:1, no text, sticker style. A real baby {動物} animal, not a human, no human face.`
+  - 參考圖附法：雛鳥只附 3★ 立繪；之後每階段附「圖 1 = 前一階段 + 圖 2 = 立繪」，正式與傳說換 6★。固定加上：
+    `Image 1 is the {動物} to keep identical (body, face, colors, style). Image 2 is ONLY a costume/color reference: borrow its outfit details, colors and weapon design, adapted onto the {動物}. Do NOT draw the human girl, do NOT copy its art style.`
+  - 各階段要求：
+    1. `Newly hatched, wearing only her single most iconic small accessory (hair ornament / ribbon / hat) from the reference.`
+    2. `Same {動物}, now also wearing a small version of her main outfit. Keep everything else identical.`
+    3. `Same {動物}, full outfit, holding a small toy-sized version of her weapon.`
+    4. `Same {動物}, ornate upgraded outfit with richer details, larger weapon, confident battle pose.`
+    5. 先生 `Same {動物}, legendary full outfit, cape or aura, larger glowing weapon.`，再另外叫它只補特效：
+       `Edit this image. Keep the {動物} exactly identical. Only add: glowing weapon, golden aura and sparkles, background with a radiant burst themed on her signature skill, a few small floating items related to her hobby. No text.`
+  - 蛋：`A single egg with a pattern themed on {種族} (e.g. bat wings for demon, leaves for elf, dragon scales for dragonkin, paw prints for beastkin), slightly glowing.`
 - **為什麼不在執行時生圖**：Gemini API 的圖片模型沒有免費額度；個人訂閱（Google AI Pro、ChatGPT、Claude）的條款不允許拿來當 bot 的自動生圖後端。
   手動做圖庫零執行成本、每張都人工挑過。之後要每群獨一無二，再改接 Gemini API（Google AI Pro 每月附 $10 Cloud credit，可能可以抵）。
 
@@ -337,7 +373,7 @@ group_pet_member                -- 玩家的所屬群組
   蛋 `jo4v25`，階段 1～5 分別是 `07vi38`、`rxfxfk`、`n9b69q`、`nwp3br`、`dkuewa`（都是 `.png`）。
   做法：用 ChatGPT 生圖，雛鳥附 3★ 立繪（`units/full/105831`），之後每階段附「前一階段的圖 + 立繪」
   （第 4、5 階段改附 6★ 立繪 `105861`），prompt 指定只參考服裝；傳說階段先生角色，再另外叫它補光效與背景。
-- [ ] 角色→特性的分類清單（councillor-gemini 與 councillor-claude 各跑一次，一致的直接採用，不一致的人工審）。
+- [x] 角色→特性：Claude、GPT 各分類一次（Gemini 上游失敗），128 個角色有 88 個一致；v1 名單見〈外觀〉。
 - [x] 各詞綴的步進值與單項上限：改用點數制，見〈數值〉。EXP 曲線已依線上數據定案。
 - [x] 寵物打出世界王最後一擊：現行沒有擊殺獎勵，不需處理，見〈寵物助攻〉。
 - [x] 沒有進行中的世界王賽季時（例如 2026-09-26 第 1 季結束後），升級抽獎直接把 `pet_boss_assist` 從池子排除，
