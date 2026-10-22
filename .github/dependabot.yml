@@ -5,3 +5,14 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+
+  # Base images are pinned to patch versions; bump them when security releases land
+  - package-ecosystem: "docker"
+    directories:
+      - "/app"
+      - "/frontend"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
