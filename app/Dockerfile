@@ -1,4 +1,4 @@
-FROM node:lts AS build
+FROM node:24.22.1-bookworm AS build
 
 # Install dumb-init
 RUN apt-get update && apt-get install -y --no-install-recommends dumb-init
@@ -13,7 +13,7 @@ RUN yarn install --production=true
 
 #### Build Time Finished ####
 
-FROM node:lts-bookworm-slim
+FROM node:24.22.1-bookworm-slim
 
 LABEL Name="redive機器人核心"
 LABEL description="機器人語言組，分析所有訊息，進行功能響應"
