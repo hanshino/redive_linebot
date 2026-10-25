@@ -58,12 +58,12 @@ function BlessingCard({ blessing, BlessingIcon, onClick }) {
             <BlessingIcon sx={{ fontSize: 32, color: "primary.main" }} />
           </Box>
 
-          <Typography variant="subtitle2" fontWeight={700}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             {blessing.displayName}
           </Typography>
 
           {blessing.description && (
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+            <Typography variant="body2" sx={{ color: "text.secondary", fontSize: 13 }}>
               {blessing.description}
             </Typography>
           )}
@@ -133,7 +133,7 @@ function FinalBlessingDialog({ open, blessing, onClose, onConfirm, confirming })
           disabled={!matched || confirming}
           autoFocus
         >
-          確認覺醒
+          {confirming ? "處理中…" : "確認覺醒"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -142,7 +142,7 @@ function FinalBlessingDialog({ open, blessing, onClose, onConfirm, confirming })
 
 // ─── BlessingSelectView ───────────────────────────────────────────────────────
 
-export default function BlessingSelectView({ status, onRefresh, onMutationError }) {
+export default function BlessingSelectView({ status, onRefresh, onMutationError, onPrestiged }) {
   const [selectedBlessing, setSelectedBlessing] = useState(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -164,7 +164,15 @@ export default function BlessingSelectView({ status, onRefresh, onMutationError 
     setConfirming(true);
     try {
       await prestige(selectedBlessing.id);
+      const done = selectedBlessing;
       setSelectedBlessing(null);
+      // 慶祝畫面由父層持有：onRefresh 之後這個 view 會被換掉
+      onPrestiged?.({
+        count: nextPrestigeNumber,
+        blessingName: done.displayName,
+        blessingSlug: done.slug,
+        awakened: isFinalPrestige,
+      });
       onRefresh();
     } catch (err) {
       onMutationError(err?.response?.data?.message ?? "無法完成轉生");
@@ -183,25 +191,30 @@ export default function BlessingSelectView({ status, onRefresh, onMutationError 
 
   return (
     <>
-      {/* Header prompt */}
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
-        選擇一個祝福完成第 {nextPrestigeNumber} 次轉生
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {isFinalPrestige ? "此為最終祝福，選擇後將進入覺醒終態。" : "祝福將永久累加，不可重來。"}
-      </Typography>
+      {/* 標題與清單包成同一塊，外層 gap 才不會疊在標題間距上 */}
+      <Box>
+        {/* Header prompt */}
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: isFinalPrestige ? 0.5 : 2 }}>
+          選擇一個祝福完成第 {nextPrestigeNumber} 次轉生
+        </Typography>
+        {isFinalPrestige && (
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
+            此為最終祝福，選擇後將進入覺醒終態。
+          </Typography>
+        )}
 
-      <Grid container spacing={2}>
-        {availableBlessings.map(blessing => (
-          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={blessing.id}>
-            <BlessingCard
-              blessing={blessing}
-              BlessingIcon={getBlessingIcon(blessing.slug)}
-              onClick={() => handleCardClick(blessing)}
-            />
-          </Grid>
-        ))}
-      </Grid>
+        <Grid container spacing={2}>
+          {availableBlessings.map(blessing => (
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={blessing.id}>
+              <BlessingCard
+                blessing={blessing}
+                BlessingIcon={getBlessingIcon(blessing.slug)}
+                onClick={() => handleCardClick(blessing)}
+              />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
 
       {/* Standard confirmation dialog (prestige 1–4) */}
       {!isFinalPrestige && selectedBlessing && (
@@ -213,14 +226,12 @@ export default function BlessingSelectView({ status, onRefresh, onMutationError 
           title={`選擇祝福「${selectedBlessing.displayName}」？`}
           description={[
             `效果：${selectedBlessing.description ?? ""}（永久疊加）`,
-            "",
-            "此選擇不可重來，祝福將永久鎖定在你的覺醒 build 中。",
-            "",
-            `確認將完成第 ${nextPrestigeNumber} 次轉生，等級歸零從 Lv.1 重新開始。`,
+            "此選擇不可重來，等級歸零從 Lv.1 重新開始。",
           ].join("\n")}
           submitText={`選擇「${selectedBlessing.displayName}」並轉生`}
           cancelText="取消"
-          disabled={confirming}
+          destructive
+          busy={confirming}
         />
       )}
 

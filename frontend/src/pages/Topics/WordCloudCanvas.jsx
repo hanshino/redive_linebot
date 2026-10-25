@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Box } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import WordCloud from "wordcloud";
 
 // wordcloud2.js is a vanilla canvas library: it draws straight onto a <canvas>
@@ -8,17 +9,26 @@ import WordCloud from "wordcloud";
 // on unmount. Nothing here "fights" React 19 — React only owns the <canvas>
 // element; wordcloud2 owns its pixels.
 
-// Cyan→amber ramp, matching the in-chat Flex bar ramp and the chat-level cyan
-// feature accent (theme primary #00ACC1 / secondary #F59E0B). The biggest words
-// get the brightest cyan; the long tail fades toward amber so the cloud reads as
-// a single coherent object rather than confetti.
-const RAMP = ["#00838F", "#00ACC1", "#26C6DA", "#5BC8D6", "#9AD9B0", "#F6B247", "#F59E0B"];
+// Cyan→amber ramp, matching the in-chat Flex bar ramp. 色值取自 theme.palette，
+// 深淺模式各自通過對比：最大的字用 primary.main，長尾逐步轉向 secondary（焦糖 / 琥珀），
+// 讓整團字讀起來是同一個物件而不是彩紙。canvas 吃實際色值，所以在元件裡建 ramp。
+function buildRamp(palette) {
+  return [
+    palette.primary.main,
+    palette.primary.main,
+    palette.primary.light,
+    palette.success.main,
+    palette.secondary.main,
+    palette.secondary.main,
+    palette.secondary.main,
+  ];
+}
 
-function colorForWeight(weight, maxWeight) {
-  if (!maxWeight) return RAMP[0];
+function colorForWeight(ramp, weight, maxWeight) {
+  if (!maxWeight) return ramp[0];
   const ratio = 1 - Math.min(1, weight / maxWeight); // 0 = biggest
-  const idx = Math.min(RAMP.length - 1, Math.round(ratio * (RAMP.length - 1)));
-  return RAMP[idx];
+  const idx = Math.min(ramp.length - 1, Math.round(ratio * (ramp.length - 1)));
+  return ramp[idx];
 }
 
 /**
@@ -28,6 +38,7 @@ function colorForWeight(weight, maxWeight) {
  * @param {number} [props.height=320]
  */
 export default function WordCloudCanvas({ items, height = 320 }) {
+  const theme = useTheme();
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const [width, setWidth] = useState(0);
@@ -51,6 +62,7 @@ export default function WordCloudCanvas({ items, height = 320 }) {
     // compress so the long tail stays legible next to one or two giant terms.
     const list = items.map(it => [it.keyword, Math.max(1, Math.pow(it.count, 0.8))]);
     const maxWeight = Math.max(...list.map(([, w]) => w));
+    const ramp = buildRamp(theme.palette);
 
     // Scale the canvas for crisp text on hi-dpi screens.
     const dpr = window.devicePixelRatio || 1;
@@ -63,7 +75,7 @@ export default function WordCloudCanvas({ items, height = 320 }) {
       weightFactor: w => (w / maxWeight) * (height / 6) * dpr,
       fontFamily: '"Noto Sans TC", "Helvetica Neue", Arial, sans-serif',
       fontWeight: "700",
-      color: (_word, weight) => colorForWeight(weight, maxWeight),
+      color: (_word, weight) => colorForWeight(ramp, weight, maxWeight),
       backgroundColor: "transparent",
       rotateRatio: 0.3,
       rotationSteps: 2,
@@ -75,14 +87,20 @@ export default function WordCloudCanvas({ items, height = 320 }) {
     return () => {
       WordCloud.stop();
     };
-  }, [items, width, height]);
+  }, [items, width, height, theme]);
+
+  // canvas 讀不出內容：把最常出現的詞放進 aria-label
+  const topWords = (items || [])
+    .slice(0, 5)
+    .map(it => it.keyword)
+    .join("、");
 
   return (
     <Box ref={wrapRef} sx={{ width: "100%" }}>
       <canvas
         ref={canvasRef}
         style={{ width: "100%", height, display: "block" }}
-        aria-label="文字雲"
+        aria-label={topWords ? `文字雲，最常出現的詞：${topWords}` : "文字雲"}
         role="img"
       />
     </Box>

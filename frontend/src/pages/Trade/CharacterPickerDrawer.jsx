@@ -87,10 +87,10 @@ export default function CharacterPickerDrawer({
           {title}
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {hits.length} / {items.length} 位
           </Typography>
-          <IconButton onClick={onClose} size="small" aria-label="關閉角色選擇">
+          <IconButton onClick={onClose} aria-label="關閉角色選擇" sx={{ width: 44, height: 44 }}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -137,10 +137,10 @@ export default function CharacterPickerDrawer({
       >
         {items.length === 0 ? (
           <Box sx={{ py: 6, textAlign: "center", color: "text.secondary" }}>
-            您目前沒有可交易的角色
+            你目前沒有可交易的角色
           </Box>
         ) : hits.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: "center", color: "text.secondary", fontSize: 13 }}>
+          <Box sx={{ py: 6, textAlign: "center", color: "text.secondary", fontSize: 14 }}>
             沒有符合「{keyword}」的角色。
             <br />
             可以搜名字或角色編號。
@@ -225,7 +225,13 @@ export default function CharacterPickerDrawer({
             paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
           }}
         >
-          <Button fullWidth variant="contained" disabled={localId == null} onClick={handleConfirm}>
+          <Button
+            fullWidth
+            variant="contained"
+            disabled={localId == null}
+            onClick={handleConfirm}
+            sx={{ minHeight: 44 }}
+          >
             確定
           </Button>
         </Box>

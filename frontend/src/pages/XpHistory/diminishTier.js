@@ -3,11 +3,12 @@ const TIER1_RATE = 1;
 const TIER2_RATE = 0.3;
 const TIER3_RATE = 0.03;
 
+// sx 的 theme token 字串（只會拿去當 bgcolor），不寫死色值。
 export const TIER_ACCENT = {
-  cyan: "#00ACC1",
-  amber: "#F59E0B",
-  red: "#DC2626",
-  grey: "#9CA3AF",
+  cyan: "primary.light",
+  amber: "secondary.light",
+  red: "error.main",
+  grey: "grey.500",
 };
 
 export function tierAccentFromFactor(factor, { degraded } = {}) {

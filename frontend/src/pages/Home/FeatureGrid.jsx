@@ -1,100 +1,70 @@
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
 import { Grid, Card, CardActionArea, CardContent, Box, Typography } from "@mui/material";
-import HowToVoteIcon from "@mui/icons-material/HowToVote";
+import { alpha } from "@mui/material/styles";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
-import GroupIcon from "@mui/icons-material/Group";
-import LocalLibraryIcon from "@mui/icons-material/LocalLibrary";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 
+// 只列「點了真的會去某個頁面」的功能。專屬指令、公會管理、遊戲查詢、公會戰這幾項
+// 只能在 LINE 聊天室使用，沒有網頁入口，指令說明統一收在「使用手冊」。
+// 標籤本身就說明了去向，所以不另加描述文字。
+// color 是 theme.palette 的 key，不寫死色碼，深淺模式各自對應。
 const features = [
-  {
-    icon: HowToVoteIcon,
-    label: "專屬指令",
-    description: "自訂群組指令",
-    path: null,
-    color: "#6C63FF",
-  },
   {
     icon: RecordVoiceOverIcon,
     label: "幹話等級",
-    description: "聊天經驗排行",
     path: "/rankings",
-    color: "#FFB830",
-  },
-  { icon: GroupIcon, label: "公會管理", description: "群組設定管理", path: null, color: "#51CF66" },
-  {
-    icon: LocalLibraryIcon,
-    label: "遊戲查詢",
-    description: "角色與裝備資訊",
-    path: null,
-    color: "#74C0FC",
-  },
-  {
-    icon: EmojiEventsIcon,
-    label: "公會戰",
-    description: "報刀與戰績",
-    path: null,
-    color: "#FF6B6B",
+    color: "secondary",
   },
   {
     icon: StorefrontIcon,
     label: "轉蛋商店",
-    description: "女神石兌換",
     path: "/gacha/exchange",
-    color: "#E599F7",
+    color: "primary",
   },
   {
     icon: FitnessCenterIcon,
     label: "裝備管理",
-    description: "查看我的裝備",
     path: "/equipment",
-    color: "#FF6B6B",
+    color: "success",
   },
   {
-    icon: AutoAwesomeIcon,
+    icon: SettingsSuggestIcon,
     label: "自動設定",
-    description: "訂閱者自動行為",
     path: "/auto/settings",
-    color: "#9775FA",
+    color: "primary",
   },
   {
     icon: SportsMmaIcon,
     label: "今日自動配對",
-    description: "月卡 Plus 自動猜拳結果",
     path: "/auto/match",
-    color: "#00ACC1",
+    color: "secondary",
+  },
+  {
+    icon: MenuBookIcon,
+    label: "使用手冊",
+    path: "/panel/manual",
+    color: "success",
   },
 ];
 
 export default function FeatureGrid() {
-  const navigate = useNavigate();
-
   return (
-    <Box sx={{ mb: 3 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
+    <Box component="section" sx={{ mb: 3 }}>
+      <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
         功能一覽
       </Typography>
       <Grid container spacing={2}>
-        {features.map(({ icon: Icon, label, description, path, color }) => (
-          <Grid size={{ xs: 6, sm: 4, md: 3 }} key={label}>
-            <Card
-              sx={{
-                height: "100%",
-                transition:
-                  "border-color 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out",
-                "&:hover": {
-                  transform: "translateY(-2px)",
-                },
-              }}
-            >
+        {features.map(({ icon: Icon, label, path, color }) => (
+          <Grid size={{ xs: 6, sm: 4, md: 4 }} key={label}>
+            <Card sx={{ height: "100%" }}>
               <CardActionArea
-                onClick={() => path && navigate(path)}
-                disabled={!path}
-                sx={{ height: "100%", p: 2 }}
+                component={RouterLink}
+                to={path}
+                sx={{ height: "100%", p: 2, minHeight: 44 }}
               >
                 <CardContent sx={{ textAlign: "center", p: 0 }}>
                   <Box
@@ -105,23 +75,13 @@ export default function FeatureGrid() {
                       width: 56,
                       height: 56,
                       borderRadius: 2,
-                      bgcolor: `${color}15`,
+                      bgcolor: theme => alpha(theme.palette[color].main, 0.1),
                       mb: 1.5,
                     }}
                   >
-                    <Icon sx={{ fontSize: 32, color }} />
+                    <Icon sx={{ fontSize: 32, color: `${color}.main` }} />
                   </Box>
-                  <Typography variant="subtitle2" gutterBottom>
-                    {label}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    {description}
-                  </Typography>
+                  <Typography variant="subtitle2">{label}</Typography>
                 </CardContent>
               </CardActionArea>
             </Card>

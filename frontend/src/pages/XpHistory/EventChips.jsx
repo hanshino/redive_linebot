@@ -1,37 +1,45 @@
 import { Box, Stack } from "@mui/material";
 
-const STYLES = {
-  honeymoon: { bg: "#E8F9EF", fg: "#15803D" },
-  trial: { bg: "#FFF7E6", fg: "#B45309" },
-  blessing: { bg: "#E0F7FA", fg: "#00838F" },
-  group: { bg: "#E0F7FA", fg: "#00838F" },
-  dim2: { bg: "#FFF7E6", fg: "#B45309" },
-  dim3: { bg: "#FDECEC", fg: "#B91C1C", border: "#DC2626" },
-  perm: { bg: "#F3E8FF", fg: "#6B21A8" },
-  weatherDebuff: { bg: "#FBEEE1", fg: "#B96322" },
-  weatherBuff: { bg: "#E4F2EA", fg: "#2B8C63" },
-  weatherProtect: { bg: "#E6EDFB", fg: "#3767CF" },
+import { chipColors, getXpTokens } from "./xpTokens";
+
+// kind → 前景色（取自 xpTokens）；底色由 chipColors 依深淺模式降透明度。
+const KIND_COLOR = {
+  honeymoon: "positive",
+  trial: "caution",
+  blessing: "bonus",
+  group: "bonus",
+  dim2: "caution",
+  dim3: "negative",
+  perm: "violet",
+  weatherDebuff: "weatherDebuff",
+  weatherBuff: "weatherBuff",
+  weatherProtect: "weatherProtect",
 };
 
 export function EventChip({ kind, label, value }) {
-  const s = STYLES[kind] || STYLES.group;
   return (
     <Box
       component="span"
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 0.5,
-        px: 1,
-        py: "2px",
-        borderRadius: 999,
-        bgcolor: s.bg,
-        color: s.fg,
-        border: s.border ? `1px solid ${s.border}` : "none",
-        fontSize: 11,
-        fontWeight: 700,
-        lineHeight: 1.4,
-        whiteSpace: "nowrap",
+      sx={theme => {
+        const colorKey = KIND_COLOR[kind] || KIND_COLOR.group;
+        const fg = getXpTokens(theme)[colorKey];
+        const { bg } = chipColors(theme, fg);
+        return {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 0.5,
+          px: 1,
+          py: "2px",
+          borderRadius: 999,
+          bgcolor: bg,
+          color: fg,
+          // 第三階遞減加一圈邊，跟第二階（同樣是橘色系）不靠顏色也分得出來
+          border: kind === "dim3" ? `1px solid ${fg}` : "none",
+          fontSize: 12,
+          fontWeight: 700,
+          lineHeight: 1.4,
+          whiteSpace: "nowrap",
+        };
       }}
     >
       <span>{label}</span>
@@ -54,7 +62,7 @@ export function EventChip({ kind, label, value }) {
 export function EventChipRow({ chips }) {
   if (!chips?.length) return null;
   return (
-    <Stack direction="row" gap={0.5} flexWrap="wrap" alignItems="center">
+    <Stack direction="row" sx={{ gap: 0.5, flexWrap: "wrap", alignItems: "center" }}>
       {chips.map((c, i) => (
         <EventChip key={i} {...c} />
       ))}

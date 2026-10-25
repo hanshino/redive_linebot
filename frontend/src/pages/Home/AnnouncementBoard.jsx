@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Card,
@@ -13,18 +13,34 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import api from "../../services/api";
+import LoadError from "../../components/LoadError";
 
 export default function AnnouncementBoard() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    api
-      .get("/api/announcements/1")
-      .then(r => setAnnouncements(r.data || []))
-      .catch(() => setAnnouncements([]))
-      .finally(() => setLoading(false));
+  const fetchAnnouncements = useCallback(() => {
+    return (
+      api
+        .get("/api/announcements/1")
+        .then(r => setAnnouncements(r.data || []))
+        // 載入失敗不能說「目前沒有公告」，那是在騙人；顯示錯誤並可重試
+        .catch(() => setError(true))
+        .finally(() => setLoading(false))
+    );
   }, []);
+
+  // 首次載入 loading 本來就是 true；只有重試才需要把狀態重設
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
+
+  const load = () => {
+    setLoading(true);
+    setError(false);
+    fetchAnnouncements();
+  };
 
   const breakingNews = announcements[0];
   const otherNews = announcements.slice(1, 4);
@@ -49,7 +65,9 @@ export default function AnnouncementBoard() {
           <Typography variant="h6">公告欄</Typography>
         </Box>
 
-        {breakingNews ? (
+        {error ? (
+          <LoadError message="公告載入失敗，請稍後再試。" onRetry={load} sx={{ py: 0 }} />
+        ) : breakingNews ? (
           <Alert
             severity={breakingNews.severity || "info"}
             sx={{ mb: otherNews.length > 0 ? 2 : 0 }}

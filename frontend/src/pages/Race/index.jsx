@@ -16,6 +16,7 @@ import {
   Avatar,
   Paper,
   Button,
+  ButtonBase,
 } from "@mui/material";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import BoltIcon from "@mui/icons-material/Bolt";
@@ -23,6 +24,7 @@ import TimerIcon from "@mui/icons-material/Timer";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import FlagIcon from "@mui/icons-material/Flag";
+import LoadError from "../../components/LoadError";
 import { getCurrentRace, getRaceHistory } from "../../api/race";
 
 const POLL_INTERVAL = 10000;
@@ -34,12 +36,8 @@ const STATUS_META = {
   finished: { label: "已結束", color: "default", Icon: CheckCircleIcon },
 };
 
-// rank → style
-const RANK_STYLES = {
-  1: { bg: "#F59E0B", text: "#fff", label: "1st" },
-  2: { bg: "#64748B", text: "#fff", label: "2nd" },
-  3: { bg: "#92400E", text: "#fff", label: "3rd" },
-};
+// 前三名徽章文字；底色走 theme.palette.medal（金銀銅，深淺模式各自調過）
+const RANK_LABELS = { 1: "1st", 2: "2nd", 3: "3rd" };
 
 const STATUS_CHIP_COLORS = {
   stunned: "error",
@@ -58,7 +56,9 @@ export default function Race() {
   const [raceData, setRaceData] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // error：一筆資料都沒載入成功；stale：之前載入過，但這次輪詢失敗（畫面是舊資料）
+  const [error, setError] = useState(false);
+  const [stale, setStale] = useState(false);
   const timerRef = useRef(null);
   const hasDataRef = useRef(false);
 
@@ -71,10 +71,12 @@ export default function Race() {
       setRaceData(data);
       setHistory(historyRes.history ?? []);
       hasDataRef.current = true;
-      setError(null);
+      setError(false);
+      setStale(false);
     } catch (err) {
       console.error("Failed to fetch race", err);
-      if (!hasDataRef.current) setError("無法載入比賽資料");
+      if (hasDataRef.current) setStale(true);
+      else setError(true);
     } finally {
       setLoading(false);
     }
@@ -99,6 +101,12 @@ export default function Race() {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [fetchRace]);
+
+  const retry = () => {
+    setError(false);
+    setLoading(true);
+    fetchRace();
+  };
 
   // ─── loading skeleton ─────────────────────────────────────────────────────
 
@@ -148,19 +156,20 @@ export default function Race() {
         <Button
           variant={raceData?.race?.status === "betting" ? "contained" : "outlined"}
           color={raceData?.race?.status === "betting" ? "warning" : "primary"}
-          size="small"
           onClick={() => navigate("/race/bet")}
-          sx={{ fontWeight: 700, minWidth: 100, borderRadius: 2 }}
+          sx={{ fontWeight: 700, minWidth: 100, minHeight: 44, borderRadius: 2 }}
         >
           {raceData?.race?.status === "betting" ? "前往下注" : "下注 / 紀錄"}
         </Button>
       </Box>
-      {error && (
+      {stale && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          {error}
+          更新失敗，畫面顯示的是上次載入的內容。
         </Alert>
       )}
-      {!raceData?.race ? (
+      {error ? (
+        <LoadError message="無法載入比賽資料，請檢查網路後再試一次。" onRetry={retry} />
+      ) : !raceData?.race ? (
         <NoRace />
       ) : (
         <>
@@ -189,7 +198,7 @@ export default function Race() {
         </>
       )}
       {/* history only when no active race */}
-      {!raceData?.race && history.length > 0 && (
+      {!error && !raceData?.race && history.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <RaceHistory history={history} onRaceClick={id => navigate(`/race/${id}`)} />
         </Box>
@@ -319,18 +328,18 @@ function RaceTrack({ runners, trackLength = DEFAULT_TRACK_LENGTH }) {
 function RunnerRow({ runner, trackLength }) {
   const progress = Math.min((runner.position / trackLength) * 100, 100);
   const isWinner = runner.position >= trackLength;
-  const rankStyle = RANK_STYLES[runner.rank];
+  const rankLabel = RANK_LABELS[runner.rank];
 
   // progress bar color
   let barColor;
   if (isWinner) {
-    barColor = "#F59E0B"; // gold for winner
+    barColor = "secondary.light"; // gold for winner
   } else if (runner.rank === 1) {
     barColor = "success.main";
   } else if (runner.rank <= 3) {
     barColor = "primary.main";
   } else {
-    barColor = "grey.400";
+    barColor = "text.disabled";
   }
 
   return (
@@ -347,22 +356,26 @@ function RunnerRow({ runner, trackLength }) {
       >
         {/* rank badge */}
         <Box
-          sx={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            bgcolor: rankStyle ? rankStyle.bg : "grey.300",
-            color: rankStyle ? rankStyle.text : "text.secondary",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            fontSize: "0.65rem",
-            fontWeight: 700,
-          }}
+          role="img"
           aria-label={`第 ${runner.rank} 名`}
+          sx={theme => {
+            const medal = rankLabel ? theme.palette.medal[runner.rank - 1] : null;
+            return {
+              width: 30,
+              height: 30,
+              borderRadius: "50%",
+              bgcolor: medal ?? "action.selected",
+              color: medal ? theme.palette.getContrastText(medal) : "text.secondary",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              fontSize: "0.75rem",
+              fontWeight: 700,
+            };
+          }}
         >
-          {runner.rank <= 3 ? rankStyle.label : runner.rank}
+          {rankLabel ?? runner.rank}
         </Box>
 
         {/* avatar */}
@@ -374,7 +387,11 @@ function RunnerRow({ runner, trackLength }) {
             height: 42,
             flexShrink: 0,
             border: 2,
-            borderColor: isWinner ? "#F59E0B" : runner.rank === 1 ? "success.main" : "divider",
+            borderColor: isWinner
+              ? "secondary.light"
+              : runner.rank === 1
+                ? "success.main"
+                : "divider",
             transition: "border-color 200ms ease",
           }}
         />
@@ -396,7 +413,8 @@ function RunnerRow({ runner, trackLength }) {
             </Typography>
             {isWinner && (
               <EmojiEventsIcon
-                sx={{ fontSize: 16, color: "#F59E0B", flexShrink: 0 }}
+                role="img"
+                sx={{ fontSize: 16, color: "secondary.light", flexShrink: 0 }}
                 aria-label="冠軍"
               />
             )}
@@ -405,7 +423,7 @@ function RunnerRow({ runner, trackLength }) {
                 label={STATUS_CHIP_LABELS[runner.status]}
                 color={STATUS_CHIP_COLORS[runner.status]}
                 size="small"
-                sx={{ height: 18, fontSize: "0.6rem", fontWeight: 700, flexShrink: 0 }}
+                sx={{ height: 20, fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 }}
               />
             )}
           </Box>
@@ -448,7 +466,7 @@ function RunnerRow({ runner, trackLength }) {
         sx={{
           height: 10,
           borderRadius: 5,
-          bgcolor: theme => (theme.palette.mode === "dark" ? "rgba(255,255,255,0.08)" : "grey.200"),
+          bgcolor: "surface.inset",
           "& .MuiLinearProgress-bar": {
             borderRadius: 5,
             bgcolor: barColor,
@@ -493,8 +511,9 @@ function EventLog({ events }) {
               <Paper
                 elevation={0}
                 sx={{
-                  minWidth: 28,
-                  height: 20,
+                  minWidth: 32,
+                  height: 22,
+                  px: 0.5,
                   borderRadius: 1,
                   bgcolor: "primary.main",
                   display: "flex",
@@ -505,7 +524,8 @@ function EventLog({ events }) {
                 }}
               >
                 <Typography
-                  sx={{ fontSize: "0.6rem", fontWeight: 700, color: "primary.contrastText" }}
+                  variant="caption"
+                  sx={{ fontWeight: 700, lineHeight: 1, color: "primary.contrastText" }}
                 >
                   R{event.round}
                 </Typography>
@@ -530,7 +550,8 @@ function EventLog({ events }) {
 
 // ─── RaceHistory ─────────────────────────────────────────────────────────────
 
-const HISTORY_BORDER = ["#F59E0B", "#94A3B8", "#92400E", "divider", "divider"];
+// 前三場的冠軍頭像框用金銀銅，其餘用一般分隔線色
+const historyBorder = (theme, i) => theme.palette.medal[i] ?? theme.palette.divider;
 
 function RaceHistory({ history, onRaceClick }) {
   return (
@@ -551,18 +572,21 @@ function RaceHistory({ history, onRaceClick }) {
               hour: "2-digit",
               minute: "2-digit",
             });
-            const borderColor = HISTORY_BORDER[i] ?? "divider";
 
             return (
-              <Box
+              <ButtonBase
                 key={r.id}
                 onClick={() => onRaceClick && onRaceClick(r.id)}
+                aria-label={`查看 ${r.winner_name} 奪冠的賽事，${finishedAt}`}
                 sx={{
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: "flex-start",
                   gap: 1.5,
                   py: 1.25,
-                  cursor: "pointer",
+                  minHeight: 44,
+                  width: "100%",
+                  textAlign: "left",
                   borderRadius: 1,
                   transition: "background-color 150ms ease",
                   "&:hover": { bgcolor: "action.hover" },
@@ -591,13 +615,13 @@ function RaceHistory({ history, onRaceClick }) {
                     height: 38,
                     flexShrink: 0,
                     border: 2.5,
-                    borderColor,
+                    borderColor: theme => historyBorder(theme, i),
                     transition: "border-color 200ms ease",
                   }}
                 />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    {i === 0 && <EmojiEventsIcon sx={{ fontSize: 14, color: "#F59E0B" }} />}
+                    {i === 0 && <EmojiEventsIcon sx={{ fontSize: 14, color: "secondary.light" }} />}
                     <Typography
                       variant="body2"
                       sx={{
@@ -620,7 +644,7 @@ function RaceHistory({ history, onRaceClick }) {
                     {r.round && <> &middot; {r.round} 回合</>}
                   </Typography>
                 </Box>
-              </Box>
+              </ButtonBase>
             );
           })}
         </Stack>

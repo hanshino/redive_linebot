@@ -1,23 +1,31 @@
 import { useState, useCallback } from "react";
 
-export default function useAlertDialog() {
-  const [state, setState] = useState({
-    open: false,
-    title: "",
-    description: "",
-    submitText: "確認",
-    cancelText: "取消",
-    onSubmit: null,
-    onCancel: null,
-  });
+const DEFAULTS = {
+  title: "",
+  description: "",
+  submitText: "確認",
+  cancelText: "取消",
+  destructive: false,
+  busy: false,
+  onSubmit: null,
+  onCancel: null,
+};
 
+export default function useAlertDialog() {
+  const [state, setState] = useState({ ...DEFAULTS, open: false });
+
+  // 每次開啟都從預設值開始，避免上一次的 destructive / submitText 殘留到下一個確認框
   const handleOpen = useCallback(detail => {
-    setState(prev => ({ ...prev, ...detail, open: true }));
+    setState({ ...DEFAULTS, ...detail, open: true });
   }, []);
 
   const handleClose = useCallback(() => {
-    setState(prev => ({ ...prev, open: false }));
+    setState(prev => ({ ...prev, open: false, busy: false }));
   }, []);
 
-  return [state, { handleOpen, handleClose }];
+  const setBusy = useCallback(busy => {
+    setState(prev => ({ ...prev, busy }));
+  }, []);
+
+  return [state, { handleOpen, handleClose, setBusy }];
 }

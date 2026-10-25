@@ -1,20 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  Paper,
-  Skeleton,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Box, Card, CardContent, Chip, Paper, Skeleton, Stack, Typography } from "@mui/material";
 import CasinoIcon from "@mui/icons-material/Casino";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import HistoryIcon from "@mui/icons-material/History";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import useLiff from "../../context/useLiff";
 import { getHistory } from "../../services/autoPreference";
 
@@ -94,35 +85,40 @@ function GachaModeBadge({ summary }) {
   const fallback = reward?.fallback_reason;
   if (!breakdown && !fallback) return null;
   return (
-    <Stack
-      direction="row"
-      spacing={0.5}
-      sx={{
-        alignItems: "center",
-        mt: 0.25,
-      }}
-    >
-      {breakdown && (
-        <Chip
-          size="small"
-          variant="outlined"
-          label={breakdown}
-          sx={{ fontSize: "0.7rem", height: 20 }}
-        />
-      )}
-      {fallback && (
-        <Tooltip title={FALLBACK_LABEL[fallback] || fallback} arrow>
+    <Box sx={{ mt: 0.25 }}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
+        {breakdown && (
+          <Chip
+            size="small"
+            variant="outlined"
+            label={breakdown}
+            sx={{ fontSize: "0.75rem", height: 22 }}
+          />
+        )}
+        {fallback && (
           <Chip
             size="small"
             color="warning"
             variant="outlined"
             icon={<ReportProblemIcon sx={{ fontSize: "0.85rem !important" }} />}
             label="降級"
-            sx={{ fontSize: "0.7rem", height: 20 }}
+            sx={{ fontSize: "0.75rem", height: 22 }}
           />
-        </Tooltip>
+        )}
+      </Stack>
+      {/* 降級原因直接寫出來：手機沒有 hover，藏在 Tooltip 裡看不到 */}
+      {fallback && (
+        <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.25 }}>
+          {FALLBACK_LABEL[fallback] || fallback}
+        </Typography>
       )}
-    </Stack>
+    </Box>
   );
 }
 
@@ -168,7 +164,7 @@ function HistoryItemCard({ item }) {
 function EmptyState() {
   return (
     <Paper sx={{ p: 4, textAlign: "center", borderRadius: 3 }}>
-      <HistoryIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+      <HistoryIcon sx={{ fontSize: 48, color: "text.disabled", mb: 1 }} />
       <Typography
         sx={{
           color: "text.secondary",
@@ -182,7 +178,7 @@ function EmptyState() {
 
 function HistorySkeleton() {
   return (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} aria-busy="true" aria-label="正在載入自動行為紀錄">
       {[1, 2, 3, 4].map(i => (
         <Skeleton key={i} variant="rounded" height={64} animation="wave" />
       ))}
@@ -194,6 +190,9 @@ export default function AutoHistory() {
   const { loggedIn: isLoggedIn } = useLiff();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
+  // 讀取失敗要跟「尚無紀錄」分開顯示，否則玩家會以為自己沒有任何紀錄
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     document.title = "自動行為紀錄";
@@ -203,13 +202,14 @@ export default function AutoHistory() {
     if (!isLoggedIn) return;
     let cancelled = false;
     setLoading(true);
+    setError(false);
     getHistory({ limit: 30, type: "all" })
       .then(data => {
         if (cancelled) return;
         setItems(data.items || []);
       })
       .catch(() => {
-        if (!cancelled) setItems([]);
+        if (!cancelled) setError(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -217,7 +217,9 @@ export default function AutoHistory() {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, reloadKey]);
+
+  const retry = useCallback(() => setReloadKey(k => k + 1), []);
 
   const grouped = useMemo(() => {
     const map = new Map();
@@ -239,7 +241,7 @@ export default function AutoHistory() {
           borderRadius: 3,
           background: theme =>
             `linear-gradient(135deg, ${theme.palette.secondary.dark} 0%, ${theme.palette.secondary.main} 100%)`,
-          color: "#fff",
+          color: "secondary.contrastText",
         }}
       >
         <Stack
@@ -254,14 +256,13 @@ export default function AutoHistory() {
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               自動行為紀錄
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              最近 30 天的自動抽卡與自動猜拳紀錄。
-            </Typography>
           </Box>
         </Stack>
       </Paper>
       {loading ? (
         <HistorySkeleton />
+      ) : error ? (
+        <LoadError message="無法載入自動行為紀錄，請檢查網路後再試一次。" onRetry={retry} />
       ) : grouped.length === 0 ? (
         <EmptyState />
       ) : (
@@ -269,12 +270,11 @@ export default function AutoHistory() {
           {grouped.map(([day, entries]) => (
             <Box key={day}>
               <Typography
-                variant="overline"
+                variant="subtitle2"
                 sx={{
                   color: "text.secondary",
                   display: "block",
                   mb: 1,
-                  letterSpacing: 1,
                 }}
               >
                 {day}

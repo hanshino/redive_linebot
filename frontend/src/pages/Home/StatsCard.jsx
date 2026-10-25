@@ -1,24 +1,24 @@
 import { Card, CardContent, Box, Typography, Skeleton } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 export default function StatsCard({ icon: Icon, label, value, loading }) {
   return (
     <Card
       sx={{
         height: "100%",
-        cursor: "default",
-        transition: "border-color 0.2s ease-out, box-shadow 0.2s ease-out",
       }}
     >
       <CardContent sx={{ display: "flex", alignItems: "center", gap: 2, p: 2.5 }}>
         <Box
           sx={{
-            display: "flex",
+            // 手機兩欄時卡片只有 ~140px 寬，圖示讓出空間給數字，大數字才不會被截成「9,99…」
+            display: { xs: "none", sm: "flex" },
             alignItems: "center",
             justifyContent: "center",
             width: 48,
             height: 48,
             borderRadius: 2,
-            bgcolor: theme => `${theme.palette.primary.main}15`,
+            bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
             color: "primary.main",
             flexShrink: 0,
           }}

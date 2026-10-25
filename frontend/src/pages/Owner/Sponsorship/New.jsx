@@ -117,7 +117,7 @@ function Segment({ value, onChange, options, ariaLabel, color = "primary" }) {
               {o.title}
             </Typography>
           </Stack>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {o.sub}
           </Typography>
         </ToggleButton>
@@ -246,7 +246,7 @@ export default function SponsorshipNew() {
             component={RouterLink}
             to="/owner/sponsorships"
             startIcon={<ArrowBackIcon />}
-            sx={{ color: "#fff" }}
+            sx={{ color: "inherit", minHeight: 44 }}
           >
             回列表
           </Button>
@@ -326,9 +326,7 @@ export default function SponsorshipNew() {
                 error={!!errors.player}
                 helperText={
                   errors.player ||
-                  (form.type === "history"
-                    ? "先留空也可以，之後在詳情頁補綁。已綁定就不能換人。"
-                    : "只能選既有 LINE 玩家；請核對頭像、名稱與 ID 避免同名誤選。")
+                  (form.type === "history" ? "可先留空，之後補綁；綁定後不能更換" : undefined)
                 }
               />
               {form.player && (
@@ -353,7 +351,7 @@ export default function SponsorshipNew() {
                   value={form.amount}
                   onChange={setEv("amount")}
                   error={!!errors.amount}
-                  helperText={errors.amount || "正數，最多兩位小數；不做幣別換算"}
+                  helperText={errors.amount}
                   required
                   fullWidth
                   autoComplete="off"
@@ -361,9 +359,7 @@ export default function SponsorshipNew() {
                     htmlInput: { inputMode: "decimal", pattern: "[0-9.]*" },
                     input: {
                       startAdornment: (
-                        <Typography color="text.secondary" sx={{ mr: 1 }}>
-                          NT$
-                        </Typography>
+                        <Typography sx={{ color: "text.secondary", mr: 1 }}>NT$</Typography>
                       ),
                     },
                   }}
@@ -431,7 +427,7 @@ export default function SponsorshipNew() {
                   error={!!errors.cardKey}
                   helperText={
                     errors.cardKey ||
-                    (selectedCard ? `每張 ${selectedCard.duration} 天` : "從既有卡種選擇")
+                    (selectedCard ? `每張 ${selectedCard.duration} 天` : undefined)
                   }
                   fullWidth
                 >
@@ -448,7 +444,7 @@ export default function SponsorshipNew() {
                   value={form.cardCount}
                   onChange={setEv("cardCount")}
                   error={!!errors.cardCount}
-                  helperText={errors.cardCount || `最多 ${MAX_CARD_COUNT} 張`}
+                  helperText={errors.cardCount}
                   fullWidth
                   slotProps={{ htmlInput: { min: 1, max: MAX_CARD_COUNT, step: 1 } }}
                 />
@@ -498,7 +494,7 @@ export default function SponsorshipNew() {
             <Field label="備註">{payload.note}</Field>
 
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 玩家
               </Typography>
               {snapshot.player ? (
@@ -516,7 +512,7 @@ export default function SponsorshipNew() {
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                 送出前核對：最近 5 筆（依入帳時間排序）
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
                 這裡只列入帳時間最近的 5 筆，不代表沒出現就一定沒登記過。如果剛才已送出但沒看到結果
                 （例如頁面重新整理過），請先到
                 <Link component={RouterLink} to="/owner/sponsorships">
@@ -528,7 +524,7 @@ export default function SponsorshipNew() {
                 {recent.status === "loading" ? (
                   <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                     <CircularProgress size={18} />
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
                       載入中…
                     </Typography>
                   </Stack>
@@ -544,7 +540,7 @@ export default function SponsorshipNew() {
                     無法載入最近紀錄，核對未完成前不能送出。
                   </Alert>
                 ) : recent.items.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
                     查詢成功，目前沒有任何登記紀錄。
                   </Typography>
                 ) : (
@@ -679,7 +675,7 @@ export default function SponsorshipNew() {
                     </Box>
                   ))}
                 </Paper>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
                   序號之後也能在詳情頁查到，這裡不會存到瀏覽器。
                 </Typography>
               </Box>

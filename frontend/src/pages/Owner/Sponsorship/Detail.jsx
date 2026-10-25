@@ -86,7 +86,7 @@ export default function SponsorshipDetail() {
           component={RouterLink}
           to="/owner/sponsorships"
           startIcon={<ArrowBackIcon />}
-          sx={{ color: "#fff" }}
+          sx={{ color: "inherit", minHeight: 44 }}
         >
           回列表
         </Button>
@@ -151,7 +151,7 @@ export default function SponsorshipDetail() {
               <Divider />
 
               <Box>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
                   綁定玩家
                 </Typography>
                 {item.userId === null ? (
@@ -168,7 +168,7 @@ export default function SponsorshipDetail() {
                       玩家 #{item.userId}
                     </Button>
                     {item.boundAt && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: "text.secondary" }}>
                         補綁於 {fmtDate(item.boundAt)}
                       </Typography>
                     )}
@@ -183,7 +183,7 @@ export default function SponsorshipDetail() {
               sx={{
                 p: { xs: 2, sm: 3 },
                 borderRadius: 3,
-                borderLeft: 4,
+                border: 1,
                 borderColor: "warning.main",
               }}
             >
@@ -192,7 +192,7 @@ export default function SponsorshipDetail() {
                   <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                     補綁玩家
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
                     核對付款人身分後再綁定。綁定後金額會計入該玩家的累積贊助，且不能再換人。
                   </Typography>
                 </Box>
@@ -312,7 +312,7 @@ export default function SponsorshipDetail() {
                         </Typography>
                         <Chip label={st.label} color={st.color} size="small" variant="outlined" />
                         {c.status === 1 && (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: "text.secondary" }}>
                             {fmtDate(c.usedAt)}
                             {c.usedBy ? ` · ${c.usedBy.slice(0, 8)}…` : ""}
                           </Typography>

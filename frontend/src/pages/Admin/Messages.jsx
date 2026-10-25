@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import {
   Grid,
@@ -16,13 +16,27 @@ import {
   ListItemAvatar,
   Box,
   Paper,
+  Alert,
   Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ForumIcon from "@mui/icons-material/Forum";
 import InboxIcon from "@mui/icons-material/Inbox";
-import AlertLogin from "../../components/AlertLogin";
-import useLiff from "../../context/useLiff";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import SyncIcon from "@mui/icons-material/Sync";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import PageHero, { HeroChip } from "../../components/PageHero";
+
+// 事件只留最近這麼多筆：長時間開著頁面時，不讓陣列與畫面無限長大
+const MAX_EVENTS = 200;
+
+// 連線狀態一律用文字 + 圖示，不只靠顏色
+const SOCKET_STATUS = {
+  connecting: { label: "連線中…", icon: <SyncIcon /> },
+  connected: { label: "已連線", icon: <CheckCircleIcon /> },
+  reconnecting: { label: "連線中斷，重新連線中…", icon: <SyncIcon /> },
+  error: { label: "連線失敗，稍後自動重試", icon: <ErrorOutlineIcon /> },
+};
 
 // --- Helper functions ---
 
@@ -49,7 +63,7 @@ function analyzeMessage(event) {
 
 function analyzeEvent(event) {
   let message;
-  let avatar = "無";
+  let avatar;
 
   switch (event.type) {
     case "message":
@@ -137,21 +151,13 @@ function SourceCard({ source, action }) {
     default:
       title = "預設";
       from = "預設";
-      avatar = "預設";
   }
 
   const chipColor =
     source.type === "group" ? "primary" : source.type === "user" ? "success" : "default";
 
   return (
-    <Card
-      variant="outlined"
-      sx={{
-        borderRadius: 3,
-        transition: "box-shadow 0.2s",
-        "&:hover": { boxShadow: 3 },
-      }}
-    >
+    <Card variant="outlined" sx={{ borderRadius: 3 }}>
       <Box sx={{ px: 2, pt: 2, pb: 1, display: "flex", alignItems: "center", gap: 1.5 }}>
         <Avatar src={avatar} alt={source.type} sx={{ width: 48, height: 48 }} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -169,7 +175,12 @@ function SourceCard({ source, action }) {
         </Box>
       </Box>
       <CardActions sx={{ px: 2, pb: 1.5 }}>
-        <Button size="small" variant="outlined" onClick={() => action(id)}>
+        <Button
+          variant="outlined"
+          onClick={() => action(id)}
+          aria-label={`查看 ${title} 的訊息`}
+          sx={{ minHeight: 44 }}
+        >
           詳細
         </Button>
       </CardActions>
@@ -209,8 +220,8 @@ function SourceList({ events, handleOpen }) {
 
   return (
     <Grid container spacing={2}>
-      {keys.map((key, index) => (
-        <Grid key={index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+      {keys.map(key => (
+        <Grid key={key} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
           <SourceCard source={sourceDatas[key]} action={handleOpen} />
         </Grid>
       ))}
@@ -243,9 +254,9 @@ function ContentDialog({ open, handleClose, datas }) {
           {title}
         </Typography>
         <IconButton
-          aria-label="close"
+          aria-label="關閉"
           onClick={handleClose}
-          sx={{ color: theme => theme.palette.grey[500] }}
+          sx={{ color: "text.secondary", width: 44, height: 44 }}
         >
           <CloseIcon />
         </IconButton>
@@ -259,10 +270,10 @@ function ContentDialog({ open, handleClose, datas }) {
             bgcolor: "background.paper",
           }}
         >
-          {datas.map((event, index) => {
+          {datas.map(event => {
             const { message, avatar } = analyzeEvent(event);
             return (
-              <ListItem key={index} sx={{ py: 0.5 }}>
+              <ListItem key={event._key} sx={{ py: 0.5 }}>
                 <ListItemAvatar>
                   <Avatar alt="頭像" src={avatar} sx={{ mr: 2 }} />
                 </ListItemAvatar>
@@ -290,141 +301,91 @@ function ContentDialog({ open, handleClose, datas }) {
 
 // --- Main Component ---
 
+// 從事件列表挑出某個來源（群組 / 房間 / 個人）的事件
+function eventsOfSource(events, sourceId) {
+  let sourceType = "user";
+  if (sourceId[0] === "C") sourceType = "group";
+  else if (sourceId[0] === "R") sourceType = "room";
+
+  return events.filter(
+    event => event.source[`${sourceType}Id`] === sourceId && event.source.type === sourceType
+  );
+}
+
 export default function AdminMessages() {
-  const { loggedIn: isLoggedIn } = useLiff();
+  // 登入與管理員權限由 RequireAdmin 擋在路由外，這裡不用再判斷
   const [events, setEvents] = useState([]);
-  const [dialogState, setDialog] = useState({
-    open: false,
-    data: [],
-    currId: null,
-  });
-
-  const handleEvent = event => {
-    setEvents(prev => [...prev, event]);
-  };
-
-  const genDialogData = sourceId => {
-    let sourceType = "";
-    switch (sourceId[0]) {
-      case "C":
-        sourceType = "group";
-        break;
-      case "R":
-        sourceType = "room";
-        break;
-      case "U":
-      default:
-        sourceType = "user";
-        break;
-    }
-
-    return events.filter(
-      event => event.source[`${sourceType}Id`] === sourceId && event.source.type === sourceType
-    );
-  };
+  const [socketStatus, setSocketStatus] = useState("connecting");
+  const [serverError, setServerError] = useState("");
+  const [dialogSourceId, setDialogSourceId] = useState(null);
+  const keyCounterRef = useRef(0);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
     document.title = "訊息實況";
     const socket = io("/admin/messages", {
       // Auth rides the HttpOnly redive_session cookie; nothing to pass here.
       withCredentials: true,
     });
 
-    socket.on("newEvent", event => handleEvent(event));
-    socket.on("error", msg => alert(msg));
-    socket.on("connect_error", err => console.warn("Socket auth failed:", err.message));
+    socket.on("connect", () => {
+      setSocketStatus("connected");
+      setServerError("");
+    });
+    socket.on("disconnect", reason => {
+      // 自己關閉（離開頁面）不算異常
+      if (reason !== "io client disconnect") setSocketStatus("reconnecting");
+    });
+    socket.on("connect_error", () => setSocketStatus("error"));
+    socket.on("error", msg => setServerError(typeof msg === "string" ? msg : "伺服器回報了錯誤"));
+    socket.on("newEvent", event => {
+      // 給每筆事件一個穩定的 key（LINE 的 webhookEventId 優先，沒有就自己編號）
+      const stamped = {
+        ...event,
+        _key: event.webhookEventId || `local-${keyCounterRef.current++}`,
+      };
+      setEvents(prev => [...prev, stamped].slice(-MAX_EVENTS));
+    });
 
     return () => {
       socket.close();
     };
-  }, [isLoggedIn]);
+  }, []);
 
-  useEffect(() => {
-    if (dialogState.open && dialogState.currId) {
-      setDialog(prev => ({
-        ...prev,
-        data: genDialogData(dialogState.currId),
-      }));
-    }
-  }, [events]);
-
-  const handleOpen = sourceId => {
-    setDialog({
-      open: true,
-      data: genDialogData(sourceId),
-      currId: sourceId,
-    });
-  };
-
-  const handleClose = () => {
-    setDialog({ open: false, data: [], currId: null });
-  };
-
-  if (!isLoggedIn) {
-    return <AlertLogin />;
-  }
+  const dialogOpen = dialogSourceId !== null;
+  const dialogData = dialogOpen ? eventsOfSource(events, dialogSourceId) : [];
 
   const sourceDatas = genSourceDatas(events);
   const sourceCount = Object.keys(sourceDatas).length;
+  const status = SOCKET_STATUS[socketStatus];
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      {/* Gradient Banner */}
-      <Paper
-        sx={{
-          position: "relative",
-          overflow: "hidden",
-          borderRadius: 3,
-          px: { xs: 2.5, sm: 3 },
-          py: { xs: 2, sm: 2.5 },
-          minHeight: 120,
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-        }}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            background: theme =>
-              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-          }}
-        />
-        <ForumIcon sx={{ position: "relative", fontSize: 48, color: "rgba(255,255,255,0.8)" }} />
-        <Box sx={{ position: "relative", flex: 1 }}>
-          <Typography
-            variant="h5"
-            sx={{
-              fontWeight: 700,
-              color: "#fff",
-            }}
-          >
-            訊息實況
-          </Typography>
-          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.75)", mt: 0.5 }}>
-            即時訊息監控
-          </Typography>
-          <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
-            <Chip
-              label={`${sourceCount} 個來源`}
-              size="small"
-              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
-            />
-            <Chip
-              label={`${events.length} 則事件`}
-              size="small"
-              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
-            />
-          </Box>
+      <PageHero icon={<ForumIcon />} title="訊息實況">
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", width: "100%" }}>
+          <HeroChip icon={status.icon} label={status.label} />
+          <HeroChip label={`${sourceCount} 個來源`} />
+          <HeroChip label={`最近 ${events.length} 則事件`} />
         </Box>
-      </Paper>
+      </PageHero>
+      {serverError && (
+        <Alert severity="error" onClose={() => setServerError("")}>
+          {serverError}
+        </Alert>
+      )}
+      {socketStatus === "error" && (
+        <Alert severity="warning">
+          無法連上即時訊息服務，畫面不會更新。系統會自動重試；如果一直失敗，請重新整理頁面或重新登入。
+        </Alert>
+      )}
       {/* Source List */}
       <Paper sx={{ borderRadius: 3, px: { xs: 2.5, sm: 3 }, py: { xs: 2, sm: 2.5 } }}>
-        <SourceList events={events} handleOpen={handleOpen} />
+        <SourceList events={events} handleOpen={setDialogSourceId} />
       </Paper>
-      <ContentDialog open={dialogState.open} datas={dialogState.data} handleClose={handleClose} />
+      <ContentDialog
+        open={dialogOpen}
+        datas={dialogData}
+        handleClose={() => setDialogSourceId(null)}
+      />
     </Box>
   );
 }

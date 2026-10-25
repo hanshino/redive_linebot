@@ -13,10 +13,12 @@ import {
   Drawer,
   Divider,
   Link,
+  Skeleton,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import api from "../../services/api";
 import { fetchGroupSummarys } from "../../services/group";
 import EventList from "./EventList";
@@ -25,6 +27,7 @@ import TodayHeader from "./TodayHeader";
 import TodayWeather from "./TodayWeather";
 import { makeGroupLabel } from "./groupLabel";
 import { addDaysTpe, todayTpe } from "./dateTpe";
+import useApiData from "./useApiData";
 
 const GLOSSARY = [
   { term: "原始 XP", body: "每則訊息的帳面值（基礎 × 冷卻 × 群組 × 暖流）。" },
@@ -45,32 +48,41 @@ export default function XpHistory() {
   const [showAll, setShowAll] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
-  const [events, setEvents] = useState([]);
-  const [days, setDays] = useState([]);
   const [dailyRange, setDailyRange] = useState(30);
   const [groupNames, setGroupNames] = useState({});
-  const [summary, setSummary] = useState(null);
 
   useEffect(() => {
     document.title = "經驗歷程";
   }, []);
 
-  useEffect(() => {
-    if (!loggedIn) return;
-    const to = todayTpe();
-    const from = addDaysTpe(to, -1);
-    api
-      .get(`/api/me/xp-events?from=${from}&to=${to}`)
-      .then(res => setEvents(Array.isArray(res.data.events) ? res.data.events : []));
-  }, [loggedIn]);
+  // 逐筆與每日趨勢各自有 loading / 失敗 / 空資料三態：失敗不能顯示成「沒有資料」。
+  const {
+    data: events,
+    loading: eventsLoading,
+    error: eventsError,
+    reload: reloadEvents,
+  } = useApiData(
+    () => {
+      const to = todayTpe();
+      const from = addDaysTpe(to, -1);
+      return api
+        .get(`/api/me/xp-events?from=${from}&to=${to}`)
+        .then(res => (Array.isArray(res.data.events) ? res.data.events : []));
+    },
+    loggedIn,
+    [loggedIn]
+  );
 
-  useEffect(() => {
-    if (!loggedIn) return;
-    api
-      .get("/api/me/xp-summary")
-      .then(res => setSummary(res.data?.today || null))
-      .catch(() => setSummary(null));
-  }, [loggedIn]);
+  const {
+    data: summary,
+    loading: summaryLoading,
+    error: summaryError,
+    reload: reloadSummary,
+  } = useApiData(
+    () => api.get("/api/me/xp-summary").then(res => res.data?.today || null),
+    loggedIn,
+    [loggedIn]
+  );
 
   useEffect(() => {
     if (!loggedIn) return;
@@ -87,25 +99,32 @@ export default function XpHistory() {
 
   const groupLabel = useMemo(() => makeGroupLabel(groupNames), [groupNames]);
 
-  useEffect(() => {
-    if (!loggedIn) return;
-    const to = todayTpe();
-    const from = addDaysTpe(to, -(dailyRange - 1));
-    api
-      .get(`/api/me/xp-daily?from=${from}&to=${to}`)
-      .then(res => setDays(Array.isArray(res.data.days) ? res.data.days : []));
-  }, [loggedIn, dailyRange]);
+  const {
+    data: days,
+    loading: daysLoading,
+    error: daysError,
+    reload: reloadDays,
+  } = useApiData(
+    () => {
+      const to = todayTpe();
+      const from = addDaysTpe(to, -(dailyRange - 1));
+      return api
+        .get(`/api/me/xp-daily?from=${from}&to=${to}`)
+        .then(res => (Array.isArray(res.data.days) ? res.data.days : []));
+    },
+    loggedIn,
+    [loggedIn, dailyRange]
+  );
 
   return (
     <Container maxWidth="md" sx={{ py: 2 }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-        <Stack direction="row" alignItems="center" gap={0.5}>
+      <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Stack direction="row" sx={{ alignItems: "center", gap: 0.5 }}>
           <Typography variant="h6">經驗歷程</Typography>
           <IconButton
-            size="small"
             onClick={() => setHelpOpen(true)}
             aria-label="名詞說明"
-            sx={{ color: "text.secondary" }}
+            sx={{ color: "text.secondary", width: 44, height: 44 }}
           >
             <HelpOutlineIcon fontSize="small" />
           </IconButton>
@@ -134,30 +153,53 @@ export default function XpHistory() {
       </Tabs>
 
       {tab === 0 && (
-        <Stack gap={1.75}>
-          <TodayHeader summary={summary} />
+        <Stack sx={{ gap: 1.75 }}>
+          {summaryLoading ? (
+            <Skeleton variant="rounded" height={148} animation="wave" />
+          ) : summaryError ? (
+            <LoadError message="今日經驗載入失敗，請檢查網路後再試一次。" onRetry={reloadSummary} />
+          ) : (
+            <TodayHeader summary={summary} />
+          )}
           <Typography
             sx={{
               fontFamily: "ui-monospace, Menlo, monospace",
-              fontSize: 11,
+              fontSize: 12,
               letterSpacing: "0.1em",
-              color: "text.disabled",
+              color: "text.secondary",
               pl: 0.5,
             }}
           >
             訊息事件
           </Typography>
-          <EventList
-            events={events}
-            showAll={showAll}
-            groupLabel={groupLabel}
-            defaultExpanded="first"
-          />
+          {!loggedIn ? null : eventsLoading ? (
+            <Stack sx={{ gap: 1 }}>
+              {[0, 1, 2].map(i => (
+                <Skeleton key={i} variant="rounded" height={64} animation="wave" />
+              ))}
+            </Stack>
+          ) : eventsError ? (
+            <LoadError message="經驗紀錄載入失敗，請檢查網路後再試一次。" onRetry={reloadEvents} />
+          ) : (
+            <EventList
+              events={events}
+              showAll={showAll}
+              groupLabel={groupLabel}
+              defaultExpanded="first"
+            />
+          )}
         </Stack>
       )}
       {tab === 1 && (
-        <Stack gap={1.5}>
-          <DailyTrend days={days} range={dailyRange} onRangeChange={setDailyRange} />
+        <Stack sx={{ gap: 1.5 }}>
+          <DailyTrend
+            days={days}
+            range={dailyRange}
+            onRangeChange={setDailyRange}
+            loading={daysLoading}
+            error={daysError}
+            onRetry={reloadDays}
+          />
           <Box
             sx={{
               p: 1.5,
@@ -170,11 +212,7 @@ export default function XpHistory() {
               lineHeight: 1.7,
             }}
           >
-            <Box component="strong" sx={{ color: "text.primary" }}>
-              怎麼讀？
-            </Box>{" "}
-            金黃段 = 實得 XP；半透明灰 = 因遞減 / 試煉而流失。長條下方徽章標注該日狀態 — 🌱 蜜月、⚔
-            試煉中。
+            金黃 = 實得 XP；灰 = 遞減或試煉扣掉的部分。背景綠色是蜜月，琥珀色是試煉中。
           </Box>
         </Stack>
       )}
@@ -193,7 +231,7 @@ export default function XpHistory() {
         <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
           名詞速查
         </Typography>
-        <Stack gap={1.25}>
+        <Stack sx={{ gap: 1.25 }}>
           {GLOSSARY.map(g => (
             <Box key={g.term} sx={{ display: "flex", gap: 1.25, alignItems: "baseline" }}>
               <Box sx={{ minWidth: 80, fontWeight: 600 }}>{g.term}</Box>

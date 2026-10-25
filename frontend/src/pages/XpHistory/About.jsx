@@ -7,7 +7,7 @@ function Section({ title, children }) {
       <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
         {title}
       </Typography>
-      <Stack gap={1}>{children}</Stack>
+      <Stack sx={{ gap: 1 }}>{children}</Stack>
     </Box>
   );
 }
@@ -27,7 +27,7 @@ function Eq({ children }) {
       variant="outlined"
       sx={{
         p: 1.25,
-        bgcolor: "#F8FAFB",
+        bgcolor: "surface.subtle",
         fontFamily: "ui-monospace, Menlo, monospace",
         fontSize: 13,
         whiteSpace: "pre-wrap",
@@ -54,8 +54,8 @@ function Row({ k, v, hint }) {
 export default function XpHistoryAbout() {
   return (
     <Container maxWidth="md" sx={{ py: 2 }}>
-      <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
-        <Link component={RouterLink} to="/xp-history" underline="hover" fontSize={14}>
+      <Stack direction="row" sx={{ alignItems: "center", gap: 1, mb: 2 }}>
+        <Link component={RouterLink} to="/xp-history" underline="hover" sx={{ fontSize: 14 }}>
           ← 經驗歷程
         </Link>
         <Typography variant="h6">名詞與計算說明</Typography>
@@ -66,7 +66,7 @@ export default function XpHistoryAbout() {
         <Term name="實得 XP">
           實際入帳的 XP。原始 XP 經今日累積遞減後，再套上蜜月、試煉、永久加成。
         </Term>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           畫面上「原始 XP → 實得 XP」就是這條鏈。
         </Typography>
       </Section>
@@ -82,20 +82,20 @@ export default function XpHistoryAbout() {
       </Section>
 
       <Section title="冷卻倍率表（基本規則）">
-        <Stack gap={0.5}>
+        <Stack sx={{ gap: 0.5 }}>
           <Row k="0–1 秒" v="×0" hint="連發完全不算" />
           <Row k="1–2 秒" v="×0.1" />
           <Row k="2–4 秒" v="×0.5" />
           <Row k="4–6 秒" v="×0.8" />
           <Row k="≥ 6 秒" v="×1.0" hint="滿速" />
         </Stack>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", mt: 1 }}>
           ★3 試煉中：所有時間區間延長為原來的 4/3。
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           祝福 #2 韻律：×0.5 改為 ×0.7、×0.8 改為 ×0.9。
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           祝福 #3 急流：×0、×0.1 改為 ×0.1、×0.3（連發也能拿一些）。
         </Typography>
       </Section>
@@ -113,18 +113,18 @@ export default function XpHistoryAbout() {
       <Divider sx={{ my: 2 }} />
 
       <Section title="每日遞減階段（從原始 XP 換成實得 XP）">
-        <Stack gap={0.5}>
+        <Stack sx={{ gap: 0.5 }}>
           <Row k="0 ~ 400" v="×1.0" hint="第一階 · 滿速" />
           <Row k="400 ~ 1000" v="×0.3" hint="第二階 · 緩漲" />
           <Row k="≥ 1000" v="×0.03" hint="第三階 · 幾乎不漲" />
         </Stack>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", mt: 1 }}>
           祝福 #4：第一階上限 400 → 600。
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           祝福 #5：第二階上限 1000 → 1200。
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           注意：每則訊息的遞減倍率是「分段套用」的；如果一則訊息跨過階段邊界，會分別吃前後段倍率，所以遞減倍率可能落在
           0.03 ~ 1.0 之間任意值。
         </Typography>
@@ -132,15 +132,15 @@ export default function XpHistoryAbout() {
 
       <Section title="天氣「驚蟄」">
         <Term name="說明">距離上次發言越久，下一則訊息的原始 XP 倍率越高。</Term>
-        <Stack gap={0.5}>
+        <Stack sx={{ gap: 0.5 }}>
           <Row k="超過 24 小時" v="×10" />
           <Row k="超過 6 小時" v="×5" />
           <Row k="超過 1 小時" v="×2" />
         </Stack>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           倍率只作用在觸發的那一則訊息。
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           爆發拿到的原始 XP 一樣會推進今日遞減進度，因此爆發之後的發言收益會明顯下降。
         </Typography>
       </Section>
@@ -154,7 +154,7 @@ export default function XpHistoryAbout() {
       </Section>
 
       <Section title="試煉 ★ 對照">
-        <Stack gap={0.5}>
+        <Stack sx={{ gap: 0.5 }}>
           <Row k="★2" v="實得 ×0.7" hint="所有 XP 打七折" />
           <Row k="★3" v="冷卻時間延長 4/3" hint="連發更難滿速" />
           <Row k="★4" v="關閉群組加成" />
@@ -163,7 +163,7 @@ export default function XpHistoryAbout() {
       </Section>
 
       <Section title="祝福清單（7 選 5）">
-        <Stack gap={0.5}>
+        <Stack sx={{ gap: 0.5 }}>
           <Row k="#1 暖流" v="原始 ×1.08" />
           <Row k="#2 韻律" v="冷卻寬鬆" hint="×0.5→×0.7、×0.8→×0.9" />
           <Row k="#3 急流" v="連發也算分" hint="0–1 秒 ×0.1、1–2 秒 ×0.3" />
@@ -181,7 +181,7 @@ export default function XpHistoryAbout() {
           {"分段遞減 = 依今日已得分階套用倍率\n"}
           {"實得     = round(分段遞減 × 試煉 × 永久)"}
         </Eq>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
           頁面上每筆紀錄的「原始 XP」就是公式第一行的結果；「實得
           XP」是最終值。中間乘數依上面順序逐項列出。
         </Typography>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, Grid, Tabs, Tab, Paper, Skeleton } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { EmojiEvents, Casino, Diamond, MilitaryTech } from "@mui/icons-material";
+import LoadError from "../../components/LoadError";
 import OverviewCard from "./OverviewCard";
 import RankingBarChart from "./RankingBarChart";
 import PrestigeRankList from "./PrestigeRankList";
@@ -12,66 +14,74 @@ import {
   useAchievementRankData,
 } from "./hooks";
 
-const RANK_COLORS = {
-  level: "#7c4dff",
-  gacha: "#ff6d00",
-  godStone: "#00bfa5",
-  achievement: "#d81b60",
-};
+// 分頁標籤與總覽卡片共用這張表：卡片標題 = 分頁名稱，
+// 兩邊不會再各寫一份而對不上。支持榜沒有總覽卡，所以不在這裡。
+const RANK_TABS = [
+  {
+    key: "level",
+    label: "等級排行",
+    Icon: EmojiEvents,
+    color: p => p.rarity[1].main,
+    valueText: top => `Lv.${top.level}`,
+  },
+  {
+    key: "gacha",
+    label: "轉蛋蒐集",
+    Icon: Casino,
+    color: p => p.rarity[3].main,
+    valueText: top => top.value?.toLocaleString(),
+  },
+  {
+    key: "godStone",
+    label: "女神石",
+    Icon: Diamond,
+    color: p => p.currency.main,
+    valueText: top => top.value?.toLocaleString(),
+  },
+  {
+    key: "achievement",
+    label: "成就蒐集",
+    Icon: MilitaryTech,
+    color: p => p.rarity[2].main,
+    valueText: top => top.value?.toLocaleString(),
+  },
+];
+
+const SUPPORT_TAB_INDEX = RANK_TABS.length;
 
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null;
 }
 
+// 榜單面板：載入中 / 失敗（可重試）/ 圖表，三態分開，失敗不會顯示成「暫無數據」。
+function RankPanel({ source, title, color, children }) {
+  if (source.loading) return <Skeleton variant="rounded" height={300} />;
+  if (source.error) {
+    return (
+      <LoadError message={`${title}載入失敗，請檢查網路後再試一次。`} onRetry={source.refetch} />
+    );
+  }
+  return (
+    <>
+      <RankingBarChart data={source.rows} color={color} title={title} />
+      {children}
+    </>
+  );
+}
+
 export default function Rankings() {
+  const theme = useTheme();
   const [tab, setTab] = useState(0);
-  const level = useChatLevelData();
-  const gacha = useGachaRankData();
-  const godStone = useGodStoneData();
-  const achievement = useAchievementRankData();
+  const sources = {
+    level: useChatLevelData(),
+    gacha: useGachaRankData(),
+    godStone: useGodStoneData(),
+    achievement: useAchievementRankData(),
+  };
 
   useEffect(() => {
     document.title = "各大排行榜";
   }, []);
-
-  const cards = [
-    {
-      icon: <EmojiEvents sx={{ fontSize: 28, color: RANK_COLORS.level }} />,
-      title: "聽說他沒在睡覺",
-      topName: level.topEntry?.displayName,
-      topValue: level.topEntry ? `Lv.${level.topEntry.level}` : undefined,
-      count: level.count,
-      color: RANK_COLORS.level,
-      loading: level.loading,
-    },
-    {
-      icon: <Casino sx={{ fontSize: 28, color: RANK_COLORS.gacha }} />,
-      title: "氣運好到不行",
-      topName: gacha.topEntry?.displayName,
-      topValue: gacha.topEntry?.value?.toLocaleString(),
-      count: gacha.count,
-      color: RANK_COLORS.gacha,
-      loading: gacha.loading,
-    },
-    {
-      icon: <Diamond sx={{ fontSize: 28, color: RANK_COLORS.godStone }} />,
-      title: "什麼都賣了",
-      topName: godStone.topEntry?.displayName,
-      topValue: godStone.topEntry?.value?.toLocaleString(),
-      count: godStone.count,
-      color: RANK_COLORS.godStone,
-      loading: godStone.loading,
-    },
-    {
-      icon: <MilitaryTech sx={{ fontSize: 28, color: RANK_COLORS.achievement }} />,
-      title: "獎盃獵人",
-      topName: achievement.topEntry?.displayName,
-      topValue: achievement.topEntry?.value?.toLocaleString(),
-      count: achievement.count,
-      color: RANK_COLORS.achievement,
-      loading: achievement.loading,
-    },
-  ];
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -81,15 +91,28 @@ export default function Rankings() {
 
       {/* Overview Cards */}
       <Grid container spacing={2}>
-        {cards.map((card, i) => (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
-            {card.loading ? (
-              <Skeleton variant="rounded" height={160} />
-            ) : (
-              <OverviewCard {...card} onClick={() => setTab(i)} />
-            )}
-          </Grid>
-        ))}
+        {RANK_TABS.map(({ key, label, Icon, color, valueText }, i) => {
+          const source = sources[key];
+          const accent = color(theme.palette);
+          return (
+            <Grid size={{ xs: 6, md: 3 }} key={key}>
+              {source.loading ? (
+                <Skeleton variant="rounded" height={160} />
+              ) : (
+                <OverviewCard
+                  icon={<Icon sx={{ fontSize: 28, color: accent }} />}
+                  title={label}
+                  topName={source.topEntry?.displayName}
+                  topValue={source.topEntry ? valueText(source.topEntry) : undefined}
+                  count={source.count}
+                  color={accent}
+                  error={source.error}
+                  onClick={() => setTab(i)}
+                />
+              )}
+            </Grid>
+          );
+        })}
       </Grid>
 
       {/* Tabbed Charts */}
@@ -107,26 +130,19 @@ export default function Rankings() {
             borderColor: "divider",
           }}
         >
-          <Tab label="等級排行" />
-          <Tab label="轉蛋蒐集" />
-          <Tab label="女神石" />
-          <Tab label="成就蒐集" />
+          {RANK_TABS.map(({ key, label }) => (
+            <Tab key={key} label={label} />
+          ))}
           <Tab label="支持榜" />
         </Tabs>
-        <TabPanel value={tab} index={0}>
-          <RankingBarChart data={level.rows} color={RANK_COLORS.level} />
-          <PrestigeRankList rows={level.rows} />
-        </TabPanel>
-        <TabPanel value={tab} index={1}>
-          <RankingBarChart data={gacha.rows} color={RANK_COLORS.gacha} />
-        </TabPanel>
-        <TabPanel value={tab} index={2}>
-          <RankingBarChart data={godStone.rows} color={RANK_COLORS.godStone} />
-        </TabPanel>
-        <TabPanel value={tab} index={3}>
-          <RankingBarChart data={achievement.rows} color={RANK_COLORS.achievement} />
-        </TabPanel>
-        <TabPanel value={tab} index={4}>
+        {RANK_TABS.map(({ key, label, color }, i) => (
+          <TabPanel key={key} value={tab} index={i}>
+            <RankPanel source={sources[key]} title={label} color={color(theme.palette)}>
+              {key === "level" && <PrestigeRankList rows={sources.level.rows} />}
+            </RankPanel>
+          </TabPanel>
+        ))}
+        <TabPanel value={tab} index={SUPPORT_TAB_INDEX}>
           <SupportRankList />
         </TabPanel>
       </Paper>

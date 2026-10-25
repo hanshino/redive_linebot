@@ -19,6 +19,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -30,6 +31,7 @@ import useAlertDialog from "../../hooks/useAlertDialog";
 import useHintBar from "../../hooks/useHintBar";
 import AlertDialog from "../../components/AlertDialog";
 import HintSnackBar from "../../components/HintSnackBar";
+import PageHero from "../../components/PageHero";
 
 const ROSTER_SIZE = 5;
 const ROSTER_POSITIONS = Array.from({ length: ROSTER_SIZE }, (_, index) => index + 1);
@@ -118,7 +120,7 @@ function RosterSummary({ roster }) {
 
   if (entries.length === 0) {
     return (
-      <Typography variant="caption" color="warning.main" display="block" sx={{ mt: 0.75 }}>
+      <Typography variant="caption" sx={{ color: "warning.main", display: "block", mt: 0.75 }}>
         尚未設定五王陣容
       </Typography>
     );
@@ -148,7 +150,7 @@ function RosterSelector({ bosses, value, onChange, issues, showErrors, disabled 
       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
         五王陣容
       </Typography>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 1.5 }}>
         每個周回會同時開放這五隻世界王，位置固定為 1 到 5，且不能重複。
       </Typography>
       <Stack spacing={1.5}>
@@ -367,6 +369,7 @@ export default function Worldboss() {
       description: `確定要刪除「${boss.name}」嗎？此操作無法復原。`,
       submitText: "刪除",
       cancelText: "取消",
+      destructive: true,
       onSubmit: async () => {
         try {
           setConfirmationBusy(true);
@@ -389,6 +392,7 @@ export default function Worldboss() {
       description: `確定要刪除賽季「${season.name}」嗎？此操作無法復原。`,
       submitText: "刪除",
       cancelText: "取消",
+      destructive: true,
       onSubmit: async () => {
         try {
           setConfirmationBusy(true);
@@ -429,47 +433,25 @@ export default function Worldboss() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      <Paper sx={{ position: "relative", overflow: "hidden", borderRadius: 3 }}>
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            background: theme =>
-              `linear-gradient(135deg, ${theme.palette.secondary.dark} 0%, ${theme.palette.primary.dark} 100%)`,
-          }}
-        />
-        <Box
-          sx={{
-            position: "relative",
-            p: { xs: 3, sm: 4 },
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <SportsEsportsIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.8)" }} />
-          <Box sx={{ color: "#fff", flex: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              世界王管理
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5, opacity: 0.85 }}>
-              管理世界王圖鑑與賽季草稿；開放後由伺服器立即開始賽季。
-            </Typography>
-          </Box>
-          <Tooltip title="重新載入">
-            <span>
-              <IconButton
-                aria-label="重新載入"
-                onClick={refresh}
-                disabled={refreshing || loading}
-                sx={{ color: "#fff", bgcolor: "rgba(255,255,255,0.16)" }}
-              >
-                {refreshing ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Box>
-      </Paper>
+      <PageHero icon={<SportsEsportsIcon />} title="世界王管理">
+        <Tooltip title="重新載入">
+          <span>
+            <IconButton
+              aria-label="重新載入"
+              onClick={refresh}
+              disabled={refreshing || loading}
+              sx={{
+                width: 44,
+                height: 44,
+                color: "inherit",
+                bgcolor: t => alpha(t.palette.primary.contrastText, 0.16),
+              }}
+            >
+              {refreshing ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
+            </IconButton>
+          </span>
+        </Tooltip>
+      </PageHero>
 
       {error && <Alert severity="error">載入失敗，請重新載入後再試。</Alert>}
 
@@ -487,7 +469,7 @@ export default function Worldboss() {
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               世界王圖鑑
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               {bosses.length} 位世界王；已被賽季輪次使用的世界王無法刪除。
             </Typography>
           </Box>
@@ -505,7 +487,7 @@ export default function Worldboss() {
         ) : bosses.length === 0 ? (
           <Box sx={{ p: 5, textAlign: "center" }}>
             <SportsEsportsIcon sx={{ fontSize: 44, opacity: 0.3 }} />
-            <Typography color="text.secondary" sx={{ mt: 1 }}>
+            <Typography sx={{ color: "text.secondary", mt: 1 }}>
               尚無世界王，請先建立圖鑑資料。
             </Typography>
           </Box>
@@ -528,7 +510,7 @@ export default function Worldboss() {
                   <Typography sx={{ fontWeight: 600 }} noWrap>
                     {boss.name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap>
+                  <Typography variant="caption" noWrap sx={{ color: "text.secondary" }}>
                     HP 權重 {boss.hp_weight}
                     {boss.description ? ` · ${boss.description}` : ""}
                   </Typography>
@@ -574,7 +556,7 @@ export default function Worldboss() {
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               世界王賽季
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               僅草稿可編輯、刪除或開放；進行中與已結算賽季為唯讀。
             </Typography>
           </Box>
@@ -591,7 +573,7 @@ export default function Worldboss() {
           ))
         ) : seasons.length === 0 ? (
           <Box sx={{ p: 5, textAlign: "center" }}>
-            <Typography color="text.secondary">尚無賽季草稿。</Typography>
+            <Typography sx={{ color: "text.secondary" }}>尚無賽季草稿。</Typography>
           </Box>
         ) : (
           seasons.map((season, index) => {
@@ -617,15 +599,13 @@ export default function Worldboss() {
                     </Box>
                     <Typography
                       variant="caption"
-                      color="text.secondary"
-                      display="block"
-                      sx={{ mt: 0.5 }}
+                      sx={{ color: "text.secondary", display: "block", mt: 0.5 }}
                     >
                       結束：{displayDate(season.end_time)}
                       {season.start_time ? ` · 開始：${displayDate(season.start_time)}` : ""}
                     </Typography>
                     {season.announcement && (
-                      <Typography variant="body2" color="text.secondary" noWrap sx={{ mt: 0.25 }}>
+                      <Typography variant="body2" noWrap sx={{ color: "text.secondary", mt: 0.25 }}>
                         {season.announcement}
                       </Typography>
                     )}
@@ -685,8 +665,8 @@ export default function Worldboss() {
               value={bossForm.name}
               onChange={event => setBossForm(form => ({ ...form, name: event.target.value }))}
               error={!!bossErrors.name}
-              helperText={bossErrors.name || "最多 64 字"}
-              inputProps={{ maxLength: 64 }}
+              helperText={bossErrors.name}
+              slotProps={{ htmlInput: { maxLength: 64 } }}
               fullWidth
               autoFocus
             />
@@ -696,8 +676,8 @@ export default function Worldboss() {
               value={bossForm.hp_weight}
               onChange={event => setBossForm(form => ({ ...form, hp_weight: event.target.value }))}
               error={!!bossErrors.hp_weight}
-              helperText={bossErrors.hp_weight || "必須是有限的正數"}
-              inputProps={{ min: "0.001", step: "0.001" }}
+              helperText={bossErrors.hp_weight}
+              slotProps={{ htmlInput: { min: "0.001", step: "0.001" } }}
               fullWidth
             />
             <TextField
@@ -747,8 +727,8 @@ export default function Worldboss() {
               value={seasonForm.name}
               onChange={event => setSeasonForm(form => ({ ...form, name: event.target.value }))}
               error={!!seasonErrors.name}
-              helperText={seasonErrors.name || "最多 64 字"}
-              inputProps={{ maxLength: 64 }}
+              helperText={seasonErrors.name}
+              slotProps={{ htmlInput: { maxLength: 64 } }}
               fullWidth
               autoFocus
             />
@@ -814,6 +794,7 @@ export default function Worldboss() {
         description={alertState.description}
         submitText={alertState.submitText}
         cancelText={alertState.cancelText}
+        destructive={alertState.destructive}
         disabled={confirmationBusy}
       />
       <HintSnackBar

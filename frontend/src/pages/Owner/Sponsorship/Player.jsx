@@ -49,7 +49,7 @@ export default function SponsorshipPlayer() {
           component={RouterLink}
           to="/owner/sponsorships"
           startIcon={<ArrowBackIcon />}
-          sx={{ color: "#fff" }}
+          sx={{ color: "inherit", minHeight: 44 }}
         >
           回列表
         </Button>
@@ -67,7 +67,7 @@ export default function SponsorshipPlayer() {
       ) : (
         <>
           <Paper sx={{ p: { xs: 2.5, sm: 3 }, borderRadius: 3, textAlign: "center" }}>
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>
               累積登記贊助
             </Typography>
             <Typography
@@ -76,7 +76,7 @@ export default function SponsorshipPlayer() {
             >
               NT$ {fmtAmount(data.totalAmount)}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
               共 {data.sponsorships.length} 筆登記，僅計入已綁定此玩家的紀錄
             </Typography>
           </Paper>
@@ -84,7 +84,7 @@ export default function SponsorshipPlayer() {
           <Paper sx={{ borderRadius: 3, overflow: "hidden" }}>
             {data.sponsorships.length === 0 ? (
               <Box sx={{ p: 5, textAlign: "center" }}>
-                <Typography color="text.secondary">尚無贊助紀錄</Typography>
+                <Typography sx={{ color: "text.secondary" }}>尚無贊助紀錄</Typography>
               </Box>
             ) : (
               data.sponsorships.map((s, idx) => {
@@ -131,7 +131,7 @@ export default function SponsorshipPlayer() {
                             />
                           )}
                         </Stack>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: "text.secondary" }}>
                           #{s.id} · 入帳 {fmtDate(s.receivedAt)}
                           {s.boundAt ? ` · 補綁於 ${fmtDate(s.boundAt)}` : ""}
                         </Typography>

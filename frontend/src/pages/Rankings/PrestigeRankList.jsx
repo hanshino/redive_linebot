@@ -17,7 +17,8 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { getBlessingIcon } from "../Prestige/blessingIcons";
 import { getBuildIcon } from "../Prestige/buildIcons";
 import { BLESSING_CATALOG } from "./blessingCatalog";
-import { MEDAL_COLORS_BY_MODE, DEFAULT_AVATAR_COLOR } from "./medalColors";
+import StarGlyphs from "../Prestige/StarGlyphs";
+import { AWAKENED_GRADIENT, AWAKENED_FALLBACK } from "../Prestige/constants";
 
 const BUILD_TAG_MAP = {
   breeze: { displayName: "疾風" },
@@ -35,36 +36,34 @@ function PrestigeStars({ prestigeCount, awakened }) {
         label="覺醒"
         size="small"
         sx={{
-          // Mirrors Prestige page's AWAKENED_GRADIENT / AWAKENED_FALLBACK
-          background: "linear-gradient(135deg, #6c5ce7 0%, #d63384 100%)",
+          // 與轉生頁的覺醒者徽章同一組色
+          background: AWAKENED_GRADIENT,
           "@media (prefers-reduced-motion: reduce)": {
-            background: "#6c5ce7",
+            background: AWAKENED_FALLBACK,
           },
-          color: "#fff",
+          color: "common.white",
           fontWeight: 600,
-          fontSize: "0.7rem",
-          "& .MuiChip-icon": { color: "#fff" },
+          fontSize: "0.75rem",
+          "& .MuiChip-icon": { color: "common.white" },
         }}
       />
     );
   }
 
   const filled = Math.min(prestigeCount ?? 0, 5);
-  const empty = 5 - filled;
-  const stars = "★".repeat(filled) + "☆".repeat(empty);
 
+  // StarGlyphs 讀成「N / 5 星」，不會逐顆唸「黑星」
   return (
-    <Typography
+    <StarGlyphs
+      value={filled}
       variant="caption"
       sx={{
-        color: filled > 0 ? "warning.main" : "text.disabled",
+        color: filled > 0 ? "warning.main" : "text.secondary",
         letterSpacing: 1,
         fontFamily: "monospace",
         lineHeight: 1,
       }}
-    >
-      {stars}
-    </Typography>
+    />
   );
 }
 
@@ -90,7 +89,7 @@ function BuildTagChip({ buildTag, blessingIds }) {
         // Inherit cursor from the parent ListItemButton (pointer) so the
         // whole row reads as one tappable target. Tooltip still works on
         // desktop hover; mobile users get the expand-row affordance instead.
-        sx={{ fontSize: "0.7rem", cursor: "inherit" }}
+        sx={{ fontSize: "0.75rem", cursor: "inherit" }}
         aria-label={`Build：${tag.displayName}，展開查看祝福`}
       />
     </Tooltip>
@@ -133,9 +132,9 @@ export default function PrestigeRankList({ rows }) {
 
   if (!rows?.length) return null;
 
-  const mode = theme.palette.mode === "dark" ? "dark" : "light";
-  const medalColors = MEDAL_COLORS_BY_MODE[mode];
-  const defaultAvatarColor = DEFAULT_AVATAR_COLOR[mode];
+  // 前三名獎牌色來自 theme.palette.medal；其餘用 surface.inset 的中性底
+  const medalColors = theme.palette.medal;
+  const defaultAvatarColor = theme.palette.surface.inset;
 
   const handleToggle = rank => {
     setExpanded(prev => (prev === rank ? null : rank));
@@ -174,7 +173,8 @@ export default function PrestigeRankList({ rows }) {
                       width: 32,
                       height: 32,
                       bgcolor: avatarColor,
-                      fontSize: "0.8rem",
+                      color: theme.palette.getContrastText(avatarColor),
+                      fontSize: "0.75rem",
                       fontWeight: 700,
                     }}
                   >
@@ -182,6 +182,7 @@ export default function PrestigeRankList({ rows }) {
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText
+                  slotProps={{ primary: { component: "div" }, secondary: { component: "div" } }}
                   primary={
                     <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
                       {row.displayName}

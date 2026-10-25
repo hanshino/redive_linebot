@@ -1,62 +1,36 @@
 import {
+  Alert,
+  AlertTitle,
   Avatar,
   Box,
+  Button,
   Chip,
   Paper,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, darken } from "@mui/material/styles";
+import DiamondIcon from "@mui/icons-material/Diamond";
 import StarRateRoundedIcon from "@mui/icons-material/StarRateRounded";
 import SellRoundedIcon from "@mui/icons-material/SellRounded";
 import ShoppingBasketRoundedIcon from "@mui/icons-material/ShoppingBasketRounded";
-import { LISTING_STATUS, NUMS, ORDER_COPY, charGradient, normalizeOrderType } from "./_market";
+import {
+  BODY_SMALL,
+  LISTING_STATUS,
+  META_TEXT,
+  NUMS,
+  ORDER_COPY,
+  TOUCH,
+  charGradient,
+  fmtStone,
+  normalizeOrderType,
+} from "./_market";
 
 /* ---------------------------------------------------------------- 版面零件 */
 
-/**
- * 基礎星數標記：一顆 ★ 加數字（★3），不是重複三顆星。
- *
- * 為什麼是 ★+數字而不是 ★★★：
- * 掛單列已經擠了賣家名、角色編號、價格、最低價/你的掛單標籤跟購買鍵，
- * 三顆星在 390px 會把名字那行推到換行；★3 固定寬度，1 星到 6 星都不會變版。
- *
- * 為什麼一定要 aria-label：
- * 純 ★ 會被讀成裝飾或評分小工具，但這裡是「買到手的星數」，
- * 講錯會讓人花錯錢，所以文字替代一律寫「基礎 N 星」。
- *
- * star 缺值（後端還沒上線）時回傳 null —— 不補預設值 1，
- * 「沒有資料」跟「真的是 1 星」必須長得不一樣。
- */
-export function BaseStar({ star, size = 12, tone = "secondary", sx }) {
-  const n = Number(star);
-  if (!Number.isFinite(n) || n < 1) return null;
-
-  return (
-    <Box
-      component="span"
-      role="img"
-      aria-label={`基礎 ${n} 星`}
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "1px",
-        flexShrink: 0,
-        whiteSpace: "nowrap",
-        lineHeight: 1,
-        fontSize: size,
-        fontWeight: 700,
-        color: tone === "inherit" ? "inherit" : "secondary.main",
-        ...NUMS,
-        ...sx,
-      }}
-    >
-      <StarRateRoundedIcon aria-hidden="true" sx={{ fontSize: size + 3 }} />
-      {n}
-    </Box>
-  );
-}
+// BaseStar 搬到 components/，背包 / 轉蛋兌換的角色卡也會用；這裡轉出口，交易頁的 import 不用改。
+export { default as BaseStar } from "../../components/BaseStar";
 
 /**
  * 詳情頁用的完整版：★N 加上「基礎星數」四個字。
@@ -79,16 +53,16 @@ export function BaseStarBadge({ star, onGradient = false, sx }) {
         px: 0.875,
         py: 0.375,
         borderRadius: 999,
-        fontSize: 11.5,
+        fontSize: 12,
         fontWeight: 700,
         lineHeight: 1,
         whiteSpace: "nowrap",
         ...NUMS,
         ...(onGradient
           ? {
-              color: "#fff",
-              bgcolor: alpha("#fff", 0.22),
-              border: `1px solid ${alpha("#fff", 0.3)}`,
+              color: theme.palette.common.white,
+              bgcolor: alpha(theme.palette.common.white, 0.22),
+              border: `1px solid ${alpha(theme.palette.common.white, 0.3)}`,
             }
           : {
               color: theme.palette.secondary.main,
@@ -118,9 +92,9 @@ export function CharAvatar({ itemId, name = "", headImage, size = 44, dimmed = f
         flex: `0 0 ${size}px`,
         fontSize: Math.round(size * 0.4),
         fontWeight: 700,
-        color: "#fff",
+        color: "common.white",
         background: charGradient(itemId),
-        boxShadow: "inset 0 0 0 2px rgba(255,255,255,.35)",
+        boxShadow: theme => `inset 0 0 0 2px ${alpha(theme.palette.common.white, 0.35)}`,
         filter: dimmed ? "grayscale(.35)" : "none",
         ...sx,
       }}
@@ -156,12 +130,13 @@ export function StatusChip({ status, size = "small", sx }) {
   );
 }
 
-/** 「我的」「最低價」這類小標。 */ export function Tag({ label, color = "secondary" }) {
+/** 「我的」「最低價」這類小標。 */
+export function Tag({ label, color = "secondary" }) {
   return (
     <Box
       component="span"
       sx={theme => ({
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: 700,
         lineHeight: 1,
         px: 1,
@@ -222,20 +197,44 @@ export function OrderTypeSwitch({ value, onChange, disabled }) {
       aria-label="切換掛單簿方向"
       sx={{
         "& .MuiToggleButton-root": {
+          minHeight: TOUCH,
           py: 0.75,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 700,
           textTransform: "none",
           gap: 0.75,
+          color: "text.secondary",
           borderRadius: "999px !important",
+        },
+        // 選中的那一邊用方向色（賣單青、收購琥珀）加粗框，不只靠底色深淺區分
+        "& .MuiToggleButton-root.Mui-selected": {
+          borderColor: "currentColor",
         },
       }}
     >
-      <ToggleButton value="sell" aria-label="看別人賣出的角色，你可以買">
+      <ToggleButton
+        value="sell"
+        aria-label="看別人賣出的角色，你可以買"
+        sx={theme => ({
+          "&.Mui-selected, &.Mui-selected:hover": {
+            color: "primary.main",
+            bgcolor: alpha(theme.palette.primary.main, 0.14),
+          },
+        })}
+      >
         <SellRoundedIcon aria-hidden="true" sx={{ fontSize: 16 }} />
         {ORDER_COPY.sell.book}
       </ToggleButton>
-      <ToggleButton value="buy" aria-label="看別人收購的角色，你可以賣">
+      <ToggleButton
+        value="buy"
+        aria-label="看別人收購的角色，你可以賣"
+        sx={theme => ({
+          "&.Mui-selected, &.Mui-selected:hover": {
+            color: "secondary.main",
+            bgcolor: alpha(theme.palette.secondary.main, 0.14),
+          },
+        })}
+      >
         <ShoppingBasketRoundedIcon aria-hidden="true" sx={{ fontSize: 16 }} />
         {ORDER_COPY.buy.book}
       </ToggleButton>
@@ -259,19 +258,19 @@ export function GradientPanel({ children, tone = "sell", sx }) {
         overflow: "hidden",
         borderRadius: 3,
         p: 2,
-        color: "#fff",
+        color: theme.palette.common.white,
         border: "1px solid",
-        borderColor: alpha("#fff", 0.14),
+        borderColor: alpha(theme.palette.common.white, 0.14),
         background: buy
           ? theme.palette.mode === "dark"
             ? `radial-gradient(120% 140% at 88% -20%, ${alpha(theme.palette.secondary.light, 0.24)}, transparent 55%),
-               linear-gradient(135deg, #4A2C05, #A9670A 58%, ${theme.palette.secondary.main})`
-            : `radial-gradient(120% 140% at 88% -20%, rgba(255,255,255,.3), transparent 55%),
+               linear-gradient(135deg, ${darken(theme.palette.secondary.dark, 0.78)}, ${darken(theme.palette.secondary.dark, 0.3)} 58%, ${theme.palette.secondary.dark})`
+            : `radial-gradient(120% 140% at 88% -20%, ${alpha(theme.palette.common.white, 0.3)}, transparent 55%),
                linear-gradient(135deg, ${theme.palette.secondary.dark}, ${theme.palette.secondary.main} 55%, ${theme.palette.secondary.light})`
           : theme.palette.mode === "dark"
             ? `radial-gradient(120% 140% at 88% -20%, ${alpha(theme.palette.primary.light, 0.22)}, transparent 55%),
-               linear-gradient(135deg, #0B3A4C, #0E7A8C 60%, ${theme.palette.primary.main})`
-            : `radial-gradient(120% 140% at 88% -20%, rgba(255,255,255,.28), transparent 55%),
+               linear-gradient(135deg, ${darken(theme.palette.primary.dark, 0.7)}, ${darken(theme.palette.primary.dark, 0.3)} 60%, ${theme.palette.primary.dark})`
+            : `radial-gradient(120% 140% at 88% -20%, ${alpha(theme.palette.common.white, 0.28)}, transparent 55%),
                linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main} 55%, ${theme.palette.primary.light})`,
         "&::after": {
           content: '""',
@@ -281,7 +280,7 @@ export function GradientPanel({ children, tone = "sell", sx }) {
           width: 160,
           height: 160,
           borderRadius: "50%",
-          background: "rgba(255,255,255,.10)",
+          background: alpha(theme.palette.common.white, 0.1),
           pointerEvents: "none",
         },
         ...sx,
@@ -329,7 +328,7 @@ export function Row({ label, value, valueColor, strike }) {
         justifyContent: "space-between",
         gap: 1.25,
         py: 1.125,
-        fontSize: 13.5,
+        fontSize: 14,
         "&:not(:first-of-type)": { borderTop: "1px solid", borderColor: "divider" },
       }}
     >
@@ -350,6 +349,117 @@ export function Row({ label, value, valueColor, strike }) {
       >
         {value}
       </Typography>
+    </Box>
+  );
+}
+
+/**
+ * 一個提示區塊：標題 + 一小段說明。
+ * 詳情頁原本到處手寫「AlertTitle 13 / Typography 12.8」這一組，集中在這裡，
+ * 字級才會一致，也方便把多個提示併成一個。
+ */
+export function InfoBlock({ severity = "info", title, role, icon, children, sx }) {
+  return (
+    <Alert severity={severity} role={role} icon={icon} sx={{ borderRadius: 3, ...sx }}>
+      {title && <AlertTitle sx={{ fontSize: 14, fontWeight: 700, mb: "2px" }}>{title}</AlertTitle>}
+      {children && (
+        <Typography component="div" sx={BODY_SMALL}>
+          {children}
+        </Typography>
+      )}
+    </Alert>
+  );
+}
+
+/** 女神石的單一符號：一律用 DiamondIcon + 貨幣色，整個市場只有這一種寫法。 */
+export function StoneIcon({ size = 14, sx }) {
+  return (
+    <DiamondIcon
+      aria-hidden="true"
+      sx={{ fontSize: size, color: "currency.main", flexShrink: 0, ...sx }}
+    />
+  );
+}
+
+/**
+ * 掛單頁的市場參考價。賣單頁看「最低售價」是定價的錨點，
+ * 收購單頁看「最高收購價」，所以兩者都列，只是順序隨頁面調整。
+ * 沒資料（沒人掛）跟讀取失敗是兩件事，文案與重試分開處理。
+ */
+export function MarketAnchor({ anchors, itemId, order = ["ask", "bid"] }) {
+  if (itemId == null) return null;
+
+  const box = {
+    mt: 1.25,
+    px: 1.5,
+    py: 1,
+    borderRadius: 3,
+    border: "1px solid",
+    borderColor: "divider",
+    bgcolor: "surface.subtle",
+  };
+
+  if (anchors.failed) {
+    return (
+      <Box sx={{ ...box, display: "flex", alignItems: "center", gap: 1 }} role="status">
+        <Typography sx={{ ...META_TEXT, flex: "1 1 auto" }}>暫時讀不到市場價格</Typography>
+        <Button size="small" onClick={anchors.reload} sx={{ minHeight: TOUCH, flexShrink: 0 }}>
+          重試
+        </Button>
+      </Box>
+    );
+  }
+
+  if (anchors.loading) {
+    return (
+      <Box sx={box} role="status">
+        <Typography sx={META_TEXT}>讀取市場價格中…</Typography>
+      </Box>
+    );
+  }
+
+  const { ask, bid } = anchors.anchorFor(itemId);
+  const lines = {
+    ask: { label: ORDER_COPY.sell.bestPrice, data: ask, none: "目前沒有人在賣", unit: "張賣單" },
+    bid: { label: ORDER_COPY.buy.bestPrice, data: bid, none: "目前沒有人收購", unit: "張收購單" },
+  };
+
+  return (
+    <Box sx={box} role="status" aria-label="這隻角色目前的市場價格">
+      {order.map(key => {
+        const { label, data, none, unit } = lines[key];
+        return (
+          <Box key={key} sx={{ display: "flex", alignItems: "baseline", gap: 1, py: 0.25 }}>
+            <Typography component="span" sx={{ fontSize: 13, color: "text.secondary" }}>
+              {label}
+            </Typography>
+            <Box sx={{ flex: "1 1 auto" }} />
+            {data ? (
+              <>
+                <Typography
+                  component="span"
+                  sx={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    // 方向色固定：賣單側青色、收購側琥珀，不隨頁面改變。
+                    color: key === "bid" ? "secondary.main" : "primary.main",
+                    ...NUMS,
+                  }}
+                >
+                  {fmtStone(data.price)}
+                </Typography>
+                <Typography component="span" sx={META_TEXT}>
+                  {data.count} {unit}
+                </Typography>
+              </>
+            ) : (
+              <Typography component="span" sx={META_TEXT}>
+                {none}
+              </Typography>
+            )}
+          </Box>
+        );
+      })}
     </Box>
   );
 }

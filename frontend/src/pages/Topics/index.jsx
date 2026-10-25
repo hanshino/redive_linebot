@@ -12,33 +12,33 @@ import {
   ToggleButtonGroup,
   TextField,
   MenuItem,
-  CircularProgress,
+  Skeleton,
 } from "@mui/material";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import { fetchGroupSummarys } from "../../services/group";
 import { fetchMyTopics, fetchGroupTopics } from "../../services/topic";
 import WordCloudCanvas from "./WordCloudCanvas";
+import useLoad from "./useLoad";
 
 const PERIODS = [
   { value: 7, label: "近 7 天" },
   { value: 30, label: "近 30 天" },
 ];
 
-// One quiet empty/loading panel reused by both clouds, so the cloud card is the
-// only thing that ever changes shape.
-function CloudState({ loading, isEmpty, emptyText, children }) {
+// One quiet loading / error / empty panel reused by both clouds, so the cloud card is the
+// only thing that ever changes shape. 失敗與「還沒有資料」要分開：失敗給重試，不能叫人多聊天。
+function CloudState({ loading, error, onRetry, isEmpty, emptyText, children }) {
   if (loading) {
+    return <Skeleton variant="rounded" height={320} animation="wave" sx={{ mt: 1 }} />;
+  }
+  if (error) {
     return (
-      <Box
-        sx={{
-          minHeight: 320,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={28} thickness={5} />
+      <Box sx={{ minHeight: 320, display: "flex", alignItems: "center" }}>
+        <Box sx={{ width: "100%" }}>
+          <LoadError message="文字雲載入失敗，請檢查網路後再試一次。" onRetry={onRetry} />
+        </Box>
       </Box>
     );
   }
@@ -54,7 +54,7 @@ function CloudState({ loading, isEmpty, emptyText, children }) {
           px: 3,
         }}
       >
-        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.8 }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.8 }}>
           {emptyText}
         </Typography>
       </Box>
@@ -63,29 +63,7 @@ function CloudState({ loading, isEmpty, emptyText, children }) {
   return children;
 }
 
-// Fetch a cloud's data when `enabled`, drop a stale resolve if deps change
-// mid-flight, and clear when disabled. Shared by the personal and group clouds.
-function useTopicCloud(fetcher, enabled, deps) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (!enabled) {
-      setItems([]);
-      return undefined;
-    }
-    let active = true;
-    setLoading(true);
-    fetcher()
-      .then(data => active && setItems(Array.isArray(data) ? data : []))
-      .catch(() => active && setItems([]))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-  return { items, loading };
-}
+const asArray = data => (Array.isArray(data) ? data : []);
 
 export default function Topics() {
   const { loggedIn } = useLiff();
@@ -93,35 +71,35 @@ export default function Topics() {
   const [tab, setTab] = useState(0); // 0 = 個人, 1 = 群組
   const [days, setDays] = useState(30);
 
-  const [groups, setGroups] = useState([]);
-  const [groupId, setGroupId] = useState("");
+  const [pickedGroupId, setPickedGroupId] = useState("");
 
   useEffect(() => {
     document.title = "聊天文字雲";
   }, []);
 
   // 使用者的群組清單（群組文字雲的選單來源）
-  useEffect(() => {
-    if (!loggedIn) return;
-    fetchGroupSummarys()
-      .then(list => {
-        const arr = (Array.isArray(list) ? list : []).filter(g => g?.groupId);
-        setGroups(arr);
-        setGroupId(prev => prev || arr[0]?.groupId || "");
-      })
-      .catch(() => setGroups([]));
-  }, [loggedIn]);
-
-  const { items: myItems, loading: myLoading } = useTopicCloud(
-    () => fetchMyTopics(days),
+  const {
+    data: groupList,
+    loading: groupsLoading,
+    error: groupsError,
+    retry: retryGroups,
+  } = useLoad(
+    () => fetchGroupSummarys().then(list => asArray(list).filter(g => g?.groupId)),
     loggedIn,
-    [loggedIn, days]
+    [loggedIn]
   );
-  const { items: groupItems, loading: groupLoading } = useTopicCloud(
-    () => fetchGroupTopics(groupId, days),
+  const groups = groupList ?? [];
+  // 沒選過就用第一個群組（衍生值，不在 effect 裡 setState）
+  const groupId = pickedGroupId || groups[0]?.groupId || "";
+
+  const my = useLoad(() => fetchMyTopics(days).then(asArray), loggedIn, [loggedIn, days]);
+  const group = useLoad(
+    () => fetchGroupTopics(groupId, days).then(asArray),
     loggedIn && Boolean(groupId),
     [loggedIn, groupId, days]
   );
+  const myItems = my.data ?? [];
+  const groupItems = group.data ?? [];
 
   const periodLabel = PERIODS.find(p => p.value === days)?.label ?? "近 30 天";
 
@@ -129,18 +107,15 @@ export default function Topics() {
     <Container maxWidth="md" sx={{ py: 2 }}>
       <Stack
         direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        flexWrap="wrap"
-        gap={1}
-        sx={{ mb: 1.5 }}
+        sx={{
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 1,
+          mb: 1.5,
+        }}
       >
-        <Stack>
-          <Typography variant="h6">聊天文字雲</Typography>
-          <Typography variant="caption" color="text.secondary">
-            你平常都在聊什麼 — 字越大、講得越多
-          </Typography>
-        </Stack>
+        <Typography variant="h6">聊天文字雲</Typography>
         <ToggleButtonGroup
           size="small"
           exclusive
@@ -149,7 +124,7 @@ export default function Topics() {
           aria-label="期間"
         >
           {PERIODS.map(p => (
-            <ToggleButton key={p.value} value={p.value} sx={{ px: 1.75 }}>
+            <ToggleButton key={p.value} value={p.value} sx={{ px: 1.75, minHeight: 44 }}>
               {p.label}
             </ToggleButton>
           ))}
@@ -158,19 +133,24 @@ export default function Topics() {
 
       {!loggedIn && <AlertLogin />}
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab label="我的文字雲" />
-        <Tab label="群組文字雲" />
-      </Tabs>
+      {/* 沒登入就沒有資料可談：不渲染雲與分頁，否則會顯示「還沒有發言」誤導人 */}
+      {loggedIn && (
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
+          <Tab label="我的文字雲" />
+          <Tab label="群組文字雲" />
+        </Tabs>
+      )}
 
-      {tab === 0 && (
+      {loggedIn && tab === 0 && (
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>
               {periodLabel}・只有你看得到
             </Typography>
             <CloudState
-              loading={myLoading}
+              loading={my.loading}
+              error={my.error}
+              onRetry={my.retry}
               isEmpty={!myItems.length}
               emptyText={`${periodLabel}還沒有足夠的發言用字，多聊聊天再回來看看吧！`}
             >
@@ -180,37 +160,51 @@ export default function Topics() {
         </Card>
       )}
 
-      {tab === 1 && (
-        <Stack gap={1.5}>
-          <TextField
-            select
-            size="small"
-            label="選擇群組"
-            value={groupId}
-            onChange={e => setGroupId(e.target.value)}
-            disabled={!groups.length}
-            helperText={groups.length ? "聚合結果，不會顯示是誰說的" : "目前沒有可顯示的群組"}
-          >
-            {groups.map(g => (
-              <MenuItem key={g.groupId} value={g.groupId}>
-                {g.groupName || g.groupId}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="overline" color="text.secondary">
-                {periodLabel}・全群熱門用字
-              </Typography>
-              <CloudState
-                loading={groupLoading}
-                isEmpty={!groupItems.length}
-                emptyText={`${periodLabel}這個群組還沒有足夠的話題，多聊聊天再回來看看吧！`}
-              >
-                <WordCloudCanvas items={groupItems} />
-              </CloudState>
-            </CardContent>
-          </Card>
+      {loggedIn && tab === 1 && (
+        <Stack sx={{ gap: 1.5 }}>
+          {groupsError ? (
+            <LoadError message="群組清單載入失敗，請檢查網路後再試一次。" onRetry={retryGroups} />
+          ) : (
+            <TextField
+              select
+              size="small"
+              label="選擇群組"
+              value={groupId}
+              onChange={e => setPickedGroupId(e.target.value)}
+              disabled={!groups.length}
+              helperText={
+                groupsLoading
+                  ? "載入群組中…"
+                  : groups.length
+                    ? "聚合結果，不會顯示是誰說的"
+                    : "目前沒有可顯示的群組"
+              }
+            >
+              {groups.map(g => (
+                <MenuItem key={g.groupId} value={g.groupId}>
+                  {g.groupName || g.groupId}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+          {!groupsError && groupId && (
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>
+                  {periodLabel}・全群熱門用字
+                </Typography>
+                <CloudState
+                  loading={group.loading}
+                  error={group.error}
+                  onRetry={group.retry}
+                  isEmpty={!groupItems.length}
+                  emptyText={`${periodLabel}這個群組還沒有足夠的話題，多聊聊天再回來看看吧！`}
+                >
+                  <WordCloudCanvas items={groupItems} />
+                </CloudState>
+              </CardContent>
+            </Card>
+          )}
         </Stack>
       )}
     </Container>

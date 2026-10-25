@@ -1,10 +1,40 @@
-import { createTheme } from "@mui/material/styles";
+import { alpha, createTheme } from "@mui/material/styles";
 
 // Miyako (宮子) inspired color palette
 // Primary: Cyan/light blue — her hair color
 // Secondary: Amber/caramel — pudding (布丁)
 // Accent: Red — her eyes
 // Decorative: Purple (scarf), Orange (skirt)
+
+// 只有可點的卡片才有 hover 浮起：內含 CardActionArea，或自己標 data-interactive。
+// 靜態資訊卡浮起會讓人以為能點。
+const INTERACTIVE_CARD_HOVER = "&:has(> .MuiCardActionArea-root):hover, &[data-interactive]:hover";
+
+// 語意色：頁面不要再寫死 hex，從 theme.palette.<key> 取，深淺模式各自調過。
+// rarity: 成就稀有度 0-3；medal: 排行前三名；currency: 女神石。
+const lightTokens = {
+  rarity: {
+    0: { main: "#616161", bg: "#F5F5F5", label: "普通" },
+    1: { main: "#5B4BC4", bg: "#EDE7F6", label: "稀有" },
+    2: { main: "#8A6100", bg: "#FFF8E1", label: "史詩" },
+    3: { main: "#C2185B", bg: "#FCE4EC", label: "傳說" },
+  },
+  medal: ["#FFD700", "#C0C0C0", "#CD7F32"],
+  currency: { main: "#B45309", bg: "#FFF7E6" },
+  surface: { subtle: "#F5F7FA", inset: "#EEF2F6" },
+};
+
+const darkTokens = {
+  rarity: {
+    0: { main: "#BDBDBD", bg: "rgba(189, 189, 189, 0.12)", label: "普通" },
+    1: { main: "#B3A8FF", bg: "rgba(179, 168, 255, 0.14)", label: "稀有" },
+    2: { main: "#F2C14E", bg: "rgba(242, 193, 78, 0.14)", label: "史詩" },
+    3: { main: "#FF8FB8", bg: "rgba(255, 143, 184, 0.14)", label: "傳說" },
+  },
+  medal: ["#D4AF37", "#A8A8A8", "#A05A2C"],
+  currency: { main: "#FBBF24", bg: "rgba(251, 191, 36, 0.12)" },
+  surface: { subtle: "#0E1E30", inset: "#173049" },
+};
 
 const shared = {
   typography: {
@@ -22,16 +52,19 @@ export const lightTheme = createTheme({
   ...shared,
   palette: {
     mode: "light",
+    // main 是給「文字、連結、實心按鈕底色」用的，必須在白底與 #F5F7FA 都達 4.5:1。
+    // 宮子髮色的亮青 #00ACC1 降為 light，只用在大面積裝飾、圖表、邊框。
     primary: {
-      main: "#00ACC1",
-      light: "#26C6DA",
-      dark: "#00838F",
+      main: "#007C89",
+      light: "#00ACC1",
+      dark: "#005F69",
       contrastText: "#FFFFFF",
     },
+    // 布丁的焦糖層：main 用焦糖色才能當文字與白字按鈕底；亮琥珀留給 light。
     secondary: {
-      main: "#F59E0B",
-      light: "#FBBF24",
-      dark: "#D97706",
+      main: "#B45309",
+      light: "#F59E0B",
+      dark: "#92400E",
       contrastText: "#FFFFFF",
     },
     background: {
@@ -42,19 +75,27 @@ export const lightTheme = createTheme({
       primary: "#1A2332",
       secondary: "#5A6B7F",
     },
-    error: { main: "#EF4444" },
-    warning: { main: "#F59E0B" },
-    success: { main: "#22C55E" },
-    info: { main: "#00ACC1" },
+    error: { main: "#DC2626" },
+    warning: { main: "#B45309" },
+    success: { main: "#15803D" },
+    info: { main: "#007C89" },
     divider: "rgba(0, 172, 193, 0.12)",
+    ...lightTokens,
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        "::selection": { backgroundColor: "rgba(0, 172, 193, 0.25)" },
+        body: { caretColor: "#007C89" },
+        ":focus-visible": { outline: "2px solid #007C89", outlineOffset: 2 },
+      },
+    },
     MuiCard: {
       styleOverrides: {
         root: {
           border: "1px solid rgba(0, 172, 193, 0.12)",
           transition: "border-color 0.2s ease-out, box-shadow 0.2s ease-out",
-          "&:hover": {
+          [INTERACTIVE_CARD_HOVER]: {
             borderColor: "rgba(0, 172, 193, 0.3)",
             boxShadow: "0 4px 20px rgba(0, 172, 193, 0.1)",
           },
@@ -118,17 +159,25 @@ export const darkTheme = createTheme({
     success: { main: "#4ADE80" },
     info: { main: "#4DD0E1" },
     divider: "rgba(38, 198, 218, 0.12)",
+    ...darkTokens,
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        "::selection": { backgroundColor: "rgba(38, 198, 218, 0.3)" },
+        body: { caretColor: "#26C6DA" },
+        ":focus-visible": { outline: "2px solid #26C6DA", outlineOffset: 2 },
+      },
+    },
     MuiCard: {
       styleOverrides: {
         root: {
           backgroundImage: "none",
           border: "1px solid rgba(38, 198, 218, 0.15)",
           transition: "border-color 0.2s ease-out, box-shadow 0.2s ease-out",
-          "&:hover": {
+          [INTERACTIVE_CARD_HOVER]: {
             borderColor: "rgba(38, 198, 218, 0.35)",
-            boxShadow: "0 0 20px rgba(38, 198, 218, 0.1)",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
           },
         },
       },
@@ -174,6 +223,19 @@ export const darkTheme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: "none",
+        },
+      },
+    },
+    // MUI 深色預設的提示條底色是 darken(main, 0.6)，info 青色會變成接近純黑、看不出是資訊。
+    // 改成該語意色的低透明度淡底，文字維持主文字色，圖示保留語意色。
+    MuiAlert: {
+      styleOverrides: {
+        standard: ({ theme, ownerState }) => {
+          const tone = theme.palette[ownerState.color ?? ownerState.severity ?? "success"];
+          return {
+            backgroundColor: alpha(tone.main, 0.14),
+            color: theme.palette.text.primary,
+          };
         },
       },
     },

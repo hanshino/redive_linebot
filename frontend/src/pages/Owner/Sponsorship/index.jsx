@@ -20,6 +20,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import * as svc from "../../../services/sponsorship";
+import { HeroButton } from "../../../components/PageHero";
 import { Hero, TypeChip } from "./_shared";
 import { fmtAmount, fmtDate, playerLabel, errorMessage } from "./_format";
 import PlayerSearch from "./PlayerSearch";
@@ -78,18 +79,13 @@ export default function SponsorshipList() {
         title="贊助管理"
         subtitle="登記贊助、發放序號、補綁歷史紀錄。送出後的紀錄不可修改。"
       >
-        <Button
-          variant="contained"
+        <HeroButton
+          tone="secondary"
           startIcon={<AddIcon />}
           onClick={() => navigate("/owner/sponsorships/new")}
-          sx={{
-            bgcolor: "rgba(255,255,255,0.22)",
-            color: "#fff",
-            "&:hover": { bgcolor: "rgba(255,255,255,0.32)" },
-          }}
         >
           新增登記
-        </Button>
+        </HeroButton>
       </Hero>
 
       <Paper sx={{ p: { xs: 2, sm: 2.5 }, borderRadius: 3 }}>
@@ -144,7 +140,7 @@ export default function SponsorshipList() {
           <ToggleButton value="true">已綁定</ToggleButton>
           <ToggleButton value="false">未綁定</ToggleButton>
         </ToggleButtonGroup>
-        <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", ml: "auto" }}>
           共 {total} 筆
         </Typography>
       </Stack>
@@ -165,9 +161,7 @@ export default function SponsorshipList() {
         ) : items.length === 0 ? (
           <Box sx={{ p: 6, textAlign: "center" }}>
             <VolunteerActivismIcon sx={{ fontSize: 48, opacity: 0.3 }} />
-            <Typography color="text.secondary" sx={{ mt: 1 }}>
-              目前沒有符合的贊助紀錄
-            </Typography>
+            <Typography sx={{ color: "text.secondary", mt: 1 }}>目前沒有符合的贊助紀錄</Typography>
           </Box>
         ) : (
           items.map((s, idx) => (
@@ -224,7 +218,7 @@ export default function SponsorshipList() {
                       />
                     )}
                   </Stack>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                  <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
                     #{s.id} · 入帳 {fmtDate(s.receivedAt)}
                     {s.paymentMethod ? ` · ${s.paymentMethod}` : ""}
                     {s.externalRef ? ` · ${s.externalRef}` : ""}

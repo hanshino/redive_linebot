@@ -4,6 +4,9 @@
  * 兩套字彙混在一起只會讓人猜錯，所以這裡另開一個模組。
  * ====================================================================== */
 
+import { useCallback, useEffect } from "react";
+import useAxios from "axios-hooks";
+
 export const FEE_PERCENT = 5;
 export const PRICE_MIN = 1;
 export const PRICE_MAX = 10000000;
@@ -13,11 +16,47 @@ export const MAX_OPEN_FALLBACK = 10;
 export const calcFee = price => Math.ceil((price * FEE_PERCENT) / 100);
 export const calcNet = price => price - calcFee(price);
 
-/** 金額一律有千分位。 */
-export const fmtStone = n => Number(n ?? 0).toLocaleString("en-US");
+/**
+ * 金額一律有千分位。
+ * 沒有值（還沒載入、載入失敗）時回「—」，不補 0：
+ * 「餘額 0」是一個會讓人放棄交易的具體說法，不能拿來當作沒資料的預設。
+ */
+export const fmtStone = n => {
+  if (n == null || n === "" || !Number.isFinite(Number(n))) return "—";
+  return Number(n).toLocaleString("en-US");
+};
 
 /** 數字欄位對齊用（等寬數字）。 */
 export const NUMS = { fontVariantNumeric: "tabular-nums" };
+
+/** 只給讀屏看的文字（clip 做法，不會在版面上佔位）。 */
+export const SR_ONLY = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  m: "-1px",
+  p: 0,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
+/** 觸控目標最小尺寸（LIFF 手機操作）。 */
+export const TOUCH = 44;
+
+/** 交易頁都是單欄表單／清單，桌機上不要撐滿整個內容區，限制在好讀的寬度並置中。 */
+export const PAGE_WIDTH = { width: "100%", maxWidth: 680, mx: "auto" };
+
+/** 掛在頁面根節點或 Dialog paper 上，讓裡面所有 MUI Button（含 size="small"）都達觸控目標。 */
+export const TAP_TARGETS = { "& .MuiButton-root": { minHeight: TOUCH } };
+
+/**
+ * 這個模組重複最多的文字組合。字級只用 12 / 13 / 14 / 16 / 18 / 20 / 24，
+ * 集中在這裡，各頁就不會各自長出 11.5、12.8 這種中間值。
+ */
+export const META_TEXT = { fontSize: 12, color: "text.secondary", ...NUMS };
+export const BODY_SMALL = { fontSize: 13, lineHeight: 1.6 };
 
 const pad = n => String(n).padStart(2, "0");
 
@@ -170,3 +209,49 @@ export function charGradient(itemId) {
 
 /** 賣家 / 買家名稱可能是 null（profile 查不到），統一補一個可讀的字。 */
 export const displayName = n => n || "未知玩家";
+
+/**
+ * 市場參考價：沿用公開市場既有的 /characters 掛單簿（bestPrice 在賣單簿是最低售價、
+ * 收購簿是最高收購價），不另開 API。兩本各讀一次，掛單頁用選中的角色去查。
+ * 沒有出現在清單裡 = 目前沒人掛，是正常狀態；讀取失敗要另外標出來，不能當成沒人掛。
+ */
+export function useMarketAnchors(enabled) {
+  const [{ data: sellRows, loading: sellLoading, error: sellError }, fetchSell] = useAxios(
+    { url: "/api/public-market/characters", params: { orderType: "sell" } },
+    { manual: true }
+  );
+  const [{ data: buyRows, loading: buyLoading, error: buyError }, fetchBuy] = useAxios(
+    { url: "/api/public-market/characters", params: { orderType: "buy" } },
+    { manual: true }
+  );
+
+  const reload = useCallback(() => {
+    fetchSell().catch(() => {});
+    fetchBuy().catch(() => {});
+  }, [fetchSell, fetchBuy]);
+
+  useEffect(() => {
+    if (enabled) reload();
+  }, [enabled, reload]);
+
+  const failed = Boolean(sellError || buyError);
+  const ready = !failed && Array.isArray(sellRows) && Array.isArray(buyRows);
+  const find = (rows, id) =>
+    Array.isArray(rows) ? rows.find(r => String(r.itemId) === String(id)) : undefined;
+
+  return {
+    loading: !failed && (sellLoading || buyLoading || !ready),
+    failed,
+    ready,
+    reload,
+    /** { ask, bid }：各自為 { price, count } 或 null（目前沒有）。 */
+    anchorFor: itemId => {
+      const ask = find(sellRows, itemId);
+      const bid = find(buyRows, itemId);
+      return {
+        ask: ask ? { price: Number(ask.bestPrice), count: Number(ask.listingCount) } : null,
+        bid: bid ? { price: Number(bid.bestPrice), count: Number(bid.listingCount) } : null,
+      };
+    },
+  };
+}

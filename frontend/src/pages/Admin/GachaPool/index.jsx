@@ -15,65 +15,51 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { DataGrid } from "@mui/x-data-grid";
 import { zhTW } from "@mui/x-data-grid/locales";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SearchIcon from "@mui/icons-material/Search";
+import CheckIcon from "@mui/icons-material/Check";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { FullPageLoading } from "../../../components/Loading";
+import LoadError from "../../../components/LoadError";
 import HintSnackBar from "../../../components/HintSnackBar";
 import AlertDialog from "../../../components/AlertDialog";
 import useHintBar from "../../../hooks/useHintBar";
 import useAlertDialog from "../../../hooks/useAlertDialog";
 import * as gachaPoolService from "../../../services/gachaPool";
+import { errorText } from "../_errors";
+import { STAR_META, starColors, fmtRate } from "./stars";
 
 const STAR_FILTERS = [
   { label: "全部", value: null },
-  { label: "SSR", value: 3 },
-  { label: "SR", value: 2 },
-  { label: "R", value: 1 },
+  { label: STAR_META[3].short, value: 3 },
+  { label: STAR_META[2].short, value: 2 },
+  { label: STAR_META[1].short, value: 1 },
 ];
-
-const STAR_CONFIG = {
-  3: {
-    label: "SSR",
-    color: "#F59E0B",
-    bg: "rgba(245, 158, 11, 0.12)",
-    border: "rgba(245, 158, 11, 0.3)",
-  },
-  2: {
-    label: "SR",
-    color: "#A855F7",
-    bg: "rgba(168, 85, 247, 0.12)",
-    border: "rgba(168, 85, 247, 0.3)",
-  },
-  1: {
-    label: "R",
-    color: "#6B7280",
-    bg: "rgba(107, 114, 128, 0.1)",
-    border: "rgba(107, 114, 128, 0.25)",
-  },
-};
 
 export default function AdminGachaPool() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isDark = theme.palette.mode === "dark";
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [search, setSearch] = useState("");
   const [starFilter, setStarFilter] = useState(null);
 
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
-  const [alertState, { handleOpen: showAlert, handleClose: closeAlert }] = useAlertDialog();
+  const [alertState, { handleOpen: showAlert, handleClose: closeAlert, setBusy }] =
+    useAlertDialog();
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(false);
       const data = await gachaPoolService.fetchData();
       setRows(
         data.map(d => ({
@@ -84,11 +70,13 @@ export default function AdminGachaPool() {
         }))
       );
     } catch {
-      showHint("載入資料失敗", "error");
+      // 失敗不能留舊資料或空表：清掉列表，改顯示 LoadError
+      setRows([]);
+      setError(true);
     } finally {
       setLoading(false);
     }
-  }, [showHint]);
+  }, []);
 
   useEffect(() => {
     document.title = "卡池管理頁面";
@@ -107,19 +95,32 @@ export default function AdminGachaPool() {
     return result;
   }, [rows, starFilter, search]);
 
+  // 各星等機率加總（全池，不受搜尋與篩選影響）：調機率時要看得到總和有沒有跑掉
+  const rateSums = useMemo(() => {
+    const sums = { 3: 0, 2: 0, 1: 0 };
+    rows.forEach(r => {
+      if (sums[r.star] !== undefined) sums[r.star] += Number(r.rate) || 0;
+    });
+    return { ...sums, total: sums[3] + sums[2] + sums[1] };
+  }, [rows]);
+
   const handleDeleteClick = row => {
     showAlert({
-      title: "確認刪除",
-      description: `確定要刪除角色「${row.name}」嗎？`,
+      title: "刪除角色",
+      description: `「${row.name}」會從卡池移除，無法復原。`,
+      submitText: "刪除",
+      destructive: true,
       onSubmit: async () => {
+        setBusy(true);
         try {
           await gachaPoolService.deleteData(row.id);
-          showHint("刪除成功", "success");
-          fetchData();
-        } catch {
-          showHint("刪除失敗", "error");
-        } finally {
           closeAlert();
+          showHint(`已刪除角色「${row.name}」`, "success");
+          fetchData();
+        } catch (e) {
+          // 失敗時保留確認框，讓管理員可以重試或取消
+          setBusy(false);
+          showHint(errorText(e, `刪除「${row.name}」失敗，角色還在卡池裡，請稍後再試。`), "error");
         }
       },
     });
@@ -133,7 +134,7 @@ export default function AdminGachaPool() {
       sortable: false,
       filterable: false,
       renderCell: params => {
-        const cfg = STAR_CONFIG[params.row.star] || STAR_CONFIG[1];
+        const cfg = starColors(theme, params.row.star);
         return (
           <Avatar
             alt={params.row.name}
@@ -155,46 +156,68 @@ export default function AdminGachaPool() {
       flex: 1,
       minWidth: isMobile ? 70 : 100,
       renderCell: params => (
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {params.value}
-        </Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+            {params.value}
+          </Typography>
+          {/* 手機版放不下星等與標籤欄，改收進名稱下方（星等用文字，不只靠顏色） */}
+          {isMobile && (
+            <Typography variant="caption" noWrap sx={{ color: "text.secondary", display: "block" }}>
+              <Box
+                component="span"
+                sx={{ color: starColors(theme, params.row.star).color, fontWeight: 700 }}
+              >
+                {(STAR_META[params.row.star] || STAR_META[1]).short}
+              </Box>
+              {params.row.tag ? ` ・${params.row.tag}` : ""}
+            </Typography>
+          )}
+        </Box>
       ),
-    },
-    {
-      field: "star",
-      headerName: "星等",
-      width: isMobile ? 64 : 80,
-      renderCell: params => {
-        const cfg = STAR_CONFIG[params.value] || STAR_CONFIG[1];
-        return (
-          <Chip
-            label={cfg.label}
-            size="small"
-            sx={{
-              bgcolor: cfg.bg,
-              color: cfg.color,
-              border: 1,
-              borderColor: cfg.border,
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              letterSpacing: "0.05em",
-            }}
-          />
-        );
-      },
     },
     ...(!isMobile
       ? [
           {
-            field: "rate",
-            headerName: "機率",
-            width: 90,
-            renderCell: params => (
-              <Typography variant="body2" sx={{ fontFamily: "monospace", color: "text.secondary" }}>
-                {params.value}%
-              </Typography>
-            ),
+            field: "star",
+            headerName: "星等",
+            width: 80,
+            renderCell: params => {
+              const cfg = starColors(theme, params.value);
+              return (
+                <Chip
+                  label={(STAR_META[params.value] || STAR_META[1]).short}
+                  size="small"
+                  sx={{
+                    bgcolor: cfg.bg,
+                    color: cfg.color,
+                    border: 1,
+                    borderColor: cfg.border,
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                    letterSpacing: "0.05em",
+                  }}
+                />
+              );
+            },
           },
+        ]
+      : []),
+    {
+      // 機率是調卡池時最常看的欄位，手機版也要留著
+      field: "rate",
+      headerName: "機率",
+      width: isMobile ? 76 : 90,
+      renderCell: params => (
+        <Typography
+          variant="body2"
+          sx={{ fontVariantNumeric: "tabular-nums", color: "text.secondary" }}
+        >
+          {fmtRate(params.value)}
+        </Typography>
+      ),
+    },
+    ...(!isMobile
+      ? [
           {
             field: "isPrincess",
             headerName: "公主",
@@ -202,7 +225,11 @@ export default function AdminGachaPool() {
             renderCell: params =>
               params.value === 1 ? (
                 <Tooltip title="公主角色" arrow>
-                  <AutoAwesomeIcon sx={{ color: "secondary.main", fontSize: 20 }} />
+                  <AutoAwesomeIcon
+                    aria-label="公主角色"
+                    role="img"
+                    sx={{ color: "secondary.main", fontSize: 20 }}
+                  />
                 </Tooltip>
               ) : (
                 <Typography variant="body2" sx={{ color: "text.disabled" }}>
@@ -216,16 +243,18 @@ export default function AdminGachaPool() {
     {
       field: "actions",
       headerName: "",
-      width: isMobile ? 80 : 96,
+      width: 108,
       sortable: false,
       filterable: false,
       renderCell: params => (
-        <Stack direction="row" spacing={0.5}>
+        <Stack direction="row" spacing={1}>
           <Tooltip title="編輯" arrow>
             <IconButton
-              size="small"
+              aria-label={`編輯角色 ${params.row.name}`}
               onClick={() => navigate(`/admin/gacha-pool/${params.row.id}/edit`)}
               sx={{
+                width: 44,
+                height: 44,
                 color: "primary.main",
                 "&:hover": { bgcolor: "primary.main", color: "primary.contrastText" },
                 transition: "all 0.15s",
@@ -236,9 +265,11 @@ export default function AdminGachaPool() {
           </Tooltip>
           <Tooltip title="刪除" arrow>
             <IconButton
-              size="small"
+              aria-label={`刪除角色 ${params.row.name}`}
               onClick={() => handleDeleteClick(params.row)}
               sx={{
+                width: 44,
+                height: 44,
                 color: "error.main",
                 "&:hover": { bgcolor: "error.main", color: "error.contrastText" },
                 transition: "all 0.15s",
@@ -251,6 +282,10 @@ export default function AdminGachaPool() {
       ),
     },
   ];
+
+  if (error) {
+    return <LoadError message="卡池資料載入失敗，請檢查網路後再試一次。" onRetry={fetchData} />;
+  }
 
   if (loading && rows.length === 0) {
     return <FullPageLoading />;
@@ -267,9 +302,7 @@ export default function AdminGachaPool() {
           borderRadius: 3,
           border: 1,
           borderColor: "divider",
-          background: isDark
-            ? "linear-gradient(135deg, rgba(38,198,218,0.08) 0%, rgba(251,191,36,0.06) 100%)"
-            : "linear-gradient(135deg, rgba(0,172,193,0.06) 0%, rgba(245,158,11,0.04) 100%)",
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.07)} 0%, ${alpha(theme.palette.secondary.light, 0.05)} 100%)`,
         }}
       >
         <Stack
@@ -277,6 +310,7 @@ export default function AdminGachaPool() {
           sx={{
             justifyContent: "space-between",
             alignItems: "center",
+            gap: 1,
             mb: 2.5,
           }}
         >
@@ -293,10 +327,41 @@ export default function AdminGachaPool() {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate("/admin/gacha-pool/new")}
-            sx={{ borderRadius: 2, px: 2.5, boxShadow: 2 }}
+            sx={{ borderRadius: 2, px: 2.5, minHeight: 44, flexShrink: 0 }}
           >
             新增角色
           </Button>
+        </Stack>
+
+        {/* 各星等機率加總：改機率時一眼看出總和 */}
+        <Stack
+          direction="row"
+          role="group"
+          aria-label="各星等機率加總"
+          sx={{ flexWrap: "wrap", gap: 1, mb: 2.5 }}
+        >
+          {[3, 2, 1].map(star => {
+            const cfg = starColors(theme, star);
+            return (
+              <Chip
+                key={star}
+                label={`${STAR_META[star].short} ${fmtRate(rateSums[star])}`}
+                sx={{
+                  bgcolor: cfg.bg,
+                  color: cfg.color,
+                  border: 1,
+                  borderColor: cfg.border,
+                  fontWeight: 700,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              />
+            );
+          })}
+          <Chip
+            label={`合計 ${fmtRate(rateSums.total)}`}
+            variant="outlined"
+            sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
+          />
         </Stack>
 
         {/* Search */}
@@ -307,6 +372,7 @@ export default function AdminGachaPool() {
           value={search}
           onChange={e => setSearch(e.target.value)}
           slotProps={{
+            htmlInput: { "aria-label": "搜尋角色名稱" },
             input: {
               startAdornment: (
                 <InputAdornment position="start">
@@ -324,23 +390,36 @@ export default function AdminGachaPool() {
           }}
         />
 
-        {/* Star Filter Chips */}
+        {/* Star Filter Chips：選取狀態除了底色，還有勾號與 aria-pressed */}
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 0.5 }}>
           {STAR_FILTERS.map(f => {
             const active = starFilter === f.value;
-            const cfg = f.value ? STAR_CONFIG[f.value] : null;
+            const cfg = f.value ? starColors(theme, f.value) : null;
             return (
               <Chip
                 key={f.label}
                 label={f.label}
+                icon={active ? <CheckIcon /> : undefined}
+                aria-pressed={active}
                 onClick={() => setStarFilter(f.value)}
                 sx={{
+                  height: { xs: 44, sm: 32 },
                   fontWeight: active ? 700 : 500,
                   borderRadius: 1.5,
                   ...(active && cfg
-                    ? { bgcolor: cfg.bg, color: cfg.color, border: 1, borderColor: cfg.border }
+                    ? {
+                        bgcolor: cfg.bg,
+                        color: cfg.color,
+                        border: 1,
+                        borderColor: cfg.color,
+                        "& .MuiChip-icon": { color: cfg.color },
+                      }
                     : active
-                      ? { bgcolor: "primary.main", color: "primary.contrastText" }
+                      ? {
+                          bgcolor: "primary.main",
+                          color: "primary.contrastText",
+                          "& .MuiChip-icon": { color: "primary.contrastText" },
+                        }
                       : { bgcolor: "background.paper", border: 1, borderColor: "divider" }),
                   "&:hover": { opacity: 0.85 },
                   transition: "all 0.15s",
@@ -373,29 +452,29 @@ export default function AdminGachaPool() {
           sx={{
             border: "none",
             "& .MuiDataGrid-columnHeaders": {
-              bgcolor: isDark ? "rgba(38,198,218,0.06)" : "rgba(0,172,193,0.04)",
+              bgcolor: alpha(theme.palette.primary.light, 0.06),
               borderBottom: 1,
               borderColor: "divider",
             },
             "& .MuiDataGrid-columnHeaderTitle": {
               fontWeight: 700,
-              fontSize: "0.8rem",
+              fontSize: "0.8125rem",
               color: "text.secondary",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
             },
             "& .MuiDataGrid-row": {
               "&:nth-of-type(even)": {
-                bgcolor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.015)",
+                bgcolor: "action.hover",
               },
               "&:hover": {
-                bgcolor: isDark ? "rgba(38,198,218,0.06)" : "rgba(0,172,193,0.04)",
+                bgcolor: alpha(theme.palette.primary.light, 0.1),
               },
               transition: "background-color 0.15s",
             },
             "& .MuiDataGrid-cell": {
               borderBottom: 1,
-              borderColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
+              borderColor: "divider",
               display: "flex",
               alignItems: "center",
             },
@@ -414,6 +493,9 @@ export default function AdminGachaPool() {
         onCancel={closeAlert}
         title={alertState.title}
         description={alertState.description}
+        submitText={alertState.submitText}
+        destructive={alertState.destructive}
+        busy={alertState.busy}
       />
       {/* Snackbar */}
       <HintSnackBar

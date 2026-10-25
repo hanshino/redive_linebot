@@ -21,6 +21,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import CheckIcon from "@mui/icons-material/Check";
@@ -33,9 +34,10 @@ import TodayIcon from "@mui/icons-material/Today";
 import api from "../../services/api";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
-import { CATEGORY_ICONS, RARITY_CONFIG } from "../Achievement/constants";
+import { CATEGORY_ICONS, getRarity } from "../Achievement/constants";
 
 // Backend day boundary is Asia/Taipei (UTC+8) — same convention as
 // pages/XpHistory/dateTpe.js. Parse the API's ISO date at +08:00 and read the
@@ -208,7 +210,7 @@ function StatTile({ icon: Icon, label, value, unit, accent }) {
             {label}
           </Typography>
         </Stack>
-        <Typography component="p" sx={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>
+        <Typography component="p" sx={{ fontSize: 24, fontWeight: 700, lineHeight: 1.2 }}>
           {value}
           {unit && (
             <Typography
@@ -277,7 +279,8 @@ function readUnlocked(payload) {
 }
 
 function UnlockRow({ achievement }) {
-  const rarity = RARITY_CONFIG[achievement.rarity] || RARITY_CONFIG[0];
+  const theme = useTheme();
+  const rarity = getRarity(theme, achievement.rarity);
   // Keys of signin achievements are intentionally not in the frontend, so the
   // icon resolves from the row's own emoji first, then the category fallback.
   const FallbackIcon = CATEGORY_ICONS[achievement.category_key] || EmojiEventsIcon;
@@ -292,7 +295,7 @@ function UnlockRow({ achievement }) {
           height: 36,
           flexShrink: 0,
           bgcolor: rarity.bg,
-          color: rarity.color,
+          color: rarity.main,
           fontSize: 18,
         }}
       >
@@ -302,7 +305,7 @@ function UnlockRow({ achievement }) {
         <Typography variant="body2" noWrap sx={{ fontWeight: 700 }}>
           {achievement.name}
         </Typography>
-        <Typography variant="caption" sx={{ color: rarity.color, fontWeight: 600 }}>
+        <Typography variant="caption" sx={{ color: rarity.main, fontWeight: 600 }}>
           {rarity.label}
         </Typography>
       </Box>
@@ -311,7 +314,7 @@ function UnlockRow({ achievement }) {
           size="small"
           icon={<DiamondIcon sx={{ fontSize: "0.85rem !important" }} />}
           label={`+${num(reward)}`}
-          sx={{ flexShrink: 0, fontWeight: 700, height: 22, fontSize: "0.72rem" }}
+          sx={{ flexShrink: 0, fontWeight: 700, height: 24, fontSize: "0.75rem" }}
         />
       )}
     </Stack>
@@ -348,7 +351,7 @@ function UnlockToast({ items, onClose }) {
           <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
             {count > 1 ? `補簽成功，解鎖 ${count} 項成就！` : "補簽成功，還解鎖了新成就！"}
           </Typography>
-          <IconButton size="small" onClick={onClose} aria-label="關閉成就通知">
+          <IconButton onClick={onClose} aria-label="關閉成就通知" sx={{ width: 44, height: 44 }}>
             <CloseIcon fontSize="small" />
           </IconButton>
         </Stack>
@@ -461,6 +464,8 @@ export default function Signin() {
 
   if (!loggedIn) return <AlertLogin />;
 
+  // 簽到的唯一入口是每日一抽（#抽）：GachaService.runDailyDraw 內寫入簽到，這頁只負責補簽。
+  const todaySigned = Boolean(data?.entries?.some(e => e.date === data.today));
   const leadingBlanks = data ? weekdayIndexTpe(`${data.month}-01`) : 0;
   const monthLabel = data ? Number(data.month.slice(5, 7)) : null;
   const stats = data?.stats || {};
@@ -468,59 +473,79 @@ export default function Signin() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, maxWidth: 720, mx: "auto" }}>
-      {/* hero */}
-      <Paper sx={{ position: "relative", overflow: "hidden", borderRadius: 3 }}>
+      {/* hero：淺色是深青底白字；深色模式白字配亮青對比不夠，改成青色淡染的卡片 + 一般文字色 */}
+      <Paper
+        sx={theme => ({
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 3,
+          ...(theme.palette.mode === "dark" && {
+            border: 1,
+            borderColor: alpha(theme.palette.primary.main, 0.3),
+          }),
+        })}
+      >
         <Box
-          sx={{
+          sx={theme => ({
             position: "absolute",
             inset: 0,
-            background: theme =>
-              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-          }}
+            background:
+              theme.palette.mode === "dark"
+                ? alpha(theme.palette.primary.main, 0.14)
+                : `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          })}
         />
         <Box
-          sx={{
+          sx={theme => ({
             position: "relative",
             p: { xs: 2.5, sm: 3.5 },
             display: "flex",
             alignItems: "center",
             gap: 2,
             flexWrap: "wrap",
-            color: "#fff",
-          }}
+            color: theme.palette.mode === "dark" ? "text.primary" : "primary.contrastText",
+          })}
         >
-          <EventAvailableIcon sx={{ fontSize: 44, color: "rgba(255,255,255,0.85)" }} />
+          <EventAvailableIcon
+            sx={theme => ({
+              fontSize: 44,
+              color:
+                theme.palette.mode === "dark"
+                  ? "primary.main"
+                  : alpha(theme.palette.primary.contrastText, 0.85),
+            })}
+          />
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               {monthLabel ? `${monthLabel} 月簽到` : "每日簽到"}
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.25 }}>
-              錯過的日子可以用女神石補簽，只看得到本月。
-            </Typography>
+            {data && !todaySigned && (
+              <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
+                今天還沒簽到，在 LINE 輸入「#抽」即可簽到。
+              </Typography>
+            )}
           </Box>
           {stats.fullMonth && (
             <Chip
               icon={<EmojiEventsIcon sx={{ color: "inherit !important" }} />}
               label="本月全勤"
               size="small"
-              sx={{ bgcolor: "rgba(255,255,255,0.22)", color: "#fff", fontWeight: 700 }}
+              sx={theme => ({
+                bgcolor: alpha(
+                  theme.palette.mode === "dark"
+                    ? theme.palette.primary.main
+                    : theme.palette.primary.contrastText,
+                  0.22
+                ),
+                color: "inherit",
+                fontWeight: 700,
+              })}
             />
           )}
         </Box>
       </Paper>
 
-      {loadError && (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={load}>
-              重試
-            </Button>
-          }
-        >
-          載入簽到資料失敗，請稍後再試。
-        </Alert>
-      )}
+      {loadError && <LoadError message="載入簽到資料失敗，請檢查網路後再試一次。" onRetry={load} />}
 
       {loading && !data ? (
         <>
@@ -635,18 +660,6 @@ export default function Signin() {
                 <Legend />
 
                 <Box sx={{ mt: 2 }}>
-                  <Stack
-                    direction="row"
-                    sx={{ justifyContent: "space-between", mb: 0.5 }}
-                    aria-hidden
-                  >
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      本月進度
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                      {num(stats.monthCount)} / {data.daysInMonth} 天
-                    </Typography>
-                  </Stack>
                   <LinearProgress
                     variant="determinate"
                     value={Math.min(progress, 100)}
@@ -695,21 +708,9 @@ export default function Signin() {
               </Typography>
             </Stack>
           </Stack>
-          <Box
-            sx={{
-              p: 1.5,
-              borderRadius: 2,
-              bgcolor: "action.hover",
-              border: 1,
-              borderColor: "divider",
-            }}
-          >
-            <Typography variant="caption" component="ul" sx={{ pl: 2, m: 0, lineHeight: 1.9 }}>
-              <li>不會補發當天的每日轉蛋。</li>
-              <li>會採計簽到相關成就。</li>
-              <li>一次只能補一天。</li>
-            </Typography>
-          </Box>
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+            不會補發當天的每日轉蛋。
+          </Typography>
           {!affordable && (
             <Alert severity="warning" sx={{ mt: 1.5 }}>
               女神石不足，無法補簽。
