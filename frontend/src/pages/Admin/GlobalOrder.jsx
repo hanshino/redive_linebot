@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Box,
-  Button,
   Avatar,
   Chip,
   Typography,
@@ -17,10 +16,13 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import HintSnackBar from "../../components/HintSnackBar";
 import AlertDialog from "../../components/AlertDialog";
+import LoadError from "../../components/LoadError";
+import PageHero, { HeroButton } from "../../components/PageHero";
 import OrderDialog from "../../components/OrderDialog";
 import useHintBar from "../../hooks/useHintBar";
 import useAlertDialog from "../../hooks/useAlertDialog";
 import * as globalOrderService from "../../services/globalOrder";
+import { errorText } from "./_errors";
 
 const NEW_ORDER_TEMPLATE = {
   order: "",
@@ -82,14 +84,23 @@ function OrderRow({ row, onEdit, onDelete }) {
           )}
         </Box>
       </Box>
-      <Box sx={{ display: "flex", gap: 0.5, flexShrink: 0 }}>
+      <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
         <Tooltip title="編輯">
-          <IconButton size="small" onClick={() => onEdit(row)}>
+          <IconButton
+            aria-label={`編輯指令 ${row.order}`}
+            onClick={() => onEdit(row)}
+            sx={{ width: 44, height: 44 }}
+          >
             <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Tooltip title="刪除">
-          <IconButton size="small" color="error" onClick={() => onDelete(row)}>
+          <IconButton
+            aria-label={`刪除指令 ${row.order}`}
+            color="error"
+            onClick={() => onDelete(row)}
+            sx={{ width: 44, height: 44 }}
+          >
             <DeleteIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -102,23 +113,28 @@ function OrderRow({ row, onEdit, onDelete }) {
 export default function AdminGlobalOrder() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
 
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
-  const [alertState, { handleOpen: showAlert, handleClose: closeAlert }] = useAlertDialog();
+  const [alertState, { handleOpen: showAlert, handleClose: closeAlert, setBusy }] =
+    useAlertDialog();
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(false);
       const data = await globalOrderService.fetchDatas();
       setRows(data || []);
     } catch {
-      showHint("載入資料失敗", "error");
+      // 失敗不能顯示成「尚無指令資料」，清掉列表並改顯示 LoadError
+      setRows([]);
+      setError(true);
     } finally {
       setLoading(false);
     }
-  }, [showHint]);
+  }, []);
 
   useEffect(() => {
     document.title = "全群指令管理";
@@ -140,10 +156,16 @@ export default function AdminGlobalOrder() {
     setEditingOrder(null);
   };
 
-  const handleSave = async orderData => {
-    if (!orderData.order || orderData.order.trim() === "") return;
-    if (!Array.isArray(orderData.replyDatas)) return;
-    orderData.replyDatas = orderData.replyDatas.filter(d => d.reply !== "");
+  // OrderDialog 自己會擋空白指令並處理送出中的狀態，這裡只是最後一道防線。
+  // 成功才關閉對話框；失敗時它會留著，已填的內容不會消失。
+  const handleSave = async data => {
+    const command = (data.order || "").trim();
+    if (!command) {
+      showHint("請先填寫指令文字再儲存。", "warning");
+      return;
+    }
+    if (!Array.isArray(data.replyDatas)) return;
+    const orderData = { ...data, replyDatas: data.replyDatas.filter(d => d.reply !== "") };
 
     const isInsert =
       !Object.prototype.hasOwnProperty.call(orderData, "orderKey") ||
@@ -151,38 +173,53 @@ export default function AdminGlobalOrder() {
       orderData.orderKey.trim() === "";
 
     try {
-      setLoading(true);
       if (isInsert) {
         await globalOrderService.insertData(orderData);
       } else {
         await globalOrderService.updateData(orderData);
       }
-      showHint("成功！", "success");
+      showHint(isInsert ? `已新增指令「${command}」` : `已更新指令「${command}」`, "success");
       handleDialogClose();
       fetchData();
-    } catch {
-      showHint("操作失敗，是否尚未登入？ 或是 網路異常", "warning");
-      setLoading(false);
+    } catch (e) {
+      const expired = e.response?.status === 401;
+      showHint(
+        errorText(
+          e,
+          expired
+            ? "登入已過期，請重新登入後再儲存。"
+            : "儲存指令失敗，內容還沒儲存，請檢查網路後再試一次。"
+        ),
+        "error"
+      );
     }
   };
 
   const handleDeleteClick = row => {
     showAlert({
-      title: "確認刪除",
-      description: `確定要刪除指令「${row.order}」嗎？`,
+      title: "刪除指令",
+      description: `「${row.order}」會在所有群組失效，無法復原。`,
+      submitText: "刪除",
+      destructive: true,
       onSubmit: async () => {
+        setBusy(true);
         try {
           await globalOrderService.deleteData(row.orderKey);
-          showHint("成功！", "success");
-          fetchData();
-        } catch {
-          showHint("刪除失敗", "error");
-        } finally {
           closeAlert();
+          showHint(`已刪除指令「${row.order}」`, "success");
+          fetchData();
+        } catch (e) {
+          // 失敗時保留確認框，讓管理員可以重試或取消
+          setBusy(false);
+          showHint(errorText(e, `刪除「${row.order}」失敗，指令還在，請稍後再試。`), "error");
         }
       },
     });
   };
+
+  if (error) {
+    return <LoadError message="全群指令載入失敗，請檢查網路後再試一次。" onRetry={fetchData} />;
+  }
 
   if (loading && rows.length === 0) {
     return <GlobalOrderSkeleton />;
@@ -190,54 +227,11 @@ export default function AdminGlobalOrder() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      {/* Gradient Banner */}
-      <Paper sx={{ position: "relative", overflow: "hidden", borderRadius: 3 }}>
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            background: theme =>
-              `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-          }}
-        />
-        <Box
-          sx={{
-            position: "relative",
-            px: { xs: 2.5, sm: 3 },
-            py: { xs: 2.5, sm: 3 },
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <TerminalIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.8)", flexShrink: 0 }} />
-          <Box sx={{ color: "#fff", flex: 1, minWidth: 0 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              全群指令管理
-            </Typography>
-            <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
-              <Chip
-                label={`${rows.length} 個指令`}
-                size="small"
-                sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
-              />
-            </Box>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAdd}
-            sx={{
-              bgcolor: "rgba(255,255,255,0.2)",
-              color: "#fff",
-              flexShrink: 0,
-              "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
-            }}
-          >
-            新增指令
-          </Button>
-        </Box>
-      </Paper>
+      <PageHero icon={<TerminalIcon />} title="全群指令管理" subtitle={`${rows.length} 個指令`}>
+        <HeroButton startIcon={<AddIcon />} onClick={handleOpenAdd}>
+          新增指令
+        </HeroButton>
+      </PageHero>
       {/* Command List */}
       {rows.length === 0 ? (
         <Paper sx={{ py: 6, textAlign: "center", borderRadius: 3 }}>
@@ -275,6 +269,9 @@ export default function AdminGlobalOrder() {
         onCancel={closeAlert}
         title={alertState.title}
         description={alertState.description}
+        submitText={alertState.submitText}
+        destructive={alertState.destructive}
+        busy={alertState.busy}
       />
       {/* Snackbar */}
       <HintSnackBar

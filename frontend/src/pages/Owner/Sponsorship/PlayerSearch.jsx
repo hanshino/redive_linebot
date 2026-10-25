@@ -35,14 +35,18 @@ export function PlayerRow({ player, dense = false }) {
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
           {player.displayName || "（未設定名稱）"}
-          <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.75 }}>
+          <Typography component="span" variant="caption" sx={{ color: "text.secondary", ml: 0.75 }}>
             #{player.id}
           </Typography>
         </Typography>
         <Typography
           variant="caption"
-          color="text.secondary"
-          sx={{ fontFamily: "monospace", display: "block", wordBreak: "break-all" }}
+          sx={{
+            color: "text.secondary",
+            fontFamily: "monospace",
+            display: "block",
+            wordBreak: "break-all",
+          }}
         >
           {player.userId}
         </Typography>

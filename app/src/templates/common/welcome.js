@@ -1,5 +1,6 @@
 const { getLiffUri } = require(".");
 const config = require("config");
+const { PALETTE, SEMANTIC, SURFACE } = require("./theme");
 
 function genPuddingStatus() {
   const availableFunds = config.get("app.funds.available") || 0;
@@ -41,12 +42,12 @@ function genPuddingStatus() {
                       type: "box",
                       layout: "vertical",
                       contents: [],
-                      backgroundColor: "#56FF56",
+                      backgroundColor: SEMANTIC.success.main,
                       height: "100%",
                       width: `${progress}%`,
                     },
                   ],
-                  backgroundColor: "#808080",
+                  backgroundColor: SURFACE.bgMuted,
                   cornerRadius: "lg",
                   height: "10px",
                   flex: 8,
@@ -72,13 +73,13 @@ function genPuddingStatus() {
                 },
               ],
               size: "xs",
-              color: "#808080",
+              color: SURFACE.textMuted,
             },
           ],
         },
         genRowButtons([
-          genLinkButton("首頁", "#00bcd488", `${getLiffUri("full")}`),
-          genLinkButton("使用手冊", "#00bcd488", `${getLiffUri("tall")}/panel/manual`),
+          genLinkButton("首頁", SEMANTIC.primary.main, `${getLiffUri("full")}`),
+          genLinkButton("使用手冊", SEMANTIC.primary.main, `${getLiffUri("tall")}/panel/manual`),
         ]),
         genRowButtons([
           genLinkButton("GitHub", config.get("color.github"), config.get("links.github")),
@@ -110,7 +111,7 @@ function genLinkButton(text, color, link) {
         text: text,
         align: "center",
         weight: "bold",
-        color: "#FFFFFF",
+        color: PALETTE.white,
         size: "sm",
         gravity: "center",
       },
@@ -126,5 +127,5 @@ function genLinkButton(text, color, link) {
 }
 
 module.exports = context => {
-  context.replyFlex("使用說明", genPuddingStatus());
+  context.replyFlex("布丁機器人使用說明", genPuddingStatus());
 };

@@ -1,11 +1,5 @@
 import { Box, Card, Typography, Skeleton, Stack, Chip } from "@mui/material";
 
-const MEDAL_COLORS = {
-  1: "#FFD700",
-  2: "#C0C0C0",
-  3: "#CD7F32",
-};
-
 const TIER_COLORS = {
   beginner: "default",
   challenger: "info",
@@ -54,7 +48,9 @@ export default function RankingList({ rankings, loading }) {
       <Stack spacing={1}>
         {rankings.map(player => {
           const isTop3 = player.rank <= 3;
-          const medalColor = MEDAL_COLORS[player.rank];
+          // 金銀銅走 theme.palette.medal，只當外框色用；名次數字維持文字色，
+          // 金色數字在淺色背景上對比不足
+          const medalColor = theme => theme.palette.medal[player.rank - 1];
 
           return (
             <Card
@@ -64,8 +60,8 @@ export default function RankingList({ rankings, loading }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 1.5,
-                borderLeft: isTop3 ? 4 : 0,
-                borderColor: medalColor || "transparent",
+                borderWidth: isTop3 ? 2 : 1,
+                borderColor: isTop3 ? medalColor : undefined,
               }}
             >
               <Typography
@@ -74,7 +70,7 @@ export default function RankingList({ rankings, loading }) {
                   width: 36,
                   textAlign: "center",
                   fontWeight: 700,
-                  color: medalColor || "text.secondary",
+                  color: isTop3 ? "text.primary" : "text.secondary",
                 }}
               >
                 {player.rank}

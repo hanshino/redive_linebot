@@ -12,16 +12,19 @@ import {
   Divider,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CelebrationIcon from "@mui/icons-material/Celebration";
 import { FullPageLoading } from "../../../components/Loading";
+import LoadError from "../../../components/LoadError";
 import HintSnackBar from "../../../components/HintSnackBar";
 import AlertDialog from "../../../components/AlertDialog";
 import useHintBar from "../../../hooks/useHintBar";
 import useAlertDialog from "../../../hooks/useAlertDialog";
 import * as gachaBannerService from "../../../services/gachaBanner";
+import { errorText } from "../_errors";
 
 const TYPE_CONFIG = {
   rate_up: { label: "機率提升", color: "warning" },
@@ -44,24 +47,28 @@ function getBannerStatus(banner) {
 export default function AdminGachaBanner() {
   const navigate = useNavigate();
   const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
-  const [alertState, { handleOpen: showAlert, handleClose: closeAlert }] = useAlertDialog();
+  const [alertState, { handleOpen: showAlert, handleClose: closeAlert, setBusy }] =
+    useAlertDialog();
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(false);
       const data = await gachaBannerService.fetchBanners();
       setRows(data);
     } catch {
-      showHint("載入資料失敗", "error");
+      // 失敗不能顯示成「尚無活動資料」，清掉列表並改顯示 LoadError
+      setRows([]);
+      setError(true);
     } finally {
       setLoading(false);
     }
-  }, [showHint]);
+  }, []);
 
   useEffect(() => {
     document.title = "轉蛋活動管理";
@@ -69,22 +76,31 @@ export default function AdminGachaBanner() {
   }, [fetchData]);
 
   const handleDeleteClick = row => {
+    const live = getBannerStatus(row).label === "進行中";
     showAlert({
-      title: "確認刪除",
-      description: `確定要刪除活動「${row.name}」嗎？`,
+      title: "刪除轉蛋活動",
+      description: `「${row.name}」${live ? "正在進行中，刪除後會立即結束，" : ""}無法復原。`,
+      submitText: "刪除",
+      destructive: true,
       onSubmit: async () => {
+        setBusy(true);
         try {
           await gachaBannerService.deleteBanner(row.id);
-          showHint("刪除成功", "success");
-          fetchData();
-        } catch {
-          showHint("刪除失敗", "error");
-        } finally {
           closeAlert();
+          showHint(`已刪除活動「${row.name}」`, "success");
+          fetchData();
+        } catch (e) {
+          // 失敗時保留確認框，讓管理員可以重試或取消
+          setBusy(false);
+          showHint(errorText(e, `刪除「${row.name}」失敗，活動還在，請稍後再試。`), "error");
         }
       },
     });
   };
+
+  if (error) {
+    return <LoadError message="轉蛋活動載入失敗，請檢查網路後再試一次。" onRetry={fetchData} />;
+  }
 
   if (loading && rows.length === 0) {
     return <FullPageLoading />;
@@ -101,9 +117,7 @@ export default function AdminGachaBanner() {
           borderRadius: 3,
           border: 1,
           borderColor: "divider",
-          background: isDark
-            ? "linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(168,85,247,0.06) 100%)"
-            : "linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(168,85,247,0.04) 100%)",
+          background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.light, 0.07)} 0%, ${alpha(theme.palette.rarity[1].main, 0.05)} 100%)`,
         }}
       >
         <Stack
@@ -111,6 +125,7 @@ export default function AdminGachaBanner() {
           sx={{
             justifyContent: "space-between",
             alignItems: "center",
+            gap: 1,
           }}
         >
           <Box>
@@ -125,7 +140,7 @@ export default function AdminGachaBanner() {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate("/admin/gacha-banner/new")}
-            sx={{ borderRadius: 2, px: 2.5, boxShadow: 2 }}
+            sx={{ borderRadius: 2, px: 2.5, minHeight: 44, flexShrink: 0 }}
           >
             新增活動
           </Button>
@@ -156,6 +171,7 @@ export default function AdminGachaBanner() {
               variant="outlined"
               startIcon={<AddIcon />}
               onClick={() => navigate("/admin/gacha-banner/new")}
+              sx={{ minHeight: 44 }}
             >
               新增第一個活動
             </Button>
@@ -222,7 +238,7 @@ export default function AdminGachaBanner() {
                         display: "block",
                       }}
                     >
-                      機率加成: {banner.rate_boost}%
+                      機率加成：{banner.rate_boost}%
                     </Typography>
                   )}
                   {banner.type === "europe" && banner.cost > 0 && (
@@ -233,16 +249,18 @@ export default function AdminGachaBanner() {
                         display: "block",
                       }}
                     >
-                      花費: {banner.cost} 女神石
+                      花費：{banner.cost} 女神石
                     </Typography>
                   )}
                 </Box>
-                <Stack direction="row" spacing={0.5}>
+                <Stack direction="row" spacing={1}>
                   <Tooltip title="編輯" arrow>
                     <IconButton
-                      size="small"
+                      aria-label={`編輯活動 ${banner.name}`}
                       onClick={() => navigate(`/admin/gacha-banner/${banner.id}/edit`)}
                       sx={{
+                        width: 44,
+                        height: 44,
                         color: "primary.main",
                         transition: "all 0.2s",
                         "&:hover": { bgcolor: "primary.main", color: "primary.contrastText" },
@@ -253,9 +271,11 @@ export default function AdminGachaBanner() {
                   </Tooltip>
                   <Tooltip title="刪除" arrow>
                     <IconButton
-                      size="small"
+                      aria-label={`刪除活動 ${banner.name}`}
                       onClick={() => handleDeleteClick(banner)}
                       sx={{
+                        width: 44,
+                        height: 44,
                         color: "error.main",
                         transition: "all 0.2s",
                         "&:hover": { bgcolor: "error.main", color: "error.contrastText" },
@@ -277,6 +297,9 @@ export default function AdminGachaBanner() {
         onCancel={closeAlert}
         title={alertState.title}
         description={alertState.description}
+        submitText={alertState.submitText}
+        destructive={alertState.destructive}
+        busy={alertState.busy}
       />
       <HintSnackBar
         open={hintState.open}

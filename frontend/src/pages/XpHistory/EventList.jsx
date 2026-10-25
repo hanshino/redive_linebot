@@ -73,25 +73,23 @@ export default function EventList({ events, showAll, groupLabel, defaultExpanded
 
   if (folded.length === 0) {
     return (
-      <Typography color="text.secondary" sx={{ py: 6, textAlign: "center" }}>
-        沒有資料
-      </Typography>
+      <Typography sx={{ color: "text.secondary", py: 6, textAlign: "center" }}>沒有資料</Typography>
     );
   }
 
   const { today, yesterday, byDate, dates } = grouped;
 
   return (
-    <Stack gap={2}>
+    <Stack sx={{ gap: 2 }}>
       {dates.map(date => (
-        <Stack key={date} gap={1}>
+        <Stack key={date} sx={{ gap: 1 }}>
           <Typography
             sx={{
               fontFamily: "ui-monospace, Menlo, monospace",
-              fontSize: 11,
+              fontSize: 12,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              color: "text.disabled",
+              color: "text.secondary",
               pl: 0.5,
             }}
           >
@@ -136,6 +134,17 @@ function FoldedRow({ folded, expanded, onToggle, showAll, groupLabel }) {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box
           onClick={onToggle}
+          // 整列可點開明細：補上按鈕語意與鍵盤操作
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          onKeyDown={e => {
+            if (e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onToggle();
+            }
+          }}
           sx={{
             p: 1.5,
             cursor: "pointer",
@@ -182,7 +191,7 @@ function FoldedRow({ folded, expanded, onToggle, showAll, groupLabel }) {
               <Typography
                 sx={{
                   fontFamily: "ui-monospace, Menlo, monospace",
-                  fontSize: 11,
+                  fontSize: 12,
                   color: "text.secondary",
                 }}
               >
@@ -219,15 +228,15 @@ function FoldedRow({ folded, expanded, onToggle, showAll, groupLabel }) {
           )}
         </Box>
         {expanded && (
-          <Stack gap={1} sx={{ px: 1.5, pb: 1.5 }}>
+          <Stack sx={{ gap: 1, px: 1.5, pb: 1.5 }}>
             {folded.events.map(ev => (
               <Box key={ev.id}>
                 {folded.events.length > 1 && (
                   <Typography
                     sx={{
                       fontFamily: "ui-monospace, Menlo, monospace",
-                      fontSize: 11,
-                      color: "text.disabled",
+                      fontSize: 12,
+                      color: "text.secondary",
                       mb: 0.5,
                       pl: 0.25,
                     }}

@@ -3,7 +3,6 @@ import useAxios from "axios-hooks";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Alert,
-  AlertTitle,
   Box,
   Button,
   Dialog,
@@ -17,13 +16,20 @@ import {
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import AlertDialog from "../../components/AlertDialog";
 import AlertLogin from "../../components/AlertLogin";
 import HintSnackBar from "../../components/HintSnackBar";
+import LoadError from "../../components/LoadError";
+import useAlertDialog from "../../hooks/useAlertDialog";
 import useHintBar from "../../hooks/useHintBar";
 import useLiff from "../../context/useLiff";
 import {
+  META_TEXT,
   NUMS,
   ORDER_COPY,
+  TAP_TARGETS,
+  PAGE_WIDTH,
+  TOUCH,
   calcFee,
   calcNet,
   displayName,
@@ -37,17 +43,19 @@ import {
   CharAvatar,
   BaseStarBadge,
   GradientPanel,
+  InfoBlock,
   OrderTypeChip,
   Row,
   SectionTitle,
   StatusChip,
+  StoneIcon,
   Tag,
 } from "./_marketUi";
 
 /* ---------------------------------------------------------------- 零件 */
 function PageSkeleton() {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, ...PAGE_WIDTH }}>
       <Skeleton variant="rounded" height={140} animation="wave" />
       <Skeleton variant="rounded" height={180} animation="wave" />
       <Skeleton variant="rounded" height={120} animation="wave" />
@@ -85,20 +93,25 @@ function AppHeader({ listing, orderType, orderNo, mineLabel, onBack, onRefresh, 
     <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 0.5 }}>
       <IconButton
         aria-label={listing?.name ? `返回${listing.name}的${noun}列表` : "返回市場列表"}
-        size="small"
         onClick={onBack}
+        sx={{ width: TOUCH, height: TOUCH, ml: -1 }}
       >
         <ArrowBackIosNewIcon fontSize="small" />
       </IconButton>
       <Box>
-        <Typography sx={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.2 }}>委託詳情</Typography>
-        <Typography sx={{ fontSize: 11.5, color: "text.secondary", ...NUMS }}>
+        <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>委託詳情</Typography>
+        <Typography sx={META_TEXT}>
           {orderNo}
           {mineLabel ? ` · ${mineLabel}` : ""}
         </Typography>
       </Box>
       <Box sx={{ flex: "1 1 auto" }} />
-      <IconButton aria-label="重新整理" size="small" onClick={onRefresh} disabled={refreshing}>
+      <IconButton
+        aria-label="重新整理"
+        onClick={onRefresh}
+        disabled={refreshing}
+        sx={{ width: TOUCH, height: TOUCH }}
+      >
         <RefreshIcon fontSize="small" />
       </IconButton>
     </Box>
@@ -116,26 +129,25 @@ function HeroBanner({ listing, orderType, kicker }) {
           headImage={listing.headImage}
           size={62}
         />
-        <Box>
-          <Typography sx={{ fontSize: 11, letterSpacing: "1.4px", opacity: 0.82 }}>
-            {kicker}
-          </Typography>
-          <Typography sx={{ fontSize: 21, fontWeight: 700, lineHeight: 1.2, mt: "2px" }}>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2 }}>
             {listing.name}
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.875, mt: "3px" }}>
-            <Typography sx={{ fontSize: 11.5, opacity: 0.82, ...NUMS }}>
-              ID {listing.itemId}
-            </Typography>
+          {/* 委託類型跟星數放同一行當屬性，不做成標題上方的小標 */}
+          <Box sx={{ mt: 0.75, display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
             <BaseStarBadge star={listing.star} onGradient />
+            <Typography component="span" sx={{ fontSize: 13, fontWeight: 500, opacity: 0.92 }}>
+              {kicker}
+            </Typography>
           </Box>
         </Box>
       </Box>
-      <Box sx={{ mt: 1.75, display: "flex", alignItems: "baseline", gap: 0.875 }}>
-        <Box component="b" sx={{ fontSize: 30, fontWeight: 700, letterSpacing: "-.5px", ...NUMS }}>
+      <Box sx={{ mt: 1.75, display: "flex", alignItems: "center", gap: 0.875 }}>
+        <StoneIcon size={20} sx={{ color: "inherit" }} />
+        <Box component="b" sx={{ fontSize: 24, fontWeight: 700, letterSpacing: "-.5px", ...NUMS }}>
           {fmtStone(listing.price)}
         </Box>
-        <Box component="span" sx={{ fontSize: 13, opacity: 0.9 }}>
+        <Box component="span" sx={{ fontSize: 14, opacity: 0.9 }}>
           女神石
         </Box>
       </Box>
@@ -154,11 +166,8 @@ function HeroFlat({ listing, orderType, status, dimmed }) {
         dimmed={dimmed}
       />
       <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 19, fontWeight: 700 }} noWrap>
+        <Typography sx={{ fontSize: 20, fontWeight: 700 }} noWrap>
           {listing.name}
-        </Typography>
-        <Typography sx={{ fontSize: 11.5, color: "text.secondary", ...NUMS }}>
-          ID {listing.itemId}
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mt: 0.875, flexWrap: "wrap" }}>
           <StatusChip status={status} />
@@ -190,13 +199,10 @@ function WalletStrip({ balance, short }) {
           borderRadius: "6px",
           display: "grid",
           placeItems: "center",
-          fontSize: 12,
-          fontWeight: 700,
-          color: "#fff",
-          background: "linear-gradient(140deg, #FBBF24, #F59E0B)",
+          bgcolor: "currency.bg",
         }}
       >
-        石
+        <StoneIcon size={16} />
       </Box>
       <Typography component="span" sx={{ fontSize: 13 }}>
         你的女神石餘額
@@ -213,11 +219,7 @@ function WalletStrip({ balance, short }) {
 
 function BtnNote({ children }) {
   return (
-    <Typography
-      sx={{ fontSize: 11.5, color: "text.secondary", textAlign: "center", lineHeight: 1.5 }}
-    >
-      {children}
-    </Typography>
+    <Typography sx={{ ...META_TEXT, textAlign: "center", lineHeight: 1.5 }}>{children}</Typography>
   );
 }
 
@@ -258,6 +260,11 @@ export default function MarketListing() {
     { manual: true }
   );
   const [{ message, severity, open: snackOpen }, { handleOpen, handleClose }] = useHintBar();
+  // 取消掛單 / 收購單會讓單子離開簿子（收購單還會動到錢），先用確認框講清楚後果。
+  const [
+    alertState,
+    { handleOpen: openConfirm, handleClose: closeConfirm, setBusy: setConfirmBusy },
+  ] = useAlertDialog();
 
   useEffect(() => {
     document.title = "委託詳情";
@@ -328,8 +335,10 @@ export default function MarketListing() {
   };
 
   const handleCancel = async () => {
+    setConfirmBusy(true);
     try {
       const { data } = await cancelListing();
+      closeConfirm();
       // 收購單取消要退錢，金額用後端回的為準；沒回就退回單價，兩者本來就相等。
       if (buyOrder) {
         const amount = data?.refundedAmount ?? listing?.price;
@@ -340,9 +349,33 @@ export default function MarketListing() {
       }
       refetch().catch(() => {});
     } catch (err) {
+      closeConfirm();
       const { title, detail } = errorInfo(err, "取消失敗，請稍後再試");
       handleOpen(detail ? `${title}，${detail}` : title, "error");
     }
+  };
+
+  const askCancel = () => {
+    const price = listing?.price;
+    openConfirm(
+      buyOrder
+        ? {
+            title: "取消這張收購單？",
+            description: `收購單會下架，預扣的 ${fmtStone(price)} 女神石全額退回你的錢包。`,
+            submitText: "取消並退款",
+            cancelText: "保留收購單",
+            destructive: true,
+            onSubmit: handleCancel,
+          }
+        : {
+            title: "取消這筆掛單？",
+            description: "掛單會下架，角色立即解除鎖定，升星強化保留。",
+            submitText: "取消掛單",
+            cancelText: "保留掛單",
+            destructive: true,
+            onSubmit: handleCancel,
+          }
+    );
   };
 
   if (!isLoggedIn) return <AlertLogin />;
@@ -351,10 +384,18 @@ export default function MarketListing() {
   if (error && !listing) {
     const status = error.response?.status;
     return (
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <Alert severity="error" sx={{ borderRadius: 3 }}>
-          {status === 404 ? "找不到這筆委託" : "載入委託失敗，請稍後再試"}
-        </Alert>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, ...TAP_TARGETS, ...PAGE_WIDTH }}>
+        {status === 404 ? (
+          <Alert severity="error" sx={{ borderRadius: 3 }}>
+            找不到這筆委託，單號可能輸入錯誤，或這筆委託已被移除。
+          </Alert>
+        ) : (
+          <LoadError
+            sx={{ py: 0 }}
+            message="載入委託失敗，請檢查網路後再試一次。"
+            onRetry={() => refetch().catch(() => {})}
+          />
+        )}
         {/* listing 沒載到，不知道是哪隻角色；從市場來就退回去，直接開連結則回市場首頁。 */}
         <Button variant="outlined" onClick={backToMarket}>
           回列表
@@ -368,7 +409,9 @@ export default function MarketListing() {
   const viewer = listing.viewer || {};
   const fee = listing.fee ?? calcFee(listing.price);
   const net = listing.netProceeds ?? calcNet(listing.price);
-  const balance = viewer.balance ?? 0;
+  // 餘額沒帶回來就保持 undefined，畫面顯示「—」，不當成 0（「餘額 0」是一個具體的說法）。
+  const balance = viewer.balance;
+  const balanceKnown = typeof balance === "number";
   const shortfall = Math.max(0, listing.price - balance);
 
   // 收購單的「掛單者」是買家。後端會帶 isRequester，沒帶時退回比對 isBuyer / buyerId。
@@ -398,6 +441,8 @@ export default function MarketListing() {
         flexDirection: "column",
         gap: 1.5,
         pb: "calc(env(safe-area-inset-bottom) + 32px)",
+        ...TAP_TARGETS,
+        ...PAGE_WIDTH,
       }}
     >
       <AppHeader
@@ -414,6 +459,17 @@ export default function MarketListing() {
         refreshing={loading}
       />
       {children}
+      <AlertDialog
+        open={alertState.open}
+        onClose={closeConfirm}
+        onSubmit={alertState.onSubmit}
+        title={alertState.title}
+        description={alertState.description}
+        submitText={alertState.submitText}
+        cancelText={alertState.cancelText}
+        destructive={alertState.destructive}
+        busy={alertState.busy}
+      />
       <HintSnackBar open={snackOpen} message={message} severity={severity} onClose={handleClose} />
     </Box>
   );
@@ -430,26 +486,27 @@ export default function MarketListing() {
       <>
         <HeroFlat listing={listing} orderType={orderType} status="invalid" dimmed />
 
-        <Alert severity="error" role="status" sx={{ borderRadius: 3 }}>
-          <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-            {buyOrder
+        <InfoBlock
+          severity="error"
+          role="status"
+          title={
+            buyOrder
               ? requesterGotIt
                 ? "收購方已取得此角色，收購單已失效"
                 : "此收購單已被其他玩家接走或取消"
               : isLostItem
                 ? "賣家已無此角色，委託已失效"
-                : "此委託已被其他玩家買走或取消"}
-          </AlertTitle>
-          <Typography sx={{ fontSize: 12.8, lineHeight: 1.6 }}>
-            {buyOrder
-              ? isRequester
-                ? `系統已自動下架，預扣的 ${fmtStone(refundAmount)} 女神石已全額退還給你。`
-                : "你的角色沒有被扣走，也沒有任何女神石異動。"
-              : isLostItem
-                ? "系統已自動下架這筆委託，沒有任何女神石異動。"
-                : "你的女神石沒有被扣款。"}
-          </Typography>
-        </Alert>
+                : "此委託已被其他玩家買走或取消"
+          }
+        >
+          {buyOrder
+            ? isRequester
+              ? `系統已自動下架，預扣的 ${fmtStone(refundAmount)} 女神石已全額退還給你。`
+              : "你的角色沒有被扣走，也沒有任何女神石異動。"
+            : isLostItem
+              ? "系統已自動下架這筆委託，沒有任何女神石異動。"
+              : "你的女神石沒有被扣款。"}
+        </InfoBlock>
 
         <Card>
           <Row
@@ -468,19 +525,18 @@ export default function MarketListing() {
               valueColor="success.main"
             />
           ) : (
-            <Row label="你的餘額" value={`${fmtStone(balance)}（未變動）`} />
+            <Row label="你的餘額" value={balanceKnown ? `${fmtStone(balance)}（未變動）` : "—"} />
           )}
         </Card>
 
         <Button variant="contained" color={buyOrder ? "secondary" : "primary"} disabled>
           {buyOrder ? "收購單已失效" : isLostItem ? "委託已失效" : "立即購買"}
         </Button>
-        <BtnNote>此委託已結束，沒有可用的操作</BtnNote>
         <Button variant="outlined" onClick={backToMarket}>
           看其他{listing.name}的{copy.noun}
         </Button>
         {(isLostItem || requesterGotIt) && (
-          <Typography sx={{ fontSize: 11.5, color: "text.secondary", lineHeight: 1.6, mx: 0.25 }}>
+          <Typography sx={{ ...META_TEXT, lineHeight: 1.6, mx: 0.25 }}>
             若你認為這是異常，請在群組輸入「客服」回報單號 {orderNo}。
           </Typography>
         )}
@@ -513,7 +569,6 @@ export default function MarketListing() {
           {iAmSeller
             ? `角色已交付買家，你已收到 ${fmtStone(net)} 女神石。`
             : "角色已入庫，星數為初始值。"}
-          這筆委託已結束，沒有可用的操作。
         </Alert>
         <BtnNote>紀錄保留 90 天</BtnNote>
       </>
@@ -598,20 +653,14 @@ export default function MarketListing() {
           <Row label="取消時退還" value={`${fmtStone(listing.price)} 女神石`} />
         </Card>
 
-        <Alert severity="info" sx={{ borderRadius: 3 }}>
-          <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-            這筆錢現在被鎖住
-          </AlertTitle>
-          <Typography sx={{ fontSize: 12.8, lineHeight: 1.6 }}>
-            {fmtStone(listing.price)} 女神石在發布時就已扣款，收購單還開著的期間不能用來買別的東西。
-            取消或失效時會全額退回，不收任何費用。
-          </Typography>
-        </Alert>
-
-        <Button variant="outlined" color="error" onClick={handleCancel} disabled={cancelling}>
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={askCancel}
+          disabled={cancelling || alertState.busy}
+        >
           取消收購單並退款
         </Button>
-        <BtnNote>取消後 {fmtStone(listing.price)} 女神石立即全額退回你的錢包</BtnNote>
       </>
     );
   }
@@ -652,7 +701,12 @@ export default function MarketListing() {
           取消後角色立即解除鎖定，不收手續費。升星強化留在你手上。
         </Alert>
 
-        <Button variant="outlined" color="error" onClick={handleCancel} disabled={cancelling}>
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={askCancel}
+          disabled={cancelling || alertState.busy}
+        >
           取消掛單
         </Button>
       </>
@@ -675,14 +729,9 @@ export default function MarketListing() {
         <HeroBanner listing={listing} orderType="buy" kicker="收購委託" />
 
         {notOwned && (
-          <Alert severity="warning" role="status" sx={{ borderRadius: 3 }}>
-            <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-              你沒有{listing.name}，無法賣出
-            </AlertTitle>
-            <Typography sx={{ fontSize: 12.8, lineHeight: 1.6 }}>
-              要接這張收購單，得先真的持有這隻角色。可以去轉蛋，或到出售中的掛單簿買一隻。
-            </Typography>
-          </Alert>
+          <InfoBlock severity="warning" role="status" title={`你沒有${listing.name}，無法賣出`}>
+            可以去轉蛋，或到出售中的掛單簿買一隻。
+          </InfoBlock>
         )}
 
         <Card>
@@ -711,16 +760,13 @@ export default function MarketListing() {
           />
         </Card>
 
-        <WalletStrip balance={balance} />
-
-        <Alert severity="warning" sx={{ borderRadius: 3 }}>
-          <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-            賣出後角色就離開你的box
-          </AlertTitle>
-          <Typography sx={{ fontSize: 12.8, lineHeight: 1.6 }}>
-            你的升星強化不會跟著轉移，也不會退還升星花掉的女神石。買家拿到的是初始星數。
-          </Typography>
-        </Alert>
+        {/* 在能賣的情況下，這裡只放一則警語：餘額已在下面的明細裡（你的餘額），
+            不再另開一條錢包列；沒有角色時上面那則說明就是唯一要看的，不需要再警告賣出後果。 */}
+        {!notOwned && (
+          <InfoBlock severity="warning" title="賣出後角色就離開你的box">
+            升星強化不會轉移，也不會退錢。
+          </InfoBlock>
+        )}
 
         <SectionTitle>你會拿到多少</SectionTitle>
         <Card sx={{ boxShadow: "none" }}>
@@ -729,7 +775,7 @@ export default function MarketListing() {
           <Row label="你實收" value={fmtStone(net)} valueColor="secondary.main" />
           <Row
             label="你的餘額"
-            value={`${fmtStone(balance)} → ${fmtStone(balance + net)} 女神石`}
+            value={balanceKnown ? `${fmtStone(balance)} → ${fmtStone(balance + net)} 女神石` : "—"}
           />
         </Card>
 
@@ -742,11 +788,6 @@ export default function MarketListing() {
         >
           {notOwned ? `你沒有${listing.name}` : `賣給${posterName}`}
         </Button>
-        <BtnNote>
-          {notOwned
-            ? "取得這隻角色後就能回來賣出"
-            : `成交後不可反悔，你會收到 ${fmtStone(net)} 女神石。`}
-        </BtnNote>
         {notOwned && (
           <Button
             variant="outlined"
@@ -766,19 +807,15 @@ export default function MarketListing() {
           fullWidth
           maxWidth="xs"
           aria-labelledby="fulfill-confirm-title"
+          slotProps={{ paper: { sx: TAP_TARGETS } }}
         >
           <DialogTitle id="fulfill-confirm-title" sx={{ fontWeight: 700 }}>
             確認把{listing.name}賣給{posterName}？
           </DialogTitle>
           <DialogContent>
-            <Alert severity="warning" sx={{ borderRadius: 3, mb: 1.5 }}>
-              <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-                角色會立刻離開你的box
-              </AlertTitle>
-              <Typography sx={{ fontSize: 12.8, lineHeight: 1.6 }}>
-                升星強化不會轉移，也不會退錢。這個動作無法取消。
-              </Typography>
-            </Alert>
+            <InfoBlock severity="warning" title="角色會立刻離開你的box" sx={{ mb: 1.5 }}>
+              升星強化不會轉移，也不會退錢。這個動作無法取消。
+            </InfoBlock>
             <Box sx={{ mb: 1.5 }}>
               <Row label="角色" value={`${listing.name}（${listing.itemId}）`} />
               {Number(listing.star) >= 1 && (
@@ -791,9 +828,12 @@ export default function MarketListing() {
                 valueColor="text.secondary"
               />
               <Row label="你實收" value={`${fmtStone(net)} 女神石`} valueColor="secondary.main" />
-              <Row label="交易後餘額" value={`${fmtStone(balance + net)} 女神石`} />
+              <Row
+                label="交易後餘額"
+                value={balanceKnown ? `${fmtStone(balance + net)} 女神石` : "—"}
+              />
             </Box>
-            <Typography sx={{ fontSize: 11.5, color: "text.secondary", lineHeight: 1.6 }}>
+            <Typography sx={{ ...META_TEXT, lineHeight: 1.6 }}>
               對方發單時已預扣 {fmtStone(listing.price)} 女神石，成交當下就會撥給你，不會跳票。
             </Typography>
           </DialogContent>
@@ -822,14 +862,7 @@ export default function MarketListing() {
       <>
         <HeroBanner listing={listing} orderType="sell" kicker="賣出委託" />
 
-        <Alert severity="warning" role="status" sx={{ borderRadius: 3 }}>
-          <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-            你已擁有此角色，無法購買
-          </AlertTitle>
-          <Typography sx={{ fontSize: 12.8, lineHeight: 1.6 }}>
-            角色為一人一隻，重複持有不會生效。
-          </Typography>
-        </Alert>
+        <InfoBlock severity="warning" role="status" title="你已擁有此角色，無法購買" />
 
         <Card>
           <Row label="狀態" value={<StatusChip status="open" />} />
@@ -856,7 +889,6 @@ export default function MarketListing() {
         <Button variant="contained" disabled>
           你已擁有{listing.name}
         </Button>
-        <BtnNote>你可以改為掛賣單，或去收購簿看看有沒有人想買</BtnNote>
         <Button variant="outlined" onClick={() => navigate("/trade/sell")}>
           改為掛售我的{listing.name}
         </Button>
@@ -878,15 +910,12 @@ export default function MarketListing() {
         <HeroBanner listing={listing} orderType="sell" kicker="賣出委託" />
         <WalletStrip balance={balance} short />
 
-        <Alert severity="error" role="status" sx={{ borderRadius: 3 }}>
-          <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-            女神石不足，無法購買
-          </AlertTitle>
-          <Typography sx={{ fontSize: 12.8, lineHeight: 1.6, ...NUMS }}>
+        <InfoBlock severity="error" role="status" title="女神石不足，無法購買">
+          <Box component="span" sx={NUMS}>
             餘額 {fmtStone(balance)} · 需要 {fmtStone(listing.price)} · 還差{" "}
             <strong>{fmtStone(shortfall)}</strong>。
-          </Typography>
-        </Alert>
+          </Box>
+        </InfoBlock>
 
         <Card sx={{ boxShadow: "none" }}>
           <Row label="售價" value={fmtStone(listing.price)} />
@@ -897,7 +926,6 @@ export default function MarketListing() {
         <Button variant="contained" disabled>
           女神石不足
         </Button>
-        <BtnNote>還差 {fmtStone(shortfall)} 女神石</BtnNote>
         <Button variant="outlined" onClick={backToMarket}>
           看預算內的{listing.name}（≤ {fmtStone(balance)}）
         </Button>
@@ -907,6 +935,9 @@ export default function MarketListing() {
 
   /* ---- 賣單 A1：買家視角，可購買 -------------------------------------- */
   const blocked = viewer.canBuy === false;
+  const owns = viewer.ownsCharacter;
+  // 餘額夠不夠只用來決定「交易後餘額」怎麼寫，絕不顯示負數。
+  const canAfford = balanceKnown && balance >= listing.price;
   return wrap(
     <>
       <HeroBanner listing={listing} orderType="sell" kicker="賣出委託" />
@@ -927,24 +958,20 @@ export default function MarketListing() {
           }
         />
         <Row label="掛單時間" value={fmtShortDate(listing.createdAt)} />
-        <Row label="你的持有狀態" value="未持有" />
+        {/* 持有狀態以後端為準：明確回 false 才寫「未持有」，沒帶就不顯示這一列，
+            不能把「不知道」寫成「未持有」。 */}
+        {owns === false && <Row label="你的持有狀態" value="未持有，可以購買" />}
       </Card>
 
       <WalletStrip balance={balance} />
 
-      <Alert severity="warning" sx={{ borderRadius: 3 }}>
-        <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-          成交後你拿到的是初始星數
-        </AlertTitle>
-        <Typography sx={{ fontSize: 12.8, lineHeight: 1.6 }}>
-          賣家的升星強化不會轉移，升星所花的女神石會直接消失。
-        </Typography>
+      <InfoBlock severity="warning" title="成交後你拿到的是初始星數">
         {Number(listing.star) >= 1 && (
-          <Typography sx={{ fontSize: 12.8, lineHeight: 1.6, fontWeight: 700, mt: 0.5 }}>
+          <Box component="span" sx={{ display: "block", fontWeight: 700 }}>
             這筆你會拿到 {listing.name} 基礎 {Number(listing.star)} 星。
-          </Typography>
+          </Box>
         )}
-      </Alert>
+      </InfoBlock>
 
       <SectionTitle>費用</SectionTitle>
       <Card sx={{ boxShadow: "none" }}>
@@ -961,7 +988,6 @@ export default function MarketListing() {
       >
         立即購買
       </Button>
-      <BtnNote>交易成立後不可退回，請確認角色與價格。</BtnNote>
 
       <Dialog
         open={confirmOpen}
@@ -969,6 +995,7 @@ export default function MarketListing() {
         fullWidth
         maxWidth="xs"
         aria-labelledby="buy-confirm-title"
+        slotProps={{ paper: { sx: TAP_TARGETS } }}
       >
         <DialogTitle id="buy-confirm-title" sx={{ fontWeight: 700 }}>
           確認購買{listing.name}？
@@ -981,17 +1008,20 @@ export default function MarketListing() {
             <Row label="售價" value={`${fmtStone(listing.price)} 女神石`} />
             <Row label="應付總額" value={`${fmtStone(listing.price)} 女神石`} />
             <Row label="目前餘額" value={fmtStone(balance)} />
-            <Row label="交易後餘額" value={fmtStone(balance - listing.price)} />
+            {canAfford ? (
+              <Row label="交易後餘額" value={fmtStone(balance - listing.price)} />
+            ) : (
+              <Row
+                label="交易後餘額"
+                value={balanceKnown ? "女神石不足" : "—"}
+                valueColor={balanceKnown ? "error.main" : undefined}
+              />
+            )}
           </Box>
-          <Alert severity="warning" sx={{ borderRadius: 3 }}>
-            <AlertTitle sx={{ fontSize: 13, fontWeight: 700, mb: "2px" }}>
-              你收到的是角色初始星數
-            </AlertTitle>
-            <Typography sx={{ fontSize: 12.8, lineHeight: 1.6 }}>
-              賣家的升星強化不會轉移。
-            </Typography>
-          </Alert>
-          <Typography sx={{ mt: 1.5, fontSize: 11.5, color: "text.secondary", lineHeight: 1.6 }}>
+          <InfoBlock severity="warning" title="你收到的是角色初始星數">
+            成交後無法退回。
+          </InfoBlock>
+          <Typography sx={{ ...META_TEXT, mt: 1.5, lineHeight: 1.6 }}>
             手續費 {fmtStone(fee)} 女神石（5%）於成交時銷毀，賣家實收 {fmtStone(net)}。
           </Typography>
         </DialogContent>
@@ -999,7 +1029,12 @@ export default function MarketListing() {
           <Button color="inherit" onClick={() => setConfirmOpen(false)} disabled={buying}>
             取消
           </Button>
-          <Button variant="contained" onClick={handleBuy} disabled={buying} autoFocus>
+          <Button
+            variant="contained"
+            onClick={handleBuy}
+            disabled={buying || (balanceKnown && !canAfford)}
+            autoFocus
+          >
             確認購買
           </Button>
         </DialogActions>

@@ -4,13 +4,13 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AlertDialog from "../../components/AlertDialog";
 import { startTrial } from "../../services/prestige";
 import { getStarConfig } from "./starColors";
+import StarGlyphs from "./StarGlyphs";
 import { renderRestriction, renderReward } from "./trialMeta";
 
 // ─── TrialCard ────────────────────────────────────────────────────────────────
 
 function TrialCard({ trial, onClick }) {
   const { color, tierLabel } = getStarConfig(trial.star);
-  const starDisplay = "★".repeat(trial.star) + "☆".repeat(5 - trial.star);
   const rewardText = renderReward(trial.rewardMeta);
   const restrictionText = renderRestriction(trial.restrictionMeta);
 
@@ -30,28 +30,30 @@ function TrialCard({ trial, onClick }) {
         >
           {/* Star row */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography variant="caption" sx={{ color, fontWeight: 700, letterSpacing: 1 }}>
-              {starDisplay}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <StarGlyphs
+              value={trial.star}
+              variant="caption"
+              sx={{ color, fontWeight: 700, letterSpacing: 1 }}
+            />
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
               {tierLabel}
             </Typography>
           </Box>
 
           {/* Trial name */}
-          <Typography variant="subtitle2" fontWeight={700}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             {trial.displayName}
           </Typography>
 
           {/* Description */}
           {restrictionText && (
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+            <Typography variant="body2" sx={{ color: "text.secondary", fontSize: 13 }}>
               {restrictionText}
             </Typography>
           )}
 
           {/* Pass condition */}
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+          <Typography variant="body2" sx={{ color: "text.secondary", fontSize: 13 }}>
             通過：{trial.requiredExp?.toLocaleString()} XP / 60 天
           </Typography>
 
@@ -72,7 +74,7 @@ function TrialCard({ trial, onClick }) {
 
 // ─── TrialSelectView ──────────────────────────────────────────────────────────
 
-export default function TrialSelectView({ status, onRefresh, onMutationError }) {
+export default function TrialSelectView({ status, onRefresh, onMutationError, onMutationSuccess }) {
   const [selectedTrial, setSelectedTrial] = useState(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -91,7 +93,10 @@ export default function TrialSelectView({ status, onRefresh, onMutationError }) 
     setConfirming(true);
     try {
       await startTrial(selectedTrial.id);
+      const started = selectedTrial;
       setSelectedTrial(null);
+      // 開始試煉是一般操作，給提示就好；真正的慶祝留給轉生完成
+      onMutationSuccess?.(`已開始挑戰 ★${started.star} ${started.displayName}，期限 60 天`);
       onRefresh();
     } catch (err) {
       onMutationError(err?.response?.data?.message ?? "無法啟動試煉");
@@ -125,17 +130,20 @@ export default function TrialSelectView({ status, onRefresh, onMutationError }) 
 
   return (
     <>
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-        選擇一項試煉開始挑戰
-      </Typography>
+      {/* 標題與清單包成同一塊，外層（LevelClimbView 下方）的 gap 才不會再疊在標題間距上 */}
+      <Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2 }}>
+          選擇一項試煉開始挑戰
+        </Typography>
 
-      <Grid container spacing={2}>
-        {availableTrials.map(trial => (
-          <Grid size={{ xs: 12, sm: 6, md: 4 }} key={trial.id}>
-            <TrialCard trial={trial} onClick={() => handleCardClick(trial)} />
-          </Grid>
-        ))}
-      </Grid>
+        <Grid container spacing={2}>
+          {availableTrials.map(trial => (
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={trial.id}>
+              <TrialCard trial={trial} onClick={() => handleCardClick(trial)} />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
 
       <AlertDialog
         open={Boolean(dialogTrial)}
@@ -148,7 +156,7 @@ export default function TrialSelectView({ status, onRefresh, onMutationError }) 
         onSubmit={handleConfirm}
         onCancel={handleCancel}
         onClose={handleCancel}
-        disabled={confirming}
+        busy={confirming}
       />
     </>
   );

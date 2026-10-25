@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
-  Alert,
   Avatar,
   Box,
   Button,
@@ -14,9 +13,11 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import SettingsIcon from "@mui/icons-material/Settings";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import useLiff from "../../context/useLiff";
 import { getAutoMatchHistory, getAutoMatchToday } from "../../services/janken";
 
@@ -157,12 +158,7 @@ function Side({ name, pictureUrl, choice, highlight }) {
         borderRadius: 3,
         border: 1,
         borderColor: "divider",
-        bgcolor: theme =>
-          highlight
-            ? theme.palette.mode === "dark"
-              ? "rgba(38,198,218,0.10)"
-              : "rgba(0,172,193,0.06)"
-            : "transparent",
+        bgcolor: theme => (highlight ? alpha(theme.palette.primary.main, 0.08) : "transparent"),
       }}
     >
       <Avatar src={pictureUrl || undefined} sx={{ width: 48, height: 48, mx: "auto" }}>
@@ -201,7 +197,7 @@ function MatchCard({ runDate, match }) {
   return (
     <Card>
       <CardContent>
-        <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1 }}>
+        <Typography variant="subtitle2" sx={{ color: "text.secondary", fontWeight: 700 }}>
           今日結果
         </Typography>
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1, mt: 0.5 }}>
@@ -263,7 +259,7 @@ function StateCard({ view }) {
   return (
     <Card>
       <CardContent>
-        <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1 }}>
+        <Typography variant="subtitle2" sx={{ color: "text.secondary", fontWeight: 700 }}>
           今日結果
         </Typography>
         <Box sx={{ mt: 0.5 }}>
@@ -286,7 +282,7 @@ function StateCard({ view }) {
             to="/auto/settings"
             variant="contained"
             startIcon={<SettingsIcon />}
-            sx={{ mt: 2.5 }}
+            sx={{ mt: 2.5, minHeight: 44 }}
           >
             前往自動設定
           </Button>
@@ -296,18 +292,18 @@ function StateCard({ view }) {
   );
 }
 
-function UnknownStateCard({ data }) {
+function UnknownStateCard() {
   return (
     <Card>
       <CardContent>
-        <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1 }}>
+        <Typography variant="subtitle2" sx={{ color: "text.secondary", fontWeight: 700 }}>
           今日結果
         </Typography>
         <Typography variant="h6" sx={{ fontWeight: 700, mt: 1 }}>
           目前無法顯示今天的狀態
         </Typography>
         <Typography variant="body2" sx={{ color: "text.secondary", mt: 1 }}>
-          今天這一場回報的狀態（{data.status}）目前無法正常顯示，稍後再回來查看。
+          今天這一場的狀態目前無法正常顯示，稍後再回來查看。
         </Typography>
       </CardContent>
     </Card>
@@ -430,7 +426,7 @@ function HistorySection({ todayRunDate }) {
   return (
     <Card>
       <CardContent>
-        <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1 }}>
+        <Typography variant="subtitle2" sx={{ color: "text.secondary", fontWeight: 700 }}>
           歷史紀錄
         </Typography>
 
@@ -443,17 +439,11 @@ function HistorySection({ todayRunDate }) {
         )}
 
         {!loading && error && (
-          <Alert
-            severity="error"
-            sx={{ mt: 1 }}
-            action={
-              <Button color="inherit" size="small" onClick={reload}>
-                重試
-              </Button>
-            }
-          >
-            讀取歷史紀錄失敗
-          </Alert>
+          <LoadError
+            message="無法讀取歷史紀錄，請檢查網路後再試一次。"
+            onRetry={reload}
+            sx={{ pb: 0 }}
+          />
         )}
 
         {!loading && !error && past.length === 0 && (
@@ -514,7 +504,7 @@ export default function AutoMatch() {
           borderRadius: 3,
           background: theme =>
             `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-          color: "#fff",
+          color: "primary.contrastText",
         }}
       >
         <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
@@ -530,15 +520,18 @@ export default function AutoMatch() {
           <Button
             component={RouterLink}
             to="/auto/settings"
-            size="small"
             variant="outlined"
             startIcon={<SettingsIcon />}
-            sx={{
-              color: "#fff",
-              borderColor: "rgba(255,255,255,0.6)",
+            sx={theme => ({
+              color: "inherit",
+              borderColor: alpha(theme.palette.primary.contrastText, 0.6),
               whiteSpace: "nowrap",
-              "&:hover": { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.08)" },
-            }}
+              minHeight: 44,
+              "&:hover": {
+                borderColor: theme.palette.primary.contrastText,
+                bgcolor: alpha(theme.palette.primary.contrastText, 0.08),
+              },
+            })}
           >
             設定
           </Button>
@@ -548,16 +541,11 @@ export default function AutoMatch() {
       {loading && <Skeleton variant="rounded" height={280} animation="wave" />}
 
       {!loading && error && (
-        <Alert
-          severity="error"
-          action={
-            <Button color="inherit" size="small" onClick={reload}>
-              重試
-            </Button>
-          }
-        >
-          讀取今日自動配對結果失敗
-        </Alert>
+        <LoadError
+          message="無法讀取今日自動配對結果，請檢查網路後再試一次。"
+          onRetry={reload}
+          sx={{ py: 0 }}
+        />
       )}
 
       {!loading && !error && data && (
@@ -567,7 +555,7 @@ export default function AutoMatch() {
           ) : stateView ? (
             <StateCard view={stateView} />
           ) : (
-            <UnknownStateCard data={data} />
+            <UnknownStateCard />
           )}
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             結果只在這個頁面查看，不會發送群組通知。

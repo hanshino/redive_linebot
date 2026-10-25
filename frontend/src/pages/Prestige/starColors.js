@@ -18,4 +18,13 @@ export function getStarConfig(star) {
   return STAR_CONFIG[star] ?? STAR_CONFIG[1];
 }
 
+/**
+ * `color` 是 sx 用的 token 字串（"warning.main"），拿去做 alpha() 之類的運算前要先解成實際色值。
+ * 只能在 sx 的 theme callback 或有 theme 的地方呼叫。
+ */
+export function resolveStarColor(theme, star) {
+  const [group, shade] = getStarConfig(star).color.split(".");
+  return theme.palette[group]?.[shade] ?? theme.palette.success.main;
+}
+
 export default STAR_CONFIG;

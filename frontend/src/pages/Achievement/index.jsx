@@ -12,9 +12,11 @@ import {
   Skeleton,
   Avatar,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import { useSearchParams } from "react-router-dom";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import { getUserAchievements, getAchievementStats } from "../../services/achievement";
 
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlined";
@@ -39,7 +41,7 @@ import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import DiamondIcon from "@mui/icons-material/Diamond";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import NotesRoundedIcon from "@mui/icons-material/NotesRounded";
-import { RARITY_CONFIG, CATEGORY_ICONS } from "./constants";
+import { getRarity, CATEGORY_ICONS } from "./constants";
 import AchievementDetailSheet from "./AchievementDetailSheet";
 
 const ACHIEVEMENT_ICONS = {
@@ -70,7 +72,9 @@ const ACHIEVEMENT_ICONS = {
   legacy_pioneer: AccountBalanceIcon,
 };
 
-const CARD_HEIGHT = 180;
+// 卡片高度固定，同一列才會等高。名稱最多 2 行：
+// 內距 32 + 頭像 48 + 間距 8 + 名稱 2 行 40 + 狀態 ~26 + 解鎖率 ~20 ≈ 178。
+const CARD_HEIGHT = 188;
 
 const GRID_COLUMNS = {
   xs: "repeat(2, 1fr)",
@@ -122,6 +126,12 @@ export default function Achievement() {
     fetchData();
   }, [fetchData]);
 
+  const retry = () => {
+    setLoading(true);
+    setError(null);
+    fetchData();
+  };
+
   if (loading) {
     return (
       <Box sx={{ py: 1 }}>
@@ -143,12 +153,7 @@ export default function Achievement() {
     );
   }
   if (!isLoggedIn && !userId) return <AlertLogin />;
-  if (error)
-    return (
-      <Box sx={{ py: 2 }}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    );
+  if (error) return <LoadError message={`${error}，請檢查網路後再試一次。`} onRetry={retry} />;
   if (!summary) return null;
 
   const filteredCategories =
@@ -177,19 +182,10 @@ export default function Achievement() {
           </Typography>
         )}
         <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-            mt: 0.5,
-            mb: 2,
-          }}
-        >
-          探索並解鎖所有成就吧！點卡片看詳情。
-        </Typography>
-        <Typography
           variant="h4"
           sx={{
             fontWeight: "bold",
+            mt: 2,
           }}
         >
           {summary.unlocked} / {summary.total}
@@ -203,7 +199,8 @@ export default function Achievement() {
             mt: 1,
             mb: 0.5,
             "& .MuiLinearProgress-bar": {
-              background: "linear-gradient(90deg, #6c5ce7, #a29bfe)",
+              background: theme =>
+                `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.light})`,
               borderRadius: 4,
             },
           }}
@@ -277,7 +274,12 @@ function AchievementStatus({ achievement, isHidden, progress, rarity }) {
       <Chip
         label="已解鎖"
         size="small"
-        sx={{ bgcolor: rarity.color, color: "#fff", fontWeight: "bold", fontSize: "0.7rem" }}
+        sx={theme => ({
+          bgcolor: rarity.main,
+          color: theme.palette.getContrastText(rarity.main),
+          fontWeight: "bold",
+          fontSize: "0.75rem",
+        })}
       />
     );
   }
@@ -298,11 +300,12 @@ function AchievementStatus({ achievement, isHidden, progress, rarity }) {
       <LinearProgress
         variant="determinate"
         value={progress}
+        aria-label={`${achievement.name} 進度`}
         sx={{
           height: 4,
           borderRadius: 2,
-          bgcolor: "#eee",
-          "& .MuiLinearProgress-bar": { bgcolor: rarity.color },
+          bgcolor: "surface.inset",
+          "& .MuiLinearProgress-bar": { bgcolor: rarity.main },
         }}
       />
       <Typography
@@ -321,7 +324,8 @@ function AchievementStatus({ achievement, isHidden, progress, rarity }) {
 }
 
 function AchievementCard({ achievement, stats, onOpen }) {
-  const rarity = RARITY_CONFIG[achievement.rarity] || RARITY_CONFIG[0];
+  const theme = useTheme();
+  const rarity = getRarity(theme, achievement.rarity);
   const isHidden = achievement.type === "hidden" && !achievement.isUnlocked;
   const progress =
     achievement.target_value > 0
@@ -333,8 +337,8 @@ function AchievementCard({ achievement, stats, onOpen }) {
     ? HelpOutlineIcon
     : ACHIEVEMENT_ICONS[achievement.key] || CATEGORY_ICONS[achievement.category_key] || LockIcon;
 
-  const iconColor = achievement.isUnlocked ? rarity.color : "#bdbdbd";
-  const iconBg = achievement.isUnlocked ? rarity.bg : "#f5f5f5";
+  const iconColor = achievement.isUnlocked ? rarity.main : theme.palette.text.disabled;
+  const iconBg = achievement.isUnlocked ? rarity.bg : theme.palette.surface.inset;
   // Only unlocked achievements carry `description`, so only they get the
   // corner note marker. Its absence on locked cards is the same information
   // gap the sheet spells out, told once more at a glance.
@@ -344,14 +348,16 @@ function AchievementCard({ achievement, stats, onOpen }) {
     <Card
       sx={{
         height: CARD_HEIGHT,
-        border: achievement.isUnlocked ? `2px solid ${rarity.color}` : "1px solid #e0e0e0",
-        boxShadow: achievement.isUnlocked ? `0 0 12px ${rarity.color}33` : "none",
+        border: achievement.isUnlocked
+          ? `2px solid ${rarity.main}`
+          : `1px solid ${theme.palette.divider}`,
+        boxShadow: achievement.isUnlocked ? `0 0 12px ${alpha(rarity.main, 0.2)}` : "none",
         opacity: isHidden ? 0.6 : 1,
         borderRadius: 2,
         transition: "all 0.2s",
         "&:hover": {
           transform: achievement.isUnlocked ? "translateY(-2px)" : "none",
-          boxShadow: achievement.isUnlocked ? `0 4px 16px ${rarity.color}44` : "none",
+          boxShadow: achievement.isUnlocked ? `0 4px 16px ${alpha(rarity.main, 0.27)}` : "none",
         },
       }}
     >
@@ -375,7 +381,7 @@ function AchievementCard({ achievement, stats, onOpen }) {
               top: 6,
               right: 6,
               fontSize: 14,
-              color: rarity.color,
+              color: rarity.main,
               opacity: 0.7,
             }}
           />
@@ -404,14 +410,19 @@ function AchievementCard({ achievement, stats, onOpen }) {
             <IconComponent sx={{ fontSize: 26, color: iconColor }} />
           </Avatar>
 
+          {/* 名稱最多兩行：360px 的兩欄格子放不下長名稱，noWrap 會把它切成看不出差別的前半段 */}
           <Typography
             variant="body2"
-            noWrap
             sx={{
               fontWeight: "bold",
               width: "100%",
               textAlign: "center",
               mb: 0.5,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              overflowWrap: "anywhere",
             }}
           >
             {isHidden ? "???" : achievement.name}
@@ -428,9 +439,8 @@ function AchievementCard({ achievement, stats, onOpen }) {
             <Typography
               variant="caption"
               sx={{
-                color: "text.disabled",
+                color: "text.secondary",
                 mt: "auto",
-                fontSize: "0.65rem",
               }}
             >
               {unlockRate} 已解鎖

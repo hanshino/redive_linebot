@@ -1,3 +1,4 @@
+const { PALETTE, SURFACE, FEATURE } = require("../common/theme");
 const common = require("../common");
 const defaultHero = {
   type: "box",
@@ -8,7 +9,7 @@ const defaultHero = {
       text: "尚未設定圖片",
       position: "absolute",
       size: "xl",
-      color: "#808080",
+      color: SURFACE.textMuted,
       offsetTop: "45%",
       offsetStart: "30%",
     },
@@ -71,7 +72,7 @@ exports.genShopItem = function ({ itemId, image, name, price, star }) {
                 {
                   type: "image",
                   url: "https://i.imgur.com/Xr1JU2z.png",
-                  size: "xxs",
+                  size: "xs",
                   flex: 1,
                 },
                 {
@@ -113,14 +114,12 @@ exports.genShopItem = function ({ itemId, image, name, price, star }) {
                   type: "text",
                   text: "交換",
                   align: "center",
-                  color: "#F2F3F4",
+                  color: PALETTE.white,
                 },
               ],
-              backgroundColor: "#1234FF56",
+              backgroundColor: FEATURE.godStone.main,
               paddingAll: "xl",
               cornerRadius: "md",
-              borderColor: "#80808056",
-              borderWidth: "normal",
             },
           ],
           action: {

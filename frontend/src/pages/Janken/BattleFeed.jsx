@@ -6,7 +6,7 @@ const BORDER_COLORS = {
   normal: "primary.main",
   streakBroken: "error.main",
   highStakes: "warning.main",
-  draw: "grey.500",
+  draw: "text.disabled",
 };
 
 function getCardType(match) {
@@ -137,7 +137,8 @@ export default function BattleFeed({ matches, loading }) {
             aria-atomic="true"
             sx={{
               p: 2,
-              borderLeft: 4,
+              // 整圈細框表示勝負類型，不用粗側條
+              border: 1,
               borderColor: BORDER_COLORS[cardType],
               transformOrigin: "center bottom",
               backfaceVisibility: "hidden",

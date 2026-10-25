@@ -1,3 +1,4 @@
+const { PALETTE, SEMANTIC, SURFACE } = require("../common/theme");
 exports.generateRankupBubble = ({ beforeHeadImage, afterHeadImage, command, unitName }) => ({
   type: "bubble",
   body: {
@@ -19,7 +20,7 @@ exports.generateRankupBubble = ({ beforeHeadImage, afterHeadImage, command, unit
               {
                 type: "image",
                 url: "https://i.imgur.com/LTggbcZ.jpeg",
-                size: "xxs",
+                size: "xs",
               },
               {
                 type: "text",
@@ -49,10 +50,10 @@ exports.generateRankupBubble = ({ beforeHeadImage, afterHeadImage, command, unit
             align: "center",
             weight: "bold",
             size: "lg",
-            color: "#ffffff",
+            color: PALETTE.white,
           },
         ],
-        backgroundColor: "#4C50AF",
+        backgroundColor: SEMANTIC.primary.main,
         cornerRadius: "md",
         paddingAll: "lg",
         margin: "lg",
@@ -62,7 +63,7 @@ exports.generateRankupBubble = ({ beforeHeadImage, afterHeadImage, command, unit
         },
       },
     ],
-    backgroundColor: "#F5F5F5",
+    backgroundColor: SURFACE.bgAlt,
     cornerRadius: "md",
   },
 });

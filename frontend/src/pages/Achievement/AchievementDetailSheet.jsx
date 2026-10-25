@@ -7,25 +7,29 @@ import {
   IconButton,
   LinearProgress,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import DiamondOutlinedIcon from "@mui/icons-material/DiamondOutlined";
 import EventAvailableOutlinedIcon from "@mui/icons-material/EventAvailableOutlined";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import { RARITY_CONFIG } from "./constants";
+import { getRarity } from "./constants";
 
 /**
  * Bottom-sheet detail view for one achievement.
  *
- * The unlock criteria (`description`) only exists on unlocked achievements —
- * the API omits the key entirely while locked. That gap is intentional product
- * behaviour, so the locked state renders a sealed placeholder instead of an
- * empty box: the sheet should read "there is something here you haven't earned
- * yet", never "the data failed to load".
+ * The unlock criteria (`description`) is shown whenever the API sends it and the
+ * achievement is not hidden. Today the API still omits it for locked rows
+ * (achievementPublicView.includeDescription), so a locked achievement falls back
+ * to a sealed placeholder instead of an empty box: the sheet should read "there
+ * is something here you haven't earned yet", never "the data failed to load".
+ * Once the backend sends `description` for locked, non-hidden rows this block
+ * shows it with no further frontend change.
  */
 export default function AchievementDetailSheet({ open, onClose, achievement, stats, icon }) {
-  const rarity = RARITY_CONFIG[achievement?.rarity] || RARITY_CONFIG[0];
+  const theme = useTheme();
+  const rarity = getRarity(theme, achievement?.rarity);
 
   if (!achievement) return null;
 
@@ -63,7 +67,7 @@ export default function AchievementDetailSheet({ open, onClose, achievement, sta
         sx={{
           position: "relative",
           overflowY: "auto",
-          background: `linear-gradient(180deg, ${rarity.color}1f 0%, transparent 180px)`,
+          background: `linear-gradient(180deg, ${alpha(rarity.main, 0.12)} 0%, transparent 180px)`,
         }}
       >
         <Box
@@ -78,11 +82,17 @@ export default function AchievementDetailSheet({ open, onClose, achievement, sta
         />
         <IconButton
           onClick={onClose}
-          size="small"
           aria-label="關閉成就詳情"
-          sx={{ position: "absolute", top: 6, right: 8, color: "text.secondary" }}
+          sx={{
+            position: "absolute",
+            top: 2,
+            right: 4,
+            width: 44,
+            height: 44,
+            color: "text.secondary",
+          }}
         >
-          <CloseRoundedIcon fontSize="small" />
+          <CloseRoundedIcon />
         </IconButton>
 
         <Box
@@ -101,13 +111,13 @@ export default function AchievementDetailSheet({ open, onClose, achievement, sta
                 width: 60,
                 height: 60,
                 flexShrink: 0,
-                bgcolor: isUnlocked ? `${rarity.color}1f` : "action.hover",
-                border: isUnlocked ? `2px solid ${rarity.color}` : "1px solid",
-                borderColor: isUnlocked ? rarity.color : "divider",
-                boxShadow: isUnlocked ? `0 0 16px ${rarity.color}3d` : "none",
+                bgcolor: isUnlocked ? alpha(rarity.main, 0.12) : "action.hover",
+                border: isUnlocked ? `2px solid ${rarity.main}` : "1px solid",
+                borderColor: isUnlocked ? rarity.main : "divider",
+                boxShadow: isUnlocked ? `0 0 16px ${alpha(rarity.main, 0.24)}` : "none",
               }}
             >
-              <Icon sx={{ fontSize: 30, color: isUnlocked ? rarity.color : "text.disabled" }} />
+              <Icon sx={{ fontSize: 30, color: isUnlocked ? rarity.main : "text.disabled" }} />
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
@@ -115,22 +125,22 @@ export default function AchievementDetailSheet({ open, onClose, achievement, sta
                   label={rarity.label}
                   size="small"
                   sx={{
-                    height: 20,
-                    fontSize: "0.68rem",
+                    height: 24,
+                    fontSize: "0.75rem",
                     fontWeight: 700,
-                    color: isUnlocked ? "#fff" : rarity.color,
-                    bgcolor: isUnlocked ? rarity.color : `${rarity.color}1f`,
+                    color: isUnlocked ? theme.palette.getContrastText(rarity.main) : rarity.main,
+                    bgcolor: isUnlocked ? rarity.main : alpha(rarity.main, 0.12),
                   }}
                 />
                 {isUnlocked ? (
                   <Typography
                     variant="caption"
-                    sx={{ color: rarity.color, fontWeight: 700, letterSpacing: "0.04em" }}
+                    sx={{ color: rarity.main, fontWeight: 700, letterSpacing: "0.04em" }}
                   >
                     已解鎖
                   </Typography>
                 ) : (
-                  <Typography variant="caption" sx={{ color: "text.disabled" }}>
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
                     {isHidden ? "隱藏成就" : "未解鎖"}
                   </Typography>
                 )}
@@ -142,41 +152,31 @@ export default function AchievementDetailSheet({ open, onClose, achievement, sta
           </Box>
 
           {/* The criteria block — the reason this sheet exists. */}
-          {isUnlocked && condition ? (
+          {!isHidden && condition ? (
             <Box
               sx={{
                 position: "relative",
                 mt: 2.5,
-                pl: 2.25,
-                pr: 2,
+                px: 2,
                 py: 1.75,
                 borderRadius: 2,
                 overflow: "hidden",
-                border: `1px solid ${rarity.color}3d`,
-                background: `linear-gradient(135deg, ${rarity.color}1a, ${rarity.color}08)`,
-                "&::before": {
-                  content: '""',
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 3,
-                  bgcolor: rarity.color,
-                },
+                border: `1px solid ${alpha(rarity.main, 0.24)}`,
+                bgcolor: alpha(rarity.main, 0.08),
                 "@keyframes conditionReveal": {
                   from: { opacity: 0, transform: "translateY(10px)" },
                   to: { opacity: 1, transform: "none" },
                 },
                 animation: "conditionReveal 400ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both",
+                "@media (prefers-reduced-motion: reduce)": { animation: "none" },
               }}
             >
               <Typography
                 variant="caption"
                 sx={{
                   display: "block",
-                  color: rarity.color,
+                  color: rarity.main,
                   fontWeight: 700,
-                  letterSpacing: "0.12em",
                 }}
               >
                 解鎖條件
@@ -234,7 +234,7 @@ export default function AchievementDetailSheet({ open, onClose, achievement, sta
                 sx={{
                   height: 6,
                   borderRadius: 3,
-                  "& .MuiLinearProgress-bar": { bgcolor: rarity.color, borderRadius: 3 },
+                  "& .MuiLinearProgress-bar": { bgcolor: rarity.main, borderRadius: 3 },
                 }}
               />
             </Box>
@@ -276,7 +276,7 @@ function MetaRow({ icon: Icon, label, value }) {
         "&:last-of-type": { borderBottom: "none" },
       }}
     >
-      <Icon sx={{ fontSize: 18, color: "text.disabled", flexShrink: 0 }} />
+      <Icon sx={{ fontSize: 18, color: "text.secondary", flexShrink: 0 }} />
       <Typography variant="caption" sx={{ color: "text.secondary", flexShrink: 0 }}>
         {label}
       </Typography>

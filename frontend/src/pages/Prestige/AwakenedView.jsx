@@ -38,7 +38,7 @@ export default function AwakenedView({ status }) {
       <Box
         sx={{
           background: reducedMotion ? AWAKENED_FALLBACK : AWAKENED_GRADIENT,
-          color: "#fff",
+          color: "common.white",
           borderRadius: 2,
           p: { xs: 3, md: 5 },
           textAlign: "center",
@@ -56,8 +56,7 @@ export default function AwakenedView({ status }) {
           <AutoAwesomeIcon sx={{ fontSize: { xs: "1.75rem", md: "2.25rem" } }} />
           <Typography
             component="div"
-            fontWeight={800}
-            sx={{ fontSize: { xs: "2rem", md: "2.75rem" }, lineHeight: 1 }}
+            sx={{ fontWeight: 800, fontSize: { xs: "2rem", md: "2.75rem" }, lineHeight: 1 }}
           >
             覺醒者
           </Typography>
@@ -82,8 +81,7 @@ export default function AwakenedView({ status }) {
         >
           <Typography
             variant="caption"
-            color="text.secondary"
-            sx={{ fontWeight: 700, mb: 1.5, display: "block" }}
+            sx={{ color: "text.secondary", fontWeight: 700, mb: 1.5, display: "block" }}
           >
             通過試煉
           </Typography>
@@ -118,8 +116,7 @@ export default function AwakenedView({ status }) {
             >
               <Typography
                 variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 700, mb: 1.5, display: "block" }}
+                sx={{ color: "text.secondary", fontWeight: 700, mb: 1.5, display: "block" }}
               >
                 永久祝福 ({ownedBlessingDetails.length})
               </Typography>
@@ -130,11 +127,11 @@ export default function AwakenedView({ status }) {
                     <Box key={blessing.id} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                       <BlessingIcon sx={{ fontSize: 20, color: "primary.main", flexShrink: 0 }} />
                       <Box>
-                        <Typography variant="body2" fontWeight={700}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
                           {blessing.displayName}
                         </Typography>
                         {blessing.description && (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{ color: "text.secondary" }}>
                             {blessing.description}
                           </Typography>
                         )}
@@ -160,8 +157,7 @@ export default function AwakenedView({ status }) {
             >
               <Typography
                 variant="caption"
-                color="text.secondary"
-                sx={{ fontWeight: 700, mb: 1.5, display: "block" }}
+                sx={{ color: "text.secondary", fontWeight: 700, mb: 1.5, display: "block" }}
               >
                 解鎖 Build 成就
               </Typography>
@@ -186,7 +182,7 @@ export default function AwakenedView({ status }) {
         )}
       </Grid>
 
-      <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center" }}>
+      <Typography variant="caption" sx={{ color: "text.secondary", textAlign: "center" }}>
         可繼續升等，但等級上限保持 Lv.100
       </Typography>
     </Box>

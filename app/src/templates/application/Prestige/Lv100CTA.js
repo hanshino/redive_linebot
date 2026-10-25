@@ -1,6 +1,7 @@
 // LINE Flex carousel for the "you've hit Lv.100, time to prestige" broadcast.
 // Visual system mirrors Lv50CTA + TrialEnter — purple/gold prestige theme.
 
+const { PALETTE, SURFACE, TINT, PRESTIGE } = require("../../common/theme");
 const {
   PRESTIGE_PURPLE,
   PRESTIGE_GOLD,
@@ -89,7 +90,7 @@ function buildHeroBubble({ displayName, pictureUrl, prestigeCount, passedTrialNa
             {
               type: "text",
               text: displayName,
-              color: "#FFFFFF",
+              color: PALETTE.white,
               size: "sm",
               weight: "bold",
               flex: 0,
@@ -122,7 +123,7 @@ function buildHeroBubble({ displayName, pictureUrl, prestigeCount, passedTrialNa
         },
       ],
     },
-    styles: { footer: { backgroundColor: "#FFFFFF" } },
+    styles: { footer: { backgroundColor: PALETTE.white } },
   };
 }
 
@@ -130,11 +131,11 @@ function progressChip(prestigeCount) {
   return {
     type: "box",
     layout: "horizontal",
-    backgroundColor: "#F1ECF7",
+    backgroundColor: TINT.purple.bg,
     cornerRadius: "999px",
     paddingAll: "8px",
     borderWidth: "1px",
-    borderColor: "#D6C9E8",
+    borderColor: TINT.purple.border,
     margin: "sm",
     contents: [
       {
@@ -153,16 +154,16 @@ function honeymoonChip() {
   return {
     type: "box",
     layout: "horizontal",
-    backgroundColor: "#E8F6EC",
+    backgroundColor: PRESTIGE.successBg,
     cornerRadius: "999px",
     paddingAll: "8px",
     borderWidth: "1px",
-    borderColor: "#B8DEC2",
+    borderColor: PRESTIGE.successBorder,
     contents: [
       {
         type: "text",
         text: "🌱 蜜月加成將在首次轉生後消失",
-        color: "#2F6B3F",
+        color: PRESTIGE.successInk,
         size: "xs",
         weight: "bold",
         align: "center",
@@ -176,7 +177,7 @@ function finalChip() {
   return {
     type: "box",
     layout: "horizontal",
-    backgroundColor: "#FBF1E8",
+    backgroundColor: TINT.amber.bg,
     cornerRadius: "999px",
     paddingAll: "8px",
     borderWidth: "1px",
@@ -185,7 +186,7 @@ function finalChip() {
       {
         type: "text",
         text: "✨ 此為最終轉生 — 完成後達成覺醒",
-        color: "#7A4A12",
+        color: TINT.amber.ink,
         size: "xs",
         weight: "bold",
         align: "center",
@@ -199,58 +200,58 @@ const BLESSINGS = [
   {
     name: "語言天賦",
     desc: "每則訊息 +8% XP",
-    color: "#3D6FB8",
-    bg: "#EEF3FB",
-    border: "#C7D8EE",
-    descColor: "#5E6470",
+    color: TINT.blue.main,
+    bg: TINT.blue.bg,
+    border: TINT.blue.border,
+    descColor: TINT.blue.desc,
   },
   {
     name: "迅雷語速",
     desc: "冷卻速度提升",
-    color: "#3F8C50",
-    bg: "#ECF6EE",
-    border: "#C2DFC8",
-    descColor: "#5C6E60",
+    color: TINT.green.main,
+    bg: TINT.green.bg,
+    border: TINT.green.border,
+    descColor: TINT.green.desc,
   },
   {
     name: "燃燒餘熱",
     desc: "中段 tier ↑",
-    color: "#B8772A",
-    bg: "#FBF1E8",
-    border: "#EBCDA8",
-    descColor: "#74604A",
+    color: TINT.amber.main,
+    bg: TINT.amber.bg,
+    border: TINT.amber.border,
+    descColor: TINT.amber.desc,
   },
   {
     name: "絮語之心",
     desc: "群組門檻降低",
-    color: "#7A4FB5",
-    bg: "#F1ECF7",
-    border: "#D6C9E8",
-    descColor: "#665A78",
+    color: TINT.purple.main,
+    bg: TINT.purple.bg,
+    border: TINT.purple.border,
+    descColor: TINT.purple.desc,
   },
   {
     name: "節律之泉",
     desc: "連續發話加成",
-    color: "#5C7CCB",
-    bg: "#EEF1FB",
-    border: "#CDD7EE",
-    descColor: "#5E6470",
+    color: TINT.periwinkle.main,
+    bg: TINT.periwinkle.bg,
+    border: TINT.periwinkle.border,
+    descColor: TINT.blue.desc,
   },
   {
     name: "群星加護",
     desc: "群組加成 slope ↑",
-    color: "#A07A2C",
-    bg: "#F8F0E0",
-    border: "#E8D5A8",
-    descColor: "#74604A",
+    color: TINT.ochre.main,
+    bg: TINT.ochre.bg,
+    border: TINT.ochre.border,
+    descColor: TINT.amber.desc,
   },
   {
     name: "溫室之語",
     desc: "小群組 +30%",
-    color: "#3F8C50",
-    bg: "#ECF6EE",
-    border: "#C2DFC8",
-    descColor: "#5C6E60",
+    color: TINT.green.main,
+    bg: TINT.green.bg,
+    border: TINT.green.border,
+    descColor: TINT.green.desc,
   },
 ];
 
@@ -270,7 +271,7 @@ function blessingChip(b) {
         spacing: "sm",
         contents: [
           { type: "text", text: "✦", color: b.color, size: "sm", weight: "bold", flex: 0 },
-          { type: "text", text: b.name, color: "#1C1C1E", size: "sm", weight: "bold", flex: 0 },
+          { type: "text", text: b.name, color: SURFACE.text, size: "sm", weight: "bold", flex: 0 },
           { type: "text", text: b.desc, color: b.descColor, size: "xs" },
         ],
       },
@@ -321,8 +322,8 @@ function buildBlessingsBubble({ prestigeCount }) {
         {
           type: "text",
           text: footnote,
-          color: "#8E8E93",
-          size: "xxs",
+          color: SURFACE.textMuted,
+          size: "xs",
           wrap: true,
           margin: "md",
         },

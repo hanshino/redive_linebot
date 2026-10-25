@@ -75,7 +75,7 @@ async function showGachaBag(context) {
     cta: "開啟包包",
   });
 
-  context.replyFlex("轉蛋包包", bubble);
+  context.replyFlex("轉蛋包包：管理你的抽卡紀錄", bubble);
 }
 
 /**
@@ -156,7 +156,9 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
       rareCount,
       hasCooldown: type === "group",
     });
-    return time("gacha.reply.normal", () => context.replyFlex("轉蛋結果", bubble));
+    return time("gacha.reply.normal", () =>
+      context.replyFlex(`轉蛋結果：${GachaTemplate.line.formatRareSummary(rareCount)}`, bubble)
+    );
   };
   // 非公主轉蛋池，無法進行每日一抽，直接抽完並且發送結果
   if (!isPrincessPool) {
@@ -236,7 +238,7 @@ async function gacha(context, { match, pickup, ensure = false, europe = false })
   await time("gacha.notify", () => notifyUnlocks(context, userId, result.unlocks));
 
   return time("gacha.reply.daily", () =>
-    context.replyFlex("每日一抽結果", {
+    context.replyFlex(`每日一抽結果：${GachaTemplate.line.formatRareSummary(result.rareCount)}`, {
       type: "carousel",
       contents: bubbles,
     })

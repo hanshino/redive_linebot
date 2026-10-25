@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Box, Chip, IconButton, Tooltip, Typography } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
+import PageHero from "../../../components/PageHero";
 import { TYPE_META } from "./_format";
 
 export function CopyButton({ text, label = "複製", size = "small" }) {
@@ -37,7 +38,7 @@ export function TypeChip({ type, size = "small" }) {
 export function Field({ label, children, mono = false }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+      <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
         {label}
       </Typography>
       <Typography
@@ -50,36 +51,7 @@ export function Field({ label, children, mono = false }) {
   );
 }
 
-/** 頁首：沿用 Admin/Coupon 的漸層 hero，改用 secondary（布丁色）區隔「贊助」。 */
-export function Hero({ icon, title, subtitle, children }) {
-  return (
-    <Box
-      sx={{
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: 3,
-        p: { xs: 2.5, sm: 3.5 },
-        color: "#fff",
-        background: t =>
-          `linear-gradient(135deg, ${t.palette.secondary.dark} 0%, ${t.palette.secondary.main} 100%)`,
-        display: "flex",
-        alignItems: "center",
-        gap: 2,
-        flexWrap: "wrap",
-      }}
-    >
-      {icon && <Box sx={{ display: "flex", "& svg": { fontSize: 44, opacity: 0.85 } }}>{icon}</Box>}
-      <Box sx={{ flex: 1, minWidth: 160 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          {title}
-        </Typography>
-        {subtitle && (
-          <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.25 }}>
-            {subtitle}
-          </Typography>
-        )}
-      </Box>
-      {children}
-    </Box>
-  );
+/** 頁首：共用 PageHero，贊助用 secondary（布丁色）區隔。 */
+export function Hero(props) {
+  return <PageHero tone="secondary" {...props} />;
 }

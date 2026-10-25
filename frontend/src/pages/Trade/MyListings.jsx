@@ -1,16 +1,20 @@
 import { useEffect, useMemo } from "react";
 import useAxios from "axios-hooks";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { Alert, Box, Button, Paper, Skeleton, Typography } from "@mui/material";
+import { Box, Button, Paper, Skeleton, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import SellRoundedIcon from "@mui/icons-material/SellRounded";
 import ShoppingBasketRoundedIcon from "@mui/icons-material/ShoppingBasketRounded";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import useLiff from "../../context/useLiff";
 import { STATUS } from "./_shared";
 import {
+  META_TEXT,
   MAX_OPEN_FALLBACK,
   NUMS,
+  TAP_TARGETS,
+  PAGE_WIDTH,
   calcNet,
   fmtShortDate,
   fmtShortDay,
@@ -49,11 +53,11 @@ function ListingItem({ listing, meta, note, strike }) {
           </Typography>
           <BaseStar star={listing.star} />
         </Box>
-        <Typography sx={{ fontSize: 11.5, color: "text.secondary", mt: "3px", ...NUMS }} noWrap>
+        <Typography sx={{ ...META_TEXT, mt: "3px" }} noWrap>
           {meta}
         </Typography>
         {note && (
-          <Typography sx={{ fontSize: 11.5, color: note.color, mt: "2px", ...NUMS }} noWrap>
+          <Typography sx={{ ...META_TEXT, color: note.color, mt: "2px" }} noWrap>
             {note.text}
           </Typography>
         )}
@@ -85,7 +89,8 @@ function ListingItem({ listing, meta, note, strike }) {
 }
 
 /* ---------------------------------------------------------------- 舊紀錄 */
-function LegacyBlock({ trades, loading, error }) {
+// 只在有舊紀錄、或讀取失敗時才會渲染（沒有舊紀錄的人不需要看到已停用功能的空殼）。
+function LegacyBlock({ trades, error, onRetry }) {
   return (
     <Box
       sx={theme => ({
@@ -120,19 +125,15 @@ function LegacyBlock({ trades, loading, error }) {
           唯讀
         </Box>
       </Box>
-      <Typography sx={{ fontSize: 11.5, color: "text.secondary", lineHeight: 1.6 }}>
-        舊的一對一私下交易已停用，這裡只保留過往紀錄，不能再新增或操作。
-      </Typography>
 
-      {error && (
-        <Alert severity="warning" sx={{ borderRadius: 3 }}>
-          載入舊紀錄失敗，請稍後再試
-        </Alert>
-      )}
-
-      {loading && !trades ? (
-        [1, 2, 3].map(i => <Skeleton key={i} variant="rounded" height={56} animation="wave" />)
-      ) : trades?.length ? (
+      {error ? (
+        // 讀取失敗不能寫成「沒有舊的交易紀錄」，那是另一件事。
+        <LoadError
+          sx={{ py: 0 }}
+          message="載入舊紀錄失敗，請檢查網路後再試一次。"
+          onRetry={onRetry}
+        />
+      ) : (
         trades.map(t => (
           <Box
             key={t.id}
@@ -152,10 +153,7 @@ function LegacyBlock({ trades, loading, error }) {
               <Typography sx={{ fontSize: 14, fontWeight: 500 }} noWrap>
                 {t.name || `商品 #${t.item_id}`}
               </Typography>
-              <Typography
-                sx={{ fontSize: 11.5, color: "text.secondary", mt: "2px", ...NUMS }}
-                noWrap
-              >
+              <Typography sx={{ ...META_TEXT, mt: "2px" }} noWrap>
                 {t.item_id} · {fmtShortDay(t.created_at)} ·{" "}
                 {t.status === STATUS.COMPLETED
                   ? "已交易"
@@ -169,14 +167,6 @@ function LegacyBlock({ trades, loading, error }) {
             </Typography>
           </Box>
         ))
-      ) : (
-        <Typography sx={{ fontSize: 11.5, color: "text.secondary" }}>沒有舊的交易紀錄。</Typography>
-      )}
-
-      {trades?.length > 0 && (
-        <Typography sx={{ fontSize: 11.5, color: "text.secondary" }}>
-          共 {trades.length} 筆
-        </Typography>
       )}
     </Box>
   );
@@ -194,7 +184,7 @@ export default function MyListings() {
   const [{ data: mine, loading, error }, refetchMine] = useAxios("/api/public-market/my-listings", {
     manual: true,
   });
-  const [{ data: legacy, loading: legacyLoading, error: legacyError }, fetchLegacy] = useAxios(
+  const [{ data: legacy, error: legacyError }, fetchLegacy] = useAxios(
     { url: "/api/trades", params: { page: 1, per_page: 20 } },
     { manual: true }
   );
@@ -213,15 +203,14 @@ export default function MyListings() {
   const open = useMemo(() => (Array.isArray(mine?.open) ? mine.open : []), [mine]);
   const closed = useMemo(() => (Array.isArray(mine?.closed) ? mine.closed : []), [mine]);
 
-  // 額度是兩種單合計。這裡自己數一次，數字才會跟上面那排 chip 對得起來。
-  const openBuyCount = useMemo(() => open.filter(l => orderTypeOf(l) === "buy").length, [open]);
-  const openSellCount = open.length - openBuyCount;
   // 收購單的錢現在被鎖住，放在最上面講清楚，不然餘額變少會讓人以為被偷。
   const reserved = useMemo(
     () => open.reduce((sum, l) => (orderTypeOf(l) === "buy" ? sum + Number(l.price || 0) : sum), 0),
     [open]
   );
   const maxOpen = summary?.maxOpen ?? MAX_OPEN_FALLBACK;
+  // 只有「讀取失敗且手上沒有舊資料」才算失敗；背景重抓失敗時舊資料還是真的。
+  const loadFailed = Boolean(error) && !mine;
 
   if (!isLoggedIn) return <AlertLogin />;
 
@@ -232,14 +221,16 @@ export default function MyListings() {
         flexDirection: "column",
         gap: 1.5,
         pb: "calc(env(safe-area-inset-bottom) + 32px)",
+        ...TAP_TARGETS,
+        ...PAGE_WIDTH,
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.2 }}>
+          <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>
             我的掛單 / 紀錄
           </Typography>
-          <Typography sx={{ fontSize: 11.5, color: "text.secondary", ...NUMS }}>
+          <Typography sx={META_TEXT}>
             女神石餘額 {fmtStone(summary?.balance)}
             {reserved > 0 && ` ・ 收購單預扣中 ${fmtStone(reserved)}`}
           </Typography>
@@ -266,23 +257,20 @@ export default function MyListings() {
         </Button>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ borderRadius: 3 }}>
-          載入我的掛單失敗，請稍後再試
-        </Alert>
+      {/* 讀取失敗時整段清單都不能顯示：空陣列會被畫成「目前沒有開放中的委託」，
+          玩家會以為掛單不見了。 */}
+      {loadFailed && (
+        <LoadError
+          sx={{ py: 0 }}
+          message="載入我的掛單失敗，現在看不到你的委託。請檢查網路後再試一次。"
+          onRetry={() => refetchMine().catch(() => {})}
+        />
       )}
 
-      <SectionTitle>
-        開放中 · {open.length} / {maxOpen}
-      </SectionTitle>
-      {!loading && open.length > 0 && (
-        <Typography sx={{ fontSize: 11.5, color: "text.secondary", mx: 0.25, mt: -0.75 }}>
-          賣單 {openSellCount} 筆 ・ 收購單 {openBuyCount} 筆，兩種合計共用 {maxOpen} 筆額度。
-        </Typography>
-      )}
+      <SectionTitle>{loadFailed ? "開放中" : `開放中 · ${open.length} / ${maxOpen}`}</SectionTitle>
       {loading && !mine ? (
         [1, 2].map(i => <Skeleton key={i} variant="rounded" height={78} animation="wave" />)
-      ) : open.length === 0 ? (
+      ) : loadFailed ? null : open.length === 0 ? (
         <Paper
           elevation={0}
           sx={{
@@ -293,19 +281,9 @@ export default function MyListings() {
             textAlign: "center",
           }}
         >
-          <Typography sx={{ fontSize: 13, color: "text.secondary" }}>
+          <Typography sx={{ fontSize: 14, color: "text.secondary" }}>
             目前沒有開放中的委託。
           </Typography>
-          <Box
-            sx={{ display: "flex", gap: 1.25, justifyContent: "center", mt: 1.5, flexWrap: "wrap" }}
-          >
-            <Button variant="outlined" onClick={() => navigate("/trade/sell")}>
-              我要掛賣單
-            </Button>
-            <Button variant="outlined" color="secondary" onClick={() => navigate("/trade/buy")}>
-              我要發收購單
-            </Button>
-          </Box>
         </Paper>
       ) : (
         open.map(l => {
@@ -328,13 +306,11 @@ export default function MyListings() {
         })
       )}
 
-      <SectionTitle>已結束 · {closed.length}</SectionTitle>
+      <SectionTitle>{loadFailed ? "已結束" : `已結束 · ${closed.length}`}</SectionTitle>
       {loading && !mine ? (
         [1, 2].map(i => <Skeleton key={i} variant="rounded" height={78} animation="wave" />)
-      ) : closed.length === 0 ? (
-        <Typography sx={{ fontSize: 12, color: "text.secondary", mx: 0.25 }}>
-          還沒有結束的委託。
-        </Typography>
+      ) : loadFailed ? null : closed.length === 0 ? (
+        <Typography sx={{ ...META_TEXT, mx: 0.25 }}>還沒有結束的委託。</Typography>
       ) : (
         closed.map(l => {
           const buy = orderTypeOf(l) === "buy";
@@ -370,7 +346,13 @@ export default function MyListings() {
         })
       )}
 
-      <LegacyBlock trades={legacy} loading={legacyLoading} error={legacyError} />
+      {(legacyError || legacy?.length > 0) && (
+        <LegacyBlock
+          trades={legacy}
+          error={legacyError}
+          onRetry={() => fetchLegacy().catch(() => {})}
+        />
+      )}
     </Box>
   );
 }

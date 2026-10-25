@@ -1,0 +1,509 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25T14:35:24.512Z",
+  "title": "Design System: 布丁機器人 (Pudding Bot)",
+  "extensions": {
+    "colorMeta": {
+      "miyako-cyan": {
+        "role": "primary",
+        "displayName": "Miyako Cyan",
+        "canonical": "#007C89",
+        "tonalRamp": [
+          "#00363C",
+          "#004E56",
+          "#005F69",
+          "#007C89",
+          "#00ACC1",
+          "#4DD0E1",
+          "#B2EBF2",
+          "#E0F7FA"
+        ]
+      },
+      "miyako-cyan-light": {
+        "role": "primary",
+        "displayName": "Miyako Hair Cyan",
+        "canonical": "#00ACC1",
+        "tonalRamp": [
+          "#00363C",
+          "#004E56",
+          "#005F69",
+          "#007C89",
+          "#00ACC1",
+          "#4DD0E1",
+          "#B2EBF2",
+          "#E0F7FA"
+        ]
+      },
+      "miyako-cyan-deep": {
+        "role": "primary",
+        "displayName": "Deep Cyan",
+        "canonical": "#005F69"
+      },
+      "pudding-caramel": {
+        "role": "secondary",
+        "displayName": "Pudding Caramel",
+        "canonical": "#B45309",
+        "tonalRamp": [
+          "#3A2800",
+          "#7A4A12",
+          "#92400E",
+          "#B45309",
+          "#F59E0B",
+          "#FBBF24",
+          "#FCD34D",
+          "#FFF7E6"
+        ]
+      },
+      "pudding-amber": {
+        "role": "secondary",
+        "displayName": "Pudding Amber",
+        "canonical": "#F59E0B",
+        "tonalRamp": [
+          "#3A2800",
+          "#7A4A12",
+          "#92400E",
+          "#B45309",
+          "#F59E0B",
+          "#FBBF24",
+          "#FCD34D",
+          "#FFF7E6"
+        ]
+      },
+      "caramel-deep": {
+        "role": "secondary",
+        "displayName": "Caramel Deep",
+        "canonical": "#92400E"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1A2332",
+        "tonalRamp": [
+          "#1A2332",
+          "#3A4A5E",
+          "#5A6B7F",
+          "#8DA4BE",
+          "#BDBDBD",
+          "#E0E0E0",
+          "#EEF2F6",
+          "#F5F7FA"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#5A6B7F",
+        "tonalRamp": [
+          "#1A2332",
+          "#3A4A5E",
+          "#5A6B7F",
+          "#8DA4BE",
+          "#BDBDBD",
+          "#E0E0E0",
+          "#EEF2F6",
+          "#F5F7FA"
+        ]
+      },
+      "mist": {
+        "role": "neutral",
+        "displayName": "Mist",
+        "canonical": "#F5F7FA"
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#FFFFFF"
+      },
+      "surface-inset": {
+        "role": "neutral",
+        "displayName": "Inset",
+        "canonical": "#EEF2F6"
+      },
+      "cyan-hairline": {
+        "role": "neutral",
+        "displayName": "Cyan Hairline",
+        "canonical": "rgba(0, 172, 193, 0.12)"
+      },
+      "error": {
+        "role": "neutral",
+        "displayName": "Error Red",
+        "canonical": "#DC2626"
+      },
+      "success": {
+        "role": "neutral",
+        "displayName": "Success Green",
+        "canonical": "#15803D"
+      },
+      "stage-night": {
+        "role": "neutral",
+        "displayName": "Stage Night",
+        "canonical": "#0A1A2A",
+        "tonalRamp": [
+          "#0A1A2A",
+          "#0E1E30",
+          "#12243A",
+          "#173049",
+          "#1A2E4A",
+          "#2D4068",
+          "#B0BEC5",
+          "#E8EEF4"
+        ]
+      },
+      "stage-panel": {
+        "role": "neutral",
+        "displayName": "Stage Panel",
+        "canonical": "#12243A",
+        "tonalRamp": [
+          "#0A1A2A",
+          "#0E1E30",
+          "#12243A",
+          "#173049",
+          "#1A2E4A",
+          "#2D4068",
+          "#B0BEC5",
+          "#E8EEF4"
+        ]
+      },
+      "stage-raised": {
+        "role": "neutral",
+        "displayName": "Stage Raised",
+        "canonical": "#1A2E4A",
+        "tonalRamp": [
+          "#0A1A2A",
+          "#0E1E30",
+          "#12243A",
+          "#173049",
+          "#1A2E4A",
+          "#2D4068",
+          "#B0BEC5",
+          "#E8EEF4"
+        ]
+      },
+      "stage-button": {
+        "role": "neutral",
+        "displayName": "Stage Button",
+        "canonical": "#2D4068",
+        "tonalRamp": [
+          "#0A1A2A",
+          "#0E1E30",
+          "#12243A",
+          "#173049",
+          "#1A2E4A",
+          "#2D4068",
+          "#B0BEC5",
+          "#E8EEF4"
+        ]
+      },
+      "stage-text": {
+        "role": "neutral",
+        "displayName": "Stage Text",
+        "canonical": "#E8EEF4"
+      },
+      "stage-text-muted": {
+        "role": "neutral",
+        "displayName": "Stage Muted Text",
+        "canonical": "#B0BEC5"
+      },
+      "stage-accent": {
+        "role": "tertiary",
+        "displayName": "Stage Amber",
+        "canonical": "#FBBF24"
+      },
+      "night-cyan": {
+        "role": "primary",
+        "displayName": "Night Cyan (dark mode primary)",
+        "canonical": "#26C6DA"
+      },
+      "night-amber": {
+        "role": "secondary",
+        "displayName": "Night Amber (dark mode secondary)",
+        "canonical": "#FBBF24"
+      },
+      "rarity-common": {
+        "role": "tertiary",
+        "displayName": "普通 Common",
+        "canonical": "#616161"
+      },
+      "rarity-rare": {
+        "role": "tertiary",
+        "displayName": "稀有 Rare",
+        "canonical": "#5B4BC4"
+      },
+      "rarity-epic": {
+        "role": "tertiary",
+        "displayName": "史詩 Epic",
+        "canonical": "#8A6100"
+      },
+      "rarity-legendary": {
+        "role": "tertiary",
+        "displayName": "傳說 Legendary",
+        "canonical": "#C2185B"
+      },
+      "medal-gold": {
+        "role": "tertiary",
+        "displayName": "Gold Medal",
+        "canonical": "#FFD700"
+      },
+      "medal-silver": {
+        "role": "tertiary",
+        "displayName": "Silver Medal",
+        "canonical": "#C0C0C0"
+      },
+      "medal-bronze": {
+        "role": "tertiary",
+        "displayName": "Bronze Medal",
+        "canonical": "#CD7F32"
+      },
+      "currency-bg": {
+        "role": "tertiary",
+        "displayName": "Currency Cream",
+        "canonical": "#FFF7E6"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Rare page-level headings (MUI h4)."
+      },
+      "title-page": {
+        "displayName": "Page title",
+        "purpose": "PageHero title (h5)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Dialog titles (h6)."
+      },
+      "title-section": {
+        "displayName": "Section title",
+        "purpose": "SectionCard heading (subtitle1 as h2/h3)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Content text."
+      },
+      "body-small": {
+        "displayName": "Body small",
+        "purpose": "Card descriptions, hero subtitles."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Smallest allowed size; nav labels, captions."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Sentence-case button labels, weight 600."
+      }
+    },
+    "shadows": [
+      {
+        "name": "interactive-lift",
+        "value": "0 4px 20px rgba(0, 172, 193, 0.1)",
+        "purpose": "Hover on clickable cards only (light mode), with border to rgba(0,172,193,0.3)."
+      },
+      {
+        "name": "interactive-lift-dark",
+        "value": "0 4px 20px rgba(0, 0, 0, 0.35)",
+        "purpose": "Hover on clickable cards (dark mode)."
+      },
+      {
+        "name": "button-glow-dark-primary",
+        "value": "0 0 16px rgba(38, 198, 218, 0.35)",
+        "purpose": "Dark-mode contained primary hover."
+      },
+      {
+        "name": "button-glow-dark-secondary",
+        "value": "0 0 16px rgba(251, 191, 36, 0.35)",
+        "purpose": "Dark-mode contained secondary hover."
+      }
+    ],
+    "motion": [
+      {
+        "name": "card-state",
+        "value": "border-color 0.2s ease-out, box-shadow 0.2s ease-out",
+        "purpose": "Interactive card hover transition."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "600px"
+      },
+      {
+        "name": "md",
+        "value": "900px"
+      }
+    ],
+    "focus": {
+      "value": "outline: 2px solid #007C89; outline-offset: 2px",
+      "dark": "outline: 2px solid #26C6DA; outline-offset: 2px",
+      "purpose": "Every :focus-visible (CssBaseline)."
+    },
+    "selection": {
+      "light": "rgba(0, 172, 193, 0.25)",
+      "dark": "rgba(38, 198, 218, 0.3)"
+    },
+    "appBar": {
+      "background": "rgba(255, 255, 255, 0.85)",
+      "backdropFilter": "blur(12px)",
+      "borderBottom": "1px solid rgba(0, 172, 193, 0.12)"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action; 44px tap target, sentence case.",
+      "html": "<button class=\"ds-btn-primary\">送出</button>",
+      "css": ".ds-btn-primary{font-family:Roboto, \"Noto Sans TC\", sans-serif;background:#007C89;color:#fff;border:none;border-radius:12px;min-height:44px;padding:6px 16px;font-weight:600;font-size:.875rem;transition:background .2s}.ds-btn-primary:hover{background:#005F69}.ds-btn-primary:focus-visible{outline:2px solid #007C89;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Sponsorship and currency actions.",
+      "html": "<button class=\"ds-btn-secondary\">贊助</button>",
+      "css": ".ds-btn-secondary{font-family:Roboto, \"Noto Sans TC\", sans-serif;background:#B45309;color:#fff;border:none;border-radius:12px;min-height:44px;padding:6px 16px;font-weight:600;font-size:.875rem;transition:background .2s}.ds-btn-secondary:hover{background:#92400E}.ds-btn-secondary:focus-visible{outline:2px solid #007C89;outline-offset:2px}"
+    },
+    {
+      "name": "Text Button",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Cancel, back and low-emphasis actions.",
+      "html": "<button class=\"ds-btn-text\">取消</button>",
+      "css": ".ds-btn-text{font-family:Roboto, \"Noto Sans TC\", sans-serif;font-size:.875rem}.ds-btn-text{background:none;border:none;color:#007C89;font-weight:600;min-height:44px;padding:6px 12px;border-radius:12px}.ds-btn-text:hover{background:rgba(0,124,137,.08)}.ds-btn-text:focus-visible{outline:2px solid #007C89;outline-offset:2px}"
+    },
+    {
+      "name": "Destructive Confirm",
+      "kind": "custom",
+      "refersTo": "button-destructive",
+      "description": "AlertDialog destructive: consequence text, verb label, initial focus on cancel.",
+      "html": "<div class=\"ds-dialog\"><h2>刪除指令？</h2><p>群組成員將無法再使用這個指令，刪除後無法復原。</p><div class=\"ds-dialog-actions\"><button class=\"ds-btn-text\" autofocus>取消</button><button class=\"ds-btn-danger\">刪除</button></div></div>",
+      "css": ".ds-dialog{font-family:Roboto, \"Noto Sans TC\", sans-serif;background:#fff;border-radius:12px;padding:16px 24px;max-width:360px;color:#1A2332;box-shadow:0 11px 15px rgba(0,0,0,.2)}.ds-dialog h2{font-size:1.25rem;font-weight:600;margin:0 0 8px}.ds-dialog p{color:#5A6B7F;font-size:1rem;margin:0 0 16px}.ds-dialog-actions{display:flex;justify-content:flex-end;gap:8px}.ds-btn-danger{background:#DC2626;color:#fff;border:none;font-weight:600;min-height:44px;padding:6px 16px;border-radius:12px}.ds-btn-danger:hover{background:#B91C1C}.ds-btn-danger:focus-visible{outline:2px solid #007C89;outline-offset:2px}.ds-btn-text{background:none;border:none;color:#007C89;font-weight:600;min-height:44px;padding:6px 12px;border-radius:12px}.ds-btn-text:hover{background:rgba(0,124,137,.08)}.ds-btn-text:focus-visible{outline:2px solid #007C89;outline-offset:2px}"
+    },
+    {
+      "name": "Section Card",
+      "kind": "card",
+      "refersTo": "section-card",
+      "description": "Default page section container; flat with a cyan hairline.",
+      "html": "<section class=\"ds-card\"><div class=\"ds-card-head\"><h2>每日簽到</h2><button class=\"ds-btn-text\">補簽</button></div><p class=\"ds-num\">連續 12 天</p></section>",
+      "css": ".ds-card{font-family:Roboto, \"Noto Sans TC\", sans-serif;background:#fff;border:1px solid rgba(0,172,193,.12);border-radius:12px;padding:16px;color:#1A2332;max-width:360px}.ds-card-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px}.ds-card h2{font-size:1rem;font-weight:700;margin:0}.ds-num{font-variant-numeric:tabular-nums;margin:0}.ds-btn-text{background:none;border:none;color:#007C89;font-weight:600;min-height:44px;padding:6px 12px;border-radius:12px}.ds-btn-text:hover{background:rgba(0,124,137,.08)}.ds-btn-text:focus-visible{outline:2px solid #007C89;outline-offset:2px}"
+    },
+    {
+      "name": "Interactive Card",
+      "kind": "card",
+      "refersTo": "section-card",
+      "description": "Only clickable cards lift on hover.",
+      "html": "<a class=\"ds-card-link\" href=\"#\">市場</a>",
+      "css": ".ds-card-link{font-family:Roboto, \"Noto Sans TC\", sans-serif;display:block;background:#fff;border:1px solid rgba(0,172,193,.12);border-radius:12px;padding:16px;color:#1A2332;text-decoration:none;font-weight:700;max-width:360px;transition:border-color .2s ease-out,box-shadow .2s ease-out}.ds-card-link:hover{border-color:rgba(0,172,193,.3);box-shadow:0 4px 20px rgba(0,172,193,.1)}.ds-card-link:focus-visible{outline:2px solid #007C89;outline-offset:2px}"
+    },
+    {
+      "name": "Load Error",
+      "kind": "custom",
+      "refersTo": "error",
+      "description": "Failure state with retry, never shown as empty.",
+      "html": "<div class=\"ds-alert\" role=\"alert\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M11 15h2v2h-2zm0-8h2v6h-2zm1-5C6.47 2 2 6.5 2 12a10 10 0 1 0 10-10zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z\"/></svg><span>資料載入失敗，請檢查網路後再試一次。</span><button>重試</button></div>",
+      "css": ".ds-alert{font-family:Roboto, \"Noto Sans TC\", sans-serif;display:flex;align-items:center;gap:12px;background:#FDEDED;color:#5F2120;border-radius:12px;padding:6px 16px;font-size:.875rem;max-width:420px}.ds-alert svg{color:#DC2626;flex-shrink:0}.ds-alert span{flex:1}.ds-alert button{background:none;border:none;color:inherit;font-weight:600;min-height:44px;padding:4px 10px;border-radius:12px}.ds-alert button:hover{background:rgba(0,0,0,.06)}.ds-alert button:focus-visible{outline:2px solid #007C89;outline-offset:2px}"
+    },
+    {
+      "name": "Page Hero",
+      "kind": "custom",
+      "refersTo": "page-hero",
+      "description": "Admin page header gradient; caramel tone marks sponsorship.",
+      "html": "<header class=\"ds-hero\"><h1>轉蛋池管理</h1><span class=\"ds-hero-chip\">128 名角色</span><button class=\"ds-hero-btn\">新增角色</button></header>",
+      "css": ".ds-hero{font-family:Roboto, \"Noto Sans TC\", sans-serif;background:linear-gradient(135deg,#005F69 0%,#007C89 100%);color:#fff;border-radius:36px;padding:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}.ds-hero h1{font-size:1.5rem;font-weight:700;margin:0;flex:1;min-width:160px}.ds-hero-chip{background:rgba(255,255,255,.2);border-radius:999px;padding:3px 10px;font-size:.8125rem}.ds-hero-btn{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:12px;min-height:44px;padding:6px 16px;font-weight:600}.ds-hero-btn:hover{background:rgba(255,255,255,.3)}.ds-hero-btn:focus-visible{outline:2px solid #fff;outline-offset:2px}"
+    },
+    {
+      "name": "Bottom Nav",
+      "kind": "nav",
+      "refersTo": "bottom-nav",
+      "description": "Phone-only, four destinations; selected is cyan and bold.",
+      "html": "<nav class=\"ds-bnav\" aria-label=\"常用功能\"><a class=\"on\" href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z\"/></svg>首頁</a><a href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M19 3h-1V1h-2v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V8h14z\"/></svg>簽到</a><a href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M7.5 21H2V9h5.5zm7.25-18h-5.5v18h5.5zM22 11h-5.5v10H22z\"/></svg>排行榜</a></nav>",
+      "css": ".ds-bnav{font-family:Roboto, \"Noto Sans TC\", sans-serif;display:flex;height:56px;background:#fff;border-top:1px solid rgba(0,172,193,.12);max-width:390px}.ds-bnav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5A6B7F;text-decoration:none;font-size:.75rem}.ds-bnav a.on{color:#007C89;font-weight:700}.ds-bnav a:hover{color:#007C89}.ds-bnav a:focus-visible{outline:2px solid #007C89;outline-offset:-2px}"
+    },
+    {
+      "name": "Base Star",
+      "kind": "chip",
+      "refersTo": "pudding-caramel",
+      "description": "Star + number, fixed width, aria-labelled.",
+      "html": "<span class=\"ds-star\" role=\"img\" aria-label=\"基礎 3 星\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z\"/></svg>3</span>",
+      "css": ".ds-star{font-family:Roboto, \"Noto Sans TC\", sans-serif;display:inline-flex;align-items:center;gap:1px;color:#B45309;font-weight:700;font-size:12px;line-height:1;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Flex Stage Card",
+      "kind": "card",
+      "refersTo": "flex-stage-card",
+      "description": "Dark HERO_SURFACE bubble, battle/arena scenes only (world boss, janken, race).",
+      "html": "<div class=\"ds-stage\"><div class=\"ds-stage-title\">世界王</div><div class=\"ds-stage-fig\">72%</div><button class=\"ds-stage-btn\">參戰</button></div>",
+      "css": ".ds-stage{font-family:Roboto, \"Noto Sans TC\", sans-serif;background:#0A1A2A;color:#E8EEF4;border-radius:12px;padding:16px;max-width:300px}.ds-stage-title{font-size:13px;color:#B0BEC5}.ds-stage-fig{font-size:29px;font-weight:700;color:#FBBF24;margin:4px 0 12px;font-variant-numeric:tabular-nums}.ds-stage-btn{width:100%;min-height:44px;background:#2D4068;color:#E8EEF4;border:none;border-radius:8px;font-weight:700}.ds-stage-btn:hover{background:#1A2E4A}.ds-stage-btn:focus-visible{outline:2px solid #26C6DA;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Miyako's Pudding Counter",
+    "overview": "Two surfaces, one identity. The LIFF pages and the LINE Flex cards both draw from Miyako's palette: her cyan hair carries the working color, and the caramel layer of a pudding carries the warm second voice. Light is the default world. Pages are white paper on a pale mist background with cyan hairlines; Flex cards are light bubbles. There is one exception: a single dark \"stage\" surface for cards that read as a game scene (world boss, janken duel, horse race), so battle moments feel like a different room in the same house.\n\nThe system is an operating tool, not a showcase. It is phone-first inside LINE LIFF, dense but legible, written in zh-TW addressing the player as 你. Layout does the explaining: titles, numbers and state carry the meaning, and secondary labels or descriptions appear only when the layout alone cannot. Honesty beats tidiness: a failed load never masquerades as an empty list or a default value, and a missing star count renders nothing rather than a fake \"1\".\n\nAccessibility is built into the tokens, not added later. Every `main` color passes 4.5:1 as text and under white button text; the brighter `light` shades are decoration only. Touch targets are at least 44px, text is at least 12px.",
+    "keyCharacteristics": [
+      "Light Miyako cyan primary (text/fill) with a brighter cyan reserved for decoration, borders and charts.",
+      "Pudding caramel as the secondary voice: currency, sponsorship, race, god stones.",
+      "Flat white cards with cyan hairlines; lift only on cards that are actually clickable.",
+      "One dark stage surface, reserved for battle and arena Flex cards.",
+      "Failure, empty and loading are three visibly different states.",
+      "Destructive actions confirm with consequence text and land focus on cancel."
+    ],
+    "rules": [
+      {
+        "name": "The Main-Reads, Light-Decorates Rule",
+        "body": "`main` is the only shade allowed as text or under white text. `light` (`miyako-cyan-light`, `pudding-amber`) is for borders, charts and large decorative fills. If a color needs to be read, it is `main`.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token-Only Rule",
+        "body": "No hex in components. LIFF pages read `theme.palette.*` (including `rarity`, `medal`, `currency`, `surface`); Flex templates import `SEMANTIC`, `SURFACE`, `HERO_SURFACE`, `FEATURE`, `RARITY`, `TINT`, `MEDAL`, `PRESTIGE`, `OVERLAY` from `app/src/templates/common/theme.js`. A new color goes into the token file first.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Stage Rule",
+        "body": "Flex cards are light by default. `HERO_SURFACE` is reserved for scenes: world boss, janken, race. A status, list or settings card never goes dark to look exciting.",
+        "section": "colors"
+      },
+      {
+        "name": "The 12px Floor Rule",
+        "body": "No text below 12px (0.75rem) in LIFF, and nothing below Flex `xs` in cards.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Number Rule",
+        "body": "Counts, prices and star numbers use `font-variant-numeric: tabular-nums` so rows don't reflow as values change.",
+        "section": "typography"
+      },
+      {
+        "name": "The Thumb-Zone Rule",
+        "body": "Frequent destinations live in the bottom nav on phones; everything else stays in the drawer. The bottom nav holds four items, all reachable without first choosing a group.",
+        "section": "layout"
+      },
+      {
+        "name": "The Only-Clickable-Lifts Rule",
+        "body": "A static information card never lifts on hover. A lift says \"this is tappable\"; giving it to static cards is a lie.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use `main` shades (`miyako-cyan`, `pudding-caramel`) for any text or white-text fill, and keep `light` shades decorative.",
+      "Do take every color from `theme.palette.*` or `app/src/templates/common/theme.js`; add new colors to the token file first.",
+      "Do keep touch targets at least 44px high and text at least 12px (Flex: at least `xs`).",
+      "Do render failure with LoadError and a retry, distinct from the empty state.",
+      "Do confirm destructive actions with AlertDialog `destructive`, a verb label and consequence text, with focus on 取消.",
+      "Do let layout carry meaning: a title, a number and its state, with descriptions only where the layout cannot explain itself.",
+      "Do address the player as 你 in zh-TW copy.",
+      "Do keep Flex bubbles light unless the card is a battle or arena scene."
+    ],
+    "donts": [
+      "Don't put white text on `miyako-cyan-light` (#00ACC1) or `pudding-amber` (#F59E0B); they fail 4.5:1.",
+      "Don't hard-code hex values in pages or templates.",
+      "Don't catch an error and show an empty list, 「尚無資料」, zeros or a default toggle state.",
+      "Don't give hover lift to static cards.",
+      "Don't add secondary labels, overline captions or explanatory sublines that repeat what the layout already shows.",
+      "Don't use `HERO_SURFACE` for non-scene cards.",
+      "Don't ship one-tap destructive actions."
+    ]
+  }
+}

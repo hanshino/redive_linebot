@@ -16,6 +16,7 @@ function isValidIcon(url = "") {
 export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
   const [hint, hintActions] = useHintBar();
   const [state, setState] = useState({ name: "", iconUrl: "" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setState({ name: Sender.name || "", iconUrl: Sender.iconUrl || "" });
@@ -25,10 +26,16 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
     setState(prev => ({ ...prev, [type]: e.target.value }));
   };
 
-  const save = (name, iconUrl) => {
-    setSender(name, iconUrl)
-      .then(() => hintActions.handleOpen("設定成功！", "success"))
-      .catch(() => hintActions.handleOpen("設定失敗！請重新整理試試看！", "warning"));
+  const save = async (name, iconUrl) => {
+    setSaving(true);
+    try {
+      await setSender(name, iconUrl);
+      hintActions.handleOpen("已儲存機器人名稱與頭像", "success");
+    } catch {
+      hintActions.handleOpen("儲存失敗，請稍後再試一次", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReset = () => {
@@ -38,7 +45,7 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
 
   const handleSave = () => {
     if (!isValidName(state.name) || !isValidIcon(state.iconUrl)) {
-      hintActions.handleOpen("發送人格式錯誤！", "error");
+      hintActions.handleOpen("名稱或頭像網址格式有誤，請先修正", "error");
       return;
     }
     save(state.name, state.iconUrl);
@@ -46,7 +53,7 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
 
   return (
     <>
-      <SectionCard title="自訂機器人頭像" description="讓布丁在這個群組使用專屬的名稱與頭像">
+      <SectionCard title="自訂機器人頭像">
         <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ alignItems: "center" }}>
           <Grid size={{ xs: 12, sm: 7, md: 8 }}>
             <Stack spacing={2}>
@@ -56,18 +63,20 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
                 value={state.name}
                 onChange={e => handleInput(e, "name")}
                 slotProps={{ htmlInput: { maxLength: 40 } }}
-                {...(!isValidName(state.name)
-                  ? { error: true, helperText: "發送人長度限制0~20字" }
-                  : {})}
+                {...(!isValidName(state.name) ? { error: true, helperText: "名稱最多 20 字" } : {})}
               />
               <TextField
                 label="頭像"
                 fullWidth
                 value={state.iconUrl}
                 onChange={e => handleInput(e, "iconUrl")}
-                {...(!isValidIcon(state.iconUrl)
-                  ? { error: true, helperText: "圖片格式需為https開頭，jpe(g),png結尾" }
-                  : {})}
+                placeholder="https://example.com/avatar.png"
+                error={!isValidIcon(state.iconUrl)}
+                helperText={
+                  isValidIcon(state.iconUrl)
+                    ? undefined
+                    : "需為 https 開頭的 .jpg、.jpeg、.png 或 .tiff 圖片網址"
+                }
               />
             </Stack>
           </Grid>
@@ -85,19 +94,24 @@ export default function SenderInput({ action: setSender, Sender, isLoggedIn }) {
               }}
             >
               <Avatar
-                alt="預設"
+                alt="頭像預覽"
                 sx={{ width: 80, height: 80 }}
                 src={isValidIcon(state.iconUrl) ? state.iconUrl : undefined}
               />
-              <Typography variant="body2" color="text.secondary" align="center">
+              <Typography variant="body2" align="center" sx={{ color: "text.secondary" }}>
                 {state.name ? `${state.name} from ` : null}布丁
               </Typography>
-              <ButtonGroup color="primary" disabled={!isLoggedIn} size="small">
-                <Button variant="outlined" onClick={handleReset}>
+              <ButtonGroup color="primary" disabled={!isLoggedIn || saving}>
+                <Button variant="outlined" onClick={handleReset} sx={{ minHeight: 44 }}>
                   重設
                 </Button>
-                <Button variant="outlined" color="primary" onClick={handleSave}>
-                  召喚
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={handleSave}
+                  sx={{ minHeight: 44 }}
+                >
+                  {saving ? "儲存中…" : "儲存"}
                 </Button>
               </ButtonGroup>
             </Stack>

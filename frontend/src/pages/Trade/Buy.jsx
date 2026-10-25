@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useAxios from "axios-hooks";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,21 +24,27 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import AlertLogin from "../../components/AlertLogin";
 import HintSnackBar from "../../components/HintSnackBar";
+import LoadError from "../../components/LoadError";
 import useHintBar from "../../hooks/useHintBar";
 import useLiff from "../../context/useLiff";
 import CharacterPickerDrawer from "./CharacterPickerDrawer";
 import { QUICK_PRICES } from "./_shared";
 import {
   MAX_OPEN_FALLBACK,
+  META_TEXT,
   NUMS,
   PRICE_MAX,
   PRICE_MIN,
+  TAP_TARGETS,
+  PAGE_WIDTH,
+  TOUCH,
   calcFee,
   calcNet,
   errorInfo,
   fmtStone,
+  useMarketAnchors,
 } from "./_market";
-import { CharAvatar, GradientPanel } from "./_marketUi";
+import { CharAvatar, GradientPanel, MarketAnchor } from "./_marketUi";
 
 /* ---------------------------------------------------------------- banner */
 /**
@@ -46,16 +52,18 @@ import { CharAvatar, GradientPanel } from "./_marketUi";
  * 這是跟賣單最大的差別，所以放在最顯眼的位置，不是塞在下面的明細裡。
  */
 function SummaryBanner({ balance, openCount, maxOpen, capped, reserve, loading }) {
-  const after = Math.max(0, Number(balance ?? 0) - Number(reserve ?? 0));
+  // 餘額不夠時不能算出「剩 0」或負數：那是假的數字，改直接說還差多少。
+  const balanceKnown = typeof balance === "number";
+  const shortBy = balanceKnown ? Number(reserve ?? 0) - balance : 0;
 
   return (
     <GradientPanel tone="buy">
       <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1.5 }}>
         <Box>
-          <Typography sx={{ fontSize: 11.5, opacity: 0.88, letterSpacing: ".4px" }}>
+          <Typography sx={{ fontSize: 12, opacity: 0.9, letterSpacing: ".4px" }}>
             持有女神石
           </Typography>
-          <Typography sx={{ fontSize: 22, fontWeight: 700, lineHeight: 1.15, ...NUMS }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 700, lineHeight: 1.15, ...NUMS }}>
             {loading ? "—" : fmtStone(balance)}
           </Typography>
         </Box>
@@ -63,16 +71,16 @@ function SummaryBanner({ balance, openCount, maxOpen, capped, reserve, loading }
           sx={{
             width: "1px",
             alignSelf: "stretch",
-            bgcolor: "rgba(255,255,255,.28)",
+            bgcolor: theme => alpha(theme.palette.common.white, 0.28),
             my: 0.25,
             mx: 0.5,
           }}
         />
         <Box>
-          <Typography sx={{ fontSize: 11.5, opacity: 0.88, letterSpacing: ".4px" }}>
+          <Typography sx={{ fontSize: 12, opacity: 0.9, letterSpacing: ".4px" }}>
             目前掛單
           </Typography>
-          <Typography sx={{ fontSize: 22, fontWeight: 700, lineHeight: 1.15, ...NUMS }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 700, lineHeight: 1.15, ...NUMS }}>
             {loading ? "—" : openCount}{" "}
             <Box component="small" sx={{ fontSize: 12, fontWeight: 600, opacity: 0.9 }}>
               / {maxOpen} 筆
@@ -89,9 +97,9 @@ function SummaryBanner({ balance, openCount, maxOpen, capped, reserve, loading }
               px: 1.25,
               py: 0.375,
               borderRadius: 999,
-              bgcolor: "rgba(255,255,255,.20)",
-              border: "1px solid rgba(255,255,255,.30)",
-              fontSize: 11.5,
+              bgcolor: theme => alpha(theme.palette.common.white, 0.2),
+              border: theme => `1px solid ${alpha(theme.palette.common.white, 0.3)}`,
+              fontSize: 12,
               fontWeight: 700,
             }}
           >
@@ -109,22 +117,26 @@ function SummaryBanner({ balance, openCount, maxOpen, capped, reserve, loading }
           sx={{
             mt: 1.5,
             pt: 1.25,
-            borderTop: "1px solid rgba(255,255,255,.24)",
+            borderTop: theme => `1px solid ${alpha(theme.palette.common.white, 0.24)}`,
             display: "flex",
             alignItems: "baseline",
             gap: 0.75,
-            fontSize: 12.5,
+            fontSize: 13,
             ...NUMS,
           }}
         >
           <Box component="span" sx={{ opacity: 0.88 }}>
             發布後預扣
           </Box>
-          <Box component="b" sx={{ fontSize: 15, fontWeight: 700 }}>
+          <Box component="b" sx={{ fontSize: 16, fontWeight: 700 }}>
             −{fmtStone(reserve)}
           </Box>
           <Box component="span" sx={{ ml: "auto", opacity: 0.88 }}>
-            餘額剩 {fmtStone(after)}
+            {!balanceKnown
+              ? "餘額 —"
+              : shortBy > 0
+                ? `女神石不足，還差 ${fmtStone(shortBy)}`
+                : `餘額剩 ${fmtStone(balance - Number(reserve ?? 0))}`}
           </Box>
         </Box>
       )}
@@ -136,9 +148,9 @@ function Label({ children }) {
   return (
     <Typography
       sx={{
-        fontSize: 11.5,
+        fontSize: 12,
         fontWeight: 700,
-        letterSpacing: ".6px",
+        letterSpacing: ".4px",
         color: "text.secondary",
         mx: 0.25,
         mt: 2,
@@ -159,7 +171,7 @@ function BuyBreakdown({ price }) {
   const fee = calcFee(price);
   const net = calcNet(price);
 
-  const line = (label, value, hint) => (
+  const line = (label, value) => (
     <Box sx={{ py: 0.75 }}>
       <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <Typography component="span" sx={{ fontSize: 13, color: "text.secondary" }}>
@@ -167,11 +179,6 @@ function BuyBreakdown({ price }) {
         </Typography>
         {value}
       </Box>
-      {hint && (
-        <Typography sx={{ fontSize: 11, color: "text.secondary", lineHeight: 1.6, mt: 0.25 }}>
-          {hint}
-        </Typography>
-      )}
     </Box>
   );
 
@@ -179,16 +186,15 @@ function BuyBreakdown({ price }) {
     <Box aria-live="polite">
       {line(
         "你的出價",
-        <Box component="b" sx={{ fontSize: 15, fontWeight: 600, ...NUMS }}>
+        <Box component="b" sx={{ fontSize: 16, fontWeight: 600, ...NUMS }}>
           {fmtStone(price)}
         </Box>
       )}
       {line(
         "發布時預扣",
-        <Box component="b" sx={{ fontSize: 15, fontWeight: 600, color: "error.main", ...NUMS }}>
+        <Box component="b" sx={{ fontSize: 16, fontWeight: 600, color: "error.main", ...NUMS }}>
           −{fmtStone(price)}
-        </Box>,
-        "全額先從錢包扣起來鎖住，成交前不能動用。"
+        </Box>
       )}
       <Divider sx={{ my: 1 }} />
       {line(
@@ -205,26 +211,13 @@ function BuyBreakdown({ price }) {
           py: 0.75,
         }}
       >
-        <Typography component="span" sx={{ fontSize: 13.5, fontWeight: 600 }}>
+        <Typography component="span" sx={{ fontSize: 14, fontWeight: 600 }}>
           成交時賣家實收
         </Typography>
-        <Box component="b" sx={{ fontSize: 22, fontWeight: 600, color: "secondary.main", ...NUMS }}>
+        <Box component="b" sx={{ fontSize: 24, fontWeight: 600, color: "secondary.main", ...NUMS }}>
           {fmtStone(net)}
         </Box>
       </Box>
-      <Typography
-        sx={{
-          mt: 1.25,
-          pt: 1.25,
-          borderTop: "1px dashed",
-          borderColor: "divider",
-          fontSize: 11.5,
-          color: "text.secondary",
-          lineHeight: 1.65,
-        }}
-      >
-        取消或失效時，預扣的 {fmtStone(price)} 女神石會原數退回，不收任何費用。
-      </Typography>
     </Box>
   );
 }
@@ -238,6 +231,9 @@ export default function Buy() {
   const [price, setPrice] = useState("1000");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // 成功之後到換頁之前的空窗：CTA 維持停用（已送出），不能再按一次重複建立。
+  const [done, setDone] = useState(false);
+  const navTimer = useRef(null);
 
   const [{ data: summary, loading: summaryLoading, error: summaryError }, refetchSummary] =
     useAxios("/api/public-market/summary", { manual: true });
@@ -254,6 +250,7 @@ export default function Buy() {
     { manual: true }
   );
   const [{ message, severity, open: snackOpen }, { handleOpen, handleClose }] = useHintBar();
+  const anchors = useMarketAnchors(isLoggedIn);
 
   useEffect(() => {
     document.title = "發布收購單";
@@ -261,7 +258,7 @@ export default function Buy() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    refetchSummary();
+    refetchSummary().catch(() => {});
     fetchPool().catch(() => {});
     fetchItems().catch(() => {});
   }, [isLoggedIn, refetchSummary, fetchPool, fetchItems]);
@@ -295,7 +292,12 @@ export default function Buy() {
 
   const maxOpen = summary?.maxOpen ?? MAX_OPEN_FALLBACK;
   const openCount = summary?.myOpenCount ?? 0;
-  const capped = !summaryLoading && !summaryError && openCount >= maxOpen;
+  // 送出成功後 summary 會重抓，剛好掛滿時 capped 會翻成 true：done 之後一律不顯示額滿，
+  // 免得「已送出」的 1 秒內冒出紅色上限警告。
+  const capped = !done && !summaryLoading && !summaryError && openCount >= maxOpen;
+
+  // 離開頁面時清掉等待換頁的計時器，避免在別的頁面突然被導走。
+  useEffect(() => () => clearTimeout(navTimer.current), []);
 
   const priceNum = Number(price);
   const priceValid = Number.isInteger(priceNum) && priceNum >= PRICE_MIN && priceNum <= PRICE_MAX;
@@ -309,7 +311,7 @@ export default function Buy() {
   const listBroken = Boolean(poolError) || Boolean(invError);
 
   const submittable =
-    !capped && !short && !listBroken && selected != null && priceValid && !creating;
+    !capped && !done && !short && !listBroken && selected != null && priceValid && !creating;
 
   const handleSubmit = async () => {
     setConfirmOpen(false);
@@ -322,12 +324,13 @@ export default function Buy() {
         `已發布收購單：${data.name ?? selected?.name ?? "角色"} ${fmtStone(data.price ?? priceNum)} 女神石（已預扣）`,
         "success"
       );
-      refetchSummary();
-      setTimeout(() => navigate("/trade/my-listings"), 1200);
+      refetchSummary().catch(() => {});
+      setDone(true);
+      navTimer.current = setTimeout(() => navigate("/trade/my-listings"), 1200);
     } catch (err) {
       const { title, detail } = errorInfo(err, "發布收購單失敗，請稍後再試");
       handleOpen(detail ? `${title}，${detail}` : title, "error");
-      refetchSummary();
+      refetchSummary().catch(() => {});
       fetchItems().catch(() => {});
     }
   };
@@ -348,13 +351,19 @@ export default function Buy() {
         display: "flex",
         flexDirection: "column",
         pb: "calc(env(safe-area-inset-bottom) + 32px)",
+        ...TAP_TARGETS,
+        ...PAGE_WIDTH,
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.75 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: "1 1 auto" }}>
           發布收購單
         </Typography>
-        <IconButton aria-label="我的掛單" onClick={() => navigate("/trade/my-listings")}>
+        <IconButton
+          aria-label="我的掛單"
+          onClick={() => navigate("/trade/my-listings")}
+          sx={{ width: TOUCH, height: TOUCH }}
+        >
           <ReceiptLongIcon />
         </IconButton>
       </Box>
@@ -373,16 +382,18 @@ export default function Buy() {
       )}
 
       {summaryError && (
-        <Alert severity="error" sx={{ borderRadius: 3, mt: 1.75 }}>
-          載入掛單狀態失敗，請稍後再試
-        </Alert>
+        <LoadError
+          sx={{ py: 0, mt: 1.75 }}
+          message="載入掛單狀態失敗，目前看不到你已掛幾筆。請檢查網路後再試一次。"
+          onRetry={() => refetchSummary().catch(() => {})}
+        />
       )}
 
       {listBroken && (
         <Alert severity="error" sx={{ borderRadius: 3, mt: 1.75 }}>
-          <AlertTitle sx={{ fontSize: 13.5, fontWeight: 700, mb: 0.25 }}>讀不到角色清單</AlertTitle>
-          <Typography sx={{ fontSize: 12, lineHeight: 1.7, color: "text.secondary" }}>
-            沒辦法確認你已經擁有哪些角色，先不開放發布，以免掛到已持有的角色。
+          <AlertTitle sx={{ fontSize: 14, fontWeight: 700, mb: 0.25 }}>讀不到角色清單</AlertTitle>
+          <Typography sx={{ fontSize: 13, lineHeight: 1.7, color: "text.secondary" }}>
+            無法確認你擁有哪些角色，暫時不能發布。
           </Typography>
           <Button
             size="small"
@@ -399,11 +410,11 @@ export default function Buy() {
 
       {capped && (
         <Alert severity="error" sx={{ borderRadius: 3, mt: 1.75 }}>
-          <AlertTitle sx={{ fontSize: 13.5, fontWeight: 700, mb: 0.25 }}>
+          <AlertTitle sx={{ fontSize: 14, fontWeight: 700, mb: 0.25 }}>
             最多只能同時掛 {maxOpen} 筆
           </AlertTitle>
-          <Typography sx={{ fontSize: 12, lineHeight: 1.7, color: "text.secondary" }}>
-            賣單和收購單合計算。先去「我的掛單」取消一筆，或等現有的單成交，才能再掛新的。
+          <Typography sx={{ fontSize: 13, lineHeight: 1.7, color: "text.secondary" }}>
+            賣單和收購單合計算。取消一筆或等成交後再掛。
           </Typography>
         </Alert>
       )}
@@ -417,7 +428,7 @@ export default function Buy() {
           onClick={() => setPickerOpen(true)}
           aria-haspopup="dialog"
           aria-disabled={capped || undefined}
-          disabled={capped || listLoading || listBroken || candidates.length === 0}
+          disabled={capped || done || listLoading || listBroken || candidates.length === 0}
           sx={theme => ({
             width: "100%",
             display: "flex",
@@ -447,26 +458,19 @@ export default function Buy() {
                 headImage={selected.headImage}
               />
               <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontSize: 15, fontWeight: 600 }} noWrap>
+                <Typography sx={{ fontSize: 16, fontWeight: 600 }} noWrap>
                   {selected.name}
                 </Typography>
-                <Typography sx={{ fontSize: 11.5, color: "text.secondary", ...NUMS }}>
-                  {selected.itemId}
-                </Typography>
+                <Typography sx={META_TEXT}>{selected.itemId}</Typography>
               </Box>
             </>
           ) : (
-            <Typography sx={{ fontSize: 15, color: "text.secondary", py: 0.75 }}>
+            <Typography sx={{ fontSize: 16, color: "text.secondary", py: 0.75 }}>
               {pickerHint}
             </Typography>
           )}
           <ChevronRightIcon sx={{ ml: "auto", color: "text.secondary" }} />
         </Paper>
-        <Typography
-          sx={{ fontSize: 11.5, color: "text.secondary", lineHeight: 1.6, mt: 0.75, mx: 0.25 }}
-        >
-          只列出你還沒有的角色。角色一人一隻，已持有的收到也不會生效。
-        </Typography>
 
         {!listLoading && !listBroken && candidates.length === 0 && (
           <Alert severity="info" sx={{ borderRadius: 3, mt: 1.25 }}>
@@ -478,29 +482,30 @@ export default function Buy() {
         <TextField
           fullWidth
           id="buyPriceInput"
-          label="出價（女神石）"
           value={price}
           onChange={e => setPrice(e.target.value.replace(/[^0-9]/g, ""))}
-          disabled={capped}
+          disabled={capped || done}
           color="secondary"
           error={(price !== "" && !priceValid) || short}
           helperText={
             short
               ? `女神石不足，餘額 ${fmtStone(balance)}，還差 ${fmtStone(priceNum - Number(balance))}`
-              : "可填 1 ～ 10,000,000。發布時就會先預扣這個金額。"
+              : price !== "" && !priceValid
+                ? "請填 1 ～ 10,000,000"
+                : undefined
           }
           slotProps={{
             input: {
               endAdornment: (
                 <InputAdornment position="end" sx={{ flexShrink: 0 }}>
-                  <Typography sx={{ fontSize: 13, color: "text.secondary", fontWeight: 600 }}>
+                  <Typography sx={{ fontSize: 14, color: "text.secondary", fontWeight: 600 }}>
                     女神石
                   </Typography>
                 </InputAdornment>
               ),
-              sx: { "& input": { fontSize: 19, fontWeight: 600, ...NUMS } },
+              sx: { "& input": { fontSize: 20, fontWeight: 600, ...NUMS } },
             },
-            htmlInput: { inputMode: "numeric", pattern: "[0-9]*" },
+            htmlInput: { inputMode: "numeric", pattern: "[0-9]*", "aria-label": "出價（女神石）" },
           }}
         />
         <Box
@@ -511,17 +516,18 @@ export default function Buy() {
           {QUICK_PRICES.map(p => (
             <Chip
               key={p}
-              label={String(p)}
+              label={fmtStone(p)}
               clickable
-              disabled={capped}
+              disabled={capped || done}
               aria-pressed={String(p) === price}
               onClick={() => setPrice(String(p))}
               variant={String(p) === price ? "filled" : "outlined"}
               color={String(p) === price ? "secondary" : "default"}
-              sx={{ fontWeight: 600, ...NUMS }}
+              sx={{ fontWeight: 600, height: TOUCH, borderRadius: 999, px: 0.75, ...NUMS }}
             />
           ))}
         </Box>
+        <MarketAnchor anchors={anchors} itemId={selected?.itemId} order={["bid", "ask"]} />
 
         <Label>金額怎麼走</Label>
         <Paper
@@ -549,7 +555,7 @@ export default function Buy() {
           onClick={() => setConfirmOpen(true)}
           sx={{ mt: 2, py: 1.625 }}
         >
-          {short ? "女神石不足" : "發布收購單"}
+          {done ? "已送出" : short ? "女神石不足" : "發布收購單"}
         </Button>
       )}
 
@@ -568,35 +574,19 @@ export default function Buy() {
         fullWidth
         maxWidth="xs"
         aria-labelledby="buy-order-confirm-title"
+        slotProps={{ paper: { sx: TAP_TARGETS } }}
       >
         <DialogTitle id="buy-order-confirm-title" sx={{ fontWeight: 600 }}>
           確認發布收購單？
         </DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ borderRadius: 3, mb: 1.5 }}>
-            <AlertTitle sx={{ fontSize: 13.5, fontWeight: 700, mb: 0.5 }}>
+            <AlertTitle sx={{ fontSize: 14, fontWeight: 700, mb: 0.5 }}>
               發布當下就會預扣全額
             </AlertTitle>
-            <Box
-              component="ul"
-              sx={{
-                m: 0,
-                pl: 2.25,
-                fontSize: 12,
-                lineHeight: 1.8,
-                color: "text.secondary",
-              }}
-            >
-              <li>
-                現在扣 <strong>{fmtStone(priceValid ? priceNum : 0)}</strong>{" "}
-                女神石，掛單期間這筆錢不能動用。
-              </li>
-              <li>取消或失效時，全額退還，不收任何費用。</li>
-              <li>
-                成交時賣家實收 <strong>{fmtStone(calcNet(priceValid ? priceNum : 0))}</strong>
-                ，手續費 5%（{fmtStone(calcFee(priceValid ? priceNum : 0))}）銷毀。
-              </li>
-            </Box>
+            <Typography sx={{ fontSize: 13, lineHeight: 1.7, color: "text.secondary" }}>
+              掛單期間這筆錢不能動用，取消或失效時全額退還。
+            </Typography>
           </Alert>
 
           {selected && (
@@ -619,12 +609,10 @@ export default function Buy() {
                 size={38}
               />
               <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontSize: 15, fontWeight: 600 }} noWrap>
+                <Typography sx={{ fontSize: 16, fontWeight: 600 }} noWrap>
                   {selected.name}
                 </Typography>
-                <Typography sx={{ fontSize: 11.5, color: "text.secondary", ...NUMS }}>
-                  {selected.itemId}
-                </Typography>
+                <Typography sx={META_TEXT}>{selected.itemId}</Typography>
               </Box>
             </Box>
           )}
@@ -633,7 +621,7 @@ export default function Buy() {
 
           {balanceKnown && priceValid && (
             <Typography
-              sx={{ mt: 1.25, fontSize: 11.5, color: "text.secondary", lineHeight: 1.6, ...NUMS }}
+              sx={{ mt: 1.25, fontSize: 12, color: "text.secondary", lineHeight: 1.6, ...NUMS }}
             >
               餘額 {fmtStone(balance)} → {fmtStone(Number(balance) - priceNum)} 女神石。
             </Typography>

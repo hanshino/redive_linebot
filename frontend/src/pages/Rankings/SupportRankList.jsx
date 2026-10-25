@@ -15,7 +15,7 @@ import { alpha, keyframes } from "@mui/material/styles";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import VolunteerActivismIcon from "@mui/icons-material/VolunteerActivism";
 import { useSupportRanking } from "./hooks";
-import { MEDAL_COLORS_BY_MODE, DEFAULT_AVATAR_COLOR } from "./medalColors";
+import LoadError from "../../components/LoadError";
 
 // Mockup: docs/mockups/support-leaderboard.html
 const rise = keyframes`from { opacity: 0; transform: translateY(6px); }`;
@@ -40,9 +40,6 @@ function ThanksHeader() {
       <Box>
         <Typography variant="body1" sx={{ fontWeight: 700, lineHeight: 1.4 }}>
           謝謝每一位支持布丁的人
-        </Typography>
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          依累積支持月數排列
         </Typography>
       </Box>
     </Box>
@@ -72,15 +69,6 @@ function OptOutSwitch({ hidden, saving, onChange }) {
         <Typography variant="body2" sx={{ fontWeight: 600 }}>
           不要讓我上榜
         </Typography>
-        <Typography
-          variant="caption"
-          component="div"
-          sx={{ color: "text.secondary", lineHeight: 1.5 }}
-        >
-          {hidden
-            ? "你目前沒有顯示在榜上。關掉就會重新出現。"
-            : "開啟後，其他人在這裡看不到你的名字和月數。"}
-        </Typography>
       </Box>
       <Switch
         id={id}
@@ -94,6 +82,7 @@ function OptOutSwitch({ hidden, saving, onChange }) {
 }
 
 function RankRow({ item, index, isMe, medalColor, defaultAvatarColor, monthsColor }) {
+  const theme = useTheme();
   const { rank, display_name: name, picture_url: picture, months } = item;
   return (
     <ListItem
@@ -125,10 +114,9 @@ function RankRow({ item, index, isMe, medalColor, defaultAvatarColor, monthsColo
               width: 24,
               height: 24,
               bgcolor: medalColor,
-              color: "#fff",
+              color: theme.palette.getContrastText(medalColor),
               fontSize: "0.75rem",
               fontWeight: 800,
-              textShadow: "0 1px 1px rgba(0,0,0,0.25)",
             }}
           >
             {rank}
@@ -149,6 +137,7 @@ function RankRow({ item, index, isMe, medalColor, defaultAvatarColor, monthsColo
           width: 38,
           height: 38,
           bgcolor: defaultAvatarColor,
+          color: theme.palette.text.primary,
           fontWeight: 700,
           ...(medalColor && {
             boxShadow: `0 0 0 2px ${theme.palette.background.paper}, 0 0 0 4px ${medalColor}`,
@@ -166,7 +155,7 @@ function RankRow({ item, index, isMe, medalColor, defaultAvatarColor, monthsColo
             component="span"
             sx={{
               flexShrink: 0,
-              fontSize: "0.68rem",
+              fontSize: "0.75rem",
               fontWeight: 700,
               lineHeight: 1,
               px: 0.875,
@@ -188,7 +177,7 @@ function RankRow({ item, index, isMe, medalColor, defaultAvatarColor, monthsColo
         <Box
           component="b"
           sx={{
-            fontSize: "1.05rem",
+            fontSize: "1rem",
             fontWeight: 800,
             color: monthsColor,
             mr: 0.25,
@@ -250,14 +239,13 @@ const SAVE_ERROR = {
 
 export default function SupportRankList() {
   const theme = useTheme();
-  const { items, total, me, loading, error, saving, setHidden } = useSupportRanking();
+  const { items, total, me, loading, error, saving, setHidden, retry } = useSupportRanking();
   const [snack, setSnack] = useState(null);
 
-  const mode = theme.palette.mode === "dark" ? "dark" : "light";
-  const medalColors = MEDAL_COLORS_BY_MODE[mode];
-  const defaultAvatarColor = DEFAULT_AVATAR_COLOR[mode];
-  // secondary.main 在白底對比不足，淺色模式改用深一階琥珀（同 mockup）。
-  const monthsColor = mode === "dark" ? theme.palette.secondary.main : "#B45309";
+  // 獎牌色來自 theme.palette.medal；secondary.main 兩種模式都已通過對比，月數直接用它。
+  const medalColors = theme.palette.medal;
+  const defaultAvatarColor = theme.palette.surface.inset;
+  const monthsColor = theme.palette.secondary.main;
   const myRank = me.has_support && !me.hidden ? me.rank : null;
 
   const handleToggle = async hidden => {
@@ -282,9 +270,7 @@ export default function SupportRankList() {
           )}
 
           {error ? (
-            <Alert severity="error" variant="outlined">
-              支持榜載入失敗，請稍後再試。
-            </Alert>
+            <LoadError message="支持榜載入失敗，請檢查網路後再試一次。" onRetry={retry} />
           ) : items.length === 0 ? (
             <EmptyState />
           ) : (

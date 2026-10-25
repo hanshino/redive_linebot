@@ -29,6 +29,7 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AlertDialog from "./AlertDialog";
 
 const IMG_RE = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
 const MAX_REPLIES = 5;
@@ -78,12 +79,23 @@ function isReplyValid(r) {
   return r.reply.trim().length > 0;
 }
 
+// 比對用的表單快照：只看使用者能改的欄位（回覆的 id 是每次開啟隨機產生的，不納入）
+function snapshotOf({ order, touchType, senderName, senderIcon, replies }) {
+  return JSON.stringify({
+    order,
+    touchType,
+    senderName,
+    senderIcon,
+    replies: replies.map(r => [r.messageType, r.reply]),
+  });
+}
+
 function SectionLabel({ title, right }) {
   return (
     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.25 }}>
       <Typography
-        variant="overline"
-        sx={{ fontWeight: 700, letterSpacing: "0.9px", lineHeight: 1, color: "text.secondary" }}
+        variant="subtitle2"
+        sx={{ fontWeight: 700, lineHeight: 1.4, color: "text.secondary" }}
       >
         {title}
       </Typography>
@@ -95,7 +107,7 @@ function SectionLabel({ title, right }) {
 function TouchTypeSelector({ value, onChange }) {
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.875 }}>
+      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 0.875 }}>
         觸發方式
       </Typography>
       <ToggleButtonGroup
@@ -172,14 +184,14 @@ function SenderSection({ open, onToggle, name, icon, onChangeName, onChangeIcon 
         expandIcon={<ExpandMoreIcon />}
         sx={{ minHeight: 0, "& .MuiAccordionSummary-content": { my: 1 } }}
       >
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
           {!open && hasVal && (
             <Avatar
               src={avatarOk ? icon : undefined}
               sx={{
                 width: 22,
                 height: 22,
-                fontSize: 11,
+                fontSize: 12,
                 bgcolor: theme => alpha(theme.palette.primary.main, 0.12),
                 color: "primary.main",
               }}
@@ -198,7 +210,7 @@ function SenderSection({ open, onToggle, name, icon, onChangeName, onChangeIcon 
         </Stack>
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0 }}>
-        <Stack direction="row" spacing={1.5} alignItems="flex-start">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start" }}>
           <Avatar
             src={avatarOk ? icon : undefined}
             sx={{
@@ -227,7 +239,7 @@ function SenderSection({ open, onToggle, name, icon, onChangeName, onChangeIcon 
               placeholder="https://…"
               value={icon}
               onChange={e => onChangeIcon(e.target.value)}
-              helperText={icon && !avatarOk ? "非圖片格式，無法預覽" : " "}
+              helperText={icon && !avatarOk ? "非圖片格式，無法預覽" : undefined}
             />
           </Stack>
         </Stack>
@@ -270,7 +282,7 @@ function StickerInputs({ value, onChange, showErr }) {
           helperText={showErr && !sid ? "必填" : " "}
         />
       </Box>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
         <Link
           href="https://developers.line.biz/en/docs/messaging-api/sticker-list/"
           target="_blank"
@@ -348,7 +360,7 @@ function FlexInputs({ value, onChange, showErr }) {
             mb: 0.5,
           }}
         >
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             Flex contents JSON
           </Typography>
           <Button
@@ -356,7 +368,7 @@ function FlexInputs({ value, onChange, showErr }) {
             variant="outlined"
             disabled={parseErr || !body.trim()}
             onClick={formatJson}
-            sx={{ minWidth: 0, px: 1.25, py: 0.25, fontSize: 11.5 }}
+            sx={{ minWidth: 0, px: 1.25, py: 0.5, minHeight: 32 }}
           >
             格式化
           </Button>
@@ -374,9 +386,9 @@ function FlexInputs({ value, onChange, showErr }) {
             input: {
               sx: {
                 fontFamily: '"Roboto Mono", monospace',
-                fontSize: 12.5,
+                fontSize: 13,
                 lineHeight: 1.65,
-                bgcolor: "#f7f9fc",
+                bgcolor: "surface.subtle",
               },
             },
           }}
@@ -385,6 +397,8 @@ function FlexInputs({ value, onChange, showErr }) {
     </Stack>
   );
 }
+
+const iconButtonSx = { width: 44, height: 44 };
 
 function ReplyCard({ item, idx, total, onChange, onRemove, onMoveUp, onMoveDown, showErr }) {
   const empty = !item.reply.trim();
@@ -412,21 +426,34 @@ function ReplyCard({ item, idx, total, onChange, onRemove, onMoveUp, onMoveDown,
         <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary" }}>
           回覆 {idx + 1}
         </Typography>
-        <Stack direction="row" spacing={0.25}>
-          <IconButton size="small" disabled={idx === 0} onClick={onMoveUp} title="上移">
-            <KeyboardArrowUpIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" disabled={idx === total - 1} onClick={onMoveDown} title="下移">
-            <KeyboardArrowDownIcon fontSize="small" />
+        <Stack direction="row" spacing={0.5}>
+          <IconButton
+            disabled={idx === 0}
+            onClick={onMoveUp}
+            title="上移"
+            aria-label={`上移回覆 ${idx + 1}`}
+            sx={iconButtonSx}
+          >
+            <KeyboardArrowUpIcon />
           </IconButton>
           <IconButton
-            size="small"
+            disabled={idx === total - 1}
+            onClick={onMoveDown}
+            title="下移"
+            aria-label={`下移回覆 ${idx + 1}`}
+            sx={iconButtonSx}
+          >
+            <KeyboardArrowDownIcon />
+          </IconButton>
+          <IconButton
             color="error"
             disabled={total === 1}
             onClick={() => onRemove(item.id)}
             title="移除"
+            aria-label={`移除回覆 ${idx + 1}`}
+            sx={iconButtonSx}
           >
-            <DeleteOutlineIcon fontSize="small" />
+            <DeleteOutlineIcon />
           </IconButton>
         </Stack>
       </Box>
@@ -446,7 +473,7 @@ function ReplyCard({ item, idx, total, onChange, onRemove, onMoveUp, onMoveDown,
             borderRadius: "20px !important",
             px: 1.5,
             py: 0.25,
-            fontSize: 12.5,
+            fontSize: 13,
             textTransform: "none",
           },
           "& .Mui-selected": {
@@ -488,7 +515,7 @@ function ReplyCard({ item, idx, total, onChange, onRemove, onMoveUp, onMoveDown,
             value={item.reply}
             onChange={e => onChange(item.id, "reply", e.target.value)}
             error={showErr && !item.reply.trim()}
-            helperText={showErr && !item.reply.trim() ? "請填寫圖片網址" : " "}
+            helperText={showErr && !item.reply.trim() ? "請填寫圖片網址" : undefined}
           />
           {IMG_RE.test(item.reply) && (
             <Box
@@ -542,6 +569,10 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
   const [senderOpen, setSenderOpen] = useState(false);
   const [replies, setReplies] = useState([emptyReply()]);
   const [showErr, setShowErr] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  // 開啟時的表單內容，用來判斷有沒有未儲存的修改
+  const [baseline, setBaseline] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -552,8 +583,20 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
     setSenderName(name);
     setSenderIcon(icon);
     setSenderOpen(!!(name || icon));
-    setReplies(normalizeReplies(data?.replyDatas));
+    const initialReplies = normalizeReplies(data?.replyDatas);
+    setReplies(initialReplies);
     setShowErr(false);
+    setSaving(false);
+    setConfirmDiscard(false);
+    setBaseline(
+      snapshotOf({
+        order: data?.order || "",
+        touchType: String(data?.touchType || "1"),
+        senderName: name,
+        senderIcon: icon,
+        replies: initialReplies,
+      })
+    );
   }, [data, open]);
 
   const orderKey = data?.orderKey || "";
@@ -588,25 +631,40 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
       return arr;
     });
 
-  const handleSubmit = () => {
+  const isDirty =
+    open && snapshotOf({ order, touchType, senderName, senderIcon, replies }) !== baseline;
+
+  // 點背景、右上角 X、取消都走這裡：有改過就先確認，避免誤觸丟掉整份編輯
+  const requestClose = () => {
+    if (saving) return;
+    if (isDirty) setConfirmDiscard(true);
+    else onClose();
+  };
+
+  const handleSubmit = async () => {
     setShowErr(true);
-    if (!isValid) return;
-    onSave({
-      ...(orderKey ? { orderKey } : {}),
-      order,
-      touchType,
-      senderName,
-      senderIcon,
-      replyDatas: replies
-        .filter(isReplyValid)
-        .map(r => ({ messageType: r.messageType, reply: r.reply })),
-    });
+    if (!isValid || saving) return;
+    setSaving(true);
+    try {
+      await onSave({
+        ...(orderKey ? { orderKey } : {}),
+        order,
+        touchType,
+        senderName,
+        senderIcon,
+        replyDatas: replies
+          .filter(isReplyValid)
+          .map(r => ({ messageType: r.messageType, reply: r.reply })),
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={requestClose}
       fullScreen={isMobile}
       maxWidth="sm"
       fullWidth
@@ -625,12 +683,12 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
             {isEdit ? "編輯指令" : "新增指令"}
           </Typography>
           {isEdit && (
-            <Typography variant="caption" color="text.disabled" noWrap component="div">
+            <Typography variant="caption" noWrap component="div" sx={{ color: "text.disabled" }}>
               {orderKey}
             </Typography>
           )}
         </Box>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={requestClose} aria-label="關閉" disabled={saving} sx={iconButtonSx}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -646,7 +704,7 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
               value={order}
               onChange={e => setOrder(e.target.value)}
               error={showErr && !order.trim()}
-              helperText={showErr && !order.trim() ? "指令不可為空" : "使用者輸入的觸發文字"}
+              helperText={showErr && !order.trim() ? "指令不可為空" : undefined}
             />
             <TouchTypeSelector value={touchType} onChange={setTouchType} />
           </Stack>
@@ -722,11 +780,26 @@ export default function OrderDialog({ open, onClose, onSave, data }) {
             請修正上方錯誤
           </Typography>
         )}
-        <Button onClick={onClose}>取消</Button>
-        <Button onClick={handleSubmit} variant="contained">
-          儲存
+        <Button onClick={requestClose} disabled={saving} sx={{ minHeight: 44 }}>
+          取消
+        </Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={saving} sx={{ minHeight: 44 }}>
+          {saving ? "儲存中…" : "儲存"}
         </Button>
       </DialogActions>
+      <AlertDialog
+        open={confirmDiscard}
+        onClose={() => setConfirmDiscard(false)}
+        onSubmit={() => {
+          setConfirmDiscard(false);
+          onClose();
+        }}
+        title="放棄未儲存的修改？"
+        description="關閉後，剛才輸入的內容不會保留。"
+        submitText="放棄修改"
+        cancelText="繼續編輯"
+        destructive
+      />
     </Dialog>
   );
 }

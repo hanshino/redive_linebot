@@ -9,12 +9,7 @@ import {
   Stack,
   CircularProgress,
 } from "@mui/material";
-
-function toLocal(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-}
+import { toLocalDateTimeString as toLocal, timezoneHint } from "../_time";
 
 const empty = { code: "", start: "", end: "", reward: "" };
 
@@ -38,7 +33,16 @@ export default function CouponFormDialog({ open, editing, saving, onClose, onSub
   }, [open, editing]);
 
   const codeLocked = !!(editing && editing.redeemedCount > 0);
-  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+  const set = k => e => {
+    setForm(f => ({ ...f, [k]: e.target.value }));
+    // 改到的欄位就清掉它的錯誤，不用等下一次送出
+    setErr(prev => ({ ...prev, [k]: undefined }));
+  };
+  const tzHint = timezoneHint();
+  // 送出中不能關閉，避免請求還在跑時以為取消了
+  const handleClose = () => {
+    if (!saving) onClose();
+  };
 
   const submit = () => {
     const next = {};
@@ -48,7 +52,8 @@ export default function CouponFormDialog({ open, editing, saving, onClose, onSub
     if (!form.end) next.end = "必填";
     if (form.start && form.end && new Date(form.end) <= new Date(form.start))
       next.end = "結束須晚於開始";
-    if (!form.reward || Number(form.reward) < 1) next.reward = "需 ≥ 1";
+    if (!Number.isInteger(Number(form.reward)) || Number(form.reward) < 1)
+      next.reward = "請輸入 1 以上的整數";
     setErr(next);
     if (Object.keys(next).length) return;
     onSubmit({
@@ -60,7 +65,7 @@ export default function CouponFormDialog({ open, editing, saving, onClose, onSub
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogTitle>{editing ? "編輯 coupon" : "新增 coupon"}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -70,7 +75,7 @@ export default function CouponFormDialog({ open, editing, saving, onClose, onSub
             onChange={set("code")}
             disabled={codeLocked}
             error={!!err.code}
-            helperText={err.code || (codeLocked ? "已有人領取，無法修改" : "最多 50 字")}
+            helperText={err.code || (codeLocked ? "已有人領取，無法修改" : undefined)}
             fullWidth
             slotProps={{
               htmlInput: { maxLength: 50 },
@@ -93,7 +98,7 @@ export default function CouponFormDialog({ open, editing, saving, onClose, onSub
               value={form.end}
               onChange={set("end")}
               error={!!err.end}
-              helperText={err.end}
+              helperText={err.end || tzHint}
               slotProps={{ inputLabel: { shrink: true } }}
               fullWidth
             />
@@ -107,20 +112,23 @@ export default function CouponFormDialog({ open, editing, saving, onClose, onSub
             helperText={err.reward}
             fullWidth
             slotProps={{
-              htmlInput: { min: 1 },
+              htmlInput: { min: 1, step: 1 },
             }}
           />
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>取消</Button>
+        <Button onClick={handleClose} disabled={saving} sx={{ minHeight: 44 }}>
+          取消
+        </Button>
         <Button
           variant="contained"
           onClick={submit}
           disabled={saving}
+          sx={{ minHeight: 44 }}
           startIcon={saving ? <CircularProgress size={16} /> : null}
         >
-          {editing ? "儲存" : "新增"}
+          {saving ? "儲存中…" : editing ? "儲存" : "新增"}
         </Button>
       </DialogActions>
     </Dialog>

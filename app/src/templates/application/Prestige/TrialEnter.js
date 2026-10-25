@@ -1,62 +1,63 @@
 // LINE Flex bubble announcing that a player has just entered a prestige trial.
 // One bubble per trial slug; visual system mirrors the Lv.50 CTA palette.
 
-const PRESTIGE_DEEP = "#2A1F4D";
-const PRESTIGE_PURPLE = "#3B2A6B";
-const SUBTITLE_GRAY = "#9B9BA3";
-const BODY_DIVIDER = "#EEEEF1";
+const { PALETTE, SURFACE, TINT, PRESTIGE } = require("../../common/theme");
+const PRESTIGE_DEEP = PRESTIGE.deep;
+const PRESTIGE_PURPLE = PRESTIGE.purple;
+const SUBTITLE_GRAY = SURFACE.textMuted;
+const BODY_DIVIDER = SURFACE.dividerMuted;
 
 const THEMES = {
   departure: {
-    heroBg: "#8E8E93",
-    sloganColor: "#F6F6F8",
-    chipBg: "#F6F6F8",
-    chipBorder: "#E2E2E6",
-    chipFg: "#3B3B40",
+    heroBg: TINT.slate.main,
+    sloganColor: TINT.slate.bg,
+    chipBg: TINT.slate.bg,
+    chipBorder: TINT.slate.border,
+    chipFg: TINT.slate.ink,
     slogan: "第一步，從這裡踏出。",
     restriction: "限制 · 無限制 · 暖身",
     reward: "獎勵 · 過關 → 基礎強化",
     isFinal: false,
   },
   hardship: {
-    heroBg: "#3D6FB8",
-    sloganColor: "#EEF3FB",
-    chipBg: "#EEF3FB",
-    chipBorder: "#C7D8EE",
-    chipFg: "#1F3F6E",
+    heroBg: TINT.blue.main,
+    sloganColor: TINT.blue.bg,
+    chipBg: TINT.blue.bg,
+    chipBorder: TINT.blue.border,
+    chipFg: TINT.blue.ink,
     slogan: "鈍刃磨亮，需以時日。",
     restriction: "限制 · 期間 XP ×0.7",
     reward: "獎勵 · 過關 → 永久 +10% XP",
     isFinal: false,
   },
   rhythm: {
-    heroBg: "#3F8C50",
-    sloganColor: "#ECF6EE",
-    chipBg: "#ECF6EE",
-    chipBorder: "#C2DFC8",
-    chipFg: "#1F4A2C",
+    heroBg: TINT.green.main,
+    sloganColor: TINT.green.bg,
+    chipBg: TINT.green.bg,
+    chipBorder: TINT.green.border,
+    chipFg: TINT.green.ink,
     slogan: "順流者勝，逆潮者亡。",
     restriction: "限制 · 冷卻 ×1.33",
     reward: "獎勵 · 過關 → 中段 tier 上升",
     isFinal: false,
   },
   solitude: {
-    heroBg: "#7A4FB5",
-    sloganColor: "#F1ECF7",
-    chipBg: "#F1ECF7",
-    chipBorder: "#D6C9E8",
-    chipFg: "#3F2470",
+    heroBg: TINT.purple.main,
+    sloganColor: TINT.purple.bg,
+    chipBg: TINT.purple.bg,
+    chipBorder: TINT.purple.border,
+    chipFg: TINT.purple.ink,
     slogan: "獨身入谷，只聞己聲。",
     restriction: "限制 · 群組加成失效",
     reward: "獎勵 · 過關 → 群組加成翻倍",
     isFinal: false,
   },
   awakening: {
-    heroBg: "#B8772A",
-    sloganColor: "#FBF1E8",
-    chipBg: "#FBF1E8",
-    chipBorder: "#EBCDA8",
-    chipFg: "#7A4A12",
+    heroBg: TINT.amber.main,
+    sloganColor: TINT.amber.bg,
+    chipBg: TINT.amber.bg,
+    chipBorder: TINT.amber.border,
+    chipFg: TINT.amber.ink,
     slogan: "焚身為炬，方見天明。",
     restriction: "限制 · 期間 XP ×0.5",
     reward: "獎勵 · 永久 +15% XP · 覺醒態",
@@ -76,7 +77,7 @@ function buildHero(theme, star, trialName) {
           type: "text",
           text: "最終試煉",
           color: theme.sloganColor,
-          size: "xxs",
+          size: "xs",
           weight: "bold",
           flex: 0,
         },
@@ -87,7 +88,7 @@ function buildHero(theme, star, trialName) {
   contents.push({
     type: "text",
     text: `⭐ ×${star}  ${trialName}`,
-    color: "#FFFFFF",
+    color: PALETTE.white,
     weight: "bold",
     size: "md",
     wrap: true,
@@ -96,7 +97,7 @@ function buildHero(theme, star, trialName) {
     type: "text",
     text: theme.slogan,
     color: theme.sloganColor,
-    size: "xxs",
+    size: "xs",
     wrap: true,
   });
   return {
@@ -114,7 +115,7 @@ function buildBody(theme, displayName, deadline) {
   return {
     type: "box",
     layout: "vertical",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: PALETTE.white,
     paddingAll: "12px",
     spacing: "sm",
     contents: [
@@ -144,7 +145,7 @@ function buildBody(theme, displayName, deadline) {
                 type: "text",
                 text: theme.restriction,
                 color: theme.chipFg,
-                size: "xxs",
+                size: "xs",
                 wrap: true,
               },
             ],
@@ -153,7 +154,7 @@ function buildBody(theme, displayName, deadline) {
             type: "text",
             text: theme.reward,
             color: PRESTIGE_PURPLE,
-            size: "xxs",
+            size: "xs",
             wrap: true,
           },
         ],
@@ -163,7 +164,7 @@ function buildBody(theme, displayName, deadline) {
         type: "text",
         text: `60 天為期 · 至 ${deadline}`,
         color: SUBTITLE_GRAY,
-        size: "xxs",
+        size: "xs",
         wrap: true,
       },
     ],

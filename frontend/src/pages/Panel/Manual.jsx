@@ -94,11 +94,6 @@ function CommandCard({ item, sendable, onSend }) {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        transition: "box-shadow 0.2s, border-color 0.2s",
-        "&:hover": {
-          boxShadow: 2,
-          borderColor: "primary.light",
-        },
       }}
     >
       <CardContent sx={{ flexGrow: 1, pb: 0 }}>
@@ -129,9 +124,10 @@ function CommandCard({ item, sendable, onSend }) {
                 color="primary"
                 disabled={!sendable}
                 onClick={() => onSend(item.text)}
-                size="small"
+                aria-label={`發送指令 ${item.title}`}
+                sx={{ width: 44, height: 44 }}
               >
-                <SendIcon fontSize="small" />
+                <SendIcon />
               </IconButton>
             </span>
           </Tooltip>

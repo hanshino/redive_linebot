@@ -6,6 +6,7 @@ import BlockIcon from "@mui/icons-material/Block";
 import AlertDialog from "../../components/AlertDialog";
 import { forfeitTrial } from "../../services/prestige";
 import { getStarConfig } from "./starColors";
+import StarGlyphs from "./StarGlyphs";
 import { renderRestriction, renderReward } from "./trialMeta";
 import { PULSE_ANIMATION_SX } from "./constants";
 
@@ -114,13 +115,11 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
       >
         {/* Header */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography variant="caption" sx={{ color: starColor, fontWeight: 700 }}>
-            {"★".repeat(star) + "☆".repeat(5 - star)}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <StarGlyphs value={star} variant="caption" sx={{ color: starColor, fontWeight: 700 }} />
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {tierLabel}
           </Typography>
-          <Typography variant="caption" fontWeight={700} sx={{ ml: 0.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, ml: 0.5 }}>
             {displayName}
           </Typography>
         </Box>
@@ -140,10 +139,10 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
             }}
           />
           <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
               {progress.toLocaleString()} / {requiredExp.toLocaleString()} XP
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
               {Math.round(xpPercent)}%
             </Typography>
           </Box>
@@ -194,7 +193,8 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
           onSubmit={handleForfeit}
           onCancel={() => setDialogOpen(false)}
           onClose={() => setDialogOpen(false)}
-          disabled={submitting}
+          destructive
+          busy={submitting}
         />
       </Box>
     );
@@ -215,14 +215,12 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
     >
       {/* Header: trial name (primary) on top; star + tier underneath as supporting meta */}
       <Box>
-        <Typography variant="h6" component="div" fontWeight={700}>
+        <Typography variant="h6" component="div" sx={{ fontWeight: 700 }}>
           {displayName}
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.25 }}>
-          <Typography variant="body2" sx={{ color: starColor, fontWeight: 700 }}>
-            {"★".repeat(star) + "☆".repeat(5 - star)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <StarGlyphs value={star} variant="body2" sx={{ color: starColor, fontWeight: 700 }} />
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {tierLabel}
           </Typography>
         </Box>
@@ -246,10 +244,10 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
                 }}
               />
               <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.75 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: "text.secondary" }}>
                   {progress.toLocaleString()} / {requiredExp.toLocaleString()} XP
                 </Typography>
-                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 600 }}>
                   {Math.round(xpPercent)}%
                 </Typography>
               </Box>
@@ -287,11 +285,11 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
                 <Box>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                     <BlockIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
                       期間限制
                     </Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.25 }}>
                     {restrictionText}
                   </Typography>
                 </Box>
@@ -301,11 +299,11 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
                 <Box>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                     <EmojiEventsIcon sx={{ fontSize: 14, color: "warning.main" }} />
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
                       通過獎勵
                     </Typography>
                   </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.25 }}>
                     {rewardText}
                   </Typography>
                 </Box>
@@ -335,7 +333,8 @@ export default function TrialProgressView({ status, onRefresh, onMutationError, 
         onSubmit={handleForfeit}
         onCancel={() => setDialogOpen(false)}
         onClose={() => setDialogOpen(false)}
-        disabled={submitting}
+        destructive
+        busy={submitting}
       />
     </Box>
   );

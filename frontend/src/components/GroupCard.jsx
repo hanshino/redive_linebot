@@ -58,8 +58,8 @@ export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
               height: 64,
               fontSize: 28,
               fontWeight: 700,
-              bgcolor: "rgba(255,255,255,0.2)",
-              color: "primary.contrastText",
+              bgcolor: "background.paper",
+              color: "primary.main",
             }}
           >
             {initial}
@@ -99,11 +99,10 @@ export default function GroupCard({ groupId, groupName, pictureUrl, count }) {
         {actions.map(({ label, icon: Icon, path }) => (
           <Button
             key={label}
-            size="small"
             variant="outlined"
             startIcon={<Icon />}
             onClick={() => navigate(path(groupId))}
-            sx={{ minHeight: 36, justifyContent: "flex-start" }}
+            sx={{ minHeight: 44, justifyContent: "flex-start" }}
           >
             {label}
           </Button>

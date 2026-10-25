@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import LiffLayout from "./layouts/LiffLayout";
 
@@ -12,9 +12,6 @@ import RaceDetail from "./pages/Race/Detail";
 import GachaExchange from "./pages/Gacha/Exchange";
 import Bag from "./pages/Bag";
 import Equipment from "./pages/Equipment";
-import TradeOrder from "./pages/Trade/Order";
-import TradeManage from "./pages/Trade/Manage";
-import TradeDetail from "./pages/Trade/TradeDetail";
 import Market from "./pages/Trade/Market";
 import MarketListing from "./pages/Trade/MarketListing";
 import MarketSell from "./pages/Trade/Sell";
@@ -54,11 +51,6 @@ import OwnerSponsorshipNew from "./pages/Owner/Sponsorship/New";
 import OwnerSponsorshipDetail from "./pages/Owner/Sponsorship/Detail";
 import OwnerSponsorshipPlayer from "./pages/Owner/Sponsorship/Player";
 
-function RedirectFromTransaction() {
-  const { marketId } = useParams();
-  return <Navigate to={`/trade/${marketId}`} replace />;
-}
-
 export default function App() {
   return (
     <BrowserRouter>
@@ -84,18 +76,15 @@ export default function App() {
           <Route path="equipment" element={<Equipment />} />
 
           {/* Trade */}
-          {/* 公開市場 / 角色委託所 —— 必須排在 trade/:marketId 之前，
-              否則 "market" / "sell" / "buy" / "my-listings" 會被當成 marketId 吃掉。 */}
+          {/* 公開市場 / 角色委託所。固定路徑比下方的 trade/* 萬用導向更具體，router 會優先匹配。 */}
           <Route path="trade/market" element={<Market />} />
           <Route path="trade/sell" element={<MarketSell />} />
           <Route path="trade/buy" element={<MarketBuy />} />
           <Route path="trade/my-listings" element={<MyListings />} />
           <Route path="trade/listings/:id" element={<MarketListing />} />
-          <Route path="trade/order" element={<TradeOrder />} />
-          <Route path="trade/manage" element={<TradeManage />} />
-          <Route path="trade/:marketId" element={<TradeDetail />} />
-          <Route path="trade/:marketId/detail" element={<TradeDetail />} />
-          <Route path="trade/:marketId/transaction" element={<RedirectFromTransaction />} />
+          {/* 舊的一對一交易已淘汰：已分享出去的舊連結一律導回市場，不要 404 */}
+          <Route path="trade/manage" element={<Navigate to="/trade/my-listings" replace />} />
+          <Route path="trade/*" element={<Navigate to="/trade/market" replace />} />
 
           {/* Group */}
           <Route path="groups" element={<GroupList />} />

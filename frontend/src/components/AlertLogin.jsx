@@ -1,10 +1,20 @@
-import { Alert, AlertTitle } from "@mui/material";
+import { Alert, Button } from "@mui/material";
+import useLiff from "../context/useLiff";
 
 export default function AlertLogin() {
+  const { login } = useLiff();
+
   return (
-    <Alert severity="warning" sx={{ mt: 2 }}>
-      <AlertTitle>Oops! 你好像還沒登入！</AlertTitle>
-      進行任何操作前，請先點擊右上角的登入！
+    <Alert
+      severity="warning"
+      sx={{ mt: 2, alignItems: "center" }}
+      action={
+        <Button color="inherit" onClick={login} sx={{ minHeight: 44 }}>
+          登入
+        </Button>
+      }
+    >
+      請先登入再使用這個功能
     </Alert>
   );
 }

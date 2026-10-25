@@ -9,11 +9,10 @@ import {
   Skeleton,
   Card,
   CardContent,
-  Alert,
-  Button,
 } from "@mui/material";
 import GroupsIcon from "@mui/icons-material/Groups";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import GroupCard, { MEDIA_ASPECT_RATIO } from "../../components/GroupCard";
 import useLiff from "../../context/useLiff";
 
@@ -98,22 +97,13 @@ export default function GroupList() {
           <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
             我的群組
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             管理你所屬的 LINE 群組
           </Typography>
         </Stack>
 
-        {error && (
-          <Alert
-            severity="error"
-            action={
-              <Button color="inherit" size="small" onClick={() => refetch()}>
-                重試
-              </Button>
-            }
-          >
-            載入群組資料失敗，請稍後再試
-          </Alert>
+        {error && !loading && (
+          <LoadError message="載入群組資料失敗，請檢查網路後再試一次。" onRetry={() => refetch()} />
         )}
 
         {/* 卡片少於一整列時置中，避免一張卡孤零零留在左上角 */}

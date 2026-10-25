@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Grid,
+  Stack,
   Typography,
   TextField,
   Button,
@@ -23,16 +23,17 @@ const SaberTypes = [
   { title: "凱留刀", value: "3" },
 ];
 
-const PrettoSlider = styled(Slider)({
-  color: "#af5277",
+// 送出成功後先讓使用者看到發了什麼，再關閉 LIFF 視窗
+const CLOSE_DELAY_MS = 1200;
+
+const PrettoSlider = styled(Slider)(({ theme }) => ({
+  color: theme.palette.primary.main,
   height: 8,
   "& .MuiSlider-thumb": {
     height: 24,
     width: 24,
-    backgroundColor: "#fff",
+    backgroundColor: theme.palette.background.paper,
     border: "2px solid currentColor",
-    marginTop: -8,
-    marginLeft: -12,
     "&:focus, &:hover, &.Mui-active": {
       boxShadow: "inherit",
     },
@@ -48,7 +49,7 @@ const PrettoSlider = styled(Slider)({
   "& .MuiSlider-valueLabel": {
     left: "calc(-50% + 4px)",
   },
-});
+}));
 
 function genMessage({ week, boss, type, damage, comment }) {
   let message = `.gbs ${week} ${boss}`;
@@ -61,7 +62,7 @@ function genMessage({ week, boss, type, damage, comment }) {
 }
 
 export default function BattleSign() {
-  const [{ isError, isSuccess }, send] = useSendMessage();
+  const [{ isError, isSuccess, isSending }, send] = useSendMessage();
   const { week, boss } = useParams();
   const location = useLocation();
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
@@ -84,9 +85,14 @@ export default function BattleSign() {
     showHint("發送失敗，不過幫你複製起來了！可直接到LINE貼上！", "warning");
   }, [isError, showHint]);
 
+  // 成功後顯示剛送出的指令，約 1.2 秒後才關閉視窗；isSuccess 期間送出鍵維持鎖定，避免重複發送
   useEffect(() => {
     if (!isSuccess) return;
-    liff.closeWindow();
+    showHint(`已發送到聊天室：${genMessage(state)}`, "success");
+    const timer = setTimeout(() => liff.closeWindow(), CLOSE_DELAY_MS);
+    return () => clearTimeout(timer);
+    // 只在成功的那一刻觸發；state 變動（例如使用者繼續改欄位）不該重設計時器
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess]);
 
   useEffect(() => {
@@ -95,7 +101,7 @@ export default function BattleSign() {
 
     setHotKeys([
       { title: "物理一刀", damage, comment: "物理一刀殺", type: "1" },
-      { title: "法刀一刀", damage, comment: "法隊一刀殺", type: "1" },
+      { title: "法刀一刀", damage, comment: "法刀一刀殺", type: "1" },
     ]);
 
     setState(prev => ({ ...prev, maxDamage: parseInt(damage) }));
@@ -115,118 +121,100 @@ export default function BattleSign() {
     setState(prev => ({ ...prev, type: event.target.value }));
   };
 
+  const sending = isSending || isSuccess;
+
   return (
-    <>
-      <Grid container sx={{ p: 1, "& > *": { m: 1 } }}>
-        <Grid size={{ xs: 12 }}>
-          <Typography variant="h4" component="p">
-            報名面版
-          </Typography>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <Alert severity="info">
-            <AlertTitle>
-              {state.week} 周 {state.boss} 王
-            </AlertTitle>
-            請注意是否為要 <strong>報名的王</strong> 以及 <strong>周次</strong>
-          </Alert>
-        </Grid>
-      </Grid>
-      <Grid container direction="column" sx={{ p: 1, "& > *": { m: 1 } }}>
-        <Grid>
-          <Typography variant="body1">快速鍵</Typography>
-        </Grid>
-        <Grid>
-          <ButtonGroup variant="text" color="primary" aria-label="text primary button group">
-            {Hotkeys.map((hotkey, index) => (
-              <Button
-                key={index}
-                onClick={() =>
-                  setState(prev => ({
-                    ...prev,
-                    damage: hotkey.damage,
-                    comment: hotkey.comment,
-                    type: hotkey.type,
-                  }))
-                }
-              >
-                {hotkey.title}
-              </Button>
-            ))}
-          </ButtonGroup>
-        </Grid>
-      </Grid>
-      <Grid
-        container
-        sx={{
-          justifyContent: "space-around",
-          p: 1,
-          "& > *": { m: 1 },
-        }}
-      >
-        <Grid size={{ xs: 12, sm: 3 }}>
-          <TextField
-            select
-            fullWidth
-            label="刀種"
-            value={state.type}
-            onChange={handleType}
-            slotProps={{
-              select: { native: true },
-            }}
-            variant="outlined"
-          >
-            {SaberTypes.map(data => (
-              <option key={data.value} value={data.value}>
-                {data.title}
-              </option>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid container size={{ xs: 12, sm: 3 }} direction="column">
-          <Grid>
-            <TextField
-              label="預計傷害"
-              fullWidth
-              type="number"
-              variant="outlined"
-              value={state.damage}
-              onChange={handleDamage}
-            />
-          </Grid>
-          <Grid>
-            <PrettoSlider
-              min={0}
-              max={state.maxDamage}
-              step={Math.floor(state.maxDamage / 100) || 1}
-              value={parseInt(state.damage) || 0}
-              onChange={(event, value) => setState(prev => ({ ...prev, damage: value.toString() }))}
-            />
-          </Grid>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 3 }}>
-          <TextField
-            label="備註留言"
-            fullWidth
-            variant="outlined"
-            value={state.comment}
-            onChange={handleComment}
-          />
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <CopyToClipboard text={genMessage(state)}>
+    <Stack spacing={2.5} sx={{ p: 2 }}>
+      <Typography variant="h4" component="h1">
+        報名面板
+      </Typography>
+      <Alert severity="info">
+        <AlertTitle>
+          {state.week} 周 {state.boss} 王
+        </AlertTitle>
+        請注意是否為要 <strong>報名的王</strong> 以及 <strong>周次</strong>
+      </Alert>
+
+      <Stack spacing={1}>
+        <Typography variant="body1">快速鍵</Typography>
+        <ButtonGroup variant="text" color="primary" aria-label="快速填入">
+          {Hotkeys.map(hotkey => (
             <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              onClick={() => send(genMessage(state))}
+              key={hotkey.title}
+              sx={{ minHeight: 44 }}
+              onClick={() =>
+                setState(prev => ({
+                  ...prev,
+                  damage: hotkey.damage,
+                  comment: hotkey.comment,
+                  type: hotkey.type,
+                }))
+              }
             >
-              送出
+              {hotkey.title}
             </Button>
-          </CopyToClipboard>
-        </Grid>
-      </Grid>
+          ))}
+        </ButtonGroup>
+      </Stack>
+
+      <Stack spacing={2}>
+        <TextField
+          select
+          fullWidth
+          label="刀種"
+          value={state.type}
+          onChange={handleType}
+          slotProps={{
+            select: { native: true },
+          }}
+          variant="outlined"
+        >
+          {SaberTypes.map(data => (
+            <option key={data.value} value={data.value}>
+              {data.title}
+            </option>
+          ))}
+        </TextField>
+        <Stack spacing={1}>
+          <TextField
+            label="預計傷害"
+            fullWidth
+            type="number"
+            variant="outlined"
+            value={state.damage}
+            onChange={handleDamage}
+          />
+          <PrettoSlider
+            aria-label="預計傷害"
+            min={0}
+            max={state.maxDamage}
+            disabled={!(state.maxDamage > 0)}
+            step={Math.floor(state.maxDamage / 100) || 1}
+            value={parseInt(state.damage) || 0}
+            onChange={(event, value) => setState(prev => ({ ...prev, damage: value.toString() }))}
+          />
+        </Stack>
+        <TextField
+          label="備註留言"
+          fullWidth
+          variant="outlined"
+          value={state.comment}
+          onChange={handleComment}
+        />
+        <CopyToClipboard text={genMessage(state)}>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            disabled={sending}
+            onClick={() => send(genMessage(state))}
+            sx={{ minHeight: 48 }}
+          >
+            {isSuccess ? "已送出" : isSending ? "送出中…" : "送出"}
+          </Button>
+        </CopyToClipboard>
+      </Stack>
       <HintSnackBar {...hintState} onClose={closeHint} />
-    </>
+    </Stack>
   );
 }

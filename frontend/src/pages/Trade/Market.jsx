@@ -5,6 +5,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonBase,
   Dialog,
   DialogActions,
   DialogContent,
@@ -20,14 +21,19 @@ import {
 import { alpha } from "@mui/material/styles";
 import SearchIcon from "@mui/icons-material/Search";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
-import DiamondIcon from "@mui/icons-material/Diamond";
 import AlertLogin from "../../components/AlertLogin";
 import HintSnackBar from "../../components/HintSnackBar";
+import LoadError from "../../components/LoadError";
 import useHintBar from "../../hooks/useHintBar";
 import useLiff from "../../context/useLiff";
 import {
+  META_TEXT,
   NUMS,
   ORDER_COPY,
+  SR_ONLY,
+  TAP_TARGETS,
+  PAGE_WIDTH,
+  TOUCH,
   calcFee,
   calcNet,
   displayName,
@@ -36,13 +42,14 @@ import {
   normalizeOrderType,
   posterNameOf,
 } from "./_market";
-import { CharAvatar, BaseStar, GradientPanel, OrderTypeSwitch, Row, Tag } from "./_marketUi";
+import { CharAvatar, BaseStar, OrderTypeSwitch, Row, StoneIcon, Tag } from "./_marketUi";
 
 /* ---------------------------------------------------------------- 錢包 chip */
 function WalletChip({ balance, loading }) {
   return (
     <Box
       sx={theme => ({
+        position: "relative",
         display: "inline-flex",
         alignItems: "center",
         gap: 0.75,
@@ -58,9 +65,9 @@ function WalletChip({ balance, loading }) {
         ...NUMS,
       })}
     >
-      <DiamondIcon sx={{ fontSize: 14 }} />
+      <StoneIcon />
       {loading ? "…" : fmtStone(balance)}
-      <Box component="span" sx={{ position: "absolute", width: 1, height: 1, overflow: "hidden" }}>
+      <Box component="span" sx={SR_ONLY}>
         女神石
       </Box>
     </Box>
@@ -106,6 +113,7 @@ function CharacterChip({ char, selected, onClick, buy }) {
         pl: 0.625,
         pr: 1.5,
         py: 0.625,
+        minHeight: TOUCH,
         borderRadius: 999,
         cursor: "pointer",
         font: "inherit",
@@ -129,15 +137,15 @@ function CharacterChip({ char, selected, onClick, buy }) {
         itemId={char.itemId}
         name={char.name}
         headImage={char.headImage}
-        size={24}
-        sx={{ fontSize: 11 }}
+        size={28}
+        sx={{ fontSize: 12 }}
       />
       <span>{char.name}</span>
-      <BaseStar star={char.star} size={11} />
+      <BaseStar star={char.star} size={12} />
       <Box
         component="span"
         sx={theme => ({
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 600,
           color: "text.secondary",
           bgcolor: alpha(theme.palette.text.primary, 0.04),
@@ -159,21 +167,30 @@ function CharacterChip({ char, selected, onClick, buy }) {
  *   2. 價格底下多一行「你實收」——收購單看的是拿到手的數字
  *   3. 主按鈕（立即購買 / 賣給他）與它被擋下來的理由
  */
-function OrderCard({ listing, orderType, best, onAct, blockReason }) {
+function OrderCard({ listing, orderType, best, onAct, blockReason, balance }) {
   const buy = orderType === "buy";
   const copy = ORDER_COPY[orderType];
   const mine = Boolean(listing.mine);
-  const navigate = useNavigate();
   const accent = buy ? "secondary" : "primary";
 
+  // 擋下理由的文字與詳情頁同一套說法。賣單簿多兩種：已擁有、女神石不足，
+  // 這兩種在列上就先擋住，不用等人點進確認框才被後端拒絕。
   const disabledLabel = mine
     ? buy
       ? "這是你自己發的收購單，無法賣給自己"
       : "這是你自己的掛單，無法購買"
     : blockReason === "NOT_OWNED"
       ? `你沒有${listing.name}，無法賣出`
-      : null;
+      : blockReason === "ALREADY_OWNED"
+        ? `你已擁有${listing.name}，無法購買`
+        : blockReason === "INSUFFICIENT_FUNDS"
+          ? "女神石不足，無法購買"
+          : null;
   const disabled = Boolean(disabledLabel);
+  // 只有「錢不夠」是每一列各自不同的原因，直接寫在該列上；
+  // 已擁有／沒有角色是整個頁面共通，由上方的提示說明一次就好。
+  const shortfall =
+    !mine && blockReason === "INSUFFICIENT_FUNDS" ? listing.price - Number(balance) : null;
 
   return (
     <Paper
@@ -198,11 +215,20 @@ function OrderCard({ listing, orderType, best, onAct, blockReason }) {
       })}
     >
       <CharAvatar itemId={listing.itemId} name={listing.name} headImage={listing.headImage} />
-      <Box
-        onClick={() =>
-          navigate(`/trade/listings/${listing.id}`, { state: { fromMarket: true, orderType } })
-        }
-        sx={{ flex: "1 1 auto", minWidth: 0, cursor: "pointer" }}
+      {/* 整塊資訊區是一個連結：可鍵盤聚焦、可 Enter 開啟，也能長按複製網址。 */}
+      <ButtonBase
+        component={RouterLink}
+        to={`/trade/listings/${listing.id}`}
+        state={{ fromMarket: true, orderType }}
+        sx={{
+          display: "block",
+          flex: "1 1 auto",
+          minWidth: 0,
+          textAlign: "left",
+          font: "inherit",
+          color: "inherit",
+          borderRadius: 1,
+        }}
       >
         <Box
           sx={{
@@ -221,9 +247,8 @@ function OrderCard({ listing, orderType, best, onAct, blockReason }) {
         </Box>
         <Typography
           variant="caption"
-          color="text.secondary"
           noWrap
-          sx={{ display: "block", mt: "3px" }}
+          sx={{ color: "text.secondary", display: "block", mt: "3px" }}
         >
           {copy.poster} {displayName(posterNameOf(listing))} ・ {listing.itemId}
         </Typography>
@@ -233,24 +258,29 @@ function OrderCard({ listing, orderType, best, onAct, blockReason }) {
             alignItems: "center",
             gap: 0.625,
             mt: 0.625,
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: 600,
             color: theme.palette.mode === "dark" ? `${accent}.light` : `${accent}.dark`,
             ...NUMS,
           })}
         >
-          <DiamondIcon sx={{ fontSize: 13 }} />
+          <StoneIcon size={14} />
           {fmtStone(listing.price)}
-          <Box component="span" sx={{ fontSize: 11, fontWeight: 400, color: "text.secondary" }}>
+          <Box component="span" sx={{ fontSize: 12, fontWeight: 400, color: "text.secondary" }}>
             女神石
           </Box>
         </Box>
         {buy && (
-          <Typography sx={{ fontSize: 11.5, color: "text.secondary", mt: "2px", ...NUMS }}>
+          <Typography sx={{ ...META_TEXT, mt: "2px" }}>
             你實收 {fmtStone(listing.netProceeds ?? calcNet(listing.price))}（扣 5% 手續費）
           </Typography>
         )}
-      </Box>
+        {shortfall != null && (
+          <Typography sx={{ ...META_TEXT, color: "error.main", mt: "2px" }}>
+            女神石不足，還差 {fmtStone(shortfall)}
+          </Typography>
+        )}
+      </ButtonBase>
       {disabled ? (
         // 依設計稿：不能操作時保留按鈕但停用。用 aria-disabled 而非 disabled，
         // 讀屏會唸出來；同時不掛 onClick，按下去真的不會發生任何事。
@@ -264,6 +294,7 @@ function OrderCard({ listing, orderType, best, onAct, blockReason }) {
           aria-label={disabledLabel}
           sx={{
             flex: "0 0 auto",
+            minHeight: TOUCH,
             color: "text.secondary",
             borderColor: "divider",
             bgcolor: theme => alpha(theme.palette.text.primary, 0.04),
@@ -282,7 +313,7 @@ function OrderCard({ listing, orderType, best, onAct, blockReason }) {
           variant="contained"
           color={accent}
           onClick={() => onAct(listing)}
-          sx={{ flex: "0 0 auto" }}
+          sx={{ flex: "0 0 auto", minHeight: TOUCH }}
         >
           {copy.action}
         </Button>
@@ -329,44 +360,9 @@ function EmptyBook({ orderType, onBackToAll }) {
       <Typography variant="subtitle1" sx={{ fontWeight: 600, mt: 0.5 }}>
         {buy ? "目前沒有人收購這個角色" : "該角色目前沒有掛單"}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
-        {buy ? (
-          <>
-            等其他玩家發收購單，或改看別的角色。
-            <br />
-            你也可以自己掛一張賣單等人來買。
-          </>
-        ) : (
-          <>
-            等其他玩家上架，或改看別的角色。
-            <br />
-            你也可以自己掛一張。
-          </>
-        )}
-      </Typography>
       <Button variant="outlined" onClick={onBackToAll} sx={{ mt: 0.75 }}>
         看其他角色
       </Button>
-    </Paper>
-  );
-}
-
-function Note({ children }) {
-  return (
-    <Paper
-      elevation={0}
-      sx={theme => ({
-        p: 1.5,
-        borderRadius: 3,
-        border: "1px solid",
-        borderColor: "divider",
-        bgcolor: alpha(theme.palette.text.primary, 0.04),
-        fontSize: 12,
-        lineHeight: 1.7,
-        color: "text.secondary",
-      })}
-    >
-      {children}
     </Paper>
   );
 }
@@ -452,7 +448,7 @@ export default function Market() {
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    refetchSummary();
+    refetchSummary().catch(() => {});
     refetchInventory().catch(() => {});
   }, [isLoggedIn, refetchSummary, refetchInventory]);
 
@@ -547,10 +543,20 @@ export default function Market() {
   const rowsFailed = Boolean(current) && !current.ok && !listingsLoading;
   const showSkeleton = Boolean(selectedId) && !current;
 
-  // 收購單只有持有該角色的人能履約。背包讀不到就先不擋，交給後端把關，
-  // 免得把真的持有的人也一起關在門外。
+  const balance = summary?.balance;
+  const balanceKnown = typeof balance === "number";
+
+  // 擋下理由依方向而定，而且「資料沒到就不擋」：背包或餘額讀不到時，
+  // 把真的能操作的人也關在門外比放行更糟，交給後端把關。
+  //   收購簿：要賣就得持有 → 沒有該角色（NOT_OWNED）
+  //   賣單簿：要買就得沒有、錢要夠 → 已擁有（ALREADY_OWNED）／女神石不足（INSUFFICIENT_FUNDS）
   const ownsSelected = selectedId ? ownedIds.has(selectedId) : false;
-  const blockReason = buy && ownedKnown && !ownsSelected ? "NOT_OWNED" : null;
+  const blockReasonFor = listing => {
+    if (buy) return ownedKnown && !ownsSelected ? "NOT_OWNED" : null;
+    if (ownedKnown && ownsSelected) return "ALREADY_OWNED";
+    if (balanceKnown && balance < listing.price) return "INSUFFICIENT_FUNDS";
+    return null;
+  };
 
   const filtered = useMemo(() => {
     const base = filterActive ? charList.filter(matchesView) : charList;
@@ -592,7 +598,7 @@ export default function Market() {
           : `已購買 ${data.name ?? pending.name}，花費 ${fmtStone(data.price ?? pending.price)} 女神石`,
         "success"
       );
-      refetchSummary();
+      refetchSummary().catch(() => {});
       loadCharacters(orderType);
       refetchInventory().catch(() => {});
       if (selectedId) loadListings(selectedId, orderType);
@@ -602,7 +608,7 @@ export default function Market() {
         errorText(err, isBuyBook ? "賣出失敗，請稍後再試" : "購買失敗，請稍後再試"),
         "error"
       );
-      refetchSummary();
+      refetchSummary().catch(() => {});
       refetchInventory().catch(() => {});
       if (selectedId) loadListings(selectedId, orderType);
     }
@@ -610,15 +616,17 @@ export default function Market() {
 
   if (!isLoggedIn) return <AlertLogin />;
 
-  const hasMine = rows.some(r => r.mine);
-  const balance = summary?.balance;
   // 切到會用到背包的視角但背包還沒回來：先擋住清單，不能亂猜持有狀態。
   const waitingInventory = view === "filtered" && !ownedKnown && !invError;
   const showPicker = !selected && !resolvingQuery;
 
-  const filteredLabel = buy ? "我持有的" : "我沒有的";
+  // 同一個開關在兩本簿子的意思其實一樣：只留下「我真的能操作」的角色。
+  // 但賣單簿要的是我還沒有的、收購簿要的是我持有的，直接寫持有與否會讓人以為
+  // 開關的意思被翻轉，所以標籤直接寫成動作。
+  const filteredLabel = buy ? "我能賣的" : "我能買的";
   const pendingNet = pending ? (pending.netProceeds ?? calcNet(pending.price)) : 0;
   const pendingFee = pending ? (pending.fee ?? calcFee(pending.price)) : 0;
+  const pendingShort = Boolean(pending) && !buy && balanceKnown && balance < pending.price;
 
   return (
     <Box
@@ -627,44 +635,20 @@ export default function Market() {
         flexDirection: "column",
         gap: 1.75,
         pb: "calc(env(safe-area-inset-bottom) + 32px)",
+        ...TAP_TARGETS,
+        ...PAGE_WIDTH,
       }}
     >
       <PageHeader balance={balance} loading={summaryLoading} />
 
       <OrderTypeSwitch value={orderType} onChange={handleSwitchBook} />
 
-      <GradientPanel tone={orderType}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.75 }}>
-          {buy ? "公開收購簿" : "公開掛單簿"}
-        </Typography>
-        <Box component="ul" sx={{ m: 0, pl: 2, fontSize: 12, lineHeight: 1.7, opacity: 0.92 }}>
-          {buy ? (
-            <>
-              <li>這裡是別人想買的角色，你有的話可以直接賣給他</li>
-              <li>成交時抽取 5% 手續費，你拿到的是扣完手續費的金額</li>
-              <li>收購方發單時就已預扣全額，成交當下不會反悔</li>
-            </>
-          ) : (
-            <>
-              <li>成交時抽取 5% 手續費，該部分女神石直接銷毀</li>
-              <li>每位玩家同一角色只能持有一張，已擁有的角色無法購買</li>
-            </>
-          )}
-        </Box>
-      </GradientPanel>
-
       {charsError && (
-        <Alert
-          severity="error"
-          sx={{ borderRadius: 3 }}
-          action={
-            <Button color="inherit" size="small" onClick={() => loadCharacters(orderType)}>
-              重試
-            </Button>
-          }
-        >
-          載入{buy ? "收購簿" : "掛單簿"}失敗，請稍後再試
-        </Alert>
+        <LoadError
+          sx={{ py: 0 }}
+          message={`載入${buy ? "收購簿" : "掛單簿"}失敗，請檢查網路後再試一次。`}
+          onRetry={() => loadCharacters(orderType)}
+        />
       )}
 
       {selected || resolvingQuery ? (
@@ -689,12 +673,12 @@ export default function Market() {
               />
               <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  <Typography sx={{ fontSize: 15, fontWeight: 600 }} noWrap>
+                  <Typography sx={{ fontSize: 16, fontWeight: 600 }} noWrap>
                     {selected.name}
                   </Typography>
                   <BaseStar star={selected.star} />
                 </Box>
-                <Typography variant="caption" color="text.secondary" sx={{ ...NUMS }}>
+                <Typography variant="caption" sx={{ color: "text.secondary", ...NUMS }}>
                   {selected.itemId} ・{" "}
                   {rowsPending
                     ? `讀取${copy.noun}中…`
@@ -708,7 +692,7 @@ export default function Market() {
                 variant="outlined"
                 startIcon={<SwapHorizIcon />}
                 onClick={handleBackToAll}
-                sx={{ flex: "0 0 auto" }}
+                sx={{ flex: "0 0 auto", minHeight: TOUCH }}
               >
                 所有角色
               </Button>
@@ -752,7 +736,8 @@ export default function Market() {
                 "& .MuiToggleButton-root": {
                   px: 1.5,
                   py: 0.375,
-                  fontSize: 12,
+                  minHeight: TOUCH,
+                  fontSize: 13,
                   fontWeight: 600,
                   borderRadius: "999px !important",
                   textTransform: "none",
@@ -768,7 +753,7 @@ export default function Market() {
               <ToggleButton
                 value="filtered"
                 disabled={Boolean(invError)}
-                aria-label={buy ? "只顯示我持有、可以賣出的角色" : "只顯示我還沒有的角色"}
+                aria-label={buy ? "只顯示我持有、可以賣出的角色" : "只顯示我還沒有、可以購買的角色"}
               >
                 {filteredLabel}
                 {filteredCount === null ? "" : ` (${filteredCount})`}
@@ -809,12 +794,14 @@ export default function Market() {
           ) : (
             <Box
               role="group"
-              aria-label={filterActive ? `${filteredLabel}的角色列表` : "角色列表"}
+              aria-label={
+                filterActive ? (buy ? "你能賣出的角色列表" : "你能購買的角色列表") : "角色列表"
+              }
               sx={{
                 display: "flex",
                 flexWrap: "wrap",
                 gap: 1,
-                maxHeight: 168,
+                maxHeight: 204,
                 overflowY: "auto",
                 p: 0.25,
               }}
@@ -831,15 +818,15 @@ export default function Market() {
             </Box>
           )}
           {waitingInventory && (
-            <Typography variant="body2" color="text.secondary" sx={{ px: 0.25 }} role="status">
+            <Typography variant="body2" sx={{ color: "text.secondary", px: 0.25 }} role="status">
               正在確認你已經擁有哪些角色…
             </Typography>
           )}
           {!charsLoading && !waitingInventory && filtered.length === 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ px: 0.25, py: 0.75 }}>
+            <Typography variant="body2" sx={{ color: "text.secondary", px: 0.25, py: 0.75 }}>
               {filterActive
                 ? keyword.trim()
-                  ? `${filteredLabel}角色裡找不到符合的。`
+                  ? `${filteredLabel}裡找不到符合的角色。`
                   : buy
                     ? "目前有人收購的角色，你都還沒有。"
                     : "目前有掛單的角色你都已經擁有了。"
@@ -853,49 +840,28 @@ export default function Market() {
         </>
       )}
 
-      <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
-        <Typography
-          variant="caption"
-          sx={{ fontWeight: 600, letterSpacing: ".06em", color: "text.secondary" }}
-        >
-          {selected ? `${selected.name} 的${copy.noun}` : copy.noun}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {!selected
-            ? copy.sortNote
-            : rowsPending
-              ? "載入中…"
-              : rowsFailed
-                ? "讀取失敗"
-                : rows.length
-                  ? `${rows.length} 張 ・ ${copy.sortNote}`
-                  : "0 張"}
-        </Typography>
-      </Box>
-
-      {rowsFailed && (
-        <Alert
-          severity="error"
-          sx={{ borderRadius: 3 }}
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={() => loadListings(selectedId, orderType)}
-            >
-              重試
-            </Button>
-          }
-        >
-          載入{copy.noun}失敗，請稍後再試
-        </Alert>
+      {selected && (
+        <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 600, letterSpacing: ".06em", color: "text.secondary" }}
+          >
+            {copy.noun}
+          </Typography>
+          {rows.length > 0 && !rowsPending && !rowsFailed && (
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              {copy.sortNote}
+            </Typography>
+          )}
+        </Box>
       )}
 
-      {!selected && !resolvingQuery && (
-        <Note>
-          先從上面挑一個角色，就會看到目前的{copy.noun}。
-          {buy && "收購單是別人出價想買，你有那隻角色就能直接賣。"}
-        </Note>
+      {rowsFailed && (
+        <LoadError
+          sx={{ py: 0 }}
+          message={`載入${copy.noun}失敗，請檢查網路後再試一次。`}
+          onRetry={() => loadListings(selectedId, orderType)}
+        />
       )}
 
       {showSkeleton || resolvingQuery ? (
@@ -912,7 +878,12 @@ export default function Market() {
           <>
             {buy && ownedKnown && !ownsSelected && (
               <Alert severity="info" sx={{ borderRadius: 3 }}>
-                你目前沒有 {selected.name}，只能看價格，沒辦法賣出。
+                你目前沒有 {selected.name}，無法賣出。
+              </Alert>
+            )}
+            {!buy && ownedKnown && ownsSelected && (
+              <Alert severity="info" sx={{ borderRadius: 3 }}>
+                你已擁有 {selected.name}，無法購買。
               </Alert>
             )}
             <Box
@@ -932,40 +903,14 @@ export default function Market() {
                   listing={listing}
                   orderType={orderType}
                   best={i === 0}
-                  blockReason={blockReason}
+                  blockReason={blockReasonFor(listing)}
+                  balance={balance}
                   onAct={setPending}
                 />
               ))}
             </Box>
           </>
         )
-      )}
-
-      {selected && !rowsPending && !rowsFailed && rows.length === 0 && (
-        <Note>
-          {buy
-            ? "收購簿只顯示還沒成交的收購單，成交或撤單後會立刻從這裡消失。"
-            : "掛單簿只顯示目前還沒成交的賣單，成交或撤單後會立刻從這裡消失。"}
-        </Note>
-      )}
-      {hasMine && (
-        <Note>
-          你自己的{copy.noun}會一起顯示，方便對照別人的價格。要撤單請到
-          <Box
-            component={RouterLink}
-            to="/trade/my-listings"
-            sx={{ color: "primary.main", fontWeight: 600 }}
-          >
-            「我的掛單」
-          </Box>
-          。
-        </Note>
-      )}
-
-      {selected && (
-        <Button variant="text" onClick={handleBackToAll} startIcon={<SwapHorizIcon />}>
-          回到所有角色
-        </Button>
       )}
 
       <Box sx={{ display: "flex", gap: 1.25, flexWrap: "wrap" }}>
@@ -984,16 +929,19 @@ export default function Market() {
 
       <Dialog
         open={Boolean(pending)}
-        onClose={() => setPending(null)}
+        // 請求送出後不能用背景或 Esc 關掉：關了也撤不回已送出的扣款，
+        // 還會讓人看不到結果、以為沒成功而重複操作。
+        onClose={acting ? undefined : () => setPending(null)}
         fullWidth
         maxWidth="xs"
         aria-labelledby="market-action-title"
+        slotProps={{ paper: { sx: TAP_TARGETS } }}
       >
         <DialogTitle id="market-action-title" sx={{ fontWeight: 600 }}>
           {buy ? "確認賣出" : "確認購買"}
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+          <Typography variant="body2" sx={{ color: "text.secondary", lineHeight: 1.7 }}>
             {buy
               ? "賣出後角色立刻離開你的box，升星強化不會轉移也不會退錢，此操作無法取消。"
               : "購買後角色直接進入你的box，此操作無法取消。"}
@@ -1017,16 +965,27 @@ export default function Market() {
                     value={`${fmtStone(pendingNet)} 女神石`}
                     valueColor="secondary.main"
                   />
-                  <Row
-                    label="你的餘額"
-                    value={`${fmtStone(balance)} → ${fmtStone((balance ?? 0) + pendingNet)} 女神石`}
-                  />
+                  {balanceKnown && (
+                    <Row
+                      label="你的餘額"
+                      value={`${fmtStone(balance)} → ${fmtStone(balance + pendingNet)} 女神石`}
+                    />
+                  )}
                 </>
-              ) : (
+              ) : pendingShort ? (
+                // 餘額不夠時絕不算出負數的「交易後餘額」，直接說明還差多少。
                 <Row
                   label="你的餘額"
-                  value={`${fmtStone(balance)} → ${fmtStone((balance ?? 0) - pending.price)} 女神石`}
+                  value={`${fmtStone(balance)}，還差 ${fmtStone(pending.price - balance)} 女神石`}
+                  valueColor="error.main"
                 />
+              ) : (
+                balanceKnown && (
+                  <Row
+                    label="你的餘額"
+                    value={`${fmtStone(balance)} → ${fmtStone(balance - pending.price)} 女神石`}
+                  />
+                )
               )}
             </Box>
           )}
@@ -1039,10 +998,10 @@ export default function Market() {
             variant="contained"
             color={buy ? "secondary" : "primary"}
             onClick={handleConfirmAction}
-            disabled={acting}
+            disabled={acting || pendingShort}
             autoFocus
           >
-            {buy ? "確認賣出" : "確認購買"}
+            {acting ? "處理中…" : pendingShort ? "女神石不足" : buy ? "確認賣出" : "確認購買"}
           </Button>
         </DialogActions>
       </Dialog>

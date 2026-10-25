@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -17,32 +17,37 @@ import {
   Paper,
   Grid,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import BoltIcon from "@mui/icons-material/Bolt";
+import LoadError from "../../components/LoadError";
 import { getRaceById } from "../../api/race";
 import StatItem from "./StatItem";
 
-const RANK_STYLES = {
-  1: { bg: "#F59E0B", text: "#fff" },
-  2: { bg: "#64748B", text: "#fff" },
-  3: { bg: "#92400E", text: "#fff" },
-};
+// 前三名徽章底色走 theme.palette.medal（金銀銅），文字色由底色自動算對比
 
 export default function RaceDetail() {
   const { raceId } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // error："failed" 連線或伺服器出錯（可重試）；"notFound" 賽事不存在（重試沒用）
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     getRaceById(raceId)
       .then(setData)
-      .catch(() => setError("無法載入賽事資料"))
+      .catch(err => setError(err?.response?.status === 404 ? "notFound" : "failed"))
       .finally(() => setLoading(false));
   }, [raceId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const reversedEvents = useMemo(
     () => (data?.events ? [...data.events].reverse() : []),
@@ -62,15 +67,24 @@ export default function RaceDetail() {
   if (error || !data?.race) {
     return (
       <Container maxWidth="sm" sx={{ py: 3 }}>
-        <Alert severity="error">{error || "找不到此賽事"}</Alert>
+        {error === "failed" ? (
+          <LoadError message="無法載入賽事資料，請檢查網路後再試一次。" onRetry={load} />
+        ) : (
+          <Alert severity="error">找不到此賽事</Alert>
+        )}
         <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/race")}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate("/race")}
+            sx={{ minHeight: 44 }}
+          >
             返回賽事
           </Button>
           <Button
             startIcon={<MonetizationOnIcon />}
             variant="outlined"
             onClick={() => navigate("/race/bet")}
+            sx={{ minHeight: 44 }}
           >
             下注 / 紀錄
           </Button>
@@ -116,8 +130,7 @@ export default function RaceDetail() {
           <Button
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate("/race")}
-            size="small"
-            sx={{ fontWeight: 600 }}
+            sx={{ fontWeight: 600, minHeight: 44 }}
           >
             賽況
           </Button>
@@ -125,8 +138,7 @@ export default function RaceDetail() {
             startIcon={<MonetizationOnIcon />}
             variant="outlined"
             onClick={() => navigate("/race/bet")}
-            size="small"
-            sx={{ fontWeight: 600 }}
+            sx={{ fontWeight: 600, minHeight: 44 }}
           >
             下注 / 紀錄
           </Button>
@@ -137,8 +149,7 @@ export default function RaceDetail() {
         <Card
           sx={{
             mb: 2,
-            background: theme =>
-              `linear-gradient(135deg, ${theme.palette.warning.main}22, ${theme.palette.warning.main}08)`,
+            bgcolor: theme => alpha(theme.palette.warning.main, 0.12),
             borderColor: "warning.main",
             borderWidth: 1,
             borderStyle: "solid",
@@ -286,24 +297,30 @@ export default function RaceDetail() {
                     const rank = idx + 1;
                     const progress = Math.min((runner.position / trackLength) * 100, 100);
                     const isWinner = runner.id === race.winner_runner_id;
-                    const rankStyle = RANK_STYLES[rank];
 
                     return (
                       <Box key={runner.id}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 0.5 }}>
                           <Box
-                            sx={{
-                              width: 26,
-                              height: 26,
-                              borderRadius: "50%",
-                              bgcolor: rankStyle ? rankStyle.bg : "grey.400",
-                              color: rankStyle ? rankStyle.text : "text.secondary",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "0.7rem",
-                              fontWeight: 700,
-                              flexShrink: 0,
+                            role="img"
+                            aria-label={`第 ${rank} 名`}
+                            sx={theme => {
+                              const medal = theme.palette.medal[rank - 1] ?? null;
+                              return {
+                                width: 28,
+                                height: 28,
+                                borderRadius: "50%",
+                                bgcolor: medal ?? "action.selected",
+                                color: medal
+                                  ? theme.palette.getContrastText(medal)
+                                  : "text.secondary",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "0.75rem",
+                                fontWeight: 700,
+                                flexShrink: 0,
+                              };
                             }}
                           >
                             {rank}
@@ -366,17 +383,18 @@ export default function RaceDetail() {
                         <LinearProgress
                           variant="determinate"
                           value={progress}
+                          aria-label={`${runner.character_name} 進度 ${runner.position}/${trackLength}`}
                           sx={{
                             height: 6,
                             borderRadius: 3,
-                            bgcolor: "grey.200",
+                            bgcolor: "surface.inset",
                             "& .MuiLinearProgress-bar": {
                               borderRadius: 3,
                               bgcolor: isWinner
                                 ? "warning.main"
                                 : rank <= 3
                                   ? "primary.main"
-                                  : "grey.400",
+                                  : "text.disabled",
                             },
                           }}
                         />
@@ -412,6 +430,7 @@ export default function RaceDetail() {
                         sx={{
                           minWidth: 36,
                           height: 22,
+                          px: 0.5,
                           borderRadius: 1,
                           bgcolor: "primary.main",
                           display: "flex",
@@ -421,9 +440,10 @@ export default function RaceDetail() {
                         }}
                       >
                         <Typography
+                          variant="caption"
                           sx={{
-                            fontSize: "0.65rem",
                             fontWeight: 700,
+                            lineHeight: 1,
                             color: "primary.contrastText",
                           }}
                         >

@@ -18,25 +18,31 @@ import {
   List,
   ListItem,
   ListItemAvatar,
+  ListItemButton,
   ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import GavelIcon from "@mui/icons-material/Gavel";
 import SecurityIcon from "@mui/icons-material/Security";
 import StarsIcon from "@mui/icons-material/Stars";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import { FullPageLoading } from "../../components/Loading";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
+import useLiff from "../../context/useLiff";
 import { get } from "lodash";
 
-const RARITY_COLORS = {
-  common: "#808080",
-  rare: "#3478FF",
-  epic: "#A834FF",
-  legendary: "#FF8C00",
+// 裝備稀有度沿用成就稀有度的語意色（theme.palette.rarity[0..3]，深淺模式各自調過），
+// 後端存的是英文 enum，顯示一律走 theme 裡的中文 label，不要直接把 item.rarity 印給玩家。
+const RARITY_INDEX = {
+  common: 0,
+  rare: 1,
+  epic: 2,
+  legendary: 3,
 };
+
+const rarityOf = (theme, rarity) => theme.palette.rarity[RARITY_INDEX[rarity] ?? 0];
 
 const SLOT_LABELS = {
   weapon: "武器",
@@ -67,30 +73,55 @@ const formatAttrValue = (key, value) => {
   return `${value}`;
 };
 
-import useLiff from "../../context/useLiff";
+// 稀有度標籤：底色淡、字用稀有度主色，兩種模式的對比都已經在 theme 裡調過。
+function RarityChip({ rarity, sx }) {
+  const theme = useTheme();
+  const r = rarityOf(theme, rarity);
+
+  return (
+    <Chip
+      label={r.label}
+      size="small"
+      sx={{
+        height: 22,
+        fontSize: "0.75rem",
+        fontWeight: 600,
+        color: r.main,
+        bgcolor: r.bg,
+        border: `1px solid ${alpha(r.main, 0.4)}`,
+        ...sx,
+      }}
+    />
+  );
+}
 
 function EquipSlotCard({ slot, item, onClick }) {
   const isEmpty = !item;
-  const rarity = item ? item.rarity : "common";
-  const rarityColor = RARITY_COLORS[rarity] || "#808080";
 
   return (
     <Card
       elevation={0}
-      onClick={onClick}
-      sx={{
+      sx={theme => ({
         borderRadius: 3,
-        border: "2px solid #E0D5C1",
-        background: "linear-gradient(135deg, #FFF8F0 0%, #EDDFC4 100%)",
+        border: "2px solid",
+        // 空欄位用暖色（焦糖）的淡邊，有裝備時換成稀有度顏色
+        borderColor: isEmpty
+          ? alpha(theme.palette.secondary.main, 0.35)
+          : rarityOf(theme, item.rarity).main,
+        bgcolor: "surface.subtle",
         transition: "box-shadow 0.2s, border-color 0.2s",
-        cursor: "pointer",
-        "&:hover": {
-          boxShadow: "0 4px 12px rgba(93, 64, 55, 0.2)",
-        },
-        ...(isEmpty ? { borderStyle: "dashed", opacity: 0.7 } : { borderColor: rarityColor }),
-      }}
+        ...(isEmpty ? { borderStyle: "dashed" } : {}),
+      })}
     >
-      <CardActionArea>
+      <CardActionArea
+        onClick={onClick}
+        aria-label={
+          isEmpty
+            ? `${SLOT_LABELS[slot]}：未裝備，點擊選擇裝備`
+            : `${SLOT_LABELS[slot]}：${item.name}，點擊更換`
+        }
+        sx={{ minHeight: 72 }}
+      >
         <Box
           sx={{
             display: "flex",
@@ -101,12 +132,13 @@ function EquipSlotCard({ slot, item, onClick }) {
         >
           {isEmpty ? (
             <Avatar
-              sx={{
+              sx={theme => ({
                 width: 48,
                 height: 48,
-                bgcolor: "#E0D5C1",
+                bgcolor: alpha(theme.palette.secondary.main, 0.14),
+                color: "secondary.main",
                 fontSize: 24,
-              }}
+              })}
             >
               {SLOT_ICONS[slot]}
             </Avatar>
@@ -115,16 +147,16 @@ function EquipSlotCard({ slot, item, onClick }) {
               src={item.image_url}
               alt={item.name}
               variant="rounded"
-              sx={{
+              sx={theme => ({
                 width: 48,
                 height: 48,
-                border: `2px solid ${rarityColor}`,
-              }}
+                border: `2px solid ${rarityOf(theme, item.rarity).main}`,
+              })}
             >
               {SLOT_ICONS[slot]}
             </Avatar>
           )}
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               variant="caption"
               sx={{
@@ -144,21 +176,13 @@ function EquipSlotCard({ slot, item, onClick }) {
               </Typography>
             ) : (
               <>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  <Typography sx={{ fontWeight: 600, fontSize: "0.95rem" }}>{item.name}</Typography>
-                  <Chip
-                    label={item.rarity}
-                    size="small"
-                    sx={{
-                      height: 20,
-                      fontSize: "0.7rem",
-                      fontWeight: 600,
-                      color: "#fff",
-                      bgcolor: RARITY_COLORS[item.rarity],
-                    }}
-                  />
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    {item.name}
+                  </Typography>
+                  <RarityChip rarity={item.rarity} />
                 </Box>
-                <Typography sx={{ fontSize: "0.8rem", color: "#795548" }}>
+                <Typography sx={{ fontSize: "0.8125rem", color: "text.secondary" }}>
                   {item.attributes &&
                     Object.entries(item.attributes)
                       .filter(([, v]) => v)
@@ -181,16 +205,17 @@ function BonusSummary({ bonuses }) {
 
   return (
     <>
-      <Divider sx={{ my: 2, bgcolor: "#E0D5C1" }} />
-      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#5D4037", mb: 1 }}>
+      <Divider sx={{ my: 2 }} />
+      <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600, mb: 1 }}>
         裝備加成總覽
       </Typography>
       <Card
         elevation={0}
         sx={{
           borderRadius: 3,
-          background: "linear-gradient(135deg, #FFF8F0 0%, #EDDFC4 100%)",
-          border: "2px solid #E0D5C1",
+          bgcolor: "surface.subtle",
+          border: "1px solid",
+          borderColor: "divider",
         }}
       >
         <CardContent>
@@ -205,10 +230,10 @@ function BonusSummary({ bonuses }) {
                   py: 0.5,
                 }}
               >
-                <Typography variant="body2" sx={{ color: "#795548", fontWeight: 500 }}>
+                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
                   {ATTR_LABELS[key] || key}
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: "#2E7D32" }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: "success.main" }}>
                   {formatAttrValue(key, value)}
                 </Typography>
               </Box>
@@ -224,6 +249,8 @@ function EquipDialog({
   slot,
   equippedItem,
   equipmentList,
+  listError,
+  onRetryList,
   onEquip,
   onUnequip,
   onClose,
@@ -258,13 +285,16 @@ function EquipDialog({
               fullWidth
               onClick={() => onUnequip(slot)}
               disabled={loading}
+              sx={{ minHeight: 44 }}
             >
               卸下目前裝備
             </Button>
           </Box>
         )}
 
-        {equipmentList.length === 0 ? (
+        {listError ? (
+          <LoadError message="裝備清單載入失敗，請檢查網路後再試一次。" onRetry={onRetryList} />
+        ) : equipmentList.length === 0 ? (
           <Typography
             align="center"
             sx={{
@@ -283,73 +313,70 @@ function EquipDialog({
               const isEquipped = equippedItem && equippedItem.id === eqId;
 
               return (
-                <ListItem
-                  key={eqId}
-                  onClick={() => !isEquipped && onEquip(eqId)}
-                  disabled={isEquipped || loading}
-                  sx={{
-                    borderRadius: 2,
-                    mb: 0.5,
-                    border: "1px solid #E0D5C1",
-                    cursor: isEquipped || loading ? "default" : "pointer",
-                    "&:hover": {
-                      bgcolor: "#FFF8F0",
-                    },
-                  }}
-                >
-                  <ListItemAvatar>
-                    <Avatar
-                      src={item.image_url}
-                      variant="rounded"
-                      sx={{
-                        border: `2px solid ${RARITY_COLORS[item.rarity]}`,
-                        width: 40,
-                        height: 40,
-                      }}
-                    >
-                      {SLOT_ICONS[slot]}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                        <span style={{ fontWeight: 600 }}>{item.name}</span>
-                        <Chip
-                          label={item.rarity}
-                          size="small"
+                <ListItem key={eqId} disablePadding sx={{ mb: 0.5 }}>
+                  {/* 整列就是一顆按鈕：鍵盤、讀屏與 44px 觸控區都由 ListItemButton 提供 */}
+                  <ListItemButton
+                    selected={Boolean(isEquipped)}
+                    aria-current={isEquipped ? "true" : undefined}
+                    onClick={() => !isEquipped && onEquip(eqId)}
+                    disabled={loading}
+                    sx={{
+                      borderRadius: 2,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      minHeight: 56,
+                      gap: 0.5,
+                    }}
+                  >
+                    <ListItemAvatar>
+                      <Avatar
+                        src={item.image_url}
+                        variant="rounded"
+                        sx={theme => ({
+                          border: `2px solid ${rarityOf(theme, item.rarity).main}`,
+                          width: 40,
+                          height: 40,
+                        })}
+                      >
+                        {SLOT_ICONS[slot]}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Box
+                          component="span"
                           sx={{
-                            bgcolor: RARITY_COLORS[item.rarity],
-                            color: "#fff",
-                            height: 18,
-                            fontSize: "0.65rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.75,
+                            flexWrap: "wrap",
                           }}
-                        />
-                      </Box>
-                    }
-                    secondary={
-                      attrs &&
-                      Object.entries(attrs)
-                        .filter(([, v]) => v)
-                        .map(([k, v]) => `${ATTR_LABELS[k] || k} ${formatAttrValue(k, v)}`)
-                        .join(" / ")
-                    }
-                  />
-                  <ListItemSecondaryAction>
+                        >
+                          <span style={{ fontWeight: 600 }}>{item.name}</span>
+                          <RarityChip rarity={item.rarity} sx={{ height: 20 }} />
+                        </Box>
+                      }
+                      secondary={
+                        attrs &&
+                        Object.entries(attrs)
+                          .filter(([, v]) => v)
+                          .map(([k, v]) => `${ATTR_LABELS[k] || k} ${formatAttrValue(k, v)}`)
+                          .join(" / ")
+                      }
+                    />
                     {isEquipped ? (
                       <Chip label="裝備中" size="small" color="primary" />
                     ) : (
-                      <IconButton
-                        edge="end"
-                        size="small"
-                        onClick={() => onEquip(eqId)}
-                        disabled={loading}
+                      <Typography
+                        variant="body2"
+                        color="primary"
+                        sx={{ fontWeight: 600, flexShrink: 0 }}
+                        aria-hidden="true"
                       >
-                        <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }}>
-                          裝備
-                        </Typography>
-                      </IconButton>
+                        裝備
+                      </Typography>
                     )}
-                  </ListItemSecondaryAction>
+                  </ListItemButton>
                 </ListItem>
               );
             })}
@@ -357,7 +384,7 @@ function EquipDialog({
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="primary">
+        <Button onClick={onClose} color="primary" sx={{ minHeight: 44 }}>
           關閉
         </Button>
       </DialogActions>
@@ -369,11 +396,10 @@ export default function Equipment() {
   const { loggedIn: isLoggedIn } = useLiff();
   const [snackbar, { handleOpen: showSnack, handleClose: closeSnack }] = useHintBar();
 
-  const [{ data: myData, loading: myLoading }, fetchMyEquipment] = useAxios(
-    "/api/game/equipment/me",
-    { manual: true }
-  );
-  const [{ data: availableList = [], loading: availableLoading }, fetchAvailable] = useAxios(
+  const [{ data: myData, error: myError }, fetchMyEquipment] = useAxios("/api/game/equipment/me", {
+    manual: true,
+  });
+  const [{ data: availableData, error: availableError }, fetchAvailable] = useAxios(
     "/api/game/equipment/available",
     { manual: true }
   );
@@ -392,10 +418,14 @@ export default function Equipment() {
     document.title = "裝備管理";
   }, []);
 
+  // 錯誤已存進 axios-hooks 的 state；這裡吞掉 rejection 避免 unhandled。
+  const loadMine = useCallback(() => fetchMyEquipment().catch(() => {}), [fetchMyEquipment]);
+  const loadAvailable = useCallback(() => fetchAvailable().catch(() => {}), [fetchAvailable]);
+
   useEffect(() => {
     if (!isLoggedIn) return;
-    fetchMyEquipment();
-    fetchAvailable();
+    loadMine();
+    loadAvailable();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
@@ -407,6 +437,11 @@ export default function Equipment() {
     exp_bonus: 0,
     gold_bonus: 0,
   });
+
+  const availableList = useMemo(
+    () => (Array.isArray(availableData) ? availableData : []),
+    [availableData]
+  );
 
   const filteredEquipment = useMemo(() => {
     if (!selectedSlot) return [];
@@ -423,14 +458,14 @@ export default function Equipment() {
         await doEquip({ data: { equipment_id: equipmentId } });
         showSnack("裝備成功！", "success");
         setSelectedSlot(null);
-        fetchMyEquipment();
-        fetchAvailable();
+        loadMine();
+        loadAvailable();
       } catch (e) {
-        const msg = get(e, "response.data.message", "裝備失敗");
+        const msg = get(e, "response.data.message", "裝備失敗，請稍後再試一次。");
         showSnack(msg, "error");
       }
     },
-    [doEquip, fetchMyEquipment, fetchAvailable, showSnack]
+    [doEquip, loadMine, loadAvailable, showSnack]
   );
 
   const handleUnequip = useCallback(
@@ -439,24 +474,39 @@ export default function Equipment() {
         await doUnequip({ data: { slot } });
         showSnack("已卸下裝備", "success");
         setSelectedSlot(null);
-        fetchMyEquipment();
-        fetchAvailable();
+        loadMine();
+        loadAvailable();
       } catch (e) {
-        const msg = get(e, "response.data.message", "卸下失敗");
+        const msg = get(e, "response.data.message", "卸下失敗，請稍後再試一次。");
         showSnack(msg, "error");
       }
     },
-    [doUnequip, fetchMyEquipment, fetchAvailable, showSnack]
+    [doUnequip, loadMine, loadAvailable, showSnack]
   );
 
   if (!isLoggedIn) return <AlertLogin />;
-  if (myLoading || availableLoading) return <FullPageLoading />;
+
+  // 失敗不能畫成「全部欄位都是空的」，那會讓人以為裝備被拆光了。
+  if (myError && !myData) {
+    return (
+      <LoadError
+        message="裝備資料載入失敗，請檢查網路後再試一次。"
+        onRetry={() => {
+          loadMine();
+          loadAvailable();
+        }}
+      />
+    );
+  }
+
+  // 沒資料也沒錯誤＝還在載入。裝備、卸下之後的重新整理不會再回到這裡，頁面不會閃一下。
+  if (!myData) return <FullPageLoading />;
 
   const actionLoading = equipLoading || unequipLoading;
 
   return (
     <>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: "#5D4037" }}>
+      <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 2 }}>
         裝備管理
       </Typography>
 
@@ -481,6 +531,8 @@ export default function Equipment() {
         slot={selectedSlot}
         equippedItem={selectedSlot ? equipped[selectedSlot] : null}
         equipmentList={filteredEquipment}
+        listError={Boolean(availableError) && !availableData}
+        onRetryList={loadAvailable}
         onEquip={handleEquip}
         onUnequip={handleUnequip}
         onClose={() => setSelectedSlot(null)}

@@ -7,7 +7,7 @@ import {
   Grid,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { APPROX_MAX_EXP } from "./constants";
+import { APPROX_MAX_EXP, TRIAL_UNLOCK_LEVEL } from "./constants";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -36,6 +36,8 @@ export default function LevelClimbView({ status }) {
   // and doesn't have a pending pass — this includes lapsed climbers, not just
   // brand-new Lv.0 users.
   const showOnboarding = prestigeCount === 0 && !activeTrial && !hasUnconsumedPassedTrial;
+  // 試煉要到 Lv.TRIAL_UNLOCK_LEVEL 才能選；文案不能叫鎖住的人去選。
+  const trialLocked = currentLevel < TRIAL_UNLOCK_LEVEL;
 
   return (
     <Box
@@ -51,21 +53,18 @@ export default function LevelClimbView({ status }) {
     >
       {/* Distance to Lv.100 */}
       <Box>
-        <Typography variant="h6" component="div" fontWeight={700}>
+        <Typography variant="h6" component="div" sx={{ fontWeight: 700 }}>
           距離 Lv.100 還需約 {remaining.toLocaleString()} XP
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
           目前 Lv.{currentLevel}，累積 {currentExp.toLocaleString()} XP
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-          可在下方選擇試煉開始挑戰，期間 XP 同時計入等級與試煉條件。
         </Typography>
       </Box>
 
       {showOnboarding && (
         <Grid container spacing={{ xs: 1.5, md: 3 }}>
           <Grid size={{ xs: 12, md: 5 }}>
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
               首次指南
             </Typography>
             <Box
@@ -73,7 +72,9 @@ export default function LevelClimbView({ status }) {
               sx={{ m: 0, pl: 2.5, display: "flex", flexDirection: "column", gap: 0.75 }}
             >
               <Typography component="li" variant="body2">
-                從下方選一道試煉開始挑戰（不需等到 Lv.100）
+                {trialLocked
+                  ? `升到 Lv.${TRIAL_UNLOCK_LEVEL} 後選一道試煉開始挑戰（不需等到 Lv.100）`
+                  : "從下方選一道試煉開始挑戰（不需等到 Lv.100）"}
               </Typography>
               <Typography component="li" variant="body2">
                 試煉期間發話 XP 同時計入等級與試煉條件，60 天為期
@@ -84,7 +85,7 @@ export default function LevelClimbView({ status }) {
             </Box>
           </Grid>
           <Grid size={{ xs: 12, md: 7 }}>
-            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
               常見問題
             </Typography>
             <Box>
@@ -102,12 +103,12 @@ export default function LevelClimbView({ status }) {
                   }}
                 >
                   <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44 }}>
-                    <Typography variant="body2" fontWeight={600}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {item.q}
                     </Typography>
                   </AccordionSummary>
                   <AccordionDetails sx={{ pt: 0 }}>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
                       {item.a}
                     </Typography>
                   </AccordionDetails>

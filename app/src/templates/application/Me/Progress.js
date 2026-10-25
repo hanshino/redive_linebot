@@ -16,7 +16,7 @@ function header() {
       {
         type: "text",
         text: "蒐集 · 戰績",
-        size: "xxs",
+        size: "xs",
         color: COLORS.textMuted,
         align: "end",
         gravity: "bottom",
@@ -82,7 +82,7 @@ function progressBlock({ label, valueText, percent, fillColorStart, fillColorEnd
     contents.push({
       type: "text",
       text: metaText,
-      size: "xxs",
+      size: "xs",
       color: COLORS.textMuted,
       align: "end",
       margin: "xs",
@@ -116,7 +116,7 @@ function walletRow({ godStone, paidStone }) {
     type: "box",
     layout: "vertical",
     contents: [
-      { type: "text", text: label, size: "xxs", color: COLORS.textMuted },
+      { type: "text", text: label, size: "xs", color: COLORS.textMuted },
       {
         type: "text",
         text: format(value),
@@ -153,7 +153,7 @@ function jankenBlock({ win, lose, draw, rate }) {
     layout: "vertical",
     contents: [
       { type: "text", text: String(value), size: "md", color: fg, weight: "bold", align: "center" },
-      { type: "text", text: label, size: "xxs", color: COLORS.textMuted, align: "center" },
+      { type: "text", text: label, size: "xs", color: COLORS.textMuted, align: "center" },
     ],
     backgroundColor: bg,
     cornerRadius: "md",

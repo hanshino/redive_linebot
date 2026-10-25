@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -13,25 +13,18 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SaveIcon from "@mui/icons-material/Save";
 import BrokenImageIcon from "@mui/icons-material/BrokenImage";
 import HintSnackBar from "../../../components/HintSnackBar";
+import LoadError from "../../../components/LoadError";
+import { bottomNavSpace } from "../../../components/BottomNav";
 import { FullPageLoading } from "../../../components/Loading";
 import useHintBar from "../../../hooks/useHintBar";
 import * as gachaPoolService from "../../../services/gachaPool";
-
-const STAR_CONFIG = {
-  1: { label: "⭐ Rare (R)", color: "#6B7280", bg: "rgba(107, 114, 128, 0.1)" },
-  2: { label: "⭐⭐ SuperRare (SR)", color: "#A855F7", bg: "rgba(168, 85, 247, 0.1)" },
-  3: { label: "⭐⭐⭐ UltraRare (SSR)", color: "#F59E0B", bg: "rgba(245, 158, 11, 0.1)" },
-};
-
-const starOptions = [
-  { value: 1, label: "⭐ Rare (R)" },
-  { value: 2, label: "⭐⭐ SuperRare (SR)" },
-  { value: 3, label: "⭐⭐⭐ UltraRare (SSR)" },
-];
+import { errorText } from "../_errors";
+import { STAR_META, STAR_OPTIONS, starColors, fmtRate } from "./stars";
 
 const princessOptions = [
   { value: 1, label: "是公主" },
@@ -52,56 +45,70 @@ export default function GachaPoolForm() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isDark = theme.palette.mode === "dark";
   const isEdit = Boolean(id);
 
   const [formData, setFormData] = useState(EMPTY_FORM);
-  const [loading, setLoading] = useState(isEdit);
+  // 整個卡池只在載入時抓一次：編輯要找角色、機率預覽要算同星等的其他角色
+  const [pool, setPool] = useState([]);
+  // 編輯時角色原本的星等與機率，預覽才能扣掉「舊值」
+  const [original, setOriginal] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
+  // 儲存成功後到換頁之間也要鎖住按鈕，避免重複送出
+  const [saved, setSaved] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const [imageUrlError, setImageUrlError] = useState("");
+  const [errors, setErrors] = useState({});
+  const navTimerRef = useRef(null);
 
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
 
-  const fetchCharacter = useCallback(async () => {
+  const fetchPool = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError("");
       const data = await gachaPoolService.fetchData();
-      const character = data.find(d => d.id === Number(id));
-      if (!character) {
-        showHint("找不到該角色", "error");
-        navigate("/admin/gacha-pool");
-        return;
+      setPool(
+        data.map(d => ({ id: Number(d.id), star: parseInt(d.star, 10), rate: parseFloat(d.rate) }))
+      );
+      if (isEdit) {
+        const character = data.find(d => d.id === Number(id));
+        if (!character) {
+          setLoadError("notfound");
+          return;
+        }
+        const parsedRate = parseFloat(character.rate);
+        const star = Number(character.star) || 3;
+        setOriginal({ star, rate: isNaN(parsedRate) ? 0 : parsedRate });
+        setFormData({
+          name: character.name || "",
+          imageUrl: character.imageUrl || "",
+          star,
+          rate: isNaN(parsedRate) ? "" : parsedRate,
+          isPrincess: parseInt(character.isPrincess, 10) ?? 1,
+          tag: character.tag || "",
+        });
       }
-      const parsedRate = parseFloat(character.rate);
-      setFormData({
-        name: character.name || "",
-        imageUrl: character.imageUrl || "",
-        star: Number(character.star) || 3,
-        rate: isNaN(parsedRate) ? "" : parsedRate,
-        isPrincess: parseInt(character.isPrincess, 10) ?? 1,
-        tag: character.tag || "",
-      });
     } catch {
-      showHint("載入資料失敗", "error");
+      // 編輯模式載入失敗時不能顯示空白表單，否則一按儲存就會用空資料覆蓋原角色
+      setLoadError("failed");
     } finally {
       setLoading(false);
     }
-  }, [id, navigate, showHint]);
+  }, [id, isEdit]);
 
   useEffect(() => {
     document.title = isEdit ? "編輯角色" : "新增角色";
-    if (isEdit) {
-      fetchCharacter();
-    }
-  }, [isEdit, fetchCharacter]);
+    fetchPool();
+  }, [isEdit, fetchPool]);
+
+  useEffect(() => () => clearTimeout(navTimerRef.current), []);
 
   const handleChange = field => e => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));
-    if (field === "imageUrl") {
-      setImgError(false);
-      setImageUrlError("");
-    }
+    // 改到的欄位就清掉它的錯誤，不用等下一次送出
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+    if (field === "imageUrl") setImgError(false);
   };
 
   const cleanUrl = url =>
@@ -117,34 +124,28 @@ export default function GachaPoolForm() {
     }
   };
 
-  const validateImageUrl = url => {
-    if (!url) return "";
-    if (!url.startsWith("https://")) return "圖片網址必須以 https:// 開頭";
-    return "";
+  const validate = () => {
+    const next = {};
+    if (!formData.name.trim()) next.name = "請輸入角色名稱";
+
+    const parsedRateValue = parseFloat(formData.rate);
+    if (formData.rate === "" || isNaN(parsedRateValue)) next.rate = "請輸入機率";
+    else if (parsedRateValue < 0) next.rate = "機率不能小於 0";
+
+    const cleanedImageUrl = cleanUrl(formData.imageUrl);
+    if (cleanedImageUrl && !cleanedImageUrl.startsWith("https://"))
+      next.imageUrl = "圖片網址必須以 https:// 開頭";
+    return next;
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim()) {
-      showHint("請輸入角色名稱", "warning");
-      return;
-    }
-
-    const parsedRateValue = parseFloat(formData.rate);
-    if (formData.rate === "" || isNaN(parsedRateValue) || parsedRateValue < 0) {
-      showHint("請輸入有效的機率（>= 0）", "warning");
-      return;
-    }
-
-    const cleanedImageUrl = cleanUrl(formData.imageUrl);
-    const urlErr = validateImageUrl(cleanedImageUrl);
-    if (urlErr) {
-      setImageUrlError(urlErr);
-      return;
-    }
+    const next = validate();
+    setErrors(next);
+    if (Object.keys(next).length) return;
 
     const payload = {
-      name: formData.name,
-      headImage_url: cleanedImageUrl,
+      name: formData.name.trim(),
+      headImage_url: cleanUrl(formData.imageUrl),
       star: formData.star,
       rate: formData.rate,
       is_princess: formData.isPrincess,
@@ -158,23 +159,61 @@ export default function GachaPoolForm() {
       } else {
         await gachaPoolService.insertData(payload);
       }
-      showHint(isEdit ? "更新成功" : "新增成功", "success");
-      setTimeout(() => navigate("/admin/gacha-pool"), 800);
-    } catch {
-      showHint(isEdit ? "更新失敗" : "新增失敗", "error");
+      setSaved(true);
+      showHint(
+        isEdit ? `已更新角色「${payload.name}」` : `已新增角色「${payload.name}」`,
+        "success"
+      );
+      navTimerRef.current = setTimeout(() => navigate("/admin/gacha-pool"), 800);
+    } catch (e) {
+      showHint(
+        errorText(e, `${isEdit ? "更新" : "新增"}角色失敗，內容還沒儲存，請檢查網路後再試一次。`),
+        "error"
+      );
     } finally {
       setSaving(false);
     }
   };
 
+  // 這個星等目前的總機率 → 套用輸入值後的總機率
+  const ratePreview = useMemo(() => {
+    const star = Number(formData.star);
+    const editingId = isEdit ? Number(id) : null;
+    const others = pool
+      .filter(p => p.star === star && p.id !== editingId)
+      .reduce((sum, p) => sum + (Number(p.rate) || 0), 0);
+    const ownSaved = original && original.star === star ? original.rate : 0;
+    const input = parseFloat(formData.rate);
+    return {
+      before: others + ownSaved,
+      after: others + (isNaN(input) || input < 0 ? 0 : input),
+      hasInput: !isNaN(input) && input >= 0,
+    };
+  }, [pool, original, formData.star, formData.rate, isEdit, id]);
+
   if (loading) {
     return <FullPageLoading />;
   }
 
-  const starCfg = STAR_CONFIG[formData.star] || STAR_CONFIG[1];
+  if (loadError) {
+    return loadError === "notfound" ? (
+      <LoadError
+        message="找不到這個角色，它可能已被刪除。"
+        onRetry={() => navigate("/admin/gacha-pool")}
+        retryText="回卡池列表"
+      />
+    ) : (
+      <LoadError message="卡池資料載入失敗，請檢查網路後再試一次。" onRetry={fetchPool} />
+    );
+  }
 
+  const starCfg = starColors(theme, formData.star);
+  const starLabel = (STAR_META[formData.star] || STAR_META[1]).full;
+  const busy = saving || saved;
+
+  // 手機底部有固定導覽列，吸底儲存列要疊在它上面，內容也要多留空間
   return (
-    <Box sx={{ width: "100%", maxWidth: 640, mx: "auto", pb: 10 }}>
+    <Box sx={{ width: "100%", maxWidth: 640, mx: "auto", pb: { xs: 22, sm: 10 } }}>
       {/* Header */}
       <Stack
         direction="row"
@@ -185,11 +224,9 @@ export default function GachaPoolForm() {
         }}
       >
         <IconButton
+          aria-label="返回卡池列表"
           onClick={() => navigate("/admin/gacha-pool")}
-          sx={{
-            bgcolor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-            "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" },
-          }}
+          sx={{ bgcolor: "action.hover", width: 44, height: 44 }}
         >
           <ArrowBackIcon />
         </IconButton>
@@ -209,9 +246,7 @@ export default function GachaPoolForm() {
           borderRadius: 3,
           border: 1,
           borderColor: "divider",
-          background: isDark
-            ? `linear-gradient(135deg, ${starCfg.bg} 0%, transparent 100%)`
-            : `linear-gradient(135deg, ${starCfg.bg} 0%, rgba(255,255,255,0) 100%)`,
+          background: `linear-gradient(135deg, ${starCfg.bg} 0%, transparent 100%)`,
           transition: "background 0.3s",
         }}
       >
@@ -225,7 +260,7 @@ export default function GachaPoolForm() {
               height: 120,
               border: 3,
               borderColor: starCfg.color,
-              boxShadow: `0 0 0 4px ${starCfg.bg}, 0 8px 24px rgba(0,0,0,0.12)`,
+              boxShadow: `0 0 0 4px ${starCfg.bg}, 0 8px 24px ${alpha(theme.palette.common.black, 0.12)}`,
             }}
           />
         ) : (
@@ -240,7 +275,7 @@ export default function GachaPoolForm() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+              bgcolor: "action.hover",
             }}
           >
             <BrokenImageIcon sx={{ fontSize: 40, color: "text.disabled" }} />
@@ -253,7 +288,7 @@ export default function GachaPoolForm() {
         )}
         {formData.star && (
           <Typography variant="caption" sx={{ color: starCfg.color, fontWeight: 700, mt: 0.5 }}>
-            {starCfg.label}
+            {starLabel}
           </Typography>
         )}
       </Paper>
@@ -269,7 +304,7 @@ export default function GachaPoolForm() {
       >
         <Stack spacing={2.5}>
           {/* Section: Basic Info */}
-          <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 700 }}>
+          <Typography variant="subtitle2" sx={{ color: "text.secondary", fontWeight: 700 }}>
             基本資訊
           </Typography>
 
@@ -279,6 +314,8 @@ export default function GachaPoolForm() {
             value={formData.name}
             onChange={handleChange("name")}
             required
+            error={Boolean(errors.name)}
+            helperText={errors.name}
           />
 
           <TextField
@@ -288,12 +325,12 @@ export default function GachaPoolForm() {
             onChange={handleChange("imageUrl")}
             onBlur={handleImageUrlBlur}
             placeholder="https://..."
-            error={Boolean(imageUrlError)}
-            helperText={imageUrlError}
+            error={Boolean(errors.imageUrl)}
+            helperText={errors.imageUrl}
           />
 
           {/* Section: Gacha Settings */}
-          <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 700, mt: 1 }}>
+          <Typography variant="subtitle2" sx={{ color: "text.secondary", fontWeight: 700, mt: 1 }}>
             轉蛋設定
           </Typography>
 
@@ -305,7 +342,7 @@ export default function GachaPoolForm() {
               value={formData.star}
               onChange={handleChange("star")}
             >
-              {starOptions.map(opt => (
+              {STAR_OPTIONS.map(opt => (
                 <MenuItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </MenuItem>
@@ -318,6 +355,12 @@ export default function GachaPoolForm() {
               value={formData.rate}
               onChange={handleChange("rate")}
               type="number"
+              required
+              error={Boolean(errors.rate)}
+              helperText={
+                errors.rate ||
+                `此星級總機率 ${fmtRate(ratePreview.before)} → ${fmtRate(ratePreview.after)}${ratePreview.hasInput ? "" : "（填入機率後更新）"}`
+              }
               slotProps={{ htmlInput: { step: "0.001", min: "0" } }}
             />
           </Stack>
@@ -345,16 +388,15 @@ export default function GachaPoolForm() {
       <Box
         sx={{
           position: "fixed",
-          bottom: 0,
+          bottom: { xs: bottomNavSpace, sm: 0 },
           left: { xs: 0, md: 260 },
           right: 0,
           p: 2,
-          bgcolor: "background.paper",
           borderTop: 1,
           borderColor: "divider",
           zIndex: t => t.zIndex.appBar - 1,
           backdropFilter: "blur(8px)",
-          backgroundColor: isDark ? "rgba(10,26,42,0.92)" : "rgba(255,255,255,0.92)",
+          backgroundColor: t => alpha(t.palette.background.paper, 0.92),
         }}
       >
         <Box sx={{ maxWidth: 640, mx: "auto" }}>
@@ -364,10 +406,10 @@ export default function GachaPoolForm() {
             size="large"
             startIcon={<SaveIcon />}
             onClick={handleSave}
-            disabled={saving}
-            sx={{ py: 1.5, fontWeight: 700, fontSize: "1rem", borderRadius: 2, boxShadow: 3 }}
+            disabled={busy}
+            sx={{ py: 1.5, fontWeight: 700, fontSize: "1rem", borderRadius: 2 }}
           >
-            {saving ? "儲存中..." : isEdit ? "儲存變更" : "新增角色"}
+            {saved ? "已儲存，返回列表…" : saving ? "儲存中..." : isEdit ? "儲存變更" : "新增角色"}
           </Button>
         </Box>
       </Box>

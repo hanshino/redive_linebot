@@ -303,10 +303,10 @@ describe("WorldBoss Flex production contract", () => {
 
     [...reply.contents, WorldBoss.generateNoActiveSeasonBubble({ liffUri: LIFF })].forEach(
       bubble => {
-        expect(bubble.styles.body.backgroundColor).toBe("#131822");
-        expect(bubble.styles.footer.backgroundColor).toBe("#131822");
-        expect(bubble.body.backgroundColor).toBe("#131822");
-        expect(bubble.footer.backgroundColor).toBe("#131822");
+        expect(bubble.styles.body.backgroundColor).toBe("#0A1A2A");
+        expect(bubble.styles.footer.backgroundColor).toBe("#0A1A2A");
+        expect(bubble.body.backgroundColor).toBe("#0A1A2A");
+        expect(bubble.footer.backgroundColor).toBe("#0A1A2A");
       }
     );
   });
@@ -347,8 +347,8 @@ describe("WorldBoss Flex production contract", () => {
     expect(overlays.every(node => node.position === "absolute")).toBe(true);
     expect(gradients(hero)[0]).toMatchObject({
       angle: "0deg",
-      startColor: "#131822",
-      endColor: "#13182200",
+      startColor: "#0A1A2A",
+      endColor: "#0A1A2A00",
     });
     expect(text(hero)).toEqual(expect.arrayContaining(["第 3 輪 · 1 號", "王1"]));
     // 名稱是卡面上最大的一行字。
@@ -369,14 +369,14 @@ describe("WorldBoss Flex production contract", () => {
     const clearedHero = reply.contents[1].hero;
 
     expect(images(clearedHero).map(image => image.url)).toEqual([httpsImage(2)]);
-    expect(clearedHero.contents.some(node => node.backgroundColor === "#0A0F16D9")).toBe(true);
+    expect(clearedHero.contents.some(node => node.backgroundColor === "#0A1A2AD9")).toBe(true);
     // Flex images have no opacity property; the veil must be a real box.
     expect(images(clearedHero).every(image => image.opacity === undefined)).toBe(true);
     expect(text(clearedHero)).toContain("已擊破");
     expect(actions(reply.contents[1])).toHaveLength(0);
 
     const liveHero = reply.contents[0].hero;
-    expect(liveHero.contents.some(node => node.backgroundColor === "#0A0F16D9")).toBe(false);
+    expect(liveHero.contents.some(node => node.backgroundColor === "#0A1A2AD9")).toBe(false);
     expect(text(liveHero)).not.toContain("已擊破");
   });
 
@@ -429,7 +429,7 @@ describe("WorldBoss Flex production contract", () => {
 
     expect(Buffer.byteLength(description.text, "utf8")).toBeLessThanOrEqual(2048);
     expect(description.text.endsWith("…")).toBe(true);
-    expect(description).toMatchObject({ wrap: true, maxLines: 2, size: "xs", color: "#8A98AD" });
+    expect(description).toMatchObject({ wrap: true, maxLines: 2, size: "xs", color: "#B0BEC5" });
 
     // 沒有描述時整個 text node 不能存在，否則會多出一塊空白。
     const empty = bubbleFor({ description: "" });

@@ -21,6 +21,7 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import PeopleIcon from "@mui/icons-material/People";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import useLiff from "../../context/useLiff";
 
 /* ---------- helpers ---------- */
@@ -32,7 +33,8 @@ const fmtDate = ts => {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 };
 
-const MEDAL_COLORS = ["#FFD700", "#A0A0A0", "#CD7F32"];
+// 橫幅上的 Chip 用實底：半透明白疊在青色上，12px 文字對比不足
+const bannerChipSx = { bgcolor: "background.paper", color: "text.primary", fontWeight: 600 };
 
 /* ---------- StatChip ---------- */
 function StatChip({ icon, label, value }) {
@@ -102,12 +104,20 @@ function GroupBanner({ group, rank }) {
         <Avatar
           src={group?.pictureUrl}
           alt={group?.groupName}
-          sx={{ width: 72, height: 72, border: "3px solid rgba(255,255,255,0.3)" }}
+          sx={{
+            width: 72,
+            height: 72,
+            border: "3px solid",
+            borderColor: group?.pictureUrl ? "common.white" : "primary.contrastText",
+          }}
         >
           {group?.groupName?.charAt(0)}
         </Avatar>
-        <Box sx={{ color: "#fff", minWidth: 0 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }} noWrap>
+        {/* 有群組圖時底是壓暗的照片，文字固定白色；否則底是主色漸層，用 contrastText */}
+        <Box
+          sx={{ color: group?.pictureUrl ? "common.white" : "primary.contrastText", minWidth: 0 }}
+        >
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }} noWrap>
             {group?.groupName}
           </Typography>
           <Box sx={{ display: "flex", gap: 2, mt: 0.5, flexWrap: "wrap" }}>
@@ -115,13 +125,13 @@ function GroupBanner({ group, rank }) {
               icon={<PeopleIcon sx={{ color: "inherit !important" }} />}
               label={`${memberCount} / ${groupCount} 人`}
               size="small"
-              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+              sx={bannerChipSx}
             />
             <Chip
               icon={<ForumIcon sx={{ color: "inherit !important" }} />}
               label={`${totalMessages.toLocaleString()} 則訊息`}
               size="small"
-              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+              sx={bannerChipSx}
             />
           </Box>
         </Box>
@@ -146,7 +156,7 @@ function TopContributors({ rank }) {
           <Grid size={{ xs: 12, sm: 4 }} key={member.userId}>
             <Card
               sx={{
-                borderTop: `3px solid ${MEDAL_COLORS[i]}`,
+                borderTop: theme => `3px solid ${theme.palette.medal[i]}`,
                 height: "100%",
               }}
             >
@@ -164,7 +174,8 @@ function TopContributors({ rank }) {
                     sx={{
                       width: 56,
                       height: 56,
-                      bgcolor: MEDAL_COLORS[i],
+                      bgcolor: theme => theme.palette.medal[i],
+                      color: theme => theme.palette.getContrastText(theme.palette.medal[i]),
                       fontSize: 24,
                       fontWeight: 700,
                     }}
@@ -176,8 +187,8 @@ function TopContributors({ rank }) {
                       position: "absolute",
                       bottom: -4,
                       right: -4,
-                      bgcolor: MEDAL_COLORS[i],
-                      color: "#fff",
+                      bgcolor: theme => theme.palette.medal[i],
+                      color: theme => theme.palette.getContrastText(theme.palette.medal[i]),
                       borderRadius: "50%",
                       width: 22,
                       height: 22,
@@ -442,11 +453,11 @@ export default function GroupRecord() {
   const { groupId } = useParams();
   const { loggedIn: isLoggedIn, profile } = useLiff();
 
-  const [{ data: rankData, loading: rankLoading }, fetchRank] = useAxios(
+  const [{ data: rankData, loading: rankLoading, error: rankError }, fetchRank] = useAxios(
     { url: `/api/groups/${groupId}/speak-rank` },
     { manual: true }
   );
-  const [{ data: groupData, loading: groupLoading }, fetchGroup] = useAxios(
+  const [{ data: groupData, loading: groupLoading, error: groupError }, fetchGroup] = useAxios(
     { url: `/api/guilds/${groupId}` },
     { manual: true }
   );
@@ -474,6 +485,19 @@ export default function GroupRecord() {
 
   if (!isLoggedIn) {
     return <AlertLogin />;
+  }
+
+  // 失敗不等於「沒有資料」：任何一支 API 失敗都要讓使用者能重試，而不是停在骨架上
+  if ((rankError || groupError) && !rankLoading && !groupLoading) {
+    return (
+      <LoadError
+        message="群組數據載入失敗，請檢查網路後再試一次。"
+        onRetry={() => {
+          fetchRank();
+          fetchGroup();
+        }}
+      />
+    );
   }
 
   if (rankLoading || groupLoading || !rankData || !groupData) {

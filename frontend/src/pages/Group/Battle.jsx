@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box,
@@ -18,6 +18,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PeopleIcon from "@mui/icons-material/People";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import useLiff from "../../context/useLiff";
 import * as GroupAPI from "../../services/group";
 
@@ -32,6 +33,9 @@ function processSignData(signDatas) {
 }
 
 /* ---------- SummaryBanner ---------- */
+// 橫幅上的 Chip 用實底：半透明白疊在青色上，12px 文字對比只有約 3.4:1
+const bannerChipSx = { bgcolor: "background.paper", color: "text.primary", fontWeight: 600 };
+
 function SummaryBanner({ members, dates, month }) {
   const totalMembers = members.length;
   const totalSignIns = members.reduce((acc, m) => acc + m.signDates.length, 0);
@@ -64,9 +68,9 @@ function SummaryBanner({ members, dates, month }) {
           flexWrap: "wrap",
         }}
       >
-        <CalendarMonthIcon sx={{ fontSize: 48, color: "rgba(255,255,255,0.8)" }} />
-        <Box sx={{ color: "#fff", minWidth: 0 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+        <CalendarMonthIcon sx={{ fontSize: 48, color: "primary.contrastText" }} />
+        <Box sx={{ color: "primary.contrastText", minWidth: 0 }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
             {month} 月簽到總覽
           </Typography>
           <Box sx={{ display: "flex", gap: 2, mt: 0.5, flexWrap: "wrap" }}>
@@ -74,19 +78,19 @@ function SummaryBanner({ members, dates, month }) {
               icon={<PeopleIcon sx={{ color: "inherit !important" }} />}
               label={`${totalMembers} 位成員`}
               size="small"
-              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+              sx={bannerChipSx}
             />
             <Chip
               icon={<CheckCircleIcon sx={{ color: "inherit !important" }} />}
               label={`${totalSignIns} 次簽到`}
               size="small"
-              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+              sx={bannerChipSx}
             />
             <Chip
               icon={<EmojiEventsIcon sx={{ color: "inherit !important" }} />}
               label={`${perfectMembers} 人全勤`}
               size="small"
-              sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "#fff" }}
+              sx={bannerChipSx}
             />
           </Box>
         </Box>
@@ -100,11 +104,12 @@ function MonthSelector({ month, onChange }) {
   return (
     <Paper sx={{ p: { xs: 2.5, sm: 3 }, borderRadius: 3 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
-        選擇月份
+        選擇月份（不分年份）
       </Typography>
       <ToggleButtonGroup
         value={month}
         exclusive
+        aria-label="選擇月份"
         onChange={(_, v) => v !== null && onChange(v)}
         sx={{
           display: "flex",
@@ -113,12 +118,13 @@ function MonthSelector({ month, onChange }) {
           "& .MuiToggleButton-root": {
             flex: "1 0 auto",
             minWidth: 44,
+            minHeight: 44,
             borderRadius: "8px !important",
             border: "1px solid",
             borderColor: "divider",
             py: 0.5,
             px: 1,
-            fontSize: "0.85rem",
+            fontSize: "0.875rem",
             fontWeight: 600,
           },
         }}
@@ -129,6 +135,7 @@ function MonthSelector({ month, onChange }) {
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
+      {/* 後端目前只依月份篩選、沒有年份參數，所以不同年份的同一個月會合併在一起（標題已註明） */}
     </Paper>
   );
 }
@@ -191,7 +198,8 @@ function MemberSignRow({ member, dates, month, totalDates }) {
                   }
                   color={signed ? "success" : "default"}
                   variant={signed ? "filled" : "outlined"}
-                  sx={{ fontSize: "0.7rem", height: 22, opacity: signed ? 1 : 0.5 }}
+                  aria-label={`${month}/${date} ${signed ? "已簽到" : "未簽到"}`}
+                  sx={{ fontSize: "0.75rem", height: 24 }}
                 />
               );
             })}
@@ -256,34 +264,75 @@ export default function GroupBattle() {
   const { loggedIn: isLoggedIn } = useLiff();
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [signDatas, setSignDatas] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // loadedMonth：目前畫面上資料屬於哪個月。切月份載入期間，橫幅與明細仍是上一個月的內容，
+  // 標題要跟著資料走，不能跟著選擇器先跳過去。
+  const [loadedMonth, setLoadedMonth] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     document.title = "三刀簽到表";
   }, []);
 
   useEffect(() => {
+    // 沒登入就不要打 API（會白白拿到 401），登入後 isLoggedIn 變動會重新觸發
+    if (!isLoggedIn) return;
+    let cancelled = false;
     setLoading(true);
+    setLoadError(false);
     GroupAPI.getSignList(groupId, month)
-      .then(result => setSignDatas(result))
-      .catch(() => setSignDatas([]))
-      .finally(() => setLoading(false));
-  }, [month, groupId]);
+      .then(result => {
+        if (cancelled) return;
+        setSignDatas(result);
+        setLoadedMonth(month);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [month, groupId, isLoggedIn, retryTick]);
+
+  const retry = useCallback(() => setRetryTick(t => t + 1), []);
 
   const { dates, members } = useMemo(() => processSignData(signDatas), [signDatas]);
 
   if (!isLoggedIn) return <AlertLogin />;
 
+  const hasData = loadedMonth !== null;
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      {loading ? (
-        <BattleSkeleton />
-      ) : (
-        <>
-          <SummaryBanner members={members} dates={dates} month={month} />
-          <MonthSelector month={month} onChange={setMonth} />
-          <MemberList members={members} dates={dates} month={month} />
-        </>
+      {!hasData && loading && <BattleSkeleton />}
+
+      {hasData && !loadError && (
+        <SummaryBanner members={members} dates={dates} month={loadedMonth} />
+      )}
+
+      {(hasData || loadError) && <MonthSelector month={month} onChange={setMonth} />}
+
+      {loadError && (
+        <LoadError message="簽到資料載入失敗，請檢查網路後再試一次。" onRetry={retry} />
+      )}
+
+      {hasData && !loadError && (
+        <Box aria-busy={loading} sx={{ position: "relative" }}>
+          {/* 換月份時版面不動，只在明細上方顯示進度並淡化舊資料 */}
+          {loading && (
+            <LinearProgress
+              aria-label="載入簽到資料中"
+              sx={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 1, borderRadius: 3 }}
+            />
+          )}
+          <Box sx={{ opacity: loading ? 0.5 : 1, transition: "opacity 0.15s" }}>
+            <MemberList members={members} dates={dates} month={loadedMonth} />
+          </Box>
+        </Box>
       )}
     </Box>
   );

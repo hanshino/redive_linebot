@@ -15,15 +15,19 @@ import {
   Button,
   useMediaQuery,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ShieldIcon from "@mui/icons-material/Shield";
 import SpaIcon from "@mui/icons-material/Spa";
 import useLiff from "../../context/useLiff";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import HintSnackBar from "../../components/HintSnackBar";
 import useHintBar from "../../hooks/useHintBar";
 import { getPrestigeStatus } from "../../services/prestige";
-import { getStarConfig } from "./starColors";
+import { getStarConfig, resolveStarColor } from "./starColors";
+import StarGlyphs from "./StarGlyphs";
+import PrestigeMoment from "./PrestigeMoment";
 import LevelClimbView from "./LevelClimbView";
 import TrialSelectView from "./TrialSelectView";
 import TrialProgressView from "./TrialProgressView";
@@ -55,9 +59,9 @@ function StatusBadge({ status, reducedMotion }) {
         size="small"
         sx={{
           fontWeight: 700,
-          color: "#fff",
+          color: "common.white",
           background: reducedMotion ? AWAKENED_FALLBACK : AWAKENED_GRADIENT,
-          "& .MuiChip-icon": { color: "#fff" },
+          "& .MuiChip-icon": { color: "common.white" },
         }}
       />
     );
@@ -95,12 +99,10 @@ function StatusBadge({ status, reducedMotion }) {
 // ─── StatusCard ───────────────────────────────────────────────────────────────
 
 function StatusCard({ status, profile, reducedMotion }) {
-  const { prestigeCount, awakened, currentLevel, currentExp, activeTrial } = status;
+  const { prestigeCount, awakened, currentLevel, currentExp } = status;
 
-  // Star display: ★★★☆☆ style, capped at 5
+  // Star display: ★★★☆☆ style, capped at 5 (StarGlyphs reads it as 「N / 5 星」)
   const filledStars = Math.min(prestigeCount, 5);
-  const emptyStars = 5 - filledStars;
-  const starDisplay = "★".repeat(filledStars) + "☆".repeat(emptyStars);
   const prestigeLabel = awakened || prestigeCount >= 5 ? "覺醒者" : `第 ${prestigeCount} 次轉生`;
 
   // XP progress bar: cap at 100% once Lv >= 100
@@ -118,40 +120,35 @@ function StatusCard({ status, profile, reducedMotion }) {
             {profile?.displayName?.[0] ?? "?"}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="subtitle1" fontWeight={700} noWrap>
+            <Typography variant="subtitle1" noWrap sx={{ fontWeight: 700 }}>
               {profile?.displayName ?? "—"}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {starDisplay}&nbsp;{prestigeLabel}
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              <StarGlyphs value={filledStars} />
+              &nbsp;{prestigeLabel}
             </Typography>
           </Box>
           <StatusBadge status={status} reducedMotion={reducedMotion} />
         </Box>
 
         <Box sx={{ mb: 0.5, display: "flex", justifyContent: "space-between" }}>
-          <Typography variant="body2" fontWeight={600}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
             Lv.{currentLevel} / 100
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "text.secondary" }}>
             {currentExp.toLocaleString()} XP
           </Typography>
         </Box>
         <LinearProgress
           variant="determinate"
           value={xpPercent}
+          aria-label="升級進度"
           sx={{
             height: 8,
             borderRadius: 4,
             "& .MuiLinearProgress-bar": { borderRadius: 4 },
           }}
         />
-
-        {/* Show trial info inline when active */}
-        {activeTrial && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-            試煉中：{activeTrial.displayName}（★{activeTrial.star}）
-          </Typography>
-        )}
       </CardContent>
     </Card>
   );
@@ -204,12 +201,7 @@ function PrestigeStepper({ status }) {
 
         return (
           <Step key={label} completed={isPassed}>
-            <StepLabel
-              StepIconProps={{
-                completed: isPassed,
-                active: isActive,
-              }}
-            >
+            <StepLabel slotProps={{ stepIcon: { completed: isPassed, active: isActive } }}>
               <Typography variant="caption">{label}</Typography>
             </StepLabel>
           </Step>
@@ -244,11 +236,8 @@ function TrialLockedBanner({ status }) {
   const remaining = Math.max(TRIAL_UNLOCK_LEVEL - (status.currentLevel || 0), 0);
   return (
     <Alert icon={<ShieldIcon />} severity="info">
-      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
         再升 {remaining} 級即可挑試煉
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        達到 Lv.{TRIAL_UNLOCK_LEVEL} 解鎖試煉選擇 — 試煉期間 XP 同時計入等級與試煉條件，60 天為期。
       </Typography>
     </Alert>
   );
@@ -256,35 +245,38 @@ function TrialLockedBanner({ status }) {
 function PendingPrestigeBanner({ status }) {
   const { passedTrials = [], unconsumedTrialIds = [] } = status;
   const pending = passedTrials.find(t => unconsumedTrialIds.includes(t.id));
-  const cfg = pending ? getStarConfig(pending.star) : null;
   const label = pending ? `★${pending.star} ${pending.displayName}` : "上一道試煉";
 
   return (
     <Alert
       icon={<ShieldIcon />}
       severity="info"
-      sx={{
-        borderColor: cfg?.border || undefined,
-        "& .MuiAlert-icon": cfg ? { color: cfg.text } : undefined,
+      // STAR_CONFIG 只有 color token，邊框用同色降透明度；先解成實際色值才能 alpha()
+      sx={theme => {
+        const starColor = pending ? resolveStarColor(theme, pending.star) : null;
+        return {
+          border: starColor ? `1px solid ${alpha(starColor, 0.5)}` : undefined,
+          "& .MuiAlert-icon": starColor ? { color: starColor } : undefined,
+        };
       }}
     >
-      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
         {label} 已通過，等待轉生
       </Typography>
-      <Typography variant="body2" color="text.secondary">
-        累積到 Lv.100 即可完成轉生並挑選祝福，下一道試煉會在轉生後解鎖。
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+        升到 Lv.100 即可轉生。
       </Typography>
     </Alert>
   );
 }
 
-function ActionCard({ status, onRefresh, onMutationError }) {
+function ActionCard({ status, onRefresh, onMutationError, onMutationSuccess, onPrestiged }) {
   const { awakened, prestigeCount, currentLevel, activeTrial, hasUnconsumedPassedTrial } = status;
 
   const isAwakened = awakened || prestigeCount >= 5;
   const isMaxLevel = currentLevel >= 100;
 
-  const sharedProps = { status, onRefresh, onMutationError };
+  const sharedProps = { status, onRefresh, onMutationError, onMutationSuccess, onPrestiged };
 
   if (isAwakened) {
     // Case A
@@ -354,11 +346,18 @@ export default function Prestige() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connError, setConnError] = useState(false);
+  // 第一次載入就失敗（還沒有任何 status）：連線警告條不夠，要整頁換成載入失敗 + 重試
+  const [loadFailed, setLoadFailed] = useState(false);
+  // 轉生完成的慶祝畫面放在這裡：成功後 BlessingSelectView 會隨 status 更新被換掉，
+  // 狀態留在子元件裡畫面會跟著消失。
+  const [moment, setMoment] = useState(null);
+  const [momentOpen, setMomentOpen] = useState(false);
   const backoffRef = useRef(0);
   const timerRef = useRef(null);
   const statusRef = useRef(null);
   const tickRef = useRef(null);
   const [hintState, { handleOpen: showHint, handleClose: closeHint }] = useHintBar();
+  const showHintRef = useRef(showHint);
 
   // Keep statusRef in sync so tick() can read latest status without stale closure
   useEffect(() => {
@@ -369,12 +368,26 @@ export default function Prestige() {
     document.title = "轉生之路";
   }, []);
 
+  useEffect(() => {
+    showHintRef.current = showHint;
+  }, [showHint]);
+
   const tick = useCallback(async () => {
     clearTimeout(timerRef.current);
     try {
       const s = await getPrestigeStatus();
+      // 掛著頁面時試煉剛好被判定通過：給一則提示，之後到 Lv.100 才能轉生
+      const prev = statusRef.current;
+      if (prev && s.hasUnconsumedPassedTrial && !prev.hasUnconsumedPassedTrial) {
+        const passed = s.passedTrials?.find(t => s.unconsumedTrialIds?.includes(t.id));
+        showHintRef.current?.(
+          passed ? `試煉通過：★${passed.star} ${passed.displayName}` : "試煉通過了",
+          "success"
+        );
+      }
       setStatus(s);
       setConnError(false);
+      setLoadFailed(false);
       backoffRef.current = 0;
       if (s.activeTrial) {
         timerRef.current = setTimeout(() => tickRef.current?.(), POLL_INTERVAL_MS);
@@ -384,6 +397,7 @@ export default function Prestige() {
       if (backoffRef.current >= 3) setConnError(true);
       // Retry with backoff only when a prior activeTrial was known and we haven't exhausted retries
       const prev = statusRef.current;
+      if (!prev) setLoadFailed(true);
       if (prev?.activeTrial && backoffRef.current < 3) {
         const delay = POLL_INTERVAL_MS * Math.pow(2, Math.min(backoffRef.current, 2));
         timerRef.current = setTimeout(() => tickRef.current?.(), delay);
@@ -395,6 +409,12 @@ export default function Prestige() {
 
   useEffect(() => {
     tickRef.current = tick;
+  }, [tick]);
+
+  const retryLoad = useCallback(() => {
+    setLoading(true);
+    setLoadFailed(false);
+    tick();
   }, [tick]);
 
   const handleMutationError = useCallback(
@@ -425,6 +445,18 @@ export default function Prestige() {
     };
   }, [tick]);
 
+  const handleMutationSuccess = useCallback(
+    message => {
+      showHint(message, "success");
+    },
+    [showHint]
+  );
+
+  const handlePrestiged = useCallback(next => {
+    setMoment(next);
+    setMomentOpen(true);
+  }, []);
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -442,12 +474,9 @@ export default function Prestige() {
         <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
           轉生之路
         </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-          探索五道試煉，成為覺醒者
-        </Typography>
       </Box>
 
-      {connError && (
+      {connError && status && (
         <Alert
           severity="warning"
           onClose={() => setConnError(false)}
@@ -467,14 +496,25 @@ export default function Prestige() {
         <Skeleton variant="rectangular" height={240} sx={{ borderRadius: 2 }} />
       )}
 
+      {!loading && !status && loadFailed && loggedIn && (
+        <LoadError message="轉生資料載入失敗，請檢查網路後再試一次。" onRetry={retryLoad} />
+      )}
+
       {status && (
         <>
           <StatusCard status={status} profile={profile} reducedMotion={reducedMotion} />
           <PrestigeStepper status={status} />
-          <ActionCard status={status} onRefresh={tick} onMutationError={handleMutationError} />
+          <ActionCard
+            status={status}
+            onRefresh={tick}
+            onMutationError={handleMutationError}
+            onMutationSuccess={handleMutationSuccess}
+            onPrestiged={handlePrestiged}
+          />
         </>
       )}
 
+      <PrestigeMoment open={momentOpen} moment={moment} onClose={() => setMomentOpen(false)} />
       <HintSnackBar
         open={hintState.open}
         message={hintState.message}

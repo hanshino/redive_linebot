@@ -101,7 +101,8 @@ const EFFECT_META = {
     label: "魔力刻印",
     caption: "被引爆時轉成傷害，分數歸留下的人",
     Icon: AutoFixHighIcon,
-    tone: () => "#8B5CF6",
+    // 紫色沿用 theme 的 rarity[1]（深淺模式各自調過對比），不再寫死 hex
+    tone: theme => theme.palette.rarity[1].main,
   },
 };
 
@@ -359,7 +360,7 @@ function endpointErrorLabel(error) {
 function SummaryStat({ label, value, tone = "text.primary" }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography variant="caption" color="text.secondary" display="block">
+      <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
         {label}
       </Typography>
       <Typography
@@ -432,7 +433,7 @@ function ScoreBreakdown({ score }) {
                 transition: "background-color .25s ease-out, border-color .25s ease-out",
               })}
             >
-              <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.25 }}>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mb: 0.25 }}>
                 <Icon
                   sx={theme => ({
                     fontSize: 16,
@@ -464,8 +465,7 @@ function ScoreBreakdown({ score }) {
               </Typography>
               <Typography
                 variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mt: 0.25, lineHeight: 1.3 }}
+                sx={{ color: "text.secondary", display: "block", mt: 0.25, lineHeight: 1.3 }}
               >
                 {caption}
               </Typography>
@@ -488,16 +488,15 @@ function DamageBreakdown({ damage }) {
   return (
     <Box>
       <Typography
-        variant="overline"
-        color="text.secondary"
-        sx={{ display: "block", lineHeight: 1.6 }}
+        variant="subtitle2"
+        sx={{ color: "text.secondary", display: "block", lineHeight: 1.6 }}
       >
         傷害統計
       </Typography>
       <Grid container spacing={1} sx={{ mt: 0.25 }}>
         {DAMAGE_FIELDS.map(({ key, label }) => (
           <Grid key={key} size={{ xs: 4 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
               {label}
             </Typography>
             <Typography
@@ -512,8 +511,8 @@ function DamageBreakdown({ damage }) {
       <Stack
         direction="row"
         spacing={1}
-        alignItems="center"
         sx={theme => ({
+          alignItems: "center",
           mt: 1,
           px: 1.25,
           py: 0.75,
@@ -526,11 +525,11 @@ function DamageBreakdown({ damage }) {
         <CheckCircleIcon
           sx={{ fontSize: 18, color: hasOverkill ? "success.main" : "text.disabled" }}
         />
-        <Box minWidth={0} flex={1}>
-          <Typography variant="caption" color="text.secondary" display="block">
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
             溢傷（超過王剩餘 HP 的部分）
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
             不扣王的血，但全額計入分數
           </Typography>
         </Box>
@@ -567,17 +566,17 @@ const DAMAGE_EXAMPLE_RATIO = (
 /** One row of the "why the numbers differ" list. `lead` is the dominant factor. */
 function FactorRow({ index, title, body, lead }) {
   return (
-    <Stack direction="row" spacing={1.25} alignItems="flex-start">
+    <Stack direction="row" spacing={1.25} sx={{ alignItems: "flex-start" }}>
       <Box
         sx={theme => ({
           flexShrink: 0,
-          width: 20,
-          height: 20,
+          width: 22,
+          height: 22,
           mt: 0.2,
           borderRadius: "50%",
           display: "grid",
           placeItems: "center",
-          fontSize: "0.7rem",
+          fontSize: "0.75rem",
           fontWeight: 800,
           color: lead ? theme.palette.primary.contrastText : theme.palette.text.secondary,
           bgcolor: lead ? theme.palette.primary.main : alpha(theme.palette.text.disabled, 0.16),
@@ -585,7 +584,7 @@ function FactorRow({ index, title, body, lead }) {
       >
         {index}
       </Box>
-      <Box minWidth={0}>
+      <Box sx={{ minWidth: 0 }}>
         <Typography
           variant="body2"
           sx={{ fontWeight: 800, lineHeight: 1.4, ...(lead && { color: "primary.main" }) }}
@@ -594,8 +593,7 @@ function FactorRow({ index, title, body, lead }) {
         </Typography>
         <Typography
           variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", lineHeight: 1.55 }}
+          sx={{ color: "text.secondary", display: "block", lineHeight: 1.55 }}
         >
           {body}
         </Typography>
@@ -630,7 +628,7 @@ function DamageExplainer({ jobKey, level }) {
     >
       {job ? (
         <Box sx={{ px: 1.5, pt: 1.5, pb: 1.25 }}>
-          <Stack direction="row" spacing={1.25} alignItems="flex-start">
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: "flex-start" }}>
             <Avatar
               variant="rounded"
               sx={theme => ({
@@ -643,23 +641,25 @@ function DamageExplainer({ jobKey, level }) {
             >
               <BoltIcon sx={{ fontSize: 20 }} />
             </Avatar>
-            <Box minWidth={0} flex={1}>
-              <Typography variant="caption" color="text.secondary" display="block">
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
                 我的職業
               </Typography>
               <Stack
                 direction="row"
                 spacing={0.75}
-                alignItems="baseline"
-                flexWrap="wrap"
                 useFlexGap
+                sx={{ alignItems: "baseline", flexWrap: "wrap" }}
               >
                 <Typography sx={{ fontWeight: 800, lineHeight: 1.3 }}>{job.name}</Typography>
                 {level != null && (
                   <Typography
                     variant="body2"
-                    color="text.secondary"
-                    sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 700,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
                   >
                     Lv.{formatInteger(level)}
                   </Typography>
@@ -671,8 +671,7 @@ function DamageExplainer({ jobKey, level }) {
               </Typography>
               <Typography
                 variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mt: 0.25, lineHeight: 1.5 }}
+                sx={{ color: "text.secondary", display: "block", mt: 0.25, lineHeight: 1.5 }}
               >
                 {job.leaves
                   ? `攻擊後在那隻王身上留下「${job.leaves}」，數值是這刀自身傷害的 ${job.effectPercent}%。`
@@ -704,6 +703,7 @@ function DamageExplainer({ jobKey, level }) {
           gap: 0.5,
           px: 1.5,
           py: 1,
+          minHeight: 44,
           color: "text.primary",
           fontWeight: 700,
           fontSize: "0.8125rem",
@@ -761,8 +761,7 @@ function DamageExplainer({ jobKey, level }) {
           </Stack>
           <Typography
             variant="caption"
-            color="text.secondary"
-            sx={{ display: "block", mt: 1.75, lineHeight: 1.55 }}
+            sx={{ color: "text.secondary", display: "block", mt: 1.75, lineHeight: 1.55 }}
           >
             排行榜排的是分數不是傷害。溢傷全額計分，接力和被接力也會加分，所以傷害低的人不一定分數低。
           </Typography>
@@ -780,13 +779,11 @@ function PersonalStats({ current, unavailable = false, jobLevel }) {
       <Stack
         direction="row"
         spacing={1.5}
-        alignItems="flex-end"
-        justifyContent="space-between"
-        flexWrap="wrap"
         useFlexGap
+        sx={{ alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap" }}
       >
-        <Box minWidth={0}>
-          <Typography variant="caption" color="text.secondary" display="block">
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
             賽季總分（排行榜依據）
           </Typography>
           <Typography
@@ -797,22 +794,18 @@ function PersonalStats({ current, unavailable = false, jobLevel }) {
               fontVariantNumeric: "tabular-nums",
               overflowWrap: "anywhere",
               fontSize: { xs: "2rem", sm: "2.5rem" },
-              background: theme =>
-                `linear-gradient(120deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
+              color: "primary.main",
             }}
           >
             {formatInteger(current?.totalScore)}
           </Typography>
         </Box>
         <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
             今日剩餘 / 額度
           </Typography>
           <Typography
-            sx={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}
-            color="primary.main"
+            sx={{ color: "primary.main", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}
           >
             {daily ? `${formatInteger(daily.remaining)} / ${formatInteger(daily.limit)}` : "—"}
           </Typography>
@@ -824,7 +817,7 @@ function PersonalStats({ current, unavailable = false, jobLevel }) {
       <DamageExplainer jobKey={current?.jobKey} level={jobLevel} />
 
       {unavailable && (
-        <Typography variant="caption" color="warning.main">
+        <Typography variant="caption" sx={{ color: "warning.main" }}>
           個人資料與目前賽季不同步，請重新整理後再試。
         </Typography>
       )}
@@ -909,10 +902,10 @@ function LeftEmptyState({ jobKey, onSeeTaken }) {
         borderColor: "divider",
       }}
     >
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
         {structural ? `${job.name}攻擊後不會留下效果。` : "這個賽季還沒有留下任何效果。"}
       </Typography>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.5 }}>
         {structural
           ? "你的分數來自自身傷害，以及接走別人留下的效果。"
           : job
@@ -925,7 +918,7 @@ function LeftEmptyState({ jobKey, onSeeTaken }) {
           variant="text"
           endIcon={<ArrowForwardIcon />}
           onClick={onSeeTaken}
-          sx={{ mt: 1, fontWeight: 700 }}
+          sx={{ mt: 1, fontWeight: 700, minHeight: 44 }}
         >
           看我接走的效果
         </Button>
@@ -946,10 +939,10 @@ function TakenEmptyState() {
         borderColor: "divider",
       }}
     >
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" sx={{ color: "text.secondary" }}>
         還沒接走任何人的效果。
       </Typography>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.5 }}>
         王身上有「待接力」標記時，攻擊那隻王就會接走一個，但接不到自己留下的。
       </Typography>
     </Box>
@@ -988,7 +981,7 @@ function EffectRow({ type, muted, rail, tint, hatched, title, caption, chip }) {
         },
       })}
     >
-      <Stack direction="row" spacing={1.25} alignItems="flex-start" sx={{ pl: 0.75 }}>
+      <Stack direction="row" spacing={1.25} sx={{ alignItems: "flex-start", pl: 0.75 }}>
         <Avatar
           variant="rounded"
           sx={theme => ({
@@ -1001,8 +994,13 @@ function EffectRow({ type, muted, rail, tint, hatched, title, caption, chip }) {
         >
           <Icon sx={{ fontSize: 18 }} />
         </Avatar>
-        <Box minWidth={0} flex={1}>
-          <Stack direction="row" spacing={0.75} alignItems="baseline" flexWrap="wrap" useFlexGap>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            useFlexGap
+            sx={{ alignItems: "baseline", flexWrap: "wrap" }}
+          >
             <Typography
               variant="body2"
               sx={theme => ({
@@ -1023,9 +1021,7 @@ function EffectRow({ type, muted, rail, tint, hatched, title, caption, chip }) {
           </Stack>
           <Typography
             variant="caption"
-            color="text.secondary"
-            display="block"
-            sx={{ overflowWrap: "anywhere" }}
+            sx={{ color: "text.secondary", display: "block", overflowWrap: "anywhere" }}
           >
             {caption}
           </Typography>
@@ -1189,7 +1185,7 @@ function EffectHistoryCard({ effects, jobKey }) {
             <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
               效果接力紀錄
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               效果只在留下它的那隻王身上，王被打倒就跟著結束。
             </Typography>
           </Box>
@@ -1199,7 +1195,7 @@ function EffectHistoryCard({ effects, jobKey }) {
             onChange={(_event, next) => setTab(next)}
             variant="fullWidth"
             aria-label="效果接力紀錄"
-            sx={{ minHeight: 40, "& .MuiTab-root": { minHeight: 40, fontWeight: 700 } }}
+            sx={{ minHeight: 44, "& .MuiTab-root": { minHeight: 44, fontWeight: 700 } }}
           >
             <Tab value="left" id="effect-tab-left" label={`我留下的 ${left.length}`} />
             <Tab value="taken" id="effect-tab-taken" label={`我接走的 ${taken.length}`} />
@@ -1209,7 +1205,7 @@ function EffectHistoryCard({ effects, jobKey }) {
             {tab === "left" ? (
               <Stack spacing={1.25}>
                 {left.length > 0 && (
-                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                  <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: "wrap" }}>
                     <StatusTally label="已接走" count={claimed} tone="secondary.main" />
                     <StatusTally label="等人接" count={waiting} tone="text.secondary" />
                     <StatusTally label="已失效" count={expired} tone="text.disabled" />
@@ -1222,7 +1218,7 @@ function EffectHistoryCard({ effects, jobKey }) {
                 />
                 {moreControl(left)}
                 {expired > 0 && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
                     王被打倒後，還沒被接走的效果就不會再有人接，這部分不計分。血量還多的王留下的效果，比較有機會被接走。
                   </Typography>
                 )}
@@ -1232,7 +1228,7 @@ function EffectHistoryCard({ effects, jobKey }) {
                 <TakenEffectList effects={taken.slice(0, shown.taken)} />
                 {moreControl(taken)}
                 {taken.length > 0 && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: "text.secondary" }}>
                     接走鼓舞時你和對方都得分；接走魔力刻印會轉成傷害，那份分數歸留下的人。
                   </Typography>
                 )}
@@ -1259,14 +1255,14 @@ function HistoryMoreControl({ total, shown, onChange }) {
 
   return (
     <Stack spacing={0.5}>
-      <Stack direction="row" alignItems="center" spacing={1}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
         {remaining > 0 && (
           <Button
             size="small"
             variant="outlined"
             endIcon={<ExpandMoreIcon />}
             onClick={() => onChange(Math.min(visible + HISTORY_STEP, total))}
-            sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+            sx={{ fontWeight: 700, whiteSpace: "nowrap", minHeight: 44 }}
           >
             顯示更多（還有 {remaining} 筆）
           </Button>
@@ -1276,13 +1272,13 @@ function HistoryMoreControl({ total, shown, onChange }) {
             size="small"
             variant="text"
             onClick={() => onChange(HISTORY_PAGE)}
-            sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+            sx={{ fontWeight: 700, whiteSpace: "nowrap", minHeight: 44 }}
           >
             收合
           </Button>
         )}
       </Stack>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
         最多查看最近 50 筆
       </Typography>
     </Stack>
@@ -1324,7 +1320,7 @@ function PendingEffectsRow({ pending }) {
   if (waiting.length === 0) return null;
 
   return (
-    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+    <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: "wrap" }}>
       {waiting.map(type => {
         const { label, Icon, tone } = effectMeta(type);
         return (
@@ -1335,9 +1331,9 @@ function PendingEffectsRow({ pending }) {
             label={`${label} ×${formatInteger(pending[type])}`}
             aria-label={`待接力 ${label} ${formatInteger(pending[type])} 個`}
             sx={theme => ({
-              height: 22,
+              height: 24,
               fontWeight: 700,
-              fontSize: "0.7rem",
+              fontSize: "0.75rem",
               color: tone(theme),
               bgcolor: alpha(tone(theme), 0.12),
               border: "1px solid",
@@ -1378,7 +1374,7 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
     >
       <CardContent sx={{ p: 1.75, "&:last-child": { pb: 1.75 } }}>
         <Stack spacing={1.25}>
-          <Stack direction="row" spacing={1.25} alignItems="center">
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: "center" }}>
             <Avatar
               variant="rounded"
               src={round.image || undefined}
@@ -1392,8 +1388,8 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
             >
               <ShieldIcon />
             </Avatar>
-            <Box minWidth={0} flex={1}>
-              <Typography variant="caption" color="text.secondary" display="block">
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
                 {formatInteger(round.position)} 號位
               </Typography>
               <Typography sx={{ fontWeight: 800, lineHeight: 1.25 }} noWrap>
@@ -1404,8 +1400,11 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
           </Stack>
 
           <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="baseline" gap={0.5}>
-              <Typography variant="caption" color="text.secondary">
+            <Stack
+              direction="row"
+              sx={{ justifyContent: "space-between", alignItems: "baseline", gap: 0.5 }}
+            >
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 {cleared ? "已討伐" : "剩餘 HP"}
               </Typography>
               <Typography
@@ -1416,7 +1415,7 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
               </Typography>
             </Stack>
             {hpPercent === null ? (
-              <Typography variant="caption" color="error.main" display="block" sx={{ mt: 0.5 }}>
+              <Typography variant="caption" sx={{ color: "error.main", display: "block", mt: 0.5 }}>
                 無法計算 HP 比例
               </Typography>
             ) : (
@@ -1430,10 +1429,13 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
                 />
                 <Typography
                   variant="caption"
-                  color="text.secondary"
-                  display="block"
-                  textAlign="right"
-                  sx={{ mt: 0.25, fontVariantNumeric: "tabular-nums" }}
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    textAlign: "right",
+                    mt: 0.25,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
                 >
                   {cleared ? 0 : hpPercent}%
                 </Typography>
@@ -1444,8 +1446,7 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
           {cleared ? (
             <Typography
               variant="caption"
-              color="success.main"
-              sx={{ fontWeight: 700, textAlign: "center", py: 0.5 }}
+              sx={{ color: "success.main", fontWeight: 700, textAlign: "center", py: 0.5 }}
             >
               已討伐
             </Typography>
@@ -1455,9 +1456,7 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
                 <Box>
                   <Typography
                     variant="caption"
-                    color="text.secondary"
-                    display="block"
-                    sx={{ mb: 0.5 }}
+                    sx={{ color: "text.secondary", display: "block", mb: 0.5 }}
                   >
                     待接力
                   </Typography>
@@ -1484,7 +1483,7 @@ function BossRoundCard({ round, onAttack, busy, disabled }) {
                 }
                 sx={theme => ({
                   fontWeight: 800,
-                  fontSize: "0.95rem",
+                  fontSize: "1rem",
                   minHeight: 46,
                   borderRadius: 2,
                   letterSpacing: "0.05em",
@@ -1527,9 +1526,12 @@ function BattleCard({
           py: 1.75,
         }}
       >
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
-          <Box minWidth={0}>
-            <Typography variant="overline" sx={{ lineHeight: 1, opacity: 0.82 }}>
+        <Stack
+          direction="row"
+          sx={{ justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle2" sx={{ lineHeight: 1, opacity: 0.82 }}>
               世界王討伐
             </Typography>
             <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
@@ -1542,12 +1544,15 @@ function BattleCard({
           <Chip
             label={ended ? "結算處理中" : "進行中"}
             size="small"
-            sx={{
-              bgcolor: "rgba(255,255,255,0.2)",
+            sx={theme => ({
+              bgcolor: alpha(
+                ended ? theme.palette.warning.contrastText : theme.palette.primary.contrastText,
+                0.2
+              ),
               color: "inherit",
               fontWeight: 700,
               flexShrink: 0,
-            }}
+            })}
           />
         </Stack>
       </Box>
@@ -1571,7 +1576,7 @@ function BattleCard({
 
           <PersonalStats current={current} unavailable={currentUnavailable} jobLevel={jobLevel} />
 
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
             活動結束：{formatDate(season.end_time)}
           </Typography>
         </Stack>
@@ -1583,7 +1588,10 @@ function BattleCard({
 function AttackStat({ label, value, tone }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.3 }}>
+      <Typography
+        variant="caption"
+        sx={{ color: "text.secondary", display: "block", lineHeight: 1.3 }}
+      >
         {label}
       </Typography>
       <Typography
@@ -1637,15 +1645,13 @@ function AttackResultCard({ attack, onDismiss }) {
         <Stack
           direction="row"
           spacing={1}
-          alignItems="center"
-          flexWrap="wrap"
           useFlexGap
-          sx={{ color: "text.primary" }}
+          sx={{ alignItems: "center", flexWrap: "wrap", color: "text.primary" }}
         >
           <AttackStat label="自身傷害" value={formatInteger(attack.rawDamage)} />
           {isPositive(attack.effectDamage) && (
             <>
-              <Typography color="text.disabled">+</Typography>
+              <Typography sx={{ color: "text.disabled" }}>+</Typography>
               <AttackStat label="引爆刻印" value={formatInteger(attack.effectDamage)} />
             </>
           )}
@@ -1657,12 +1663,12 @@ function AttackResultCard({ attack, onDismiss }) {
               label={`溢傷 ${formatInteger(overkill)} 全額計分`}
               color="success"
               variant="outlined"
-              sx={{ height: 22, fontWeight: 700, fontSize: "0.7rem" }}
+              sx={{ height: 24, fontWeight: 700, fontSize: "0.75rem" }}
             />
           )}
         </Stack>
 
-        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={1.5} useFlexGap sx={{ flexWrap: "wrap" }}>
           <AttackStat
             label="這刀的分數"
             value={formatInteger(attack.scoreGained?.direct)}
@@ -1690,8 +1696,8 @@ function AttackResultCard({ attack, onDismiss }) {
               <Stack
                 direction="row"
                 spacing={1}
-                alignItems="center"
                 sx={theme => ({
+                  alignItems: "center",
                   px: 1.25,
                   py: 0.75,
                   borderRadius: 2,
@@ -1711,8 +1717,8 @@ function AttackResultCard({ attack, onDismiss }) {
               <Stack
                 direction="row"
                 spacing={1}
-                alignItems="center"
                 sx={theme => ({
+                  alignItems: "center",
                   px: 1.25,
                   py: 0.75,
                   borderRadius: 2,
@@ -1732,7 +1738,7 @@ function AttackResultCard({ attack, onDismiss }) {
           </Stack>
         )}
 
-        <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", overflowWrap: "anywhere" }}>
           消耗 {formatInteger(attack.cost)} · 今日剩餘 {formatInteger(attack.daily?.remaining)} ·
           賽季總分 {formatInteger(attack.seasonTotalScore)}
           {attack.levelResult?.levelUp
@@ -1742,7 +1748,7 @@ function AttackResultCard({ attack, onDismiss }) {
       </Stack>
 
       {attack.announcementQueued && (
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+        <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.5 }}>
           擊破公告會在群組的下一則訊息時送出。
         </Typography>
       )}
@@ -1758,7 +1764,7 @@ function NoActiveSeason() {
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
           目前沒有進行中的世界王
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.75 }}>
           下一季開放後，這裡會顯示討伐戰況與個人額度。
         </Typography>
       </CardContent>
@@ -1773,7 +1779,7 @@ function UnavailableStatus() {
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
           戰況暫時無法更新
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.75 }}>
           請重新整理以取得目前世界王狀態。
         </Typography>
       </CardContent>
@@ -1788,12 +1794,12 @@ function LatestRewardCard({ reward }) {
     <Card variant="outlined" sx={{ height: "100%", borderColor: "warning.light" }}>
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack spacing={2}>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <Avatar sx={{ bgcolor: "warning.main", color: "warning.contrastText" }}>
               <EmojiEventsIcon />
             </Avatar>
-            <Box minWidth={0}>
-              <Typography variant="overline" color="warning.dark" sx={{ lineHeight: 1 }}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2" sx={{ color: "warning.dark", lineHeight: 1 }}>
                 最新結算紀錄
               </Typography>
               <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }} noWrap>
@@ -1827,14 +1833,14 @@ function LatestRewardCard({ reward }) {
               tone={reward.totalScore == null ? "text.secondary" : "text.primary"}
             />
             {reward.totalScore == null && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
                 這個賽季在改制前結算，當時只記錄傷害。
               </Typography>
             )}
             <SummaryStat label="賽季總傷害" value={formatInteger(reward.totalDamage)} />
           </Stack>
           <Box sx={{ bgcolor: "action.hover", borderRadius: 1.5, p: 1.25 }}>
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography variant="caption" sx={{ color: "text.secondary", display: "block" }}>
               結算編號
             </Typography>
             <Typography
@@ -1843,7 +1849,10 @@ function LatestRewardCard({ reward }) {
             >
               #{reward.rewardId ?? "—"}
             </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", display: "block", mt: 0.75 }}
+            >
               入帳時間{" "}
             </Typography>
             <Typography
@@ -1855,9 +1864,7 @@ function LatestRewardCard({ reward }) {
             {reward.settledAt && (
               <Typography
                 variant="caption"
-                color="text.secondary"
-                display="block"
-                sx={{ mt: 0.75 }}
+                sx={{ color: "text.secondary", display: "block", mt: 0.75 }}
               >
                 賽季結算：{formatDate(reward.settledAt)}
               </Typography>
@@ -1877,7 +1884,7 @@ function NoRewardCard() {
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
           尚無結算紀錄
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.75 }}>
           完成世界王賽季後，個人獎勵會保留在這裡。
         </Typography>
       </CardContent>
@@ -1893,7 +1900,7 @@ function UnavailableRewardCard() {
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
           個人結算紀錄暫時無法確認
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.75 }}>
           請重新整理後再試；已入帳的獎勵不會因載入失敗而失效。
         </Typography>
       </CardContent>
@@ -1916,14 +1923,13 @@ function Leaderboard({ rows, unavailable }) {
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack
           direction="row"
-          gap={1}
-          sx={{ justifyContent: "space-between", alignItems: "baseline", mb: 1 }}
+          sx={{ gap: 1, justifyContent: "space-between", alignItems: "baseline", mb: 1 }}
         >
           <Box>
             <Typography variant="h6" component="h2" sx={{ fontWeight: 800 }}>
               賽季分數排行榜
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
               顯示前 50 名 · 分數含溢傷與協作加分
             </Typography>
           </Box>
@@ -1962,10 +1968,11 @@ function Leaderboard({ rows, unavailable }) {
                   </ListItemAvatar>
                   <ListItemText
                     primary={row.display_name || row.user_id || "未知玩家"}
-                    secondary="賽季總分"
-                    primaryTypographyProps={{
-                      noWrap: true,
-                      sx: { maxWidth: { xs: "calc(100vw - 190px)", sm: "min(50vw, 360px)" } },
+                    slotProps={{
+                      primary: {
+                        noWrap: true,
+                        sx: { maxWidth: { xs: "calc(100vw - 190px)", sm: "min(50vw, 360px)" } },
+                      },
                     }}
                   />
                   <Typography
@@ -1988,7 +1995,7 @@ function Leaderboard({ rows, unavailable }) {
           </List>
         ) : !unavailable ? (
           <Box sx={{ py: 5, textAlign: "center" }}>
-            <Typography color="text.secondary">目前尚無可顯示的討伐紀錄。</Typography>
+            <Typography sx={{ color: "text.secondary" }}>目前尚無可顯示的討伐紀錄。</Typography>
           </Box>
         ) : null}
       </CardContent>
@@ -2186,9 +2193,6 @@ export default function Worldboss() {
           <Box>
             <Typography variant="h5" component="h1" sx={{ fontWeight: 800 }}>
               世界王戰況
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              全服共鬥 · 即時討伐與個人結算紀錄
             </Typography>
           </Box>
           <Button

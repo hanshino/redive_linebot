@@ -1,4 +1,4 @@
-const { PALETTE } = require("../common/theme");
+const { PALETTE, HERO_SURFACE } = require("../common/theme");
 
 const MAX_BOSS_DESCRIPTION_BYTES = 2048;
 const MAX_IMAGE_URL_LENGTH = 2000;
@@ -6,21 +6,20 @@ const MAX_IMAGE_URL_LENGTH = 2000;
 const MIN_HP_BAR_PERCENT = 2;
 
 /**
- * "戰報卡" palette. These are dark-surface values with alpha channels that the shared
- * light-surface tokens don't carry, so they live here rather than in theme.js — this
- * template is their only consumer. Values that do exist in the shared palette are
- * referenced from it so the red / green / amber stay in sync with the rest of the bot.
+ * "戰報卡" palette. The stage surface and its text come from HERO_SURFACE so every dark
+ * "arena" card (janken / race / world boss) shares one background. The remaining values
+ * are alpha / state colors that only this template consumes, so they stay here.
  */
 const C = {
-  surface: "#131822",
-  text: "#E8EDF5",
-  textMuted: "#8A98AD",
-  textFaint: "#7C8AA0",
+  surface: HERO_SURFACE.bg,
+  text: HERO_SURFACE.text,
+  textMuted: HERO_SURFACE.textMuted,
+  textFaint: HERO_SURFACE.textMuted,
   white: PALETTE.white,
 
   chipBg: "#000000A6",
-  scrimEnd: "#13182200",
-  clearedVeil: "#0A0F16D9",
+  scrimEnd: `${HERO_SURFACE.bg}00`,
+  clearedVeil: `${HERO_SURFACE.bg}D9`,
 
   cleared: "#34D399",
   clearedStampBg: "#04170FA6",
@@ -43,9 +42,9 @@ const C = {
  * alive (a rounding artefact on a huge HP pool), which must not fall through.
  */
 const HP_TIERS = [
-  { above: 60, text: PALETTE.green400, from: "#15803D", to: PALETTE.green400 },
-  { above: 30, text: PALETTE.amber400, from: "#B45309", to: PALETTE.amber400 },
-  { above: -Infinity, text: "#FB7185", from: "#9F1239", to: "#FB7185" },
+  { above: 60, text: PALETTE.green400, from: PALETTE.green700, to: PALETTE.green400 },
+  { above: 30, text: PALETTE.amber400, from: PALETTE.caramel600, to: PALETTE.amber400 },
+  { above: -Infinity, text: PALETTE.rose400, from: PALETTE.rose800, to: PALETTE.rose400 },
 ];
 
 function hpTier(percent) {
@@ -170,7 +169,7 @@ function heroChip(label) {
         paddingBottom: "3px",
         paddingStart: "7px",
         paddingEnd: "7px",
-        contents: [{ type: "text", text: label, size: "xxs", color: C.white }],
+        contents: [{ type: "text", text: label, size: "xs", color: C.white }],
       },
       { type: "filler" },
     ],
@@ -261,7 +260,7 @@ function bossHero({ image, cleared, label, name }) {
 /** Fallback header for bubbles that lost their hero to an unusable snapshot url. */
 function bodyTitle(label, name) {
   return [
-    { type: "text", text: label, size: "xxs", color: C.textMuted },
+    { type: "text", text: label, size: "xs", color: C.textMuted },
     {
       type: "text",
       text: name,
@@ -305,7 +304,7 @@ function hpBlock({ currentHp, maxHp, percent }) {
           {
             type: "text",
             text: `${formatNumber(currentHp)}\n/ ${formatNumber(maxHp)}`,
-            size: "xxs",
+            size: "xs",
             color: C.textFaint,
             align: "end",
             gravity: "bottom",
@@ -361,7 +360,7 @@ function clearedPanel(maxHp) {
       {
         type: "text",
         text: `0 / ${formatNumber(maxHp)}`,
-        size: "xxs",
+        size: "xs",
         color: C.clearedPanelMuted,
         align: "end",
         gravity: "center",

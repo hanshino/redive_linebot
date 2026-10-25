@@ -1,3 +1,4 @@
+const { PALETTE, SEMANTIC, RARITY, SURFACE, OVERLAY } = require("../../common/theme");
 /**
  * 產出轉蛋頭像框
  * @param {Array} rewards
@@ -80,7 +81,7 @@ function genDailyGacha({
                   type: "text",
                   text: "每日一抽",
                   size: "xl",
-                  color: "#ffffff",
+                  color: PALETTE.white,
                   weight: "bold",
                 },
               ],
@@ -91,7 +92,7 @@ function genDailyGacha({
               contents: [
                 {
                   type: "text",
-                  color: "#ebebeb",
+                  color: OVERLAY.onColor,
                   size: "sm",
                   contents: [
                     {
@@ -103,7 +104,7 @@ function genDailyGacha({
                 },
                 {
                   type: "text",
-                  color: "#ebebeb",
+                  color: OVERLAY.onColor,
                   size: "sm",
                   contents: [
                     {
@@ -128,13 +129,13 @@ function genDailyGacha({
                     {
                       type: "text",
                       text: "距離滿收藏",
-                      color: "#ebebeb",
+                      color: OVERLAY.onColor,
                       size: "xs",
                     },
                     {
                       type: "text",
                       text: `${collectedCount}/${allCount}`,
-                      color: "#ebebeb",
+                      color: OVERLAY.onColor,
                       size: "xs",
                       align: "end",
                     },
@@ -150,10 +151,10 @@ function genDailyGacha({
                       contents: [],
                       height: "6px",
                       width: `${collectRate}%`,
-                      backgroundColor: "#DE5658",
+                      backgroundColor: SEMANTIC.secondary.light,
                     },
                   ],
-                  backgroundColor: "#9FD8E36E",
+                  backgroundColor: OVERLAY.onColorSoft,
                   height: "6px",
                 },
               ],
@@ -164,7 +165,7 @@ function genDailyGacha({
           offsetBottom: "0px",
           offsetStart: "0px",
           offsetEnd: "0px",
-          backgroundColor: "#F987C5DD",
+          backgroundColor: OVERLAY.scrimCyan,
           paddingAll: "20px",
           paddingTop: "18px",
         },
@@ -175,7 +176,7 @@ function genDailyGacha({
             {
               type: "text",
               text: "NEW",
-              color: "#ffffff",
+              color: PALETTE.white,
               align: "center",
               size: "xs",
               offsetTop: "3px",
@@ -184,7 +185,7 @@ function genDailyGacha({
           position: "absolute",
           cornerRadius: "20px",
           offsetTop: "18px",
-          backgroundColor: "#ff334b",
+          backgroundColor: SEMANTIC.danger.main,
           offsetStart: "12px",
           height: "25px",
           width: "70px",
@@ -202,6 +203,26 @@ function genDailyGacha({
   });
 
   return bubble;
+}
+
+// 稀有度上色：彩 / 金 / 銀 各取 theme.js 的 RARITY，文字同時保留名稱，不單靠顏色辨識
+const RARE_STYLE = {
+  3: { name: "彩", color: RARITY.epic.main },
+  2: { name: "金", color: RARITY.legendary.text },
+  1: { name: "銀", color: RARITY.common.text },
+};
+
+/**
+ * 轉蛋結果摘要文字（給 altText 用），例如「彩×1 金×2 銀×7」
+ * @param {Object} rareCount 星數 → 數量
+ * @returns {String}
+ */
+function formatRareSummary(rareCount) {
+  return Object.keys(rareCount || {})
+    .sort((a, b) => b - a)
+    .filter(key => RARE_STYLE[key])
+    .map(key => `${RARE_STYLE[key].name}×${rareCount[key]}`)
+    .join(" ");
 }
 
 function generateGachaResult({ rewards, tag, rareCount, hasCooldown }) {
@@ -224,26 +245,24 @@ function generateGachaResult({ rewards, tag, rareCount, hasCooldown }) {
     align: "center",
   });
 
-  let strReport = [];
+  const reportSpans = [];
   Object.keys(rareCount)
     .sort((a, b) => b - a)
     .forEach(key => {
-      switch (key) {
-        case "3":
-          strReport.push(`彩*${rareCount[key]}`);
-          break;
-        case "2":
-          strReport.push(`金*${rareCount[key]}`);
-          break;
-        case "1":
-          strReport.push(`銀*${rareCount[key]}`);
-          break;
-      }
+      const style = RARE_STYLE[key];
+      if (!style) return;
+      if (reportSpans.length > 0) reportSpans.push({ type: "span", text: " " });
+      reportSpans.push({
+        type: "span",
+        text: `${style.name}×${rareCount[key]}`,
+        color: style.color,
+        weight: "bold",
+      });
     });
 
   reportBox.contents.push({
     type: "text",
-    text: strReport.join(" "),
+    contents: reportSpans.length > 0 ? reportSpans : [{ type: "span", text: "-" }],
     align: "center",
   });
 
@@ -251,8 +270,8 @@ function generateGachaResult({ rewards, tag, rareCount, hasCooldown }) {
     reportBox.contents.push({
       type: "text",
       text: "群組聊天室，每位成員限定120秒CD",
-      size: "xxs",
-      color: "#808080",
+      size: "xs",
+      color: SURFACE.textMuted,
       align: "center",
     });
   }
@@ -263,4 +282,5 @@ function generateGachaResult({ rewards, tag, rareCount, hasCooldown }) {
 }
 
 exports.generateGachaResult = generateGachaResult;
+exports.formatRareSummary = formatRareSummary;
 exports.generateDailyGachaInfo = genDailyGacha;

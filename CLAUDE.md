@@ -78,6 +78,7 @@ Command routing in `OrderBased` composes routers from every domain controller (g
 - Entry: `frontend/src/main.jsx` → `App.jsx`; pages under `src/pages/`.
 - Auth uses LINE LIFF (`@line/liff`) — pages assume a LIFF context, and LIFF endpoint URLs are kept in sync by `make cf-tunnel` in dev.
 - Progressive redesign toward MUI card layouts is in progress; see memory for which pages are done.
+- UI copy: avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
 
 ## Common Commands
 

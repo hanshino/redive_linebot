@@ -7,66 +7,38 @@ import {
   setSupportHidden,
 } from "../../services/supportRanking";
 
-export function useChatLevelData() {
-  const [{ data, loading }] = useAxios("/api/chat-levels/rankings");
-
-  const rows = useMemo(() => {
-    if (!data) return [];
-    return data.map(d => ({
-      displayName: d.displayName,
-      value: d.experience,
-      level: d.level,
-      prestigeCount: d.prestigeCount ?? 0,
-      awakened: d.awakened ?? false,
-      blessingIds: d.blessingIds ?? [],
-      buildTag: d.buildTag ?? null,
-    }));
-  }, [data]);
-
-  return { rows, loading, topEntry: rows[0], count: rows.length };
+// 四個榜單共用：axios-hooks 回傳 [{ data, loading, error }, refetch]。
+// error 與 rows 一起回傳，畫面才分得出「載入失敗」和「真的沒有人上榜」。
+function useRank(url, mapRow) {
+  const [{ data, loading, error }, refetch] = useAxios(url);
+  const rows = useMemo(() => (Array.isArray(data) ? data.map(mapRow) : []), [data, mapRow]);
+  return {
+    rows,
+    loading,
+    error: Boolean(error),
+    refetch: () => refetch().catch(() => {}),
+    topEntry: rows[0],
+    count: rows.length,
+  };
 }
 
-export function useGachaRankData() {
-  const [{ data, loading }] = useAxios("/api/gacha/rankings/0");
+const mapChatLevel = d => ({
+  displayName: d.displayName,
+  value: d.experience,
+  level: d.level,
+  prestigeCount: d.prestigeCount ?? 0,
+  awakened: d.awakened ?? false,
+  blessingIds: d.blessingIds ?? [],
+  buildTag: d.buildTag ?? null,
+});
+const mapGacha = d => ({ displayName: d.displayName, value: d.cnt });
+const mapGodStone = d => ({ displayName: d.displayName, value: d.amount });
+const mapAchievement = d => ({ displayName: d.displayName, value: d.cnt });
 
-  const rows = useMemo(() => {
-    if (!data) return [];
-    return data.map(d => ({
-      displayName: d.displayName,
-      value: d.cnt,
-    }));
-  }, [data]);
-
-  return { rows, loading, topEntry: rows[0], count: rows.length };
-}
-
-export function useGodStoneData() {
-  const [{ data, loading }] = useAxios("/api/god-stone/rankings");
-
-  const rows = useMemo(() => {
-    if (!data) return [];
-    return data.map(d => ({
-      displayName: d.displayName,
-      value: d.amount,
-    }));
-  }, [data]);
-
-  return { rows, loading, topEntry: rows[0], count: rows.length };
-}
-
-export function useAchievementRankData() {
-  const [{ data, loading }] = useAxios("/api/achievements/rankings");
-
-  const rows = useMemo(() => {
-    if (!data) return [];
-    return data.map(d => ({
-      displayName: d.displayName,
-      value: d.cnt,
-    }));
-  }, [data]);
-
-  return { rows, loading, topEntry: rows[0], count: rows.length };
-}
+export const useChatLevelData = () => useRank("/api/chat-levels/rankings", mapChatLevel);
+export const useGachaRankData = () => useRank("/api/gacha/rankings/0", mapGacha);
+export const useGodStoneData = () => useRank("/api/god-stone/rankings", mapGodStone);
+export const useAchievementRankData = () => useRank("/api/achievements/rankings", mapAchievement);
 
 const NO_SUPPORT = { has_support: false, hidden: false, months: 0, rank: null };
 
@@ -123,5 +95,5 @@ export function useSupportRanking() {
     [me, loadList]
   );
 
-  return { ...list, me, loading, error, saving, setHidden };
+  return { ...list, me, loading, error, saving, setHidden, retry: loadList };
 }

@@ -1,3 +1,4 @@
+const { PALETTE, SEMANTIC, SURFACE, FEATURE } = require("../../common/theme");
 const { getLiffUri } = require("../../common");
 
 const delTPL = {
@@ -11,8 +12,8 @@ const delTPL = {
         type: "text",
         text: "1",
         contents: [
-          { type: "span", text: "關鍵字指令 ", size: "xs", color: "#8b0000" },
-          { type: "span", text: "全符合型指令", size: "xs", color: "#000000" },
+          { type: "span", text: "關鍵字指令 ", size: "xs", color: SEMANTIC.danger.dark },
+          { type: "span", text: "全符合型指令", size: "xs", color: SURFACE.text },
         ],
       },
       {
@@ -289,7 +290,7 @@ exports.showDeleteOption = (context, deleteOrders) => {
     };
 
     if (data.touchType == "2") {
-      orderBox.color = "#8b0000";
+      orderBox.color = SEMANTIC.danger.dark;
     }
 
     box.contents.push(orderBox);
@@ -322,7 +323,7 @@ exports.showOrderManager = context => {
         {
           type: "text",
           text: "自訂指令",
-          color: "#FFFFFF",
+          color: PALETTE.white,
           align: "center",
           action: {
             type: "uri",
@@ -330,7 +331,7 @@ exports.showOrderManager = context => {
           },
         },
       ],
-      backgroundColor: "#555555",
+      backgroundColor: FEATURE.customerOrder.main,
     },
   };
 

@@ -29,6 +29,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HistoryIcon from "@mui/icons-material/History";
@@ -37,6 +38,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SportsMmaIcon from "@mui/icons-material/SportsMma";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import AlertLogin from "../../components/AlertLogin";
+import LoadError from "../../components/LoadError";
 import useLiff from "../../context/useLiff";
 import {
   getPreference,
@@ -162,6 +164,7 @@ function ToggleRow({ flag, value, entitled, disabled, onChange }) {
             checked={value === 1}
             disabled={disabled || (locked && value !== 1)}
             onChange={e => onChange(flag.key, e.target.checked ? 1 : 0)}
+            slotProps={{ input: { "aria-label": flag.title } }}
           />
         </Stack>
       </CardContent>
@@ -392,7 +395,12 @@ function putErrorMessage(err) {
 function MatchSwitchRow({ title, checked, disabled, onToggle, stateLabel }) {
   return (
     <Stack direction="row" spacing={2} sx={{ alignItems: "center", minHeight: 48 }}>
-      <Switch checked={checked} disabled={disabled} onChange={e => onToggle(e.target.checked)} />
+      <Switch
+        checked={checked}
+        disabled={disabled}
+        onChange={e => onToggle(e.target.checked)}
+        slotProps={{ input: { "aria-label": title } }}
+      />
       <Typography variant="subtitle1" sx={{ fontWeight: 700, flex: 1, minWidth: 0 }}>
         {title}
       </Typography>
@@ -577,16 +585,11 @@ function AutoMatchSection() {
 
   if (loadError || !match || !bet) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={reload}>
-            重試
-          </Button>
-        }
-      >
-        讀取月卡 Plus 自動猜拳設定失敗
-      </Alert>
+      <LoadError
+        message="無法讀取月卡 Plus 自動猜拳設定，請檢查網路後再試一次。"
+        onRetry={reload}
+        sx={{ py: 0 }}
+      />
     );
   }
 
@@ -612,9 +615,8 @@ function AutoMatchSection() {
         <Button
           component={RouterLink}
           to="/auto/match"
-          size="small"
           variant="outlined"
-          sx={{ whiteSpace: "nowrap" }}
+          sx={{ whiteSpace: "nowrap", minHeight: 44 }}
         >
           今日結果
         </Button>
@@ -669,7 +671,11 @@ function AutoMatchSection() {
           {bet.enabled && (
             <Box sx={{ mt: 2 }}>
               <Divider sx={{ mb: 2 }} />
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="flex-start">
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                sx={{ alignItems: "flex-start" }}
+              >
                 <TextField
                   label="下注上限（女神石）"
                   size="small"
@@ -681,14 +687,14 @@ function AutoMatchSection() {
                     setCapError("");
                   }}
                   error={Boolean(capError)}
-                  helperText={capError || "正整數，單位為女神石。"}
+                  helperText={capError || undefined}
                   slotProps={{ htmlInput: { inputMode: "numeric" } }}
                 />
                 <Button
                   variant="contained"
                   onClick={saveCap}
                   disabled={saving || !capDirty || !eligible}
-                  sx={{ whiteSpace: "nowrap", mt: { sm: 0.25 } }}
+                  sx={{ whiteSpace: "nowrap", minHeight: 44 }}
                 >
                   儲存上限
                 </Button>
@@ -712,7 +718,7 @@ function AutoMatchSection() {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setMatchAckOpen(false)} disabled={saving}>
+          <Button onClick={() => setMatchAckOpen(false)} disabled={saving} sx={{ minHeight: 44 }}>
             取消
           </Button>
           <Button
@@ -720,6 +726,7 @@ function AutoMatchSection() {
             onClick={confirmMatchAck}
             disabled={saving}
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+            sx={{ minHeight: 44 }}
           >
             我同意
           </Button>
@@ -753,12 +760,12 @@ function AutoMatchSection() {
               setCapError("");
             }}
             error={Boolean(capError)}
-            helperText={capError || "正整數，單位為女神石。"}
+            helperText={capError || undefined}
             slotProps={{ htmlInput: { inputMode: "numeric" } }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBetAckOpen(false)} disabled={saving}>
+          <Button onClick={() => setBetAckOpen(false)} disabled={saving} sx={{ minHeight: 44 }}>
             取消
           </Button>
           <Button
@@ -766,6 +773,7 @@ function AutoMatchSection() {
             onClick={confirmBetAck}
             disabled={saving}
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : null}
+            sx={{ minHeight: 44 }}
           >
             我同意並開啟
           </Button>
@@ -791,6 +799,8 @@ function AutoMatchSection() {
 export default function AutoSettings() {
   const { loggedIn: isLoggedIn } = useLiff();
   const [loading, setLoading] = useState(true);
+  // 讀取失敗時不能拿下面寫死的預設值（全部關閉）冒充使用者的設定，改顯示載入失敗
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [state, setState] = useState({
     auto_daily_gacha: 0,
@@ -816,10 +826,12 @@ export default function AutoSettings() {
 
   const reload = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const data = await getPreference();
       setState(data);
     } catch {
+      setLoadError(true);
       setSnack({ severity: "error", message: "讀取偏好失敗，請稍後再試" });
     } finally {
       setLoading(false);
@@ -893,18 +905,21 @@ export default function AutoSettings() {
           borderRadius: 3,
           background: theme =>
             `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
-          color: "#fff",
+          color: "primary.contrastText",
         }}
       >
         <Stack
           direction="row"
           spacing={1.5}
+          useFlexGap
           sx={{
             alignItems: "center",
+            // 手機寬度下標題會被兩顆 44px 的按鈕擠成一個字一行，讓按鈕自己換行
+            flexWrap: "wrap",
           }}
         >
           <AutoAwesomeIcon sx={{ fontSize: 32 }} />
-          <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ flex: "1 1 200px", minWidth: 0 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               訂閱者自動行為
             </Typography>
@@ -915,27 +930,30 @@ export default function AutoSettings() {
           <Tooltip title="重新整理餘額與配額">
             <span>
               <IconButton
-                size="small"
+                aria-label="重新整理餘額與配額"
                 onClick={reload}
                 disabled={loading || saving}
-                sx={{ color: "#fff" }}
+                sx={{ color: "inherit", width: 44, height: 44 }}
               >
-                <RefreshIcon fontSize="small" />
+                <RefreshIcon />
               </IconButton>
             </span>
           </Tooltip>
           <Button
             component={RouterLink}
             to="/auto/history"
-            size="small"
             variant="outlined"
             startIcon={<HistoryIcon />}
-            sx={{
-              color: "#fff",
-              borderColor: "rgba(255,255,255,0.6)",
+            sx={theme => ({
+              color: "inherit",
+              borderColor: alpha(theme.palette.primary.contrastText, 0.6),
               whiteSpace: "nowrap",
-              "&:hover": { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.08)" },
-            }}
+              minHeight: 44,
+              "&:hover": {
+                borderColor: theme.palette.primary.contrastText,
+                bgcolor: alpha(theme.palette.primary.contrastText, 0.08),
+              },
+            })}
           >
             查看紀錄
           </Button>
@@ -943,6 +961,8 @@ export default function AutoSettings() {
       </Paper>
       {loading ? (
         <SettingsSkeleton />
+      ) : loadError ? (
+        <LoadError message="無法讀取自動設定，請檢查網路後再試一次。" onRetry={reload} />
       ) : (
         <Stack spacing={2}>
           {FLAGS.map(flag => {

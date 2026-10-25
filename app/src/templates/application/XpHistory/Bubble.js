@@ -1,33 +1,39 @@
 // LINE Flex bubble for `#經驗歷程` — shows today's XP summary and last event breakdown.
 
 const moment = require("moment");
+const { PALETTE, SEMANTIC, SURFACE, TINT, OVERLAY } = require("../../common/theme");
 
 const COLORS = {
-  cyanStart: "#00838F",
-  cyanEnd: "#00ACC1",
-  amber: "#FBBF24",
-  amberDeep: "#F59E0B",
-  amberText: "#FCD34D",
-  amberTint: "#FFF7E6",
-  amberTintDeep: "#B45309",
-  white: "#FFFFFF",
-  whiteOverlay: "#FFFFFF44",
-  greenTint: "#E8F9EF",
-  greenDeep: "#15803D",
-  cyanTint: "#E0F7FA",
-  redTint: "#FDECEC",
-  redDeep: "#B91C1C",
-  greyTint: "#EEF0F3",
-  greyText: "#6B6577",
-  deep: "#3A2800",
-  muted: "#5A6B7F",
-  warmBg: "#F8FAFB",
+  cyanStart: PALETTE.cyan700,
+  cyanEnd: PALETTE.cyan600,
+  amber: PALETTE.amber400,
+  amberDeep: PALETTE.amber500,
+  amberText: PALETTE.amber300,
+  amberTint: TINT.gold.bg,
+  amberTintDeep: TINT.gold.ink,
+  white: PALETTE.white,
+  whiteOverlay: OVERLAY.onColorSoft,
+  greenTint: TINT.mint.bg,
+  greenDeep: TINT.mint.ink,
+  cyanTint: TINT.cyan.bg,
+  redTint: TINT.red.bg,
+  redDeep: TINT.red.ink,
+  red: SEMANTIC.danger.main,
+  redSoft: "#FCA5A5",
+  greyTint: TINT.grey.bg,
+  greyText: TINT.grey.ink,
+  grey: TINT.grey.main,
+  deep: TINT.amber.deep,
+  muted: SURFACE.textMuted,
+  warmBg: SURFACE.bgAlt,
   // 鍊金之霧 converts exp into god stones — violet marks it as a different
   // currency, so it never reads as the amber "exp you kept".
-  violetText: "#E9D5FF",
-  violetMid: "#C4B5FD",
-  violetTint: "#EDE9FE",
-  violetDeep: "#5B21B6",
+  violetText: TINT.violet.desc,
+  violetMid: TINT.violet.main,
+  violetTint: TINT.violet.bg,
+  violetDeep: TINT.violet.ink,
+  permanentTint: "#F3E8FF",
+  permanentDeep: "#6B21A8",
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
@@ -50,9 +56,9 @@ function tierStatusLine(today) {
     return { text: `滿速 0–${tier1_upper} · 尚未進入遞減`, color: COLORS.amberText };
   }
   if (tier === 2) {
-    return { text: `⚠ 已進入 tier 2 · XP ×0.30 · ${raw_exp} raw`, color: COLORS.amberText };
+    return { text: `⚠ 已進入遞減第 2 階 · 經驗 ×0.30 · 原始 ${raw_exp}`, color: COLORS.amberText };
   }
-  return { text: `⚠ tier 3 · 幾乎不漲 · ${raw_exp} raw`, color: "#FCA5A5" };
+  return { text: `⚠ 遞減第 3 階 · 幾乎不漲 · 原始 ${raw_exp}`, color: COLORS.redSoft };
 }
 
 function barBox(segs) {
@@ -86,7 +92,7 @@ function progressBar(today, palette) {
   const segs = [];
   if (t1 > 0) segs.push({ flex: t1, color: colors.t1 });
   if (t2 > 0) segs.push({ flex: t2, color: colors.t2 });
-  if (t3 > 0) segs.push({ flex: t3, color: "#9CA3AF" });
+  if (t3 > 0) segs.push({ flex: t3, color: COLORS.grey });
   if (rest > 0) segs.push({ flex: rest, color: COLORS.whiteOverlay });
 
   return barBox(segs);
@@ -115,7 +121,7 @@ function chipBox(text, { bg, fg, border }) {
     paddingTop: "2px",
     paddingBottom: "2px",
     flex: 0,
-    contents: [{ type: "text", text, size: "xxs", color: fg, weight: "bold" }],
+    contents: [{ type: "text", text, size: "xs", color: fg, weight: "bold" }],
   };
   if (border) {
     out.borderColor = border;
@@ -162,13 +168,18 @@ function buildLastEventChips(ev) {
       chipBox(
         `已遞減 ×${ev.diminish_factor.toFixed(2)}`,
         tier3
-          ? { bg: COLORS.redTint, fg: COLORS.redDeep, border: "#DC2626" }
+          ? { bg: COLORS.redTint, fg: COLORS.redDeep, border: COLORS.red }
           : { bg: COLORS.amberTint, fg: COLORS.amberTintDeep }
       )
     );
   }
   if (ev.permanent_mult > 1)
-    out.push(chipBox(`永久 ×${ev.permanent_mult.toFixed(2)}`, { bg: "#F3E8FF", fg: "#6B21A8" }));
+    out.push(
+      chipBox(`永久 ×${ev.permanent_mult.toFixed(2)}`, {
+        bg: COLORS.permanentTint,
+        fg: COLORS.permanentDeep,
+      })
+    );
   // Under 鍊金之霧 the event's effective_exp is intact but goes to 女神石, not
   // levels. Say so, otherwise the number reads as level progress it never made.
   const rate = ev.modifiers?.weather?.effects?.exp_to_stone_rate;
@@ -194,18 +205,18 @@ function buildLastEventCard(ev, groupName) {
   }
   const accent =
     ev.diminish_factor === 0.03
-      ? "#DC2626"
+      ? COLORS.red
       : ev.diminish_factor === 0.3
         ? COLORS.amberDeep
         : ev.base_xp == null
-          ? "#9CA3AF"
+          ? COLORS.grey
           : COLORS.cyanEnd;
 
   const time = moment(ev.ts).format("HH:mm");
   const groupLabel = groupName || `…${(ev.group_id || "").slice(-4).toLowerCase()}`;
   const effColor =
     ev.effective_exp === 0
-      ? "#DC2626"
+      ? COLORS.red
       : ev.effective_exp < ev.raw_exp / 2
         ? COLORS.amberDeep
         : COLORS.deep;
@@ -233,7 +244,7 @@ function buildLastEventCard(ev, groupName) {
                 type: "text",
                 contents: [
                   { type: "span", text: time, weight: "bold", color: COLORS.deep, size: "sm" },
-                  { type: "span", text: `  ·  ${groupLabel}`, color: COLORS.muted, size: "xxs" },
+                  { type: "span", text: `  ·  ${groupLabel}`, color: COLORS.muted, size: "xs" },
                 ],
                 flex: 1,
               },
@@ -247,7 +258,7 @@ function buildLastEventCard(ev, groupName) {
                     color: COLORS.muted,
                     size: "xs",
                   },
-                  { type: "span", text: " → ", color: COLORS.muted, size: "xxs" },
+                  { type: "span", text: " → ", color: COLORS.muted, size: "xs" },
                   {
                     type: "span",
                     text: String(ev.effective_exp),
@@ -326,7 +337,7 @@ function buildHeader(today) {
           color: COLORS.amberText,
           size: "xxl",
         },
-        { type: "span", text: ` / ${raw_exp} raw`, color: COLORS.white, size: "xs" },
+        { type: "span", text: ` / 原始 ${raw_exp}`, color: COLORS.white, size: "xs" },
       ];
 
   return {
@@ -357,7 +368,7 @@ function buildHeader(today) {
           {
             type: "text",
             text: datePill,
-            size: "xxs",
+            size: "xs",
             color: COLORS.amberText,
             weight: "bold",
             align: "end",
@@ -376,7 +387,7 @@ function buildHeader(today) {
             layout: "vertical",
             flex: 1,
             contents: [
-              { type: "text", text: yieldLabel, size: "xxs", color: COLORS.white },
+              { type: "text", text: yieldLabel, size: "xs", color: COLORS.white },
               {
                 type: "text",
                 contents: yieldSpans,
@@ -388,7 +399,7 @@ function buildHeader(today) {
             layout: "vertical",
             flex: 0,
             contents: [
-              { type: "text", text: "訊息", size: "xxs", color: COLORS.white, align: "end" },
+              { type: "text", text: "訊息", size: "xs", color: COLORS.white, align: "end" },
               {
                 type: "text",
                 text: String(msg_count),
@@ -410,7 +421,7 @@ function buildHeader(today) {
           {
             type: "text",
             text: status.text,
-            size: "xxs",
+            size: "xs",
             color: status.color,
             weight: "bold",
             margin: "xs",
@@ -429,7 +440,7 @@ function build({ summary, groupName, liffUri, prestigeLiffUri }) {
     paddingEnd: "lg",
     paddingTop: "md",
     contents: [
-      { type: "text", text: "最近一則", size: "xxs", color: COLORS.muted, weight: "bold" },
+      { type: "text", text: "最近一則", size: "xs", color: COLORS.muted, weight: "bold" },
       buildLastEventCard(summary.last_event, groupName),
     ],
   };
@@ -462,7 +473,7 @@ function build({ summary, groupName, liffUri, prestigeLiffUri }) {
       {
         type: "text",
         text: "→ 轉生狀態",
-        size: "xxs",
+        size: "xs",
         color: COLORS.cyanStart,
         weight: "bold",
         align: "center",

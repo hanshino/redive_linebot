@@ -77,9 +77,12 @@ export default function TodayWeather() {
   return (
     <Card variant="outlined" sx={{ borderTop: 4, borderTopColor: `${cat.color}.main` }}>
       <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
+        <Stack
+          direction="row"
+          sx={{ justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}
+        >
           <Box>
-            <Typography variant="overline" color="text.secondary">
+            <Typography variant="subtitle2" sx={{ color: "text.secondary" }}>
               今日天氣
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -90,12 +93,12 @@ export default function TodayWeather() {
         </Stack>
 
         {weather.flavor_text && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
             {weather.flavor_text}
           </Typography>
         )}
 
-        <Stack direction="row" gap={0.75} flexWrap="wrap" sx={{ mt: 1.5 }}>
+        <Stack direction="row" sx={{ gap: 0.75, flexWrap: "wrap", mt: 1.5 }}>
           {effectLabels.map(l => (
             <Chip
               key={l}
@@ -124,21 +127,20 @@ export default function TodayWeather() {
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
               {weather.protection_name}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
               防護今日減益 · {weather.protection_cost} 女神石
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+            <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 1 }}>
               女神石餘額 {Number(god_stone_balance).toLocaleString()}
             </Typography>
             <Button
               fullWidth
               variant="contained"
-              size="small"
               onClick={() => {
                 setError("");
                 setConfirmOpen(true);
               }}
-              sx={{ mt: 1.5 }}
+              sx={{ mt: 1.5, minHeight: 44 }}
             >
               購買防護
             </Button>
@@ -162,7 +164,7 @@ export default function TodayWeather() {
             取消
           </Button>
           <Button variant="contained" onClick={purchase} disabled={busy}>
-            確定購買
+            {busy ? "處理中…" : "確定購買"}
           </Button>
         </DialogActions>
       </Dialog>

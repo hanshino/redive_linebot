@@ -24,7 +24,7 @@ function header(panels) {
       {
         type: "text",
         text: countText(panels),
-        size: "xxs",
+        size: "xs",
         color: COLORS.textMuted,
         align: "end",
         gravity: "bottom",
