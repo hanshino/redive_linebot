@@ -1,3 +1,4 @@
+const { SEMANTIC, TINT } = require("../common/theme");
 const { generateRuleBubble } = require("../common");
 
 const swordmanSetsumei = ["劍士類的第一個轉職，是以近戰為主的職業。", "將學會 震地斬擊"];
@@ -40,7 +41,7 @@ exports.swordman = {
                 type: "span",
                 text: " 十次攻擊內 ",
                 weight: "bold",
-                color: "#541239",
+                color: SEMANTIC.secondary.main,
               },
               {
                 type: "span",
@@ -76,9 +77,10 @@ exports.swordman = {
             align: "center",
             weight: "bold",
             size: "sm",
+            color: TINT.red.ink,
           },
         ],
-        backgroundColor: "#FF512357",
+        backgroundColor: TINT.red.bg,
         paddingAll: "lg",
         cornerRadius: "lg",
         action: {
@@ -128,7 +130,7 @@ exports.mage = {
                 type: "span",
                 text: " 依序詠唱指定的魔法 ",
                 weight: "bold",
-                color: "#541239",
+                color: SEMANTIC.secondary.main,
               },
               {
                 type: "span",
@@ -164,9 +166,10 @@ exports.mage = {
             align: "center",
             weight: "bold",
             size: "sm",
+            color: TINT.green.ink,
           },
         ],
-        backgroundColor: "#51FF2357",
+        backgroundColor: TINT.green.bg,
         paddingAll: "lg",
         cornerRadius: "lg",
         action: {
@@ -216,7 +219,7 @@ exports.thief = {
                 type: "span",
                 text: "隱匿於暗影中的寶藏。\n",
                 weight: "bold",
-                color: "#541239",
+                color: SEMANTIC.secondary.main,
               },
               {
                 type: "span",
@@ -248,9 +251,10 @@ exports.thief = {
             align: "center",
             weight: "bold",
             size: "sm",
+            color: TINT.purple.ink,
           },
         ],
-        backgroundColor: "#5123FF57",
+        backgroundColor: TINT.purple.bg,
         paddingAll: "lg",
         cornerRadius: "lg",
         action: {
@@ -331,7 +335,7 @@ exports.swordmanMission = {
           }),
         },
         style: "primary",
-        color: "#FF546874",
+        color: SEMANTIC.danger.main,
       },
     ],
   },
@@ -357,7 +361,7 @@ exports.mageMission = {
         offsetTop: "13%",
         action: {
           type: "postback",
-          label: "火",
+          label: "火屬性",
           data: JSON.stringify({
             action: "mageChangeJobMission",
             element: "fire",
@@ -373,7 +377,7 @@ exports.mageMission = {
         offsetTop: "45%",
         action: {
           type: "postback",
-          label: "水",
+          label: "水屬性",
           data: JSON.stringify({
             action: "mageChangeJobMission",
             element: "water",
@@ -389,7 +393,7 @@ exports.mageMission = {
         offsetTop: "45%",
         action: {
           type: "postback",
-          label: "風",
+          label: "風屬性",
           data: JSON.stringify({
             action: "mageChangeJobMission",
             element: "wind",
@@ -405,7 +409,7 @@ exports.mageMission = {
         offsetStart: "45%",
         action: {
           type: "postback",
-          label: "土",
+          label: "土屬性",
           data: JSON.stringify({
             action: "mageChangeJobMission",
             element: "earth",

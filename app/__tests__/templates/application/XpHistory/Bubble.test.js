@@ -48,7 +48,7 @@ describe("XpHistory Bubble", () => {
     summary.today.raw_exp = 840;
     const out = Bubble.build({ summary, groupName: null, liffUri: "u", prestigeLiffUri: "p" });
     const text = JSON.stringify(out.contents);
-    expect(text).toMatch(/tier 2/);
+    expect(text).toMatch(/遞減第 2 階/);
   });
 
   test("tier 3 → status line mentions tier 3", () => {
@@ -56,7 +56,7 @@ describe("XpHistory Bubble", () => {
     summary.today.tier = 3;
     summary.today.raw_exp = 1540;
     const out = Bubble.build({ summary, groupName: null, liffUri: "u", prestigeLiffUri: "p" });
-    expect(JSON.stringify(out.contents)).toMatch(/tier 3/);
+    expect(JSON.stringify(out.contents)).toMatch(/遞減第 3 階/);
   });
 
   test("active trial → header pill shows ⚔ ★N 試煉中", () => {
@@ -144,7 +144,7 @@ describe("XpHistory Bubble · 鍊金之霧", () => {
     const text = render(alchemyDay());
     expect(text).toMatch(/鍊金之霧 · 經驗 1:1 鍊成女神石/);
     expect(text).not.toMatch(/1 XP 鍊成 💎1/);
-    expect(text).not.toMatch(/尚未進入遞減|tier 2|tier 3/);
+    expect(text).not.toMatch(/尚未進入遞減|遞減第 2 階|遞減第 3 階/);
   });
 
   test("a rate other than 1 keeps the numeric form", () => {

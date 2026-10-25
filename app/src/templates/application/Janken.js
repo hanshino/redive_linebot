@@ -2,7 +2,8 @@ const JankenRating = require("../../model/application/JankenRating");
 const { getLiffUri } = require("../common");
 const { SEMANTIC, HERO_SURFACE } = require("../common/theme");
 
-const ASSET_VERSION = Date.now();
+// 圖片快取版本綁定套件版本，部署新版才換網址；不要用 Date.now()（每次重啟都會讓 LINE 重抓圖）
+const ASSET_VERSION = require("../../../package.json").version;
 const jankenAsset = (baseUrl, name) => `${baseUrl}/bot-assets/janken/${name}?v=${ASSET_VERSION}`;
 
 const genAction = function (type, { uuid, p1Uid, p2Uid, betAmount }) {
@@ -208,7 +209,7 @@ exports.generateDuelCard = ({
       text: "試試 /決鬥 @對手 金額 來下注對決！",
       align: "center",
       color: HERO_SURFACE.textMuted,
-      size: "xxs",
+      size: "xs",
       margin: "md",
     });
   }
@@ -501,7 +502,7 @@ exports.generateResultCard = ({
                     text: JankenRating.getRankLabel(p1NewElo),
                     align: "center",
                     color: HERO_SURFACE.textMuted,
-                    size: "xxs",
+                    size: "xs",
                   },
                 ]
               : []),
@@ -557,7 +558,7 @@ exports.generateResultCard = ({
                     text: JankenRating.getRankLabel(p2NewElo),
                     align: "center",
                     color: HERO_SURFACE.textMuted,
-                    size: "xxs",
+                    size: "xs",
                   },
                 ]
               : []),
@@ -600,7 +601,7 @@ exports.generateResultCard = ({
       type: "text",
       text: `${winnerName} ${winnerStreak} 連勝中！`,
       align: "center",
-      color: SEMANTIC.warning.main,
+      color: SEMANTIC.warning.light,
       size: "sm",
       weight: "bold",
       margin: "md",
@@ -618,7 +619,7 @@ exports.generateResultCard = ({
           type: "text",
           text: `${p1Name}: ${p1Sign}${p1EloChange}`,
           align: "center",
-          color: p1EloChange >= 0 ? SEMANTIC.success.main : SEMANTIC.danger.main,
+          color: p1EloChange >= 0 ? SEMANTIC.success.light : SEMANTIC.danger.light,
           size: "xs",
           flex: 1,
         },
@@ -626,7 +627,7 @@ exports.generateResultCard = ({
           type: "text",
           text: `${p2Name}: ${p2Sign}${p2EloChange}`,
           align: "center",
-          color: p2EloChange >= 0 ? SEMANTIC.success.main : SEMANTIC.danger.main,
+          color: p2EloChange >= 0 ? SEMANTIC.success.light : SEMANTIC.danger.light,
           size: "xs",
           flex: 1,
         },
@@ -668,6 +669,7 @@ exports.generateResultCard = ({
 };
 
 exports.generateRankCard = ({
+  displayName,
   rankLabel,
   rankImageKey,
   elo,
@@ -755,6 +757,19 @@ exports.generateRankCard = ({
   const newRows = [seasonBlock, lifetimeBlock, todayRewardBlock].filter(Boolean);
 
   const bodyContents = [
+    ...(displayName
+      ? [
+          {
+            type: "text",
+            text: displayName,
+            align: "center",
+            color: HERO_SURFACE.text,
+            weight: "bold",
+            size: "md",
+            wrap: true,
+          },
+        ]
+      : []),
     {
       type: "box",
       layout: "horizontal",
@@ -794,7 +809,7 @@ exports.generateRankCard = ({
           type: "text",
           text: `${winCount} 勝`,
           align: "center",
-          color: SEMANTIC.success.main,
+          color: SEMANTIC.success.light,
           size: "sm",
           flex: 1,
         },
@@ -802,7 +817,7 @@ exports.generateRankCard = ({
           type: "text",
           text: `${loseCount} 敗`,
           align: "center",
-          color: SEMANTIC.danger.main,
+          color: SEMANTIC.danger.light,
           size: "sm",
           flex: 1,
         },
@@ -833,7 +848,7 @@ exports.generateRankCard = ({
           type: "text",
           text: `連勝：${streak}`,
           align: "center",
-          color: SEMANTIC.warning.main,
+          color: SEMANTIC.warning.light,
           size: "sm",
           flex: 1,
         },
@@ -841,7 +856,7 @@ exports.generateRankCard = ({
           type: "text",
           text: `最高：${maxStreak}`,
           align: "center",
-          color: SEMANTIC.warning.main,
+          color: SEMANTIC.warning.light,
           size: "sm",
           flex: 1,
         },

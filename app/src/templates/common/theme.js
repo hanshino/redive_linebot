@@ -3,8 +3,8 @@
  *
  * Aligned with the frontend "Miyako (宮子)" theme (frontend/src/theme/index.js)
  * so LINE flex messages and the LIFF pages share one brand identity:
- *   - Primary: cyan (#00ACC1) — Miyako's hair
- *   - Secondary: amber (#F59E0B) — pudding
+ *   - Primary: cyan (#007C89 as text/fill, #00ACC1 as decoration) — Miyako's hair
+ *   - Secondary: caramel (#B45309 as text/fill, #F59E0B as decoration) — pudding
  *
  * Import the named exports (SEMANTIC / RARITY / SURFACE / HERO_SURFACE /
  * FEATURE) instead of hard-coding hex values inside individual templates:
@@ -37,20 +37,29 @@ const PALETTE = {
   cyan500: "#26C6DA",
   cyan600: "#00ACC1",
   cyan700: "#00838F",
+  cyan800: "#007C89",
+  cyan900: "#00606B",
 
   // secondary — pudding amber
   amber300: "#FCD34D",
   amber400: "#FBBF24",
   amber500: "#F59E0B",
   amber600: "#D97706",
+  caramel600: "#B45309",
+  caramel700: "#92400E",
 
   // status
   green400: "#4ADE80",
   green500: "#22C55E",
   green600: "#16A34A",
+  green700: "#15803D",
+  green800: "#166534",
   red400: "#F87171",
   red500: "#EF4444",
   red600: "#DC2626",
+  red700: "#B91C1C",
+  rose400: "#FB7185",
+  rose800: "#9F1239",
 
   // rarity (game-standard ordering)
   rarityCommon: "#9E9E9E",
@@ -68,40 +77,41 @@ const PALETTE = {
 };
 
 const SEMANTIC = {
+  // main = readable as text and under white button text (4.5:1); light = decoration only
   primary: {
-    main: PALETTE.cyan600,
-    light: PALETTE.cyan500,
-    dark: PALETTE.cyan700,
+    main: PALETTE.cyan800,
+    light: PALETTE.cyan600,
+    dark: PALETTE.cyan900,
     contrast: PALETTE.white,
   },
   secondary: {
-    main: PALETTE.amber500,
-    light: PALETTE.amber400,
-    dark: PALETTE.amber600,
+    main: PALETTE.caramel600,
+    light: PALETTE.amber500,
+    dark: PALETTE.caramel700,
     contrast: PALETTE.white,
   },
   success: {
-    main: PALETTE.green500,
-    light: PALETTE.green400,
-    dark: PALETTE.green600,
+    main: PALETTE.green700,
+    light: PALETTE.green500,
+    dark: PALETTE.green800,
     contrast: PALETTE.white,
   },
   warning: {
-    main: PALETTE.amber500,
-    light: PALETTE.amber400,
-    dark: PALETTE.amber600,
+    main: PALETTE.caramel600,
+    light: PALETTE.amber500,
+    dark: PALETTE.caramel700,
     contrast: PALETTE.white,
   },
   danger: {
-    main: PALETTE.red500,
-    light: PALETTE.red400,
-    dark: PALETTE.red600,
+    main: PALETTE.red600,
+    light: PALETTE.red500,
+    dark: PALETTE.red700,
     contrast: PALETTE.white,
   },
   info: {
-    main: PALETTE.cyan600,
-    light: PALETTE.cyan500,
-    dark: PALETTE.cyan700,
+    main: PALETTE.cyan800,
+    light: PALETTE.cyan600,
+    dark: PALETTE.cyan900,
     contrast: PALETTE.white,
   },
   neutral: {
@@ -153,6 +163,94 @@ const HERO_SURFACE = {
 };
 
 /**
+ * Medal ordering (rank 1 / 2 / 3) for leaderboards and race podiums.
+ */
+const MEDAL = {
+  gold: "#FFD700",
+  silver: "#C0C0C0",
+  bronze: "#CD7F32",
+};
+
+/**
+ * Soft "tint" chips: a pale background with a matching border and a dark ink
+ * for text on top of it. `main` is the saturated accent used for stars / icons.
+ * Replaces the per-template forks (Me/_shared, XpHistory, Prestige, Market).
+ */
+const TINT = {
+  cyan: {
+    main: PALETTE.cyan600,
+    bg: "#E0F7FA",
+    border: "#B2EBF2",
+    ink: "#002A30",
+    desc: "#00606B",
+  },
+  amber: {
+    main: "#B8772A",
+    bg: "#FBF1E8",
+    border: "#EBCDA8",
+    ink: "#7A4A12",
+    desc: "#74604A",
+    deep: "#3A2800",
+  },
+  green: { main: "#3F8C50", bg: "#ECF6EE", border: "#C2DFC8", ink: "#1F4A2C", desc: "#5C6E60" },
+  red: { main: "#DC2626", bg: "#FDECEC", border: "#F5C2C2", ink: "#B91C1C", desc: "#7F1D1D" },
+  blue: { main: "#3D6FB8", bg: "#EEF3FB", border: "#C7D8EE", ink: "#1F3F6E", desc: "#5E6470" },
+  purple: { main: "#7A4FB5", bg: "#F1ECF7", border: "#D6C9E8", ink: "#3F2470", desc: "#665A78" },
+  slate: { main: "#8E8E93", bg: "#F6F6F8", border: "#E2E2E6", ink: "#3B3B40", desc: "#6B6B70" },
+  mint: {
+    main: PALETTE.green500,
+    bg: "#E8F9EF",
+    border: "#BBF7D0",
+    ink: "#15803D",
+    desc: "#166534",
+  },
+  gold: {
+    main: PALETTE.amber400,
+    bg: "#FFF7E6",
+    border: PALETTE.amber400,
+    ink: "#B45309",
+    desc: "#92400E",
+  },
+  violet: { main: "#C4B5FD", bg: "#EDE9FE", border: "#D8B4FE", ink: "#5B21B6", desc: "#E9D5FF" },
+  grey: { main: "#9CA3AF", bg: "#EEF0F3", border: "#E0E0E0", ink: "#6B6577", desc: "#6B6577" },
+  periwinkle: {
+    main: "#5C7CCB",
+    bg: "#EEF1FB",
+    border: "#CDD7EE",
+    ink: "#1F3F6E",
+    desc: "#5E6470",
+  },
+  ochre: { main: "#A07A2C", bg: "#F8F0E0", border: "#E8D5A8", ink: "#3A2800", desc: "#74604A" },
+};
+
+/**
+ * Prestige (轉生) accent: the purple hero + gold star used by every prestige card.
+ */
+const PRESTIGE = {
+  purple: "#3B2A6B",
+  deep: "#2A1F4D",
+  gold: "#F5C84B",
+  lilac: "#E5DFFF",
+  lilacSoft: "#EEEAF7",
+  successInk: "#2F6B3F",
+  successBg: "#E8F6EC",
+  successBorder: "#B8DEC2",
+};
+
+/**
+ * Text/overlay helpers shared by image-backed bubbles (gacha, group, market).
+ * `onColor*` sit on saturated fills; `scrim*` darken photos for legibility.
+ */
+const OVERLAY = {
+  onColor: PALETTE.white,
+  onColorMuted: "#FFFFFFCC",
+  onColorSoft: "#FFFFFF44",
+  onColorFaint: "#FFFFFF66",
+  scrimCyan: "#00838FCC",
+  scrimNeutral: "#1A2332CC",
+};
+
+/**
  * Each feature picks a SEMANTIC color as its accent. Keep the mapping small:
  * if a feature doesn't fit anywhere obvious, default to primary.
  *
@@ -176,4 +274,15 @@ const FEATURE = {
   godStone: SEMANTIC.secondary,
 };
 
-module.exports = { PALETTE, SEMANTIC, RARITY, SURFACE, HERO_SURFACE, FEATURE };
+module.exports = {
+  PALETTE,
+  SEMANTIC,
+  RARITY,
+  SURFACE,
+  HERO_SURFACE,
+  FEATURE,
+  MEDAL,
+  TINT,
+  PRESTIGE,
+  OVERLAY,
+};

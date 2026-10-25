@@ -38,7 +38,7 @@ exports.router = [
  * @param {Context} context
  */
 async function queryRank(context) {
-  const { userId } = context.event.source;
+  const { userId, displayName } = context.event.source;
 
   if (!userId) {
     return;
@@ -69,6 +69,7 @@ async function queryRank(context) {
   };
 
   const rankCard = jankenTemplate.generateRankCard({
+    displayName,
     rankLabel,
     rankImageKey,
     elo: rating.elo,
@@ -88,7 +89,10 @@ async function queryRank(context) {
     todayReward,
   });
 
-  await context.replyFlex("猜拳段位", rankCard);
+  await context.replyFlex(
+    `${displayName || "玩家"} 的猜拳段位：${rankLabel}（積分 ${rating.elo}）`,
+    rankCard
+  );
 }
 
 /**
@@ -203,7 +207,10 @@ async function duel(context) {
       targetDisplayName: get(targetProfile, "displayName", "未知玩家"),
     })
   );
-  await context.replyFlex("猜拳", pkBubble);
+  await context.replyFlex(
+    `${displayName || "玩家"} 向 ${get(targetProfile, "displayName", "未知玩家")} 發起猜拳決鬥`,
+    pkBubble
+  );
 }
 
 /**
@@ -313,7 +320,10 @@ exports.decide = async (context, { payload }) => {
     p2NewElo,
   });
 
-  await context.replyFlex("猜拳結果", resultBubble);
+  await context.replyFlex(
+    p1Result === "draw" ? `${p1Name} 與 ${p2Name} 猜拳平手` : `${winnerName} 猜拳獲勝`,
+    resultBubble
+  );
 
   if (p1Result !== "draw") {
     const winnerId = p1Result === "win" ? userId : targetUserId;
@@ -387,7 +397,7 @@ async function holdingChallenge(context) {
   });
 
   await context.replyText(i18n.__("message.duel.holding_manual", { displayName }));
-  await context.replyFlex("猜拳大賽", holderBubble);
+  await context.replyFlex(`${displayName || "玩家"} 開擂台，來挑戰猜拳大賽`, holderBubble);
 }
 
 /**
@@ -496,7 +506,10 @@ exports.challenge = async (context, { payload }) => {
       p2NewElo,
     });
 
-    await context.replyFlex("猜拳結果", resultBubble);
+    await context.replyFlex(
+      p1Result === "draw" ? `${p1Name} 與 ${p2Name} 猜拳平手` : `${winnerName} 猜拳獲勝`,
+      resultBubble
+    );
 
     if (p1Result !== "draw") {
       const winnerId = p1Result === "win" ? holderUserId : challengerUserId;

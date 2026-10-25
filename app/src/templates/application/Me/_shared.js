@@ -1,39 +1,41 @@
-const { PALETTE, SEMANTIC, RARITY, SURFACE, HERO_SURFACE } = require("../../common/theme");
+const { PALETTE, RARITY, SURFACE, HERO_SURFACE, TINT, OVERLAY } = require("../../common/theme");
 const i18n = require("../../../util/i18n");
 
+// Me 卡片為深色舞台底，鮮亮色一律取 PALETTE（SEMANTIC.main 為淺底文字用的深色版）
 const COLORS = {
   cyan700: PALETTE.cyan700,
-  cyan600: SEMANTIC.primary.main,
-  cyan500: SEMANTIC.primary.light,
+  cyan600: PALETTE.cyan600,
+  cyan500: PALETTE.cyan500,
   cyan400: PALETTE.cyan400,
-  cyanBg: "#E0F7FA",
+  cyanBg: TINT.cyan.bg,
 
-  amber500: SEMANTIC.secondary.main,
-  amber400: SEMANTIC.secondary.light,
+  amber500: PALETTE.amber500,
+  amber400: PALETTE.amber400,
   amber300: PALETTE.amber300,
-  amberBg: "#FFF7E6",
+  amberBg: TINT.gold.bg,
 
-  green500: SEMANTIC.success.main,
-  greenBg: "#E8F9EF",
-  red500: SEMANTIC.danger.main,
-  redBg: "#FDECEC",
+  green500: PALETTE.green500,
+  greenBg: TINT.mint.bg,
+  red500: PALETTE.red500,
+  redBg: TINT.red.bg,
 
+  white: PALETTE.white,
   text: SURFACE.text,
   textMuted: SURFACE.textMuted,
-  textDark: "#3A2800",
-  track: "#F0F4F7",
-  divider: "#EEF2F6",
-  whiteOverlay: "#FFFFFF44",
+  textDark: TINT.amber.deep,
+  track: SURFACE.bgAlt,
+  divider: SURFACE.dividerMuted,
+  whiteOverlay: OVERLAY.onColorSoft,
 
   heroBgAlt: HERO_SURFACE.bgAlt,
   heroBgRaised: HERO_SURFACE.bgRaised,
   heroButton: HERO_SURFACE.bgButton,
   epic: RARITY.epic.main,
-  epicSoft: "#D8B4FE",
+  epicSoft: TINT.violet.border,
   heroText: HERO_SURFACE.text,
   heroTextMuted: HERO_SURFACE.textMuted,
-  tagCyanText: "#002A30",
-  tagAmberText: "#3A2800",
+  tagCyanText: TINT.cyan.ink,
+  tagAmberText: TINT.amber.deep,
 };
 
 const buildAccentBar = ({ startColor, endColor, height = "4px" }) => ({
@@ -66,7 +68,7 @@ function panelStyle(key, paused) {
       hairline: { startColor: COLORS.epic, endColor: COLORS.amber300 },
       bodyBg: COLORS.heroBgRaised,
       tagBg: COLORS.epic,
-      tagFg: "#FFFFFF",
+      tagFg: PALETTE.white,
     };
   }
   const isSeason = key === "season";
@@ -96,7 +98,7 @@ const buildEffectLine = ({ text, exclusive }) => {
       weight: "bold",
     });
   }
-  return { type: "text", contents: spans, size: "xxs" };
+  return { type: "text", contents: spans, size: "xs" };
 };
 
 const buildSubPanel = ({ key, titleText, expireText, effects = [], paused = null }) => {
@@ -111,7 +113,7 @@ const buildSubPanel = ({ key, titleText, expireText, effects = [], paused = null
       {
         type: "text",
         text: titleText,
-        size: "xxs",
+        size: "xs",
         color: tagFg,
         weight: "bold",
         align: "center",
@@ -134,7 +136,7 @@ const buildSubPanel = ({ key, titleText, expireText, effects = [], paused = null
       {
         type: "text",
         text: `${expireText} 到期`,
-        size: "xxs",
+        size: "xs",
         color: COLORS.heroTextMuted,
         gravity: "center",
         align: "end",
@@ -150,7 +152,7 @@ const buildSubPanel = ({ key, titleText, expireText, effects = [], paused = null
         {
           type: "text",
           text: i18n.__(PAUSED_TEXT_KEY[paused]),
-          size: "xxs",
+          size: "xs",
           color: COLORS.heroTextMuted,
           wrap: true,
         },
@@ -177,7 +179,7 @@ const buildSubPanel = ({ key, titleText, expireText, effects = [], paused = null
   };
 };
 
-const buildLinkPill = ({ label, action, size = "xxs", cornerRadius, alignItems, margin }) => {
+const buildLinkPill = ({ label, action, size = "xs", cornerRadius, alignItems, margin }) => {
   const pill = {
     type: "box",
     layout: "horizontal",

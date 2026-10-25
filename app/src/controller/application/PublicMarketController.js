@@ -15,7 +15,10 @@ async function showMarket(context) {
 
   try {
     const summary = await PublicMarketService.getSummary(userId);
-    return context.replyFlex("公開市場", generateMarketBubble(summary));
+    return context.replyFlex(
+      `公開市場：我的開放委託 ${summary.myOpenCount} / ${summary.maxOpen}`,
+      generateMarketBubble(summary)
+    );
   } catch (e) {
     DefaultLogger.error(e);
     return context.replyText("市場現在有點忙，等一下再試試");

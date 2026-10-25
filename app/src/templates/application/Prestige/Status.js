@@ -4,10 +4,11 @@
 
 const humanNumber = require("human-number");
 const { COLORS } = require("../Me/_shared");
+const { SEMANTIC } = require("../../common/theme");
 const { FALLBACK_AVATAR } = require("./_shared");
 
 const TOTAL_BLESSINGS = 7;
-const GREEN_ACCENT = "#16A34A"; // Tailwind green-600 — used for ✓ marks and honeymoon +20% emphasis
+const GREEN_ACCENT = SEMANTIC.success.main; // ✓ marks and honeymoon +20% emphasis
 
 const formatExp = n => humanNumber(n, v => Number.parseFloat(v).toFixed(1));
 
@@ -54,7 +55,7 @@ function formatTrialRestriction(restrictionMeta) {
   }
 }
 
-function buildAvatar(pictureUrl, borderColor = "#FFFFFF") {
+function buildAvatar(pictureUrl, borderColor = COLORS.white) {
   return {
     type: "box",
     layout: "vertical",
@@ -87,7 +88,7 @@ function buildLevelPill({ text, bg = COLORS.amber400, fg = COLORS.textDark }) {
     paddingTop: "2px",
     paddingBottom: "2px",
     flex: 0,
-    contents: [{ type: "text", text, weight: "bold", size: "xxs", color: fg, align: "center" }],
+    contents: [{ type: "text", text, weight: "bold", size: "xs", color: fg, align: "center" }],
   };
 }
 
@@ -132,7 +133,7 @@ function buildHoneymoonChip() {
       {
         type: "text",
         text: "首次轉生前限定 · 達 Lv.100 後選擇試煉、再轉生即可永久強化",
-        size: "xxs",
+        size: "xs",
         color: COLORS.textMuted,
         wrap: true,
         margin: "sm",
@@ -199,7 +200,7 @@ function buildTrialActiveCard({
     ? {
         type: "text",
         contents: [
-          { type: "span", text: restriction.label, color: COLORS.textMuted, size: "xxs" },
+          { type: "span", text: restriction.label, color: COLORS.textMuted, size: "xs" },
           {
             type: "span",
             text: ` ${restriction.value}`,
@@ -260,7 +261,7 @@ function buildTrialActiveCard({
                 layout: "horizontal",
                 margin: "sm",
                 contents: [
-                  { type: "text", text: "進度", size: "xxs", color: COLORS.textMuted, flex: 0 },
+                  { type: "text", text: "進度", size: "xs", color: COLORS.textMuted, flex: 0 },
                   {
                     type: "text",
                     contents: [
@@ -275,7 +276,7 @@ function buildTrialActiveCard({
                         type: "span",
                         text: ` / ${requiredExp.toLocaleString()}`,
                         color: COLORS.textMuted,
-                        size: "xxs",
+                        size: "xs",
                       },
                     ],
                     align: "end",
@@ -285,7 +286,7 @@ function buildTrialActiveCard({
               {
                 type: "box",
                 layout: "horizontal",
-                backgroundColor: "#FFFFFF",
+                backgroundColor: COLORS.white,
                 height: "5px",
                 cornerRadius: "md",
                 margin: "xs",
@@ -306,7 +307,7 @@ function buildTrialActiveCard({
                 layout: "horizontal",
                 margin: "sm",
                 contents: [
-                  { type: "text", text: "剩餘", size: "xxs", color: COLORS.textMuted, flex: 0 },
+                  { type: "text", text: "剩餘", size: "xs", color: COLORS.textMuted, flex: 0 },
                   {
                     type: "text",
                     contents: [
@@ -321,7 +322,7 @@ function buildTrialActiveCard({
                         type: "span",
                         text: deadlineLabel ? ` 天 · 至 ${deadlineLabel}` : " 天",
                         color: COLORS.textMuted,
-                        size: "xxs",
+                        size: "xs",
                       },
                     ],
                     align: "end",
@@ -391,7 +392,7 @@ function buildTrialReadyCard({ readyTrial, atMaxLevel = true }) {
                 text: atMaxLevel
                   ? "消費這次通過記錄即可轉生 · 等級歸零，再選一個祝福永久強化"
                   : "通過記錄已保留 · 達 Lv.100 後轉生：等級歸零，再選一個祝福永久強化",
-                size: "xxs",
+                size: "xs",
                 color: COLORS.textMuted,
                 wrap: true,
                 margin: "xs",
@@ -428,7 +429,7 @@ function buildBlessingGrid({ ownedSlugs, isReady }) {
       type: "box",
       layout: "vertical",
       height: "4px",
-      backgroundColor: "#E5E7EB",
+      backgroundColor: COLORS.track,
       cornerRadius: "md",
       flex: 1,
       contents: [],
@@ -442,7 +443,7 @@ function buildBlessingGrid({ ownedSlugs, isReady }) {
         type: "box",
         layout: "vertical",
         height: "4px",
-        backgroundColor: "#E5E7EB",
+        backgroundColor: COLORS.track,
         borderColor: COLORS.amber400,
         borderWidth: "1px",
         cornerRadius: "md",
@@ -459,7 +460,7 @@ function buildBlessingGrid({ ownedSlugs, isReady }) {
         type: "box",
         layout: "vertical",
         height: "4px",
-        backgroundColor: "#E5E7EB",
+        backgroundColor: COLORS.track,
         cornerRadius: "md",
         flex: 1,
         contents: [],
@@ -541,7 +542,7 @@ function buildBlessingsSection({ ownedBlessings, isReady, isAwakened }) {
     listOrEmpty = {
       type: "text",
       text: "○ 尚未獲得任何祝福",
-      size: "xxs",
+      size: "xs",
       color: COLORS.textMuted,
       margin: "sm",
       align: "center",
@@ -569,7 +570,7 @@ function buildBlessingsSection({ ownedBlessings, isReady, isAwakened }) {
           {
             type: "text",
             text: groupText,
-            size: "xxs",
+            size: "xs",
             color: COLORS.textDark,
             weight: "bold",
             flex: isLastSingleRow ? 0 : 1,
@@ -581,7 +582,7 @@ function buildBlessingsSection({ ownedBlessings, isReady, isAwakened }) {
         row.contents.push({
           type: "text",
           text: "全部祝福已永久生效",
-          size: "xxs",
+          size: "xs",
           color: COLORS.textMuted,
           flex: 1,
           align: "end",
@@ -619,7 +620,7 @@ function buildBlessingsSection({ ownedBlessings, isReady, isAwakened }) {
           {
             type: "text",
             text: blessingShort(b.slug, b.display_name),
-            size: "xxs",
+            size: "xs",
             color: COLORS.textMuted,
             flex: 1,
           },
@@ -643,7 +644,7 @@ function buildBlessingsSection({ ownedBlessings, isReady, isAwakened }) {
           {
             type: "text",
             text: "祝福收集",
-            size: "xxs",
+            size: "xs",
             color: COLORS.textMuted,
             flex: 1,
             gravity: "center",
@@ -668,7 +669,7 @@ function buildFooter({ scenario, liffUri, liffUriSummary, atMaxLevel = true }) {
         {
           type: "box",
           layout: "vertical",
-          backgroundColor: "#E5E7EB",
+          backgroundColor: COLORS.track,
           cornerRadius: "md",
           paddingTop: "md",
           paddingBottom: "md",
@@ -700,7 +701,7 @@ function buildFooter({ scenario, liffUri, liffUriSummary, atMaxLevel = true }) {
           {
             type: "box",
             layout: "vertical",
-            backgroundColor: "#E5E7EB",
+            backgroundColor: COLORS.track,
             cornerRadius: "md",
             paddingTop: "md",
             paddingBottom: "md",
@@ -967,7 +968,7 @@ function buildHeroExplicit({
   isAwakened,
   readyAtMax,
 }) {
-  const avatarBorder = isReady || isAwakened ? COLORS.amber400 : "#FFFFFF";
+  const avatarBorder = isReady || isAwakened ? COLORS.amber400 : COLORS.white;
 
   let levelPillBg = COLORS.amber400;
   let levelPillFg = COLORS.textDark;
@@ -1004,7 +1005,7 @@ function buildHeroExplicit({
     ? {
         type: "text",
         text: flagText,
-        size: "xxs",
+        size: "xs",
         color: COLORS.amber300,
         weight: "bold",
         margin: "xs",
@@ -1042,7 +1043,7 @@ function buildHeroExplicit({
                     text: displayName || "玩家",
                     weight: "bold",
                     size: "md",
-                    color: "#FFFFFF",
+                    color: COLORS.white,
                     flex: 1,
                     gravity: "center",
                   },
@@ -1059,11 +1060,11 @@ function buildHeroExplicit({
         layout: "horizontal",
         margin: "md",
         contents: [
-          { type: "text", text: "EXP", size: "xxs", color: "#FFFFFF", flex: 0 },
+          { type: "text", text: "EXP", size: "xs", color: COLORS.white, flex: 0 },
           {
             type: "text",
             text: expText,
-            size: "xxs",
+            size: "xs",
             color: COLORS.amber300,
             weight: "bold",
             align: "end",

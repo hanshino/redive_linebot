@@ -20,19 +20,22 @@ exports.titleRouter = [text(/^[.#/](稱號|title)$/, showTitles)];
 exports.adminRouter = [];
 
 async function showAchievements(context) {
-  const { userId } = context.event.source;
+  const { userId, displayName } = context.event.source;
   const summary = await AchievementEngine.getUserSummary(userId);
 
   if (summary.unlocked === 0 && summary.nearCompletion.length === 0) {
     return context.replyText(AchievementTemplate.generateNoDataText());
   }
 
-  const flex = AchievementTemplate.generateSummaryFlex(summary);
-  return context.replyFlex("成就系統", flex);
+  const flex = AchievementTemplate.generateSummaryFlex({ ...summary, displayName });
+  return context.replyFlex(
+    `${displayName || "玩家"} 的成就：已解鎖 ${summary.unlocked} / ${summary.total}`,
+    flex
+  );
 }
 
 async function showTitles(context) {
-  const { userId } = context.event.source;
+  const { userId, displayName } = context.event.source;
   const titles = await UserTitleModel.findByUser(userId);
 
   if (titles.length === 0) {
@@ -40,7 +43,7 @@ async function showTitles(context) {
   }
 
   const flex = AchievementTemplate.generateTitlesFlex(titles);
-  return context.replyFlex("我的稱號", flex);
+  return context.replyFlex(`${displayName || "玩家"} 的稱號（共 ${titles.length} 個）`, flex);
 }
 
 exports.api = {

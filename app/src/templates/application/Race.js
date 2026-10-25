@@ -1,5 +1,6 @@
 const config = require("config");
 const { getLiffUri } = require("../common");
+const { SEMANTIC, HERO_SURFACE, MEDAL, PALETTE } = require("../common/theme");
 
 const raceConfig = config.get("minigame.race");
 const trackLength = raceConfig.trackLength;
@@ -11,12 +12,12 @@ const STATUS_LABEL = {
 };
 
 const STATUS_COLOR = {
-  betting: "#FF9800",
-  running: "#4CAF50",
-  finished: "#9E9E9E",
+  betting: SEMANTIC.warning.main,
+  running: SEMANTIC.success.main,
+  finished: PALETTE.gray700,
 };
 
-const RANK_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32", "#555555", "#555555"];
+const RANK_COLORS = [MEDAL.gold, MEDAL.silver, MEDAL.bronze, PALETTE.gray700, PALETTE.gray700];
 
 const RULES_BUBBLE = generateRulesBubble();
 
@@ -101,14 +102,14 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
                   {
                     type: "text",
                     text: "🏆 冠軍",
-                    size: "xxs",
-                    color: "#FFD700",
+                    size: "xs",
+                    color: MEDAL.gold,
                   },
                   {
                     type: "text",
                     text: winner.character_name,
                     size: "md",
-                    color: "#FFD700",
+                    color: MEDAL.gold,
                     weight: "bold",
                   },
                 ],
@@ -116,12 +117,12 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
               },
             ],
             alignItems: "center",
-            backgroundColor: "#2a2a4a",
+            backgroundColor: HERO_SURFACE.bgRaised,
             cornerRadius: "lg",
             paddingAll: "md",
             margin: "md",
           },
-          { type: "separator", color: "#333333", margin: "lg" },
+          { type: "separator", color: HERO_SURFACE.divider, margin: "lg" },
         ]
       : [];
 
@@ -153,7 +154,7 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
               text: "🏆 蘭德索爾盃",
               weight: "bold",
               size: "lg",
-              color: "#FFFFFF",
+              color: HERO_SURFACE.text,
               flex: 1,
             },
             {
@@ -164,7 +165,7 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
                   type: "text",
                   text: statusLabel,
                   size: "xs",
-                  color: "#FFFFFF",
+                  color: HERO_SURFACE.text,
                   align: "center",
                 },
               ],
@@ -180,18 +181,18 @@ function generateTrackBubble(raceData, rankedRunners, odds) {
           type: "text",
           text: subtitle,
           size: "sm",
-          color: "#B0B0B0",
+          color: HERO_SURFACE.textMuted,
           margin: "sm",
         },
       ],
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       paddingAll: "lg",
     },
     body: {
       type: "box",
       layout: "vertical",
       contents: [...winnerSection, ...trackRows],
-      backgroundColor: "#16213e",
+      backgroundColor: HERO_SURFACE.bgAlt,
       paddingAll: "lg",
       spacing: "md",
     },
@@ -206,15 +207,21 @@ function generateTrackRow(runner, rankIndex, oddsInfo, isBetting = false) {
   const statusIcon = isStunned ? " 💫" : isSlowed ? " 🐌" : "";
   // Betting phase: show character number so users can type .賽跑下注 {number} {amount}
   const rankNum = isBetting ? `${runner.lane}` : `${rankIndex + 1}`;
-  const rankBgColor = isBetting ? "#3B82F6" : RANK_COLORS[rankIndex] || "#555555";
-  const nameColor = isWinner ? "#FFD700" : rankIndex < 3 ? "#FFFFFF" : "#999999";
+  const rankBgColor = isBetting ? SEMANTIC.primary.main : RANK_COLORS[rankIndex] || PALETTE.gray700;
+  // 金銀銅底色上用深色字，其餘用白字
+  const rankTextColor = !isBetting && rankIndex < 3 ? HERO_SURFACE.bg : PALETTE.white;
+  const nameColor = isWinner
+    ? MEDAL.gold
+    : rankIndex < 3
+      ? HERO_SURFACE.text
+      : HERO_SURFACE.textMuted;
   const barColor = isWinner
-    ? "#FFD700"
+    ? MEDAL.gold
     : rankIndex === 0
-      ? "#4CAF50"
+      ? SEMANTIC.success.light
       : rankIndex < 3
-        ? "#2196F3"
-        : "#666666";
+        ? SEMANTIC.primary.light
+        : PALETTE.gray500;
 
   // Right side: odds + stamina
   const rightContents = [];
@@ -222,8 +229,8 @@ function generateTrackRow(runner, rankIndex, oddsInfo, isBetting = false) {
     rightContents.push({
       type: "text",
       text: `${oddsInfo.odds}x`,
-      size: "xxs",
-      color: "#FFD700",
+      size: "xs",
+      color: MEDAL.gold,
       align: "end",
       gravity: "center",
       flex: 0,
@@ -232,8 +239,8 @@ function generateTrackRow(runner, rankIndex, oddsInfo, isBetting = false) {
   rightContents.push({
     type: "text",
     text: `⚡${runner.stamina}`,
-    size: "xxs",
-    color: "#B0B0B0",
+    size: "xs",
+    color: HERO_SURFACE.textMuted,
     align: "end",
     gravity: "center",
     flex: 0,
@@ -254,8 +261,8 @@ function generateTrackRow(runner, rankIndex, oddsInfo, isBetting = false) {
               {
                 type: "text",
                 text: rankNum,
-                size: "xxs",
-                color: "#FFFFFF",
+                size: "xs",
+                color: rankTextColor,
                 align: "center",
                 weight: "bold",
               },
@@ -270,7 +277,7 @@ function generateTrackRow(runner, rankIndex, oddsInfo, isBetting = false) {
           {
             type: "image",
             url: runner.avatar_url || "https://i.imgur.com/SGDoCtd.png",
-            size: "xxs",
+            size: "xs",
             aspectMode: "cover",
             aspectRatio: "1:1",
             flex: 0,
@@ -304,7 +311,7 @@ function generateTrackRow(runner, rankIndex, oddsInfo, isBetting = false) {
             width: `${Math.round((runner.position / trackLength) * 100)}%`,
           },
         ],
-        backgroundColor: "#333333",
+        backgroundColor: HERO_SURFACE.bgRaised,
         height: "6px",
         cornerRadius: "sm",
         margin: "md",
@@ -335,12 +342,12 @@ function generateHistoryBubble(recentFinished) {
             {
               type: "text",
               text: `#${i + 1}`,
-              size: "xxs",
-              color: "#B0B0B0",
+              size: "xs",
+              color: HERO_SURFACE.textMuted,
               align: "center",
             },
           ],
-          width: "24px",
+          width: "28px",
           justifyContent: "center",
           flex: 0,
         },
@@ -360,14 +367,14 @@ function generateHistoryBubble(recentFinished) {
               type: "text",
               text: `🏆 ${r.winner_name}`,
               size: "sm",
-              color: i === 0 ? "#FFD700" : "#FFFFFF",
+              color: i === 0 ? MEDAL.gold : HERO_SURFACE.text,
               weight: i === 0 ? "bold" : "regular",
             },
             {
               type: "text",
               text: `${finishedAt} · ${r.round} 回合`,
-              size: "xxs",
-              color: "#888888",
+              size: "xs",
+              color: HERO_SURFACE.textMuted,
               margin: "xs",
             },
           ],
@@ -387,7 +394,7 @@ function generateHistoryBubble(recentFinished) {
   rows.forEach((row, i) => {
     bodyContents.push(row);
     if (i < rows.length - 1) {
-      bodyContents.push({ type: "separator", color: "#2a2a4a" });
+      bodyContents.push({ type: "separator", color: HERO_SURFACE.bgRaised });
     }
   });
 
@@ -403,24 +410,24 @@ function generateHistoryBubble(recentFinished) {
           text: "🏆 歷史戰績",
           weight: "bold",
           size: "lg",
-          color: "#FFFFFF",
+          color: HERO_SURFACE.text,
         },
         {
           type: "text",
           text: `最近 ${recentFinished.length} 場`,
           size: "sm",
-          color: "#B0B0B0",
+          color: HERO_SURFACE.textMuted,
           margin: "sm",
         },
       ],
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       paddingAll: "lg",
     },
     body: {
       type: "box",
       layout: "vertical",
       contents: bodyContents,
-      backgroundColor: "#16213e",
+      backgroundColor: HERO_SURFACE.bgAlt,
       paddingAll: "md",
       spacing: "none",
     },
@@ -455,15 +462,15 @@ function generateEventBubble(raceData, events, runners, footer) {
             {
               type: "text",
               text: `R${event.round}`,
-              size: "xxs",
-              color: "#FFD700",
+              size: "xs",
+              color: MEDAL.gold,
               align: "center",
               weight: "bold",
             },
           ],
           width: "36px",
           justifyContent: "center",
-          backgroundColor: "#2a2a4a",
+          backgroundColor: HERO_SURFACE.bgRaised,
           cornerRadius: "sm",
           paddingAll: "xs",
           flex: 0,
@@ -473,7 +480,7 @@ function generateEventBubble(raceData, events, runners, footer) {
               {
                 type: "image",
                 url: firstTarget.avatar_url,
-                size: "xxs",
+                size: "xs",
                 aspectMode: "cover",
                 aspectRatio: "1:1",
                 flex: 0,
@@ -484,7 +491,7 @@ function generateEventBubble(raceData, events, runners, footer) {
           type: "text",
           text: event.description,
           size: "xs",
-          color: "#FFFFFF",
+          color: HERO_SURFACE.text,
           wrap: true,
           flex: 1,
           margin: "sm",
@@ -510,25 +517,27 @@ function generateEventBubble(raceData, events, runners, footer) {
           text: "戰況播報",
           weight: "bold",
           size: "lg",
-          color: "#FFFFFF",
+          color: HERO_SURFACE.text,
         },
         {
           type: "text",
           text: `共 ${events.length} 則事件`,
           size: "sm",
-          color: "#B0B0B0",
+          color: HERO_SURFACE.textMuted,
           margin: "sm",
         },
       ],
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       paddingAll: "lg",
     },
     body: {
       type: "box",
       layout: "vertical",
       contents:
-        rows.length > 0 ? rows : [{ type: "text", text: "尚無事件", color: "#B0B0B0", size: "sm" }],
-      backgroundColor: "#16213e",
+        rows.length > 0
+          ? rows
+          : [{ type: "text", text: "尚無事件", color: HERO_SURFACE.textMuted, size: "sm" }],
+      backgroundColor: HERO_SURFACE.bgAlt,
       paddingAll: "lg",
       spacing: "none",
     },
@@ -551,17 +560,17 @@ function generateRulesBubble() {
           text: "遊戲說明",
           weight: "bold",
           size: "lg",
-          color: "#FFFFFF",
+          color: HERO_SURFACE.text,
         },
         {
           type: "text",
           text: "蘭德索爾盃 玩法介紹",
           size: "sm",
-          color: "#B0B0B0",
+          color: HERO_SURFACE.textMuted,
           margin: "sm",
         },
       ],
-      backgroundColor: "#1a1a2e",
+      backgroundColor: HERO_SURFACE.bg,
       paddingAll: "lg",
     },
     body: {
@@ -574,20 +583,20 @@ function generateRulesBubble() {
           "開跑後每 1 分鐘推進一回合",
           "先到終點的角色獲勝",
         ]),
-        { type: "separator", color: "#333333", margin: "lg" },
+        { type: "separator", color: HERO_SURFACE.divider, margin: "lg" },
         ruleSection("下注方式", [
           "指令：.賽跑下注 {編號} {金額}",
           "範例：.賽跑下注 1 500",
           "可對多位角色分別下注",
         ]),
-        { type: "separator", color: "#333333", margin: "lg" },
+        { type: "separator", color: HERO_SURFACE.divider, margin: "lg" },
         ruleSection("獎金計算", [
           "同池分帳制（Parimutuel）",
           "總注額扣除 10% 系統抽成",
           "依押注比例分配給中獎者",
           "若無人押中，全額退還",
         ]),
-        { type: "separator", color: "#333333", margin: "lg" },
+        { type: "separator", color: HERO_SURFACE.divider, margin: "lg" },
         ruleSection("比賽事件", [
           "絆倒 — 後退 1 格",
           "加速道具 — 前進 2 格",
@@ -596,7 +605,7 @@ function generateRulesBubble() {
           "絆腳索 — 目標暈眩一回合",
         ]),
       ],
-      backgroundColor: "#16213e",
+      backgroundColor: HERO_SURFACE.bgAlt,
       paddingAll: "lg",
       spacing: "md",
     },
@@ -612,7 +621,7 @@ function ruleSection(title, items) {
         type: "text",
         text: title,
         size: "sm",
-        color: "#FFD700",
+        color: MEDAL.gold,
         weight: "bold",
         margin: "md",
       },
@@ -620,7 +629,7 @@ function ruleSection(title, items) {
         type: "text",
         text: `· ${item}`,
         size: "xs",
-        color: "#CCCCCC",
+        color: HERO_SURFACE.text,
         wrap: true,
         margin: "sm",
       })),
@@ -646,11 +655,11 @@ function generateFooter(raceData) {
           uri: liffUrl,
         },
         style: "primary",
-        color: isBetting ? "#E67E22" : "#3B82F6",
+        color: isBetting ? SEMANTIC.secondary.main : SEMANTIC.primary.main,
         height: "sm",
       },
     ],
-    backgroundColor: "#1a1a2e",
+    backgroundColor: HERO_SURFACE.bg,
     paddingAll: "md",
   };
 }

@@ -1,3 +1,4 @@
+const { PALETTE, OVERLAY } = require("../common/theme");
 const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
 
 exports.showManagePlace = context => {
@@ -23,7 +24,13 @@ exports.showManagePlace = context => {
               type: "box",
               layout: "vertical",
               contents: [
-                { type: "text", text: "管理員頁面", size: "xl", color: "#ffffff", weight: "bold" },
+                {
+                  type: "text",
+                  text: "管理員頁面",
+                  size: "xl",
+                  color: PALETTE.white,
+                  weight: "bold",
+                },
                 {
                   type: "box",
                   layout: "horizontal",
@@ -56,7 +63,7 @@ exports.showManagePlace = context => {
           offsetBottom: "0px",
           offsetStart: "0px",
           offsetEnd: "0px",
-          backgroundColor: "#03303Acc",
+          backgroundColor: OVERLAY.scrimCyan,
           paddingAll: "20px",
           paddingTop: "18px",
           position: "absolute",

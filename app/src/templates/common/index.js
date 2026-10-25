@@ -2,21 +2,27 @@
  * 存放通用函式庫
  */
 
+const { SEMANTIC, SURFACE, TINT, PALETTE } = require("./theme");
+
+// 主題名稱沿用舊名（indigo 等）以免呼叫端壞掉，色值一律取自 theme.js；
+// 預設（含 indigo）為品牌主色宮子青。
+const PRIMARY_THEME = { solid: SEMANTIC.primary.main, soft: TINT.cyan.bg };
 const LINK_THEMES = {
-  indigo: { solid: "#4F46E5", soft: "#EEF2FF" },
-  emerald: { solid: "#059669", soft: "#ECFDF5" },
-  amber: { solid: "#D97706", soft: "#FFFBEB" },
-  rose: { solid: "#E11D48", soft: "#FFF1F2" },
-  cyan: { solid: "#0891B2", soft: "#ECFEFF" },
-  slate: { solid: "#334155", soft: "#F1F5F9" },
+  primary: PRIMARY_THEME,
+  indigo: PRIMARY_THEME,
+  cyan: PRIMARY_THEME,
+  emerald: { solid: SEMANTIC.success.main, soft: TINT.green.bg },
+  amber: { solid: SEMANTIC.secondary.main, soft: TINT.amber.bg },
+  rose: { solid: SEMANTIC.danger.main, soft: TINT.red.bg },
+  slate: { solid: SEMANTIC.neutral.main, soft: SURFACE.bgAlt },
 };
 
-const MUTED_TEXT = "#8A8A8A";
-const CHEVRON_COLOR = "#BBBBBB";
-const DIVIDER_COLOR = "#EEEEEE";
+const MUTED_TEXT = SURFACE.textMuted;
+const CHEVRON_COLOR = SURFACE.divider;
+const DIVIDER_COLOR = SURFACE.dividerMuted;
 
 function resolveTheme(theme) {
-  return LINK_THEMES[theme] || LINK_THEMES.indigo;
+  return LINK_THEMES[theme] || LINK_THEMES.primary;
 }
 
 function buildMenuRow({ icon, title, subtitle, url, theme }) {
@@ -26,7 +32,7 @@ function buildMenuRow({ icon, title, subtitle, url, theme }) {
     textContents.push({
       type: "text",
       text: subtitle,
-      size: "xxs",
+      size: "xs",
       color: MUTED_TEXT,
       margin: "xs",
     });
@@ -129,7 +135,7 @@ module.exports = {
    * @param {Object} opts
    * @param {String} opts.title 標題
    * @param {String} [opts.subtitle] 副標
-   * @param {String} [opts.headerColor] 標題區塊背景色，預設 indigo
+   * @param {String} [opts.headerColor] 標題區塊背景色，預設品牌主色（宮子青）
    * @param {Array<{icon:string,title:string,subtitle?:string,url:string,theme?:string}>} opts.items
    */
   genLinkMenu: function ({ title, subtitle, headerColor, items }) {
@@ -137,12 +143,12 @@ module.exports = {
       type: "box",
       layout: "vertical",
       paddingAll: "lg",
-      backgroundColor: headerColor || LINK_THEMES.indigo.solid,
+      backgroundColor: headerColor || LINK_THEMES.primary.solid,
       contents: [
         {
           type: "text",
           text: title,
-          color: "#FFFFFF",
+          color: PALETTE.white,
           weight: "bold",
           size: "md",
         },
@@ -152,8 +158,8 @@ module.exports = {
       header.contents.push({
         type: "text",
         text: subtitle,
-        color: "#FFFFFFCC",
-        size: "xxs",
+        color: "#FFFFFFE6",
+        size: "xs",
         margin: "xs",
       });
     }
@@ -187,7 +193,7 @@ module.exports = {
    * @param {String} opts.title 標題
    * @param {String} [opts.subtitle] 副標
    * @param {String} opts.url 連結
-   * @param {String} [opts.theme] indigo|emerald|amber|rose|cyan|slate
+   * @param {String} [opts.theme] primary|emerald|amber|rose|slate（indigo / cyan 為 primary 別名）
    * @param {String} [opts.cta] 按鈕文字，預設「前往」
    */
   genActionBubble: function ({ icon, title, subtitle, url, theme, cta }) {
@@ -227,7 +233,7 @@ module.exports = {
       inner.push({
         type: "text",
         text: subtitle,
-        size: "xxs",
+        size: "xs",
         color: MUTED_TEXT,
         align: "center",
         wrap: true,
@@ -240,15 +246,17 @@ module.exports = {
       layout: "vertical",
       backgroundColor: t.solid,
       cornerRadius: "8px",
-      paddingAll: "sm",
+      height: "44px",
+      justifyContent: "center",
       margin: "md",
+      action: { type: "uri", label: label.slice(0, 20), uri: url },
       contents: [
         {
           type: "text",
           text: label,
-          color: "#FFFFFF",
+          color: PALETTE.white,
           align: "center",
-          size: "xs",
+          size: "sm",
           weight: "bold",
         },
       ],

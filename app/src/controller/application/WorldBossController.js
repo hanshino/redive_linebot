@@ -22,7 +22,18 @@ async function showBattleStatus(context) {
     liffUri: getLiffUri("full", WORLD_BOSS_LIFF_PATH),
     attackEnabled,
   });
-  return context.replyFlex("世界王", bubble);
+  return context.replyFlex(buildAltText(status), bubble);
+}
+
+/** altText 帶出目前輪次與王名，通知列也看得出是哪一場戰況。 */
+function buildAltText(status) {
+  const rounds = Array.isArray(status && status.rounds) ? status.rounds : [];
+  if (!status || status.ended || rounds.length === 0) return "世界王：目前沒有進行中的賽季";
+  const names = rounds
+    .map(round => round.name)
+    .filter(Boolean)
+    .join("、");
+  return `世界王戰況：第 ${rounds[0].cycle_no} 輪${names ? `（${names}）` : ""}`.slice(0, 400);
 }
 
 /** Handle a group attack postback using the shared attack service. */

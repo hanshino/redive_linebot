@@ -1,10 +1,11 @@
 // Shared palette + flex primitives for the Prestige bubble family
 // (Lv50CTA / Lv100CTA / Lv100NoTrialCTA / Status / TrialEnter).
 
-const PRESTIGE_PURPLE = "#3B2A6B";
-const PRESTIGE_GOLD = "#F5C84B";
-const PRESTIGE_PURPLE_DEEP = "#2A1F4D";
-const PRESTIGE_LILAC = "#E5DFFF";
+const { SURFACE, PRESTIGE } = require("../../common/theme");
+const PRESTIGE_PURPLE = PRESTIGE.purple;
+const PRESTIGE_GOLD = PRESTIGE.gold;
+const PRESTIGE_PURPLE_DEEP = PRESTIGE.deep;
+const PRESTIGE_LILAC = PRESTIGE.lilac;
 const FALLBACK_AVATAR = "https://i.imgur.com/NMl4z2u.png";
 const PRESTIGE_CAP = 5;
 
@@ -64,7 +65,7 @@ function bulletRow(num, text) {
     spacing: "sm",
     contents: [
       { type: "text", text: num, color: PRESTIGE_GOLD, size: "sm", weight: "bold", flex: 0 },
-      { type: "text", text, color: "#444444", size: "sm", wrap: true },
+      { type: "text", text, color: SURFACE.textMuted, size: "sm", wrap: true },
     ],
   };
 }

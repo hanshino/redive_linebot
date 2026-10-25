@@ -33,7 +33,7 @@ async function showStoneShop(context) {
   const bubbles = viewData.map(item => GodStoneShopTemplate.genShopItem(item));
 
   chunk(bubbles, 10).forEach(chunk => {
-    context.replyFlex("女神石兌換商店", {
+    context.replyFlex(`女神石兌換商店：${chunk.length} 項商品`, {
       type: "carousel",
       contents: chunk,
     });

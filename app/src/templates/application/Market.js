@@ -1,3 +1,4 @@
+const { PALETTE, SEMANTIC, SURFACE, OVERLAY } = require("../common/theme");
 exports.generateTransferOrderBubble = ({
   sourceName,
   targetName,
@@ -18,13 +19,13 @@ exports.generateTransferOrderBubble = ({
           {
             type: "text",
             text: "從",
-            color: "#ffffff66",
+            color: OVERLAY.onColorMuted,
             size: "sm",
           },
           {
             type: "text",
             text: `${sourceName}`,
-            color: "#ffffff",
+            color: PALETTE.white,
             size: "xl",
             flex: 4,
             weight: "bold",
@@ -38,13 +39,13 @@ exports.generateTransferOrderBubble = ({
           {
             type: "text",
             text: "到",
-            color: "#ffffff66",
+            color: OVERLAY.onColorMuted,
             size: "sm",
           },
           {
             type: "text",
             text: `${targetName}`,
-            color: "#ffffff",
+            color: PALETTE.white,
             size: "xl",
             flex: 4,
             weight: "bold",
@@ -53,7 +54,7 @@ exports.generateTransferOrderBubble = ({
       },
     ],
     paddingAll: "20px",
-    backgroundColor: "#0367D3",
+    backgroundColor: SEMANTIC.primary.main,
     spacing: "md",
     height: "154px",
     paddingTop: "22px",
@@ -64,7 +65,7 @@ exports.generateTransferOrderBubble = ({
     contents: [
       {
         type: "text",
-        color: "#b7b7b7",
+        color: SURFACE.textMuted,
         size: "xs",
         contents: [
           {
@@ -95,7 +96,7 @@ exports.generateTransferOrderBubble = ({
                 cornerRadius: "30px",
                 height: "12px",
                 width: "12px",
-                borderColor: "#45EF4D",
+                borderColor: SEMANTIC.success.main,
                 borderWidth: "2px",
               },
               {
@@ -136,7 +137,7 @@ exports.generateTransferOrderBubble = ({
                     layout: "vertical",
                     contents: [],
                     width: "2px",
-                    backgroundColor: "#B7B7B7",
+                    backgroundColor: SURFACE.textMuted,
                   },
                   {
                     type: "filler",
@@ -153,7 +154,7 @@ exports.generateTransferOrderBubble = ({
             gravity: "center",
             flex: 4,
             size: "xs",
-            color: "#8c8c8c",
+            color: SURFACE.textMuted,
           },
         ],
         spacing: "lg",
@@ -178,7 +179,7 @@ exports.generateTransferOrderBubble = ({
                 width: "12px",
                 height: "12px",
                 borderWidth: "2px",
-                borderColor: "#6486E3",
+                borderColor: SEMANTIC.primary.light,
               },
               {
                 type: "filler",
@@ -205,12 +206,12 @@ exports.generateTransferOrderBubble = ({
             type: "text",
             text: "確定",
             align: "center",
-            color: "#ffffff",
+            color: PALETTE.white,
           },
         ],
         paddingAll: "md",
         cornerRadius: "md",
-        backgroundColor: "#40587C",
+        backgroundColor: SEMANTIC.primary.main,
         margin: "md",
         action: {
           type: "postback",

@@ -26,11 +26,11 @@ function buildDailyCap({ dailyRaw, tier1Upper, tier2Upper }) {
     type: "box",
     layout: "horizontal",
     contents: [
-      { type: "text", text: "今日經驗區段", size: "xxs", color: "#FFFFFF", flex: 0 },
+      { type: "text", text: "今日經驗區段", size: "xs", color: COLORS.white, flex: 0 },
       {
         type: "text",
         text: valueText,
-        size: "xxs",
+        size: "xs",
         color: COLORS.amber300,
         weight: "bold",
         align: "end",
@@ -92,7 +92,7 @@ function buildHero({
     width: "60px",
     height: "60px",
     borderWidth: "2px",
-    borderColor: "#FFFFFF",
+    borderColor: COLORS.white,
     flex: 0,
   };
 
@@ -104,7 +104,7 @@ function buildHero({
         type: "text",
         text: `Lv.${level}`,
         weight: "bold",
-        size: "xxs",
+        size: "xs",
         color: COLORS.textDark,
         align: "center",
       },
@@ -127,7 +127,7 @@ function buildHero({
         text: displayName,
         weight: "bold",
         size: "md",
-        color: "#FFFFFF",
+        color: COLORS.white,
         flex: 1,
         gravity: "center",
       },
@@ -142,7 +142,7 @@ function buildHero({
     ? {
         type: "text",
         text: flagsList.join(" · "),
-        size: "xxs",
+        size: "xs",
         color: COLORS.amber300,
         weight: "bold",
         margin: "xs",
@@ -173,11 +173,11 @@ function buildHero({
     type: "box",
     layout: "horizontal",
     contents: [
-      { type: "text", text: "EXP", size: "xxs", color: "#FFFFFF", flex: 0 },
+      { type: "text", text: "EXP", size: "xs", color: COLORS.white, flex: 0 },
       {
         type: "text",
         text: expText,
-        size: "xxs",
+        size: "xs",
         color: COLORS.amber300,
         weight: "bold",
         align: "end",
@@ -254,14 +254,14 @@ function buildStat({ fraction, icon, label, tone }) {
         layout: "baseline",
         contents: [
           { type: "text", text: icon, size: "sm", color: fg, weight: "bold", flex: 0 },
-          { type: "text", text: " ", size: "xxs", flex: 0 },
+          { type: "text", text: " ", size: "xs", flex: 0 },
           { type: "text", text: fraction, size: "sm", color: fg, weight: "bold", flex: 0 },
         ],
       },
       {
         type: "text",
         text: label,
-        size: "xxs",
+        size: "xs",
         color: COLORS.textMuted,
         align: "center",
         margin: "xs",
@@ -354,14 +354,14 @@ function buildStreak(signin) {
       {
         type: "text",
         text: `本月 ${monthCount}/${daysInMonth} 天`,
-        size: "xxs",
+        size: "xs",
         color: COLORS.textMuted,
         flex: 1,
       },
       {
         type: "text",
         text: `累積 ${total} 天`,
-        size: "xxs",
+        size: "xs",
         color: COLORS.textMuted,
         align: "end",
         flex: 0,

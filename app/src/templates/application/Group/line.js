@@ -1,10 +1,11 @@
+const { PALETTE, SEMANTIC, OVERLAY } = require("../../common/theme");
 const liffUri = `https://liff.line.me/${process.env.LINE_LIFF_ID}`;
 
 exports.showGroupStatus = context => {
   const { groupId } = context.event.source;
   const { groupName, count, pictureUrl } = context.state.groupDatas;
 
-  context.replyFlex("群組管理", {
+  context.replyFlex(`${groupName || "群組"} 群組管理`, {
     type: "bubble",
     body: {
       type: "box",
@@ -55,7 +56,7 @@ exports.showGroupStatus = context => {
                         {
                           type: "span",
                           text: "名稱",
-                          color: "#FFFFFF",
+                          color: PALETTE.white,
                         },
                         {
                           type: "span",
@@ -64,7 +65,7 @@ exports.showGroupStatus = context => {
                         {
                           type: "span",
                           text: groupName,
-                          color: "#89CFF0",
+                          color: PALETTE.cyan400,
                           weight: "bold",
                         },
                       ],
@@ -76,7 +77,7 @@ exports.showGroupStatus = context => {
                         {
                           type: "span",
                           text: "人數",
-                          color: "#FFFFFF",
+                          color: PALETTE.white,
                         },
                         {
                           type: "span",
@@ -85,7 +86,7 @@ exports.showGroupStatus = context => {
                         {
                           type: "span",
                           text: `${count || "?"}`,
-                          color: "#89CFF0",
+                          color: PALETTE.cyan400,
                           weight: "bold",
                         },
                       ],
@@ -108,12 +109,12 @@ exports.showGroupStatus = context => {
                     {
                       type: "text",
                       text: "🏠布丁首頁",
-                      color: "#ffffff",
+                      color: PALETTE.white,
                       align: "center",
                     },
                   ],
                   borderWidth: "3px",
-                  borderColor: "#FFFFFF",
+                  borderColor: PALETTE.white,
                   cornerRadius: "5px",
                   paddingAll: "10px",
                   action: {
@@ -128,12 +129,12 @@ exports.showGroupStatus = context => {
                     {
                       type: "text",
                       text: "🥁說話排行",
-                      color: "#ffffff",
+                      color: PALETTE.white,
                       align: "center",
                     },
                   ],
                   borderWidth: "3px",
-                  borderColor: "#FFFFFF",
+                  borderColor: PALETTE.white,
                   cornerRadius: "5px",
                   paddingAll: "10px",
                   action: {
@@ -155,12 +156,12 @@ exports.showGroupStatus = context => {
                     {
                       type: "text",
                       text: "📜戰隊簽到",
-                      color: "#ffffff",
+                      color: PALETTE.white,
                       align: "center",
                     },
                   ],
                   borderWidth: "3px",
-                  borderColor: "#FFFFFF",
+                  borderColor: PALETTE.white,
                   cornerRadius: "5px",
                   paddingAll: "10px",
                   action: {
@@ -175,12 +176,12 @@ exports.showGroupStatus = context => {
                     {
                       type: "text",
                       text: "📝自訂指令",
-                      color: "#ffffff",
+                      color: PALETTE.white,
                       align: "center",
                     },
                   ],
                   borderWidth: "3px",
-                  borderColor: "#FFFFFF",
+                  borderColor: PALETTE.white,
                   cornerRadius: "5px",
                   paddingAll: "10px",
                   action: {
@@ -202,12 +203,12 @@ exports.showGroupStatus = context => {
                     {
                       type: "text",
                       text: "🔧設定",
-                      color: "#ffffff",
+                      color: PALETTE.white,
                       align: "center",
                     },
                   ],
                   borderWidth: "3px",
-                  borderColor: "#FFFFFF",
+                  borderColor: PALETTE.white,
                   cornerRadius: "5px",
                   paddingAll: "10px",
                   action: {
@@ -218,7 +219,7 @@ exports.showGroupStatus = context => {
               ],
             },
           ],
-          backgroundColor: "#9C8E7Ecc",
+          backgroundColor: OVERLAY.scrimNeutral,
           paddingAll: "10px",
           position: "absolute",
           offsetEnd: "0px",
@@ -234,14 +235,14 @@ exports.showGroupStatus = context => {
               type: "text",
               text: "群組管理",
               size: "xs",
-              color: "#ffffff",
+              color: PALETTE.white,
             },
           ],
           position: "absolute",
           offsetTop: "18px",
           offsetEnd: "10px",
           cornerRadius: "20px",
-          backgroundColor: "#89CFF0",
+          backgroundColor: SEMANTIC.primary.main,
           paddingAll: "5px",
         },
       ],

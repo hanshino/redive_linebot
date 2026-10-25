@@ -1,3 +1,4 @@
+const { PALETTE, SEMANTIC, SURFACE, TINT, OVERLAY } = require("../common/theme");
 const { getLiffUri } = require("../common");
 
 /**
@@ -27,8 +28,8 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
       background: {
         type: "linearGradient",
         angle: "135deg",
-        startColor: "#00838F",
-        endColor: "#00ACC1",
+        startColor: PALETTE.cyan700,
+        endColor: PALETTE.cyan600,
       },
       contents: [
         {
@@ -40,14 +41,14 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
               text: "公開市場",
               size: "xl",
               weight: "bold",
-              color: "#FFFFFF",
+              color: PALETTE.white,
               flex: 0,
             },
             {
               type: "text",
               text: `手續費 ${feePercent}%`,
               size: "xs",
-              color: "#FFFFFF",
+              color: PALETTE.white,
               align: "end",
               gravity: "center",
             },
@@ -57,7 +58,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
           type: "text",
           text: "賣單最低價 · 收購單最高價",
           size: "xs",
-          color: "#CDEFF3",
+          color: OVERLAY.onColorMuted,
           margin: "sm",
         },
       ],
@@ -76,7 +77,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
               type: "text",
               text: "我的開放委託",
               size: "sm",
-              color: "#5A6B7F",
+              color: SURFACE.textMuted,
               flex: 0,
             },
             {
@@ -84,7 +85,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
               text: `${myOpenCount} / ${maxOpen}`,
               size: "md",
               weight: "bold",
-              color: "#1A2332",
+              color: SURFACE.text,
               align: "end",
             },
           ],
@@ -93,7 +94,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
           type: "box",
           layout: "vertical",
           height: "6px",
-          backgroundColor: "#E0F7FA",
+          backgroundColor: TINT.cyan.bg,
           cornerRadius: "3px",
           contents: [
             {
@@ -101,7 +102,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
               layout: "vertical",
               width: quotaWidth,
               height: "6px",
-              backgroundColor: "#00ACC1",
+              backgroundColor: PALETTE.cyan600,
               cornerRadius: "3px",
               contents: [{ type: "filler" }],
             },
@@ -110,14 +111,14 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
         {
           type: "text",
           text: "賣單 + 收購單合計",
-          size: "xxs",
-          color: "#5A6B7F",
+          size: "xs",
+          color: SURFACE.textMuted,
           margin: "sm",
         },
         {
           type: "separator",
           margin: "lg",
-          color: "#E8EEF0",
+          color: SURFACE.dividerMuted,
         },
         {
           type: "box",
@@ -128,7 +129,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
               type: "text",
               text: "全站開放委託",
               size: "sm",
-              color: "#5A6B7F",
+              color: SURFACE.textMuted,
               flex: 0,
             },
             {
@@ -136,7 +137,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
               text: `${totalOpenCount} 筆`,
               size: "sm",
               weight: "bold",
-              color: "#1A2332",
+              color: SURFACE.text,
               align: "end",
             },
           ],
@@ -150,14 +151,14 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
               type: "text",
               text: "手續費",
               size: "sm",
-              color: "#5A6B7F",
+              color: SURFACE.textMuted,
               flex: 0,
             },
             {
               type: "text",
               text: `成交價 ${feePercent}%（向上取整，銷毀）`,
               size: "xs",
-              color: "#5A6B7F",
+              color: SURFACE.textMuted,
               align: "end",
               wrap: true,
             },
@@ -169,23 +170,23 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
           margin: "lg",
           spacing: "sm",
           paddingAll: "12px",
-          backgroundColor: "#FFF7E6",
+          backgroundColor: TINT.gold.bg,
           cornerRadius: "8px",
           borderWidth: "1px",
-          borderColor: "#FBBF24",
+          borderColor: TINT.gold.border,
           contents: [
             {
               type: "text",
               text: "⚠",
               size: "sm",
-              color: "#B45309",
+              color: TINT.gold.ink,
               flex: 0,
             },
             {
               type: "text",
               text: "賣出時你的升星強化不會轉移，買家收到的是角色初始星數。",
               size: "xs",
-              color: "#B45309",
+              color: TINT.gold.ink,
               wrap: true,
             },
           ],
@@ -203,7 +204,7 @@ exports.generateMarketBubble = ({ myOpenCount, maxOpen, totalOpenCount, feePerce
           type: "button",
           style: "primary",
           height: "sm",
-          color: "#00ACC1",
+          color: SEMANTIC.primary.main,
           action: {
             type: "uri",
             label: "前往市場",

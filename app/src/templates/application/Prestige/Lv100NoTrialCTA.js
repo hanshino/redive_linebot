@@ -1,6 +1,7 @@
 // LINE Flex bubble for the "you've hit Lv.100 but never passed a trial" reminder.
 // Tone: gentle nudge — XP is capped, pick a trial to keep progressing.
 
+const { PALETTE, TINT } = require("../../common/theme");
 const {
   PRESTIGE_PURPLE,
   PRESTIGE_GOLD,
@@ -60,7 +61,7 @@ function buildBubble({ displayName, pictureUrl, prestigeCount, liffUri }) {
             {
               type: "text",
               text: displayName,
-              color: "#FFFFFF",
+              color: PALETTE.white,
               size: "sm",
               weight: "bold",
               flex: 0,
@@ -80,16 +81,16 @@ function buildBubble({ displayName, pictureUrl, prestigeCount, liffUri }) {
         {
           type: "box",
           layout: "horizontal",
-          backgroundColor: "#FBF1E8",
+          backgroundColor: TINT.amber.bg,
           cornerRadius: "8px",
           paddingAll: "10px",
           borderWidth: "1px",
-          borderColor: "#EBCDA8",
+          borderColor: TINT.amber.border,
           contents: [
             {
               type: "text",
               text: "⚠️ XP 已封頂，多餘訊息不再累計",
-              color: "#7A4A12",
+              color: TINT.amber.ink,
               size: "xs",
               weight: "bold",
               align: "center",
@@ -132,7 +133,7 @@ function buildBubble({ displayName, pictureUrl, prestigeCount, liffUri }) {
         },
       ],
     },
-    styles: { footer: { backgroundColor: "#FFFFFF" } },
+    styles: { footer: { backgroundColor: PALETTE.white } },
   };
 }
 

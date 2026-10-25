@@ -10,7 +10,14 @@ const RARITY_CONFIG = {
   3: { ...RARITY.legendary, label: "傳說" },
 };
 
-exports.generateSummaryFlex = ({ total, unlocked, percentage, recentUnlocks, nearCompletion }) => {
+exports.generateSummaryFlex = ({
+  total,
+  unlocked,
+  percentage,
+  recentUnlocks,
+  nearCompletion,
+  displayName,
+}) => {
   const contents = [
     generateHeaderSection(unlocked, total, percentage),
     { type: "separator", margin: "lg" },
@@ -33,7 +40,14 @@ exports.generateSummaryFlex = ({ total, unlocked, percentage, recentUnlocks, nea
       type: "box",
       layout: "vertical",
       contents: [
-        { type: "text", text: "成就系統", weight: "bold", size: "xl", color: ACCENT.contrast },
+        {
+          type: "text",
+          text: displayName ? `${displayName} 的成就` : "成就系統",
+          weight: "bold",
+          size: "xl",
+          color: ACCENT.contrast,
+          wrap: true,
+        },
       ],
       backgroundColor: ACCENT.main,
       paddingAll: "lg",
@@ -123,13 +137,13 @@ function generateRecentSection(recentUnlocks) {
           flex: 6,
           contents: [
             { type: "text", text: achievement.name, size: "sm", weight: "bold" },
-            { type: "text", text: timeAgo, size: "xxs", color: SURFACE.textMuted },
+            { type: "text", text: timeAgo, size: "xs", color: SURFACE.textMuted },
           ],
         },
         {
           type: "text",
           text: `★ ${rarity.label}`,
-          size: "xxs",
+          size: "xs",
           color: rarity.main,
           flex: 2,
           align: "end",
@@ -200,7 +214,7 @@ function generateNearCompletionSection(nearCompletion) {
         {
           type: "text",
           text: `${pct}%`,
-          size: "xxs",
+          size: "xs",
           color: SURFACE.textMuted,
           flex: 1,
           align: "end",
@@ -241,7 +255,7 @@ exports.generateTitlesFlex = titles => {
         {
           type: "text",
           text: rarity.label,
-          size: "xxs",
+          size: "xs",
           color: rarity.main,
           flex: 2,
           align: "end",
