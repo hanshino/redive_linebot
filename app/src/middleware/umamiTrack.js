@@ -55,10 +55,8 @@ const commandMap = [
   { pattern: /^[.#/](賽跑)$/i, name: "race_status", category: "application" },
 
   // === application: market ===
-  { pattern: /^[./#](交易管理|trade-manage)$/i, name: "market_manage", category: "application" },
   { pattern: /^[./#](快速轉帳|fastatm)/i, name: "market_fast_transfer", category: "application" },
   { pattern: /^[./#](轉帳|atm)/i, name: "market_transfer", category: "application" },
-  { pattern: /^[./#](交易|trade)/i, name: "market_trade", category: "application" },
 
   // === application: misc ===
   { pattern: /^[.#/](成就|achievement|adv)$/, name: "achievement", category: "application" },

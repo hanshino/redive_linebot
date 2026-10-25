@@ -1,11 +1,8 @@
 const { text } = require("../../lib/bot");
 const { get } = require("lodash");
 const i18n = require("../../util/i18n");
-const { genActionBubble, getLiffUri } = require("../../templates/common");
-const { getClient } = require("../../lib/bot");
 const { trimMentionees, getMentionName } = require("../../util/line");
 const { removeOrder, isLineUserId } = require("../../util/string");
-const lineClient = getClient("line");
 const { inventory: inventoryModel } = require("../../model/application/Inventory");
 const marketTemplate = require("../../templates/application/Market");
 const uuid = require("uuid-random");
@@ -17,67 +14,10 @@ const AchievementEngine = require("../../service/AchievementEngine");
 const { notifyUnlocks } = require("../../service/achievementNotifier");
 
 exports.router = [
-  text(/^[./#](交易管理|trade-manage)$/i, showManage),
-  text(/^[./#](交易|trade)/i, trade),
   text(/^[./#](轉帳|atm)/i, transferMoney),
   text(/^[./#](快速轉帳|fastatm)/i, doFastTransfer),
 ];
 
-function showManage(context) {
-  const link = `${getLiffUri("full")}/trade/manage`;
-  const bubble = genActionBubble({
-    icon: "🛒",
-    title: "交易管理",
-    subtitle: "管理你的委託單",
-    url: link,
-    theme: "cyan",
-    cta: "前往管理",
-  });
-  return context.replyFlex("交易管理", bubble);
-}
-
-/**
- * 申請交易
- * @param {import ("../../lib/bot").LineContext} context
- */
-async function trade(context) {
-  const { mention } = context.event.message;
-  const mentionees = get(mention, "mentionees", []);
-
-  if (mentionees.length === 0) {
-    return context.replyText(i18n.__("message.trade.no_mention"));
-  }
-
-  const targetUserId = get(mentionees, "[0].userId");
-  const { displayName } = await getProfile(context, targetUserId);
-  const link = `${getLiffUri("full")}/trade/order?target_id=${targetUserId}`;
-  const bubble = genActionBubble({
-    icon: "🤝",
-    title: "交易申請",
-    subtitle: `向 ${displayName} 發起交易`,
-    url: link,
-    theme: "rose",
-    cta: "建立申請",
-  });
-
-  context.replyText(i18n.__("message.trade.apply", { displayName }));
-  await context.replyFlex("交易申請", bubble);
-}
-
-function getProfile(context, userId) {
-  switch (get(context, "event.source.type")) {
-    case "room":
-      return lineClient.getRoomMemberProfile(get(context, "event.source.roomId"), userId);
-    case "group":
-      return lineClient.getGroupMemberProfile(get(context, "event.source.groupId"), userId);
-    default:
-      return lineClient.getProfile(userId);
-  }
-}
-
-/**
- * @param {import ("../../lib/bot").LineContext} context
- */
 async function transferMoney(context) {
   const { text: rawText } = context.event.message;
   const { userId, displayName } = context.event.source;
@@ -130,7 +70,10 @@ async function transferMoney(context) {
       displayName,
     })
   );
-  context.replyFlex("轉帳建立", orderBubble);
+  context.replyFlex(
+    `轉帳申請：${displayName} → ${targetUserName} ${humanNumber(transferMoney)} 女神石`,
+    orderBubble
+  );
 }
 
 /**
