@@ -1,27 +1,65 @@
 import { useEffect } from "react";
 import { Box } from "@mui/material";
-import HeroBanner from "./HeroBanner";
-import TodayCard from "./TodayCard";
-import StatsGrid from "./StatsGrid";
+import AdventurerCard from "./AdventurerCard";
+import TodayStrip from "./TodayStrip";
+import FeatureBinder from "./FeatureBinder";
 import AnnouncementBoard from "./AnnouncementBoard";
-import FeatureGrid from "./FeatureGrid";
 import useLiff from "../../context/useLiff";
+import useApiData from "../XpHistory/useApiData";
+import api from "../../services/api";
+import { getPrestigeStatus } from "../../services/prestige";
 
-// 閱讀順序：先問候 → 登入者今天能做的事 → 功能入口 → 公告 → 全站統計（參考資訊，放最後）。
+const fetchSignins = () => api.get("/api/me/signins").then(r => r.data);
+const fetchBoss = () => api.get("/api/world-boss/me").then(r => r.data);
+
+// 冒險者卡冊：手機先看到自己的卡與今天沒做完的事，再往下翻功能卡；
+// 桌機左欄固定卡片，右欄是卡冊與公告。
 export default function Home() {
-  const { loggedIn } = useLiff();
+  const { ready, loggedIn, login, profile } = useLiff();
+  const signins = useApiData(fetchSignins, loggedIn, [loggedIn]);
+  const prestige = useApiData(getPrestigeStatus, loggedIn, [loggedIn]);
+  const boss = useApiData(fetchBoss, loggedIn, [loggedIn]);
 
   useEffect(() => {
     document.title = "布丁機器人";
   }, []);
 
+  const bossLeft = boss.data?.current?.daily?.remaining;
+
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto" }}>
-      <HeroBanner />
-      {loggedIn && <TodayCard />}
-      <FeatureGrid />
-      <AnnouncementBoard />
-      <StatsGrid />
+    <Box
+      sx={{
+        maxWidth: 1280,
+        mx: "auto",
+        display: "grid",
+        gap: { xs: 2.25, md: 3 },
+        gridTemplateColumns: { md: "340px minmax(0, 1fr)", lg: "360px minmax(0, 1fr)" },
+        alignItems: "start",
+      }}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          position: { md: "sticky" },
+          top: { md: 88 },
+        }}
+      >
+        <AdventurerCard
+          ready={ready}
+          loggedIn={loggedIn}
+          login={login}
+          profile={profile}
+          prestige={prestige}
+          signins={signins}
+        />
+        {loggedIn && <TodayStrip signins={signins} boss={boss} />}
+      </Box>
+
+      <Box sx={{ display: "grid", gap: { xs: 2.25, md: 3 } }}>
+        <FeatureBinder badges={bossLeft > 0 ? { worldboss: `今日剩 ${bossLeft}` } : {}} />
+        <AnnouncementBoard />
+      </Box>
     </Box>
   );
 }
