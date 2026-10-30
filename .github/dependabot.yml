@@ -16,3 +16,27 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+
+  # npm / uv: version updates off (limit 0, handled manually via ncu);
+  # security updates still arrive, grouped into one PR per directory.
+  - package-ecosystem: "npm"
+    directories:
+      - "/app"
+      - "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    groups:
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: "uv"
+    directory: "/tools/tw-redive-db-fetcher"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    groups:
+      uv-security:
+        applies-to: security-updates
+        patterns: ["*"]
