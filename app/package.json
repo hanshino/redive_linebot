@@ -21,7 +21,7 @@
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "axios": "1.21.0",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "config": "^4.4.2",
     "cors": "^2.8.6",
     "cron": "^4.4.0",
