@@ -1,26 +1,11 @@
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import { BottomNavigation, BottomNavigationAction, GlobalStyles, Paper } from "@mui/material";
 import useLiff from "../context/useLiff";
-import HomeIcon from "@mui/icons-material/Home";
-import EventAvailableIcon from "@mui/icons-material/EventAvailable";
-import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
-import LeaderboardIcon from "@mui/icons-material/Leaderboard";
+import { destinations } from "./navDestinations";
 
 // 手機專用底部導覽：LIFF 深連結多半在手機上開，常用入口放在拇指區。
 // 完整選單仍在左上角漢堡。只放 4 個，且都是不需要先挑群組就能進的頁面。
 export const BOTTOM_NAV_HEIGHT = 56;
-
-const destinations = [
-  { label: "首頁", path: "/", icon: HomeIcon, match: p => p === "/" },
-  { label: "簽到", path: "/signin", icon: EventAvailableIcon, match: p => p === "/signin" },
-  {
-    label: "市場",
-    path: "/trade/market",
-    icon: ShoppingBasketIcon,
-    match: p => p.startsWith("/trade/"),
-  },
-  { label: "排行榜", path: "/rankings", icon: LeaderboardIcon, match: p => p === "/rankings" },
-];
 
 // 主內容、snackbar、sticky 操作列要讓出的底部空間（含 iPhone 的 home indicator 安全區）。
 // 走 CSS 變數：導覽列沒顯示時（桌機、或 LIFF 半高視窗）自動變成 0，用的地方不用各自判斷。

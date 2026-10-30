@@ -10,6 +10,52 @@ import { alpha, createTheme } from "@mui/material/styles";
 // 靜態資訊卡浮起會讓人以為能點。
 const INTERACTIVE_CARD_HOVER = "&:has(> .MuiCardActionArea-root):hover, &[data-interactive]:hover";
 
+// 卡面數字與名字用的展示字體（Chakra Petch 只有拉丁字，中文落回 Noto Sans TC）。
+export const displayFont = ['"Chakra Petch"', '"Noto Sans TC"', "system-ui", "sans-serif"].join(
+  ","
+);
+
+// 舞台卡（猜拳、世界王）：深夜底 + 琥珀細框，深淺模式都一樣。
+const stageTokens = {
+  stage: {
+    bg: "#0A1A2A",
+    panel: "#12243A",
+    line: "#24364B",
+    hairline: "#C98A12",
+    accent: "#FBBF24",
+    onAccent: "#1F1300",
+    text: "#F3F7FA",
+  },
+};
+
+// 功能卡插圖用色。插圖是畫，不跟著深淺模式換，只有底色與地面線換。
+const artTokens = {
+  paper: "#FFFFFF",
+  ink: "#5A6B7F",
+  skin: "#F6D9C4",
+  cyan: "#007C89",
+  cyanPale: "#CFEAEC",
+  violet: "#5B4BC4",
+  violetDeep: "#3E2F9B",
+  violetPale: "#D9D3F6",
+  caramel: "#B45309",
+  caramelDeep: "#8A3F06",
+  amber: "#F59E0B",
+  cream: "#FFF7E6",
+  gold: "#8A6100",
+  goldDeep: "#6B4B00",
+  pink: "#C2185B",
+  pinkPale: "#FFE2EE",
+  stageRing: "#1B3350",
+  stageFloor: "#24405F",
+  stageLight: "#E6EDF4",
+  steel: "#C7D4E0",
+  horn: "#D9E6F0",
+  beast: "#2F6B4F",
+  beastLight: "#3C8A63",
+  beastMouth: "#17304A",
+};
+
 // 語意色：頁面不要再寫死 hex，從 theme.palette.<key> 取，深淺模式各自調過。
 // rarity: 成就稀有度 0-3；medal: 排行前三名；currency: 女神石。
 const lightTokens = {
@@ -22,6 +68,21 @@ const lightTokens = {
   medal: ["#FFD700", "#C0C0C0", "#CD7F32"],
   currency: { main: "#B45309", bg: "#FFF7E6" },
   surface: { subtle: "#F5F7FA", inset: "#EEF2F6" },
+  // 首頁卡冊：功能卡的中性青框、名牌帶遮罩、傳說框的箔光。
+  card: {
+    frame: "#BBD6DA",
+    scrim:
+      "linear-gradient(to top, rgba(10,20,30,0.88) 0 42%, rgba(10,20,30,0.55) 70%, rgba(10,20,30,0))",
+    onScrim: "#FFFFFF",
+    onScrimMuted: "#D9E4EC",
+    onScrimAccent: "#FFC4DA",
+    foil: "linear-gradient(140deg,#F2A8C6 0%,#C2185B 22%,#7B1FA2 44%,#2F7FD1 60%,#C2185B 80%,#FFD08A 100%)",
+    foilBands:
+      "repeating-linear-gradient(112deg,rgba(255,0,128,0.35) 0 10px,rgba(255,193,7,0.32) 10px 20px,rgba(0,230,180,0.32) 20px 30px,rgba(80,120,255,0.35) 30px 40px)",
+    sheen: "rgba(255,255,255,0.45)",
+  },
+  ...stageTokens,
+  art: { ...artTokens, bg: "#EAF1F6", line: "#C3D2DE" },
 };
 
 const darkTokens = {
@@ -34,6 +95,20 @@ const darkTokens = {
   medal: ["#D4AF37", "#A8A8A8", "#A05A2C"],
   currency: { main: "#FBBF24", bg: "rgba(251, 191, 36, 0.12)" },
   surface: { subtle: "#0E1E30", inset: "#173049" },
+  card: {
+    frame: "#2E4D55",
+    scrim:
+      "linear-gradient(to top, rgba(4,10,18,0.9) 0 42%, rgba(4,10,18,0.55) 70%, rgba(4,10,18,0))",
+    onScrim: "#FFFFFF",
+    onScrimMuted: "#D9E4EC",
+    onScrimAccent: "#FFC4DA",
+    foil: "linear-gradient(140deg,#F2A8C6 0%,#C2185B 22%,#7B1FA2 44%,#2F7FD1 60%,#C2185B 80%,#FFD08A 100%)",
+    foilBands:
+      "repeating-linear-gradient(112deg,rgba(255,0,128,0.35) 0 10px,rgba(255,193,7,0.32) 10px 20px,rgba(0,230,180,0.32) 20px 30px,rgba(80,120,255,0.35) 30px 40px)",
+    sheen: "rgba(255,255,255,0.3)",
+  },
+  ...stageTokens,
+  art: { ...artTokens, bg: "#173049", line: "#2B4560" },
 };
 
 const shared = {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link as RouterLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
   AppBar,
@@ -12,7 +12,6 @@ import {
   Tooltip,
   Snackbar,
   Alert,
-  useMediaQuery,
   useTheme,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -23,8 +22,10 @@ import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import NavDrawer from "../components/NavDrawer";
 import BottomNav, { bottomNavSpace } from "../components/BottomNav";
+import { destinations } from "../components/navDestinations";
 import DebugOverlay from "../components/DebugOverlay";
 import { useColorMode } from "../theme/useColorMode";
+import { displayFont } from "../theme";
 import useLiff from "../context/useLiff";
 
 const DRAWER_WIDTH = 260;
@@ -37,8 +38,7 @@ const appBarIconSx = { width: 44, height: 44 };
 
 export default function MainLayout() {
   const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { mode, toggleColorMode } = useColorMode();
   const { loggedIn, ready, login, logout } = useLiff();
   const location = useLocation();
@@ -73,17 +73,15 @@ export default function MainLayout() {
         }}
       >
         <Toolbar>
-          {!isDesktop && (
-            <IconButton
-              color="inherit"
-              edge="start"
-              onClick={() => setMobileOpen(true)}
-              sx={{ mr: 0.5, ...appBarIconSx }}
-              aria-label="開啟選單"
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={() => setDrawerOpen(true)}
+            sx={{ mr: 0.5, ...appBarIconSx }}
+            aria-label="開啟選單"
+          >
+            <MenuIcon />
+          </IconButton>
           {canGoBack && (
             <IconButton
               color="inherit"
@@ -94,9 +92,46 @@ export default function MainLayout() {
               <ArrowBackIcon />
             </IconButton>
           )}
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1, fontWeight: 700 }}>
+          <Typography
+            variant="h6"
+            noWrap
+            sx={{ flexGrow: 1, fontWeight: 700, fontFamily: displayFont, letterSpacing: "0.02em" }}
+          >
             布丁機器人
           </Typography>
+          {/* 桌機沒有底部導覽，同一組常用入口放在 AppBar 上。 */}
+          <Box
+            component="nav"
+            aria-label="常用功能"
+            sx={{ display: { xs: "none", md: "flex" }, gap: 0.5, mr: 1 }}
+          >
+            {destinations.map(({ label, path, match }) => {
+              const active = match(location.pathname);
+              return (
+                <Button
+                  key={path}
+                  component={RouterLink}
+                  to={path}
+                  color="inherit"
+                  aria-current={active ? "page" : undefined}
+                  sx={{
+                    minHeight: 44,
+                    px: 1.75,
+                    borderRadius: 2,
+                    borderBottom: 3,
+                    borderBottomLeftRadius: 0,
+                    borderBottomRightRadius: 0,
+                    borderColor: active ? "primary.main" : "transparent",
+                    color: active ? "primary.main" : "text.secondary",
+                    fontWeight: active ? 700 : 500,
+                    "&:hover": { color: active ? "primary.main" : "text.primary" },
+                  }}
+                >
+                  {label}
+                </Button>
+              );
+            })}
+          </Box>
           <Tooltip title={mode === "dark" ? "淺色模式" : "深色模式"}>
             <IconButton
               onClick={toggleColorMode}
@@ -132,44 +167,23 @@ export default function MainLayout() {
         </Toolbar>
       </AppBar>
 
-      {/* Desktop: permanent drawer */}
-      {isDesktop && (
-        <Drawer
-          variant="permanent"
-          sx={{
-            width: DRAWER_WIDTH,
-            flexShrink: 0,
-            "& .MuiDrawer-paper": {
-              width: DRAWER_WIDTH,
-              boxSizing: "border-box",
-            },
-          }}
-        >
-          {/* 讓出 app bar 的高度（跟著主題的 toolbar 高度，不寫死像素） */}
-          <Toolbar />
-          <NavDrawer />
-        </Drawer>
-      )}
-
-      {/* Mobile: temporary drawer */}
-      {!isDesktop && (
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            "& .MuiDrawer-paper": {
-              width: `min(${DRAWER_WIDTH}px, 86vw)`,
-              boxSizing: "border-box",
-              overflowX: "hidden",
-            },
-          }}
-        >
-          <Toolbar />
-          <NavDrawer onClose={() => setMobileOpen(false)} />
-        </Drawer>
-      )}
+      {/* 所有寬度都用浮出式選單：管理與設定頁從這裡進，不再佔用桌機左側欄。 */}
+      <Drawer
+        variant="temporary"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          "& .MuiDrawer-paper": {
+            width: `min(${DRAWER_WIDTH}px, 86vw)`,
+            boxSizing: "border-box",
+            overflowX: "hidden",
+          },
+        }}
+      >
+        <Toolbar />
+        <NavDrawer onClose={() => setDrawerOpen(false)} />
+      </Drawer>
 
       <Box
         component="main"
@@ -178,7 +192,6 @@ export default function MainLayout() {
           p: { xs: 2, md: 3 },
           // 手機底部導覽列是 fixed，內容底部要多留它的高度，最後一塊才不會被蓋住。
           pb: { xs: `calc(${bottomNavSpace} + 16px)`, sm: 2, md: 3 },
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
           maxWidth: "100vw",
           overflowX: "hidden",
         }}
