@@ -54,7 +54,7 @@ server.use("/bot-assets", express.static(path.join(__dirname, "assets")));
 server.use("/api", limiter, apiRouter);
 
 // Unknown routes are not webhook requests.
-server.all("*", (req, res) => {
+server.use((req, res) => {
   return res.sendStatus(404);
 });
 

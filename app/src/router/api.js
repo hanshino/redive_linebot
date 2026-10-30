@@ -500,7 +500,7 @@ router.get(
   }
 );
 
-router.all("*", (_, res) => {
+router.use((_, res) => {
   res.status(404).json({ message: "invalid api url." });
 });
 
