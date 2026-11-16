@@ -1,119 +1,110 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Alert,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Skeleton,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import CampaignIcon from "@mui/icons-material/Campaign";
+import { Box, Skeleton, Typography } from "@mui/material";
 import api from "../../services/api";
 import LoadError from "../../components/LoadError";
+import useApiData from "../XpHistory/useApiData";
+import { displayFont } from "../../theme";
+
+const fetchAnnouncements = () => api.get("/api/announcements/1").then(r => r.data || []);
+
+function shortDate(value) {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+const frame = {
+  border: "1px solid",
+  borderColor: "divider",
+  borderRadius: "14px",
+  bgcolor: "background.paper",
+  overflow: "hidden",
+};
 
 export default function AnnouncementBoard() {
-  const [announcements, setAnnouncements] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  const fetchAnnouncements = useCallback(() => {
-    return (
-      api
-        .get("/api/announcements/1")
-        .then(r => setAnnouncements(r.data || []))
-        // 載入失敗不能說「目前沒有公告」，那是在騙人；顯示錯誤並可重試
-        .catch(() => setError(true))
-        .finally(() => setLoading(false))
-    );
-  }, []);
-
-  // 首次載入 loading 本來就是 true；只有重試才需要把狀態重設
-  useEffect(() => {
-    fetchAnnouncements();
-  }, [fetchAnnouncements]);
-
-  const load = () => {
-    setLoading(true);
-    setError(false);
-    fetchAnnouncements();
-  };
-
-  const breakingNews = announcements[0];
-  const otherNews = announcements.slice(1, 4);
-
-  if (loading) {
-    return (
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Skeleton height={32} width={120} sx={{ mb: 2 }} />
-          <Skeleton height={48} />
-          <Skeleton height={48} />
-        </CardContent>
-      </Card>
-    );
-  }
+  const { data, loading, error, reload } = useApiData(fetchAnnouncements, true, []);
+  const items = (data || []).slice(0, 4);
 
   return (
-    <Card sx={{ mb: 3 }}>
-      <CardContent>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-          <CampaignIcon sx={{ color: "secondary.main" }} />
-          <Typography variant="h6">公告欄</Typography>
+    <Box component="section" aria-labelledby="news-heading">
+      <Typography
+        id="news-heading"
+        component="h2"
+        sx={{ fontFamily: displayFont, fontWeight: 700, fontSize: "1.0625rem", mb: 1.25, mx: 0.25 }}
+      >
+        公告板
+      </Typography>
+
+      {loading ? (
+        <Box sx={{ ...frame, p: 1.5, display: "grid", gap: 1 }}>
+          <Skeleton variant="rounded" height={28} />
+          <Skeleton variant="rounded" height={28} />
         </Box>
-
-        {error ? (
-          <LoadError message="公告載入失敗，請稍後再試。" onRetry={load} sx={{ py: 0 }} />
-        ) : breakingNews ? (
-          <Alert
-            severity={breakingNews.severity || "info"}
-            sx={{ mb: otherNews.length > 0 ? 2 : 0 }}
-          >
-            <Typography variant="subtitle2">{breakingNews.title}</Typography>
-            {breakingNews.content && (
-              <Typography variant="body2">{breakingNews.content}</Typography>
-            )}
-          </Alert>
-        ) : (
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-            }}
-          >
-            目前沒有公告
-          </Typography>
-        )}
-
-        {otherNews.map((news, index) => (
-          <Accordion
-            key={index}
-            disableGutters
-            sx={{
-              bgcolor: "transparent",
-              "&::before": { display: "none" },
-              boxShadow: "none",
-            }}
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="body2">{news.title}</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography
-                variant="body2"
+      ) : error ? (
+        <LoadError message="公告載入失敗，請稍後再試。" onRetry={reload} sx={{ py: 0 }} />
+      ) : items.length === 0 ? (
+        <Box sx={{ ...frame, p: 1.5, color: "text.secondary" }}>目前沒有公告</Box>
+      ) : (
+        <Box sx={frame}>
+          {items.map((news, i) => (
+            <Box
+              component="details"
+              key={`${news.create_time}-${i}`}
+              open={i === 0}
+              sx={{
+                borderTop: i ? "1px solid" : 0,
+                borderColor: "divider",
+                "& > summary::-webkit-details-marker": { display: "none" },
+              }}
+            >
+              <Box
+                component="summary"
                 sx={{
-                  color: "text.secondary",
+                  listStyle: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 1.25,
+                  minHeight: 52,
+                  px: 1.5,
+                  py: 1.25,
+                  "&:hover": { bgcolor: "surface.inset" },
                 }}
               >
-                {news.content}
-              </Typography>
-            </AccordionDetails>
-          </Accordion>
-        ))}
-      </CardContent>
-    </Card>
+                <Box
+                  component="span"
+                  sx={{
+                    flex: "none",
+                    width: 46,
+                    fontFamily: displayFont,
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    color: "text.secondary",
+                  }}
+                >
+                  {shortDate(news.create_time)}
+                </Box>
+                <Box component="span" sx={{ fontWeight: 500 }}>
+                  {news.title}
+                </Box>
+              </Box>
+              {news.content && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    px: 1.5,
+                    pb: 1.5,
+                    pl: 8.5,
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {news.content}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
   );
 }

@@ -148,7 +148,7 @@ components:
 
 Two surfaces, one identity. The LIFF pages and the LINE Flex cards both draw from Miyako's palette: her cyan hair carries the working color, and the caramel layer of a pudding carries the warm second voice. Light is the default world. Pages are white paper on a pale mist background with cyan hairlines; Flex cards are light bubbles. There is one exception: a single dark "stage" surface for cards that read as a game scene (world boss, janken duel, horse race), so battle moments feel like a different room in the same house.
 
-The system is an operating tool, not a showcase. It is phone-first inside LINE LIFF, dense but legible, written in zh-TW addressing the player as 你. Layout does the explaining: titles, numbers and state carry the meaning, and secondary labels or descriptions appear only when the layout alone cannot. Honesty beats tidiness: a failed load never masquerades as an empty list or a default value, and a missing star count renders nothing rather than a fake "1".
+The frontend has two layers. **Player pages** (Home first; bag, achievements, janken, world boss, race, gacha, rankings, prestige to follow) live in a "trading card binder" world: the player holds an adventurer card and features are collectible cards. **Back-office pages** (admin, group config, custom commands, settings) stay a plain operating tool. Both layers share tokens, controls and navigation; only the player layer uses card frames, the display face and stage cards. The interface is phone-first inside LINE LIFF, dense but legible, written in zh-TW addressing the player as 你. Layout does the explaining: titles, numbers and state carry the meaning, and secondary labels or descriptions appear only when the layout alone cannot. Honesty beats tidiness: a failed load never masquerades as an empty list or a default value, and a missing star count renders nothing rather than a fake "1".
 
 Accessibility is built into the tokens, not added later. Every `main` color passes 4.5:1 as text and under white button text; the brighter `light` shades are decoration only. Touch targets are at least 44px, text is at least 12px.
 
@@ -200,7 +200,7 @@ Follows `prefers-color-scheme` with a saved override. Primary becomes `night-cya
 ## Typography
 
 **Body Font:** Roboto, with Noto Sans TC for Chinese (then Helvetica Neue, Arial, sans-serif). Loaded from Google Fonts at 400 / 500 / 700.
-**Display Font:** none separate; hierarchy comes from weight and size within the same family.
+**Display Font:** Chakra Petch (`displayFont` in `frontend/src/theme/index.js`), player layer only: card names, levels and figures. It is Latin-only, so Chinese falls back to Noto Sans TC. Back-office pages do not use it.
 
 **Character:** a plain, highly legible pairing where Noto Sans TC does most of the visible work; weight (600–700) carries hierarchy rather than a decorative face.
 
@@ -222,7 +222,7 @@ LINE Flex uses LINE's named sizes: `xs` (13px) is the workhorse, `sm` for second
 
 ## Layout
 
-Phone-first inside the LIFF webview. Main content pads 16px on phones and 24px from `md` up. Under `sm`, a fixed 56px bottom navigation (plus `env(safe-area-inset-bottom)`) holds the four most-used destinations, and the main area reserves that height plus 16px so the last block is never covered. From `md` up a permanent 260px drawer replaces the temporary one (which is `min(260px, 86vw)` on phones). The AppBar is fixed and frosted.
+Phone-first inside the LIFF webview. Main content pads 16px on phones and 24px from `md` up. Under `sm`, a fixed 56px bottom navigation (plus `env(safe-area-inset-bottom)`) holds the four most-used destinations, and the main area reserves that height plus 16px so the last block is never covered. From `md` up the same four destinations sit as tabs in the AppBar (shared list in `components/navDestinations.js`). There is no permanent drawer at any width: the hamburger opens the temporary drawer (`min(260px, 86vw)`), which carries the full menu including back-office pages. The AppBar is fixed and frosted.
 
 Spacing follows MUI's 8px unit. Cards pad 16px on phones and 20px from `sm`; inside a SectionCard, the title block and content stack 14px apart. Readable single-column pages cap around 640–760px. Section headers place an action on the right that wraps beneath the title on narrow screens.
 
@@ -278,8 +278,17 @@ Confident, flat, sentence-case.
 
 ### Navigation
 - **Bottom nav (phones):** white paper, top hairline, 56px plus safe area, four icon+label items; the selected item is cyan and bold so it reads without color.
-- **Drawer:** 260px, hairline right border, grouped sections.
-- **AppBar:** frosted translucent white, hairline bottom.
+- **Drawer:** temporary only, 260px, grouped sections; opened from the hamburger at every width.
+- **AppBar:** frosted translucent white, hairline bottom; from `md` up it holds the four destination tabs (selected: primary, bold, underline).
+
+### Adventurer Card (player layer)
+- The player's identity card: large portrait (LINE profile picture) on the top half, a name plate on its lower edge over the `card.scrim`, then Lv/EXP, 女神石 and streak, then the primary action.
+- Frame follows the rarity ladder, derived from real data (prestige count: 0 common, 1–2 rare, 3–4 epic, awakened legendary). Only legendary gets the `card.foil` band, moving with pointermove; static under `prefers-reduced-motion`. Buttons inside the card are never foiled.
+- Fields without a backing API are omitted, never faked.
+
+### Feature Cards (player layer)
+- Navigation is the card binder: one illustration (`FeatureArt`, colors from `palette.art`) and a name per card, uniform `card.frame` border. Stage features (janken, world boss) use `palette.stage` with an amber hairline.
+- Feature cards carry no rarity. A status badge ("今日剩 N") appears only when backed by data and stays lit until handled; the same rule drives the 今天未完成 strip (unfinished highlighted, finished dimmed and checked).
 
 ### Base Star
 - One star icon plus a number (★3), never a repeated row of stars, so width is fixed from 1★ to 6★. Caramel, 700, tabular numbers, `aria-label="基礎 N 星"`. Renders nothing when the value is missing.
